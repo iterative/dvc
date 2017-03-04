@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python $NEATLYNX_HOME/lib/cmd_init.py $@
