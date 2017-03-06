@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 from neatlynx.base_cmd import BaseCmd, Logger
+from neatlynx.config import Config
 from neatlynx.exceptions import NeatLynxException
 
 
@@ -46,19 +47,19 @@ SecurityGroup = neatlynx-group'''
         pass
 
     def define_args(self, parser):
-        self.add_string_arg(parser, '--data-dir',  'data',  'NeatLynx data directory')
-        self.add_string_arg(parser, '--cache-dir', 'cache', 'NeatLynx cache directory')
-        self.add_string_arg(parser, '--state-dir', 'state', 'NeatLynx state directory')
+        self.add_string_arg(parser, '--data-dir',  'NeatLynx data directory', 'data')
+        self.add_string_arg(parser, '--cache-dir', 'NeatLynx cache directory', 'cache')
+        self.add_string_arg(parser, '--state-dir', 'NeatLynx state directory', 'state')
         pass
 
     def get_not_existing_dir(self, dir):
-        path = Path(os.path.join(self.git_dir, dir))
+        path = Path(os.path.join(self.git.git_dir, dir))
         if path.exists():
             raise InitError('Directory "{}" already exist'.format(path.name))
         return path
 
     def get_not_existing_conf_file(self):
-        path = Path(os.path.join(self.git_dir, self.CONFIG))
+        path = Path(os.path.join(self.git.git_dir, Config.CONFIG))
         if path.exists():
             raise InitError('Configuration file "{}" already exist'.format(path.name))
         return path
