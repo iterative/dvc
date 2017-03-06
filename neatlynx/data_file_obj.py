@@ -9,8 +9,10 @@ class DataFilePathError(NeatLynxException):
 
 
 class NotInDataDirError(NeatLynxException):
-    def __init__(self):
-        NeatLynxException.__init__(self, 'Data file location error: the file has to be in the data directory')
+    def __init__(self, data_dir):
+        NeatLynxException.__init__(self,
+                                   'Data file location error: the file has to be in the data directory "{}"'.
+                                   format(data_dir))
 
 
 class DataFileObj(object):
@@ -20,6 +22,7 @@ class DataFileObj(object):
     def __init__(self, data_file, git, config):
         self._git = git
         self._config = config
+        self._curr_dir_abs = os.path.realpath(os.curdir)
 
         data_file = os.path.realpath(data_file)
 
@@ -30,7 +33,7 @@ class DataFileObj(object):
         self._rel_path = os.path.relpath(data_file_dir, data_dir)
 
         if not data_file_dir.startswith(data_dir):
-            raise NotInDataDirError()
+            raise NotInDataDirError(config.data_dir)
 
         if self._rel_path == '.':
             self._rel_path = ''
@@ -51,11 +54,7 @@ class DataFileObj(object):
 
     @property
     def data_file_relative(self):
-        return os.path.relpath(self.data_file_abs, self._git.git_dir_abs())
-
-    @property
-    def data_dir_relative(self):
-        return os.path.basename(self.data_file_relative)
+        return os.path.relpath(self.data_file_abs, self._curr_dir_abs)
 
     # Cache file properties
     @property
@@ -76,11 +75,7 @@ class DataFileObj(object):
 
     @property
     def cache_file_relative(self):
-        return os.path.relpath(self.cache_file_abs, self._git.git_dir_abs)
-
-    @property
-    def cache_dir_relative(self):
-        return os.path.basename(self.cache_file_relative)
+        return os.path.relpath(self.cache_file_abs, self._curr_dir_abs)
 
     # State file properties
     @property
@@ -97,8 +92,4 @@ class DataFileObj(object):
 
     @property
     def state_file_relative(self):
-        return os.path.relpath(self.state_file_abs, self._git.git_dir_abs)
-
-    @property
-    def state_dir_relative(self):
-        return os.path.basename(self.state_file_relative)
+        return os.path.relpath(self.state_file_abs, self._curr_dir_abs)

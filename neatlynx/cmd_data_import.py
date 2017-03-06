@@ -3,10 +3,9 @@ import os
 from pathlib import Path
 from shutil import copyfile
 
-from neatlynx.base_cmd import BaseCmd, Logger
+from neatlynx.cmd_base import CmdBase, Logger
 from neatlynx.data_file_obj import DataFileObj
 from neatlynx.exceptions import NeatLynxException
-from neatlynx.git_wrapper import GitWrapper
 
 
 class DataImportError(NeatLynxException):
@@ -14,9 +13,9 @@ class DataImportError(NeatLynxException):
         NeatLynxException.__init__(self, 'Import error: {}'.format(msg))
 
 
-class DataImport(BaseCmd):
+class CmdDataImport(CmdBase):
     def __init__(self):
-        BaseCmd.__init__(self)
+        CmdBase.__init__(self)
         pass
 
     def define_args(self, parser):
@@ -31,51 +30,39 @@ class DataImport(BaseCmd):
         if not input.is_file():
             raise DataImportError('Input file "{}" has to be a regular file'.format(input))
 
-        dataFileObj = DataFileObj(self.args.output, self._config, GitWrapper.curr_commit())
+        output = self.args.output
+        if os.path.isdir(self.args.output):
+            output = os.path.join(output, os.path.basename(self.args.input))
 
-        #output = Path(self.args.output)
-        if dataFileObj.data_file_relative.exists():
-            raise DataImportError('Output file "{}" already exists'.format(dataFileObj.data_file_relative))
-        if os.path.isdir(dataFileObj.data_dir_relative):
-            raise DataImportError('Output file directory "{}" does not exists'.format(dataFileObj.data_dir_relative))
+        dobj = DataFileObj(output, self.git, self.config)
 
-        data_dir_path = Path(self.config.DataDir)
-        if output.parent < data_dir_path:
-            raise DataImportError('Output file has to be in data dir - {}'.format(data_dir_path))
+        if os.path.exists(dobj.data_file_relative):
+            raise DataImportError('Output file "{}" already exists'.format(dobj.data_file_relative))
+        if not os.path.isdir(os.path.dirname(dobj.data_file_abs)):
+            raise DataImportError('Output file directory "{}" does not exists'.format(
+                os.path.dirname(dobj.data_file_relative)))
 
-        # data_dir_path_str = str(data_dir_path)
-        # output_dir_str = str(output.parent)
-        # relative_dir = output_dir_str[len(data_dir_path_str):].strip(os.path.sep)
-        #
-        # cache_file_dir = os.path.join(self.config.CachDir, relative_dir)
-        # cache_file_dir_path = Path(cache_file_dir)
-        #
-        # state_file_dir = os.path.join(self.config.StateDir, relative_dir)
-        # state_file_dir_path = Path(state_file_dir)
-        #
-        # commit = GitWrapper.curr_commit()
-        # cache_file_name = output.name + '_' + commit
-        # cache_file = cache_file_dir_path / cache_file_name
-        # state_file = state_file_dir_path / output.name
+        os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+        copyfile(self.args.input, dobj.cache_file_relative)
+        Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
+            self.args.input, dobj.cache_file_relative))
 
-        # Perform actions
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        state_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_relative_to_data = os.path.relpath(dobj.cache_file_relative, os.path.dirname(dobj.data_file_relative))
+        os.symlink(cache_relative_to_data, dobj.data_file_relative)
+        Logger.verbose('Symlink from data file "{}" to the cache file "{}" was created'.
+                       format(dobj.data_file_relative, cache_relative_to_data))
 
-        copyfile(self.args.input, str(cache_file))
-        Logger.verbose('Input file "{}" was copied to cache "{}"'.format(self.args.input, cache_file))
-
-        output.symlink_to(cache_file)
-        Logger.verbose('Symlink from data file "{}" the cache file "{}" was created'.
-                       format(output, cache_file))
-
-        StateFile.create(state_file, input, output.absolute(), cache_file.absolute())
+        os.makedirs(os.path.dirname(dobj.state_file_relative), exist_ok=True)
+        with open(dobj.state_file_relative, 'w') as fd:
+            fd.write('NLX_state. v0.1\n')
+            fd.write('Args: {}\n'.format(sys.argv))
+        Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
         pass
 
 
 if __name__ == '__main__':
     try:
-        sys.exit(DataImport().run())
+        sys.exit(CmdDataImport().run())
     except NeatLynxException as e:
         Logger.error(e)
         sys.exit(1)

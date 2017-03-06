@@ -18,13 +18,20 @@ class Logger(object):
     def error(msg):
         print('{}'.format(msg))
 
+    @staticmethod
+    def verbose(msg):
+        print('{}'.format(msg))
 
-class BaseCmd(object):
+
+class CmdBase(object):
+    CONFIG = 'neatlynx.conf'
+
     def __init__(self, parse_config=True):
         self._git = GitWrapper()
         self._args = None
         self._lnx_home = None
 
+        self._config = None
         if parse_config:
             self._config = Config(os.path.join(self.git.git_dir, self.CONFIG))
 
@@ -39,6 +46,10 @@ class BaseCmd(object):
         if not os.path.exists(self._lnx_home):
             raise ConfigError("NEATLYNX_HOME directory doesn't exists")
         pass
+
+    @property
+    def config(self):
+        return self._config
 
     @property
     def lnx_home(self):
@@ -58,7 +69,7 @@ class BaseCmd(object):
     def add_string_arg(self, parser, name, message, default = None,
                        conf_section=None, conf_name=None):
         if conf_section and conf_name:
-            section = self._config[conf_section]
+            section = self.config[conf_section]
             if not section:
                 raise ConfigError("")
             default_value = section.get(conf_section, default)

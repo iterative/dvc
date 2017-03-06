@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-from neatlynx.base_cmd import BaseCmd, Logger
+from neatlynx.cmd_base import CmdBase, Logger
 from neatlynx.config import Config
 from neatlynx.exceptions import NeatLynxException
 
@@ -12,22 +12,23 @@ class InitError(NeatLynxException):
         NeatLynxException.__init__(self, 'Init error: {}'.format(msg))
 
 
-class CmdInit(BaseCmd):
-    DEFAULT_CONFIG = 'neatlynx.conf.default'
-
+class CmdInit(CmdBase):
     CONFIG_TEMPLATE = '''[Global]
 DataDir = {}
-StateDir = {}
 CacheDir = {}
+StateDir = {}
 Cloud = AWS
 
 [AWS]
-AccessKeyID =
+AccessKeyId =
 SecretAccessKey =
+
+StoragePath = neatlynx/tutorial
+
+
 Region = us-east-1
 Zone = us-east-1a
 
-StorageBucket = neatlynx-tutorial
 Image = ami-2d39803a
 
 InstanceType = t2.nano
@@ -43,7 +44,7 @@ KeyName = neatlynx-key
 SecurityGroup = neatlynx-group'''
 
     def __init__(self):
-        BaseCmd.__init__(self, parse_config=False)
+        CmdBase.__init__(self, parse_config=False)
         pass
 
     def define_args(self, parser):

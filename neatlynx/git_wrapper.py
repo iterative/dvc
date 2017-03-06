@@ -53,7 +53,7 @@ class GitWrapper(GitWrapperI):
 
             self._git_dir = out
             return self._git_dir
-        except GitCmdError as e:
+        except GitCmdError:
             raise
         except Exception as e:
             raise GitCmdError('Unable to run git command: {}'.format(e))
@@ -77,7 +77,7 @@ class GitWrapper(GitWrapperI):
     @property
     def curr_commit(self):
         if self._commit is None:
-            code, out, err = GitWrapper._exec_cmd(['git', 'rev-parse' 'HEAD'])
+            code, out, err = GitWrapper._exec_cmd(['git', 'rev-parse', 'HEAD'])
             if code != 0:
                 raise GitCmdError('Git command error - {}'.format(err))
             self._commit = out
