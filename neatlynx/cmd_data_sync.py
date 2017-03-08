@@ -1,5 +1,6 @@
-import os
 import hashlib
+import os
+
 from boto.s3.connection import S3Connection
 
 from neatlynx.cmd_base import CmdBase, Logger
@@ -12,7 +13,7 @@ class DataSyncError(NeatLynxException):
 
 
 def sizeof_fmt(num, suffix='B'):
-    for unit in ['','K','M','G','T','P','E','Z']:
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
@@ -26,7 +27,7 @@ def percent_cb(complete, total):
 def file_md5(fname):
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(1024*100), b""):
+        for chunk in iter(lambda: f.read(1024*1000), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
 
@@ -50,6 +51,11 @@ class CmdDataSync(CmdBase):
 
     def run(self):
         target = self.args.target
+        rel_data_path = os.path.join(os.path.realpath(self.git.git_dir), self.config.data_dir)
+        if not os.path.abspath(target).startswith(os.path.realpath(rel_data_path)):
+            raise DataSyncError('File supposes to be in data dir - "{}"'.
+                                format(self.config.data_dir))
+
         if os.path.islink(target):
             return self.sync_symlink(target)
 
@@ -71,7 +77,7 @@ class CmdDataSync(CmdBase):
 
     def sync_symlink(self, file):
         cache_file_rel_data = os.path.join(os.path.dirname(file), os.readlink(file))
-        cache_file = os.path.relpath(os.path.relpath(cache_file_rel_data), os.path.realpath(os.curdir))
+        cache_file = os.path.relpath(os.path.realpath(cache_file_rel_data), os.path.realpath(os.curdir))
 
         if os.path.isfile(cache_file):
             self.sync_to_cloud(cache_file)
@@ -81,7 +87,7 @@ class CmdDataSync(CmdBase):
         pass
 
     def sync_from_cloud(self, cache_file):
-        s3_file = self._get_target_s3_name(cache_file)
+        s3_file = self.get_cache_file_s3_name(cache_file)
         key = self._bucket.get_key(s3_file)
         if not key:
             raise DataSyncError('File "{}" is not exist in the cloud'.format(cache_file))
@@ -91,15 +97,8 @@ class CmdDataSync(CmdBase):
         Logger.info('Downloading completed')
         pass
 
-    def _get_target_s3_name(self, cache_file):
-        cache_file_rel = os.path.relpath(cache_file, self.config.cache_dir)
-        cache_file_rel = cache_file_rel.replace(os.sep, '/').strip('/')
-
-        target_file = self.config.aws_storage_prefix + '/' + cache_file_rel
-        return target_file
-
     def sync_to_cloud(self, cache_file):
-        target_file = self._get_target_s3_name(cache_file)
+        target_file = self.get_cache_file_s3_name(cache_file)
 
         key = self._bucket.get_key(target_file)
         if key:

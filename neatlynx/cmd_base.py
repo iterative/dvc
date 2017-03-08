@@ -83,3 +83,9 @@ class CmdBase(object):
 
     def run(self):
         pass
+
+    def get_cache_file_s3_name(self, cache_file):
+        cache_prefix_file_name = os.path.relpath(os.path.realpath(cache_file), os.path.realpath(self.git.git_dir))
+        file_name = os.path.relpath(cache_prefix_file_name, self.config.cache_dir)
+        nlx_file_path_trim = file_name.replace(os.sep, '/').strip('/')
+        return self.config.aws_storage_prefix + '/' + nlx_file_path_trim
