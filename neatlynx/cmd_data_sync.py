@@ -4,6 +4,7 @@ import os
 from boto.s3.connection import S3Connection
 
 from neatlynx.cmd_base import CmdBase, Logger
+from neatlynx.data_file_obj import DataFileObjExisting
 from neatlynx.exceptions import NeatLynxException
 
 
@@ -50,17 +51,12 @@ class CmdDataSync(CmdBase):
         pass
 
     def run(self):
-        target = self.args.target
-        rel_data_path = os.path.join(os.path.realpath(self.git.git_dir), self.config.data_dir)
-        if not os.path.abspath(target).startswith(os.path.realpath(rel_data_path)):
-            raise DataSyncError('File supposes to be in data dir - "{}"'.
-                                format(self.config.data_dir))
+        if os.path.islink(self.args.target):
+            dobj = DataFileObjExisting(self.args.target, self.git, self.config)
+            return self.sync_symlink(dobj)
 
-        if os.path.islink(target):
-            return self.sync_symlink(target)
-
-        if os.path.isdir(target):
-            return self.sync_dir(target)
+        if os.path.isdir(self.args.target):
+            return self.sync_dir(self.args.target)
 
         raise DataSyncError('File "{}" does not exit'.format(target))
 
@@ -70,51 +66,46 @@ class CmdDataSync(CmdBase):
             if os.path.isdir(fname):
                 self.sync_dir(fname)
             elif os.path.islink(fname):
-                self.sync_symlink(fname)
+                self.sync_symlink(DataFileObjExisting(fname, self.git, self.config))
             else:
                 raise DataSyncError('Unsupported file type "{}"'.format(fname))
         pass
 
-    def sync_symlink(self, file):
-        cache_file_rel_data = os.path.join(os.path.dirname(file), os.readlink(file))
-        cache_file = os.path.relpath(os.path.realpath(cache_file_rel_data), os.path.realpath(os.curdir))
-
-        if os.path.isfile(cache_file):
-            self.sync_to_cloud(cache_file)
+    def sync_symlink(self, dobj):
+        if os.path.isfile(dobj.cache_file_relative):
+            self.sync_to_cloud(dobj)
         else:
-            self.sync_from_cloud(cache_file)
-            pass
+            self.sync_from_cloud(dobj)
         pass
 
-    def sync_from_cloud(self, cache_file):
-        s3_file = self.get_cache_file_s3_name(cache_file)
-        key = self._bucket.get_key(s3_file)
+    def sync_from_cloud(self, dobj):
+        key = self._bucket.get_key(dobj.cache_file_aws_key)
         if not key:
-            raise DataSyncError('File "{}" is not exist in the cloud'.format(cache_file))
+            raise DataSyncError('File "{}" does not exist in the cloud'.format(dobj.cache_file_aws_key))
 
-        Logger.info('Downloading cache file "{}" from S3 {}/{}'.format(cache_file, self._bucket.name, s3_file))
-        key.get_contents_to_filename(cache_file, cb=percent_cb)
+        Logger.info('Downloading cache file from S3 "{}/{}"'.format(self._bucket.name,
+                                                                    dobj.cache_file_aws_key))
+        key.get_contents_to_filename(dobj.cache_file_relative, cb=percent_cb)
         Logger.info('Downloading completed')
         pass
 
-    def sync_to_cloud(self, cache_file):
-        target_file = self.get_cache_file_s3_name(cache_file)
-
-        key = self._bucket.get_key(target_file)
+    def sync_to_cloud(self, dobj):
+        key = self._bucket.get_key(dobj.cache_file_aws_key)
         if key:
-            Logger.verbose('File already uploaded to the cloud. Checking checksum...')
+            Logger.verbose('File already uploaded to the cloud. Checksum validation...')
 
             md5_cloud = key.etag[1:-1]
-            md5_local = file_md5(cache_file)
+            md5_local = file_md5(dobj.cache_file_relative)
             if md5_cloud == md5_local:
                 Logger.verbose('File checksum matches. No uploading is needed.')
                 return
 
             Logger.info('Checksum miss-match. Re-uploading is required.')
 
-        Logger.info('Uploading cache file "{}" to S3 {}/{}'.format(cache_file, self._bucket.name, target_file))
-        key = self._bucket.new_key(target_file)
-        key.set_contents_from_filename(cache_file, cb=percent_cb)
+        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(dobj.cache_file_relative,
+                                                                  dobj.cache_file_aws_key))
+        key = self._bucket.new_key(dobj.cache_file_aws_key)
+        key.set_contents_from_filename(dobj.cache_file_relative, cb=percent_cb)
         Logger.info('Uploading completed')
         pass
 

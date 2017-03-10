@@ -49,6 +49,21 @@ class TestDataFileObjBasic(BasicDataDirTest):
         self.assertEqual(self._dobj.state_file_abs, os.path.join(self._test_git_dir, 'state', 'file.txt.state'))
 
 
+class TestNlxNames(BasicDataDirTest):
+    def setUp(self):
+        BasicDataDirTest.setUp(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))
+
+        git = GitWrapperI(git_dir=self._test_git_dir, commit='ad45ba8')
+        config = ConfigI('data', 'cache', 'state')
+
+        self._dobj = DataFileObj(os.path.join('data', 'file.txt'), git, config)
+        pass
+
+    def test_data_nlx(self):
+        self.assertEqual(self._dobj.data_file_nlx, 'file.txt')
+        pass
+
+
 class TestDataFileObjInDataDir(BasicDataDirTest):
     def setUp(self):
         BasicDataDirTest.setUp(self, os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))

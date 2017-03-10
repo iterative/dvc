@@ -1,7 +1,9 @@
 import sys
 import os
-from pathlib import Path
 from shutil import copyfile
+
+import re
+import requests
 
 from neatlynx.cmd_base import CmdBase, Logger
 from neatlynx.data_file_obj import DataFileObj
@@ -24,11 +26,12 @@ class CmdDataImport(CmdBase):
         pass
 
     def run(self):
-        input = Path(self.args.input)
-        if not input.exists():
-            raise DataImportError('Input file "{}" does not exist'.format(input))
-        if not input.is_file():
-            raise DataImportError('Input file "{}" has to be a regular file'.format(input))
+
+        if not CmdDataImport.is_url(self.args.input):
+            if not os.path.exists(self.args.input):
+                raise DataImportError('Input file "{}" does not exist'.format(self.args.input))
+            if not os.path.isfile(self.args.input):
+                raise DataImportError('Input file "{}" has to be a regular file'.format(self.args.input))
 
         output = self.args.output
         if os.path.isdir(self.args.output):
@@ -43,9 +46,15 @@ class CmdDataImport(CmdBase):
                 os.path.dirname(dobj.data_file_relative)))
 
         os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
-        copyfile(self.args.input, dobj.cache_file_relative)
-        Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
-            self.args.input, dobj.cache_file_relative))
+        if CmdDataImport.is_url(self.args.input):
+            Logger.verbose('Downloading file {} ...'.format(self.args.input))
+            self.download_file(self.args.input, dobj.cache_file_relative)
+            Logger.verbose('Input file "{}" was downloaded to cache "{}"'.format(
+                self.args.input, dobj.cache_file_relative))
+        else:
+            copyfile(self.args.input, dobj.cache_file_relative)
+            Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
+                self.args.input, dobj.cache_file_relative))
 
         cache_relative_to_data = os.path.relpath(dobj.cache_file_relative, os.path.dirname(dobj.data_file_relative))
         os.symlink(cache_relative_to_data, dobj.data_file_relative)
@@ -58,6 +67,27 @@ class CmdDataImport(CmdBase):
             fd.write('Args: {}\n'.format(sys.argv))
         Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
         pass
+
+    URL_REGEX = re.compile(
+        r'^(?:http|ftp)s?://'  # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
+        r'localhost|'  # localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
+        r'(?::\d+)?'  # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+    @staticmethod
+    def is_url(url):
+        return CmdDataImport.URL_REGEX.match(url) is not None
+
+    @staticmethod
+    def download_file(from_url, to_file):
+        r = requests.get(from_url, stream=True)
+        with open(to_file, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=1024*100):
+                if chunk:  # filter out keep-alive new chunks
+                    f.write(chunk)
+        return
 
 
 if __name__ == '__main__':

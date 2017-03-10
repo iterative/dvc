@@ -1,8 +1,9 @@
 import os
-from boto.s3.connection import S3Connection, Key
+from boto.s3.connection import S3Connection
 
 from neatlynx.cmd_base import CmdBase, Logger
 from neatlynx.exceptions import NeatLynxException
+from neatlynx.data_file_obj import DataFileObjExisting
 
 
 class DataRemoveError(NeatLynxException):
@@ -32,46 +33,42 @@ class CmdDataRemove(CmdBase):
     def run(self):
         target = self.args.target
 
-        if os.path.islink(target):
-            return self.remove_symlink(target)
-
         if os.path.isdir(target):
             if not self.args.recursive:
                 raise DataRemoveError('Directory cannot be removed. Use --recurcive flag.')
 
-            if os.path.realpath(target) == os.path.realpath(self.config.data_dir):
+            if os.path.realpath(target) == \
+                    os.path.realpath(os.path.join(self.git.git_dir_abs, self.config.data_dir)):
                 raise DataRemoveError('data directory cannot be removed')
+
             return self.remove_dir(target)
 
-        raise DataRemoveError('File "{}" does not exit'.format(target))
+        dobj = DataFileObjExisting(target, self.git, self.config)
+        if os.path.islink(dobj.data_file_relative):
+            return self.remove_symlink(dobj.data_file_relative)
+
+        raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
 
     def remove_symlink(self, file):
-        if not file.startswith(self.config.data_dir):
-            raise DataRemoveError('File "{}" supposes to be in data dir'.format(file))
+        dobj = DataFileObjExisting(file, self.git, self.config)
 
-        cache_file_rel_data = os.path.join(os.path.dirname(file), os.readlink(file))
-        cache_file = os.path.relpath(os.path.realpath(cache_file_rel_data), os.path.realpath(os.curdir))
+        if os.path.isfile(dobj.cache_file_relative):
+            os.remove(dobj.cache_file_relative)
+            dobj.remove_cache_dir_if_empty()
 
-        rel_data_file = os.path.relpath(file, self.config.data_dir)
-        state_file = os.path.join(self.config.state_dir, rel_data_file)
+        if os.path.isfile(dobj.state_file_relative):
+            os.remove(dobj.state_file_relative)
+            dobj.remove_state_dir_if_empty()
 
-        if os.path.isfile(cache_file):
-            os.remove(cache_file)
-            os.remove(file)
-
-            if not os.path.isfile(state_file):
-                Logger.warn('Warning: state file "{}" does not exist'.format(state_file))
+        if not self.args.keep_in_cloud:
+            key = self._bucket.get_key(dobj.cache_file_aws_key)
+            if not key:
+                Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(dobj.cache_file_aws_key))
             else:
-                os.remove(state_file)
+                key.delete()
+                Logger.info('File "{}" was removed from S3'.format(dobj.cache_file_aws_key))
 
-            if not self.args.keep_in_cloud:
-                s3_name = self.get_cache_file_s3_name(cache_file)
-                key = self._bucket.get_key(s3_name)
-                if not key:
-                    Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(s3_name))
-                else:
-                    key.delete()
-                    Logger.info('File "{}" was removed from S3'.format(s3_name))
+        os.remove(file)
         pass
 
     def remove_dir(self, data_dir):
@@ -85,10 +82,6 @@ class CmdDataRemove(CmdBase):
                 raise DataRemoveError('Unsupported file type "{}"'.format(fname))
 
         os.rmdir(data_dir)
-
-        rel_data_dir = os.path.relpath(data_dir, self.config.data_dir)
-        cache_dir = os.path.join(self.config.cache_dir, rel_data_dir)
-        os.rmdir(cache_dir)
         pass
 
 
