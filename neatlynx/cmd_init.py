@@ -2,7 +2,8 @@ import os
 import sys
 from pathlib import Path
 
-from neatlynx.cmd_base import CmdBase, Logger
+from neatlynx.cmd_base import CmdBase
+from neatlynx.logger import Logger
 from neatlynx.config import Config
 from neatlynx.exceptions import NeatLynxException
 

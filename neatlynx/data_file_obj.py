@@ -121,7 +121,7 @@ class DataFileObjExisting(DataFileObj):
     @staticmethod
     def remove_dir_if_empty(dir):
         cache_file_dir = os.path.dirname(dir)
-        if not os.listdir(cache_file_dir):
+        if cache_file_dir != '' and not os.listdir(cache_file_dir):
             os.rmdir(cache_file_dir)
 
     def remove_state_dir_if_empty(self):

@@ -5,24 +5,6 @@ from neatlynx.git_wrapper import GitWrapper
 from neatlynx.config import Config, ConfigError
 
 
-class Logger(object):
-    @staticmethod
-    def info(msg):
-        print('{}'.format(msg))
-
-    @staticmethod
-    def warn(msg):
-        print('{}'.format(msg))
-
-    @staticmethod
-    def error(msg):
-        print('{}'.format(msg))
-
-    @staticmethod
-    def verbose(msg):
-        print('{}'.format(msg))
-
-
 class CmdBase(object):
     CONFIG = 'neatlynx.conf'
 
@@ -37,7 +19,7 @@ class CmdBase(object):
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)
-        self._args = parser.parse_args()
+        self._args, self._args_unkn = parser.parse_known_args()
 
         self._lnx_home = os.environ.get('NEATLYNX_HOME')
 

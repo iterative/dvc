@@ -1,7 +1,8 @@
 import os
 from boto.s3.connection import S3Connection
 
-from neatlynx.cmd_base import CmdBase, Logger
+from neatlynx.cmd_base import CmdBase
+from neatlynx.logger import Logger
 from neatlynx.exceptions import NeatLynxException
 from neatlynx.data_file_obj import DataFileObjExisting
 
@@ -14,20 +15,12 @@ class DataRemoveError(NeatLynxException):
 class CmdDataRemove(CmdBase):
     def __init__(self):
         CmdBase.__init__(self)
-
-        conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
-
-        bucket_name = self.config.aws_storage_bucket
-        self._bucket = conn.lookup(bucket_name)
-        if not self._bucket:
-            self._bucket = conn.create_bucket(bucket_name)
-            Logger.info('S3 bucket "{}" was created'.format(bucket_name))
         pass
 
     def define_args(self, parser):
         self.add_string_arg(parser, 'target', 'Target to remove - file or directory')
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively')
-        parser.add_argument('-k', '--keep-in-cloud', action='store_true', help='Keep file in cloud')
+        parser.add_argument('-c', '--remove-from-cloud', action='store_true', help='Keep file in cloud')
         pass
 
     def run(self):
@@ -60,16 +53,23 @@ class CmdDataRemove(CmdBase):
             os.remove(dobj.state_file_relative)
             dobj.remove_state_dir_if_empty()
 
-        if not self.args.keep_in_cloud:
-            key = self._bucket.get_key(dobj.cache_file_aws_key)
-            if not key:
-                Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(dobj.cache_file_aws_key))
-            else:
-                key.delete()
-                Logger.info('File "{}" was removed from S3'.format(dobj.cache_file_aws_key))
+        if self.args.remove_from_cloud:
+            self.remove_from_cloud(dobj.cache_file_aws_key)
 
         os.remove(file)
         pass
+
+    def remove_from_cloud(self, aws_file_name):
+        conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
+        bucket_name = self.config.aws_storage_bucket
+        bucket = conn.lookup(bucket_name)
+        if bucket:
+            key = bucket.get_key(aws_file_name)
+            if not key:
+                Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
+            else:
+                key.delete()
+                Logger.info('File "{}" was removed from S3'.format(aws_file_name))
 
     def remove_dir(self, data_dir):
         for f in os.listdir(data_dir):

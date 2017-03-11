@@ -3,7 +3,8 @@ import os
 
 from boto.s3.connection import S3Connection
 
-from neatlynx.cmd_base import CmdBase, Logger
+from neatlynx.cmd_base import CmdBase
+from neatlynx.logger import Logger
 from neatlynx.data_file_obj import DataFileObjExisting
 from neatlynx.exceptions import NeatLynxException
 

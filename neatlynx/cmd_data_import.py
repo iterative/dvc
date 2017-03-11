@@ -1,13 +1,14 @@
 import sys
 import os
 from shutil import copyfile
-
 import re
 import requests
 
-from neatlynx.cmd_base import CmdBase, Logger
+from neatlynx.cmd_base import CmdBase
+from neatlynx.logger import Logger
 from neatlynx.data_file_obj import DataFileObj
 from neatlynx.exceptions import NeatLynxException
+from neatlynx.state_file import StateFile
 
 
 class DataImportError(NeatLynxException):
@@ -26,6 +27,8 @@ class CmdDataImport(CmdBase):
         pass
 
     def run(self):
+        if not self.git.is_ready_to_go():
+            return 1
 
         if not CmdDataImport.is_url(self.args.input):
             if not os.path.exists(self.args.input):
@@ -61,10 +64,8 @@ class CmdDataImport(CmdBase):
         Logger.verbose('Symlink from data file "{}" to the cache file "{}" was created'.
                        format(dobj.data_file_relative, cache_relative_to_data))
 
-        os.makedirs(os.path.dirname(dobj.state_file_relative), exist_ok=True)
-        with open(dobj.state_file_relative, 'w') as fd:
-            fd.write('NLX_state. v0.1\n')
-            fd.write('Args: {}\n'.format(sys.argv))
+        state_file = StateFile(dobj.state_file_relative, self.git)
+        state_file.save()
         Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
         pass
 
