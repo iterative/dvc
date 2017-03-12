@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 
 from neatlynx.git_wrapper import GitWrapper
@@ -32,32 +33,59 @@ class CmdRun(CmdBase):
 
         GitWrapper.exec_cmd(self._args_unkn, self.args.stdout, self.args.stderr)
 
+        dobjs = self.get_new_file_objects()
+
+        for dobj in dobjs:
+            os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+            shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
+
+            dobj.create_symlink()
+
+            state_file = StateFile(dobj.state_file_relative, self.git)
+            state_file.save()
+            pass
+
+        message = 'NLX run: {}'.format(' '.join(sys.argv))
+        self.git.commit_all_changes_and_log_status(message)
+        return 0
+
+    def get_new_file_objects(self):
         statuses = GitWrapper.status_files()
+
         error = False
         dobjs = []
         for status, file in statuses:
             try:
                 file_path = os.path.join(self.git.git_dir_abs, file)
-                dobjs.append(DataFileObj(file_path, self.git, self.config))
+                if os.path.isfile(file_path):
+                    dobjs.append(DataFileObj(file_path, self.git, self.config))
+                else:
+                    files = []
+                    self.get_all_files_from_dir(file_path, files)
+                    for f in files:
+                        dobjs.append(DataFileObj(f, self.git, self.config))
             except NotInDataDirError:
                 Logger.error('Error: file "{}" was created outside of the data directory'.format(file_path))
                 error = True
 
         if error:
             Logger.error('Please fix the errors and re-run the command')
-            return 1
+            return None
 
-        for dobj in dobjs:
-            os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
-            shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
-            os.symlink(dobj.cache_file_relative, dobj.data_file_relative)
+        return dobjs
 
-            state_file = StateFile(dobj.state_file_relative, self.git)
-            state_file.save()
-            pass
+    def get_all_files_from_dir(self, dir, result):
+        if not os.path.isdir(dir):
+            raise RunError('Changed path {} is not directory'.format(dir))
 
-        return 0
-
+        files = os.listdir(dir)
+        for f in files:
+            path = os.path.join(dir, f)
+            if os.path.isfile(path):
+                result.append(path)
+            else:
+                self.get_all_files_from_dir(path, result)
+        pass
 
 if __name__ == '__main__':
     import sys

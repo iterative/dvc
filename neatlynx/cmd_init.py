@@ -76,11 +76,27 @@ SecurityGroup = neatlynx-group'''
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
+        Logger.info('Directories {}, {} and {} were created'.format(
+            data_dir_path.name,
+            cache_dir_path.name,
+            state_dir_path.name))
 
         conf.write_text(self.CONFIG_TEMPLATE.format(data_dir_path.name,
                                                     cache_dir_path.name,
                                                     state_dir_path.name))
+
+        self.modify_gitignore(cache_dir_path.name)
         pass
+
+    def modify_gitignore(self, cache_dir_name):
+        gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
+        if not os.path.exists(gitignore_file):
+            open(gitignore_file, 'a').close()
+            Logger.info('File .gitignore was created')
+        with open(gitignore_file, 'a') as fd:
+            fd.write('\ncache')
+        Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
+
 
 if __name__ == '__main__':
     try:

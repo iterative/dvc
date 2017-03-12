@@ -33,6 +33,11 @@ class DataFileObj(object):
             raise NotInDataDirError(self._data_file, self._config.data_dir)
         pass
 
+    def create_symlink(self):
+        data_dir = os.path.dirname(self.data_file_relative)
+        cache_relative_to_data_dir = os.path.relpath(self.cache_file_relative, data_dir)
+        os.symlink(cache_relative_to_data_dir, self.data_file_relative)
+
     @property
     def data_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.data_dir)

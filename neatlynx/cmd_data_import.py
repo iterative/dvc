@@ -5,6 +5,7 @@ import re
 import requests
 
 from neatlynx.cmd_base import CmdBase
+from neatlynx.cmd_data_sync import sizeof_fmt
 from neatlynx.logger import Logger
 from neatlynx.data_file_obj import DataFileObj
 from neatlynx.exceptions import NeatLynxException
@@ -59,14 +60,16 @@ class CmdDataImport(CmdBase):
             Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
                 self.args.input, dobj.cache_file_relative))
 
-        cache_relative_to_data = os.path.relpath(dobj.cache_file_relative, os.path.dirname(dobj.data_file_relative))
-        os.symlink(cache_relative_to_data, dobj.data_file_relative)
+        dobj.create_symlink()
         Logger.verbose('Symlink from data file "{}" to the cache file "{}" was created'.
-                       format(dobj.data_file_relative, cache_relative_to_data))
+                       format(dobj.data_file_relative, dobj.cache_file_relative))
 
         state_file = StateFile(dobj.state_file_relative, self.git)
         state_file.save()
         Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
+
+        message = 'NLX data import: {} {}'.format(self.args.input, self.args.output)
+        self.git.commit_all_changes_and_log_status(message)
         pass
 
     URL_REGEX = re.compile(
@@ -84,9 +87,19 @@ class CmdDataImport(CmdBase):
     @staticmethod
     def download_file(from_url, to_file):
         r = requests.get(from_url, stream=True)
+
+        chunk_size = 1024 * 100
+        downloaded = 0
+        last_reported = 0
+        report_bucket = 100*1024*1024
         with open(to_file, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=1024*100):
+            for chunk in r.iter_content(chunk_size=chunk_size):
                 if chunk:  # filter out keep-alive new chunks
+                    downloaded += chunk_size
+                    last_reported += chunk_size
+                    if last_reported >= report_bucket:
+                        last_reported = 0
+                        Logger.verbose('Downloaded {}'.format(sizeof_fmt(downloaded)))
                     f.write(chunk)
         return
 

@@ -60,6 +60,13 @@ class GitWrapper(GitWrapperI):
 
         return p.returncode, out, err
 
+    @staticmethod
+    def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
+        code, out, err = GitWrapper.exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None)
+        if code != 0:
+            raise GitCmdError('Git command error ({}): {}'.format(' '.join(cmd), err))
+        return out
+
     def is_ready_to_go(self):
         statuses = self.status_files()
         if len(statuses) > 0:
@@ -95,6 +102,10 @@ class GitWrapper(GitWrapperI):
         if code != 0:
             raise GitCmdError('Git command error - {}'.format(err))
 
+        return GitWrapper.parse_porcelain_files(out)
+
+    @staticmethod
+    def parse_porcelain_files(out):
         result = []
         if len(out) > 0:
             lines = out.split('\n')
@@ -102,14 +113,26 @@ class GitWrapper(GitWrapperI):
                 status = line[:2]
                 file = line[3:]
                 result.append((status, file))
-
         return result
 
     @property
     def curr_commit(self):
         if self._commit is None:
-            code, out, err = GitWrapper.exec_cmd(['git', 'rev-parse', 'HEAD'])
+            code, out, err = GitWrapper.exec_cmd(['git', 'rev-parse', '--short', 'HEAD'])
             if code != 0:
                 raise GitCmdError('Git command error - {}'.format(err))
             self._commit = out
         return self._commit
+
+    def commit_all_changes(self, message):
+        GitWrapper.exec_cmd_only_success(['git', 'add', '--all'])
+        out_status = GitWrapper.exec_cmd_only_success(['git', 'status', '--porcelain'])
+        GitWrapper.exec_cmd_only_success(['git', 'commit', '-m', message])
+        return GitWrapper.parse_porcelain_files(out_status)
+
+    def commit_all_changes_and_log_status(self, message):
+        statuses = self.commit_all_changes(message)
+        Logger.info('A new commit {} was made in the current branch. Added files:'.format(self.curr_commit))
+        for status, file in statuses:
+            Logger.info('\t{} {}'.format(status, file))
+        pass
