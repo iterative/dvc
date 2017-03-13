@@ -33,6 +33,7 @@ class Config(ConfigI):
     CONFIG = 'neatlynx.conf'
 
     def __init__(self, conf_file):
+        self._conf_file = conf_file
         self._config = configparser.ConfigParser()
 
         if not os.path.isfile(conf_file):
@@ -48,6 +49,10 @@ class Config(ConfigI):
 
     # def get_data_file_obj(self):
     #     return DataFileObj(self.config)
+
+    @property
+    def file(self):
+        return self._conf_file
 
     @property
     def data_dir(self):

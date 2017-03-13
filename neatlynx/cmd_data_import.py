@@ -2,6 +2,7 @@ import sys
 import os
 from shutil import copyfile
 import re
+import fasteners
 import requests
 
 from neatlynx.cmd_base import CmdBase
@@ -23,23 +24,44 @@ class CmdDataImport(CmdBase):
         pass
 
     def define_args(self, parser):
-        self.add_string_arg(parser, 'input', 'Input file')
+        parser.add_argument('input',
+                            metavar='',
+                            help='Input file',
+                            nargs='*')
+
         self.add_string_arg(parser, 'output', 'Output file')
         pass
 
     def run(self):
-        if not self.git.is_ready_to_go():
+        lock = fasteners.InterProcessLock(self.git.lock_file)
+        gotten = lock.acquire(timeout=5)
+        if not gotten:
+            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
             return 1
 
-        if not CmdDataImport.is_url(self.args.input):
-            if not os.path.exists(self.args.input):
-                raise DataImportError('Input file "{}" does not exist'.format(self.args.input))
-            if not os.path.isfile(self.args.input):
-                raise DataImportError('Input file "{}" has to be a regular file'.format(self.args.input))
+        try:
+            if not self.git.is_ready_to_go():
+                return 1
 
-        output = self.args.output
-        if os.path.isdir(self.args.output):
-            output = os.path.join(output, os.path.basename(self.args.input))
+            output = self.args.output
+            for file in self.args.input:
+                self.import_file(file, output)
+
+            message = 'NLX data import: {} {}'.format(' '.join(self.args.input), self.args.output)
+            self.git.commit_all_changes_and_log_status(message)
+        finally:
+            lock.release()
+        pass
+
+    def import_file(self, input, output):
+        if not CmdDataImport.is_url(input):
+            if not os.path.exists(input):
+                raise DataImportError('Input file "{}" does not exist'.format(input))
+            if not os.path.isfile(input):
+                raise DataImportError('Input file "{}" has to be a regular file'.format(input))
+
+        if os.path.isdir(output):
+            output = os.path.join(output, os.path.basename(input))
 
         dobj = DataFileObj(output, self.git, self.config)
 
@@ -50,15 +72,15 @@ class CmdDataImport(CmdBase):
                 os.path.dirname(dobj.data_file_relative)))
 
         os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
-        if CmdDataImport.is_url(self.args.input):
-            Logger.verbose('Downloading file {} ...'.format(self.args.input))
-            self.download_file(self.args.input, dobj.cache_file_relative)
+        if CmdDataImport.is_url(input):
+            Logger.verbose('Downloading file {} ...'.format(input))
+            self.download_file(input, dobj.cache_file_relative)
             Logger.verbose('Input file "{}" was downloaded to cache "{}"'.format(
-                self.args.input, dobj.cache_file_relative))
+                input, dobj.cache_file_relative))
         else:
-            copyfile(self.args.input, dobj.cache_file_relative)
+            copyfile(input, dobj.cache_file_relative)
             Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
-                self.args.input, dobj.cache_file_relative))
+                input, dobj.cache_file_relative))
 
         dobj.create_symlink()
         Logger.verbose('Symlink from data file "{}" to the cache file "{}" was created'.
@@ -67,9 +89,6 @@ class CmdDataImport(CmdBase):
         state_file = StateFile(dobj.state_file_relative, self.git)
         state_file.save()
         Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
-
-        message = 'NLX data import: {} {}'.format(self.args.input, self.args.output)
-        self.git.commit_all_changes_and_log_status(message)
         pass
 
     URL_REGEX = re.compile(

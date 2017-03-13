@@ -15,7 +15,7 @@ class CmdBase(object):
 
         self._config = None
         if parse_config:
-            self._config = Config(os.path.join(self.git.git_dir, self.CONFIG))
+            self._config = Config(os.path.realpath(os.path.join(self.git.git_dir, self.CONFIG)))
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)

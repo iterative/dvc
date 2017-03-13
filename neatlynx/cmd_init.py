@@ -94,7 +94,9 @@ SecurityGroup = neatlynx-group'''
             open(gitignore_file, 'a').close()
             Logger.info('File .gitignore was created')
         with open(gitignore_file, 'a') as fd:
-            fd.write('\ncache')
+            fd.write('\n{}'.format(cache_dir_name))
+            fd.write('\n{}'.format(os.path.basename(self.git.lock_file)))
+
         Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
 
 

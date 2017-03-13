@@ -3,6 +3,7 @@ import subprocess
 
 from neatlynx.exceptions import NeatLynxException
 from neatlynx.logger import Logger
+from neatlynx.config import Config
 
 
 class GitCmdError(NeatLynxException):
@@ -136,3 +137,7 @@ class GitWrapper(GitWrapperI):
         for status, file in statuses:
             Logger.info('\t{} {}'.format(status, file))
         pass
+
+    @property
+    def lock_file(self):
+        return os.path.join(self.git_dir_abs, '.' + Config.CONFIG + '.lock')

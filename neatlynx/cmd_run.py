@@ -1,6 +1,7 @@
 import os
 import sys
 import shutil
+import fasteners
 
 from neatlynx.git_wrapper import GitWrapper
 from neatlynx.cmd_base import CmdBase
@@ -28,25 +29,35 @@ class CmdRun(CmdBase):
         pass
 
     def run(self):
-        if not self.args.ignore_git_status and not self.git.is_ready_to_go():
+        lock = fasteners.InterProcessLock(self.lock.lock_file)
+        gotten = lock.acquire(timeout=5)
+        if not gotten:
+            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
             return 1
 
-        GitWrapper.exec_cmd(self._args_unkn, self.args.stdout, self.args.stderr)
+        try:
+            if not self.args.ignore_git_status and not self.git.is_ready_to_go():
+                return 1
 
-        dobjs = self.get_new_file_objects()
+            GitWrapper.exec_cmd(self._args_unkn, self.args.stdout, self.args.stderr)
 
-        for dobj in dobjs:
-            os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
-            shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
+            dobjs = self.get_new_file_objects()
 
-            dobj.create_symlink()
+            for dobj in dobjs:
+                os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+                shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
 
-            state_file = StateFile(dobj.state_file_relative, self.git)
-            state_file.save()
-            pass
+                dobj.create_symlink()
 
-        message = 'NLX run: {}'.format(' '.join(sys.argv))
-        self.git.commit_all_changes_and_log_status(message)
+                state_file = StateFile(dobj.state_file_relative, self.git)
+                state_file.save()
+                pass
+
+            message = 'NLX run: {}'.format(' '.join(sys.argv))
+            self.git.commit_all_changes_and_log_status(message)
+        finally:
+            lock.release()
+
         return 0
 
     def get_new_file_objects(self):

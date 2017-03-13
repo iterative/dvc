@@ -1,5 +1,6 @@
 import os
 from boto.s3.connection import S3Connection
+import fasteners
 
 from neatlynx.cmd_base import CmdBase
 from neatlynx.logger import Logger
@@ -24,23 +25,32 @@ class CmdDataRemove(CmdBase):
         pass
 
     def run(self):
-        target = self.args.target
+        lock = fasteners.InterProcessLock(self.git.lock_file)
+        gotten = lock.acquire(timeout=5)
+        if not gotten:
+            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
+            return 1
 
-        if os.path.isdir(target):
-            if not self.args.recursive:
-                raise DataRemoveError('Directory cannot be removed. Use --recurcive flag.')
+        try:
+            target = self.args.target
 
-            if os.path.realpath(target) == \
-                    os.path.realpath(os.path.join(self.git.git_dir_abs, self.config.data_dir)):
-                raise DataRemoveError('data directory cannot be removed')
+            if os.path.isdir(target):
+                if not self.args.recursive:
+                    raise DataRemoveError('Directory cannot be removed. Use --recurcive flag.')
 
-            return self.remove_dir(target)
+                if os.path.realpath(target) == \
+                        os.path.realpath(os.path.join(self.git.git_dir_abs, self.config.data_dir)):
+                    raise DataRemoveError('data directory cannot be removed')
 
-        dobj = DataFileObjExisting(target, self.git, self.config)
-        if os.path.islink(dobj.data_file_relative):
-            return self.remove_symlink(dobj.data_file_relative)
+                return self.remove_dir(target)
 
-        raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
+            dobj = DataFileObjExisting(target, self.git, self.config)
+            if os.path.islink(dobj.data_file_relative):
+                return self.remove_symlink(dobj.data_file_relative)
+
+            raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
+        finally:
+            lock.release()
 
     def remove_symlink(self, file):
         dobj = DataFileObjExisting(file, self.git, self.config)
