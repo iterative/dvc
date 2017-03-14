@@ -19,7 +19,9 @@ class CmdDataRemove(CmdBase):
         pass
 
     def define_args(self, parser):
-        self.add_string_arg(parser, 'target', 'Target to remove - file or directory')
+        self.set_skip_git_actions(parser)
+
+        parser.add_argument('target', metavar='', help='Target to remove - file or directory', nargs='*')
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively')
         parser.add_argument('-c', '--remove-from-cloud', action='store_true', help='Keep file in cloud')
         pass
@@ -32,25 +34,36 @@ class CmdDataRemove(CmdBase):
             return 1
 
         try:
-            target = self.args.target
+            if not self.skip_git_actions and not self.git.is_ready_to_go():
+                return 1
 
-            if os.path.isdir(target):
-                if not self.args.recursive:
-                    raise DataRemoveError('Directory cannot be removed. Use --recurcive flag.')
+            for target in self.args.target:
+                self.remove_target(target)
 
-                if os.path.realpath(target) == \
-                        os.path.realpath(os.path.join(self.git.git_dir_abs, self.config.data_dir)):
-                    raise DataRemoveError('data directory cannot be removed')
+            if self.skip_git_actions:
+                self.not_committed_changes_warning()
+                return 0
 
-                return self.remove_dir(target)
-
-            dobj = DataFileObjExisting(target, self.git, self.config)
-            if os.path.islink(dobj.data_file_relative):
-                return self.remove_symlink(dobj.data_file_relative)
-
-            raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
+            message = 'NLX data remove: {}'.format(' '.join(self.args.target))
+            self.git.commit_all_changes_and_log_status(message)
         finally:
             lock.release()
+
+    def remove_target(self, target):
+        if os.path.isdir(target):
+            if not self.args.recursive:
+                raise DataRemoveError('Directory cannot be removed. Use --recurcive flag.')
+
+            if os.path.realpath(target) == \
+                    os.path.realpath(os.path.join(self.git.git_dir_abs, self.config.data_dir)):
+                raise DataRemoveError('data directory cannot be removed')
+
+            return self.remove_dir(target)
+        dobj = DataFileObjExisting(target, self.git, self.config)
+        if os.path.islink(dobj.data_file_relative):
+            return self.remove_symlink(dobj.data_file_relative)
+
+        raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
 
     def remove_symlink(self, file):
         dobj = DataFileObjExisting(file, self.git, self.config)

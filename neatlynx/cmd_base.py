@@ -3,6 +3,7 @@ import os
 
 from neatlynx.git_wrapper import GitWrapper
 from neatlynx.config import Config, ConfigError
+from neatlynx.logger import Logger
 
 
 class CmdBase(object):
@@ -47,6 +48,18 @@ class CmdBase(object):
 
     def define_args(self):
         pass
+
+    def set_skip_git_actions(self, parser):
+        parser.add_argument('--skip-git-actions', '-s', action='store_true',
+                            help='skip all git actions including reproducibility check and commits')
+
+    @property
+    def skip_git_actions(self):
+        return self.args.skip_git_actions
+
+    @staticmethod
+    def not_committed_changes_warning():
+        Logger.warn('Warning: changes were not committed to git')
 
     def add_string_arg(self, parser, name, message, default = None,
                        conf_section=None, conf_name=None):

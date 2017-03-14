@@ -24,6 +24,8 @@ class CmdDataImport(CmdBase):
         pass
 
     def define_args(self, parser):
+        self.set_skip_git_actions(parser)
+
         parser.add_argument('input',
                             metavar='',
                             help='Input file',
@@ -40,12 +42,16 @@ class CmdDataImport(CmdBase):
             return 1
 
         try:
-            if not self.git.is_ready_to_go():
+            if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
             output = self.args.output
             for file in self.args.input:
                 self.import_file(file, output)
+
+            if self.skip_git_actions:
+                self.not_committed_changes_warning()
+                return 0
 
             message = 'NLX data import: {} {}'.format(' '.join(self.args.input), self.args.output)
             self.git.commit_all_changes_and_log_status(message)

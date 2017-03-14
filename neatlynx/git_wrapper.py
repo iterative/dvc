@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 
 from neatlynx.exceptions import NeatLynxException
@@ -37,15 +38,21 @@ class GitWrapper(GitWrapperI):
     def exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None):
         stdout_fd = None
         if stdout_file is not None:
-            stdout_fd = open(stdout_file, 'w')
-            stdout = stdout_fd
+            if stdout_file == '-':
+                stdout = sys.stdout
+            else:
+                stdout_fd = open(stdout_file, 'w')
+                stdout = stdout_fd
         else:
             stdout = subprocess.PIPE
 
         stderr_fd = None
         if stderr_file is not None:
-            stderr_fd = open(stderr_file, 'w')
-            stderr = stderr_fd
+            if stderr_file == '-':
+                stderr = sys.stderr
+            else:
+                stderr_fd = open(stderr_file, 'w')
+                stderr = stderr_fd
         else:
             stderr = subprocess.PIPE
 
@@ -65,13 +72,16 @@ class GitWrapper(GitWrapperI):
     def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
         code, out, err = GitWrapper.exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None)
         if code != 0:
-            raise GitCmdError('Git command error ({}): {}'.format(' '.join(cmd), err))
+            if err:
+                sys.stderr.write(err + '\n')
+            raise GitCmdError('Git command error ({}):\n{}'.format(' '.join(cmd), out))
         return out
 
     def is_ready_to_go(self):
         statuses = self.status_files()
         if len(statuses) > 0:
-            Logger.error('Commit changed files before reproducible command (nlx-repro):')
+            Logger.error('Commit all changed files before running reproducible command.')
+            Logger.error('Changed files:')
             for status, file in statuses:
                 Logger.error("{} {}".format(status, file))
             return False
@@ -141,3 +151,13 @@ class GitWrapper(GitWrapperI):
     @property
     def lock_file(self):
         return os.path.join(self.git_dir_abs, '.' + Config.CONFIG + '.lock')
+
+    @staticmethod
+    def abs_paths_to_relative(files):
+        cur_dir = os.path.realpath(os.curdir)
+
+        result = []
+        for file in files:
+            result.append(os.path.relpath(file, cur_dir))
+
+        return result
