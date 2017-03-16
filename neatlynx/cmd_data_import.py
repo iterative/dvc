@@ -38,7 +38,7 @@ class CmdDataImport(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
             return 1
 
         try:
@@ -79,22 +79,22 @@ class CmdDataImport(CmdBase):
 
         os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
         if CmdDataImport.is_url(input):
-            Logger.verbose('Downloading file {} ...'.format(input))
+            Logger.debug('Downloading file {} ...'.format(input))
             self.download_file(input, dobj.cache_file_relative)
-            Logger.verbose('Input file "{}" was downloaded to cache "{}"'.format(
+            Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
                 input, dobj.cache_file_relative))
         else:
             copyfile(input, dobj.cache_file_relative)
-            Logger.verbose('Input file "{}" was copied to cache "{}"'.format(
+            Logger.debug('Input file "{}" was copied to cache "{}"'.format(
                 input, dobj.cache_file_relative))
 
         dobj.create_symlink()
-        Logger.verbose('Symlink from data file "{}" to the cache file "{}" was created'.
-                       format(dobj.data_file_relative, dobj.cache_file_relative))
+        Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
+                     format(dobj.data_file_relative, dobj.cache_file_relative))
 
         state_file = StateFile(dobj.state_file_relative, self.git)
         state_file.save()
-        Logger.verbose('State file "{}" was created'.format(dobj.state_file_relative))
+        Logger.debug('State file "{}" was created'.format(dobj.state_file_relative))
         pass
 
     URL_REGEX = re.compile(
@@ -124,7 +124,7 @@ class CmdDataImport(CmdBase):
                     last_reported += chunk_size
                     if last_reported >= report_bucket:
                         last_reported = 0
-                        Logger.verbose('Downloaded {}'.format(sizeof_fmt(downloaded)))
+                        Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
                     f.write(chunk)
         return
 

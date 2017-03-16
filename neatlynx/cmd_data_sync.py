@@ -23,7 +23,7 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def percent_cb(complete, total):
-    Logger.verbose('{} transferred out of {}'.format(sizeof_fmt(complete), sizeof_fmt(total)))
+    Logger.debug('{} transferred out of {}'.format(sizeof_fmt(complete), sizeof_fmt(total)))
 
 
 def file_md5(fname):
@@ -44,7 +44,7 @@ class CmdDataSync(CmdBase):
         self._bucket = conn.lookup(bucket_name)
         if not self._bucket:
             self._bucket = conn.create_bucket(bucket_name)
-            Logger.info('S3 bucket "{}" was created'.format(bucket_name))
+            Logger.printing('S3 bucket "{}" was created'.format(bucket_name))
         pass
 
     def define_args(self, parser):
@@ -84,30 +84,30 @@ class CmdDataSync(CmdBase):
         if not key:
             raise DataSyncError('File "{}" does not exist in the cloud'.format(dobj.cache_file_aws_key))
 
-        Logger.info('Downloading cache file from S3 "{}/{}"'.format(self._bucket.name,
-                                                                    dobj.cache_file_aws_key))
+        Logger.printing('Downloading cache file from S3 "{}/{}"'.format(self._bucket.name,
+                                                                        dobj.cache_file_aws_key))
         key.get_contents_to_filename(dobj.cache_file_relative, cb=percent_cb)
-        Logger.info('Downloading completed')
+        Logger.printing('Downloading completed')
         pass
 
     def sync_to_cloud(self, dobj):
         key = self._bucket.get_key(dobj.cache_file_aws_key)
         if key:
-            Logger.verbose('File already uploaded to the cloud. Checksum validation...')
+            Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
             md5_cloud = key.etag[1:-1]
             md5_local = file_md5(dobj.cache_file_relative)
             if md5_cloud == md5_local:
-                Logger.verbose('File checksum matches. No uploading is needed.')
+                Logger.debug('File checksum matches. No uploading is needed.')
                 return
 
-            Logger.info('Checksum miss-match. Re-uploading is required.')
+            Logger.printing('Checksum miss-match. Re-uploading is required.')
 
-        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(dobj.cache_file_relative,
-                                                                  dobj.cache_file_aws_key))
+        Logger.printing('Uploading cache file "{}" to S3 "{}"'.format(dobj.cache_file_relative,
+                                                                      dobj.cache_file_aws_key))
         key = self._bucket.new_key(dobj.cache_file_aws_key)
         key.set_contents_from_filename(dobj.cache_file_relative, cb=percent_cb)
-        Logger.info('Uploading completed')
+        Logger.printing('Uploading completed')
         pass
 
 

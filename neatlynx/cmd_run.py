@@ -1,13 +1,13 @@
 import os
-import sys
 import shutil
 import fasteners
 
+from neatlynx.data_file_obj import DataFileObj, NotInDataDirError
 from neatlynx.git_wrapper import GitWrapper
 from neatlynx.cmd_base import CmdBase
 from neatlynx.logger import Logger
 from neatlynx.exceptions import NeatLynxException
-from neatlynx.data_file_obj import DataFileObj, NotInDataDirError
+from neatlynx.repository_change import RepositoryChange
 from neatlynx.state_file import StateFile
 
 
@@ -27,58 +27,37 @@ class CmdRun(CmdBase):
         parser.add_argument('--random', help='not reproducible, output is random', action='store_true')
         parser.add_argument('--stdout', help='output std output to a file')
         parser.add_argument('--stderr', help='output std error to a file')
+        parser.add_argument('--input-file', '-i', action='append',
+                            help='Declare input file for reproducible command')
+        parser.add_argument('--output-file', '-o', action='append',
+                            help='Declare output file for reproducible command')
         pass
+
+    @property
+    def declaration_input_files(self):
+        if self.args.input_file:
+            return self.args.input_file
+        return []
+
+    @property
+    def declaration_output_files(self):
+        if self.args.output_file:
+            return self.args.output_file
+        return []
 
     def run(self):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
             return 1
 
         try:
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            old_files = set(self.get_changed_files())
-
-            GitWrapper.exec_cmd(self._args_unkn, self.args.stdout, self.args.stderr)
-
-            new_files = set(self.get_changed_files())
-
-            removed_files = old_files - new_files
-            if removed_files != set():
-                Logger.error('Error: existing files were removed in run command'.format(' '.join(removed_files)))
-
-            created_files = new_files - old_files
-
-            if created_files == set():
-                Logger.error('Error: no files were changes in run command')
+            if not self.run_command(self._args_unkn, self.args.stdout, self.args.stderr):
                 return 1
-
-            dobjs, errors = self.files_to_dobjs(created_files)
-
-            if errors:
-                for file in GitWrapper.abs_paths_to_relative(errors):
-                    Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
-
-                for file in created_files:
-                    rel_path = GitWrapper.abs_paths_to_relative([file])[0]
-                    Logger.error('Removing created file: {}'.format(rel_path))
-                    os.remove(file)
-
-                Logger.error('Errors occurred. Please fix the errors and re-run the command.')
-                return 1
-
-            for dobj in dobjs:
-                os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
-                shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
-
-                dobj.create_symlink()
-
-                state_file = StateFile(dobj.state_file_relative, self.git)
-                state_file.save()
-                pass
 
             if self.skip_git_actions:
                 self.not_committed_changes_warning()
@@ -91,49 +70,88 @@ class CmdRun(CmdBase):
 
         return 0
 
-    def files_to_dobjs(self, files):
-        result = []
-        errors = []
+    def run_command(self, argv, stdout=None, stderr=None):
+        repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config)
 
-        for file in files:
+        if not self.skip_git_actions and not self.validate_file_states(repo_change):
+            self.remove_new_files(repo_change)
+            return False
+
+        output_files = self.git.abs_paths_to_nlx(repo_change.new_files + self.declaration_output_files)
+        input_files_from_args = list(set(self.get_data_files_from_args(argv)) - set(repo_change.new_files))
+        input_files = self.git.abs_paths_to_nlx(input_files_from_args + self.declaration_input_files)
+
+        for dobj in repo_change.dobj_for_new_files:
+            os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+
+            Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
+                dobj.data_file_relative, dobj.cache_file_relative))
+            shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
+
+            dobj.create_symlink()
+
+            Logger.debug('Create state file "{}"'.format(dobj.state_file_relative))
+            state_file = StateFile(dobj.state_file_relative, self.git, input_files, output_files)
+            state_file.save()
+            pass
+
+        return True
+
+    @staticmethod
+    def remove_new_files(repo_change):
+        for file in repo_change.new_files:
+            rel_path = GitWrapper.abs_paths_to_relative([file])[0]
+            Logger.error('Removing created file: {}'.format(rel_path))
+            os.remove(file)
+        pass
+
+    def validate_file_states(self, files_states):
+        error = False
+        for file in GitWrapper.abs_paths_to_relative(files_states.removed_files):
+            Logger.error('Error: file "{}" was removed'.format(file))
+            error = True
+
+        for file in GitWrapper.abs_paths_to_relative(files_states.modified_files):
+            Logger.error('Error: file "{}" was modified'.format(file))
+            error = True
+
+        for file in GitWrapper.abs_paths_to_relative(files_states.unusual_state_files):
+            Logger.error('Error: file "{}" is in not acceptable state'.format(file))
+            error = True
+
+        for file in GitWrapper.abs_paths_to_relative(files_states.externally_created_files):
+            Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
+            error = True
+
+        if error:
+            Logger.error('Errors occurred. ' + \
+                         'Reproducible commands allow only file creation only in data directory "{}".'.
+                         format(self.config.data_dir))
+            return False
+
+        if not files_states.new_files:
+            Logger.error('Errors occurred. No files were changed in run command.')
+            return False
+
+        return True
+
+    def get_data_files_from_args(self, argv):
+        result = []
+
+        for arg in argv:
             try:
-                result.append(DataFileObj(file, self.git, self.config))
+                if os.path.isfile(arg):
+                    DataFileObj(arg, self.git, self.config)
+                    result.append(arg)
             except NotInDataDirError:
-                errors.append(file)
-
-        return result, errors
-
-    def get_changed_files(self):
-        statuses = GitWrapper.status_files()
-
-        result = []
-        for status, file in statuses:
-            file_path = os.path.join(self.git.git_dir_abs, file)
-            if os.path.isfile(file_path):
-                result.append(file_path)
-            else:
-                files = []
-                self.get_all_files_from_dir(file_path, files)
-                for f in files:
-                    result.append(f)
+                pass
 
         return result
 
-    def get_all_files_from_dir(self, dir, result):
-        if not os.path.isdir(dir):
-            raise RunError('Changed path {} is not directory'.format(dir))
-
-        files = os.listdir(dir)
-        for f in files:
-            path = os.path.join(dir, f)
-            if os.path.isfile(path):
-                result.append(path)
-            else:
-                self.get_all_files_from_dir(path, result)
-        pass
 
 if __name__ == '__main__':
     import sys
+
     try:
         sys.exit(CmdRun().run())
     except NeatLynxException as e:

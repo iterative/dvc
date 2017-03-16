@@ -106,6 +106,19 @@ class DataFileObj(object):
     def state_file_relative(self):
         return os.path.relpath(self.state_file_abs, self._curr_dir_abs)
 
+    @staticmethod
+    def files_to_dobjs(files, git, config):
+        result = []
+        externally_created_files = []
+
+        for file in files:
+            try:
+                result.append(DataFileObj(file, git, config))
+            except NotInDataDirError:
+                externally_created_files.append(file)
+
+        return result, externally_created_files
+
 
 class DataFileObjExisting(DataFileObj):
     def __init__(self, data_file, git, config):

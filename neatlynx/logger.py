@@ -3,17 +3,18 @@ import sys
 
 class Logger(object):
     @staticmethod
-    def info(msg):
-        print('{}'.format(msg))
+    def printing(msg):
+        print(u'{}'.format(msg))
 
     @staticmethod
     def warn(msg):
-        print('{}'.format(msg))
+        print(u'Warning. {}'.format(msg))
 
     @staticmethod
     def error(msg):
-        sys.stderr.write('{}\n'.format(msg))
+        #sys.stderr.write('Error. {}\n'.format(msg))
+        print(u'Error. {}'.format(msg))
 
     @staticmethod
-    def verbose(msg):
-        print('{}'.format(msg))
+    def debug(msg):
+        print(u'Debug. {}'.format(msg))

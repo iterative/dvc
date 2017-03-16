@@ -70,7 +70,7 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
-        code, out, err = GitWrapper.exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None)
+        code, out, err = GitWrapper.exec_cmd(cmd, stdout_file=stdout_file, stderr_file=stderr_file, cwd=cwd)
         if code != 0:
             if err:
                 sys.stderr.write(err + '\n')
@@ -87,6 +87,10 @@ class GitWrapper(GitWrapperI):
             return False
 
         return True
+
+    @property
+    def curr_dir_nlx(self):
+        return os.path.relpath(os.path.abspath(os.curdir), self.git_dir_abs)
 
     @property
     def git_dir(self):
@@ -143,9 +147,9 @@ class GitWrapper(GitWrapperI):
 
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
-        Logger.info('A new commit {} was made in the current branch. Added files:'.format(self.curr_commit))
+        Logger.printing('A new commit {} was made in the current branch. Added files:'.format(self.curr_commit))
         for status, file in statuses:
-            Logger.info('\t{} {}'.format(status, file))
+            Logger.printing('\t{} {}'.format(status, file))
         pass
 
     @property
@@ -158,6 +162,13 @@ class GitWrapper(GitWrapperI):
 
         result = []
         for file in files:
-            result.append(os.path.relpath(file, cur_dir))
+            result.append(os.path.relpath(os.path.realpath(file), cur_dir))
+
+        return result
+
+    def abs_paths_to_nlx(self, files):
+        result = []
+        for file in files:
+            result.append(os.path.relpath(os.path.abspath(file), self.git_dir_abs))
 
         return result

@@ -30,7 +30,7 @@ class CmdDataRemove(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.info('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
             return 1
 
         try:
@@ -92,7 +92,7 @@ class CmdDataRemove(CmdBase):
                 Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
             else:
                 key.delete()
-                Logger.info('File "{}" was removed from S3'.format(aws_file_name))
+                Logger.printing('File "{}" was removed from S3'.format(aws_file_name))
 
     def remove_dir(self, data_dir):
         for f in os.listdir(data_dir):

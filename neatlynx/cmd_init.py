@@ -76,7 +76,7 @@ SecurityGroup = neatlynx-group'''
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
-        Logger.info('Directories {}, {} and {} were created'.format(
+        Logger.printing('Directories {}, {} and {} were created'.format(
             data_dir_path.name,
             cache_dir_path.name,
             state_dir_path.name))
@@ -92,12 +92,12 @@ SecurityGroup = neatlynx-group'''
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
         if not os.path.exists(gitignore_file):
             open(gitignore_file, 'a').close()
-            Logger.info('File .gitignore was created')
+            Logger.printing('File .gitignore was created')
         with open(gitignore_file, 'a') as fd:
             fd.write('\n{}'.format(cache_dir_name))
             fd.write('\n{}'.format(os.path.basename(self.git.lock_file)))
 
-        Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
+        Logger.printing('Directory {} was added to .gitignore file'.format(cache_dir_name))
 
 
 if __name__ == '__main__':
