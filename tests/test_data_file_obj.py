@@ -17,11 +17,15 @@ class BasicDataDirTest(TestCase):
 
         if curr_dir:
             self._curr_dir = os.path.realpath(curr_dir)
-            os.makedirs(self._curr_dir, exist_ok=True)
         else:
             self._curr_dir = self._test_git_dir
 
-        os.makedirs(self._test_git_dir, exist_ok=True)
+        if not os.path.exists(self._curr_dir):
+            os.makedirs(self._curr_dir)
+
+        if not os.path.isdir(self._test_git_dir):
+            os.makedirs(self._test_git_dir)
+
         os.chdir(self._curr_dir)
 
     def tearDown(self):

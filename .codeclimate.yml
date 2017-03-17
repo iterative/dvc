@@ -1,0 +1,5 @@
+languages:
+    Python: true
+
+exclude_paths:
+    - tests/
