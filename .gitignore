@@ -2,3 +2,4 @@ neatlynx.conf
 neatlynx/__pycache__
 .idea
 cache
+*.pyc
