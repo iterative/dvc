@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 
+from neatlynx.dvc_path import DvcPath
 from neatlynx.exceptions import NeatLynxException
 from neatlynx.logger import Logger
 from neatlynx.config import Config
@@ -26,8 +27,15 @@ class GitWrapperI(object):
         return os.path.realpath(self.git_dir)
 
     @property
+    def curr_dir_abs(self):
+        return os.path.abspath(os.curdir)
+
+    @property
     def curr_commit(self):
         return self._commit
+
+    def build_dvc_path(self, relative):
+        return DvcPath(relative, self.git_dir_abs, self.curr_dir_abs)
 
 
 class GitWrapper(GitWrapperI):
@@ -90,7 +98,7 @@ class GitWrapper(GitWrapperI):
 
     @property
     def curr_dir_nlx(self):
-        return os.path.relpath(os.path.abspath(os.curdir), self.git_dir_abs)
+        return os.path.relpath(self.curr_dir_abs, self.git_dir_abs)
 
     @property
     def git_dir(self):

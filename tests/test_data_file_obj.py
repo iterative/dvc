@@ -64,6 +64,7 @@ class TestNlxNames(BasicDataDirTest):
         pass
 
     def test_data_nlx(self):
+        print('==============================')
         self.assertEqual(self._dobj.data_file_nlx, 'file.txt')
         pass
 
