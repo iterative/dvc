@@ -12,7 +12,7 @@ class CmdBase(object):
     def __init__(self, parse_config=True):
         self._git = GitWrapper()
         self._args = None
-        self._lnx_home = None
+        self._dvc_home = None
 
         self._config = None
         if parse_config:
@@ -22,12 +22,12 @@ class CmdBase(object):
         self.define_args(parser)
         self._args, self._args_unkn = parser.parse_known_args()
 
-        self._lnx_home = os.environ.get('NEATLYNX_HOME')
+        self._dvc_home = os.environ.get('DVC_HOME')
 
         if not self.lnx_home:
-            raise ConfigError('NEATLYNX_HOME environment variable is not defined')
-        if not os.path.exists(self._lnx_home):
-            raise ConfigError("NEATLYNX_HOME directory doesn't exists")
+            raise ConfigError('DVC_HOME environment variable is not defined')
+        if not os.path.exists(self._dvc_home):
+            raise ConfigError("DVC_HOME directory doesn't exists")
         pass
 
     @property
@@ -36,7 +36,7 @@ class CmdBase(object):
 
     @property
     def lnx_home(self):
-        return self._lnx_home
+        return self._dvc_home
 
     @property
     def args(self):

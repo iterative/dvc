@@ -14,7 +14,7 @@ class StateFileError(NeatLynxException):
 
 
 class StateFile(object):
-    MAGIC = 'NLX-State'
+    MAGIC = 'DVC-State'
     VERSION = '0.1'
 
     PARAM_TYPE = 'Type'

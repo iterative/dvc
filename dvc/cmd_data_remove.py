@@ -30,7 +30,7 @@ class CmdDataRemove(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the command since NLX is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the command since DVC is busy and locked. Please retry the command later.')
             return 1
 
         try:
@@ -44,7 +44,7 @@ class CmdDataRemove(CmdBase):
                 self.not_committed_changes_warning()
                 return 0
 
-            message = 'NLX data remove: {}'.format(' '.join(self.args.target))
+            message = 'DVC data remove: {}'.format(' '.join(self.args.target))
             self.git.commit_all_changes_and_log_status(message)
         finally:
             lock.release()

@@ -95,7 +95,7 @@ SecurityGroup = dvc-group'''
             self.not_committed_changes_warning()
             return 0
 
-        message = 'NLX init. data dir {}, cache dir {}, state dir {}'.format(
+        message = 'DVC init. data dir {}, cache dir {}, state dir {}'.format(
                         data_dir_path.name,
                         cache_dir_path.name,
                         state_dir_path.name
