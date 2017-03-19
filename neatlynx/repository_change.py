@@ -14,6 +14,7 @@ class FileModificationState(object):
     STATUS_UNTRACKED = '?'
     STATUS_DELETE = 'D'
     STATUS_MODIFIED = 'M'
+    STATUS_TYPE_CHANGED = 'T'
 
     def __init__(self, state, file):
         self.state = state
@@ -28,7 +29,8 @@ class FileModificationState(object):
 
     @property
     def is_modified(self):
-        return self._check_status(self.STATUS_MODIFIED)
+        return self._check_status(self.STATUS_MODIFIED) \
+               or self._check_status(self.STATUS_TYPE_CHANGED)
 
     @property
     def is_new(self):
@@ -49,8 +51,8 @@ class RepositoryChange(object):
         GitWrapper.exec_cmd_only_success(args, stdout, stderr)
         self._file_states = self._get_file_states()
 
-        self._new_dobj, self._externally_created_files = DataFileObj.files_to_dobjs(
-            self.new_files, self.git, self.config)
+        self._changed_dobj, self._externally_created_files = DataFileObj.files_to_dobjs(
+            self.changed_files, self.git, self.config)
 
     @staticmethod
     def exec_cmd(args, stdout, stderr, git):
@@ -73,6 +75,10 @@ class RepositoryChange(object):
         return self.get_filenames(filter(lambda x: x.is_new, self._file_states))
 
     @property
+    def changed_files(self):
+        return self.new_files + self.modified_files
+
+    @property
     def unusual_state_files(self):
         return self.get_filenames(filter(lambda x: not x.is_unusual, self._file_states))
 
@@ -87,7 +93,7 @@ class RepositoryChange(object):
             else:
                 files = []
                 self.get_all_files_from_dir(file_path, files)
-                state = self.STATUS_UNKNOWN + self.STATUS_UNKNOWN
+                state = FileModificationState.STATUS_UNTRACKED + FileModificationState.STATUS_UNTRACKED
                 for f in files:
                     result.append(FileModificationState(state, f))
 
@@ -107,8 +113,8 @@ class RepositoryChange(object):
         pass
 
     @property
-    def dobj_for_new_files(self):
-        return self._new_dobj
+    def dobj_for_changed_files(self):
+        return self._changed_dobj
 
     @property
     def externally_created_files(self):

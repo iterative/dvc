@@ -25,15 +25,23 @@ class StateFile(object):
     PARAM_CREATED_AT = 'CreatedAt'
     PARAM_INPUT_FILES = 'InputFiles'
     PARAM_OUTPUT_FILES = 'OutputFiles'
+    PARAM_CODE_SOURCES = 'CodeSources'
+    PARAM_NOT_REPRODUCIBLE = 'NotReproducible'
 
     def __init__(self, file, git, input_files, output_files,
-                 argv=sys.argv, norm_argv=None,
+                 code_sources=[],
+                 is_reproducible=True,
+                 argv=sys.argv,
+                 norm_argv=None,
                  created_at=time.strftime('%Y-%m-%d %H:%M:%S %z'),
                  cwd=None):
         self.file = file
         self.git = git
         self.input_files = input_files
         self.output_files = output_files
+        self.is_reproducible = is_reproducible
+        self.code_sources = code_sources
+
         self.argv = argv
         if norm_argv:
             self.norm_argv = norm_argv
@@ -55,28 +63,34 @@ class StateFile(object):
 
         return StateFile(filename,
                          git,
-                         data.get('InputFiles'),
-                         data.get('OutputFiles'),
-                         data.get('Argv'),
-                         data.get('NormArgv'),
-                         data.get('CreatedAt'),
-                         data.get('Cwd'))
+                         data.get(StateFile.PARAM_INPUT_FILES, []),
+                         data.get(StateFile.PARAM_OUTPUT_FILES, []),
+                         data.get(StateFile.PARAM_CODE_SOURCES, []),
+                         not data.get(StateFile.PARAM_NOT_REPRODUCIBLE, False),
+                         data.get(StateFile.PARAM_ARGV),
+                         data.get(StateFile.PARAM_NORM_ARGV),
+                         data.get(StateFile.PARAM_CREATED_AT),
+                         data.get(StateFile.PARAM_CWD))
 
     def save(self):
         res = {
-            self.PARAM_TYPE:        self.MAGIC,
-            self.PARAM_VERSION:     self.VERSION,
-            self.PARAM_ARGV:        self.argv,
-            self.PARAM_NORM_ARGV:   self.norm_argv,
-            self.PARAM_CWD:         self.cwd,
-            self.PARAM_CREATED_AT:  self.created_at,
-            self.PARAM_INPUT_FILES: self.input_files,
-            self.PARAM_OUTPUT_FILES:self.output_files
+            self.PARAM_TYPE:            self.MAGIC,
+            self.PARAM_VERSION:         self.VERSION,
+            self.PARAM_ARGV:            self.argv,
+            self.PARAM_NORM_ARGV:       self.norm_argv,
+            self.PARAM_CWD:             self.cwd,
+            self.PARAM_CREATED_AT:      self.created_at,
+            self.PARAM_INPUT_FILES:     self.input_files,
+            self.PARAM_OUTPUT_FILES:    self.output_files,
+            self.PARAM_CODE_SOURCES:    self.code_sources
         }
 
+        if not self.is_reproducible:
+            res[self.PARAM_NOT_REPRODUCIBLE] = True
+
         file_dir = os.path.dirname(self.file)
-        if file_dir != '':
-            os.makedirs(file_dir, exist_ok=True)
+        if file_dir != '' and not os.path.isdir(file_dir):
+            os.makedirs(file_dir)
 
         with open(self.file, 'w') as fd:
             json.dump(res, fd, indent=2)
@@ -85,14 +99,14 @@ class StateFile(object):
     def normalized_args(self):
         result = []
 
-        if len(sys.argv) > 0:
-            cmd = sys.argv[0]
+        if len(self.argv) > 0:
+            cmd = self.argv [0]
             pos = cmd.rfind(os.sep)
             if pos >= 0:
                 cmd = cmd[pos+1:]
             result.append(cmd)
 
-            for arg in sys.argv[1:]:
+            for arg in self.argv [1:]:
                 if os.path.isfile(arg):
                     path = os.path.abspath(arg)
                     nlx_path = os.path.relpath(path, self.git.git_dir_abs)
@@ -108,23 +122,3 @@ class StateFile(object):
             raise StateFileError('the file cannot be created outside of a git repository')
 
         return os.path.relpath(pwd, self.git.git_dir_abs)
-
-    # def repro(self):
-    #     with open(self.file, 'r') as fd:
-    #         res = json.load(fd)
-    #
-    #     args = res['NormArgs']
-    #     if not args:
-    #         raise StateFileError('Error: parameter NormalizedArgs is nor defined in state file "{}"'.
-    #                              format(self.file))
-    #     if len(args) < 2:
-    #         raise StateFileError('Error: reproducible command in state file "{}" is too short'.
-    #                              format(self.file))
-    #
-    #     if args[0][-3:] != '.py':
-    #         raise StateFileError('Error: reproducible command format error in state file "{}"'.
-    #                              format(self.file))
-    #     args.pop(0)
-    #
-    #     Logger.info("Repro cmd:\n\t{}".format(' '.join(args)))
-    #     return GitWrapper.exec_cmd(args, cwd=self.git.git_dir_abs)

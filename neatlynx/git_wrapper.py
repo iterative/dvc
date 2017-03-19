@@ -98,7 +98,7 @@ class GitWrapper(GitWrapperI):
 
     @property
     def curr_dir_nlx(self):
-        return os.path.relpath(self.curr_dir_abs, self.git_dir_abs)
+        return os.path.relpath(os.path.abspath(os.curdir), self.git_dir_abs)
 
     @property
     def git_dir(self):
@@ -180,3 +180,39 @@ class GitWrapper(GitWrapperI):
             result.append(os.path.relpath(os.path.abspath(file), self.git_dir_abs))
 
         return result
+
+    def nlx_paths_to_abs(self, files):
+        results = []
+
+        for file in files:
+            results.append(os.path.join(self.git_dir_abs, file))
+
+        return results
+
+    def were_files_changed(self, file, code_sources):
+        commit = self.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
+        commit = commit.strip('"')
+
+        changed_files = self.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', commit])
+        changed_files = changed_files.strip('"')
+
+        code_sources_abs = self.nlx_paths_to_abs(code_sources)
+        code_files = []
+        code_dirs = []
+        for code in code_sources_abs:
+            if os.path.isdir(code):
+                code_dirs.append(code)
+            else:
+                code_files.append(code)
+
+        code_files_set = set(code_files)
+        for changed_file in changed_files.split('\n'):
+            changed_file = os.path.realpath(changed_file)
+            if changed_file in code_files_set:
+                return True
+
+            for dir in code_dirs:
+                if changed_file.startswith(dir):
+                    return True
+
+        return False

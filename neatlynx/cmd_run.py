@@ -31,7 +31,13 @@ class CmdRun(CmdBase):
                             help='Declare input file for reproducible command')
         parser.add_argument('--output-file', '-o', action='append',
                             help='Declare output file for reproducible command')
+        parser.add_argument('--code', '-c', action='append',
+                            help='Code file or code directory which produces the output')
         pass
+
+    @property
+    def code(self):
+        return self.args.code
 
     @property
     def declaration_input_files(self):
@@ -73,16 +79,32 @@ class CmdRun(CmdBase):
     def run_command(self, argv, stdout=None, stderr=None):
         repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config)
 
+        # print('===== new_files={}'.format(repo_change.new_files))
+        # print('===== modified_files={}'.format(repo_change.modified_files))
+        # print('===== removed_files={}'.format(repo_change.removed_files))
+        # print('===== externally_created_files={}'.format(repo_change.externally_created_files))
+        # # raise Exception()
+
+        print('========= {} {}'.format(not self.skip_git_actions, not self.validate_file_states(repo_change)))
+
         if not self.skip_git_actions and not self.validate_file_states(repo_change):
             self.remove_new_files(repo_change)
             return False
 
-        output_files = self.git.abs_paths_to_nlx(repo_change.new_files + self.declaration_output_files)
-        input_files_from_args = list(set(self.get_data_files_from_args(argv)) - set(repo_change.new_files))
+        changed_files_nlx = self.git.abs_paths_to_nlx(repo_change.changed_files)
+        output_files = changed_files_nlx + self.git.abs_paths_to_nlx(self.declaration_output_files)
+        args_files_nlx = self.git.abs_paths_to_nlx(self.get_data_files_from_args(argv))
+
+        input_files_from_args = list(set(args_files_nlx) - set(changed_files_nlx))
         input_files = self.git.abs_paths_to_nlx(input_files_from_args + self.declaration_input_files)
 
-        for dobj in repo_change.dobj_for_new_files:
-            os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+        print('================== changed files = {}'.format(len(repo_change.dobj_for_changed_files)))
+
+        for dobj in repo_change.dobj_for_changed_files:
+            print('================== move ... {}'.format(dobj.data_file_relative))
+            dirname = os.path.dirname(dobj.cache_file_relative)
+            if not os.path.isdir(dirname):
+                os.makedirs(dirname)
 
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
                 dobj.data_file_relative, dobj.cache_file_relative))
@@ -90,8 +112,14 @@ class CmdRun(CmdBase):
 
             dobj.create_symlink()
 
+            nlx_code_sources = map(lambda x: self.git.abs_paths_to_nlx([x])[0], self.code)
+
             Logger.debug('Create state file "{}"'.format(dobj.state_file_relative))
-            state_file = StateFile(dobj.state_file_relative, self.git, input_files, output_files)
+            state_file = StateFile(dobj.state_file_relative, self.git,
+                                   input_files,
+                                   output_files,
+                                   nlx_code_sources,
+                                   argv=argv)
             state_file.save()
             pass
 
@@ -111,13 +139,14 @@ class CmdRun(CmdBase):
             Logger.error('Error: file "{}" was removed'.format(file))
             error = True
 
-        for file in GitWrapper.abs_paths_to_relative(files_states.modified_files):
-            Logger.error('Error: file "{}" was modified'.format(file))
-            error = True
+        # for file in GitWrapper.abs_paths_to_relative(files_states.modified_files):
+        #     Logger.error('Error: file "{}" was modified'.format(file))
+        #     error = True
 
-        for file in GitWrapper.abs_paths_to_relative(files_states.unusual_state_files):
-            Logger.error('Error: file "{}" is in not acceptable state'.format(file))
-            error = True
+        # # This code doesn't cover repro case
+        # for file in GitWrapper.abs_paths_to_relative(files_states.unusual_state_files):
+        #     Logger.error('Error: file "{}" is in not acceptable state'.format(file))
+        #     error = True
 
         for file in GitWrapper.abs_paths_to_relative(files_states.externally_created_files):
             Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
@@ -129,9 +158,9 @@ class CmdRun(CmdBase):
                          format(self.config.data_dir))
             return False
 
-        if not files_states.new_files:
-            Logger.error('Errors occurred. No files were changed in run command.')
-            return False
+        # if not files_states.new_files:
+        #     Logger.error('Errors occurred. No files were changed in run command.')
+        #     return False
 
         return True
 

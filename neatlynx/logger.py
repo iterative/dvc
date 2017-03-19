@@ -18,3 +18,7 @@ class Logger(object):
     @staticmethod
     def debug(msg):
         print(u'Debug. {}'.format(msg))
+
+    @staticmethod
+    def info(msg):
+        print(u'Info. {}'.format(msg))

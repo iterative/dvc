@@ -32,6 +32,9 @@ class CmdDataImport(CmdBase):
                             nargs='*')
 
         self.add_string_arg(parser, 'output', 'Output file')
+
+        parser.add_argument('-i', '--is-reproducible', action='store_false', default=False,
+                            help='Is data file reproducible')
         pass
 
     def run(self):
@@ -47,7 +50,7 @@ class CmdDataImport(CmdBase):
 
             output = self.args.output
             for file in self.args.input:
-                self.import_file(file, output)
+                self.import_file(file, output, self.args.is_reproducible)
 
             if self.skip_git_actions:
                 self.not_committed_changes_warning()
@@ -59,7 +62,7 @@ class CmdDataImport(CmdBase):
             lock.release()
         pass
 
-    def import_file(self, input, output):
+    def import_file(self, input, output, is_reproducible):
         if not CmdDataImport.is_url(input):
             if not os.path.exists(input):
                 raise DataImportError('Input file "{}" does not exist'.format(input))
@@ -77,7 +80,10 @@ class CmdDataImport(CmdBase):
             raise DataImportError('Output file directory "{}" does not exists'.format(
                 os.path.dirname(dobj.data_file_relative)))
 
-        os.makedirs(os.path.dirname(dobj.cache_file_relative), exist_ok=True)
+        cache_dir = os.path.dirname(dobj.cache_file_relative)
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir)
+
         if CmdDataImport.is_url(input):
             Logger.debug('Downloading file {} ...'.format(input))
             self.download_file(input, dobj.cache_file_relative)
@@ -92,7 +98,12 @@ class CmdDataImport(CmdBase):
         Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
                      format(dobj.data_file_relative, dobj.cache_file_relative))
 
-        state_file = StateFile(dobj.state_file_relative, self.git)
+        state_file = StateFile(dobj.state_file_relative,
+                               self.git,
+                               [input],
+                               [output],
+                               [],
+                               is_reproducible)
         state_file.save()
         Logger.debug('State file "{}" was created'.format(dobj.state_file_relative))
         pass
