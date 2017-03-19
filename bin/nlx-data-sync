@@ -1,3 +1,0 @@
-#!/bin/bash
-
-PYTHONPATH=$NEATLYNX_HOME python $NEATLYNX_HOME/neatlynx/cmd_data_sync.py $@

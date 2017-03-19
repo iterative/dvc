@@ -2,10 +2,10 @@ import os
 import sys
 from pathlib import Path
 
-from neatlynx.cmd_base import CmdBase
-from neatlynx.logger import Logger
-from neatlynx.config import Config
-from neatlynx.exceptions import NeatLynxException
+from dvc.cmd_base import CmdBase
+from dvc.logger import Logger
+from dvc.config import Config
+from dvc.exceptions import NeatLynxException
 
 
 class InitError(NeatLynxException):
@@ -24,7 +24,7 @@ Cloud = AWS
 AccessKeyId =
 SecretAccessKey =
 
-StoragePath = neatlynx/tutorial
+StoragePath = dvc/tutorial
 
 
 Region = us-east-1
@@ -40,9 +40,9 @@ SpotTimeout = 300
 Storage = my-100gb-drive-io
 
 KeyDir = ~/.ssh
-KeyName = neatlynx-key
+KeyName = dvc-key
 
-SecurityGroup = neatlynx-group'''
+SecurityGroup = dvc-group'''
 
     def __init__(self):
         CmdBase.__init__(self, parse_config=False)

@@ -2,13 +2,13 @@ import os
 import shutil
 import fasteners
 
-from neatlynx.data_file_obj import DataFileObj, NotInDataDirError
-from neatlynx.git_wrapper import GitWrapper
-from neatlynx.cmd_base import CmdBase
-from neatlynx.logger import Logger
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.repository_change import RepositoryChange
-from neatlynx.state_file import StateFile
+from dvc.data_file_obj import DataFileObj, NotInDataDirError
+from dvc.git_wrapper import GitWrapper
+from dvc.cmd_base import CmdBase
+from dvc.logger import Logger
+from dvc.exceptions import NeatLynxException
+from dvc.repository_change import RepositoryChange
+from dvc.state_file import StateFile
 
 
 class RunError(NeatLynxException):

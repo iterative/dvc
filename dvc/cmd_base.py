@@ -1,13 +1,13 @@
 import argparse
 import os
 
-from neatlynx.git_wrapper import GitWrapper
-from neatlynx.config import Config, ConfigError
-from neatlynx.logger import Logger
+from dvc.git_wrapper import GitWrapper
+from dvc.config import Config, ConfigError
+from dvc.logger import Logger
 
 
 class CmdBase(object):
-    CONFIG = 'neatlynx.conf'
+    CONFIG = 'dvc.conf'
 
     def __init__(self, parse_config=True):
         self._git = GitWrapper()

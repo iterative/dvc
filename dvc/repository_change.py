@@ -1,8 +1,8 @@
 import os
 
-from neatlynx.data_file_obj import DataFileObj, NotInDataDirError
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.git_wrapper import GitWrapper
+from dvc.data_file_obj import DataFileObj, NotInDataDirError
+from dvc.exceptions import NeatLynxException
+from dvc.git_wrapper import GitWrapper
 
 
 class RepositoryChangeError(NeatLynxException):

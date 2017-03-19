@@ -2,13 +2,13 @@ import os
 
 import fasteners
 
-from neatlynx.cmd_base import CmdBase
-from neatlynx.cmd_run import CmdRun
-from neatlynx.git_wrapper import GitWrapper
-from neatlynx.logger import Logger
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.data_file_obj import DataFileObj, NotInDataDirError
-from neatlynx.state_file import StateFile
+from dvc.cmd_base import CmdBase
+from dvc.cmd_run import CmdRun
+from dvc.git_wrapper import GitWrapper
+from dvc.logger import Logger
+from dvc.exceptions import NeatLynxException
+from dvc.data_file_obj import DataFileObj, NotInDataDirError
+from dvc.state_file import StateFile
 
 
 class ReproError(NeatLynxException):

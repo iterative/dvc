@@ -2,9 +2,9 @@ from unittest import TestCase
 import os
 import shutil
 
-from neatlynx.config import ConfigI
-from neatlynx.data_file_obj import DataFileObj, NotInDataDirError, DataFilePathError
-from neatlynx.git_wrapper import GitWrapperI
+from dvc.config import ConfigI
+from dvc.data_file_obj import DataFileObj, NotInDataDirError, DataFilePathError
+from dvc.git_wrapper import GitWrapperI
 
 
 class BasicDataDirTest(TestCase):

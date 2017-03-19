@@ -1,6 +1,6 @@
 import os
 
-from neatlynx.exceptions import NeatLynxException
+from dvc.exceptions import NeatLynxException
 
 
 class DataFilePathError(NeatLynxException):

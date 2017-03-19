@@ -1,7 +1,7 @@
 import os
 import configparser
 
-from neatlynx.exceptions import NeatLynxException
+from dvc.exceptions import NeatLynxException
 
 
 class ConfigError(NeatLynxException):
@@ -30,7 +30,7 @@ class ConfigI(object):
 
 
 class Config(ConfigI):
-    CONFIG = 'neatlynx.conf'
+    CONFIG = 'dvc.conf'
 
     def __init__(self, conf_file):
         self._conf_file = conf_file

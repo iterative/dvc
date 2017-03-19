@@ -5,12 +5,12 @@ import re
 import fasteners
 import requests
 
-from neatlynx.cmd_base import CmdBase
-from neatlynx.cmd_data_sync import sizeof_fmt
-from neatlynx.logger import Logger
-from neatlynx.data_file_obj import DataFileObj
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.state_file import StateFile
+from dvc.cmd_base import CmdBase
+from dvc.cmd_data_sync import sizeof_fmt
+from dvc.logger import Logger
+from dvc.data_file_obj import DataFileObj
+from dvc.exceptions import NeatLynxException
+from dvc.state_file import StateFile
 
 
 class DataImportError(NeatLynxException):

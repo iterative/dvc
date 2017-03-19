@@ -2,7 +2,7 @@ import os
 import shutil
 from unittest import TestCase
 
-from neatlynx.git_wrapper import GitWrapperI
+from dvc.git_wrapper import GitWrapperI
 
 
 class TestDvcPathTest(TestCase):

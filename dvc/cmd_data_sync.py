@@ -3,10 +3,10 @@ import os
 
 from boto.s3.connection import S3Connection
 
-from neatlynx.cmd_base import CmdBase
-from neatlynx.logger import Logger
-from neatlynx.data_file_obj import DataFileObjExisting
-from neatlynx.exceptions import NeatLynxException
+from dvc.cmd_base import CmdBase
+from dvc.logger import Logger
+from dvc.data_file_obj import DataFileObjExisting
+from dvc.exceptions import NeatLynxException
 
 
 class DataSyncError(NeatLynxException):

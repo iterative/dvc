@@ -2,10 +2,10 @@ import os
 from boto.s3.connection import S3Connection
 import fasteners
 
-from neatlynx.cmd_base import CmdBase
-from neatlynx.logger import Logger
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.data_file_obj import DataFileObjExisting
+from dvc.cmd_base import CmdBase
+from dvc.logger import Logger
+from dvc.exceptions import NeatLynxException
+from dvc.data_file_obj import DataFileObjExisting
 
 
 class DataRemoveError(NeatLynxException):

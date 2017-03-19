@@ -2,10 +2,10 @@ import os
 import sys
 import subprocess
 
-from neatlynx.dvc_path import DvcPath
-from neatlynx.exceptions import NeatLynxException
-from neatlynx.logger import Logger
-from neatlynx.config import Config
+from dvc.dvc_path import DvcPath
+from dvc.exceptions import NeatLynxException
+from dvc.logger import Logger
+from dvc.config import Config
 
 
 class GitCmdError(NeatLynxException):
