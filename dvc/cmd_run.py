@@ -85,8 +85,6 @@ class CmdRun(CmdBase):
         # print('===== externally_created_files={}'.format(repo_change.externally_created_files))
         # # raise Exception()
 
-        print('========= {} {}'.format(not self.skip_git_actions, not self.validate_file_states(repo_change)))
-
         if not self.skip_git_actions and not self.validate_file_states(repo_change):
             self.remove_new_files(repo_change)
             return False
@@ -98,10 +96,7 @@ class CmdRun(CmdBase):
         input_files_from_args = list(set(args_files_nlx) - set(changed_files_nlx))
         input_files = self.git.abs_paths_to_nlx(input_files_from_args + self.declaration_input_files)
 
-        print('================== changed files = {}'.format(len(repo_change.dobj_for_changed_files)))
-
         for dobj in repo_change.dobj_for_changed_files:
-            print('================== move ... {}'.format(dobj.data_file_relative))
             dirname = os.path.dirname(dobj.cache_file_relative)
             if not os.path.isdir(dirname):
                 os.makedirs(dirname)
