@@ -1,0 +1,27 @@
+
+BASE_DIR_S3=https://s3-us-west-2.amazonaws.com/dataversioncontrol
+RAW_DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
+
+RAW_DATA_LOCAL=sync_raw_data
+CODE_LOCAL=sync_code
+TEST_REPO=repo_clean
+
+TEST_REPO=repo_clean
+
+function _init_repo() {
+    git init
+    dvc-init
+    mkdir data/xml
+    dvc-data-import ../$RAW_DATA_LOCAL/* data/xml
+    mkdir code
+    cp ../$CODE_LOCAL/* code/
+    git add code/
+    git commit -m 'Add code'
+}
+
+function create_repo() {
+    rm -rf $TEST_REPO
+    mkdir $TEST_REPO
+    (cd $TEST_REPO && _init_repo)
+}
+
