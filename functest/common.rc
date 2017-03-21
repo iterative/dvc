@@ -1,5 +1,5 @@
 
-BASE_DIR_S3=https://s3-us-west-2.amazonaws.com/dataversioncontrol
+BASE_DIR_S3=https://s3-us-west-2.amazonaws.com/dataversioncontrol/functests
 RAW_DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
 
 RAW_DATA_LOCAL=sync_raw_data

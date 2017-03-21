@@ -12,5 +12,5 @@ done
 
 rm -rf $CODE_LOCAL
 mkdir $CODE_LOCAL
-(cd $CODE_LOCAL; wget "$BASE_DIR_S3/functests/code/xmltotsv.py")
+(cd $CODE_LOCAL; wget "$BASE_DIR_S3/code/xmltotsv.py")
 
