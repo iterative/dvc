@@ -6,7 +6,7 @@ from dvc.cmd_base import CmdBase
 from dvc.cmd_run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
-from dvc.path.data_file_obj import NotInDataDirError
+from dvc.path.data_path import NotInDataDirError
 from dvc.state_file import StateFile
 
 

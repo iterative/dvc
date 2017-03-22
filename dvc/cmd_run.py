@@ -2,7 +2,7 @@ import os
 import shutil
 import fasteners
 
-from dvc.path.data_file_obj import NotInDataDirError
+from dvc.path.data_path import NotInDataDirError
 from dvc.git_wrapper import GitWrapper
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger

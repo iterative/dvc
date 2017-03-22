@@ -1,6 +1,6 @@
 import os
 
-from dvc.path.data_file_obj import DataPath, DataFilePathError, NotInDataDirError
+from dvc.path.data_path import DataPath, DataFilePathError, NotInDataDirError
 from dvc.path.dvc_path import DvcPath
 
 

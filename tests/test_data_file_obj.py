@@ -3,7 +3,7 @@ import os
 import shutil
 
 from dvc.config import ConfigI
-from dvc.path.data_file_obj import NotInDataDirError, DataFilePathError, DataPath
+from dvc.path.data_path import NotInDataDirError, DataFilePathError, DataPath
 from dvc.git_wrapper import GitWrapperI
 from dvc.path.path_factory import PathFactory
 
