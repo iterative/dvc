@@ -8,7 +8,6 @@ import requests
 from dvc.cmd_base import CmdBase
 from dvc.cmd_data_sync import sizeof_fmt
 from dvc.logger import Logger
-from dvc.data_file_obj import DataFileObj
 from dvc.exceptions import NeatLynxException
 from dvc.state_file import StateFile
 
@@ -72,40 +71,40 @@ class CmdDataImport(CmdBase):
         if os.path.isdir(output):
             output = os.path.join(output, os.path.basename(input))
 
-        dobj = DataFileObj(output, self.git, self.config)
+        data_path = self.path_factory.data_path(output)
 
-        if os.path.exists(dobj.data_file_relative):
-            raise DataImportError('Output file "{}" already exists'.format(dobj.data_file_relative))
-        if not os.path.isdir(os.path.dirname(dobj.data_file_abs)):
+        if os.path.exists(data_path.data.relative):
+            raise DataImportError('Output file "{}" already exists'.format(data_path.data.relative))
+        if not os.path.isdir(os.path.dirname(data_path.data.relative)):
             raise DataImportError('Output file directory "{}" does not exists'.format(
-                os.path.dirname(dobj.data_file_relative)))
+                os.path.dirname(data_path.data.relative)))
 
-        cache_dir = os.path.dirname(dobj.cache_file_relative)
+        cache_dir = os.path.dirname(data_path.cache.relative)
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
         if CmdDataImport.is_url(input):
             Logger.debug('Downloading file {} ...'.format(input))
-            self.download_file(input, dobj.cache_file_relative)
+            self.download_file(input, data_path.cache.relative)
             Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
-                input, dobj.cache_file_relative))
+                input, data_path.cache.relative))
         else:
-            copyfile(input, dobj.cache_file_relative)
+            copyfile(input, data_path.cache.relative)
             Logger.debug('Input file "{}" was copied to cache "{}"'.format(
-                input, dobj.cache_file_relative))
+                input, data_path.cache.relative))
 
-        dobj.create_symlink()
+        data_path.create_symlink()
         Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
-                     format(dobj.data_file_relative, dobj.cache_file_relative))
+                     format(data_path.data.relative, data_path.cache.relative))
 
-        state_file = StateFile(dobj.state_file_relative,
+        state_file = StateFile(data_path.state.relative,
                                self.git,
                                [input],
                                [output],
                                [],
                                is_reproducible)
         state_file.save()
-        Logger.debug('State file "{}" was created'.format(dobj.state_file_relative))
+        Logger.debug('State file "{}" was created'.format(data_path.state.relative))
         pass
 
     URL_REGEX = re.compile(

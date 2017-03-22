@@ -4,6 +4,8 @@ import os
 from dvc.git_wrapper import GitWrapper
 from dvc.config import Config, ConfigError
 from dvc.logger import Logger
+from dvc.path_factory import PathFactory
+from dvc.utils import cached_property
 
 
 class CmdBase(object):
@@ -30,9 +32,16 @@ class CmdBase(object):
             raise ConfigError("DVC_HOME directory doesn't exists")
         pass
 
+    @cached_property
+    def path_factory(self):
+        return PathFactory(self.git, self.config)
+
     @property
     def config(self):
         return self._config
+
+    def cache_file_aws_key(self, file):
+        return '{}/{}'.format(self._config.aws_storage_prefix, file).strip('/')
 
     @property
     def lnx_home(self):
@@ -46,7 +55,7 @@ class CmdBase(object):
     def git(self):
         return self._git
 
-    def define_args(self):
+    def define_args(self, parser):
         pass
 
     def set_skip_git_actions(self, parser):

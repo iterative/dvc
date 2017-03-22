@@ -2,6 +2,7 @@ import os
 import shutil
 from unittest import TestCase
 
+from dvc.dvc_path import DvcPath
 from dvc.git_wrapper import GitWrapperI
 
 
@@ -13,7 +14,7 @@ class TestDvcPathTest(TestCase):
         os.makedirs(os.path.join(self.test_dir, 'code', 'lib'))
         os.makedirs(os.path.join(self.test_dir, 'd1', 'd2', 'dir3', 'd4', 'dir5'))
 
-        self.git = GitWrapperI(self.test_dir)
+        self._git = GitWrapperI(self.test_dir)
 
     def _validate_dvc_path(self, path, dvc_file_name, relative_file_name):
         self.assertEqual(path.dvc, dvc_file_name)
@@ -23,11 +24,10 @@ class TestDvcPathTest(TestCase):
         self.assertTrue(path.abs.endswith(dvc_file_name))
 
     def basic_test(self):
-        print('----------------------------------------------')
         os.chdir(self.test_dir)
 
         file = os.path.join('data', 'file.txt')
-        path = self.git.build_dvc_path(file)
+        path = DvcPath(file, self._git)
         self._validate_dvc_path(path, file, file)
         pass
 
@@ -37,9 +37,8 @@ class TestDvcPathTest(TestCase):
         file_dvc_path = os.path.join('data', 'file1.txt')
         file_relative_path = os.path.join('..', file_dvc_path)
 
-        path = self.git.build_dvc_path(file_relative_path)
+        path = DvcPath(file_relative_path, self._git)
         self._validate_dvc_path(path, file_dvc_path, file_relative_path)
-        print('+++++++++++++++++++++++++++++')
         pass
 
     def from_deep_dirs_test(self):
@@ -49,7 +48,7 @@ class TestDvcPathTest(TestCase):
         file_dvc = os.path.join('code', 'lib', 'context_switcher_structs.asm')
         file_relative = os.path.join('..', '..', '..', file_dvc)
 
-        path = self.git.build_dvc_path(file_relative)
+        path = DvcPath(file_relative, self._git)
         self._validate_dvc_path(path, file_dvc, file_relative)
         pass
 
@@ -60,6 +59,6 @@ class TestDvcPathTest(TestCase):
         file_relative_path = os.path.join(deep_dir, 'd4', 'dir5', 'rawdata.tsv')
         file_dvc_path = os.path.join(deep_dir, file_relative_path)
 
-        path = self.git.build_dvc_path(file_relative_path)
+        path = DvcPath(file_relative_path, self._git)
         self._validate_dvc_path(path, file_dvc_path, file_relative_path)
         pass

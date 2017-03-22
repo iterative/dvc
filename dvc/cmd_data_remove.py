@@ -5,7 +5,6 @@ import fasteners
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
-from dvc.data_file_obj import DataFileObjExisting
 
 
 class DataRemoveError(NeatLynxException):
@@ -59,27 +58,32 @@ class CmdDataRemove(CmdBase):
                 raise DataRemoveError('data directory cannot be removed')
 
             return self.remove_dir(target)
-        dobj = DataFileObjExisting(target, self.git, self.config)
-        if os.path.islink(dobj.data_file_relative):
-            return self.remove_symlink(dobj.data_file_relative)
+
+        data_path = self.path_factory.existing_data_path(target)
+        if os.path.islink(data_path.data.relative):
+            return self.remove_symlink(data_path)
 
         raise DataRemoveError('Cannot remove a regular file "{}"'.format(target))
 
-    def remove_symlink(self, file):
-        dobj = DataFileObjExisting(file, self.git, self.config)
+    @staticmethod
+    def remove_dir_if_empty(file):
+        dir = os.path.dirname(file)
+        if dir != '' and not os.listdir(dir):
+            os.rmdir(dir)
 
-        if os.path.isfile(dobj.cache_file_relative):
-            os.remove(dobj.cache_file_relative)
-            dobj.remove_cache_dir_if_empty()
+    def remove_symlink(self, data_path):
+        if os.path.isfile(data_path.cache.relative):
+            os.remove(data_path.cache.relative)
+            self.remove_dir_if_empty(data_path.cache.relavive)
 
-        if os.path.isfile(dobj.state_file_relative):
-            os.remove(dobj.state_file_relative)
-            dobj.remove_state_dir_if_empty()
+        if os.path.isfile(data_path.state.relative):
+            os.remove(data_path.state.relative)
+            self.remove_dir_if_empty(data_path.state.relative)
 
         if self.args.remove_from_cloud:
-            self.remove_from_cloud(dobj.cache_file_aws_key)
+            self.remove_from_cloud(data_path.cache_file_aws_key)
 
-        os.remove(file)
+        os.remove(data_path.data.relative)
         pass
 
     def remove_from_cloud(self, aws_file_name):

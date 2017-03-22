@@ -1,6 +1,5 @@
 import os
 
-from dvc.data_file_obj import DataFileObj, NotInDataDirError
 from dvc.exceptions import NeatLynxException
 from dvc.git_wrapper import GitWrapper
 
@@ -44,18 +43,18 @@ class FileModificationState(object):
 class RepositoryChange(object):
     """Pre-condition: git repository has no changes"""
 
-    def __init__(self, args, stdout, stderr, git, config):
+    def __init__(self, args, stdout, stderr, git, config, path_factory):
         self.git = git
         self.config = config
+        self.path_factory = path_factory
 
         GitWrapper.exec_cmd_only_success(args, stdout, stderr)
         self._file_states = self._get_file_states()
 
-        self._changed_dobj, self._externally_created_files = DataFileObj.files_to_dobjs(
-            self.changed_files, self.git, self.config)
+        self._changed_data_paths, self._externally_created_files = path_factory.to_data_path(self.changed_files)
 
     @staticmethod
-    def exec_cmd(args, stdout, stderr, git):
+    def exec_cmd(args, stdout, stderr, git, path_factory):
         return RepositoryChange(args, stdout, stderr, git)
 
     @staticmethod
@@ -113,8 +112,8 @@ class RepositoryChange(object):
         pass
 
     @property
-    def dobj_for_changed_files(self):
-        return self._changed_dobj
+    def data_paths_for_changed_files(self):
+        return self._changed_data_paths
 
     @property
     def externally_created_files(self):

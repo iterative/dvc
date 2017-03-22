@@ -4,8 +4,6 @@ import json
 import time
 
 from dvc.exceptions import NeatLynxException
-from dvc.git_wrapper import GitWrapper
-from dvc.logger import Logger
 
 
 class StateFileError(NeatLynxException):

@@ -4,10 +4,9 @@ import fasteners
 
 from dvc.cmd_base import CmdBase
 from dvc.cmd_run import CmdRun
-from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
-from dvc.data_file_obj import DataFileObj, NotInDataDirError
+from dvc.data_file_obj import NotInDataDirError
 from dvc.state_file import StateFile
 
 
@@ -55,29 +54,29 @@ class CmdRepro(CmdRun):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            dobjs, externally_created_files = DataFileObj.files_to_dobjs(self.args.target, self.git, self.config)
-            if externally_created_files:
+            data_path_list, external_files = self.path_factory.to_data_path(self.args.target)
+            if external_files:
                 Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
-                             format(self.config.data_dir, ' '.join(externally_created_files)))
+                             format(self.config.data_dir, ' '.join(external_files)))
                 return 1
 
             error = False
             changed = False
-            for dobj in dobjs:
+            for data_path in data_path_list:
                 try:
-                    repro_change = ReproChange(dobj, self.git, self)
+                    repro_change = ReproChange(data_path, self)
                     if repro_change.reproduce():
                         changed = True
                         Logger.info(u'Data file "{}" was reproduced.'.format(
-                            dobj.data_file_relative
+                            data_path.data.relative
                         ))
                     else:
                         Logger.info(u'Reproduction is not required for data file "{}".'.format(
-                            dobj.data_file_relative
+                            data_path.data.relative
                         ))
                 except ReproError as err:
                     Logger.error('Error in reproducing data file {}: {}'.format(
-                        dobj.data_file_relative, str(err)
+                        data_path.data.relative, str(err)
                     ))
                     error = True
                     break
@@ -100,11 +99,11 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, dobj, git, cmd_obj):
-        self._dobj = dobj
-        self._state = StateFile.load(dobj.state_file_relative, git)
-        self.git = git
+    def __init__(self, data_path, cmd_obj):
+        self._data_path = data_path
+        self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
+        self._state = StateFile.load(data_path.state.relative, self.git)
 
         cmd_obj._code = self._state.code_sources # HACK!!!
 
@@ -112,7 +111,7 @@ class ReproChange(object):
 
         if not argv:
             raise ReproError('Error: parameter {} is nor defined in state file "{}"'.
-                             format(StateFile.PARAM_NORM_ARGV, dobj.state_file_relative))
+                             format(StateFile.PARAM_NORM_ARGV, data_path.state.relative))
         if len(argv) < 2:
             raise ReproError('Error: reproducible command in state file "{}" is too short'.
                              format(self._state.file))
@@ -129,39 +128,39 @@ class ReproChange(object):
 
     def reproduce_data_file(self):
         Logger.debug('Reproducing data file "{}". Removing the file...'.format(
-            self._dobj.data_file_relative))
-        os.remove(self._dobj.data_file_relative)
+            self._data_path.data.relative))
+        os.remove(self._data_path.data.relative)
 
         Logger.debug('Reproducing data file "{}". Re-runs command: {}'.format(
-            self._dobj.data_file_relative, ' '.join(self._repro_argv)))
+            self._data_path.data.relative, ' '.join(self._repro_argv)))
         return self._cmd_obj.run_command(self._repro_argv)
 
     def reproduce(self, force=False):
         were_input_files_changed = False
 
         if not self._state.is_reproducible:
-            Logger.debug('Data file "{}" is not reproducible'.format(self._dobj.data_file_relative))
+            Logger.debug('Data file "{}" is not reproducible'.format(self._data_path.data.relative))
             return False
 
         for input_file in self._state.input_files:
             try:
-                dobj = DataFileObj(input_file, self.git, self._cmd_obj.config)
+                data_path = self._cmd_obj.path_factory.data_path(input_file)
             except NotInDataDirError:
                 raise ReproError(u'The dependency files "{}" is not a data file'.format(input_file))
             except Exception as ex:
                 raise ReproError(u'The dependency files "{}" can not be reproduced: {}'.format(
                                  input_file, ex))
 
-            change = ReproChange(dobj, self.git, self._cmd_obj)
+            change = ReproChange(data_path, self._cmd_obj)
             if change.reproduce(force):
                 were_input_files_changed = True
 
-        was_source_code_changed = self.git.were_files_changed(self._dobj.data_file_relative,
+        was_source_code_changed = self.git.were_files_changed(self._data_path.data.relative,
                                                               self._state.code_sources)
 
         if not force and not was_source_code_changed and not were_input_files_changed:
             Logger.debug('Data file "{}" is up to date'.format(
-                self._dobj.data_file_relative))
+                self._data_path.data.relative))
             return False
 
         return self.reproduce_data_file()

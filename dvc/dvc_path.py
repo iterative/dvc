@@ -2,10 +2,10 @@ import os
 
 
 class DvcPath(object):
-    def __init__(self, relative_raw, git_dir_abs, curr_dir_abs):
-        self._abs = os.path.realpath(relative_raw)
-        self._dvc = os.path.relpath(self.abs, git_dir_abs)
-        self._relative = os.path.relpath(self._abs, curr_dir_abs)
+    def __init__(self, relative_raw, git):
+        self._abs = os.path.abspath(relative_raw)
+        self._dvc = os.path.relpath(self.abs, git.git_dir_abs)
+        self._relative = os.path.relpath(self._abs, git.curr_dir_abs)
         self._filename = os.path.basename(self._abs)
 
     @property

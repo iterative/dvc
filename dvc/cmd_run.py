@@ -2,7 +2,7 @@ import os
 import shutil
 import fasteners
 
-from dvc.data_file_obj import DataFileObj, NotInDataDirError
+from dvc.data_file_obj import NotInDataDirError
 from dvc.git_wrapper import GitWrapper
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
@@ -77,7 +77,7 @@ class CmdRun(CmdBase):
         return 0
 
     def run_command(self, argv, stdout=None, stderr=None):
-        repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config)
+        repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config, self.path_factory)
 
         # print('===== new_files={}'.format(repo_change.new_files))
         # print('===== modified_files={}'.format(repo_change.modified_files))
@@ -96,21 +96,21 @@ class CmdRun(CmdBase):
         input_files_from_args = list(set(args_files_nlx) - set(changed_files_nlx))
         input_files = self.git.abs_paths_to_nlx(input_files_from_args + self.declaration_input_files)
 
-        for dobj in repo_change.dobj_for_changed_files:
-            dirname = os.path.dirname(dobj.cache_file_relative)
+        for data_path in repo_change.data_paths_for_changed_files:
+            dirname = os.path.dirname(data_path.cache.relative)
             if not os.path.isdir(dirname):
                 os.makedirs(dirname)
 
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
-                dobj.data_file_relative, dobj.cache_file_relative))
-            shutil.move(dobj.data_file_relative, dobj.cache_file_relative)
+                data_path.data.relative, data_path.cache.relative))
+            shutil.move(data_path.data.relative, data_path.cache.relative)
 
-            dobj.create_symlink()
+            data_path.create_symlink()
 
             nlx_code_sources = map(lambda x: self.git.abs_paths_to_nlx([x])[0], self.code)
 
-            Logger.debug('Create state file "{}"'.format(dobj.state_file_relative))
-            state_file = StateFile(dobj.state_file_relative, self.git,
+            Logger.debug('Create state file "{}"'.format(data_path.state.relative))
+            state_file = StateFile(data_path.state.relative, self.git,
                                    input_files,
                                    output_files,
                                    nlx_code_sources,
@@ -165,7 +165,7 @@ class CmdRun(CmdBase):
         for arg in argv:
             try:
                 if os.path.isfile(arg):
-                    DataFileObj(arg, self.git, self.config)
+                    self.path_factory.data_path(arg)
                     result.append(arg)
             except NotInDataDirError:
                 pass
