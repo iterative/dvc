@@ -1,6 +1,6 @@
 import os
 
-from dvc.dvc_path import DvcPath
+from dvc.path.dvc_path import DvcPath
 from dvc.exceptions import NeatLynxException
 from dvc.utils import cached_property
 

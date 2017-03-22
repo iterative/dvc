@@ -2,7 +2,7 @@ import os
 import shutil
 from unittest import TestCase
 
-from dvc.dvc_path import DvcPath
+from dvc.path.dvc_path import DvcPath
 from dvc.git_wrapper import GitWrapperI
 
 

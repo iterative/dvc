@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 
-from dvc.dvc_path import DvcPath
+from dvc.path.dvc_path import DvcPath
 from dvc.exceptions import NeatLynxException
 from dvc.logger import Logger
 from dvc.config import Config
@@ -33,9 +33,6 @@ class GitWrapperI(object):
     @property
     def curr_commit(self):
         return self._commit
-
-    def build_dvc_path(self, relative):
-        return DvcPath(relative, self.git_dir_abs, self.curr_dir_abs)
 
 
 class GitWrapper(GitWrapperI):
