@@ -55,29 +55,29 @@ class CmdRepro(CmdRun):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            data_path_list, external_files = self.path_factory.to_data_path(self.args.target)
-            if external_files:
+            data_item_list, external_files_names = self.path_factory.to_data_items(self.args.target)
+            if external_files_names:
                 Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
-                             format(self.config.data_dir, ' '.join(external_files)))
+                             format(self.config.data_dir, ' '.join(external_files_names)))
                 return 1
 
             error = False
             changed = False
-            for data_path in data_path_list:
+            for data_item in data_item_list:
                 try:
-                    repro_change = ReproChange(data_path, self)
+                    repro_change = ReproChange(data_item, self)
                     if repro_change.reproduce():
                         changed = True
                         Logger.info(u'Data file "{}" was reproduced.'.format(
-                            data_path.data.relative
+                            data_item.data.relative
                         ))
                     else:
                         Logger.info(u'Reproduction is not required for data file "{}".'.format(
-                            data_path.data.relative
+                            data_item.data.relative
                         ))
                 except ReproError as err:
                     Logger.error('Error in reproducing data file {}: {}'.format(
-                        data_path.data.relative, str(err)
+                        data_item.data.relative, str(err)
                     ))
                     error = True
                     break
@@ -100,11 +100,11 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, data_path, cmd_obj):
-        self._data_path = data_path
+    def __init__(self, data_item, cmd_obj):
+        self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
-        self._state = StateFile.load(data_path.state.relative, self.git)
+        self._state = StateFile.load(data_item.state.relative, self.git)
 
         cmd_obj._code = self._state.code_sources # HACK!!!
 
@@ -112,7 +112,7 @@ class ReproChange(object):
 
         if not argv:
             raise ReproError('Error: parameter {} is nor defined in state file "{}"'.
-                             format(StateFile.PARAM_NORM_ARGV, data_path.state.relative))
+                             format(StateFile.PARAM_NORM_ARGV, data_item.state.relative))
         if len(argv) < 2:
             raise ReproError('Error: reproducible command in state file "{}" is too short'.
                              format(self._state.file))
@@ -129,39 +129,39 @@ class ReproChange(object):
 
     def reproduce_data_file(self):
         Logger.debug('Reproducing data file "{}". Removing the file...'.format(
-            self._data_path.data.relative))
-        os.remove(self._data_path.data.relative)
+            self._data_item.data.relative))
+        os.remove(self._data_item.data.relative)
 
         Logger.debug('Reproducing data file "{}". Re-runs command: {}'.format(
-            self._data_path.data.relative, ' '.join(self._repro_argv)))
+            self._data_item.data.relative, ' '.join(self._repro_argv)))
         return self._cmd_obj.run_command(self._repro_argv)
 
     def reproduce(self, force=False):
         were_input_files_changed = False
 
         if not self._state.is_reproducible:
-            Logger.debug('Data file "{}" is not reproducible'.format(self._data_path.data.relative))
+            Logger.debug('Data file "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
         for input_file in self._state.input_files:
             try:
-                data_path = self._cmd_obj.path_factory.data_path(input_file)
+                data_item = self._cmd_obj.path_factory.data_item(input_file)
             except NotInDataDirError:
                 raise ReproError(u'The dependency files "{}" is not a data file'.format(input_file))
             except Exception as ex:
                 raise ReproError(u'The dependency files "{}" can not be reproduced: {}'.format(
                                  input_file, ex))
 
-            change = ReproChange(data_path, self._cmd_obj)
+            change = ReproChange(data_item, self._cmd_obj)
             if change.reproduce(force):
                 were_input_files_changed = True
 
-        was_source_code_changed = self.git.were_files_changed(self._data_path.data.relative,
+        was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
                                                               self._state.code_sources)
 
         if not force and not was_source_code_changed and not were_input_files_changed:
             Logger.debug('Data file "{}" is up to date'.format(
-                self._data_path.data.relative))
+                self._data_item.data.relative))
             return False
 
         return self.reproduce_data_file()

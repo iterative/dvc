@@ -71,40 +71,40 @@ class CmdDataImport(CmdBase):
         if os.path.isdir(output):
             output = os.path.join(output, os.path.basename(input))
 
-        data_path = self.path_factory.data_path(output)
+        data_item = self.path_factory.data_item(output)
 
-        if os.path.exists(data_path.data.relative):
-            raise DataImportError('Output file "{}" already exists'.format(data_path.data.relative))
-        if not os.path.isdir(os.path.dirname(data_path.data.relative)):
+        if os.path.exists(data_item.data.relative):
+            raise DataImportError('Output file "{}" already exists'.format(data_item.data.relative))
+        if not os.path.isdir(os.path.dirname(data_item.data.relative)):
             raise DataImportError('Output file directory "{}" does not exists'.format(
-                os.path.dirname(data_path.data.relative)))
+                os.path.dirname(data_item.data.relative)))
 
-        cache_dir = os.path.dirname(data_path.cache.relative)
+        cache_dir = os.path.dirname(data_item.cache.relative)
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
         if CmdDataImport.is_url(input):
             Logger.debug('Downloading file {} ...'.format(input))
-            self.download_file(input, data_path.cache.relative)
+            self.download_file(input, data_item.cache.relative)
             Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
-                input, data_path.cache.relative))
+                input, data_item.cache.relative))
         else:
-            copyfile(input, data_path.cache.relative)
+            copyfile(input, data_item.cache.relative)
             Logger.debug('Input file "{}" was copied to cache "{}"'.format(
-                input, data_path.cache.relative))
+                input, data_item.cache.relative))
 
-        data_path.create_symlink()
+        data_item.create_symlink()
         Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
-                     format(data_path.data.relative, data_path.cache.relative))
+                     format(data_item.data.relative, data_item.cache.relative))
 
-        state_file = StateFile(data_path.state.relative,
+        state_file = StateFile(data_item.state.relative,
                                self.git,
                                [input],
                                [output],
                                [],
                                is_reproducible)
         state_file.save()
-        Logger.debug('State file "{}" was created'.format(data_path.state.relative))
+        Logger.debug('State file "{}" was created'.format(data_item.state.relative))
         pass
 
     URL_REGEX = re.compile(

@@ -1,4 +1,5 @@
 import os
+import sys
 import shutil
 import fasteners
 
@@ -90,28 +91,28 @@ class CmdRun(CmdBase):
             self.remove_new_files(repo_change)
             return False
 
-        changed_files_nlx = self.git.abs_paths_to_nlx(repo_change.changed_files)
-        output_files = changed_files_nlx + self.git.abs_paths_to_nlx(self.declaration_output_files)
-        args_files_nlx = self.git.abs_paths_to_nlx(self.get_data_files_from_args(argv))
+        changed_files_nlx = self.git.abs_paths_to_dvc(repo_change.changed_files)
+        output_files = changed_files_nlx + self.git.abs_paths_to_dvc(self.declaration_output_files)
+        args_files_nlx = self.git.abs_paths_to_dvc(self.get_data_files_from_args(argv))
 
         input_files_from_args = list(set(args_files_nlx) - set(changed_files_nlx))
-        input_files = self.git.abs_paths_to_nlx(input_files_from_args + self.declaration_input_files)
+        input_files = self.git.abs_paths_to_dvc(input_files_from_args + self.declaration_input_files)
 
-        for data_path in repo_change.data_paths_for_changed_files:
-            dirname = os.path.dirname(data_path.cache.relative)
+        for data_item in repo_change.data_items_for_changed_files:
+            dirname = os.path.dirname(data_item.cache.relative)
             if not os.path.isdir(dirname):
                 os.makedirs(dirname)
 
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
-                data_path.data.relative, data_path.cache.relative))
-            shutil.move(data_path.data.relative, data_path.cache.relative)
+                data_item.data.relative, data_item.cache.relative))
+            shutil.move(data_item.data.relative, data_item.cache.relative)
 
-            data_path.create_symlink()
+            data_item.create_symlink()
 
-            nlx_code_sources = map(lambda x: self.git.abs_paths_to_nlx([x])[0], self.code)
+            nlx_code_sources = map(lambda x: self.git.abs_paths_to_dvc([x])[0], self.code)
 
-            Logger.debug('Create state file "{}"'.format(data_path.state.relative))
-            state_file = StateFile(data_path.state.relative, self.git,
+            Logger.debug('Create state file "{}"'.format(data_item.state.relative))
+            state_file = StateFile(data_item.state.relative, self.git,
                                    input_files,
                                    output_files,
                                    nlx_code_sources,
@@ -166,7 +167,7 @@ class CmdRun(CmdBase):
         for arg in argv:
             try:
                 if os.path.isfile(arg):
-                    self.path_factory.data_path(arg)
+                    self.path_factory.data_item(arg)
                     result.append(arg)
             except NotInDataDirError:
                 pass

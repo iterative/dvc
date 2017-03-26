@@ -1,7 +1,7 @@
 import os
 
-from dvc.path.data_item import DataPath, DataFilePathError, NotInDataDirError
-from dvc.path.path import DvcPath
+from dvc.path.data_item import DataItem, DataItemError, NotInDataDirError
+from dvc.path.path import Path
 
 
 class PathFactory(object):
@@ -11,25 +11,25 @@ class PathFactory(object):
         self._curr_dir_abs = os.path.realpath(os.curdir)
 
     def path(self, relative_raw):
-        return DvcPath(relative_raw, self._git)
+        return Path(relative_raw, self._git)
 
-    def data_path(self, data_file):
-        return DataPath(data_file, self._git, self._config)
+    def data_item(self, data_file):
+        return DataItem(data_file, self._git, self._config)
 
-    def existing_data_path(self, data_file):
-        if not os.path.islink(data_file):
-            raise DataFilePathError(u'Data file "%s" must be a symbolic link' % data_file)
-        resolved_symlink = os.path.realpath(data_file)
-        return DataPath(data_file, self._git, self._config, resolved_symlink)
+    def existing_data_item(self, file):
+        if not os.path.islink(file):
+            raise DataItemError(u'Data file "%s" must be a symbolic link' % file)
+        resolved_symlink = os.path.realpath(file)
+        return DataItem(file, self._git, self._config, resolved_symlink)
 
-    def to_data_path(self, files):
+    def to_data_items(self, files):
         result = []
         externally_created_files = []
 
         for file in files:
             try:
-                data_path = DataPath(file, self._git, self._config)
-                result.append(data_path)
+                data_item = DataItem(file, self._git, self._config)
+                result.append(data_item)
             except NotInDataDirError:
                 externally_created_files.append(file)
 

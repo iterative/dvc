@@ -2,7 +2,7 @@ import os
 
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI
-from dvc.path.data_item import NotInDataDirError, DataFilePathError, DataPath
+from dvc.path.data_item import NotInDataDirError, DataItemError, DataItem
 from dvc.path.factory import PathFactory
 from tests.basic_env import BasicEnvironment
 
@@ -15,7 +15,7 @@ class TestDataFileObjBasic(BasicEnvironment):
         config = ConfigI('data', 'cache', 'state')
 
         file = os.path.join('data', 'file.txt')
-        self._data_path = DataPath(file, git, config)
+        self._data_path = DataItem(file, git, config)
         pass
 
     def test_data_file(self):
@@ -56,27 +56,27 @@ class TestPathFactory(BasicEnvironment):
         pass
 
     def test_data_file_factory(self):
-        data_path = self.path_factory.data_path(self.file)
+        data_path = self.path_factory.data_item(self.file)
         self.assertEqual(data_path.data.dvc, self.file)
 
         indirect_file_path = os.path.join('..', self._proj_dir, self.file)
-        data_path_indirect = self.path_factory.data_path(indirect_file_path)
+        data_path_indirect = self.path_factory.data_item(indirect_file_path)
         self.assertEqual(data_path_indirect.data.dvc, self.file)
         pass
 
     def test_data_symlink_factory(self):
-        data_path = self.path_factory.existing_data_path(self.file_symlink)
+        data_path = self.path_factory.existing_data_item(self.file_symlink)
         self.assertEqual(data_path.data.dvc, self.file_symlink)
         pass
 
     def test_data_symlink_factory_cache(self):
-        data_path = self.path_factory.existing_data_path(self.file_symlink)
+        data_path = self.path_factory.existing_data_item(self.file_symlink)
         self.assertEqual(data_path.cache.dvc, self.file)
         pass
 
     def test_data_symlink_factory_exception(self):
-        with self.assertRaises(DataFilePathError):
-            self.path_factory.existing_data_path(self.file)
+        with self.assertRaises(DataItemError):
+            self.path_factory.existing_data_item(self.file)
         pass
 
     def test_data_path(self):
@@ -96,7 +96,7 @@ class TestPathFactory(BasicEnvironment):
             data_path_file2
         ]
 
-        data_path_list, exclude_file_list = self.path_factory.to_data_path(files)
+        data_path_list, exclude_file_list = self.path_factory.to_data_items(files)
 
         self.assertEqual(len(data_path_list), 2)
         self.assertEqual(len(exclude_file_list), 1)
@@ -116,7 +116,7 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.path_factory = PathFactory(git, config)
 
         deep_path = os.path.join(self.data_dir, 'dir1', 'd2', 'file.txt')
-        self.data_path = self.path_factory.data_path(deep_path)
+        self.data_path = self.path_factory.data_item(deep_path)
         pass
 
     def test_data_file(self):
@@ -135,7 +135,7 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.assertEqual(self.data_path._symlink_file, '../../../ca/dir1/d2/file.txt_eeeff8f')
 
     def test_data_dir(self):
-        data_path = self.path_factory.data_path(self.data_dir)
+        data_path = self.path_factory.data_item(self.data_dir)
         self.assertEqual(data_path.data.dvc, self.data_dir)
         self.assertEqual(data_path.data_dvc_short, '')
 
@@ -154,7 +154,7 @@ class TestDataFileObjLongPath(BasicEnvironment):
 
         # self._dobj = DataFileObj(os.path.join('..', '..', 'data', 'file1.txt'),
         #                          self._git, self._config)
-        self.data_path = self.path_factory.data_path(os.path.join('..', '..', 'data', 'file1.txt'))
+        self.data_path = self.path_factory.data_item(os.path.join('..', '..', 'data', 'file1.txt'))
         pass
 
     def test_data_file(self):
@@ -171,17 +171,17 @@ class TestDataFileObjLongPath(BasicEnvironment):
 
     def test_file_name_only(self):
         with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_path('file.txt')
+            self.path_factory.data_item('file.txt')
         pass
 
     def test_relative_git_dir(self):
         with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_path('data/file.txt')
+            self.path_factory.data_item('data/file.txt')
         pass
 
     def test_relative_path_error(self):
         with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_path('../data/file.txt')
+            self.path_factory.data_item('../data/file.txt')
         pass
 
 
@@ -199,5 +199,5 @@ class RunOutsideGitRepoTest(BasicEnvironment):
         path_factory = PathFactory(git, config)
 
         with self.assertRaises(NotInDataDirError):
-            path_factory.data_path('file.txt')
+            path_factory.data_item('file.txt')
         pass

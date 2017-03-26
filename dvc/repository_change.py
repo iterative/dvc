@@ -51,7 +51,7 @@ class RepositoryChange(object):
         GitWrapper.exec_cmd_only_success(args, stdout, stderr)
         self._file_states = self._get_file_states()
 
-        self._changed_data_paths, self._externally_created_files = path_factory.to_data_path(self.changed_files)
+        self._changed_data_items, self._externally_created_files = path_factory.to_data_items(self.changed_files)
 
     @staticmethod
     def exec_cmd(args, stdout, stderr, git, path_factory):
@@ -112,8 +112,8 @@ class RepositoryChange(object):
         pass
 
     @property
-    def data_paths_for_changed_files(self):
-        return self._changed_data_paths
+    def data_items_for_changed_files(self):
+        return self._changed_data_items
 
     @property
     def externally_created_files(self):

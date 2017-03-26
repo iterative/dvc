@@ -1,7 +1,7 @@
 import os
 
 from dvc.cmd_data_remove import CmdDataRemove, DataRemoveError
-from dvc.path.data_item import DataFilePathError
+from dvc.path.data_item import DataItemError
 from tests.basic_env import DirHierarchyEnvironment
 
 
@@ -94,7 +94,7 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
         self.assertIsNone(self.cache6)
         self.assertTrue(os.path.isfile(self.state6))
 
-        with self.assertRaises(DataFilePathError):
+        with self.assertRaises(DataItemError):
             cmd.remove_data_instance(self.file6)
 
 

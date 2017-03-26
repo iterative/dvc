@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI, GitWrapper
-from dvc.path.data_item import DataPath
+from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 
 
@@ -98,12 +98,12 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
     def crate_data_item(self, data_file, cache_file=True, content='random text'):
         file_result = os.path.join('data', data_file)
-        state_result = os.path.join('state', data_file + DataPath.STATE_FILE_SUFFIX)
+        state_result = os.path.join('state', data_file + DataItem.STATE_FILE_SUFFIX)
 
         self.create_content_file(state_result, 'state content')
 
         if cache_file:
-            cache_result = os.path.join('cache', data_file + DataPath.CACHE_FILE_SEP + self._commit)
+            cache_result = os.path.join('cache', data_file + DataItem.CACHE_FILE_SEP + self._commit)
             self.create_content_file(cache_result, content)
 
             relevant_dir = self.relevant_dir(data_file)

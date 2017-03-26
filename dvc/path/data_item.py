@@ -1,11 +1,11 @@
 import os
 
-from dvc.path.path import DvcPath
+from dvc.path.path import Path
 from dvc.exceptions import DvcException
 from dvc.utils import cached_property
 
 
-class DataFilePathError(DvcException):
+class DataItemError(DvcException):
     def __init__(self, msg):
         DvcException.__init__(self, 'Data file error: {}'.format(msg))
 
@@ -17,7 +17,7 @@ class NotInDataDirError(DvcException):
                               format(file, data_dir))
 
 
-class DataPath(object):
+class DataItem(object):
     STATE_FILE_SUFFIX = '.state'
     CACHE_FILE_SEP = '_'
 
@@ -26,7 +26,7 @@ class DataPath(object):
         self._config = config
         self._cache_file = cache_file
 
-        self._data = DvcPath(data_file, git)
+        self._data = Path(data_file, git)
         if not self._data.abs.startswith(self.data_dir_abs):
             raise NotInDataDirError(data_file, self._config.data_dir)
 
@@ -46,17 +46,17 @@ class DataPath(object):
     def state(self):
         state_dir = os.path.join(self._git.git_dir_abs, self._config.state_dir)
         state_file = os.path.join(state_dir, self.data_dvc_short + self.STATE_FILE_SUFFIX)
-        return DvcPath(state_file, self._git)
+        return Path(state_file, self._git)
 
     @cached_property
     def cache(self):
         if self._cache_file:
-            return DvcPath(self._cache_file, self._git)
+            return Path(self._cache_file, self._git)
         else:
             cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
             cache_file_suffix = self.CACHE_FILE_SEP + self._git.curr_commit
             cache_file = os.path.join(cache_dir, self.data_dvc_short + cache_file_suffix)
-            return DvcPath(cache_file, self._git)
+            return Path(cache_file, self._git)
 
     @cached_property
     def data_dir_abs(self):

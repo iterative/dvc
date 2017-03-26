@@ -1,7 +1,7 @@
 import os
 
 
-class DvcPath(object):
+class Path(object):
     def __init__(self, relative_raw, git):
         self._abs = os.path.abspath(relative_raw)
         self._dvc = os.path.relpath(self.abs, git.git_dir_abs)

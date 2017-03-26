@@ -173,7 +173,7 @@ class GitWrapper(GitWrapperI):
 
         return result
 
-    def abs_paths_to_nlx(self, files):
+    def abs_paths_to_dvc(self, files):
         result = []
         for file in files:
             result.append(os.path.relpath(os.path.abspath(file), self.git_dir_abs))

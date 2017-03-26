@@ -2,7 +2,7 @@ import os
 import shutil
 from unittest import TestCase
 
-from dvc.path.path import DvcPath
+from dvc.path.path import Path
 from dvc.git_wrapper import GitWrapperI
 
 
@@ -27,7 +27,7 @@ class TestDvcPathTest(TestCase):
         os.chdir(self.test_dir)
 
         file = os.path.join('data', 'file.txt')
-        path = DvcPath(file, self._git)
+        path = Path(file, self._git)
         self._validate_dvc_path(path, file, file)
         pass
 
@@ -37,7 +37,7 @@ class TestDvcPathTest(TestCase):
         file_dvc_path = os.path.join('data', 'file1.txt')
         file_relative_path = os.path.join('..', file_dvc_path)
 
-        path = DvcPath(file_relative_path, self._git)
+        path = Path(file_relative_path, self._git)
         self._validate_dvc_path(path, file_dvc_path, file_relative_path)
         pass
 
@@ -48,7 +48,7 @@ class TestDvcPathTest(TestCase):
         file_dvc = os.path.join('code', 'lib', 'context_switcher_structs.asm')
         file_relative = os.path.join('..', '..', '..', file_dvc)
 
-        path = DvcPath(file_relative, self._git)
+        path = Path(file_relative, self._git)
         self._validate_dvc_path(path, file_dvc, file_relative)
         pass
 
@@ -59,6 +59,6 @@ class TestDvcPathTest(TestCase):
         file_relative_path = os.path.join(deep_dir, 'd4', 'dir5', 'rawdata.tsv')
         file_dvc_path = os.path.join(deep_dir, file_relative_path)
 
-        path = DvcPath(file_relative_path, self._git)
+        path = Path(file_relative_path, self._git)
         self._validate_dvc_path(path, file_dvc_path, file_relative_path)
         pass
