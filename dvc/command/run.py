@@ -34,11 +34,11 @@ class CmdRun(CmdBase):
         parser.add_argument('--output-file', '-o', action='append',
                             help='Declare output file for reproducible cmd')
         parser.add_argument('--code', '-c', action='append',
-                            help='Code file or code directory which produces the output')
+                            help='Code dependencies which produce the output')
         pass
 
     @property
-    def code(self):
+    def code_dependencies(self):
         return self.args.code
 
     @property
@@ -109,13 +109,13 @@ class CmdRun(CmdBase):
 
             data_item.create_symlink()
 
-            nlx_code_sources = map(lambda x: self.git.abs_paths_to_dvc([x])[0], self.code)
+            dvc_code_dependencies = map(lambda x: self.git.abs_paths_to_dvc([x])[0], self.code_dependencies)
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
             state_file = StateFile(data_item.state.relative, self.git,
                                    input_files,
                                    output_files,
-                                   nlx_code_sources,
+                                   dvc_code_dependencies,
                                    argv=argv)
             state_file.save()
             pass

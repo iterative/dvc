@@ -24,7 +24,7 @@ class CmdRepro(CmdRun):
         pass
 
     @property
-    def code(self):
+    def code_dependencies(self):
         return self._code
 
     def define_args(self, parser):
@@ -157,7 +157,7 @@ class ReproChange(object):
                 were_input_files_changed = True
 
         was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
-                                                              self._state.code_sources)
+                                                              self._state.code_dependencies)
 
         if not force and not was_source_code_changed and not were_input_files_changed:
             Logger.debug('Data file "{}" is up to date'.format(

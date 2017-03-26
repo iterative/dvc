@@ -23,11 +23,11 @@ class StateFile(object):
     PARAM_CREATED_AT = 'CreatedAt'
     PARAM_INPUT_FILES = 'InputFiles'
     PARAM_OUTPUT_FILES = 'OutputFiles'
-    PARAM_CODE_SOURCES = 'CodeSources'
+    PARAM_CODE_DEPENDENCIES = 'CodeDependencies'
     PARAM_NOT_REPRODUCIBLE = 'NotReproducible'
 
     def __init__(self, file, git, input_files, output_files,
-                 code_sources=[],
+                 code_dependencies=[],
                  is_reproducible=True,
                  argv=sys.argv,
                  norm_argv=None,
@@ -38,7 +38,7 @@ class StateFile(object):
         self.input_files = input_files
         self.output_files = output_files
         self.is_reproducible = is_reproducible
-        self.code_sources = code_sources
+        self.code_dependencies = code_dependencies
 
         self.argv = argv
         if norm_argv:
@@ -51,7 +51,7 @@ class StateFile(object):
         if cwd:
             self.cwd = cwd
         else:
-            self.cwd = self.get_nlx_path()
+            self.cwd = self.get_dvc_path()
         pass
 
     @staticmethod
@@ -63,7 +63,7 @@ class StateFile(object):
                          git,
                          data.get(StateFile.PARAM_INPUT_FILES, []),
                          data.get(StateFile.PARAM_OUTPUT_FILES, []),
-                         data.get(StateFile.PARAM_CODE_SOURCES, []),
+                         data.get(StateFile.PARAM_CODE_DEPENDENCIES, []),
                          not data.get(StateFile.PARAM_NOT_REPRODUCIBLE, False),
                          data.get(StateFile.PARAM_ARGV),
                          data.get(StateFile.PARAM_NORM_ARGV),
@@ -80,7 +80,7 @@ class StateFile(object):
             self.PARAM_CREATED_AT:      self.created_at,
             self.PARAM_INPUT_FILES:     self.input_files,
             self.PARAM_OUTPUT_FILES:    self.output_files,
-            self.PARAM_CODE_SOURCES:    self.code_sources
+            self.PARAM_CODE_DEPENDENCIES:   self.code_dependencies
         }
 
         if not self.is_reproducible:
@@ -107,14 +107,14 @@ class StateFile(object):
             for arg in self.argv [1:]:
                 if os.path.isfile(arg):
                     path = os.path.abspath(arg)
-                    nlx_path = os.path.relpath(path, self.git.git_dir_abs)
-                    result.append(nlx_path)
+                    dvc_path = os.path.relpath(path, self.git.git_dir_abs)
+                    result.append(dvc_path)
                 else:
                     result.append(arg)
 
         return result
 
-    def get_nlx_path(self):
+    def get_dvc_path(self):
         pwd = os.path.realpath(os.curdir)
         if not pwd.startswith(self.git.git_dir_abs):
             raise StateFileError('the file cannot be created outside of a git repository')
