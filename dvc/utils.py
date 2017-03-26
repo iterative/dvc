@@ -1,4 +1,4 @@
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 
 
@@ -21,6 +21,6 @@ def run(cmd):
     import sys
     try:
         sys.exit(cmd.run())
-    except NeatLynxException as e:
+    except DvcException as e:
         Logger.error(e)
         sys.exit(1)

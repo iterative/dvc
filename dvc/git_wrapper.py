@@ -3,14 +3,14 @@ import sys
 import subprocess
 
 from dvc.path.dvc_path import DvcPath
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.config import Config
 
 
-class GitCmdError(NeatLynxException):
+class GitCmdError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, msg)
+        DvcException.__init__(self, msg)
 
 
 class GitWrapperI(object):

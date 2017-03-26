@@ -1,20 +1,20 @@
 import os
 
 from dvc.path.dvc_path import DvcPath
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.utils import cached_property
 
 
-class DataFilePathError(NeatLynxException):
+class DataFilePathError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Data file error: {}'.format(msg))
+        DvcException.__init__(self, 'Data file error: {}'.format(msg))
 
 
-class NotInDataDirError(NeatLynxException):
+class NotInDataDirError(DvcException):
     def __init__(self, file, data_dir):
-        NeatLynxException.__init__(self,
+        DvcException.__init__(self,
                                    'Data file location error: the file "{}" has to be in the data directory "{}"'.
-                                   format(file, data_dir))
+                              format(file, data_dir))
 
 
 class DataPath(object):

@@ -1,12 +1,12 @@
 import os
 import configparser
 
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 
 
-class ConfigError(NeatLynxException):
+class ConfigError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Config file error: {}'.format(msg))
+        DvcException.__init__(self, 'Config file error: {}'.format(msg))
 
 
 class ConfigI(object):

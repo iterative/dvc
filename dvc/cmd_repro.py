@@ -5,15 +5,15 @@ import fasteners
 from dvc.cmd_base import CmdBase
 from dvc.cmd_run import CmdRun
 from dvc.logger import Logger
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.path.data_path import NotInDataDirError
 from dvc.state_file import StateFile
 from dvc.utils import run
 
 
-class ReproError(NeatLynxException):
+class ReproError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Run error: {}'.format(msg))
+        DvcException.__init__(self, 'Run error: {}'.format(msg))
 
 
 class CmdRepro(CmdRun):

@@ -5,13 +5,13 @@ from boto.s3.connection import S3Connection
 
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.utils import run
 
 
-class DataSyncError(NeatLynxException):
+class DataSyncError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Data sync error: {}'.format(msg))
+        DvcException.__init__(self, 'Data sync error: {}'.format(msg))
 
 
 def sizeof_fmt(num, suffix='B'):

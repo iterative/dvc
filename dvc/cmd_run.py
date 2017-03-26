@@ -6,15 +6,15 @@ from dvc.path.data_path import NotInDataDirError
 from dvc.git_wrapper import GitWrapper
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import run
 
 
-class RunError(NeatLynxException):
+class RunError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Run error: {}'.format(msg))
+        DvcException.__init__(self, 'Run error: {}'.format(msg))
 
 
 class CmdRun(CmdBase):

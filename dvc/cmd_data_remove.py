@@ -4,14 +4,14 @@ import fasteners
 from boto.s3.connection import S3Connection
 
 from dvc.cmd_base import CmdBase
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.utils import run
 
 
-class DataRemoveError(NeatLynxException):
+class DataRemoveError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Data remove error: {}'.format(msg))
+        DvcException.__init__(self, 'Data remove error: {}'.format(msg))
 
 
 class CmdDataRemove(CmdBase):
@@ -63,7 +63,7 @@ class CmdDataRemove(CmdBase):
             else:
                 self.remove_data_instance(target)
             return True
-        except NeatLynxException as ex:
+        except DvcException as ex:
             Logger.error('Unable to remove data file "{}": {}'.format(target, ex))
             return False
 

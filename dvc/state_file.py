@@ -3,12 +3,12 @@ import sys
 import json
 import time
 
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 
 
-class StateFileError(NeatLynxException):
+class StateFileError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'State file error: {}'.format(msg))
+        DvcException.__init__(self, 'State file error: {}'.format(msg))
 
 
 class StateFile(object):

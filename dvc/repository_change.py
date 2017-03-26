@@ -1,12 +1,12 @@
 import os
 
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 
 
-class RepositoryChangeError(NeatLynxException):
+class RepositoryChangeError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Repository change error: {}'.format(msg))
+        DvcException.__init__(self, 'Repository change error: {}'.format(msg))
 
 
 class FileModificationState(object):

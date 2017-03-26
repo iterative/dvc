@@ -4,13 +4,13 @@ from pathlib import Path
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.utils import run
 
 
-class InitError(NeatLynxException):
+class InitError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Init error: {}'.format(msg))
+        DvcException.__init__(self, 'Init error: {}'.format(msg))
 
 
 class CmdInit(CmdBase):

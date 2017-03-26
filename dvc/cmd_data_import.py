@@ -7,14 +7,14 @@ import requests
 from dvc.cmd_base import CmdBase
 from dvc.cmd_data_sync import sizeof_fmt
 from dvc.logger import Logger
-from dvc.exceptions import NeatLynxException
+from dvc.exceptions import DvcException
 from dvc.state_file import StateFile
 from dvc.utils import run
 
 
-class DataImportError(NeatLynxException):
+class DataImportError(DvcException):
     def __init__(self, msg):
-        NeatLynxException.__init__(self, 'Import error: {}'.format(msg))
+        DvcException.__init__(self, 'Import error: {}'.format(msg))
 
 
 class CmdDataImport(CmdBase):
