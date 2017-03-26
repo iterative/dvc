@@ -4,12 +4,10 @@ RAW_DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
 
 RAW_DATA_LOCAL=sync_raw_data
 CODE_LOCAL=sync_code
-TEST_REPO=repo_clean
-
-TEST_REPO=repo_clean
+TEST_REPO=repo_test
 
 function dvc_info() {
-    echo '=============== DVC test: $1 ==============='
+    echo "=============== DVC test: $1 ==============="
 }
 
 function _init_repo() {
@@ -19,17 +17,17 @@ function _init_repo() {
 
     dvc_info 'import xml files'
     mkdir data/xml
-    dvc-data-import "../$RAW_DATA_LOCAL/*" data/xml
+    dvc-data-import ../$RAW_DATA_LOCAL/* data/xml
     
     dvc_info 'copy code'
     mkdir code
-    cp "../$CODE_LOCAL/*" code/
+    cp ../$CODE_LOCAL/* code/
     git add code/
     git commit -m 'Add code'
 }
 
 function create_repo() {
-    dvc_info('create reporitory')
+    dvc_info 'create reporitory'
     rm -rf $TEST_REPO
     mkdir $TEST_REPO
     (cd $TEST_REPO && _init_repo)
