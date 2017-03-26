@@ -9,6 +9,7 @@ from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
+from dvc.utils import run
 
 
 class RunError(NeatLynxException):
@@ -174,10 +175,4 @@ class CmdRun(CmdBase):
 
 
 if __name__ == '__main__':
-    import sys
-
-    try:
-        sys.exit(CmdRun().run())
-    except NeatLynxException as e:
-        Logger.error(e)
-        sys.exit(1)
+    run(CmdRun())

@@ -1,11 +1,11 @@
 import os
-import sys
 from pathlib import Path
 
 from dvc.cmd_base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import NeatLynxException
+from dvc.utils import run
 
 
 class InitError(NeatLynxException):
@@ -114,10 +114,5 @@ SecurityGroup = dvc-group'''
 
         Logger.printing('Directory {} was added to .gitignore file'.format(cache_dir_name))
 
-
 if __name__ == '__main__':
-    try:
-        CmdInit().run()
-    except NeatLynxException as e:
-        Logger.error(e)
-        sys.exit(1)
+    run(CmdInit())

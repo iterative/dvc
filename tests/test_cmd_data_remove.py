@@ -1,13 +1,8 @@
-from unittest import TestCase
 import os
-import shutil
 
 from dvc.cmd_data_remove import CmdDataRemove, DataRemoveError
-from dvc.config import ConfigI
-from dvc.path.data_path import NotInDataDirError, DataFilePathError, DataPath
-from dvc.git_wrapper import GitWrapperI
-from dvc.path.path_factory import PathFactory
-from tests.basic_env import BasicEnvironment, DirHierarchyEnvironment
+from dvc.path.data_path import DataFilePathError
+from tests.basic_env import DirHierarchyEnvironment
 
 
 class TestCmdDataRemove(DirHierarchyEnvironment):

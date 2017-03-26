@@ -6,6 +6,7 @@ from boto.s3.connection import S3Connection
 from dvc.cmd_base import CmdBase
 from dvc.exceptions import NeatLynxException
 from dvc.logger import Logger
+from dvc.utils import run
 
 
 class DataRemoveError(NeatLynxException):
@@ -129,9 +130,4 @@ class CmdDataRemove(CmdBase):
 
 
 if __name__ == '__main__':
-    import sys
-    try:
-        sys.exit(CmdDataRemove().run())
-    except NeatLynxException as e:
-        Logger.error(e)
-        sys.exit(1)
+    run(CmdDataRemove())

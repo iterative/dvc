@@ -8,6 +8,7 @@ from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
 from dvc.path.data_path import NotInDataDirError
 from dvc.state_file import StateFile
+from dvc.utils import run
 
 
 class ReproError(NeatLynxException):
@@ -166,9 +167,4 @@ class ReproChange(object):
         return self.reproduce_data_file()
 
 if __name__ == '__main__':
-    import sys
-    try:
-        sys.exit(CmdRepro().run())
-    except NeatLynxException as e:
-        Logger.error(e)
-        sys.exit(1)
+    run(CmdRepro())

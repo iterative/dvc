@@ -1,4 +1,3 @@
-import sys
 import os
 from shutil import copyfile
 import re
@@ -10,6 +9,7 @@ from dvc.cmd_data_sync import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import NeatLynxException
 from dvc.state_file import StateFile
+from dvc.utils import run
 
 
 class DataImportError(NeatLynxException):
@@ -138,10 +138,5 @@ class CmdDataImport(CmdBase):
                     f.write(chunk)
         return
 
-
 if __name__ == '__main__':
-    try:
-        sys.exit(CmdDataImport().run())
-    except NeatLynxException as e:
-        Logger.error(e)
-        sys.exit(1)
+    run(CmdDataImport())
