@@ -16,6 +16,6 @@ function run_test() {
     dvc-repro data/tsv/Badges.tsv
 }
 
-#export TEST_REPO=repo_repro_test
+export TEST_REPO=repo_reproduct
 create_repo
 (cd repo_repro_test; run_test)
