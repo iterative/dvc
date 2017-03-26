@@ -48,19 +48,24 @@ class CmdDataRemove(CmdBase):
 
         error = False
         for target in self.args.target:
-            try:
-                if os.path.isdir(target):
-                    self.remove_dir(target)
-                else:
-                    self.remove_data_instance(target)
-            except NeatLynxException as ex:
-                Logger.error('Unable to remove data file "{}": {}'.format(target, ex))
+            if not self.remove_target(target):
                 error = True
 
         message = 'DVC data remove: {}'.format(' '.join(self.args.target))
         self.commit_if_needed(message, error)
 
         return 0 if error == 0 else 1
+
+    def remove_target(self, target):
+        try:
+            if os.path.isdir(target):
+                self.remove_dir(target)
+            else:
+                self.remove_data_instance(target)
+            return True
+        except NeatLynxException as ex:
+            Logger.error('Unable to remove data file "{}": {}'.format(target, ex))
+            return False
 
     def remove_dir(self, target):
         if not self.args.recursive:
@@ -83,13 +88,19 @@ class CmdDataRemove(CmdBase):
         # it raises exception if not a symlink is provided
         data_path = self.path_factory.existing_data_path(target)
 
-        if not self.args.keep_in_cache and os.path.isfile(data_path.cache.relative):
-            os.remove(data_path.cache.relative)
-            self.remove_dir_if_empty(data_path.cache.relative)
-        else:
-            if not self.args.keep_in_cache:
-                Logger.warn(u'Unable to find cache file for data instance %s' % data_path.data.relative)
+        self._remove_cache_file(data_path)
+        self._remove_state_file(data_path)
+        self._remove_cloud_cache(data_path)
 
+        os.remove(data_path.data.relative)
+        pass
+
+    def _remove_cloud_cache(self, data_path):
+        if not self.args.keep_in_cloud:
+            aws_key = self.cache_file_aws_key(data_path.cache.dvc)
+            self.remove_from_cloud(aws_key)
+
+    def _remove_state_file(self, data_path):
         if os.path.isfile(data_path.state.relative):
             os.remove(data_path.state.relative)
             self.remove_dir_if_empty(data_path.state.relative)
@@ -97,12 +108,13 @@ class CmdDataRemove(CmdBase):
             Logger.warn(u'State file {} for data instance {} does not exist'.format(
                 data_path.state.relative, data_path.data.relative))
 
-        if not self.args.keep_in_cloud:
-            aws_key = self.cache_file_aws_key(data_path.cache.dvc)
-            self.remove_from_cloud(aws_key)
-
-        os.remove(data_path.data.relative)
-        pass
+    def _remove_cache_file(self, data_path):
+        if not self.args.keep_in_cache and os.path.isfile(data_path.cache.relative):
+            os.remove(data_path.cache.relative)
+            self.remove_dir_if_empty(data_path.cache.relative)
+        else:
+            if not self.args.keep_in_cache:
+                Logger.warn(u'Unable to find cache file for data instance %s' % data_path.data.relative)
 
     def remove_from_cloud(self, aws_file_name):
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
