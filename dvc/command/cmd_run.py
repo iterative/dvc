@@ -5,7 +5,7 @@ import fasteners
 
 from dvc.path.data_item import NotInDataDirError
 from dvc.git_wrapper import GitWrapper
-from dvc.cmd_base import CmdBase
+from dvc.command.cmd_base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.repository_change import RepositoryChange
