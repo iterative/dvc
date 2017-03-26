@@ -1,7 +1,7 @@
 import os
 
-from dvc.path.data_path import DataPath, DataFilePathError, NotInDataDirError
-from dvc.path.dvc_path import DvcPath
+from dvc.path.data_item import DataPath, DataFilePathError, NotInDataDirError
+from dvc.path.path import DvcPath
 
 
 class PathFactory(object):

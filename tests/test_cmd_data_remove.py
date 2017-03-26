@@ -1,7 +1,7 @@
 import os
 
 from dvc.cmd_data_remove import CmdDataRemove, DataRemoveError
-from dvc.path.data_path import DataFilePathError
+from dvc.path.data_item import DataFilePathError
 from tests.basic_env import DirHierarchyEnvironment
 
 

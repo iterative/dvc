@@ -4,8 +4,8 @@ from unittest import TestCase
 
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI, GitWrapper
-from dvc.path.data_path import DataPath
-from dvc.path.path_factory import PathFactory
+from dvc.path.data_item import DataPath
+from dvc.path.factory import PathFactory
 
 
 class BasicEnvironment(TestCase):

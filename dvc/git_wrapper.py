@@ -2,7 +2,6 @@ import os
 import sys
 import subprocess
 
-from dvc.path.dvc_path import DvcPath
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.config import Config

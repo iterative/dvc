@@ -1,6 +1,6 @@
 import os
 
-from dvc.path.dvc_path import DvcPath
+from dvc.path.path import DvcPath
 from dvc.exceptions import DvcException
 from dvc.utils import cached_property
 

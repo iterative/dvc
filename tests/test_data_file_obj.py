@@ -2,8 +2,8 @@ import os
 
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI
-from dvc.path.data_path import NotInDataDirError, DataFilePathError, DataPath
-from dvc.path.path_factory import PathFactory
+from dvc.path.data_item import NotInDataDirError, DataFilePathError, DataPath
+from dvc.path.factory import PathFactory
 from tests.basic_env import BasicEnvironment
 
 

@@ -4,7 +4,7 @@ import os
 from dvc.git_wrapper import GitWrapper
 from dvc.config import Config, ConfigError
 from dvc.logger import Logger
-from dvc.path.path_factory import PathFactory
+from dvc.path.factory import PathFactory
 from dvc.utils import cached_property
 
 
