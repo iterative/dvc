@@ -106,7 +106,7 @@ class ReproChange(object):
         self._cmd_obj = cmd_obj
         self._state = StateFile.load(data_item.state.relative, self.git)
 
-        cmd_obj._code = self._state.code_sources # HACK!!!
+        cmd_obj._code = self._state.code_dependencies # HACK!!!
 
         argv = self._state.norm_argv
 

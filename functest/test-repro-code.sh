@@ -18,4 +18,4 @@ function run_test() {
 
 export TEST_REPO=repo_reproduct
 create_repo
-(cd repo_repro_test; run_test)
+(cd $TEST_REPO; run_test)
