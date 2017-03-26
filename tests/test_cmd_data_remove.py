@@ -1,0 +1,183 @@
+from unittest import TestCase
+import os
+import shutil
+
+from dvc.cmd_data_remove import CmdDataRemove, DataRemoveError
+from dvc.config import ConfigI
+from dvc.path.data_path import NotInDataDirError, DataFilePathError, DataPath
+from dvc.git_wrapper import GitWrapperI
+from dvc.path.path_factory import PathFactory
+from tests.basic_env import BasicEnvironment, DirHierarchyEnvironment
+
+
+class TestCmdDataRemove(DirHierarchyEnvironment):
+    def setUp(self):
+        DirHierarchyEnvironment.init_environment(self)
+
+    def test_file_by_file_removal(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        dir1_dvc_name = os.path.join('data', self.dir1)
+        self.assertTrue(os.path.exists(dir1_dvc_name))
+
+        cmd.remove_dir_file_by_file(dir1_dvc_name)
+        self.assertFalse(os.path.exists(dir1_dvc_name))
+
+    def test_remove_deep_dir(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+        cmd.args.recursive = True
+
+        dir1_dvc_name = os.path.join('data', self.dir1)
+        self.assertTrue(os.path.exists(dir1_dvc_name))
+
+        cmd.remove_dir(dir1_dvc_name)
+        self.assertFalse(os.path.exists(dir1_dvc_name))
+
+    def test_not_recursive_removal(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+        cmd.args.recursive = False
+
+        dir1_dvc_name = os.path.join('data', self.dir1)
+        self.assertTrue(os.path.exists(dir1_dvc_name))
+
+        with self.assertRaises(DataRemoveError):
+            cmd.remove_dir(dir1_dvc_name)
+        pass
+
+    def test_data_dir_removal(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+        cmd.args.recursive = True
+
+        data_dir = 'data'
+        self.assertTrue(os.path.exists(data_dir))
+
+        with self.assertRaises(DataRemoveError):
+            cmd.remove_dir(data_dir)
+        pass
+
+
+class TestRemoveDataItem(DirHierarchyEnvironment):
+    def setUp(self):
+        DirHierarchyEnvironment.init_environment(self)
+
+    def test_remove_data_instance(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        self.assertTrue(os.path.isfile(self.file1))
+        self.assertTrue(os.path.isfile(self.cache1))
+        self.assertTrue(os.path.isfile(self.state1))
+
+        cmd.remove_data_instance(self.file1)
+        self.assertFalse(os.path.exists(self.file1))
+        self.assertFalse(os.path.exists(self.cache1))
+        self.assertFalse(os.path.exists(self.state1))
+
+    def test_keep_cache(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+        cmd.args.keep_in_cache = True
+
+        self.assertTrue(os.path.isfile(self.file1))
+        self.assertTrue(os.path.isfile(self.cache1))
+        self.assertTrue(os.path.isfile(self.state1))
+
+        cmd.remove_data_instance(self.file1)
+        self.assertFalse(os.path.exists(self.file1))
+        self.assertTrue(os.path.exists(self.cache1))
+        self.assertFalse(os.path.exists(self.state1))
+
+    def test_remove_data_instance_without_cache(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        self.assertTrue(os.path.isfile(self.file6))
+        self.assertIsNone(self.cache6)
+        self.assertTrue(os.path.isfile(self.state6))
+
+        with self.assertRaises(DataFilePathError):
+            cmd.remove_data_instance(self.file6)
+
+
+class TestRemoveEndToEnd(DirHierarchyEnvironment):
+    def setUp(self):
+        DirHierarchyEnvironment.init_environment(self)
+
+    def test_end_to_end_with_an_error(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        dir11_full = os.path.join('data', self.dir11)
+        dir2_full = os.path.join('data', self.dir2)
+        file6_full = os.path.join('data', self.file6)
+
+        cmd.args.target = [dir11_full, self.file5, file6_full]
+        cmd.args.recursive = True
+
+        cmd.args.skip_git_actions = True
+
+        self.assertTrue(os.path.exists(dir11_full))
+        self.assertTrue(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+        self.assertTrue(os.path.exists(self.file6))
+
+        self.assertEqual(cmd.remove_all_targets(), 1)
+
+        self.assertFalse(os.path.exists(dir11_full))
+        self.assertFalse(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+        self.assertTrue(os.path.exists(self.file6))
+
+    def test_end_to_end_with_no_error(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        dir11_full = os.path.join('data', self.dir11)
+        dir2_full = os.path.join('data', self.dir2)
+
+        cmd.args.target = [dir11_full, self.file5]
+        cmd.args.recursive = True
+
+        cmd.args.skip_git_actions = True
+
+        self.assertTrue(os.path.exists(dir11_full))
+        self.assertTrue(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+
+        self.assertEqual(cmd.remove_all_targets(), 0)
+
+        self.assertFalse(os.path.exists(dir11_full))
+        self.assertFalse(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+
+    def test_run(self):
+        cmd = CmdDataRemove(False, git_obj=self._git, config_obj=self._config)
+        cmd.args.keep_in_cloud = True
+
+        dir11_full = os.path.join('data', self.dir11)
+        dir2_full = os.path.join('data', self.dir2)
+
+        cmd.args.target = [dir11_full, self.file5]
+        cmd.args.recursive = True
+
+        cmd.args.skip_git_actions = True
+
+        self.assertTrue(os.path.exists(dir11_full))
+        self.assertTrue(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+
+        self.assertEqual(cmd.run(), 0)
+
+        self.assertFalse(os.path.exists(dir11_full))
+        self.assertFalse(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))

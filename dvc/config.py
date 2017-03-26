@@ -28,6 +28,10 @@ class ConfigI(object):
     def state_dir(self):
         return self._state_dir
 
+    @property
+    def aws_storage_prefix(self):
+        return ''
+
 
 class Config(ConfigI):
     CONFIG = 'dvc.conf'

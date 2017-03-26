@@ -23,6 +23,10 @@ class GitWrapperI(object):
         return self._git_dir
 
     @property
+    def lock_file(self):
+        return os.path.join(self.git_dir_abs, '.' + Config.CONFIG + '.lock')
+
+    @property
     def git_dir_abs(self):
         return os.path.realpath(self.git_dir)
 
@@ -33,6 +37,9 @@ class GitWrapperI(object):
     @property
     def curr_commit(self):
         return self._commit
+
+    def is_ready_to_go(self):
+        return True
 
 
 class GitWrapper(GitWrapperI):
@@ -156,10 +163,6 @@ class GitWrapper(GitWrapperI):
         for status, file in statuses:
             Logger.printing('\t{} {}'.format(status, file))
         pass
-
-    @property
-    def lock_file(self):
-        return os.path.join(self.git_dir_abs, '.' + Config.CONFIG + '.lock')
 
     @staticmethod
     def abs_paths_to_relative(files):
