@@ -30,9 +30,9 @@ class CmdRun(CmdBase):
         parser.add_argument('--stdout', help='output std output to a file')
         parser.add_argument('--stderr', help='output std error to a file')
         parser.add_argument('--input-file', '-i', action='append',
-                            help='Declare input file for reproducible command')
+                            help='Declare input file for reproducible cmd')
         parser.add_argument('--output-file', '-o', action='append',
-                            help='Declare output file for reproducible command')
+                            help='Declare output file for reproducible cmd')
         parser.add_argument('--code', '-c', action='append',
                             help='Code file or code directory which produces the output')
         pass
@@ -57,7 +57,7 @@ class CmdRun(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the command since DVC is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
             return 1
 
         try:
@@ -156,7 +156,7 @@ class CmdRun(CmdBase):
             return False
 
         # if not files_states.new_files:
-        #     Logger.error('Errors occurred. No files were changed in run command.')
+        #     Logger.error('Errors occurred. No files were changed in run cmd.')
         #     return False
 
         return True

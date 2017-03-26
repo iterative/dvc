@@ -48,7 +48,7 @@ class CmdRepro(CmdRun):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the command since DVC is busy and locked. Please retry the command later.')
+            Logger.printing('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
             return 1
 
         try:
@@ -83,7 +83,7 @@ class CmdRepro(CmdRun):
                     break
 
             if error and not self.skip_git_actions:
-                Logger.error('Errors occurred. One or more repro command was not successful.')
+                Logger.error('Errors occurred. One or more repro cmd was not successful.')
                 self.not_committed_changes_warning()
                 return 1
 
@@ -114,11 +114,11 @@ class ReproChange(object):
             raise ReproError('Error: parameter {} is nor defined in state file "{}"'.
                              format(StateFile.PARAM_NORM_ARGV, data_item.state.relative))
         if len(argv) < 2:
-            raise ReproError('Error: reproducible command in state file "{}" is too short'.
+            raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self._state.file))
 
         # if argv[0][-3:] != '.py':
-        #     raise ReproError('Error: reproducible command format error in state file "{}"'.
+        #     raise ReproError('Error: reproducible cmd format error in state file "{}"'.
         #                      format(self._state.file))
 
         self._repro_argv = argv
@@ -132,7 +132,7 @@ class ReproChange(object):
             self._data_item.data.relative))
         os.remove(self._data_item.data.relative)
 
-        Logger.debug('Reproducing data file "{}". Re-runs command: {}'.format(
+        Logger.debug('Reproducing data file "{}". Re-runs cmd: {}'.format(
             self._data_item.data.relative, ' '.join(self._repro_argv)))
         return self._cmd_obj.run_command(self._repro_argv)
 

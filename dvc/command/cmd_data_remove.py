@@ -34,7 +34,7 @@ class CmdDataRemove(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.info('Cannot perform the command since DVC is busy and locked. Please retry the command later.')
+            Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
             return 1
 
         try:
