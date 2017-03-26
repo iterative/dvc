@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from dvc.command.cmd_base import CmdBase
+from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException

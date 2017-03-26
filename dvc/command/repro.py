@@ -2,8 +2,8 @@ import os
 
 import fasteners
 
-from dvc.command.cmd_base import CmdBase
-from dvc.command.cmd_run import CmdRun
+from dvc.command.base import CmdBase
+from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.path.data_item import NotInDataDirError

@@ -4,8 +4,8 @@ import re
 import fasteners
 import requests
 
-from dvc.command.cmd_base import CmdBase
-from dvc.command.cmd_data_sync import sizeof_fmt
+from dvc.command.base import CmdBase
+from dvc.command.data_sync import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.state_file import StateFile

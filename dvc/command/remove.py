@@ -3,7 +3,7 @@ import os
 import fasteners
 from boto.s3.connection import S3Connection
 
-from dvc.command.cmd_base import CmdBase
+from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.utils import run
