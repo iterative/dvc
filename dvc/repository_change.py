@@ -2,6 +2,7 @@ import os
 
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
+from dvc.executor import Executor
 
 
 class RepositoryChangeError(DvcException):
@@ -48,7 +49,7 @@ class RepositoryChange(object):
         self.config = config
         self.path_factory = path_factory
 
-        GitWrapper.exec_cmd_only_success(args, stdout, stderr)
+        Executor.exec_cmd_only_success(args, stdout, stderr)
         self._file_states = self._get_file_states()
 
         self._changed_data_items, self._externally_created_files = path_factory.to_data_items(self.changed_files)

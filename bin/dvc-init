@@ -1,4 +1,3 @@
 #!/bin/bash
 
-PYTHONPATH=$DVC_HOME python $DVC_HOME/dvc/cmd_init.py $@
-
+PYTHONPATH=$DVC_HOME python $DVC_HOME/dvc/command/init.py $@
