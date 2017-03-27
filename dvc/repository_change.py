@@ -61,29 +61,29 @@ class RepositoryChange(object):
     def exec_cmd(args, stdout, stderr, git, path_factory):
         return RepositoryChange(args, stdout, stderr, git)
 
-    @staticmethod
-    def get_filenames(mod_state_list):
-        return list(map(lambda x: x.file, mod_state_list))
+    def get_filenames(self, func):
+        target = filter(func, self._file_states)
+        return list(map(lambda x: x.file, target))
 
     @property
     def removed_files(self):
-        return self.get_filenames(filter(lambda x: x.is_removed, self._file_states))
+        return self.get_filenames(lambda x: x.is_removed)
 
     @property
     def modified_files(self):
-        return self.get_filenames(filter(lambda x: x.is_modified, self._file_states))
+        return self.get_filenames(lambda x: x.is_modified)
 
     @property
     def new_files(self):
-        return self.get_filenames(filter(lambda x: x.is_new, self._file_states))
+        return self.get_filenames(lambda x: x.is_new)
+
+    @property
+    def unusual_state_files(self):
+        return self.get_filenames(lambda x: not x.is_unusual)
 
     @property
     def changed_files(self):
         return self.new_files + self.modified_files
-
-    @property
-    def unusual_state_files(self):
-        return self.get_filenames(filter(lambda x: not x.is_unusual, self._file_states))
 
     def _get_file_states(self):
         statuses = GitWrapper.git_file_statuses()
