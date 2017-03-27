@@ -67,12 +67,8 @@ class CmdRun(CmdBase):
             if not self.run_command(self._args_unkn, self.args.stdout, self.args.stderr):
                 return 1
 
-            if self.skip_git_actions:
-                self.not_committed_changes_warning()
-                return 0
-
             message = 'DVC run: {}'.format(' '.join(sys.argv))
-            self.git.commit_all_changes_and_log_status(message)
+            self.commit_if_needed(message)
         finally:
             lock.release()
 

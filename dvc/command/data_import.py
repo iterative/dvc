@@ -51,12 +51,8 @@ class CmdDataImport(CmdBase):
             for file in self.args.input:
                 self.import_file(file, output, self.args.is_reproducible)
 
-            if self.skip_git_actions:
-                self.not_committed_changes_warning()
-                return 0
-
             message = 'DVC data import: {} {}'.format(' '.join(self.args.input), self.args.output)
-            self.git.commit_all_changes_and_log_status(message)
+            return self.commit_if_needed(message)
         finally:
             lock.release()
         pass

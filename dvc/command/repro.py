@@ -88,12 +88,7 @@ class CmdRepro(CmdRun):
                 return 1
 
             if changed:
-                if self.skip_git_actions:
-                    self.not_committed_changes_warning()
-                    return 1
-
-                message = 'DVC repro: {}'.format(' '.join(self.args.target))
-                self.git.commit_all_changes_and_log_status(message)
+                self.commit_if_needed('DVC repro: {}'.format(' '.join(self.args.target)))
         finally:
             lock.release()
         return 0

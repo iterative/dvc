@@ -91,17 +91,12 @@ SecurityGroup = dvc-group'''
 
         self.modify_gitignore(cache_dir_path.name)
 
-        if self.skip_git_actions:
-            self.not_committed_changes_warning()
-            return 0
-
         message = 'DVC init. data dir {}, cache dir {}, state dir {}'.format(
                         data_dir_path.name,
                         cache_dir_path.name,
                         state_dir_path.name
         )
-        self.git.commit_all_changes_and_log_status(message)
-        pass
+        return self.commit_if_needed(message)
 
     def modify_gitignore(self, cache_dir_name):
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
