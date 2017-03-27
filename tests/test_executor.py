@@ -32,7 +32,7 @@ class TestExecutor(TestCase):
         output = Executor.exec_cmd_only_success(['ls', self.test_dir], '-', '-')
         self.assertEqual(output, '')
 
-    def test_custom_files_output(self):
+    def test_custom_file_outputs(self):
         stdout_file = os.path.join(self.test_dir, 'stdout.txt')
         stderr_file = os.path.join(self.test_dir, 'stderr.txt')
         output = Executor.exec_cmd_only_success(['ls', self.test_dir], stdout_file, stderr_file)

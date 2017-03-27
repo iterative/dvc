@@ -40,6 +40,9 @@ class FileModificationState(object):
     def is_unusual(self):
         return self.is_new or self.is_modified or self.is_removed
 
+    def __repr__(self):
+        return u'({}, {})'.format(self.state, self.file)
+
 
 class RepositoryChange(object):
     """Pre-condition: git repository has no changes"""
@@ -83,12 +86,13 @@ class RepositoryChange(object):
         return self.get_filenames(filter(lambda x: not x.is_unusual, self._file_states))
 
     def _get_file_states(self):
-        statuses = GitWrapper.status_files()
+        statuses = GitWrapper.git_file_statuses()
 
         result = []
         for status, file in statuses:
             file_path = os.path.join(self.git.git_dir_abs, file)
-            if os.path.isfile(file_path):
+
+            if not os.path.isdir(file_path):
                 result.append(FileModificationState(status, file_path))
             else:
                 files = []

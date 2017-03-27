@@ -33,13 +33,32 @@ class GitWrapperI(object):
     def is_ready_to_go(self):
         return True
 
+    @staticmethod
+    def git_file_statuses():
+        code, out, err = Executor.exec_cmd(['git', 'status', '--porcelain'])
+        if code != 0:
+            raise ExecutorError('Git command error - {}'.format(err))
+
+        return GitWrapper.parse_porcelain_files(out)
+
+    @staticmethod
+    def parse_porcelain_files(out):
+        result = []
+        if len(out) > 0:
+            lines = out.split('\n')
+            for line in lines:
+                status = line[:2]
+                file = line[3:]
+                result.append((status, file))
+        return result
+
 
 class GitWrapper(GitWrapperI):
     def __init__(self):
         super(GitWrapper, self).__init__()
 
     def is_ready_to_go(self):
-        statuses = self.status_files()
+        statuses = self.git_file_statuses()
         if len(statuses) > 0:
             Logger.error('Commit all changed files before running reproducible command.')
             Logger.error('Changed files:')
@@ -71,25 +90,6 @@ class GitWrapper(GitWrapperI):
         except Exception as e:
             raise ExecutorError('Unable to run git command: {}'.format(e))
         pass
-
-    @staticmethod
-    def status_files():
-        code, out, err = Executor.exec_cmd(['git', 'status', '--porcelain'])
-        if code != 0:
-            raise ExecutorError('Git command error - {}'.format(err))
-
-        return GitWrapper.parse_porcelain_files(out)
-
-    @staticmethod
-    def parse_porcelain_files(out):
-        result = []
-        if len(out) > 0:
-            lines = out.split('\n')
-            for line in lines:
-                status = line[:2]
-                file = line[3:]
-                result.append((status, file))
-        return result
 
     @property
     def curr_commit(self):

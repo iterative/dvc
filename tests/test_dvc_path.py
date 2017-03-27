@@ -8,13 +8,18 @@ from dvc.git_wrapper import GitWrapperI
 
 class TestDvcPathTest(TestCase):
     def setUp(self):
+        self.curr_dir = os.path.realpath('.')
         self.test_dir = os.path.realpath('/tmp/ntx_unit_test/dvc_path')
-        shutil.rmtree(self.test_dir, ignore_errors=True)
+        self.tearDown()
         os.makedirs(os.path.join(self.test_dir, 'data'))
         os.makedirs(os.path.join(self.test_dir, 'code', 'lib'))
         os.makedirs(os.path.join(self.test_dir, 'd1', 'd2', 'dir3', 'd4', 'dir5'))
 
         self._git = GitWrapperI(self.test_dir)
+
+    def tearDown(self):
+        os.chdir(self.curr_dir)
+        shutil.rmtree(self.test_dir, ignore_errors=True)
 
     def _validate_dvc_path(self, path, dvc_file_name, relative_file_name):
         self.assertEqual(path.dvc, dvc_file_name)
