@@ -3,6 +3,7 @@ import os
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.executor import Executor
+from dvc.logger import Logger
 from dvc.path.data_item import NotInDataDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
@@ -21,6 +22,10 @@ class RepositoryChange(object):
         self.config = config
         self.path_factory = path_factory
 
+        Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}'.format(
+                     u' '.join(args),
+                     stdout,
+                     stderr))
         Executor.exec_cmd_only_success(args, stdout, stderr)
 
         self._stated_data_items = []
@@ -55,6 +60,9 @@ class RepositoryChange(object):
         try:
             item = self.path_factory.stated_data_item(state, file)
             self._stated_data_items.append(item)
+            Logger.debug('[Repository change] Add status: {} {}'.format(
+                         item.status,
+                         item.data.dvc))
         except NotInDataDirError:
             self._externally_created_files.append(file)
         pass

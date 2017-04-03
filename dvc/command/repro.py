@@ -30,7 +30,7 @@ class CmdRepro(CmdRun):
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        parser.add_argument('target', metavar='', help='Data file to reproduce', nargs='*')
+        parser.add_argument('target', metavar='', help='Data item to reproduce', nargs='*')
         pass
 
 
@@ -50,7 +50,7 @@ class CmdRepro(CmdRun):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+            self.warning_dvc_is_busy()
             return 1
 
         try:
@@ -79,15 +79,15 @@ class CmdRepro(CmdRun):
                 repro_change = ReproChange(data_item, self)
                 if repro_change.reproduce():
                     changed = True
-                    Logger.info(u'Data file "{}" was reproduced.'.format(
+                    Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
                     ))
                 else:
-                    Logger.info(u'Reproduction is not required for data file "{}".'.format(
+                    Logger.info(u'Reproduction is not required for data item "{}".'.format(
                         data_item.data.relative
                     ))
             except ReproError as err:
-                Logger.error('Error in reproducing data file {}: {}'.format(
+                Logger.error('Error in reproducing data item {}: {}'.format(
                     data_item.data.relative, str(err)
                 ))
                 error = True
@@ -121,48 +121,60 @@ class ReproChange(object):
         self._repro_argv = argv
         pass
 
+    @property
+    def cmd_obj(self):
+        return self._cmd_obj
+
+    @property
+    def state(self):
+        return self._state
+
     def reproduce_data_file(self):
-        Logger.debug('Reproducing data file "{}". Removing the file...'.format(
-            self._data_item.data.relative))
+        Logger.debug('Reproducing data item "{}". Removing the file...'.format(
+            self._data_item.data.dvc))
         os.remove(self._data_item.data.relative)
 
-        Logger.debug('Reproducing data file "{}". Re-runs cmd: {}'.format(
+        Logger.debug('Reproducing data item "{}". Re-runs cmd: {}'.format(
             self._data_item.data.relative, ' '.join(self._repro_argv)))
 
-        data_items_from_args = self._cmd_obj._data_items_from_args(self._repro_argv)
-        return self._cmd_obj.run_command(self._repro_argv, data_items_from_args)
+        data_items_from_args = self.cmd_obj.data_items_from_args(self._repro_argv)
+        return self.cmd_obj.run_command(self._repro_argv,
+                                        data_items_from_args,
+                                        self.state.stdout,
+                                        self.state.stderr)
 
     def reproduce(self, force=False):
-        print('+++++++++++++++ reproduce', self._data_item.data.dvc)
+        Logger.debug('Reproduce data item {} with dependencies: {}'.format(
+                     self._data_item.data.dvc,
+                     ', '.join([x.data.dvc for x in self.dependencies])))
+
         were_input_files_changed = False
 
-        if not self._state.is_reproducible:
-            Logger.debug('Data file "{}" is not reproducible'.format(self._data_item.data.relative))
+        if not self.state.is_reproducible:
+            Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
-        print('+++++++++++++++ reproduce dependencies: '.format(self.get_dependencies()))
-
-        for data_item in self.get_dependencies():
+        for data_item in self.dependencies:
             change = ReproChange(data_item, self._cmd_obj)
             if change.reproduce(force):
                 were_input_files_changed = True
 
         was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
-                                                              self._state.code_dependencies)
+                                                              self.state.code_dependencies)
+        if was_source_code_changed:
+            Logger.debug('Source code was changed for "{}"'.format(self._data_item.data.dvc))
 
         if not force and not was_source_code_changed and not were_input_files_changed:
-            Logger.debug('Data file "{}" is up to date'.format(
+            Logger.debug('Data item "{}" is up to date'.format(
                 self._data_item.data.relative))
             return False
 
         return self.reproduce_data_file()
 
-    def get_dependencies(self):
-
-        print('+++++++++++++== INPUT FILES: {}'.format(self._state.input_files))
-
+    @property
+    def dependencies(self):
         dependency_data_items = []
-        for input_file in self._state.input_files:
+        for input_file in self.state.input_files:
             try:
                 data_item = self._cmd_obj.path_factory.data_item(input_file)
             except NotInDataDirError:

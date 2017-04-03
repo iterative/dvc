@@ -108,3 +108,7 @@ class CmdBase(object):
         file_name = os.path.relpath(cache_prefix_file_name, self.config.cache_dir)
         dvc_file_path_trim = file_name.replace(os.sep, '/').strip('/')
         return self.config.aws_storage_prefix + '/' + dvc_file_path_trim
+
+    @staticmethod
+    def warning_dvc_is_busy():
+        Logger.warn('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')

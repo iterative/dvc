@@ -1,17 +1,17 @@
 import os
 import sys
-import shutil
+
 import fasteners
 
-from dvc.path.data_item import NotInDataDirError
-from dvc.git_wrapper import GitWrapper
 from dvc.command.base import CmdBase
-from dvc.logger import Logger
 from dvc.exceptions import DvcException
+from dvc.git_wrapper import GitWrapper
+from dvc.logger import Logger
+from dvc.path.data_item import NotInDataDirError
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
-from dvc.utils import run
 from dvc.utils import cached_property
+from dvc.utils import run
 
 
 class RunError(DvcException):
@@ -61,7 +61,7 @@ class CmdRun(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+            self.warning_dvc_is_busy()
             return 1
 
         try:
@@ -69,7 +69,7 @@ class CmdRun(CmdBase):
                 return 1
 
             self.run_command(self._args_unkn,
-                             self._data_items_from_args(self._args_unkn),
+                             self.data_items_from_args(self._args_unkn),
                              self.args.stdout,
                              self.args.stderr)
             return self.commit_if_needed('DVC run: {}'.format(' '.join(sys.argv)))
@@ -79,6 +79,12 @@ class CmdRun(CmdBase):
         return 1
 
     def run_command(self, argv, data_items_from_args, stdout=None, stderr=None):
+        Logger.debug('Run command: {}. Data items from args: {}. stdout={}, stderr={}'.format(
+                     ' '.join(argv),
+                     ', '.join([x.data.dvc for x in data_items_from_args]),
+                     stdout,
+                     stderr))
+
         repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config, self.path_factory)
 
         if not self.skip_git_actions and not self._validate_file_states(repo_change):
@@ -106,11 +112,18 @@ class CmdRun(CmdBase):
                                    output_files_dvc,
                                    code_dependencies_dvc,
                                    argv=argv,
-                                   is_reproducible=self.is_reproducible)
+                                   is_reproducible=self.is_reproducible,
+                                   stdout=self._stdout_to_dvc(stdout),
+                                   stderr=self._stdout_to_dvc(stderr))
             state_file.save()
             result.append(state_file)
 
         return result
+
+    def _stdout_to_dvc(self, stdout):
+        if stdout in {None, '-'}:
+            return stdout
+        return self.path_factory.data_item(stdout).data.dvc
 
     @staticmethod
     def remove_new_files(repo_change):
@@ -132,7 +145,7 @@ class CmdRun(CmdBase):
 
         return not error
 
-    def _data_items_from_args(self, argv):
+    def data_items_from_args(self, argv):
         result = []
 
         for arg in argv:
