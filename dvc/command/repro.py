@@ -37,11 +37,11 @@ class CmdRepro(CmdRun):
     # Overridden methods:
 
     @property
-    def declaration_input_files(self):
+    def declaration_input_data_items(self):
         return []
 
     @property
-    def declaration_output_files(self):
+    def declaration_output_data_items(self):
         return []
 
     def run(self):
@@ -129,7 +129,9 @@ class ReproChange(object):
 
         Logger.debug('Reproducing data file "{}". Re-runs cmd: {}'.format(
             self._data_item.data.relative, ' '.join(self._repro_argv)))
-        return self._cmd_obj.run_command(self._repro_argv)
+
+        data_items_from_args = self._cmd_obj._data_items_from_args(self._repro_argv)
+        return self._cmd_obj.run_command(self._repro_argv, data_items_from_args)
 
     def reproduce(self, force=False):
         were_input_files_changed = False

@@ -2,6 +2,7 @@ import os
 
 from dvc.path.data_item import DataItem, DataItemError, NotInDataDirError
 from dvc.path.path import Path
+from dvc.path.stated_data_item import StatedDataItem
 
 
 class PathFactory(object):
@@ -15,6 +16,9 @@ class PathFactory(object):
 
     def data_item(self, data_file):
         return DataItem(data_file, self._git, self._config)
+
+    def stated_data_item(self, state, data_file):
+        return StatedDataItem(state, data_file, self._git, self._config)
 
     def existing_data_item(self, file):
         if not os.path.islink(file):

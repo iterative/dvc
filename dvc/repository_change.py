@@ -3,45 +3,14 @@ import os
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.executor import Executor
+from dvc.path.data_item import NotInDataDirError
+from dvc.path.stated_data_item import StatedDataItem
+from dvc.utils import cached_property
 
 
 class RepositoryChangeError(DvcException):
     def __init__(self, msg):
         DvcException.__init__(self, 'Repository change error: {}'.format(msg))
-
-
-class FileModificationState(object):
-    STATUS_UNTRACKED = '?'
-    STATUS_DELETE = 'D'
-    STATUS_MODIFIED = 'M'
-    STATUS_TYPE_CHANGED = 'T'
-
-    def __init__(self, state, file):
-        self.state = state
-        self.file = file
-
-    def _check_status(self, status):
-        return self.state.find(status) >= 0
-
-    @property
-    def is_removed(self):
-        return self._check_status(self.STATUS_DELETE)
-
-    @property
-    def is_modified(self):
-        return self._check_status(self.STATUS_MODIFIED) \
-               or self._check_status(self.STATUS_TYPE_CHANGED)
-
-    @property
-    def is_new(self):
-        return self._check_status(self.STATUS_UNTRACKED)
-
-    @property
-    def is_unusual(self):
-        return self.is_new or self.is_modified or self.is_removed
-
-    def __repr__(self):
-        return u'({}, {})'.format(self.state, self.file)
 
 
 class RepositoryChange(object):
@@ -53,60 +22,60 @@ class RepositoryChange(object):
         self.path_factory = path_factory
 
         Executor.exec_cmd_only_success(args, stdout, stderr)
-        self._file_states = self._get_file_states()
 
-        self._changed_data_items, self._externally_created_files = path_factory.to_data_items(self.changed_files)
+        self._stated_data_items = []
+        self._externally_created_files = []
+        self._init_file_states()
 
     @staticmethod
     def exec_cmd(args, stdout, stderr, git, path_factory):
         return RepositoryChange(args, stdout, stderr, git)
 
-    def get_filenames(self, func):
-        target = filter(func, self._file_states)
-        return list(map(lambda x: x.file, target))
+    @cached_property
+    def removed_data_items(self):
+        return [x for x in self._stated_data_items if x.is_removed]
+
+    @cached_property
+    def modified_data_items(self):
+        return [x for x in self._stated_data_items if x.is_modified]
+
+    @cached_property
+    def new_data_items(self):
+        return [x for x in self._stated_data_items if x.is_new]
+
+    @cached_property
+    def unusual_data_items(self):
+        return [x for x in self._stated_data_items if x.is_unusual]
 
     @property
-    def removed_files(self):
-        return self.get_filenames(lambda x: x.is_removed)
+    def changed_data_items(self):
+        return self.new_data_items + self.modified_data_items
 
-    @property
-    def modified_files(self):
-        return self.get_filenames(lambda x: x.is_modified)
+    def _add_stated_data_item(self, state, file):
+        try:
+            item = self.path_factory.stated_data_item(state, file)
+            self._stated_data_items.append(item)
+        except NotInDataDirError:
+            self._externally_created_files.append(file)
+        pass
 
-    @property
-    def new_files(self):
-        return self.get_filenames(lambda x: x.is_new)
-
-    @property
-    def unusual_state_files(self):
-        return self.get_filenames(lambda x: not x.is_unusual)
-
-    @property
-    def changed_files(self):
-        return self.new_files + self.modified_files
-
-    def _get_file_states(self):
+    def _init_file_states(self):
         statuses = GitWrapper.git_file_statuses()
 
-        result = []
         for status, file in statuses:
             file_path = os.path.join(self.git.git_dir_abs, file)
 
             if not os.path.isdir(file_path):
-                result.append(FileModificationState(status, file_path))
+                self._add_stated_data_item(status, file_path)
             else:
                 files = []
                 self.get_all_files_from_dir(file_path, files)
-                state = FileModificationState.STATUS_UNTRACKED + FileModificationState.STATUS_UNTRACKED
+                state = StatedDataItem.STATUS_UNTRACKED + StatedDataItem.STATUS_UNTRACKED
                 for f in files:
-                    result.append(FileModificationState(state, f))
-
-        return result
+                    self._add_stated_data_item(state, f)
+        pass
 
     def get_all_files_from_dir(self, dir, result):
-        if not os.path.isdir(dir):
-            raise RepositoryChangeError('Changed path {} is not directory'.format(dir))
-
         files = os.listdir(dir)
         for f in files:
             path = os.path.join(dir, f)
@@ -115,10 +84,6 @@ class RepositoryChange(object):
             else:
                 self.get_all_files_from_dir(path, result)
         pass
-
-    @property
-    def data_items_for_changed_files(self):
-        return self._changed_data_items
 
     @property
     def externally_created_files(self):

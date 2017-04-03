@@ -1,5 +1,7 @@
 import os
 
+import shutil
+
 from dvc.path.path import Path
 from dvc.exceptions import DvcException
 from dvc.utils import cached_property
@@ -33,6 +35,12 @@ class DataItem(object):
         if not self._data.dvc.startswith(self._config.data_dir):
             raise NotInDataDirError(data_file, self._config.data_dir)
         pass
+
+    def __hash__(self):
+        return self.data.dvc.__hash__()
+
+    def __eq__(self, other):
+        return self.data.dvc == other.data.dvc
 
     @property
     def data(self):
@@ -68,4 +76,12 @@ class DataItem(object):
         return os.path.relpath(self.cache.relative, data_file_dir)
 
     def create_symlink(self):
+        os.symlink(self._symlink_file, self.data.relative)
+
+    def move_data_to_cache(self):
+        cache_dir = os.path.dirname(self.cache.relative)
+        if not os.path.isdir(cache_dir):
+            os.makedirs(cache_dir)
+
+        shutil.move(self.data.relative, self.cache.relative)
         os.symlink(self._symlink_file, self.data.relative)

@@ -11,6 +11,7 @@ from dvc.exceptions import DvcException
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import run
+from dvc.utils import cached_property
 
 
 class RunError(DvcException):
@@ -29,10 +30,10 @@ class CmdRun(CmdBase):
         parser.add_argument('--random', help='not reproducible, output is random', action='store_true')
         parser.add_argument('--stdout', help='output std output to a file')
         parser.add_argument('--stderr', help='output std error to a file')
-        parser.add_argument('--input-file', '-i', action='append',
-                            help='Declare input file for reproducible cmd')
-        parser.add_argument('--output-file', '-o', action='append',
-                            help='Declare output file for reproducible cmd')
+        parser.add_argument('--input', '-i', action='append',
+                            help='Declare input data items for reproducible cmd')
+        parser.add_argument('--output', '-o', action='append',
+                            help='Declare output data items for reproducible cmd')
         parser.add_argument('--code', '-c', action='append',
                             help='Code dependencies which produce the output')
         pass
@@ -41,17 +42,13 @@ class CmdRun(CmdBase):
     def code_dependencies(self):
         return self.args.code
 
-    @property
-    def declaration_input_files(self):
-        if self.args.input_file:
-            return self.args.input_file
-        return []
+    @cached_property
+    def declaration_input_data_items(self):
+        return self._data_items_from_params(self.args.input, 'Input')
 
-    @property
-    def declaration_output_files(self):
-        if self.args.output_file:
-            return self.args.output_file
-        return []
+    @cached_property
+    def declaration_output_data_items(self):
+        return self._data_items_from_params(self.args.stdout, 'Output')
 
     def run(self):
         lock = fasteners.InterProcessLock(self.git.lock_file)
@@ -64,54 +61,43 @@ class CmdRun(CmdBase):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            if not self.run_command(self._args_unkn, self.args.stdout, self.args.stderr):
+            if not self.run_command(self._args_unkn,
+                                    self._data_items_from_args(self._args_unkn),
+                                    self.args.stdout,
+                                    self.args.stderr):
                 return 1
 
-            message = 'DVC run: {}'.format(' '.join(sys.argv))
-            self.commit_if_needed(message)
+            self.commit_if_needed('DVC run: {}'.format(' '.join(sys.argv)))
         finally:
             lock.release()
 
         return 0
 
-    def run_command(self, argv, stdout=None, stderr=None):
+    def run_command(self, argv, data_items_from_args, stdout=None, stderr=None):
         repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config, self.path_factory)
-
-        # print('===== new_files={}'.format(repo_change.new_files))
-        # print('===== modified_files={}'.format(repo_change.modified_files))
-        # print('===== removed_files={}'.format(repo_change.removed_files))
-        # print('===== externally_created_files={}'.format(repo_change.externally_created_files))
-        # # raise Exception()
 
         if not self.skip_git_actions and not self.validate_file_states(repo_change):
             self.remove_new_files(repo_change)
             return False
 
-        changed_files_nlx = self.git.abs_paths_to_dvc(repo_change.changed_files)
-        output_files = changed_files_nlx + self.git.abs_paths_to_dvc(self.declaration_output_files)
-        args_files_nlx = self.git.abs_paths_to_dvc(self.get_data_files_from_args(argv))
+        output_set = set(self.declaration_output_data_items + repo_change.changed_data_items)
+        output_files_dvc = map(lambda x: x.data.dvc, output_set)
 
-        input_files_from_args = list(set(args_files_nlx) - set(changed_files_nlx))
-        input_files = self.git.abs_paths_to_dvc(input_files_from_args + self.declaration_input_files)
+        input_set = set(data_items_from_args + self.declaration_input_data_items)
+        input_files_dvc = map(lambda x: x.data.dvc, input_set)
 
-        for data_item in repo_change.data_items_for_changed_files:
-            dirname = os.path.dirname(data_item.cache.relative)
-            if not os.path.isdir(dirname):
-                os.makedirs(dirname)
+        code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies)
 
+        for data_item in repo_change.changed_data_items:
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
                 data_item.data.relative, data_item.cache.relative))
-            shutil.move(data_item.data.relative, data_item.cache.relative)
-
-            data_item.create_symlink()
-
-            dvc_code_dependencies = map(lambda x: self.git.abs_paths_to_dvc([x])[0], self.code_dependencies)
+            data_item.move_data_to_cache()
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
             state_file = StateFile(data_item.state.relative, self.git,
-                                   input_files,
-                                   output_files,
-                                   dvc_code_dependencies,
+                                   input_files_dvc,
+                                   output_files_dvc,
+                                   code_dependencies_dvc,
                                    argv=argv)
             state_file.save()
             pass
@@ -120,28 +106,18 @@ class CmdRun(CmdBase):
 
     @staticmethod
     def remove_new_files(repo_change):
-        for file in repo_change.new_files:
-            rel_path = GitWrapper.abs_paths_to_relative([file])[0]
-            Logger.error('Removing created file: {}'.format(rel_path))
-            os.remove(file)
+        for data_item in repo_change.new_data_items:
+            Logger.error('Removing created file: {}'.format(data_item.data.relative))
+            os.remove(data_item.data.relative)
         pass
 
-    def validate_file_states(self, files_states):
+    def validate_file_states(self, repo_change):
         error = False
-        for file in GitWrapper.abs_paths_to_relative(files_states.removed_files):
-            Logger.error('Error: file "{}" was removed'.format(file))
+        for data_item in repo_change.removed_data_items:
+            Logger.error('Error: file "{}" was removed'.format(data_item.data.relative))
             error = True
 
-        # for file in GitWrapper.abs_paths_to_relative(files_states.modified_files):
-        #     Logger.error('Error: file "{}" was modified'.format(file))
-        #     error = True
-
-        # # This code doesn't cover repro case
-        # for file in GitWrapper.abs_paths_to_relative(files_states.unusual_state_files):
-        #     Logger.error('Error: file "{}" is in not acceptable state'.format(file))
-        #     error = True
-
-        for file in GitWrapper.abs_paths_to_relative(files_states.externally_created_files):
+        for file in GitWrapper.abs_paths_to_relative(repo_change.externally_created_files):
             Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
             error = True
 
@@ -151,24 +127,31 @@ class CmdRun(CmdBase):
                          format(self.config.data_dir))
             return False
 
-        # if not files_states.new_files:
-        #     Logger.error('Errors occurred. No files were changed in run cmd.')
-        #     return False
-
         return True
 
-    def get_data_files_from_args(self, argv):
+    def _data_items_from_args(self, argv):
         result = []
 
         for arg in argv:
             try:
                 if os.path.isfile(arg):
-                    self.path_factory.data_item(arg)
-                    result.append(arg)
+                    data_item = self.path_factory.data_item(arg)
+                    result.append(data_item)
             except NotInDataDirError:
                 pass
 
         return result
+
+    def _data_items_from_params(self, files, param_text):
+        if not files:
+            return []
+
+        data_items, external = self.path_factory.to_data_items(files)
+        if external:
+            raise RunError('{} should point to data items from data dir: {}'.format(
+                param_text, ', '.join(external))
+            )
+        return data_items
 
 
 if __name__ == '__main__':
