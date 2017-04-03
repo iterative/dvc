@@ -52,6 +52,13 @@ class GitWrapperI(object):
                 result.append((status, file))
         return result
 
+    def abs_paths_to_dvc(self, files):
+        result = []
+        for file in files:
+            result.append(os.path.relpath(os.path.abspath(file), self.git_dir_abs))
+
+        return result
+
 
 class GitWrapper(GitWrapperI):
     def __init__(self):
@@ -121,13 +128,6 @@ class GitWrapper(GitWrapperI):
         result = []
         for file in files:
             result.append(os.path.relpath(os.path.realpath(file), cur_dir))
-
-        return result
-
-    def abs_paths_to_dvc(self, files):
-        result = []
-        for file in files:
-            result.append(os.path.relpath(os.path.abspath(file), self.git_dir_abs))
 
         return result
 

@@ -20,8 +20,8 @@ class RunError(DvcException):
 
 
 class CmdRun(CmdBase):
-    def __init__(self):
-        CmdBase.__init__(self)
+    def __init__(self, parse_config=True, git_obj=None, config_obj=None):
+        super(CmdRun, self).__init__(parse_config, git_obj, config_obj)
         pass
 
     def define_args(self, parser):
@@ -40,7 +40,7 @@ class CmdRun(CmdBase):
 
     @property
     def code_dependencies(self):
-        return self.args.code
+        return self.args.code or []
 
     @cached_property
     def declaration_input_data_items(self):
@@ -48,7 +48,7 @@ class CmdRun(CmdBase):
 
     @cached_property
     def declaration_output_data_items(self):
-        return self._data_items_from_params(self.args.stdout, 'Output')
+        return self._data_items_from_params(self.args.output, 'Output')
 
     def run(self):
         lock = fasteners.InterProcessLock(self.git.lock_file)
@@ -61,33 +61,32 @@ class CmdRun(CmdBase):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            if not self.run_command(self._args_unkn,
-                                    self._data_items_from_args(self._args_unkn),
-                                    self.args.stdout,
-                                    self.args.stderr):
-                return 1
-
-            self.commit_if_needed('DVC run: {}'.format(' '.join(sys.argv)))
+            self.run_command(self._args_unkn,
+                             self._data_items_from_args(self._args_unkn),
+                             self.args.stdout,
+                             self.args.stderr)
+            return self.commit_if_needed('DVC run: {}'.format(' '.join(sys.argv)))
         finally:
             lock.release()
 
-        return 0
+        return 1
 
     def run_command(self, argv, data_items_from_args, stdout=None, stderr=None):
         repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config, self.path_factory)
 
-        if not self.skip_git_actions and not self.validate_file_states(repo_change):
+        if not self.skip_git_actions and not self._validate_file_states(repo_change):
             self.remove_new_files(repo_change)
-            return False
+            raise RunError('Errors occurred.')
 
         output_set = set(self.declaration_output_data_items + repo_change.changed_data_items)
-        output_files_dvc = map(lambda x: x.data.dvc, output_set)
+        output_files_dvc = [x.data.dvc for x in output_set]
 
         input_set = set(data_items_from_args + self.declaration_input_data_items)
-        input_files_dvc = map(lambda x: x.data.dvc, input_set)
+        input_files_dvc = [x.data.dvc for x in input_set]
 
         code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies)
 
+        result = []
         for data_item in repo_change.changed_data_items:
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
                 data_item.data.relative, data_item.cache.relative))
@@ -100,9 +99,9 @@ class CmdRun(CmdBase):
                                    code_dependencies_dvc,
                                    argv=argv)
             state_file.save()
-            pass
+            result.append(state_file)
 
-        return True
+        return result
 
     @staticmethod
     def remove_new_files(repo_change):
@@ -111,7 +110,8 @@ class CmdRun(CmdBase):
             os.remove(data_item.data.relative)
         pass
 
-    def validate_file_states(self, repo_change):
+    @staticmethod
+    def _validate_file_states(repo_change):
         error = False
         for data_item in repo_change.removed_data_items:
             Logger.error('Error: file "{}" was removed'.format(data_item.data.relative))
@@ -121,13 +121,7 @@ class CmdRun(CmdBase):
             Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
             error = True
 
-        if error:
-            Logger.error('Errors occurred. ' + \
-                         'Reproducible commands allow only file creation only in data directory "{}".'.
-                         format(self.config.data_dir))
-            return False
-
-        return True
+        return not error
 
     def _data_items_from_args(self, argv):
         result = []
