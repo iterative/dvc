@@ -15,9 +15,15 @@ By submitting a pull request for this project, you agree to license your contrib
 Create a virtualenv, for example, at `~/.environments/dvc` by `mkdir -p ~/.environments/dvc; virtualenv ~/.environments/dvc` or use `virtualenvwrapper`.
 
 ```
+# if you use virtualenvwrapper
 workon dvc
 
+# otherwise:
+source ~/.environments/dvc/bin/activate
+
 pip install -r requirements.txt
+
+# happy coding!
 ```
 
 # Building
