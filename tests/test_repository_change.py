@@ -13,6 +13,7 @@ from dvc.repository_change import RepositoryChange
 class BasicTestRepositoryChange(TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
+        self._old_curr_dir_abs = os.path.realpath(os.curdir)
 
         self.tearDown()
         os.mkdir(self.test_dir)
@@ -28,6 +29,7 @@ class BasicTestRepositoryChange(TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
+        os.chdir(self._old_curr_dir_abs)
 
     @staticmethod
     def create_file(file2):
