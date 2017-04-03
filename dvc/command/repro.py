@@ -17,10 +17,10 @@ class ReproError(DvcException):
 
 
 class CmdRepro(CmdRun):
-    def __init__(self):
-        CmdBase.__init__(self)
+    def __init__(self, args=None,parse_config=True, git_obj=None, config_obj=None):
+        CmdBase.__init__(self, args, parse_config, git_obj, config_obj)
 
-        self._code =[]
+        self._code = []
         pass
 
     @property
@@ -30,11 +30,13 @@ class CmdRepro(CmdRun):
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        # self.add_string_arg(parser, 'target', 'Reproduce data file')
         parser.add_argument('target', metavar='', help='Data file to reproduce', nargs='*')
         pass
 
-    # Overridden methods:
+
+    @property
+    def is_reproducible(self):
+        return True
 
     @property
     def declaration_input_data_items(self):
@@ -61,37 +63,41 @@ class CmdRepro(CmdRun):
                              format(self.config.data_dir, ' '.join(external_files_names)))
                 return 1
 
-            error = False
-            changed = False
-            for data_item in data_item_list:
-                try:
-                    repro_change = ReproChange(data_item, self)
-                    if repro_change.reproduce():
-                        changed = True
-                        Logger.info(u'Data file "{}" was reproduced.'.format(
-                            data_item.data.relative
-                        ))
-                    else:
-                        Logger.info(u'Reproduction is not required for data file "{}".'.format(
-                            data_item.data.relative
-                        ))
-                except ReproError as err:
-                    Logger.error('Error in reproducing data file {}: {}'.format(
-                        data_item.data.relative, str(err)
-                    ))
-                    error = True
-                    break
-
-            if error and not self.skip_git_actions:
-                Logger.error('Errors occurred. One or more repro cmd was not successful.')
-                self.not_committed_changes_warning()
-                return 1
-
-            if changed:
-                self.commit_if_needed('DVC repro: {}'.format(' '.join(self.args.target)))
+            if self.repro_data_items(data_item_list):
+                return self.commit_if_needed('DVC repro: {}'.format(' '.join(self.args.target)))
         finally:
             lock.release()
-        return 0
+
+        return 1
+
+    def repro_data_items(self, data_item_list):
+        error = False
+        changed = False
+
+        for data_item in data_item_list:
+            try:
+                repro_change = ReproChange(data_item, self)
+                if repro_change.reproduce():
+                    changed = True
+                    Logger.info(u'Data file "{}" was reproduced.'.format(
+                        data_item.data.relative
+                    ))
+                else:
+                    Logger.info(u'Reproduction is not required for data file "{}".'.format(
+                        data_item.data.relative
+                    ))
+            except ReproError as err:
+                Logger.error('Error in reproducing data file {}: {}'.format(
+                    data_item.data.relative, str(err)
+                ))
+                error = True
+                break
+
+        if error and not self.skip_git_actions:
+            Logger.error('Errors occurred. One or more repro cmd was not successful.')
+            self.not_committed_changes_warning()
+
+        return changed and not error
 
 
 class ReproChange(object):
@@ -101,7 +107,7 @@ class ReproChange(object):
         self._cmd_obj = cmd_obj
         self._state = StateFile.load(data_item.state.relative, self.git)
 
-        cmd_obj._code = self._state.code_dependencies # HACK!!!
+        cmd_obj._code = self._state.code_dependencies
 
         argv = self._state.norm_argv
 
@@ -112,15 +118,8 @@ class ReproChange(object):
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self._state.file))
 
-        # if argv[0][-3:] != '.py':
-        #     raise ReproError('Error: reproducible cmd format error in state file "{}"'.
-        #                      format(self._state.file))
-
         self._repro_argv = argv
         pass
-
-    def were_direct_dependencies_changed(self):
-        return True
 
     def reproduce_data_file(self):
         Logger.debug('Reproducing data file "{}". Removing the file...'.format(
@@ -134,21 +133,16 @@ class ReproChange(object):
         return self._cmd_obj.run_command(self._repro_argv, data_items_from_args)
 
     def reproduce(self, force=False):
+        print('+++++++++++++++ reproduce', self._data_item.data.dvc)
         were_input_files_changed = False
 
         if not self._state.is_reproducible:
             Logger.debug('Data file "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
-        for input_file in self._state.input_files:
-            try:
-                data_item = self._cmd_obj.path_factory.data_item(input_file)
-            except NotInDataDirError:
-                raise ReproError(u'The dependency files "{}" is not a data file'.format(input_file))
-            except Exception as ex:
-                raise ReproError(u'The dependency files "{}" can not be reproduced: {}'.format(
-                                 input_file, ex))
+        print('+++++++++++++++ reproduce dependencies: '.format(self.get_dependencies()))
 
+        for data_item in self.get_dependencies():
             change = ReproChange(data_item, self._cmd_obj)
             if change.reproduce(force):
                 were_input_files_changed = True
@@ -162,6 +156,25 @@ class ReproChange(object):
             return False
 
         return self.reproduce_data_file()
+
+    def get_dependencies(self):
+
+        print('+++++++++++++== INPUT FILES: {}'.format(self._state.input_files))
+
+        dependency_data_items = []
+        for input_file in self._state.input_files:
+            try:
+                data_item = self._cmd_obj.path_factory.data_item(input_file)
+            except NotInDataDirError:
+                raise ReproError(u'The dependency file "{}" is not a data item'.format(input_file))
+            except Exception as ex:
+                raise ReproError(u'Unable to reproduced the dependency file "{}": {}'.format(
+                    input_file, ex))
+
+            dependency_data_items.append(data_item)
+
+        return dependency_data_items
+
 
 if __name__ == '__main__':
     run(CmdRepro())

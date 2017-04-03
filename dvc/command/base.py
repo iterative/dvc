@@ -11,7 +11,7 @@ from dvc.utils import cached_property
 class CmdBase(object):
     CONFIG = 'dvc.conf'
 
-    def __init__(self, parse_config=True, git_obj=None, config_obj=None):
+    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
         if git_obj:
             self._git = git_obj
         else:
@@ -29,7 +29,7 @@ class CmdBase(object):
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)
-        self._args, self._args_unkn = parser.parse_known_args()
+        self._args, self._args_unkn = parser.parse_known_args(args=args)
 
         self._dvc_home = os.environ.get('DVC_HOME')
 

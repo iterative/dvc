@@ -15,8 +15,8 @@ class DataRemoveError(DvcException):
 
 
 class CmdDataRemove(CmdBase):
-    def __init__(self, parse_config=True, git_obj=None, config_obj=None):
-        super(CmdDataRemove, self).__init__(parse_config, git_obj, config_obj)
+    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
+        super(CmdDataRemove, self).__init__(args, parse_config, git_obj, config_obj)
         pass
 
     def define_args(self, parser):
@@ -24,7 +24,7 @@ class CmdDataRemove(CmdBase):
 
         parser.add_argument('target', metavar='', help='Target to remove - file or directory', nargs='*')
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively')
-        parser.add_argument('-l', '--keep-in-cloud', action='store_false', default=False,
+        parser.add_argument('-l', '--keep-in-cloud', action='store_true', default=False,
                             help='Do not remove data from cloud')
         parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
                             help='Do not remove data from cache')

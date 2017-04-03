@@ -20,14 +20,17 @@ class RunError(DvcException):
 
 
 class CmdRun(CmdBase):
-    def __init__(self, parse_config=True, git_obj=None, config_obj=None):
-        super(CmdRun, self).__init__(parse_config, git_obj, config_obj)
+    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
+        super(CmdRun, self).__init__(args, parse_config, git_obj, config_obj)
         pass
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        parser.add_argument('--random', help='not reproducible, output is random', action='store_true')
+        parser.add_argument('--not-repro',
+                            help='Not reproducible',
+                            action='store_false',
+                            default=False)
         parser.add_argument('--stdout', help='output std output to a file')
         parser.add_argument('--stderr', help='output std error to a file')
         parser.add_argument('--input', '-i', action='append',
@@ -37,6 +40,10 @@ class CmdRun(CmdBase):
         parser.add_argument('--code', '-c', action='append',
                             help='Code dependencies which produce the output')
         pass
+
+    @property
+    def is_reproducible(self):
+        return not self.args.not_repro
 
     @property
     def code_dependencies(self):
@@ -93,11 +100,13 @@ class CmdRun(CmdBase):
             data_item.move_data_to_cache()
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
+
             state_file = StateFile(data_item.state.relative, self.git,
                                    input_files_dvc,
                                    output_files_dvc,
                                    code_dependencies_dvc,
-                                   argv=argv)
+                                   argv=argv,
+                                   is_reproducible=self.is_reproducible)
             state_file.save()
             result.append(state_file)
 
