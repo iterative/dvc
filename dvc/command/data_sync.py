@@ -44,7 +44,7 @@ class CmdDataSync(CmdBase):
         self._bucket = conn.lookup(bucket_name)
         if not self._bucket:
             self._bucket = conn.create_bucket(bucket_name)
-            Logger.printing('S3 bucket "{}" was created'.format(bucket_name))
+            Logger.info('S3 bucket "{}" was created'.format(bucket_name))
         pass
 
     def define_args(self, parser):
@@ -52,14 +52,14 @@ class CmdDataSync(CmdBase):
         pass
 
     def run(self):
-        if os.path.islink(self.args.target):
-            data_item = self.path_factory.existing_data_item(self.args.target)
+        if os.path.islink(self.parsed_args.target):
+            data_item = self.path_factory.existing_data_item(self.parsed_args.target)
             return self.sync_symlink(data_item)
 
-        if os.path.isdir(self.args.target):
-            return self.sync_dir(self.args.target)
+        if os.path.isdir(self.parsed_args.target):
+            return self.sync_dir(self.parsed_args.target)
 
-        raise DataSyncError('File "{}" does not exit'.format(target))
+        raise DataSyncError('File "{}" does not exit'.format(self.parsed_args.target))
 
     def sync_dir(self, dir):
         for f in os.listdir(dir):
@@ -85,10 +85,10 @@ class CmdDataSync(CmdBase):
         if not key:
             raise DataSyncError('File "{}" does not exist in the cloud'.format(aws_key))
 
-        Logger.printing('Downloading cache file from S3 "{}/{}"'.format(self._bucket.name,
+        Logger.info('Downloading cache file from S3 "{}/{}"'.format(self._bucket.name,
                                                                         aws_key))
         key.get_contents_to_filename(item.cache.relative, cb=percent_cb)
-        Logger.printing('Downloading completed')
+        Logger.info('Downloading completed')
         pass
 
     def sync_to_cloud(self, data_item):
@@ -103,13 +103,13 @@ class CmdDataSync(CmdBase):
                 Logger.debug('File checksum matches. No uploading is needed.')
                 return
 
-            Logger.printing('Checksum miss-match. Re-uploading is required.')
+            Logger.debug('Checksum miss-match. Re-uploading is required.')
 
-        Logger.printing('Uploading cache file "{}" to S3 "{}"'.format(data_item.cache.relative,
+        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(data_item.cache.relative,
                                                                       aws_key))
         key = self._bucket.new_key(aws_key)
         key.set_contents_from_filename(data_item.cache.relative, cb=percent_cb)
-        Logger.printing('Uploading completed')
+        Logger.info('Uploading completed')
         pass
 
 

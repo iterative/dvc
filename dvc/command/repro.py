@@ -1,5 +1,4 @@
 import os
-
 import fasteners
 
 from dvc.command.base import CmdBase
@@ -57,14 +56,14 @@ class CmdRepro(CmdRun):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            data_item_list, external_files_names = self.path_factory.to_data_items(self.args.target)
+            data_item_list, external_files_names = self.path_factory.to_data_items(self.parsed_args.target)
             if external_files_names:
                 Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
                              format(self.config.data_dir, ' '.join(external_files_names)))
                 return 1
 
             if self.repro_data_items(data_item_list):
-                return self.commit_if_needed('DVC repro: {}'.format(' '.join(self.args.target)))
+                return self.commit_if_needed('DVC repro: {}'.format(' '.join(self.parsed_args.target)))
         finally:
             lock.release()
 
@@ -107,16 +106,16 @@ class ReproChange(object):
         self._cmd_obj = cmd_obj
         self._state = StateFile.load(data_item.state.relative, self.git)
 
-        cmd_obj._code = self._state.code_dependencies
+        cmd_obj._code = self.state.code_dependencies
 
-        argv = self._state.norm_argv
+        argv = self.state.norm_argv
 
         if not argv:
             raise ReproError('Error: parameter {} is nor defined in state file "{}"'.
                              format(StateFile.PARAM_NORM_ARGV, data_item.state.relative))
         if len(argv) < 2:
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
-                             format(self._state.file))
+                             format(self.state.file))
 
         self._repro_argv = argv
         pass
@@ -160,7 +159,8 @@ class ReproChange(object):
                 were_input_files_changed = True
 
         was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
-                                                              self.state.code_dependencies)
+                                                              self.state.code_dependencies + self.state.input_files,
+                                                              self.cmd_obj.path_factory)
         if was_source_code_changed:
             Logger.debug('Source code was changed for "{}"'.format(self._data_item.data.dvc))
 

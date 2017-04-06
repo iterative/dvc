@@ -1,6 +1,4 @@
 import os
-import sys
-
 import fasteners
 
 from dvc.command.base import CmdBase
@@ -43,19 +41,19 @@ class CmdRun(CmdBase):
 
     @property
     def is_reproducible(self):
-        return not self.args.not_repro
+        return not self.parsed_args.not_repro
 
     @property
     def code_dependencies(self):
-        return self.args.code or []
+        return self.parsed_args.code or []
 
     @cached_property
     def declaration_input_data_items(self):
-        return self._data_items_from_params(self.args.input, 'Input')
+        return self._data_items_from_params(self.parsed_args.input, 'Input')
 
     @cached_property
     def declaration_output_data_items(self):
-        return self._data_items_from_params(self.args.output, 'Output')
+        return self._data_items_from_params(self.parsed_args.output, 'Output')
 
     def run(self):
         lock = fasteners.InterProcessLock(self.git.lock_file)
@@ -68,11 +66,11 @@ class CmdRun(CmdBase):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            self.run_command(self._args_unkn,
-                             self.data_items_from_args(self._args_unkn),
-                             self.args.stdout,
-                             self.args.stderr)
-            return self.commit_if_needed('DVC run: {}'.format(' '.join(sys.argv)))
+            self.run_command(self.command_args,
+                             self.data_items_from_args(self.command_args),
+                             self.parsed_args.stdout,
+                             self.parsed_args.stderr)
+            return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
         finally:
             lock.release()
 

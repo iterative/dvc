@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from dvc.git_wrapper import GitWrapper
 from dvc.config import Config, ConfigError
@@ -24,12 +25,17 @@ class CmdBase(object):
             if parse_config:
                 self._config = Config(os.path.realpath(os.path.join(self.git.git_dir, self.CONFIG)))
 
-        self._args = None
+        if args is None:
+            self._args = sys.argv[1:]
+        else:
+            self._args = args
+
+        self._parsed_args = None
         self._dvc_home = None
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)
-        self._args, self._args_unkn = parser.parse_known_args(args=args)
+        self._parsed_args, self._command_args = parser.parse_known_args(args=self._args)
 
         self._dvc_home = os.environ.get('DVC_HOME')
 
@@ -38,6 +44,18 @@ class CmdBase(object):
         if not os.path.exists(self._dvc_home):
             raise ConfigError("DVC_HOME directory doesn't exists")
         pass
+
+    @property
+    def args(self):
+        return self._args
+
+    @property
+    def parsed_args(self):
+        return self._parsed_args
+
+    @property
+    def command_args(self):
+        return self._command_args
 
     @cached_property
     def path_factory(self):
@@ -55,10 +73,6 @@ class CmdBase(object):
         return self._dvc_home
 
     @property
-    def args(self):
-        return self._args
-
-    @property
     def git(self):
         return self._git
 
@@ -71,7 +85,7 @@ class CmdBase(object):
 
     @property
     def skip_git_actions(self):
-        return self.args.skip_git_actions
+        return self.parsed_args.skip_git_actions
 
     def commit_if_needed(self, message, error=False):
         if error or self.skip_git_actions:

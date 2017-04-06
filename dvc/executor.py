@@ -49,9 +49,5 @@ class Executor:
     def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
         code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file, stderr_file=stderr_file, cwd=cwd)
         if code != 0:
-            raise Executor._build_executor_error(cmd, err)
+            raise ExecutorError('Git command error ({}):\n{}'.format(' '.join(cmd), err))
         return out
-
-    @staticmethod
-    def _build_executor_error(cmd, out):
-        return ExecutorError('Git command error ({}):\n{}'.format(' '.join(cmd), out))

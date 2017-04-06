@@ -1,6 +1,5 @@
 import os
 import shutil
-import subprocess
 import tempfile
 from unittest import TestCase
 
@@ -9,7 +8,7 @@ from dvc.config import ConfigI
 from dvc.executor import Executor
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
-from dvc.git_wrapper import GitWrapperI, GitWrapper
+from dvc.git_wrapper import GitWrapper
 
 
 class RunBasicTest(TestCase):
@@ -62,10 +61,10 @@ class RunTwoFilesBase(RunBasicTest):
 
         cmd_run = CmdRun(config_obj=self.config, git_obj=self.git)
         self.input_param_file = 'data/extra_input'
-        cmd_run.args.input = [self.input_param_file]
+        cmd_run.parsed_args.input = [self.input_param_file]
 
         self.extra_output_file = 'data/extra_output'
-        cmd_run.args.output = [self.extra_output_file]
+        cmd_run.parsed_args.output = [self.extra_output_file]
 
         self.file_name1 = 'data/file1'
         self.file_name2 = 'data/file2'

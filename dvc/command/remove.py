@@ -34,7 +34,7 @@ class CmdDataRemove(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+            Logger.info('[Cmd-Remove] Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
             return 1
 
         try:
@@ -47,11 +47,11 @@ class CmdDataRemove(CmdBase):
             return 1
 
         error = False
-        for target in self.args.target:
+        for target in self.parsed_args.target:
             if not self.remove_target(target):
                 error = True
 
-        message = 'DVC data remove: {}'.format(' '.join(self.args.target))
+        message = 'DVC data remove: {}'.format(' '.join(self.parsed_args.target))
         self.commit_if_needed(message, error)
 
         return 0 if error == 0 else 1
@@ -61,19 +61,19 @@ class CmdDataRemove(CmdBase):
             if os.path.isdir(target):
                 self.remove_dir(target)
             else:
-                self.remove_data_instance(target)
+                self.remove_file(target)
             return True
         except DvcException as ex:
-            Logger.error('Unable to remove data file "{}": {}'.format(target, ex))
+            Logger.error('[Cmd-Remove] Unable to remove data file "{}": {}'.format(target, ex))
             return False
 
     def remove_dir(self, target):
-        if not self.args.recursive:
-            raise DataRemoveError('Directory "%s" cannot be removed. Use --recurcive flag.' % target)
+        if not self.parsed_args.recursive:
+            raise DataRemoveError('[Cmd-Remove] Directory "%s" cannot be removed. Use --recurcive flag.' % target)
 
         data_item = self.path_factory.data_item(target)
         if data_item.data_dvc_short == '':
-            raise DataRemoveError('Data directory "%s" cannot be removed' % target)
+            raise DataRemoveError('[Cmd-Remove] Data directory "%s" cannot be removed' % target)
 
         return self.remove_dir_file_by_file(target)
 
@@ -81,11 +81,14 @@ class CmdDataRemove(CmdBase):
     def remove_dir_if_empty(file):
         dir = os.path.dirname(file)
         if dir != '' and not os.listdir(dir):
+            Logger.debug(u'[Cmd-Remove] Empty directory was removed {}.'.format(dir))
             os.rmdir(dir)
         pass
 
-    def remove_data_instance(self, target):
+    def remove_file(self, target):
         # it raises exception if not a symlink is provided
+        Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
+
         data_item = self.path_factory.existing_data_item(target)
 
         self._remove_cache_file(data_item)
@@ -93,40 +96,49 @@ class CmdDataRemove(CmdBase):
         self._remove_cloud_cache(data_item)
 
         os.remove(data_item.data.relative)
+        Logger.debug(u'[Cmd-Remove] Remove data item {}. Success.'.format(data_item.data.relative))
         pass
 
     def _remove_cloud_cache(self, data_item):
-        if not self.args.keep_in_cloud:
+        if not self.parsed_args.keep_in_cloud:
             aws_key = self.cache_file_aws_key(data_item.cache.dvc)
             self.remove_from_cloud(aws_key)
 
     def _remove_state_file(self, data_item):
         if os.path.isfile(data_item.state.relative):
+            Logger.debug(u'[Cmd-Remove] Remove state {}.'.format(data_item.state.relative))
             os.remove(data_item.state.relative)
             self.remove_dir_if_empty(data_item.state.relative)
+            Logger.debug(u'[Cmd-Remove] Remove state. Success.')
         else:
-            Logger.warn(u'State file {} for data instance {} does not exist'.format(
+            Logger.warn(u'[Cmd-Remove] State file {} for data instance {} does not exist'.format(
                 data_item.state.relative, data_item.data.relative))
 
     def _remove_cache_file(self, data_item):
-        if not self.args.keep_in_cache and os.path.isfile(data_item.cache.relative):
+        if not self.parsed_args.keep_in_cache and os.path.isfile(data_item.cache.relative):
+            Logger.debug(u'[Cmd-Remove] Remove cache {}.'.format(data_item.cache.relative))
+
             os.remove(data_item.cache.relative)
             self.remove_dir_if_empty(data_item.cache.relative)
+            Logger.debug(u'[Cmd-Remove] Remove cache. Success.')
         else:
-            if not self.args.keep_in_cache:
-                Logger.warn(u'Unable to find cache file for data instance %s' % data_item.data.relative)
+            if not self.parsed_args.keep_in_cache:
+                Logger.warn(u'[Cmd-Remove] Unable to find cache file for data item %s' % data_item.data.relative)
+        pass
 
     def remove_from_cloud(self, aws_file_name):
+        Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
+
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
         bucket_name = self.config.aws_storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket:
             key = bucket.get_key(aws_file_name)
             if not key:
-                Logger.warn('S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
+                Logger.warn('[Cmd-Remove] S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
             else:
                 key.delete()
-                Logger.info('File "{}" was removed from S3'.format(aws_file_name))
+                Logger.info('[Cmd-Remove] File "{}" was removed from S3'.format(aws_file_name))
         pass
 
     def remove_dir_file_by_file(self, target):
@@ -135,7 +147,7 @@ class CmdDataRemove(CmdBase):
             if os.path.isdir(file):
                 self.remove_dir_file_by_file(file)
             else:
-                self.remove_data_instance(file)
+                self.remove_file(file)
 
         os.rmdir(target)
         pass

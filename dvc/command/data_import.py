@@ -40,18 +40,18 @@ class CmdDataImport(CmdBase):
         lock = fasteners.InterProcessLock(self.git.lock_file)
         gotten = lock.acquire(timeout=5)
         if not gotten:
-            Logger.printing('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+            Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
             return 1
 
         try:
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            output = self.args.output
-            for file in self.args.input:
-                self.import_file(file, output, self.args.is_reproducible)
+            output = self.parsed_args.output
+            for file in self.parsed_args.input:
+                self.import_file(file, output, self.parsed_args.is_reproducible)
 
-            message = 'DVC data import: {} {}'.format(' '.join(self.args.input), self.args.output)
+            message = 'DVC data import: {} {}'.format(' '.join(self.parsed_args.input), self.parsed_args.output)
             return self.commit_if_needed(message)
         finally:
             lock.release()
@@ -95,7 +95,7 @@ class CmdDataImport(CmdBase):
 
         state_file = StateFile(data_item.state.relative,
                                self.git,
-                               [input],
+                               [],
                                [output],
                                [],
                                is_reproducible)

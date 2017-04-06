@@ -69,16 +69,16 @@ SecurityGroup = dvc-group'''
         return file_name
 
     def run(self):
-        data_dir_path = self.get_not_existing_dir(self.args.data_dir)
-        cache_dir_path = self.get_not_existing_dir(self.args.cache_dir)
-        state_dir_path = self.get_not_existing_dir(self.args.state_dir)
+        data_dir_path = self.get_not_existing_dir(self.parsed_args.data_dir)
+        cache_dir_path = self.get_not_existing_dir(self.parsed_args.cache_dir)
+        state_dir_path = self.get_not_existing_dir(self.parsed_args.state_dir)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
-        Logger.printing('Directories {}, {} and {} were created'.format(
+        Logger.info('Directories {}, {} and {} were created'.format(
             data_dir_path.name,
             cache_dir_path.name,
             state_dir_path.name))
@@ -102,12 +102,12 @@ SecurityGroup = dvc-group'''
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
         if not os.path.exists(gitignore_file):
             open(gitignore_file, 'a').close()
-            Logger.printing('File .gitignore was created')
+            Logger.info('File .gitignore was created')
         with open(gitignore_file, 'a') as fd:
             fd.write('\n{}'.format(cache_dir_name))
             fd.write('\n{}'.format(os.path.basename(self.git.lock_file)))
 
-        Logger.printing('Directory {} was added to .gitignore file'.format(cache_dir_name))
+        Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
 
 if __name__ == '__main__':
     run(CmdInit())
