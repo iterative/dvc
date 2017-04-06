@@ -37,13 +37,16 @@ class CmdDataRemove(CmdBase):
             return 1
 
         try:
-            return self.remove_all_targets()
+            if not self.remove_all_targets():
+                return 1
         finally:
             lock.release()
 
+        return 0
+
     def remove_all_targets(self):
         if not self.skip_git_actions and not self.git.is_ready_to_go():
-            return 1
+            return False
 
         error = False
         for target in self.parsed_args.target:
@@ -53,7 +56,7 @@ class CmdDataRemove(CmdBase):
         message = 'DVC data remove: {}'.format(' '.join(self.parsed_args.target))
         self.commit_if_needed(message, error)
 
-        return 0 if error == 0 else 1
+        return error == 0
 
     def remove_target(self, target):
         try:
@@ -105,25 +108,24 @@ class CmdDataRemove(CmdBase):
 
     def _remove_state_file(self, data_item):
         if os.path.isfile(data_item.state.relative):
-            Logger.debug(u'[Cmd-Remove] Remove state {}.'.format(data_item.state.relative))
-            os.remove(data_item.state.relative)
-            self.remove_dir_if_empty(data_item.state.relative)
-            Logger.debug(u'[Cmd-Remove] Remove state. Success.')
+            self._remove_dvc_path(data_item.state, 'state')
         else:
             Logger.warn(u'[Cmd-Remove] State file {} for data instance {} does not exist'.format(
                 data_item.state.relative, data_item.data.relative))
 
     def _remove_cache_file(self, data_item):
         if not self.parsed_args.keep_in_cache and os.path.isfile(data_item.cache.relative):
-            Logger.debug(u'[Cmd-Remove] Remove cache {}.'.format(data_item.cache.relative))
-
-            os.remove(data_item.cache.relative)
-            self.remove_dir_if_empty(data_item.cache.relative)
-            Logger.debug(u'[Cmd-Remove] Remove cache. Success.')
+            self._remove_dvc_path(data_item.cache, 'cache')
         else:
             if not self.parsed_args.keep_in_cache:
                 Logger.warn(u'[Cmd-Remove] Unable to find cache file for data item %s' % data_item.data.relative)
         pass
+
+    def _remove_dvc_path(self, dvc_path, name):
+        Logger.debug(u'[Cmd-Remove] Remove {} {}.'.format(name, dvc_path.relative))
+        os.remove(dvc_path.relative)
+        self.remove_dir_if_empty(dvc_path.relative)
+        Logger.debug(u'[Cmd-Remove] Remove {}. Success.'.format(name))
 
     def remove_from_cloud(self, aws_file_name):
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))

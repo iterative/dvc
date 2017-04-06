@@ -52,21 +52,25 @@ class CmdRepro(CmdRun):
             return 1
 
         try:
-            if not self.skip_git_actions and not self.git.is_ready_to_go():
-                return 1
-
-            data_item_list, external_files_names = self.settings.path_factory.to_data_items(self.parsed_args.target)
-            if external_files_names:
-                Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
-                             format(self.config.data_dir, ' '.join(external_files_names)))
-                return 1
-
-            if self.repro_data_items(data_item_list):
-                return self.commit_if_needed('DVC repro: {}'.format(' '.join(self.parsed_args.target)))
+            return self.repro_target(self.parsed_args.target)
         finally:
             lock.release()
 
-        return 1
+        pass
+
+    def repro_target(self, target):
+        if not self.skip_git_actions and not self.git.is_ready_to_go():
+            return 1
+
+        data_item_list, external_files_names = self.settings.path_factory.to_data_items(target)
+        if external_files_names:
+            Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
+                         format(self.config.data_dir, ' '.join(external_files_names)))
+            return 1
+
+        if self.repro_data_items(data_item_list):
+            return self.commit_if_needed('DVC repro: {}'.format(' '.join(target)))
+        pass
 
     def repro_data_items(self, data_item_list):
         error = False
@@ -146,12 +150,11 @@ class ReproChange(object):
                      self._data_item.data.dvc,
                      ', '.join([x.data.dvc for x in self.dependencies])))
 
-        were_input_files_changed = False
-
         if not self.state.is_reproducible:
             Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
+        were_input_files_changed = False
         for data_item in self.dependencies:
             change = ReproChange(data_item, self._cmd_obj)
             if change.reproduce(force):
@@ -161,7 +164,7 @@ class ReproChange(object):
                                                               self.state.code_dependencies + self.state.input_files,
                                                               self.cmd_obj.settings.path_factory)
         if was_source_code_changed:
-            Logger.debug('Source code was changed for "{}"'.format(self._data_item.data.dvc))
+            Logger.debug('Dependencies were changed for "{}"'.format(self._data_item.data.dvc))
 
         if not force and not was_source_code_changed and not were_input_files_changed:
             Logger.debug('Data item "{}" is up to date'.format(

@@ -121,7 +121,7 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         self.assertTrue(os.path.exists(self.file1))
         self.assertTrue(os.path.exists(self.file6))
 
-        self.assertEqual(cmd.remove_all_targets(), 1)
+        self.assertFalse(cmd.remove_all_targets())
 
         self.assertFalse(os.path.exists(dir11_full))
         self.assertFalse(os.path.exists(self.file5))
@@ -146,7 +146,7 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         self.assertTrue(os.path.exists(dir2_full))
         self.assertTrue(os.path.exists(self.file1))
 
-        self.assertEqual(cmd.remove_all_targets(), 0)
+        self.assertTrue(cmd.remove_all_targets())
 
         self.assertFalse(os.path.exists(dir11_full))
         self.assertFalse(os.path.exists(self.file5))
