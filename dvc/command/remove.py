@@ -6,7 +6,7 @@ from boto.s3.connection import S3Connection
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.utils import run
+from dvc.runtime import Runtime
 
 
 class DataRemoveError(DvcException):
@@ -15,9 +15,8 @@ class DataRemoveError(DvcException):
 
 
 class CmdDataRemove(CmdBase):
-    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
-        super(CmdDataRemove, self).__init__(args, parse_config, git_obj, config_obj)
-        pass
+    def __init__(self, settings):
+        super(CmdDataRemove, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
@@ -71,7 +70,7 @@ class CmdDataRemove(CmdBase):
         if not self.parsed_args.recursive:
             raise DataRemoveError('[Cmd-Remove] Directory "%s" cannot be removed. Use --recurcive flag.' % target)
 
-        data_item = self.path_factory.data_item(target)
+        data_item = self.settings.path_factory.data_item(target)
         if data_item.data_dvc_short == '':
             raise DataRemoveError('[Cmd-Remove] Data directory "%s" cannot be removed' % target)
 
@@ -89,7 +88,7 @@ class CmdDataRemove(CmdBase):
         # it raises exception if not a symlink is provided
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
 
-        data_item = self.path_factory.existing_data_item(target)
+        data_item = self.settings.path_factory.existing_data_item(target)
 
         self._remove_cache_file(data_item)
         self._remove_state_file(data_item)
@@ -154,4 +153,4 @@ class CmdDataRemove(CmdBase):
 
 
 if __name__ == '__main__':
-    run(CmdDataRemove())
+    Runtime.run(CmdDataRemove)

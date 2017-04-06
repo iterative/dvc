@@ -3,9 +3,10 @@ import shutil
 from unittest import TestCase
 
 from dvc.config import ConfigI
-from dvc.git_wrapper import GitWrapperI, GitWrapper
+from dvc.git_wrapper import GitWrapperI
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
+from dvc.settings import Settings
 
 
 class BasicEnvironment(TestCase):
@@ -33,8 +34,6 @@ class BasicEnvironment(TestCase):
             os.makedirs(data_dir)
 
         os.chdir(self._curr_dir)
-        # GitWrapper.exec_cmd(['git', 'init'])
-        # self._commit = GitWrapper().curr_commit
 
     def tearDown(self):
         if self._old_curr_dir_abs:
@@ -69,6 +68,7 @@ class DirHierarchyEnvironment(BasicEnvironment):
         self._git = GitWrapperI(git_dir=self._test_git_dir, commit=self._commit)
         self._config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self._git, self._config)
+        self.settings = Settings([], self._git, self._config)
 
         self.dir1 = os.path.join('dir1')
         self.dir11 = os.path.join('dir1/dir11')
@@ -91,7 +91,6 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
     @staticmethod
     def create_content_file(file, content='some test'):
-        # print(file)
         fd = open(file, 'w+')
         fd.write(content)
         fd.close()
@@ -108,7 +107,6 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
             relevant_dir = self.relevant_dir(data_file)
             os.symlink(os.path.join(relevant_dir, cache_result), file_result)
-            # print(file_result)
         else:
             cache_result = None
             self.create_content_file(file_result, content)

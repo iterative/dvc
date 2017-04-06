@@ -7,9 +7,9 @@ from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.path.data_item import NotInDataDirError
 from dvc.repository_change import RepositoryChange
+from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
-from dvc.utils import run
 
 
 class RunError(DvcException):
@@ -18,9 +18,8 @@ class RunError(DvcException):
 
 
 class CmdRun(CmdBase):
-    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
-        super(CmdRun, self).__init__(args, parse_config, git_obj, config_obj)
-        pass
+    def __init__(self, settings):
+        super(CmdRun, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
@@ -76,14 +75,14 @@ class CmdRun(CmdBase):
 
         return 1
 
-    def run_command(self, argv, data_items_from_args, stdout=None, stderr=None):
-        Logger.debug('Run command: {}. Data items from args: {}. stdout={}, stderr={}'.format(
-                     ' '.join(argv),
+    def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None):
+        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}'.format(
+                     ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
                      stdout,
                      stderr))
 
-        repo_change = RepositoryChange(argv, stdout, stderr, self.git, self.config, self.path_factory)
+        repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr)
 
         if not self.skip_git_actions and not self._validate_file_states(repo_change):
             self.remove_new_files(repo_change)
@@ -109,7 +108,7 @@ class CmdRun(CmdBase):
                                    input_files_dvc,
                                    output_files_dvc,
                                    code_dependencies_dvc,
-                                   argv=argv,
+                                   argv=cmd_args,
                                    is_reproducible=self.is_reproducible,
                                    stdout=self._stdout_to_dvc(stdout),
                                    stderr=self._stdout_to_dvc(stderr))
@@ -121,7 +120,7 @@ class CmdRun(CmdBase):
     def _stdout_to_dvc(self, stdout):
         if stdout in {None, '-'}:
             return stdout
-        return self.path_factory.data_item(stdout).data.dvc
+        return self.settings.path_factory.data_item(stdout).data.dvc
 
     @staticmethod
     def remove_new_files(repo_change):
@@ -149,7 +148,7 @@ class CmdRun(CmdBase):
         for arg in argv:
             try:
                 if os.path.isfile(arg):
-                    data_item = self.path_factory.data_item(arg)
+                    data_item = self.settings.path_factory.data_item(arg)
                     result.append(data_item)
             except NotInDataDirError:
                 pass
@@ -160,7 +159,7 @@ class CmdRun(CmdBase):
         if not files:
             return []
 
-        data_items, external = self.path_factory.to_data_items(files)
+        data_items, external = self.settings.path_factory.to_data_items(files)
         if external:
             raise RunError('{} should point to data items from data dir: {}'.format(
                 param_text, ', '.join(external))
@@ -169,4 +168,4 @@ class CmdRun(CmdBase):
 
 
 if __name__ == '__main__':
-    run(CmdRun())
+    Runtime.run(CmdRun)

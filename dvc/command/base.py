@@ -1,53 +1,28 @@
 import argparse
 import os
-import sys
 
-from dvc.git_wrapper import GitWrapper
-from dvc.config import Config, ConfigError
+from dvc.config import ConfigError
 from dvc.logger import Logger
 from dvc.path.factory import PathFactory
 from dvc.utils import cached_property
 
 
 class CmdBase(object):
-    CONFIG = 'dvc.conf'
-
-    def __init__(self, args=None, parse_config=True, git_obj=None, config_obj=None):
-        if git_obj:
-            self._git = git_obj
-        else:
-            self._git = GitWrapper()
-
-        if config_obj:
-            self._config = config_obj
-        else:
-            self._config = None
-            if parse_config:
-                self._config = Config(os.path.realpath(os.path.join(self.git.git_dir, self.CONFIG)))
-
-        if args is None:
-            self._args = sys.argv[1:]
-        else:
-            self._args = args
-
-        self._parsed_args = None
-        self._dvc_home = None
+    def __init__(self, settings):
+        self._settings = settings
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)
-        self._parsed_args, self._command_args = parser.parse_known_args(args=self._args)
-
-        self._dvc_home = os.environ.get('DVC_HOME')
-
-        if not self.lnx_home:
-            raise ConfigError('DVC_HOME environment variable is not defined')
-        if not os.path.exists(self._dvc_home):
-            raise ConfigError("DVC_HOME directory doesn't exists")
+        self._parsed_args, self._command_args = parser.parse_known_args(args=self.args)
         pass
 
     @property
+    def settings(self):
+        return self._settings
+
+    @property
     def args(self):
-        return self._args
+        return self._settings.args
 
     @property
     def parsed_args(self):
@@ -57,24 +32,20 @@ class CmdBase(object):
     def command_args(self):
         return self._command_args
 
-    @cached_property
-    def path_factory(self):
-        return PathFactory(self.git, self.config)
-
     @property
     def config(self):
-        return self._config
+        return self._settings.config
 
     def cache_file_aws_key(self, file):
-        return '{}/{}'.format(self._config.aws_storage_prefix, file).strip('/')
+        return '{}/{}'.format(self.config.aws_storage_prefix, file).strip('/')
 
     @property
-    def lnx_home(self):
-        return self._dvc_home
+    def dvc_home(self):
+        return self._settings.dvc_home
 
     @property
     def git(self):
-        return self._git
+        return self._settings.git
 
     def define_args(self, parser):
         pass

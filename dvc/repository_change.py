@@ -17,24 +17,18 @@ class RepositoryChangeError(DvcException):
 class RepositoryChange(object):
     """Pre-condition: git repository has no changes"""
 
-    def __init__(self, args, stdout, stderr, git, config, path_factory):
-        self.git = git
-        self.config = config
-        self.path_factory = path_factory
+    def __init__(self, cmd_args, settings, stdout, stderr):
+        self._settings = settings
 
         Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}'.format(
-                     u' '.join(args),
+                     u' '.join(cmd_args),
                      stdout,
                      stderr))
-        Executor.exec_cmd_only_success(args, stdout, stderr)
+        Executor.exec_cmd_only_success(cmd_args, stdout, stderr)
 
         self._stated_data_items = []
         self._externally_created_files = []
         self._init_file_states()
-
-    @staticmethod
-    def exec_cmd(args, stdout, stderr, git, path_factory):
-        return RepositoryChange(args, stdout, stderr, git)
 
     @cached_property
     def removed_data_items(self):
@@ -58,7 +52,7 @@ class RepositoryChange(object):
 
     def _add_stated_data_item(self, state, file):
         try:
-            item = self.path_factory.stated_data_item(state, file)
+            item = self._settings.path_factory.stated_data_item(state, file)
             self._stated_data_items.append(item)
             Logger.debug('[Repository change] Add status: {} {}'.format(
                          item.status,
@@ -71,7 +65,7 @@ class RepositoryChange(object):
         statuses = GitWrapper.git_file_statuses()
 
         for status, file in statuses:
-            file_path = os.path.join(self.git.git_dir_abs, file)
+            file_path = os.path.join(self._settings.git.git_dir_abs, file)
 
             if not os.path.isdir(file_path):
                 self._add_stated_data_item(status, file_path)

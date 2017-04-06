@@ -10,7 +10,7 @@ class ConfigError(DvcException):
 
 
 class ConfigI(object):
-    def __init__(self, data_dir, cache_dir, state_dir):
+    def __init__(self, data_dir=None, cache_dir=None, state_dir=None):
         self._data_dir = data_dir
         self._cache_dir = cache_dir
         self._state_dir = state_dir
@@ -44,31 +44,14 @@ class Config(ConfigI):
             raise ConfigError('Config file "{}" does not exist'.format(conf_file))
         self._config.read(conf_file)
 
-        # self._global = self._config['Global']
-        #
-        # self._data_dir = self._global['DataDir']
-        # self._cache_dir = self._global['CacheDir']
-        # self._state_dir = self._global['StateDir']
+        super(Config, self).__init__(self._config['Global']['DataDir'],
+                                     self._config['Global']['CacheDir'],
+                                     self._config['Global']['StateDir'])
         pass
-
-    # def get_data_file_obj(self):
-    #     return DataFileObj(self.config)
 
     @property
     def file(self):
         return self._conf_file
-
-    @property
-    def data_dir(self):
-        return self._config['Global']['DataDir']
-
-    @property
-    def cache_dir(self):
-        return self._config['Global']['CacheDir']
-
-    @property
-    def state_dir(self):
-        return self._config['Global']['StateDir']
 
     @property
     def aws_access_key_id(self):

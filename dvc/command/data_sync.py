@@ -6,7 +6,7 @@ from boto.s3.connection import S3Connection
 from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.utils import run
+from dvc.runtime import Runtime
 
 
 class DataSyncError(DvcException):
@@ -35,8 +35,8 @@ def file_md5(fname):
 
 
 class CmdDataSync(CmdBase):
-    def __init__(self):
-        CmdBase.__init__(self)
+    def __init__(self, settings):
+        super(CmdDataSync, self).__init__(settings)
 
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
 
@@ -114,4 +114,4 @@ class CmdDataSync(CmdBase):
 
 
 if __name__ == '__main__':
-    run(CmdDataSync())
+    Runtime.run(CmdDataSync)

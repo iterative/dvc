@@ -1,13 +1,12 @@
 import os
 import fasteners
 
-from dvc.command.base import CmdBase
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.path.data_item import NotInDataDirError
+from dvc.runtime import Runtime
 from dvc.state_file import StateFile
-from dvc.utils import run
 
 
 class ReproError(DvcException):
@@ -16,8 +15,8 @@ class ReproError(DvcException):
 
 
 class CmdRepro(CmdRun):
-    def __init__(self, args=None,parse_config=True, git_obj=None, config_obj=None):
-        CmdBase.__init__(self, args, parse_config, git_obj, config_obj)
+    def __init__(self, settings):
+        super(CmdRun, self).__init__(settings)
 
         self._code = []
         pass
@@ -56,7 +55,7 @@ class CmdRepro(CmdRun):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            data_item_list, external_files_names = self.path_factory.to_data_items(self.parsed_args.target)
+            data_item_list, external_files_names = self.settings.path_factory.to_data_items(self.parsed_args.target)
             if external_files_names:
                 Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
                              format(self.config.data_dir, ' '.join(external_files_names)))
@@ -160,7 +159,7 @@ class ReproChange(object):
 
         was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
                                                               self.state.code_dependencies + self.state.input_files,
-                                                              self.cmd_obj.path_factory)
+                                                              self.cmd_obj.settings.path_factory)
         if was_source_code_changed:
             Logger.debug('Source code was changed for "{}"'.format(self._data_item.data.dvc))
 
@@ -176,7 +175,7 @@ class ReproChange(object):
         dependency_data_items = []
         for input_file in self.state.input_files:
             try:
-                data_item = self._cmd_obj.path_factory.data_item(input_file)
+                data_item = self._cmd_obj.settings.path_factory.data_item(input_file)
             except NotInDataDirError:
                 raise ReproError(u'The dependency file "{}" is not a data item'.format(input_file))
             except Exception as ex:
@@ -189,4 +188,4 @@ class ReproChange(object):
 
 
 if __name__ == '__main__':
-    run(CmdRepro())
+    Runtime.run(CmdRepro)

@@ -152,8 +152,6 @@ class TestDataFileObjLongPath(BasicEnvironment):
         self._config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self._git, self._config)
 
-        # self._dobj = DataFileObj(os.path.join('..', '..', 'data', 'file1.txt'),
-        #                          self._git, self._config)
         self.data_path = self.path_factory.data_item(os.path.join('..', '..', 'data', 'file1.txt'))
         pass
 

@@ -9,6 +9,7 @@ from dvc.executor import Executor
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapper
+from dvc.settings import Settings
 
 
 class RunBasicTest(TestCase):
@@ -28,6 +29,8 @@ class RunBasicTest(TestCase):
 
         self.config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self.git, self.config)
+
+        self.settings = Settings([], self.git, self.config)
         pass
 
     def init_git_repo(self):
@@ -49,7 +52,8 @@ class RunBasicTest(TestCase):
 
 class TestRunOutsideData(RunBasicTest):
     def test(self):
-        cmd_run = CmdRun(config_obj=self.config)
+        self.settings._args = []
+        cmd_run = CmdRun(self.settings)
         with self.assertRaises(RunError):
             cmd_run.run_command(['touch', 'file1', 'file2'], [])
         pass
@@ -59,7 +63,8 @@ class RunTwoFilesBase(RunBasicTest):
     def setUp(self):
         super(RunTwoFilesBase, self).setUp()
 
-        cmd_run = CmdRun(config_obj=self.config, git_obj=self.git)
+        self.settings._args = []
+        cmd_run = CmdRun(self.settings)
         self.input_param_file = 'data/extra_input'
         cmd_run.parsed_args.input = [self.input_param_file]
 

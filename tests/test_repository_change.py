@@ -8,6 +8,7 @@ from dvc.config import ConfigI
 from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapperI
 from dvc.repository_change import RepositoryChange
+from dvc.settings import Settings
 
 
 class BasicTestRepositoryChange(TestCase):
@@ -26,6 +27,7 @@ class BasicTestRepositoryChange(TestCase):
         self.git = GitWrapperI(self.test_dir)
         self.config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self.git, self.config)
+        self.settings = Settings([], self.git, self.config)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
@@ -56,11 +58,9 @@ class TestRepositoryChange(BasicTestRepositoryChange):
         os.remove(file_to_remove)
 
         change = RepositoryChange(['ls', '-la'],
+                                  self.settings,
                                   file_created_by_run,
-                                  file_to_modify,
-                                  self.git,
-                                  self.config,
-                                  self.path_factory)
+                                  file_to_modify)
 
         expected_new = [file_created_by_run, file_created_before_run]
         new_file_abs = [x.data.dvc for x in change.new_data_items]
@@ -86,11 +86,9 @@ class TestRepositoryChangeDeepInDirectory(BasicTestRepositoryChange):
         self.create_file(deep_file)
 
         change = RepositoryChange(['ls', '-la'],
+                                  self.settings,
                                   deep_file,
-                                  None,
-                                  self.git,
-                                  self.config,
-                                  self.path_factory)
+                                  None)
 
         self.assertEqual([x.data.dvc for x in change.new_data_items], [deep_file])
 
@@ -101,11 +99,9 @@ class TestRepositoryChangeExternallyCreated(BasicTestRepositoryChange):
         self.create_file(not_in_data_dir_file)
 
         change = RepositoryChange(['ls', '-la'],
+                                  self.settings,
                                   not_in_data_dir_file,
-                                  None,
-                                  self.git,
-                                  self.config,
-                                  self.path_factory)
+                                  None)
 
         self.assertEqual([os.path.realpath(not_in_data_dir_file)],
                          change.externally_created_files)

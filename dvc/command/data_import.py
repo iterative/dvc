@@ -8,8 +8,8 @@ from dvc.command.base import CmdBase
 from dvc.command.data_sync import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
+from dvc.runtime import Runtime
 from dvc.state_file import StateFile
-from dvc.utils import run
 
 
 class DataImportError(DvcException):
@@ -18,9 +18,8 @@ class DataImportError(DvcException):
 
 
 class CmdDataImport(CmdBase):
-    def __init__(self):
-        CmdBase.__init__(self)
-        pass
+    def __init__(self, settings):
+        super(CmdDataImport, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
@@ -67,7 +66,7 @@ class CmdDataImport(CmdBase):
         if os.path.isdir(output):
             output = os.path.join(output, os.path.basename(input))
 
-        data_item = self.path_factory.data_item(output)
+        data_item = self.settings.path_factory.data_item(output)
 
         if os.path.exists(data_item.data.relative):
             raise DataImportError('Output file "{}" already exists'.format(data_item.data.relative))
@@ -135,4 +134,4 @@ class CmdDataImport(CmdBase):
         return
 
 if __name__ == '__main__':
-    run(CmdDataImport())
+    Runtime.run(CmdDataImport)

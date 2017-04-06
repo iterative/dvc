@@ -5,7 +5,7 @@ from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.utils import run
+from dvc.runtime import Runtime
 
 
 class InitError(DvcException):
@@ -44,9 +44,8 @@ KeyName = dvc-key
 
 SecurityGroup = dvc-group'''
 
-    def __init__(self):
-        CmdBase.__init__(self, parse_config=False)
-        pass
+    def __init__(self, settings):
+        super(CmdInit, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
@@ -110,4 +109,4 @@ SecurityGroup = dvc-group'''
         Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
 
 if __name__ == '__main__':
-    run(CmdInit())
+    Runtime.run(CmdInit, False)

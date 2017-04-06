@@ -2,6 +2,7 @@ from dvc.command.remove import CmdDataRemove
 from dvc.command.repro import ReproChange, CmdRepro
 from dvc.command.run import CmdRun, RunError
 from dvc.executor import Executor
+from dvc.settings import Settings
 from tests.test_cmd_run import RunBasicTest
 
 
@@ -12,50 +13,26 @@ class ReproBasicEnv(RunBasicTest):
         self.file_name1 = 'data/file1'
         self.file1_code_file = 'file1.py'
         self.create_file_and_commit(self.file1_code_file, 'An awesome code...')
-        cmd_file1 = CmdRun(args=[
-                                'printf',
-                                'Hello\nMary',
-                                '--not-repro',
-                                '--stdout',
-                                self.file_name1,
-                                '--code',
-                                self.file1_code_file
-                            ],
-                            parse_config=False,
-                            config_obj=self.config,
-                            git_obj=self.git)
+        self.settings._args = ['printf', 'Hello\nMary', '--not-repro',
+                                '--stdout', self.file_name1, '--code', self.file1_code_file]
+        cmd_file1 = CmdRun(self.settings)
         self.assertEqual(cmd_file1.code_dependencies, [self.file1_code_file])
         cmd_file1.run()
 
         self.file_name11 = 'data/file11'
-        CmdRun(args=['head', '-n', '1', self.file_name1, '--stdout', self.file_name11],
-               parse_config=False,
-               config_obj=self.config,
-               git_obj=self.git
-        ).run()
+        self.settings._args = ['head', '-n', '1', self.file_name1, '--stdout', self.file_name11]
+        CmdRun(self.settings).run()
 
         self.file_name2 = 'data/file2'
-        CmdRun(args=['printf', 'Bobby', '--not-repro', '--stdout', self.file_name2],
-               parse_config=False,
-               config_obj=self.config,
-               git_obj=self.git
-        ).run()
+        self.settings._args = ['printf', 'Bobby', '--not-repro', '--stdout', self.file_name2]
+        CmdRun(self.settings).run()
 
         self.file_res_code_file = 'code_res.py'
         self.create_file_and_commit(self.file_res_code_file, 'Another piece of code')
         self.file_name_res = 'data/file_res'
-        cmd_res = CmdRun(args=[
-                            'cat',
-                            self.file_name11,
-                            self.file_name2,
-                            '--stdout',
-                            self.file_name_res,
-                            '--code',
-                            self.file_res_code_file
-                         ],
-                         parse_config=False,
-                         config_obj=self.config,
-                         git_obj=self.git)
+        self.settings._args = ['cat', self.file_name11, self.file_name2, '--stdout', self.file_name_res,
+                               '--code', self.file_res_code_file]
+        cmd_res = CmdRun(self.settings)
         self.assertEqual(cmd_res.code_dependencies, [self.file_res_code_file])
         cmd_res.run()
 
@@ -81,10 +58,8 @@ class ReproCodeDependencyTest(ReproBasicEnv):
     def test(self):
         self.modify_file_and_commit(self.file_res_code_file)
 
-        CmdRepro(args=[self.file_name_res],
-                 config_obj=self.config,
-                 git_obj=self.git
-        ).run()
+        self.settings._args = [self.file_name_res]
+        CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read(), 'Hello\nBobby')
 
@@ -93,31 +68,24 @@ class ReproChangedDependency(ReproBasicEnv):
     def test(self):
         self.recreate_file1()
 
-        CmdRepro(args=[self.file_name11],
-                 config_obj=self.config,
-                 git_obj=self.git
-        ).run()
+        self.settings._args = [self.file_name11]
+        CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name11).read(), 'Goodbye\n')
 
     def recreate_file1(self):
-        CmdDataRemove(args=[self.file_name1, '--keep-in-cloud'],  # ???
-                      config_obj=self.config,
-                      git_obj=self.git
-                      ).run()
-        CmdRun(args=['printf', 'Goodbye\nJack', '--stdout', self.file_name1],
-               config_obj=self.config,
-               git_obj=self.git
-               ).run()
+        self.settings._args = [self.file_name1, '--keep-in-cloud']
+        CmdDataRemove(self.settings).run()
+
+        self.settings._args = ['printf', 'Goodbye\nJack', '--stdout', self.file_name1]
+        CmdRun(self.settings).run()
 
 
 class ReproChangedDeepDependency(ReproChangedDependency):
     def test(self):
         self.recreate_file1()
 
-        CmdRepro(args=[self.file_name_res],
-                 config_obj=self.config,
-                 git_obj=self.git
-        ).run()
+        self.settings._args = [self.file_name_res]
+        CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read(), 'Goodbye\nBobby')
