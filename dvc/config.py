@@ -2,6 +2,7 @@ import os
 import configparser
 
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 
 
 class ConfigError(DvcException):
@@ -43,6 +44,9 @@ class Config(ConfigI):
         if not os.path.isfile(conf_file):
             raise ConfigError('Config file "{}" does not exist'.format(conf_file))
         self._config.read(conf_file)
+
+        level = self._config['Global']['LogLevel']
+        Logger.set_level(level)
 
         super(Config, self).__init__(self._config['Global']['DataDir'],
                                      self._config['Global']['CacheDir'],

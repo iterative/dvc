@@ -20,6 +20,9 @@ CacheDir = {}
 StateDir = {}
 Cloud = AWS
 
+# Log levels: Debug, Info, Warning and Error
+LogLevel = Info
+
 [AWS]
 AccessKeyId =
 SecretAccessKey =
@@ -77,7 +80,7 @@ SecurityGroup = dvc-group'''
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
-        Logger.info('Directories {}, {} and {} were created'.format(
+        Logger.info('Directories {}/, {}/ and {}/ were created'.format(
             data_dir_path.name,
             cache_dir_path.name,
             state_dir_path.name))
