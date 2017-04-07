@@ -9,3 +9,20 @@ Code and data version control for data science projects
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
 By submitting a pull request for this project, you agree to license your contribution under the Apache license version 2.0 to this project.
+
+
+# Development
+Create a virtualenv, for example, at `~/.environments/dvc` by `mkdir -p ~/.environments/dvc; virtualenv ~/.environments/dvc` or use `virtualenvwrapper`.
+
+```
+workon dvc
+
+pip install -r requirements.txt
+```
+
+# Building
+## OSX
+```
+# creates dist/dvc
+./build_osx.sh
+```

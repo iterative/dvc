@@ -3,3 +3,9 @@ neatlynx/__pycache__
 .idea
 cache
 *.pyc
+
+cache
+.dvc.conf.lock
+.DS_Store
+build/
+dist/
