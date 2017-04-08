@@ -1,5 +1,4 @@
 import os
-import shutil
 import tempfile
 from unittest import TestCase
 
@@ -10,6 +9,7 @@ from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapper
 from dvc.settings import Settings
+from dvc.utils import rmtree
 
 
 class RunBasicTest(TestCase):
@@ -46,7 +46,7 @@ class RunBasicTest(TestCase):
         fd.close()
 
     def tearDown(self):
-        shutil.rmtree(self.test_dir, ignore_errors=True)
+        rmtree(self.test_dir)
         os.chdir(self._old_curr_dir_abs)
 
 

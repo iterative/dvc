@@ -1,5 +1,4 @@
 import os
-import shutil
 from unittest import TestCase
 
 from dvc.config import ConfigI
@@ -7,6 +6,7 @@ from dvc.git_wrapper import GitWrapperI
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.settings import Settings
+from dvc.utils import rmtree
 
 
 class BasicEnvironment(TestCase):
@@ -16,7 +16,7 @@ class BasicEnvironment(TestCase):
         self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
         self._old_curr_dir_abs = os.path.realpath(os.curdir)
 
-        shutil.rmtree(self._test_dir, ignore_errors=True)
+        rmtree(self._test_dir)
 
         if curr_dir:
             self._curr_dir = os.path.realpath(curr_dir)
@@ -39,7 +39,7 @@ class BasicEnvironment(TestCase):
         if self._old_curr_dir_abs:
             os.chdir(self._old_curr_dir_abs)
         if self._test_git_dir:
-            shutil.rmtree(self._test_dir, ignore_errors=True)
+            rmtree(self._test_dir)
         pass
 
 

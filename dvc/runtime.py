@@ -36,8 +36,11 @@ class Runtime(object):
         if not os.path.exists(path):
             return False
 
-        # Definitely ont the best way to check a symlink.
-        output = Executor.exec_cmd_only_success("dir", path)
+        if not os.path.isfile(path):
+            return False
+
+        # It is definitely not the best way to check a symlink.
+        output = Executor.exec_cmd_only_success(["dir", path])
         return '<SYMLINK>' in output
 
     @staticmethod
