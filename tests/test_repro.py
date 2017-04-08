@@ -89,4 +89,3 @@ class ReproChangedDeepDependency(ReproChangedDependency):
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read(), 'Goodbye\nBobby')
-        self.assertEqual(1, 2)
