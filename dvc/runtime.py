@@ -4,6 +4,7 @@ import ctypes
 
 from dvc.config import Config, ConfigI
 from dvc.exceptions import DvcException
+from dvc.executor import Executor
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.settings import Settings
@@ -18,13 +19,26 @@ class Runtime(object):
         if os.name != 'nt':
             return
 
+        Runtime._setup_windows_symlink()
+
+        os.symlink = Runtime.symlink
+        os.path.islink = Runtime.is_link
+
+    @staticmethod
+    def _setup_windows_symlink():
         func = ctypes.windll.kernel32.CreateSymbolicLinkW
         func.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
         func.restype = ctypes.c_ubyte
-
         Runtime.SYMLINC_OVERRIDE = func
 
-        os.symlink = Runtime.symlink
+    @staticmethod
+    def is_link(path):
+        if not os.path.exists(path):
+            return False
+
+        # Definitely ont the best way to check a symlink.
+        output = Executor.exec_cmd_only_success("dir", path)
+        return '<SYMLINK>' in output
 
     @staticmethod
     def symlink(source, link_name):
