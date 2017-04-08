@@ -5,7 +5,7 @@ import ctypes
 class WindowsSymlinkOverride(object):
     FUNC = None
 
-    def __index__(self):
+    def __init__(self):
         func = ctypes.windll.kernel32.CreateSymbolicLinkW
         func.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
         func.restype = ctypes.c_ubyte
