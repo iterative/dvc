@@ -10,7 +10,7 @@ class ExecutorError(DvcException):
 
 class Executor:
     @staticmethod
-    def exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None):
+    def exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None, shell=False):
         stdout, stdout_fd = Executor.output_file(stdout_file)
         stderr, stderr_fd = Executor.output_file(stderr_file)
 
@@ -18,7 +18,8 @@ class Executor:
             p = subprocess.Popen(cmd,
                                  cwd=cwd,
                                  stdout=stdout,
-                                 stderr=stderr)
+                                 stderr=stderr,
+                                 shell=False)
             p.wait()
             out, err = map(lambda s: s.decode().strip('\n\r') if s else '', p.communicate())
 

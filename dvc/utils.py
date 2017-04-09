@@ -20,9 +20,7 @@ def cached_property(f):
 def rmtree(dir):
     '''Cross platform rmtree()'''
     if os.name == 'nt':
-        if not os.access(dir, os.W_OK):
+        if os.path.exists(dir) and not os.access(dir, os.W_OK):
             os.chmod(dir, stat.S_IWUSR)
-        else:
-            raise
 
     shutil.rmtree(dir, ignore_errors=True)

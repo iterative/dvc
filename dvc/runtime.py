@@ -40,7 +40,7 @@ class Runtime(object):
             return False
 
         # It is definitely not the best way to check a symlink.
-        code, output, _ = Executor.exec_cmd(["dir", path])
+        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
         if code != 0:
             return False
 
