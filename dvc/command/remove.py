@@ -7,6 +7,7 @@ from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.runtime import Runtime
+from dvc.utils import rmfile
 
 
 class DataRemoveError(DvcException):
@@ -97,7 +98,7 @@ class CmdDataRemove(CmdBase):
         self._remove_state_file(data_item)
         self._remove_cloud_cache(data_item)
 
-        os.remove(data_item.data.relative)
+        rmfile(data_item.data.relative)
         Logger.debug(u'[Cmd-Remove] Remove data item {}. Success.'.format(data_item.data.relative))
         pass
 
@@ -123,7 +124,7 @@ class CmdDataRemove(CmdBase):
 
     def _remove_dvc_path(self, dvc_path, name):
         Logger.debug(u'[Cmd-Remove] Remove {} {}.'.format(name, dvc_path.relative))
-        os.remove(dvc_path.relative)
+        rmfile(dvc_path.relative)
         self.remove_dir_if_empty(dvc_path.relative)
         Logger.debug(u'[Cmd-Remove] Remove {}. Success.'.format(name))
 
@@ -150,7 +151,7 @@ class CmdDataRemove(CmdBase):
             else:
                 self.remove_file(file)
 
-        os.rmdir(target)
+        rmfile(target)
         pass
 
 

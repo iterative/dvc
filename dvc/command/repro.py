@@ -1,4 +1,3 @@
-import os
 import fasteners
 
 from dvc.command.run import CmdRun
@@ -7,6 +6,7 @@ from dvc.exceptions import DvcException
 from dvc.path.data_item import NotInDataDirError
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
+from dvc.utils import rmfile
 
 
 class ReproError(DvcException):
@@ -134,7 +134,7 @@ class ReproChange(object):
     def reproduce_data_file(self):
         Logger.debug('Reproducing data item "{}". Removing the file...'.format(
             self._data_item.data.dvc))
-        os.remove(self._data_item.data.relative)
+        rmfile(self._data_item.data.relative)
 
         Logger.debug('Reproducing data item "{}". Re-runs cmd: {}'.format(
             self._data_item.data.relative, ' '.join(self._repro_argv)))

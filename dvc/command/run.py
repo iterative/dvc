@@ -9,7 +9,7 @@ from dvc.path.data_item import NotInDataDirError
 from dvc.repository_change import RepositoryChange
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
-from dvc.utils import cached_property
+from dvc.utils import cached_property, rmfile
 
 
 class RunError(DvcException):
@@ -126,7 +126,7 @@ class CmdRun(CmdBase):
     def remove_new_files(repo_change):
         for data_item in repo_change.new_data_items:
             Logger.error('Removing created file: {}'.format(data_item.data.relative))
-            os.remove(data_item.data.relative)
+            rmfile(data_item.data.relative)
         pass
 
     @staticmethod
