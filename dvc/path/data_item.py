@@ -58,13 +58,15 @@ class DataItem(object):
 
     @cached_property
     def cache(self):
+        cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
+
         if self._cache_file:
-            return Path(self._cache_file, self._git)
+            file_name = os.path.basename(self._cache_file)
         else:
-            cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
-            cache_file_suffix = self.CACHE_FILE_SEP + self._git.curr_commit
-            cache_file = os.path.join(cache_dir, self.data_dvc_short + cache_file_suffix)
-            return Path(cache_file, self._git)
+            file_name = self.data_dvc_short + self.CACHE_FILE_SEP + self._git.curr_commit
+
+        cache_file = os.path.join(cache_dir, file_name)
+        return Path(cache_file, self._git)
 
     @cached_property
     def data_dir_abs(self):

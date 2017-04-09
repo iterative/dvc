@@ -19,7 +19,7 @@ class Executor:
                                  cwd=cwd,
                                  stdout=stdout,
                                  stderr=stderr,
-                                 shell=False)
+                                 shell=shell)
             p.wait()
             out, err = map(lambda s: s.decode().strip('\n\r') if s else '', p.communicate())
 

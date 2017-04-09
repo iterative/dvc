@@ -43,40 +43,40 @@ class TestPathFactory(BasicEnvironment):
         config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(git, config)
 
-        self.file = os.path.join('data', 'file.txt')
+        self.data_file = os.path.join('data', 'file.txt')
+        self.cache_file = os.path.join('cache', 'fsymlinc.txt')
 
-        fd = open(self.file, 'w+')
+        fd = open(self.cache_file, 'w+')
         fd.write('some text')
         fd.close()
 
-        self.file_symlink = os.path.join('data', 'fsymlinc.txt')
         os.chdir('data')
-        os.symlink('file.txt', 'fsymlinc.txt')
+        os.symlink(os.path.join('..', self.cache_file), 'file.txt')
         os.chdir('..')
         pass
 
     def test_data_file_factory(self):
-        data_path = self.path_factory.data_item(self.file)
-        self.assertEqual(data_path.data.dvc, self.file)
+        data_path = self.path_factory.data_item(self.data_file)
+        self.assertEqual(data_path.data.dvc, self.data_file)
 
-        indirect_file_path = os.path.join('..', self._proj_dir, self.file)
+        indirect_file_path = os.path.join('..', self._proj_dir, self.data_file)
         data_path_indirect = self.path_factory.data_item(indirect_file_path)
-        self.assertEqual(data_path_indirect.data.dvc, self.file)
+        self.assertEqual(data_path_indirect.data.dvc, self.data_file)
         pass
 
     def test_data_symlink_factory(self):
-        data_path = self.path_factory.existing_data_item(self.file_symlink)
-        self.assertEqual(data_path.data.dvc, self.file_symlink)
+        data_path = self.path_factory.existing_data_item(self.data_file)
+        self.assertEqual(data_path.cache.dvc, self.cache_file)
         pass
 
     def test_data_symlink_factory_cache(self):
-        data_path = self.path_factory.existing_data_item(self.file_symlink)
-        self.assertEqual(data_path.cache.dvc, self.file)
+        data_path = self.path_factory.existing_data_item(self.data_file)
+        self.assertEqual(data_path.data.dvc, self.data_file)
         pass
 
     def test_data_symlink_factory_exception(self):
         with self.assertRaises(DataItemError):
-            self.path_factory.existing_data_item(self.file)
+            self.path_factory.existing_data_item(self.cache_file)
         pass
 
     def test_data_path(self):

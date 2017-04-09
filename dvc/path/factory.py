@@ -21,6 +21,9 @@ class PathFactory(object):
         return StatedDataItem(state, data_file, self._git, self._config)
 
     def existing_data_item(self, file):
+        if not os.path.exists(file):
+            raise DataItemError(u'Data file "%s" is not exist' % file)
+
         if not os.path.islink(file):
             raise DataItemError(u'Data file "%s" must be a symbolic link' % file)
         resolved_symlink = os.path.realpath(file)

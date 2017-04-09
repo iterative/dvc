@@ -1,4 +1,5 @@
 import os
+import tempfile
 from unittest import TestCase
 
 from dvc.config import ConfigI
@@ -10,13 +11,14 @@ from dvc.utils import rmtree
 
 
 class BasicEnvironment(TestCase):
-    def init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'), curr_dir=None):
+    def init_environment(self, test_dir=tempfile.mkdtemp(), curr_dir=None):
         self._test_dir = os.path.realpath(test_dir)
         self._proj_dir = 'proj'
         self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
         self._old_curr_dir_abs = os.path.realpath(os.curdir)
 
-        rmtree(self._test_dir)
+        if os.path.exists(self._test_dir):
+            rmtree(self._test_dir)
 
         if curr_dir:
             self._curr_dir = os.path.realpath(curr_dir)
@@ -30,8 +32,12 @@ class BasicEnvironment(TestCase):
             os.makedirs(self._test_git_dir)
 
         data_dir = os.path.join(self._test_git_dir, 'data')
-        if not os.path.isdir(data_dir):
-            os.makedirs(data_dir)
+        cache_dir = os.path.join(self._test_git_dir, 'cache')
+        state_dir = os.path.join(self._test_git_dir, 'state')
+
+        os.makedirs(data_dir)
+        os.makedirs(cache_dir)
+        os.makedirs(state_dir)
 
         os.chdir(self._curr_dir)
 
@@ -74,8 +80,6 @@ class DirHierarchyEnvironment(BasicEnvironment):
         self.dir11 = os.path.join('dir1', 'dir11')
         self.dir2 = os.path.join('dir2')
 
-        os.mkdir('cache')
-        os.mkdir('state')
         self.create_dirs(self.dir1)
         self.create_dirs(self.dir11)
         self.create_dirs(self.dir2)
