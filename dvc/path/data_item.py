@@ -9,14 +9,28 @@ from dvc.utils import cached_property
 
 class DataItemError(DvcException):
     def __init__(self, msg):
-        DvcException.__init__(self, 'Data file error: {}'.format(msg))
+        super(DataItemError, self).__init__('Data item error: {}'.format(msg))
 
 
 class NotInDataDirError(DvcException):
-    def __init__(self, file, data_dir):
-        DvcException.__init__(self,
-                                   'Data file location error: the file "{}" has to be in the data directory "{}"'.
-                              format(file, data_dir))
+    def __init__(self, msg):
+        super(NotInDataDirError, self).__init__(msg)
+
+    @staticmethod
+    def build(file, data_dir):
+        msg = 'the file "{}" is not in the data directory "{}"'.format(file, data_dir)
+        return NotInDataDirError(msg)
+
+
+class DataItemInStatusDirError(NotInDataDirError):
+    def __init__(self, msg):
+        super(DataItemInStatusDirError, self).__init__(msg)
+
+    @staticmethod
+    def build(file, data_dir):
+        msg = 'the file "{}" is in state directory, not in the data directory "{}"'.format(
+                file, data_dir)
+        return DataItemInStatusDirError(msg)
 
 
 class DataItem(object):
@@ -29,11 +43,15 @@ class DataItem(object):
         self._cache_file = cache_file
 
         self._data = Path(data_file, git)
+
+        if self._data.abs.startswith(self.state_dir_abs):
+            raise DataItemInStatusDirError.build(data_file, self._config.data_dir)
+
         if not self._data.abs.startswith(self.data_dir_abs):
-            raise NotInDataDirError(data_file, self._config.data_dir)
+            raise NotInDataDirError.build(data_file, self._config.data_dir)
 
         if not self._data.dvc.startswith(self._config.data_dir):
-            raise NotInDataDirError(data_file, self._config.data_dir)
+            raise NotInDataDirError.build(data_file, self._config.data_dir)
         pass
 
     def __hash__(self):
@@ -71,6 +89,10 @@ class DataItem(object):
     @cached_property
     def data_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.data_dir)
+
+    @cached_property
+    def state_dir_abs(self):
+        return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
     @property
     def _symlink_file(self):

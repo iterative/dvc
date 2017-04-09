@@ -157,10 +157,11 @@ class GitWrapper(GitWrapperI):
         commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
         commit = commit.strip('"')
 
-        Logger.debug('[Git] Identify changes. Success.')
-
         changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', commit])
         changed_files = changed_files.strip('"')
+
+        Logger.debug('[Git] Identify changes. Success. Changed files: {}'.format(
+            changed_files.replace('\n', ', ')))
 
         code_files, code_dirs = self.separate_dependency_files_and_dirs(code_dependencies)
         code_files_set = set([path_factory.path(x).dvc for x in code_files])

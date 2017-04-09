@@ -4,7 +4,7 @@ from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.executor import Executor
 from dvc.logger import Logger
-from dvc.path.data_item import NotInDataDirError
+from dvc.path.data_item import NotInDataDirError, DataItemInStatusDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
 
@@ -17,17 +17,18 @@ class RepositoryChangeError(DvcException):
 class RepositoryChange(object):
     """Pre-condition: git repository has no changes"""
 
-    def __init__(self, cmd_args, settings, stdout, stderr):
+    def __init__(self, cmd_args, settings, stdout, stderr, shell=False):
         self._settings = settings
 
         Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}'.format(
                      u' '.join(cmd_args),
                      stdout,
                      stderr))
-        Executor.exec_cmd_only_success(cmd_args, stdout, stderr)
+        Executor.exec_cmd_only_success(cmd_args, stdout, stderr, shell=shell)
 
         self._stated_data_items = []
         self._externally_created_files = []
+        self._created_status_files = []
         self._init_file_states()
 
     @cached_property
@@ -57,6 +58,8 @@ class RepositoryChange(object):
             Logger.debug('[Repository change] Add status: {} {}'.format(
                          item.status,
                          item.data.dvc))
+        except DataItemInStatusDirError:
+            self._created_status_files.append(file)
         except NotInDataDirError:
             self._externally_created_files.append(file)
         pass
@@ -90,3 +93,7 @@ class RepositoryChange(object):
     @property
     def externally_created_files(self):
         return self._externally_created_files
+
+    @property
+    def created_status_files(self):
+        return self._created_status_files

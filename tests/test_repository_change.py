@@ -57,10 +57,11 @@ class TestRepositoryChange(BasicTestRepositoryChange):
                          stdout=self._devnull, stderr=None).wait()
         os.remove(file_to_remove)
 
-        change = RepositoryChange(['ls', '-la'],
+        change = RepositoryChange(['echo', 'test'],
                                   self.settings,
                                   file_created_by_run,
-                                  file_to_modify)
+                                  file_to_modify,
+                                  shell=True)
 
         expected_new = [file_created_by_run, file_created_before_run]
         new_file_abs = [x.data.dvc for x in change.new_data_items]
@@ -85,10 +86,11 @@ class TestRepositoryChangeDeepInDirectory(BasicTestRepositoryChange):
         deep_file = os.path.join('data', 'dir32', 'file1.txt')
         self.create_file(deep_file)
 
-        change = RepositoryChange(['ls', '-la'],
+        change = RepositoryChange(['echo', 'text'],
                                   self.settings,
                                   deep_file,
-                                  None)
+                                  None,
+                                  shell=True)
 
         self.assertEqual([x.data.dvc for x in change.new_data_items], [deep_file])
 
@@ -98,10 +100,11 @@ class TestRepositoryChangeExternallyCreated(BasicTestRepositoryChange):
         not_in_data_dir_file = 'file1.txt'
         self.create_file(not_in_data_dir_file)
 
-        change = RepositoryChange(['ls', '-la'],
+        change = RepositoryChange(['echo', 'textsd'],
                                   self.settings,
                                   not_in_data_dir_file,
-                                  None)
+                                  None,
+                                  shell=True)
 
         self.assertEqual([os.path.realpath(not_in_data_dir_file)],
                          change.externally_created_files)

@@ -47,8 +47,9 @@ class Executor:
         return output, output_fd
 
     @staticmethod
-    def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
-        code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file, stderr_file=stderr_file, cwd=cwd)
+    def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None, shell=False):
+        code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file,
+                                           stderr_file=stderr_file, cwd=cwd, shell=shell)
         if code != 0:
             raise ExecutorError('Git command error ({}):\n{}'.format(' '.join(cmd), err))
         return out
