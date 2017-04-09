@@ -1,5 +1,5 @@
 class Logger(object):
-    DEFAULT_LEVEL = 1
+    DEFAULT_LEVEL = 2
 
     LEVEL = DEFAULT_LEVEL
 

@@ -4,7 +4,6 @@ import tempfile
 from unittest import TestCase
 
 from dvc.executor import Executor, ExecutorError
-from dvc.utils import rmfile, rmtree
 
 
 class TestExecutor(TestCase):
@@ -22,7 +21,7 @@ class TestExecutor(TestCase):
         fd2.close()
 
     def tearDown(self):
-        rmtree(self.test_dir)
+        shutil.rmtree(self.test_dir)
 
     def test_suppress_output(self):
         output = Executor.exec_cmd_only_success(['ls', self.test_dir])
@@ -44,8 +43,8 @@ class TestExecutor(TestCase):
         expected = {self.file1, self.file2, os.path.basename(stdout_file), os.path.basename(stderr_file)}
         self.assertEqual(output_set, expected)
 
-        rmfile(stdout_file)
-        rmfile(stderr_file)
+        os.remove(stdout_file)
+        os.remove(stderr_file)
 
     def test_wrong_command(self):
         with self.assertRaises(ExecutorError):

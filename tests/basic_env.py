@@ -71,7 +71,7 @@ class DirHierarchyEnvironment(BasicEnvironment):
         self.settings = Settings([], self._git, self._config)
 
         self.dir1 = os.path.join('dir1')
-        self.dir11 = os.path.join('dir1', 'dir11')
+        self.dir11 = os.path.join('dir1/dir11')
         self.dir2 = os.path.join('dir2')
 
         os.mkdir('cache')

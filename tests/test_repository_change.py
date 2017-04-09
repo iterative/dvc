@@ -9,7 +9,6 @@ from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapperI
 from dvc.repository_change import RepositoryChange
 from dvc.settings import Settings
-from dvc.utils import rmtree
 
 
 class BasicTestRepositoryChange(TestCase):
@@ -56,7 +55,7 @@ class TestRepositoryChange(BasicTestRepositoryChange):
                          stdout=self._devnull, stderr=None).wait()
         subprocess.Popen(['git', 'commit', '-m', '"Adding one file3"'],
                          stdout=self._devnull, stderr=None).wait()
-        rmtree(file_to_remove)
+        os.remove(file_to_remove)
 
         change = RepositoryChange(['ls', '-la'],
                                   self.settings,
