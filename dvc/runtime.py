@@ -14,6 +14,7 @@ from dvc.settings import Settings
 class Runtime(object):
     CONFIG = 'dvc.conf'
     SYMLINC_OVERRIDE = None
+    REALPATH_NATIVE = None
 
     @staticmethod
     def ls_command_name():
@@ -30,6 +31,8 @@ class Runtime(object):
 
         os.symlink = Runtime.symlink
         os.path.islink = Runtime.is_link
+
+        Runtime.REALPATH_NATIVE = os.path.realpath
         os.path.realpath = Runtime.realpath
 
     @staticmethod
@@ -57,10 +60,10 @@ class Runtime(object):
     @staticmethod
     def realpath(path):
         if os.name != 'nt':
-            return os.path.realpath(path)
+            return Runtime.REALPATH_NATIVE(path)
 
         if not os.path.islink(path):
-            return os.path.realpath(path)
+            return Runtime.REALPATH_NATIVE(path)
 
         # It is definitely not the best way to check a symlink.
         code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
@@ -69,7 +72,7 @@ class Runtime(object):
 
         groups = re.compile(r'\[\S+\]$').findall(output.strip())
         if len(groups) < 1:
-            return os.path.realpath(path)
+            return Runtime.REALPATH_NATIVE(path)
 
         resolved_link = groups[0][1:-1]
         return resolved_link
