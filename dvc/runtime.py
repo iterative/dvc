@@ -15,6 +15,12 @@ class Runtime(object):
     SYMLINC_OVERRIDE = None
 
     @staticmethod
+    def ls_command_name():
+        if os.name == 'nt':
+            return 'dir'
+        return 'ls'
+
+    @staticmethod
     def symlink_setup():
         if os.name != 'nt':
             return

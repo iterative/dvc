@@ -3,6 +3,7 @@ import shutil
 import tempfile
 from unittest import TestCase
 
+from dvc import Runtime
 from dvc.executor import Executor, ExecutorError
 
 
@@ -24,7 +25,9 @@ class TestExecutor(TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_suppress_output(self):
-        output = Executor.exec_cmd_only_success(['ls', self.test_dir])
+        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir],
+                                                shell=True,
+                                                cwd=self.test_dir)
         output_set = set(output.split())
         self.assertEqual(output_set, {self.file1, self.file2})
 
@@ -35,12 +38,19 @@ class TestExecutor(TestCase):
     def test_custom_file_outputs(self):
         stdout_file = os.path.join(self.test_dir, 'stdout.txt')
         stderr_file = os.path.join(self.test_dir, 'stderr.txt')
-        output = Executor.exec_cmd_only_success(['ls', self.test_dir], stdout_file, stderr_file)
+        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir],
+                                                stdout_file,
+                                                stderr_file,
+                                                shell=True,
+                                                cwd=self.test_dir)
 
         self.assertEqual(output, '')
 
         output_set = set(open(stdout_file).read().split())
-        expected = {self.file1, self.file2, os.path.basename(stdout_file), os.path.basename(stderr_file)}
+        expected = {self.file1,
+                    self.file2,
+                    os.path.basename(stdout_file),
+                    os.path.basename(stderr_file)}
         self.assertEqual(output_set, expected)
 
         os.remove(stdout_file)
