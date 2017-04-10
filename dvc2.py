@@ -55,6 +55,7 @@ if __name__ == '__main__':
         else:
             subcmd = sys.argv[2]
 
+    argv_offset = 1 + (0 if subcmd == None else 1)
     if cmd == 'init':
         Runtime.run(CmdRun, args_start_loc=2)
     elif cmd == 'run':
@@ -62,9 +63,9 @@ if __name__ == '__main__':
     elif cmd == 'repro':
         Runtime.run(CmdRepro, args_start_loc=2)
     elif cmd == 'data-sync' or (cmd == 'data' and subcmd == 'sync'):
-        Runtime.run(CmdDataSync, args_start_loc=2)
+        Runtime.run(CmdDataSync, args_start_loc=argv_offset)
     elif cmd == 'data-import' or (cmd == 'data' and subcmd == 'import'):
-        Runtime.run(CmdDataImport, args_start_loc=2)
+        Runtime.run(CmdDataImport, args_start_loc=argv_offset)
     elif cmd == 'cloud-run' or (cmd == 'cloud' and subcmd == 'run'):
         print('cloud-run unimplemented')
     elif cmd == 'cloud-instance-create' or (cmd == 'cloud' and subcmd == 'instance-create'):
