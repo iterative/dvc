@@ -1,4 +1,6 @@
 import os
+if os.name == 'nt':
+    from ctypes import create_unicode_buffer
 
 from dvc.logger import Logger
 from dvc.config import Config
@@ -44,13 +46,36 @@ class GitWrapperI(object):
         return GitWrapper.parse_porcelain_files(out)
 
     @staticmethod
+    def git_path_to_system_path(path):
+        if os.name == 'nt':
+            return path.replace('/', '\\')
+        return path
+
+    LONG_PATH_BUFFER_SIZE = 1024
+
+    @staticmethod
+    def get_cwd():
+        """Convert short path to a full path. It is needed for Windows."""
+        path = os.getcwd()
+        if os.name != 'nt':
+            return path
+
+        buffer = create_unicode_buffer(GitWrapperI.LONG_PATH_BUFFER_SIZE)
+        get_long_path_name = windll.kernel32.GetLongPathNameW
+        result = get_long_path_name(unicode(path), buffer, GitWrapperI.LONG_PATH_BUFFER_SIZE)
+        if result == 0 or result > GitWrapperI.LONG_PATH_BUFFER_SIZE:
+            return path
+        return buffer.value
+
+
+    @staticmethod
     def parse_porcelain_files(out):
         result = []
         if len(out) > 0:
             lines = out.split('\n')
             for line in lines:
                 status = line[:2]
-                file = line[3:]
+                file = GitWrapperI.git_path_to_system_path(line[3:])
                 result.append((status, file))
         return result
 
