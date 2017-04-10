@@ -20,10 +20,11 @@ class RepositoryChange(object):
     def __init__(self, cmd_args, settings, stdout, stderr, shell=False):
         self._settings = settings
 
-        Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}'.format(
+        Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}, shell={}'.format(
                      u' '.join(cmd_args),
                      stdout,
-                     stderr))
+                     stderr,
+                     shell))
         Executor.exec_cmd_only_success(cmd_args, stdout, stderr, shell=shell)
 
         self._stated_data_items = []

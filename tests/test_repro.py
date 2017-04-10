@@ -30,7 +30,11 @@ class ReproBasicEnv(RunBasicTest):
         CmdRun(self.settings).run()
 
         self.file_name2 = os.path.join('data', 'file2')
-        self.settings._args = ['echo', 'Bobby', '--not-repro', '--stdout', self.file_name2, '--shell']
+        self.file2_code_file = 'file2.py'
+        self.create_file_and_commit(self.file2_code_file,
+                                    'print("Bobby")')
+        self.settings._args = ['python', self.file2_code_file,
+                               '--not-repro', '--stdout', self.file_name2]
         CmdRun(self.settings).run()
 
         self.file_res_code_file = 'code_res.py'

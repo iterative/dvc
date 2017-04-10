@@ -34,7 +34,7 @@ class CmdRun(CmdBase):
                             help='Declare output data items for reproducible cmd')
         parser.add_argument('--code', '-c', action='append',
                             help='Code dependencies which produce the output')
-        parser.add_argument('--shell', help='Shell command', action='store_false', default=False)
+        parser.add_argument('--shell', help='Shell command', action='store_true', default=False)
         pass
 
     @property
@@ -76,11 +76,12 @@ class CmdRun(CmdBase):
         return 1
 
     def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None, shell=False):
-        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}'.format(
+        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
                      ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
                      stdout,
-                     stderr))
+                     stderr,
+                     shell))
 
         repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr, shell=shell)
 
