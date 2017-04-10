@@ -5,11 +5,12 @@ from unittest import TestCase
 
 from dvc import Runtime
 from dvc.executor import Executor, ExecutorError
+from dvc.git_wrapper import GitWrapperI
 
 
 class TestExecutor(TestCase):
     def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
+        self.test_dir = GitWrapperI.get_long_path(tempfile.mkdtemp())
 
         self.file1 = 'file1.txt'
         fd1 = open(os.path.join(self.test_dir, self.file1), 'w+')

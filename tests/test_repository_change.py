@@ -13,7 +13,7 @@ from dvc.settings import Settings
 
 class BasicTestRepositoryChange(TestCase):
     def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
+        self.test_dir = GitWrapperI.get_long_path(tempfile.mkdtemp())
         self._old_curr_dir_abs = os.path.realpath(os.curdir)
 
         self.tearDown()

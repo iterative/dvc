@@ -54,9 +54,8 @@ class GitWrapperI(object):
     LONG_PATH_BUFFER_SIZE = 1024
 
     @staticmethod
-    def get_cwd():
+    def get_long_path(path):
         """Convert short path to a full path. It is needed for Windows."""
-        path = os.getcwd()
         if os.name != 'nt':
             return path
 
@@ -67,6 +66,9 @@ class GitWrapperI(object):
             return path
         return buffer.value
 
+    @staticmethod
+    def get_cwd():
+        return GitWrapperI.get_long_path(os.getcwd())
 
     @staticmethod
     def parse_porcelain_files(out):

@@ -11,7 +11,9 @@ from dvc.utils import rmtree
 
 
 class BasicEnvironment(TestCase):
-    def init_environment(self, test_dir=tempfile.mkdtemp(), curr_dir=None):
+    def init_environment(self,
+                         test_dir=GitWrapperI.get_long_path(tempfile.mkdtemp()),
+                         curr_dir=None):
         self._test_dir = os.path.realpath(test_dir)
         self._proj_dir = 'proj'
         self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
