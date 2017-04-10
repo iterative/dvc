@@ -32,7 +32,7 @@ class TestExecutor(TestCase):
         self.assertEqual(output_set, {self.file1, self.file2})
 
     def test_output_to_std_console(self):
-        output = Executor.exec_cmd_only_success(['ls', self.test_dir], '-', '-')
+        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir], '-', '-')
         self.assertEqual(output, '')
 
     def test_custom_file_outputs(self):
