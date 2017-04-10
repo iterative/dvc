@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import ctypes
 
@@ -29,6 +30,7 @@ class Runtime(object):
 
         os.symlink = Runtime.symlink
         os.path.islink = Runtime.is_link
+        os.path.realpath = Runtime.realpath
 
     @staticmethod
     def _setup_windows_symlink():
@@ -51,6 +53,26 @@ class Runtime(object):
             return False
 
         return '<SYMLINK>' in output
+
+    @staticmethod
+    def realpath(path):
+        if os.name != 'nt':
+            return os.path.realpath(path)
+
+        if not os.path.islink(path):
+            return os.path.realpath(path)
+
+        # It is definitely not the best way to check a symlink.
+        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
+        if code != 0 or not '<SYMLINK>' in output:
+            return os.path.realpath(path)
+
+        groups = re.compile(r'\[\S+\]$').findall(output.strip())
+        if len(groups) < 1:
+            return os.path.realpath(path)
+
+        resolved_link = groups[0][1:-1]
+        return resolved_link
 
     @staticmethod
     def symlink(source, link_name):
