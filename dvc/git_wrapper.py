@@ -1,6 +1,6 @@
 import os
 if os.name == 'nt':
-    from ctypes import create_unicode_buffer
+    from ctypes import create_unicode_buffer, windll
 
 from dvc.logger import Logger
 from dvc.config import Config
