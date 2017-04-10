@@ -53,7 +53,8 @@ class ReproBasicEnv(RunBasicTest):
         self.assertEqual(cmd_res.code_dependencies, [self.file_res_code_file])
         cmd_res.run()
 
-        self.assertEqual(open(self.file_name_res).read().strip(), 'Hello' + os.linesep + 'Bobby')
+        lines = list(filter(None, map(str.strip, open(self.file_name_res).readlines())))
+        self.assertEqual(lines, ['Hello', 'Bobby'])
 
     def create_file_and_commit(self, file_name, content='Any', message='Just a commit'):
         self.create_file(file_name, content)
