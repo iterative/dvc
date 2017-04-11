@@ -26,7 +26,7 @@ class TestDvcPathTest(TestCase):
         self.assertEqual(path.dvc, dvc_file_name)
         self.assertEqual(path.filename, os.path.basename(dvc_file_name))
         self.assertEqual(path.relative, relative_file_name)
-        self.assertTrue(os.path.isabs(path.abs[0]))
+        self.assertTrue(os.path.isabs(path.abs))
         self.assertTrue(path.abs.endswith(dvc_file_name))
 
     def basic_test(self):

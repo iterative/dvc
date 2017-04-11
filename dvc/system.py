@@ -45,13 +45,13 @@ class System(object):
         if not os.path.isfile(path):
             return False
 
-        return System._get_symlink_string() is not None
+        return System._get_symlink_string(path) is not None
 
     @staticmethod
     def _get_symlink_string(path):
         code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
         if code != 0:
-            return False
+            return None
 
         lines = output.split('\n')
         for line in lines:
@@ -76,12 +76,6 @@ class System(object):
 
         resolved_link = groups[0][1:-1]
         return resolved_link
-
-    @staticmethod
-    def ls_command_name():
-        if System.is_unix():
-            return 'ls'
-        return 'dir'
 
     @staticmethod
     def get_long_path(path):

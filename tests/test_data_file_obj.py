@@ -133,7 +133,8 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.assertEqual(self.data_path.state.abs, target)
 
     def test_symlink(self):
-        self.assertEqual(self.data_path._symlink_file, '../../../ca/dir1/d2/file.txt_eeeff8f')
+        expected = os.path.join('..', '..', '..', 'ca', 'dir1', 'd2', 'file.txt_eeeff8f')
+        self.assertEqual(self.data_path._symlink_file, expected)
 
     def test_data_dir(self):
         data_path = self.path_factory.data_item(self.data_dir)

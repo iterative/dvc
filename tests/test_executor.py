@@ -11,50 +11,33 @@ class TestExecutor(TestCase):
     def setUp(self):
         self.test_dir = System.get_long_path(tempfile.mkdtemp())
 
-        self.file1 = 'file1.txt'
-        fd1 = open(os.path.join(self.test_dir, self.file1), 'w+')
-        fd1.write('this is file 1')
-        fd1.close()
-
-        self.file2 = 'f.csv'
-        fd2 = open(os.path.join(self.test_dir, self.file2), 'w+')
-        fd2.write('this is file 222')
-        fd2.close()
+        self.code_file = 'myfile.py'
+        fd = open(self.code_file, 'w')
+        fd.write('import sys\nsys.stdout.write("111")\nsys.stderr.write("222")\n')
+        fd.close()
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
 
     def test_suppress_output(self):
-        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
-                                                shell=True,
-                                                cwd=self.test_dir)
-        output_set = set(output.split())
-        self.assertEqual(output_set, {self.file1, self.file2})
+        output = Executor.exec_cmd_only_success(['python', self.code_file])
+        self.assertEqual(output, '111')
 
     def test_output_to_std_console(self):
-        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
-                                                '-',
-                                                '-',
-                                                shell=True)
+        # This output "111" in stdout and "222" are not suppressible.
+        # You will see the outputs when the unit-test runs.
+        output = Executor.exec_cmd_only_success(['python', self.code_file], '-', '-')
         self.assertEqual(output, '')
 
     def test_custom_file_outputs(self):
         stdout_file = os.path.join(self.test_dir, 'stdout.txt')
         stderr_file = os.path.join(self.test_dir, 'stderr.txt')
-        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
-                                                stdout_file,
-                                                stderr_file,
-                                                shell=True,
-                                                cwd=self.test_dir)
+
+        output = Executor.exec_cmd_only_success(['python', self.code_file], stdout_file, stderr_file)
 
         self.assertEqual(output, '')
-
-        output_set = set(open(stdout_file).read().split())
-        expected = {self.file1,
-                    self.file2,
-                    os.path.basename(stdout_file),
-                    os.path.basename(stderr_file)}
-        self.assertEqual(output_set, expected)
+        self.assertEqual(open(stdout_file).read(), "111")
+        self.assertEqual(open(stderr_file).read(), "222")
 
         os.remove(stdout_file)
         os.remove(stderr_file)
