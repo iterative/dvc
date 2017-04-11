@@ -9,12 +9,13 @@ from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapperI
 from dvc.repository_change import RepositoryChange
 from dvc.settings import Settings
+from dvc.system import System
 
 
 class BasicTestRepositoryChange(TestCase):
     def setUp(self):
-        self.test_dir = GitWrapperI.get_long_path(tempfile.mkdtemp())
-        self._old_curr_dir_abs = os.path.realpath(os.curdir)
+        self.test_dir = System.get_long_path(tempfile.mkdtemp())
+        self._old_curr_dir_abs = System.realpath(os.curdir)
 
         self.tearDown()
         os.mkdir(self.test_dir)
@@ -106,5 +107,5 @@ class TestRepositoryChangeExternallyCreated(BasicTestRepositoryChange):
                                   None,
                                   shell=True)
 
-        self.assertEqual([os.path.realpath(not_in_data_dir_file)],
+        self.assertEqual([System.realpath(not_in_data_dir_file)],
                          change.externally_created_files)

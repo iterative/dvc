@@ -3,14 +3,13 @@ import shutil
 import tempfile
 from unittest import TestCase
 
-from dvc import Runtime
 from dvc.executor import Executor, ExecutorError
-from dvc.git_wrapper import GitWrapperI
+from dvc.system import System
 
 
 class TestExecutor(TestCase):
     def setUp(self):
-        self.test_dir = GitWrapperI.get_long_path(tempfile.mkdtemp())
+        self.test_dir = System.get_long_path(tempfile.mkdtemp())
 
         self.file1 = 'file1.txt'
         fd1 = open(os.path.join(self.test_dir, self.file1), 'w+')
@@ -26,14 +25,14 @@ class TestExecutor(TestCase):
         shutil.rmtree(self.test_dir)
 
     def test_suppress_output(self):
-        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir],
+        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
                                                 shell=True,
                                                 cwd=self.test_dir)
         output_set = set(output.split())
         self.assertEqual(output_set, {self.file1, self.file2})
 
     def test_output_to_std_console(self):
-        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir],
+        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
                                                 '-',
                                                 '-',
                                                 shell=True)
@@ -42,7 +41,7 @@ class TestExecutor(TestCase):
     def test_custom_file_outputs(self):
         stdout_file = os.path.join(self.test_dir, 'stdout.txt')
         stderr_file = os.path.join(self.test_dir, 'stderr.txt')
-        output = Executor.exec_cmd_only_success([Runtime.ls_command_name(), self.test_dir],
+        output = Executor.exec_cmd_only_success([System.ls_command_name(), self.test_dir],
                                                 stdout_file,
                                                 stderr_file,
                                                 shell=True,

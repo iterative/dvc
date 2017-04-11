@@ -1,9 +1,9 @@
 import os
-
 import shutil
 
 from dvc.path.path import Path
 from dvc.exceptions import DvcException
+from dvc.system import System
 from dvc.utils import cached_property
 
 
@@ -100,7 +100,7 @@ class DataItem(object):
         return os.path.relpath(self.cache.relative, data_file_dir)
 
     def create_symlink(self):
-        os.symlink(self._symlink_file, self.data.relative)
+        System.symlink(self._symlink_file, self.data.relative)
 
     def move_data_to_cache(self):
         cache_dir = os.path.dirname(self.cache.relative)
@@ -108,4 +108,4 @@ class DataItem(object):
             os.makedirs(cache_dir)
 
         shutil.move(self.data.relative, self.cache.relative)
-        os.symlink(self._symlink_file, self.data.relative)
+        System.symlink(self._symlink_file, self.data.relative)

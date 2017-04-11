@@ -1,12 +1,12 @@
 import os
 
-from dvc.git_wrapper import GitWrapperI
+from dvc.system import System
 
 
 class Path(object):
     def __init__(self, path, git):
         if not os.path.isabs(path):
-            pwd = GitWrapperI.get_cwd()
+            pwd = System.get_cwd()
             path = os.path.normpath(os.path.join(pwd, path))
 
         self._abs = path

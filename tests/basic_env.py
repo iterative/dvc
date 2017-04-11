@@ -7,23 +7,24 @@ from dvc.git_wrapper import GitWrapperI
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.settings import Settings
+from dvc.system import System
 from dvc.utils import rmtree
 
 
 class BasicEnvironment(TestCase):
     def init_environment(self,
-                         test_dir=GitWrapperI.get_long_path(tempfile.mkdtemp()),
+                         test_dir=System.get_long_path(tempfile.mkdtemp()),
                          curr_dir=None):
-        self._test_dir = os.path.realpath(test_dir)
+        self._test_dir = System.realpath(test_dir)
         self._proj_dir = 'proj'
         self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
-        self._old_curr_dir_abs = os.path.realpath(os.curdir)
+        self._old_curr_dir_abs = System.realpath(os.curdir)
 
         if os.path.exists(self._test_dir):
             rmtree(self._test_dir)
 
         if curr_dir:
-            self._curr_dir = os.path.realpath(curr_dir)
+            self._curr_dir = System.realpath(curr_dir)
         else:
             self._curr_dir = self._test_git_dir
 
@@ -112,7 +113,7 @@ class DirHierarchyEnvironment(BasicEnvironment):
             self.create_content_file(cache_result, content)
 
             relevant_dir = self.relevant_dir(data_file)
-            os.symlink(os.path.join(relevant_dir, cache_result), file_result)
+            System.symlink(os.path.join(relevant_dir, cache_result), file_result)
         else:
             cache_result = None
             self.create_content_file(file_result, content)

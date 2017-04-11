@@ -4,7 +4,7 @@ import json
 import time
 
 from dvc.exceptions import DvcException
-from dvc.git_wrapper import GitWrapperI
+from dvc.system import System
 
 
 class StateFileError(DvcException):
@@ -127,7 +127,7 @@ class StateFile(object):
         return result
 
     def get_dvc_path(self):
-        pwd = GitWrapperI.get_cwd()
+        pwd = System.get_cwd()
         if not pwd.startswith(self.git.git_dir_abs):
             raise StateFileError('the file cannot be created outside of a git repository')
 

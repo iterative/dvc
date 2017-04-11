@@ -1,96 +1,25 @@
 import os
-import re
 import sys
-import ctypes
 
 from dvc.config import Config, ConfigI
 from dvc.exceptions import DvcException
-from dvc.executor import Executor
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.settings import Settings
+from dvc.system import System
 
 
 class Runtime(object):
     CONFIG = 'dvc.conf'
-    SYMLINC_OVERRIDE = None
-    REALPATH_NATIVE = None
-
-    @staticmethod
-    def ls_command_name():
-        if os.name == 'nt':
-            return 'dir'
-        return 'ls'
 
     @staticmethod
     def symlink_setup():
         if os.name != 'nt':
             return
 
-        Runtime._setup_windows_symlink()
-
-        os.symlink = Runtime.symlink
-        os.path.islink = Runtime.is_link
-
-        Runtime.REALPATH_NATIVE = os.path.realpath
-        os.path.realpath = Runtime.realpath
-
-    @staticmethod
-    def _setup_windows_symlink():
-        func = ctypes.windll.kernel32.CreateSymbolicLinkW
-        func.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
-        func.restype = ctypes.c_ubyte
-        Runtime.SYMLINC_OVERRIDE = func
-
-    @staticmethod
-    def is_link(path):
-        if not os.path.exists(path):
-            return False
-
-        if not os.path.isfile(path):
-            return False
-
-        # It is definitely not the best way to check a symlink.
-        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
-        if code != 0:
-            return False
-
-        return '<SYMLINK>' in output
-
-    @staticmethod
-    def realpath(path):
-        if os.name != 'nt':
-            return Runtime.REALPATH_NATIVE(path)
-
-        if not os.path.islink(path):
-            return Runtime.REALPATH_NATIVE(path)
-
-        # It is definitely not the best way to check a symlink.
-        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
-        if code != 0 or not '<SYMLINK>' in output:
-            return os.path.realpath(path)
-
-        groups = re.compile(r'\[\S+\]$').findall(output.strip())
-        if len(groups) < 1:
-            return Runtime.REALPATH_NATIVE(path)
-
-        resolved_link = groups[0][1:-1]
-        return resolved_link
-
-    @staticmethod
-    def symlink(source, link_name):
-        '''symlink(source, link_name) - DVC override for Windows
-           Creates a symbolic link pointing to source named link_name'''
-
-        flags = 0
-        if source is not None and os.path.isdir(source):
-            flags = 1
-        if Runtime.SYMLINC_OVERRIDE(link_name, source, flags) == 0:
-            raise ctypes.WinError()
-
     @staticmethod
     def conf_file_path(git_dir):
-        return os.path.realpath(os.path.join(git_dir, Runtime.CONFIG))
+        return System.realpath(os.path.join(git_dir, Runtime.CONFIG))
 
     @staticmethod
     def run(cmd_class, parse_config=True):

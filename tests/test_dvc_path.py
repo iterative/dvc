@@ -4,12 +4,13 @@ from unittest import TestCase
 
 from dvc.path.path import Path
 from dvc.git_wrapper import GitWrapperI
+from dvc.system import System
 
 
 class TestDvcPathTest(TestCase):
     def setUp(self):
-        self.curr_dir = os.path.realpath('.')
-        self.test_dir = os.path.realpath('/tmp/ntx_unit_test/dvc_path')
+        self.curr_dir = System.realpath('.')
+        self.test_dir = System.realpath('/tmp/ntx_unit_test/dvc_path')
         self.tearDown()
         os.makedirs(os.path.join(self.test_dir, 'data'))
         os.makedirs(os.path.join(self.test_dir, 'code', 'lib'))

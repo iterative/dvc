@@ -1,10 +1,9 @@
 import os
-if os.name == 'nt':
-    from ctypes import create_unicode_buffer, windll
 
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
+from dvc.system import System
 
 
 class GitWrapperI(object):
@@ -22,7 +21,7 @@ class GitWrapperI(object):
 
     @property
     def git_dir_abs(self):
-        return os.path.realpath(self.git_dir)
+        return System.realpath(self.git_dir)
 
     @property
     def curr_dir_abs(self):
@@ -50,25 +49,6 @@ class GitWrapperI(object):
         if os.name == 'nt':
             return path.replace('/', '\\')
         return path
-
-    LONG_PATH_BUFFER_SIZE = 1024
-
-    @staticmethod
-    def get_long_path(path):
-        """Convert short path to a full path. It is needed for Windows."""
-        if os.name != 'nt':
-            return path
-
-        buffer = create_unicode_buffer(GitWrapperI.LONG_PATH_BUFFER_SIZE)
-        get_long_path_name = windll.kernel32.GetLongPathNameW
-        result = get_long_path_name(unicode(path), buffer, GitWrapperI.LONG_PATH_BUFFER_SIZE)
-        if result == 0 or result > GitWrapperI.LONG_PATH_BUFFER_SIZE:
-            return path
-        return buffer.value
-
-    @staticmethod
-    def get_cwd():
-        return GitWrapperI.get_long_path(os.getcwd())
 
     @staticmethod
     def parse_porcelain_files(out):
@@ -161,11 +141,11 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def abs_paths_to_relative(files):
-        cur_dir = os.path.realpath(os.curdir)
+        cur_dir = System.realpath(os.curdir)
 
         result = []
         for file in files:
-            result.append(os.path.relpath(os.path.realpath(file), cur_dir))
+            result.append(os.path.relpath(System.realpath(file), cur_dir))
 
         return result
 

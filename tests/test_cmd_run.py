@@ -7,15 +7,16 @@ from dvc.config import ConfigI
 from dvc.executor import Executor
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
-from dvc.git_wrapper import GitWrapper, GitWrapperI
+from dvc.git_wrapper import GitWrapper
 from dvc.settings import Settings
+from dvc.system import System
 from dvc.utils import rmtree
 
 
 class RunBasicTest(TestCase):
     def setUp(self):
-        self.test_dir = GitWrapperI.get_long_path(tempfile.mkdtemp())
-        self._old_curr_dir_abs = os.path.realpath(os.curdir)
+        self.test_dir = System.get_long_path(tempfile.mkdtemp())
+        self._old_curr_dir_abs = System.realpath(os.curdir)
 
         self.tearDown()
         os.mkdir(self.test_dir)

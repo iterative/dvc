@@ -4,6 +4,7 @@ from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI
 from dvc.path.data_item import NotInDataDirError, DataItemError, DataItem
 from dvc.path.factory import PathFactory
+from dvc.system import System
 from tests.basic_env import BasicEnvironment
 
 
@@ -51,7 +52,7 @@ class TestPathFactory(BasicEnvironment):
         fd.close()
 
         os.chdir('data')
-        os.symlink(os.path.join('..', self.cache_file), 'file.txt')
+        System.symlink(os.path.join('..', self.cache_file), 'file.txt')
         os.chdir('..')
         pass
 
