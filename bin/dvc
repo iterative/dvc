@@ -1,0 +1,3 @@
+#!/bin/bash
+
+PYTHONPATH=$DVC_HOME python $DVC_HOME/dvc2.py $@

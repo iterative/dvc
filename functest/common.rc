@@ -13,11 +13,11 @@ function dvc_info() {
 function _init_repo() {
     dvc_info 'init reporitory'
     git init
-    dvc-init
+    dvc init
 
     dvc_info 'import xml files'
     mkdir data/xml
-    dvc-data-import ../$RAW_DATA_LOCAL/* data/xml
+    dvc data-import ../$RAW_DATA_LOCAL/* data/xml
     
     dvc_info 'copy code'
     mkdir code
