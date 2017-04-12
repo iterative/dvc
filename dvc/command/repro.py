@@ -31,7 +31,6 @@ class CmdRepro(CmdRun):
         parser.add_argument('target', metavar='', help='Data item to reproduce', nargs='*')
         pass
 
-
     @property
     def is_reproducible(self):
         return True
@@ -78,7 +77,8 @@ class CmdRepro(CmdRun):
 
         for data_item in data_item_list:
             try:
-                repro_change = ReproChange(data_item, self)
+                target_commit = self.git.get_target_commit(data_item.data.relative)
+                repro_change = ReproChange(data_item, self, target_commit)
                 if repro_change.reproduce():
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
@@ -103,13 +103,15 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, data_item, cmd_obj):
+    def __init__(self, data_item, cmd_obj, target_commit):
         self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
         self._state = StateFile.load(data_item.state.relative, self.git)
 
         cmd_obj._code = self.state.code_dependencies
+
+        self._target_commit = target_commit
 
         argv = self.state.norm_argv
 
@@ -156,13 +158,13 @@ class ReproChange(object):
 
         were_input_files_changed = False
         for data_item in self.dependencies:
-            change = ReproChange(data_item, self._cmd_obj)
+            change = ReproChange(data_item, self._cmd_obj, self._target_commit)
             if change.reproduce(force):
                 were_input_files_changed = True
 
-        was_source_code_changed = self.git.were_files_changed(self._data_item.data.relative,
-                                                              self.state.code_dependencies + self.state.input_files,
-                                                              self.cmd_obj.settings.path_factory)
+        was_source_code_changed = self.git.were_files_changed(self.state.code_dependencies + self.state.input_files,
+                                                              self.cmd_obj.settings.path_factory,
+                                                              self._target_commit)
         if was_source_code_changed:
             Logger.debug('Dependencies were changed for "{}"'.format(self._data_item.data.dvc))
 

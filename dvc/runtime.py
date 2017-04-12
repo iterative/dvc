@@ -13,11 +13,6 @@ class Runtime(object):
     CONFIG = 'dvc.conf'
 
     @staticmethod
-    def symlink_setup():
-        if os.name != 'nt':
-            return
-
-    @staticmethod
     def conf_file_path(git_dir):
         return System.realpath(os.path.join(git_dir, Runtime.CONFIG))
 
@@ -30,7 +25,6 @@ class Runtime(object):
         """
 
         try:
-            Runtime.symlink_setup()
             runtime_git = GitWrapper()
 
             if parse_config:
