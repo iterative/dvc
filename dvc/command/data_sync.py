@@ -7,6 +7,7 @@ from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
+from dvc.system import System
 
 
 class DataSyncError(DvcException):
@@ -52,7 +53,7 @@ class CmdDataSync(CmdBase):
         pass
 
     def run(self):
-        if os.path.islink(self.parsed_args.target):
+        if System.islink(self.parsed_args.target):
             data_item = self.path_factory.existing_data_item(self.parsed_args.target)
             return self.sync_symlink(data_item)
 
@@ -66,7 +67,7 @@ class CmdDataSync(CmdBase):
             fname = os.path.join(dir, f)
             if os.path.isdir(fname):
                 self.sync_dir(fname)
-            elif os.path.islink(fname):
+            elif System.islink(fname):
                 self.sync_symlink(self.path_factory.existing_data_item(fname))
             else:
                 raise DataSyncError('Unsupported file type "{}"'.format(fname))

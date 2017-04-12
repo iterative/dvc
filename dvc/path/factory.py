@@ -3,13 +3,14 @@ import os
 from dvc.path.data_item import DataItem, DataItemError, NotInDataDirError
 from dvc.path.path import Path
 from dvc.path.stated_data_item import StatedDataItem
+from dvc.system import System
 
 
 class PathFactory(object):
     def __init__(self, git, config):
         self._git = git
         self._config = config
-        self._curr_dir_abs = os.path.realpath(os.curdir)
+        self._curr_dir_abs = System.realpath(os.curdir)
 
     def path(self, relative_raw):
         return Path(relative_raw, self._git)
@@ -21,9 +22,12 @@ class PathFactory(object):
         return StatedDataItem(state, data_file, self._git, self._config)
 
     def existing_data_item(self, file):
-        if not os.path.islink(file):
+        if not os.path.exists(file):
+            raise DataItemError(u'Data file "%s" is not exist' % file)
+
+        if not System.islink(file):
             raise DataItemError(u'Data file "%s" must be a symbolic link' % file)
-        resolved_symlink = os.path.realpath(file)
+        resolved_symlink = System.realpath(file)
         return DataItem(file, self._git, self._config, resolved_symlink)
 
     def to_data_items(self, files):

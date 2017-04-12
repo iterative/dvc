@@ -6,14 +6,20 @@ from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.settings import Settings
+from dvc.system import System
 
 
 class Runtime(object):
     CONFIG = 'dvc.conf'
 
     @staticmethod
+    def symlink_setup():
+        if os.name != 'nt':
+            return
+
+    @staticmethod
     def conf_file_path(git_dir):
-        return os.path.realpath(os.path.join(git_dir, Runtime.CONFIG))
+        return System.realpath(os.path.join(git_dir, Runtime.CONFIG))
 
     @staticmethod
     def run(cmd_class, parse_config=True, args_start_loc=1):
@@ -24,6 +30,7 @@ class Runtime(object):
         """
 
         try:
+            Runtime.symlink_setup()
             runtime_git = GitWrapper()
 
             if parse_config:

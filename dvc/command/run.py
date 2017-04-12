@@ -24,10 +24,8 @@ class CmdRun(CmdBase):
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        parser.add_argument('--not-repro',
-                            help='Not reproducible',
-                            action='store_false',
-                            default=False)
+        parser.add_argument('--not-repro', help='Not reproducible',
+                            action='store_false', default=False)
         parser.add_argument('--stdout', help='output std output to a file')
         parser.add_argument('--stderr', help='output std error to a file')
         parser.add_argument('--input', '-i', action='append',
@@ -36,6 +34,7 @@ class CmdRun(CmdBase):
                             help='Declare output data items for reproducible cmd')
         parser.add_argument('--code', '-c', action='append',
                             help='Code dependencies which produce the output')
+        parser.add_argument('--shell', help='Shell command', action='store_true', default=False)
         pass
 
     @property
@@ -68,21 +67,23 @@ class CmdRun(CmdBase):
             self.run_command(self.command_args,
                              self.data_items_from_args(self.command_args),
                              self.parsed_args.stdout,
-                             self.parsed_args.stderr)
+                             self.parsed_args.stderr,
+                             self.parsed_args.shell)
             return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
         finally:
             lock.release()
 
         return 1
 
-    def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None):
-        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}'.format(
+    def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None, shell=False):
+        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
                      ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
                      stdout,
-                     stderr))
+                     stderr,
+                     shell))
 
-        repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr)
+        repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr, shell=shell)
 
         if not self.skip_git_actions and not self._validate_file_states(repo_change):
             self.remove_new_files(repo_change)

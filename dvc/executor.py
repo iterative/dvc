@@ -10,7 +10,7 @@ class ExecutorError(DvcException):
 
 class Executor:
     @staticmethod
-    def exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None):
+    def exec_cmd(cmd, stdout_file=None, stderr_file=None, cwd=None, shell=False):
         stdout, stdout_fd = Executor.output_file(stdout_file)
         stderr, stderr_fd = Executor.output_file(stderr_file)
 
@@ -18,7 +18,8 @@ class Executor:
             p = subprocess.Popen(cmd,
                                  cwd=cwd,
                                  stdout=stdout,
-                                 stderr=stderr)
+                                 stderr=stderr,
+                                 shell=shell)
             p.wait()
             out, err = map(lambda s: s.decode().strip('\n\r') if s else '', p.communicate())
 
@@ -46,8 +47,9 @@ class Executor:
         return output, output_fd
 
     @staticmethod
-    def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None):
-        code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file, stderr_file=stderr_file, cwd=cwd)
+    def exec_cmd_only_success(cmd, stdout_file=None, stderr_file=None, cwd=None, shell=False):
+        code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file,
+                                           stderr_file=stderr_file, cwd=cwd, shell=shell)
         if code != 0:
             raise ExecutorError('Git command error ({}):\n{}'.format(' '.join(cmd), err))
         return out

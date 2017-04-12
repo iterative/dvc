@@ -3,6 +3,7 @@ import os
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
+from dvc.system import System
 
 
 class GitWrapperI(object):
@@ -20,7 +21,7 @@ class GitWrapperI(object):
 
     @property
     def git_dir_abs(self):
-        return os.path.realpath(self.git_dir)
+        return System.realpath(self.git_dir)
 
     @property
     def curr_dir_abs(self):
@@ -44,13 +45,19 @@ class GitWrapperI(object):
         return GitWrapper.parse_porcelain_files(out)
 
     @staticmethod
+    def git_path_to_system_path(path):
+        if os.name == 'nt':
+            return path.replace('/', '\\')
+        return path
+
+    @staticmethod
     def parse_porcelain_files(out):
         result = []
         if len(out) > 0:
             lines = out.split('\n')
             for line in lines:
                 status = line[:2]
-                file = line[3:]
+                file = GitWrapperI.git_path_to_system_path(line[3:])
                 result.append((status, file))
         return result
 
@@ -134,11 +141,11 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def abs_paths_to_relative(files):
-        cur_dir = os.path.realpath(os.curdir)
+        cur_dir = System.realpath(os.curdir)
 
         result = []
         for file in files:
-            result.append(os.path.relpath(os.path.realpath(file), cur_dir))
+            result.append(os.path.relpath(System.realpath(file), cur_dir))
 
         return result
 
@@ -157,10 +164,11 @@ class GitWrapper(GitWrapperI):
         commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
         commit = commit.strip('"')
 
-        Logger.debug('[Git] Identify changes. Success.')
-
         changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', commit])
         changed_files = changed_files.strip('"')
+
+        Logger.debug('[Git] Identify changes. Success. Changed files: {}'.format(
+            changed_files.replace('\n', ', ')))
 
         code_files, code_dirs = self.separate_dependency_files_and_dirs(code_dependencies)
         code_files_set = set([path_factory.path(x).dvc for x in code_files])

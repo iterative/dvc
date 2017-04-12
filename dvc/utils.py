@@ -1,3 +1,6 @@
+import os
+import stat
+import shutil
 
 def cached_property(f):
     def get(self):
@@ -12,3 +15,12 @@ def cached_property(f):
             return x
 
     return property(get)
+
+
+def rmtree(dir):
+    '''Cross platform rmtree()'''
+    if os.name == 'nt':
+        if os.path.exists(dir) and not os.access(dir, os.W_OK):
+            os.chmod(dir, stat.S_IWUSR)
+
+    shutil.rmtree(dir, ignore_errors=True)

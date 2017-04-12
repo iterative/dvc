@@ -1,5 +1,5 @@
 import os
-import shutil
+import tempfile
 from unittest import TestCase
 
 from dvc.config import ConfigI
@@ -7,19 +7,24 @@ from dvc.git_wrapper import GitWrapperI
 from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.settings import Settings
+from dvc.system import System
+from dvc.utils import rmtree
 
 
 class BasicEnvironment(TestCase):
-    def init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'), curr_dir=None):
-        self._test_dir = os.path.realpath(test_dir)
+    def init_environment(self,
+                         test_dir=System.get_long_path(tempfile.mkdtemp()),
+                         curr_dir=None):
+        self._test_dir = System.realpath(test_dir)
         self._proj_dir = 'proj'
         self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
-        self._old_curr_dir_abs = os.path.realpath(os.curdir)
+        self._old_curr_dir_abs = System.realpath(os.curdir)
 
-        shutil.rmtree(self._test_dir, ignore_errors=True)
+        if os.path.exists(self._test_dir):
+            rmtree(self._test_dir)
 
         if curr_dir:
-            self._curr_dir = os.path.realpath(curr_dir)
+            self._curr_dir = System.realpath(curr_dir)
         else:
             self._curr_dir = self._test_git_dir
 
@@ -30,8 +35,12 @@ class BasicEnvironment(TestCase):
             os.makedirs(self._test_git_dir)
 
         data_dir = os.path.join(self._test_git_dir, 'data')
-        if not os.path.isdir(data_dir):
-            os.makedirs(data_dir)
+        cache_dir = os.path.join(self._test_git_dir, 'cache')
+        state_dir = os.path.join(self._test_git_dir, 'state')
+
+        os.makedirs(data_dir)
+        os.makedirs(cache_dir)
+        os.makedirs(state_dir)
 
         os.chdir(self._curr_dir)
 
@@ -39,7 +48,7 @@ class BasicEnvironment(TestCase):
         if self._old_curr_dir_abs:
             os.chdir(self._old_curr_dir_abs)
         if self._test_git_dir:
-            shutil.rmtree(self._test_dir, ignore_errors=True)
+            rmtree(self._test_dir)
         pass
 
 
@@ -71,11 +80,9 @@ class DirHierarchyEnvironment(BasicEnvironment):
         self.settings = Settings([], self._git, self._config)
 
         self.dir1 = os.path.join('dir1')
-        self.dir11 = os.path.join('dir1/dir11')
+        self.dir11 = os.path.join('dir1', 'dir11')
         self.dir2 = os.path.join('dir2')
 
-        os.mkdir('cache')
-        os.mkdir('state')
         self.create_dirs(self.dir1)
         self.create_dirs(self.dir11)
         self.create_dirs(self.dir2)
@@ -106,7 +113,7 @@ class DirHierarchyEnvironment(BasicEnvironment):
             self.create_content_file(cache_result, content)
 
             relevant_dir = self.relevant_dir(data_file)
-            os.symlink(os.path.join(relevant_dir, cache_result), file_result)
+            System.symlink(os.path.join(relevant_dir, cache_result), file_result)
         else:
             cache_result = None
             self.create_content_file(file_result, content)

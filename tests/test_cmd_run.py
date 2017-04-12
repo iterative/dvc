@@ -1,5 +1,4 @@
 import os
-import shutil
 import tempfile
 from unittest import TestCase
 
@@ -10,12 +9,14 @@ from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.git_wrapper import GitWrapper
 from dvc.settings import Settings
+from dvc.system import System
+from dvc.utils import rmtree
 
 
 class RunBasicTest(TestCase):
     def setUp(self):
-        self.test_dir = tempfile.mkdtemp()
-        self._old_curr_dir_abs = os.path.realpath(os.curdir)
+        self.test_dir = System.get_long_path(tempfile.mkdtemp())
+        self._old_curr_dir_abs = System.realpath(os.curdir)
 
         self.tearDown()
         os.mkdir(self.test_dir)
@@ -46,7 +47,7 @@ class RunBasicTest(TestCase):
         fd.close()
 
     def tearDown(self):
-        shutil.rmtree(self.test_dir, ignore_errors=True)
+        rmtree(self.test_dir)
         os.chdir(self._old_curr_dir_abs)
 
 
@@ -55,7 +56,8 @@ class TestRunOutsideData(RunBasicTest):
         self.settings._args = []
         cmd_run = CmdRun(self.settings)
         with self.assertRaises(RunError):
-            cmd_run.run_command(['touch', 'file1', 'file2'], [])
+            cmd_run.run_command(['echo', 'test'], [], shell=True,
+                                stdout='file1', stderr='file2')
         pass
 
 
@@ -65,18 +67,20 @@ class RunTwoFilesBase(RunBasicTest):
 
         self.settings._args = []
         cmd_run = CmdRun(self.settings)
-        self.input_param_file = 'data/extra_input'
+        self.input_param_file = os.path.join('data', 'extra_input')
         cmd_run.parsed_args.input = [self.input_param_file]
 
-        self.extra_output_file = 'data/extra_output'
+        self.extra_output_file = os.path.join('data', 'extra_output')
         cmd_run.parsed_args.output = [self.extra_output_file]
 
-        self.file_name1 = 'data/file1'
-        self.file_name2 = 'data/file2'
-        self.state_objs = cmd_run.run_command(['touch', self.file_name1, self.file_name2], [])
+        self.file_name1 = os.path.join('data', 'file1')
+        self.file_name2 = os.path.join('data', 'file2')
+        self.state_objs = cmd_run.run_command(['echo', 'test'], [], shell=True,
+                                              stdout=self.file_name1,
+                                              stderr=self.file_name2)
 
-        self.state_file_name1 = 'state/file1' + DataItem.STATE_FILE_SUFFIX
-        self.state_file_name2 = 'state/file2' + DataItem.STATE_FILE_SUFFIX
+        self.state_file_name1 = os.path.join('state', 'file1' + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name2 = os.path.join('state', 'file2' + DataItem.STATE_FILE_SUFFIX)
 
         self.state_file1 = None
         self.state_file2 = None

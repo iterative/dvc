@@ -1,22 +1,36 @@
 import os
-
 import shutil
 
 from dvc.path.path import Path
 from dvc.exceptions import DvcException
+from dvc.system import System
 from dvc.utils import cached_property
 
 
 class DataItemError(DvcException):
     def __init__(self, msg):
-        DvcException.__init__(self, 'Data file error: {}'.format(msg))
+        super(DataItemError, self).__init__('Data item error: {}'.format(msg))
 
 
 class NotInDataDirError(DvcException):
-    def __init__(self, file, data_dir):
-        DvcException.__init__(self,
-                                   'Data file location error: the file "{}" has to be in the data directory "{}"'.
-                              format(file, data_dir))
+    def __init__(self, msg):
+        super(NotInDataDirError, self).__init__(msg)
+
+    @staticmethod
+    def build(file, data_dir):
+        msg = 'the file "{}" is not in the data directory "{}"'.format(file, data_dir)
+        return NotInDataDirError(msg)
+
+
+class DataItemInStatusDirError(NotInDataDirError):
+    def __init__(self, msg):
+        super(DataItemInStatusDirError, self).__init__(msg)
+
+    @staticmethod
+    def build(file, data_dir):
+        msg = 'the file "{}" is in state directory, not in the data directory "{}"'.format(
+                file, data_dir)
+        return DataItemInStatusDirError(msg)
 
 
 class DataItem(object):
@@ -29,11 +43,15 @@ class DataItem(object):
         self._cache_file = cache_file
 
         self._data = Path(data_file, git)
+
+        if self._data.abs.startswith(self.state_dir_abs):
+            raise DataItemInStatusDirError.build(data_file, self._config.data_dir)
+
         if not self._data.abs.startswith(self.data_dir_abs):
-            raise NotInDataDirError(data_file, self._config.data_dir)
+            raise NotInDataDirError.build(data_file, self._config.data_dir)
 
         if not self._data.dvc.startswith(self._config.data_dir):
-            raise NotInDataDirError(data_file, self._config.data_dir)
+            raise NotInDataDirError.build(data_file, self._config.data_dir)
         pass
 
     def __hash__(self):
@@ -58,17 +76,23 @@ class DataItem(object):
 
     @cached_property
     def cache(self):
+        cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
+
         if self._cache_file:
-            return Path(self._cache_file, self._git)
+            file_name = os.path.basename(self._cache_file)
         else:
-            cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
-            cache_file_suffix = self.CACHE_FILE_SEP + self._git.curr_commit
-            cache_file = os.path.join(cache_dir, self.data_dvc_short + cache_file_suffix)
-            return Path(cache_file, self._git)
+            file_name = self.data_dvc_short + self.CACHE_FILE_SEP + self._git.curr_commit
+
+        cache_file = os.path.join(cache_dir, file_name)
+        return Path(cache_file, self._git)
 
     @cached_property
     def data_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.data_dir)
+
+    @cached_property
+    def state_dir_abs(self):
+        return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
     @property
     def _symlink_file(self):
@@ -76,7 +100,7 @@ class DataItem(object):
         return os.path.relpath(self.cache.relative, data_file_dir)
 
     def create_symlink(self):
-        os.symlink(self._symlink_file, self.data.relative)
+        System.symlink(self._symlink_file, self.data.relative)
 
     def move_data_to_cache(self):
         cache_dir = os.path.dirname(self.cache.relative)
@@ -84,4 +108,4 @@ class DataItem(object):
             os.makedirs(cache_dir)
 
         shutil.move(self.data.relative, self.cache.relative)
-        os.symlink(self._symlink_file, self.data.relative)
+        System.symlink(self._symlink_file, self.data.relative)

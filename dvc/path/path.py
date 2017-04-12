@@ -1,9 +1,15 @@
 import os
 
+from dvc.system import System
+
 
 class Path(object):
-    def __init__(self, relative_raw, git):
-        self._abs = os.path.abspath(relative_raw)
+    def __init__(self, path, git):
+        if not os.path.isabs(path):
+            pwd = System.get_cwd()
+            path = os.path.normpath(os.path.join(pwd, path))
+
+        self._abs = path
         self._dvc = os.path.relpath(self.abs, git.git_dir_abs)
         self._relative = os.path.relpath(self._abs, git.curr_dir_abs)
         self._filename = os.path.basename(self._abs)
