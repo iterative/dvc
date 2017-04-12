@@ -157,18 +157,15 @@ class GitWrapper(GitWrapperI):
 
         return results
 
-    def were_files_changed(self, file, code_dependencies, path_factory):
-        Logger.debug('[Git] Identify changes. Commands: {} {} && {}'.format(
-            'git log -1 --pretty=format:"%h"', file, 'git diff --name-only HEAD *'))
+    def were_files_changed(self, code_dependencies, path_factory, target_commit):
+        Logger.debug('[Git] Identify changes. Command: git diff --name-only HEAD {}'.format(
+                     target_commit))
 
-        commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
-        commit = commit.strip('"')
-
-        changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', commit])
+        changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', target_commit])
         changed_files = changed_files.strip('"')
 
         Logger.debug('[Git] Identify changes. Success. Changed files: {}'.format(
-            changed_files.replace('\n', ', ')))
+                     changed_files.replace('\n', ', ')))
 
         code_files, code_dirs = self.separate_dependency_files_and_dirs(code_dependencies)
         code_files_set = set([path_factory.path(x).dvc for x in code_files])
@@ -181,6 +178,11 @@ class GitWrapper(GitWrapperI):
                     return True
 
         return False
+
+    @staticmethod
+    def get_target_commit(file):
+        commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
+        return commit.strip('"')
 
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []
