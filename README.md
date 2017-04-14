@@ -2,7 +2,7 @@
 [![Test Coverage](https://codeclimate.com/github/dmpetrov/dataversioncontrol/badges/coverage.svg)](https://codeclimate.com/github/dmpetrov/dataversioncontrol/coverage)
 
 # Data version control
-Code and data version control for data science projects
+Data version control for data science projects. Streamline your git code, your data (S3 and GCP) and the dependencies to a single reproducible environment.
 
 # Copyright
 
