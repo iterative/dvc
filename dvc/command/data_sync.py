@@ -82,7 +82,7 @@ class CmdDataSync(CmdBase):
     def _sync_from_cloud_aws(self, item):
         """ sync from cloud, aws version """
 
-        bucket = _get_bucket_aws()
+        bucket = self._get_bucket_aws()
 
         key_name = self.cache_file_key(item.cache.dvc)
         key = bucket.get_key(key_name)
