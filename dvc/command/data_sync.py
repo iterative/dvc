@@ -112,9 +112,9 @@ class CmdDataSync(CmdBase):
 
             Logger.debug('Checksum miss-match. Re-uploading is required.')
 
-        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(data_item.cache.relative, aws_key))
+        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(data_item.resolved_cache.relative, aws_key))
         key = bucket.new_key(aws_key)
-        key.set_contents_from_filename(data_item.cache.relative, cb=percent_cb)
+        key.set_contents_from_filename(data_item.resolved_cache.relative, cb=percent_cb)
         Logger.info('Uploading completed')
 
 
@@ -151,7 +151,7 @@ class CmdDataSync(CmdBase):
         blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
 
         blob = bucket.get_blob(blob_name)
-        if blob.exists():
+        if blob is not None and blob.exists():
             b64_encoded_md5 = base64.b64encode(file_md5(data_item.resolved_cache.dvc)[1])
 
             if blob.md5_hash == b64_encoded_md5:
@@ -161,8 +161,9 @@ class CmdDataSync(CmdBase):
 
         Logger.info('uploading cache file "{} to gc "{}"'.format(data_item.cache.relative, blob_name))
 
-        blob.upload_from_filename(data_item.cache.relative)
-        Logger.info('uploading %s completed' % data_item.cache.relative)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_filename(data_item.resolved_cache.relative)
+        Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
 
 
     def sync_from_cloud(self, item):
