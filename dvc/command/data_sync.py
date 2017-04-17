@@ -85,7 +85,6 @@ class CmdDataSync(CmdBase):
         bucket = _get_bucket_aws()
 
         key_name = self.cache_file_key(item.cache.dvc)
-        print 'aws: key name: %s' % key_name
         key = bucket.get_key(key_name)
         if not key:
             raise DataSyncError('File "{}" does not exist in the cloud'.format(key_name))
@@ -98,7 +97,6 @@ class CmdDataSync(CmdBase):
         """ sync_to_cloud, aws version """
 
         aws_key = self.cache_file_key(data_item.cache.dvc)
-        print 'aws_key is %s' % aws_key
         bucket = self._get_bucket_aws()
         key = bucket.get_key(aws_key)
         if key:
@@ -131,7 +129,6 @@ class CmdDataSync(CmdBase):
 
         bucket = self._get_bucket_gc()
         key = self.cache_file_key(item.cache.dvc)
-        print 'key: %s' % key
 
         blob = bucket.get_blob(key)
         if not blob:
@@ -147,8 +144,6 @@ class CmdDataSync(CmdBase):
 
         bucket = self._get_bucket_gc()
         blob_name = self.cache_file_key(data_item.cache.dvc)
-        print 'blob_name: %s' % blob_name
-        return
 
         blob = bucket.blob(blob_name)
         if blob.exists():

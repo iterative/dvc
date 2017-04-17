@@ -13,15 +13,30 @@ By submitting a pull request for this project, you agree to license your contrib
 # Setup / Configuration
 `dvc` supports both aws and google cloud; you will need accounts either from [aws](https://aws.amazon.com/) or [gcloud](https://cloud.google.com/).
 
-To see your available buckets, run either `TODO` or `gsutil ls`.
+Edit `dvc.conf`, and fill in `StoragePath` under `[Data]` with your preferred bucket and path.  For example,
+```
+[Data]
+StoragePath = gc://dvc-demo/dvcdata
+```
 
+## Amazon AWS Setup
+NB: To see your available buckets, run `aws s3 ls`
+
+Configuration:
+* edit `dvc.conf`, and set `Cloud = amazon`
+* under `[AWS]`, fill in `AccessKeyId` and `SecretAccessKey`
+
+Test `dvc` is correctly configured by running `dvc test-aws` (TODO)
 
 ## Google Cloud Setup
-To setup your google cloud credentials:
-TODO
+NB: To see your available buckets, run `gsutil ls`.
 
-To test they are set up correctly, 
-TODO
+Configuration:
+* edit `dvc.conf`, and set `Cloud = google`
+* under `[GC]`, set `ProjectName` to your preferred (or just your default) project name.
+
+Test `dvc` is correctly configured by running `dvc test-gcloud`.
+
 
 # Usage
 ```

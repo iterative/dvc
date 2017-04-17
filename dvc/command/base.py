@@ -35,7 +35,6 @@ class CmdBase(object):
         return self._settings.config
 
     def cache_file_key(self, file):
-        print 'storage_prefix %s' % self.config.storage_prefix
         return '{}/{}'.format(self.config.storage_prefix, file).strip('/')
 
     @property

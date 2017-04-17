@@ -18,7 +18,7 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
-Cloud = amazon
+Cloud =
 
 # Log levels: Debug, Info, Warning and Error
 LogLevel = Info
@@ -49,6 +49,9 @@ SecurityGroup = dvc-group
 
 [GC]
 ProjectName =
+
+[Data]
+StoragePath =
 '''
 
     def __init__(self, settings):
