@@ -72,7 +72,7 @@ class CmdDataSync(CmdBase):
     def _get_bucket_aws(self):
         """ get a bucket object, aws """
 
-        conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key, host='s3-us-west-2.amazonaws.com')
+        conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key, host=self.config.aws_region_host)
         bucket_name = self.config.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket is None:

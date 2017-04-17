@@ -66,6 +66,21 @@ class Config(ConfigI):
         return self._config['AWS']['SecretAccessKey']
 
     @property
+    def aws_region_host(self):
+        """ get the region host needed for s3 access
+
+        See notes http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
+        """
+
+        region = self._config['AWS']['Region']
+        if region is None or region == '':
+            return 's3.amazonaws.com'
+        if region == 'us-east-1':
+            return 's3.amazonaws.com'
+        return 's3.%s.amazonaws.com' % region
+
+
+    @property
     def storage_path(self):
         """ get storage path
 
