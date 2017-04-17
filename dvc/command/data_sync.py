@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 
@@ -29,11 +30,12 @@ def percent_cb(complete, total):
 
 
 def file_md5(fname):
+    """ get the (md5 hexdigest, md5 digest) of a file """
     hash_md5 = hashlib.md5()
     with open(fname, "rb") as f:
         for chunk in iter(lambda: f.read(1024*1000), b""):
             hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+    return (hash_md5.hexdigest(), hash_md5.digest())
 
 
 class CmdDataSync(CmdBase):
@@ -59,12 +61,12 @@ class CmdDataSync(CmdBase):
             if os.path.isdir(fname):
                 self.sync_dir(fname)
             elif System.islink(fname):
-                self.sync_symlink(self.settings.path_factory.existing_data_item(fname))
+                self.sync_symlink(self.settings.path_factory.data_item(fname))
             else:
                 raise DataSyncError('Unsupported file type "{}"'.format(fname))
 
     def sync_symlink(self, data_item):
-        if os.path.isfile(data_item.cache.relative):
+        if os.path.isfile(data_item.resolved_cache.dvc):
             self.sync_to_cloud(data_item)
         else:
             self.sync_from_cloud(data_item)
@@ -83,27 +85,27 @@ class CmdDataSync(CmdBase):
         """ sync from cloud, aws version """
 
         bucket = self._get_bucket_aws()
+
         key_name = self.cache_file_key(item.resolved_cache.dvc)
         key = bucket.get_key(key_name)
-
         if not key:
             raise DataSyncError('File "{}" does not exist in the cloud'.format(key_name))
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
-        key.get_contents_to_filename(item.cache.relative, cb=percent_cb)
+        key.get_contents_to_filename(item.resolved_cache.relative, cb=percent_cb)
         Logger.info('Downloading completed')
 
     def _sync_to_cloud_aws(self, data_item):
         """ sync_to_cloud, aws version """
 
-        aws_key = self.cache_file_key(data_item.cache.dvc)
+        aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
         bucket = self._get_bucket_aws()
         key = bucket.get_key(aws_key)
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
             md5_cloud = key.etag[1:-1]
-            md5_local = file_md5(data_item.cache.relative)
+            md5_local = file_md5(data_item.resolved_cache.dvc)[0]
             if md5_cloud == md5_local:
                 Logger.debug('File checksum matches. No uploading is needed.')
                 return
@@ -118,17 +120,20 @@ class CmdDataSync(CmdBase):
 
     def _get_bucket_gc(self):
         """ get a bucket object, gc """
-        client = gc.Client()
+        client = gc.Client(project=self.config.gc_project_name)
         bucket = client.bucket(self.config.storage_bucket)
         if not bucket.exists():
             raise DataSyncError('sync up: google cloud bucket {} doesn\'t exist'.format(self.config.storage_bucket))
         return bucket
 
     def _sync_from_cloud_gcp(self, item):
-        """ sync from cloud, gcp version """
+        """ sync from cloud, gcp version
+        Params:
+            TODO
+        """
 
         bucket = self._get_bucket_gc()
-        key = self.cache_file_key(item.cache.dvc)
+        key = self.cache_file_key(item.resolved_cache.dvc)
 
         blob = bucket.get_blob(key)
         if not blob:
@@ -136,18 +141,20 @@ class CmdDataSync(CmdBase):
 
         Logger.info('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
 
-        blob.download_to_filename(item.cache.relative)
+        blob.download_to_filename(item.resolved_cache.dvc)
         Logger.info('Downloading completed')
 
     def _sync_to_cloud_gcp(self, data_item):
         """ sync_to_cloud, gcp version """
 
         bucket = self._get_bucket_gc()
-        blob_name = self.cache_file_key(data_item.cache.dvc)
+        blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
 
-        blob = bucket.blob(blob_name)
+        blob = bucket.get_blob(blob_name)
         if blob.exists():
-            if blob.md5_hash() == file_md5(data_item.cache.relative):
+            b64_encoded_md5 = base64.b64encode(file_md5(data_item.resolved_cache.dvc)[1])
+
+            if blob.md5_hash == b64_encoded_md5:
                 Logger.debug('checksum %s matches.  Skipping upload' % data_item.cache.relative)
                 return
             Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
