@@ -45,7 +45,7 @@ class CmdDataSync(CmdBase):
 
     def run(self):
         if System.islink(self.parsed_args.target):
-            data_item = self.settings.path_factory.existing_data_item(self.parsed_args.target)
+            data_item = self.settings.path_factory.data_item(self.parsed_args.target)
             return self.sync_symlink(data_item)
 
         if os.path.isdir(self.parsed_args.target):
@@ -83,9 +83,9 @@ class CmdDataSync(CmdBase):
         """ sync from cloud, aws version """
 
         bucket = self._get_bucket_aws()
-
-        key_name = self.cache_file_key(item.cache.dvc)
+        key_name = self.cache_file_key(item.resolved_cache.dvc)
         key = bucket.get_key(key_name)
+
         if not key:
             raise DataSyncError('File "{}" does not exist in the cloud'.format(key_name))
 

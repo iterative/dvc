@@ -87,6 +87,12 @@ class DataItem(object):
         return Path(cache_file, self._git)
 
     @cached_property
+    def resolved_cache(self):
+        resolved_cache = os.path.realpath(self._data.relative)
+        return Path(resolved_cache, self._git)
+
+
+    @cached_property
     def data_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.data_dir)
 
