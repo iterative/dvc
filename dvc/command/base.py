@@ -50,7 +50,7 @@ class CmdBase(object):
 
     def set_skip_git_actions(self, parser):
         parser.add_argument('--skip-git-actions', '-s', action='store_true',
-                            help='skip all git actions including reproducibility check and commits')
+                            help='Skip all git actions including reproducibility check and commits')
 
     @property
     def skip_git_actions(self):

@@ -4,6 +4,7 @@ import json
 import time
 
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 from dvc.system import System
 
 
@@ -84,8 +85,8 @@ class StateFile(object):
         res = {
             self.PARAM_TYPE:            self.MAGIC,
             self.PARAM_VERSION:         self.VERSION,
-            self.PARAM_ARGV:            self.argv,
-            self.PARAM_NORM_ARGV:       self.norm_argv,
+            self.PARAM_ARGV:            self.process_args(self.argv, 'argv'),
+            self.PARAM_NORM_ARGV:       self.process_args(self.norm_argv, 'normalized argv'),
             self.PARAM_CWD:             self.cwd,
             self.PARAM_CREATED_AT:      self.created_at,
             self.PARAM_INPUT_FILES:     self.input_files,
@@ -105,6 +106,27 @@ class StateFile(object):
         with open(self.file, 'w') as fd:
             json.dump(res, fd, indent=2)
         pass
+
+    def process_args(self, argv, name='argv'):
+        was_changed = False
+        result = []
+
+        for arg in argv:
+            if arg.endswith('dvc2.py'):
+                result.append('dvc')
+                was_changed = True
+            else:
+                result.append(arg)
+
+        if was_changed:
+            Logger.debug('Save state file {}. Replace {} "{}" to "{}"'.format(
+                self.file,
+                name,
+                argv,
+                result
+            ))
+
+        return result
 
     def normalized_args(self):
         result = []

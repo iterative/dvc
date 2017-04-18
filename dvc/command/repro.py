@@ -29,6 +29,8 @@ class CmdRepro(CmdRun):
         self.set_skip_git_actions(parser)
 
         parser.add_argument('target', metavar='', help='Data item to reproduce', nargs='*')
+        parser.add_argument('-f', '--force', action='store_true', default=False,
+                            help='Force reproduction')
         pass
 
     @property
@@ -51,13 +53,13 @@ class CmdRepro(CmdRun):
             return 1
 
         try:
-            return self.repro_target(self.parsed_args.target)
+            return self.repro_target(self.parsed_args.target, self.parsed_args.force)
         finally:
             lock.release()
 
         pass
 
-    def repro_target(self, target):
+    def repro_target(self, target, force):
         if not self.skip_git_actions and not self.git.is_ready_to_go():
             return 1
 
@@ -67,11 +69,11 @@ class CmdRepro(CmdRun):
                          format(self.config.data_dir, ' '.join(external_files_names)))
             return 1
 
-        if self.repro_data_items(data_item_list):
+        if self.repro_data_items(data_item_list, force):
             return self.commit_if_needed('DVC repro: {}'.format(' '.join(target)))
         pass
 
-    def repro_data_items(self, data_item_list):
+    def repro_data_items(self, data_item_list, force):
         error = False
         changed = False
 
@@ -79,7 +81,7 @@ class CmdRepro(CmdRun):
             try:
                 target_commit = self.git.get_target_commit(data_item.data.relative)
                 repro_change = ReproChange(data_item, self, target_commit)
-                if repro_change.reproduce():
+                if repro_change.reproduce(force):
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
@@ -148,11 +150,12 @@ class ReproChange(object):
                                         self.state.stderr)
 
     def reproduce(self, force=False):
-        Logger.debug('Reproduce data item {} with dependencies: {}'.format(
+        Logger.debug('Reproduce data item {} with dependencies, force={}: {}'.format(
                      self._data_item.data.dvc,
+                     force,
                      ', '.join([x.data.dvc for x in self.dependencies])))
 
-        if not self.state.is_reproducible:
+        if not force and not self.state.is_reproducible:
             Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
