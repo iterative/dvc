@@ -69,6 +69,8 @@ Info. [Git] A  state/Badges.xml.state
 The data file was downloaded and now it is available in the data directory.
 However, it is only a part of the work that dvc has done.
 
+### Cache files
+
 If you look carefully at the file you could see that this is actually a symlink to
     a cache directory file Badges.xml_a5ed2b9:
 ```
@@ -77,23 +79,20 @@ lrwxr-xr-x  1 dmitry  staff    27B Apr 17 16:19 data/Badges.xml@ -> ../cache/Bad
 ```
 
 Instead of importing the file to `data/Badges.xml` the system imports the file in the cache directory
-    `cache/Badges.xml_a5ed2b9` and creates a symlink `data/Badges.xml`.
+    and creates a symlink `data/Badges.xml`.
 The file in the cache directory `cache/Badges.xml_a5ed2b9` has the same name as 
     the file in the data directory but extended by a suffix `_a5ed2b9` which
     correspondes to a git snapshot checksum on the time when the file was created.
 
+### State files
 
+In addition to the cache file dvc creates a state file in the `state/` directory for each data file:
+```
+$ ls -l state/Badges.xml.state
+-rw-r--r--  1 dmitry  staff   654B Apr 17 16:19 state/Badges.xml.state
+```
 
-The system transparently moves the actual file to the cache directory and creates a symlink
-
-
-
-
-1. `data/` directory was created to keep all your data files that not suppose to go to Git repository.
-This is the directory users suppose to use for all the data files.
-However, dvc transparently moves all actual files to the `cache` directory and keeps only 
-    symlink in `data/`.
-2. `cache/` directory is a directory the file content.
+The state file contains information for file reproducibility.
 
 
 # Copyright
