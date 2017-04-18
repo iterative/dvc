@@ -46,16 +46,18 @@ class CmdRepro(CmdRun):
         return []
 
     def run(self):
-        lock = fasteners.InterProcessLock(self.git.lock_file)
-        gotten = lock.acquire(timeout=5)
-        if not gotten:
-            self.warning_dvc_is_busy()
-            return 1
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                self.warning_dvc_is_busy()
+                return 1
 
         try:
             return self.repro_target(self.parsed_args.target, self.parsed_args.force)
         finally:
-            lock.release()
+            if self.is_locker:
+                lock.release()
 
         pass
 

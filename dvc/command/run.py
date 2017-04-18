@@ -54,11 +54,12 @@ class CmdRun(CmdBase):
         return self._data_items_from_params(self.parsed_args.output, 'Output')
 
     def run(self):
-        lock = fasteners.InterProcessLock(self.git.lock_file)
-        gotten = lock.acquire(timeout=5)
-        if not gotten:
-            self.warning_dvc_is_busy()
-            return 1
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                self.warning_dvc_is_busy()
+                return 1
 
         try:
             if not self.skip_git_actions and not self.git.is_ready_to_go():
@@ -71,9 +72,8 @@ class CmdRun(CmdBase):
                              self.parsed_args.shell)
             return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
         finally:
-            lock.release()
-
-        return 1
+            if self.is_locker:
+                lock.release()
 
     def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None, shell=False):
         Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
