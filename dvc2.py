@@ -10,11 +10,13 @@ import sys
 
 from dvc.runtime import Runtime
 from dvc.command.init import CmdInit
+from dvc.command.data_import import CmdDataImport
 from dvc.command.remove import CmdDataRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
 from dvc.command.data_import import CmdDataImport
+from dvc.command.test import CmdTest
 
 
 def print_usage():
@@ -30,18 +32,27 @@ def print_usage():
             '    data sync    TODO',
             '    data remove  TODO',
             '    data import  TODO',
+            '',
+            'test credentials',
+            '    test aws TODO',
+            '    test gcloud  test gcloud and credentials are setup correctly',
             '')
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'data-remove', 'data-import', 'cloud', \
-            'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe']
+    cmds = ['init', 'run', 'sync', 'data', 'data-sync', 'data-remove', 'data-import', 'cloud', \
+            'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
+            'test', 'test-aws', 'test-gcloud', 'test-cloud']
     cmds_expand = {'data':  ['sync', 'remove', 'import'],
-                   'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe']
+                   'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe'],
+                   'test':  ['aws', 'cloud', 'gcloud'],
                   }
 
+    print('sys.argv: (%d) %s' % (len(sys.argv), sys.argv))
+
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
-        print('Unimplemented or unrecognized command. ' + ' '.join(sys.argv[1]))
+        if len(sys.argv) >= 2:
+            print('Unimplemented or unrecognized command: ' + ' '.join(sys.argv[1:]))
         print_usage()
         sys.exit(-1)
 
@@ -76,6 +87,11 @@ if __name__ == '__main__':
         print('cloud-instance-remove unimplemented')
     elif cmd == 'cloud-instance-describe' or (cmd == 'cloud' and subcmd == 'instance-describe'):
         print('cloud-instance-describe unimplemented')
+
+    elif cmd == 'test-aws' or (cmd == 'test' and subcmd == 'aws'):
+        print('TODO: test aws credentials')
+    elif cmd == 'test-gcloud' or (cmd=='test' and subcmd in ['cloud', 'gcloud']):
+        Runtime.run(CmdTest, args_start_loc=argv_offset)
     else:
         print('Unimplemented or unrecognized command. ' + ' '.join(sys.argv[1]))
         print_usage()

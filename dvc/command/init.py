@@ -18,7 +18,7 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
-Cloud = AWS
+Cloud =
 
 # Log levels: Debug, Info, Warning and Error
 LogLevel = Info
@@ -45,7 +45,14 @@ Storage = my-100gb-drive-io
 KeyDir = ~/.ssh
 KeyName = dvc-key
 
-SecurityGroup = dvc-group'''
+SecurityGroup = dvc-group
+
+[GC]
+ProjectName =
+
+[Data]
+StoragePath =
+'''
 
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)

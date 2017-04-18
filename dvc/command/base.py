@@ -13,7 +13,6 @@ class CmdBase(object):
         parser = argparse.ArgumentParser()
         self.define_args(parser)
         self._parsed_args, self._command_args = parser.parse_known_args(args=self.args)
-        pass
 
     @property
     def settings(self):
@@ -35,8 +34,8 @@ class CmdBase(object):
     def config(self):
         return self._settings.config
 
-    def cache_file_aws_key(self, file):
-        return '{}/{}'.format(self.config.aws_storage_prefix, file).strip('/')
+    def cache_file_key(self, file):
+        return '{}/{}'.format(self.config.storage_prefix, file).strip('/')
 
     @property
     def dvc_home(self):
