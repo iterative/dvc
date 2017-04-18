@@ -40,7 +40,7 @@ def print_usage():
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'data', 'data-sync', 'data-remove', 'data-import', 'cloud', \
+    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'data-remove', 'data-import', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
     cmds_expand = {'data':  ['sync', 'remove', 'import'],
