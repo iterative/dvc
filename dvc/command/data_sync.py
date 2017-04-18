@@ -73,7 +73,6 @@ class CmdDataSync(CmdBase):
 
     def _get_bucket_aws(self):
         """ get a bucket object, aws """
-
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key, host=self.config.aws_region_host)
         bucket_name = self.config.storage_bucket
         bucket = conn.lookup(bucket_name)
@@ -167,19 +166,19 @@ class CmdDataSync(CmdBase):
 
 
     def sync_from_cloud(self, item):
-        cloud = self.settings.config.get_cloud
+        cloud = self.settings.config.cloud
         assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
-        if self.settings.config.get_cloud == 'amazon':
+        if cloud == 'amazon':
             return self._sync_from_cloud_aws(item)
-        elif self.settings.config.get_cloud == 'google':
+        elif cloud == 'google':
             return self._sync_from_cloud_gcp(item)
 
     def sync_to_cloud(self, data_item):
-        cloud = self.settings.config.get_cloud
+        cloud = self.settings.config.cloud
         assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
-        if self.settings.config.get_cloud == 'amazon':
+        if cloud == 'amazon':
             return self._sync_to_cloud_aws(data_item)
-        elif self.settings.config.get_cloud == 'google':
+        elif cloud == 'google':
             return self._sync_to_cloud_gcp(data_item)
 
 

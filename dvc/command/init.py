@@ -19,16 +19,15 @@ DataDir = {}
 CacheDir = {}
 StateDir = {}
 Cloud =
+StoragePath =
 
 # Log levels: Debug, Info, Warning and Error
 LogLevel = Info
 
 [AWS]
-AccessKeyId =
-SecretAccessKey =
-
 StoragePath = dvc/tutorial
 
+CredentialPath =
 
 Region = us-east-1
 Zone = us-east-1a
@@ -48,10 +47,8 @@ KeyName = dvc-key
 SecurityGroup = dvc-group
 
 [GC]
-ProjectName =
-
-[Data]
 StoragePath =
+ProjectName =
 '''
 
     def __init__(self, settings):

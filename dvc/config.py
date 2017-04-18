@@ -39,7 +39,7 @@ class Config(ConfigI):
 
     def __init__(self, conf_file):
         self._conf_file = conf_file
-        self._config = configparser.ConfigParser()
+        self._config = configparser.SafeConfigParser()
 
         if not os.path.isfile(conf_file):
             raise ConfigError('Config file "{}" does not exist'.format(conf_file))
@@ -47,6 +47,8 @@ class Config(ConfigI):
 
         level = self._config['Global']['LogLevel']
         Logger.set_level(level)
+
+        self._aws_creds = None
 
         super(Config, self).__init__(self._config['Global']['DataDir'],
                                      self._config['Global']['CacheDir'],
@@ -59,11 +61,15 @@ class Config(ConfigI):
 
     @property
     def aws_access_key_id(self):
-        return self._config['AWS']['AccessKeyId']
+        if not self._aws_creds:
+            self._aws_creds = self.get_aws_credentials()
+        return self._aws_creds[0]
 
     @property
     def aws_secret_access_key(self):
-        return self._config['AWS']['SecretAccessKey']
+        if not self._aws_creds:
+            self._aws_creds = get_aws_credentials()
+        return self._aws_creds[1]
 
     @property
     def aws_region_host(self):
@@ -87,11 +93,11 @@ class Config(ConfigI):
         Precedence: Storage, then cloud specific
         """
 
-        path = self._config['Data'].get('StoragePath', None)
+        path = self._config['Global'].get('StoragePath', None)
         if path:
             return path
 
-        cloud = self.get_cloud
+        cloud = self.cloud
         assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
         if cloud == 'amazon':
             path = self._config['AWS'].get('StoragePath', None)
@@ -121,6 +127,97 @@ class Config(ConfigI):
         return self._config['GC']['ProjectName']
 
     @property
-    def get_cloud(self):
+    def cloud(self):
         """ get cloud choice: currently one of ['amazon', 'google'] """
-        return self._config['Global']['Cloud']
+        conf = self._config['Global'].get('Cloud', '')
+        if conf.lower() in ['amazon', 'aws']:
+            return 'amazon'
+        if conf.lower() in ['gc', 'google', 'google cloud', 'googlecloud']:
+            return 'google'
+        return conf
+
+
+    def get_aws_credentials(self):
+        """ gets aws credentials, looking in various places
+
+        Searches:
+        1 any override in dvc.conf [AWS] CredentialPath;
+        2 ~/.aws/credentials
+
+
+        Returns:
+            if successfully found, (access_key_id, secret)
+            None otherwise
+        """
+        default = os.path.expanduser('~/.aws/credentials')
+
+        paths = []
+        credpath = self._config['AWS'].get('CredentialPath', None)
+        if credpath is not None and len(credpath) > 0:
+            credpath = os.path.expanduser(credpath)
+            if os.path.isfile(credpath):
+                paths.append(credpath)
+            else:
+                Logger.warn('AWS CredentialPath "%s" not found; falling back to default "%s"' % (credpath, default))
+                paths.append(default)
+        else:
+            paths.append(default)
+
+        for path in paths:
+            cc = configparser.SafeConfigParser()
+            threw = False
+            try:
+                read = cc.read(path)
+            except:
+                threw = True
+            if not threw and len(read) > 0 and read[0] == path and 'default' in cc.keys():
+                access_key = cc['default'].get('aws_access_key_id', None)
+                secret = cc['default'].get('aws_secret_access_key', None)
+
+                if access_key is not None and secret is not None:
+                    return (access_key, secret)
+
+        return None
+
+
+    def sanity_check(self):
+        """ sanity check a config
+
+        check that we have a cloud and storagePath
+        if aws, check can read credentials
+        if google, check ProjectName
+
+        Returns:
+            (T,) if good
+            (F, issues) if bad
+        """
+        errors = []
+        for key in ['Cloud']:
+            if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
+                errors.append('Please set %s in section Global in config file %s' % (key, self.CONFIG))
+
+        # now that a cloud is chosen, can check StoragePath
+        sp = self.storage_path
+        if sp is None or len(sp) == 0:
+            errors.append('Please set StoragePath = bucket/{optional path} in conf file "%s" '
+                           'either in Global or a cloud specific section' % self.CONFIG)
+
+        cloud = self.cloud
+        if cloud == '':
+            # not set; already complained above
+            pass
+        elif cloud == 'amazon':
+            creds = self.get_aws_credentials()
+            if creds is None:
+                errors.append('can\'t find aws credentials.  TODO')
+        elif cloud == 'google':
+            project = self._config['GC'].get('ProjectName', None)
+            if project is None or len(project) < 1:
+                errors.append('can\'t read google cloud project name.  Please set ProjectName in section GC.  TODO HOW FIND')
+        else:
+            errors.append('unknown Cloud %s' % cloud)
+
+        return (len(errors) == 0, errors)
+
+
+
