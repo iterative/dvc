@@ -101,12 +101,9 @@ class DataItem(object):
         return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
     @property
-    def _symlink_file(self):
+    def symlink_file(self):
         data_file_dir = os.path.dirname(self.data.relative)
         return os.path.relpath(self.cache.relative, data_file_dir)
-
-    def create_symlink(self):
-        System.symlink(self._symlink_file, self.data.relative)
 
     def move_data_to_cache(self):
         cache_dir = os.path.dirname(self.cache.relative)
@@ -114,4 +111,4 @@ class DataItem(object):
             os.makedirs(cache_dir)
 
         shutil.move(self.data.relative, self.cache.relative)
-        System.symlink(self._symlink_file, self.data.relative)
+        System.symlink(self.symlink_file, self.data.relative)

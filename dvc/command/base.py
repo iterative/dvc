@@ -12,6 +12,7 @@ class CmdBase(object):
 
         parser = argparse.ArgumentParser()
         self.define_args(parser)
+
         self._parsed_args, self._command_args = parser.parse_known_args(args=self.args)
 
     @property
@@ -49,12 +50,24 @@ class CmdBase(object):
         pass
 
     def set_skip_git_actions(self, parser):
-        parser.add_argument('--skip-git-actions', '-s', action='store_true',
-                            help='skip all git actions including reproducibility check and commits')
+        parser.add_argument('--skip-git-actions', '-s', action='store_true', default=False,
+                            help='Skip all git actions including reproducibility check and commits')
+        parser.add_argument('--no-lock', '-L', action='store_true', default=False,
+                            help='Do not set DVC locker')
 
     @property
     def skip_git_actions(self):
         return self.parsed_args.skip_git_actions
+
+    def set_git_action(self, value):
+        self.parsed_args.skip_git_actions = not value
+
+    @property
+    def is_locker(self):
+        return not self.parsed_args.no_lock
+
+    def set_locker(self, value):
+        self.parsed_args.no_lock = value
 
     def commit_if_needed(self, message, error=False):
         if error or self.skip_git_actions:

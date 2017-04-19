@@ -1,3 +1,3 @@
 #!/bin/bash
 
-PYTHONPATH=$DVC_HOME python $DVC_HOME/dvc/command/data_import.py $@
+PYTHONPATH=$DVC_HOME python $DVC_HOME/dvc/command/import_bulk.py $@

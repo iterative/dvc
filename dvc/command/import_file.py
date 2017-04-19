@@ -10,25 +10,22 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
+from dvc.system import System
 
 
-class DataImportError(DvcException):
+class ImportFileError(DvcException):
     def __init__(self, msg):
-        DvcException.__init__(self, 'Import error: {}'.format(msg))
+        DvcException.__init__(self, 'Import file: {}'.format(msg))
 
 
-class CmdDataImport(CmdBase):
+class CmdImportFile(CmdBase):
     def __init__(self, settings):
-        super(CmdDataImport, self).__init__(settings)
+        super(CmdImportFile, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        parser.add_argument('input',
-                            metavar='',
-                            help='Input file',
-                            nargs='*')
-
+        self.add_string_arg(parser, 'input', 'Input file')
         self.add_string_arg(parser, 'output', 'Output file')
 
         parser.add_argument('-i', '--is-reproducible', action='store_false', default=False,
@@ -36,32 +33,37 @@ class CmdDataImport(CmdBase):
         pass
 
     def run(self):
-        lock = fasteners.InterProcessLock(self.git.lock_file)
-        gotten = lock.acquire(timeout=5)
-        if not gotten:
-            Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-            return 1
-
-        try:
-            if not self.skip_git_actions and not self.git.is_ready_to_go():
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
                 return 1
 
-            output = self.parsed_args.output
-            for file in self.parsed_args.input:
-                self.import_file(file, output, self.parsed_args.is_reproducible)
-
-            message = 'DVC data import: {} {}'.format(' '.join(self.parsed_args.input), self.parsed_args.output)
-            return self.commit_if_needed(message)
+        try:
+            return self.import_and_commit_if_needed(self.parsed_args.input,
+                                                    self.parsed_args.output,
+                                                    self.parsed_args.is_reproducible)
         finally:
-            lock.release()
+            if self.is_locker:
+                lock.release()
         pass
 
-    def import_file(self, input, output, is_reproducible):
-        if not CmdDataImport.is_url(input):
+    def import_and_commit_if_needed(self, input, output, is_reproducible=True, check_if_ready=True):
+        if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
+            return 1
+
+        self.import_file(input, output, is_reproducible)
+
+        message = 'DVC import file: {} {}'.format(' '.join(input), output)
+        return self.commit_if_needed(message)
+
+    def import_file(self, input, output, is_reproducible=True):
+        if not CmdImportFile.is_url(input):
             if not os.path.exists(input):
-                raise DataImportError('Input file "{}" does not exist'.format(input))
+                raise ImportFileError('Input file "{}" does not exist'.format(input))
             if not os.path.isfile(input):
-                raise DataImportError('Input file "{}" has to be a regular file'.format(input))
+                raise ImportFileError('Input file "{}" has to be a regular file'.format(input))
 
         if os.path.isdir(output):
             output = os.path.join(output, os.path.basename(input))
@@ -69,16 +71,16 @@ class CmdDataImport(CmdBase):
         data_item = self.settings.path_factory.data_item(output)
 
         if os.path.exists(data_item.data.relative):
-            raise DataImportError('Output file "{}" already exists'.format(data_item.data.relative))
+            raise ImportFileError('Output file "{}" already exists'.format(data_item.data.relative))
         if not os.path.isdir(os.path.dirname(data_item.data.relative)):
-            raise DataImportError('Output file directory "{}" does not exists'.format(
+            raise ImportFileError('Output file directory "{}" does not exists'.format(
                 os.path.dirname(data_item.data.relative)))
 
         cache_dir = os.path.dirname(data_item.cache.relative)
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir)
 
-        if CmdDataImport.is_url(input):
+        if CmdImportFile.is_url(input):
             Logger.debug('Downloading file {} ...'.format(input))
             self.download_file(input, data_item.cache.relative)
             Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
@@ -88,16 +90,17 @@ class CmdDataImport(CmdBase):
             Logger.debug('Input file "{}" was copied to cache "{}"'.format(
                 input, data_item.cache.relative))
 
-        data_item.create_symlink()
-        Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
-                     format(data_item.data.relative, data_item.cache.relative))
+        Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
+        System.symlink(data_item.symlink_file, data_item.data.relative)
 
-        state_file = StateFile(data_item.state.relative,
-                               self.git,
-                               [],
-                               [output],
-                               [],
-                               is_reproducible)
+        # import_file_argv = [StateFile.DVC_PYTHON_FILE_NAME, StateFile.COMMAND_IMPORT_FILE, input, output]
+        state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
+                               data_item.state.relative,
+                               self.settings,
+                               argv=[input, output],
+                               input_files=[],
+                               output_files=[output],
+                               is_reproducible=is_reproducible)
         state_file.save()
         Logger.debug('State file "{}" was created'.format(data_item.state.relative))
         pass
@@ -112,7 +115,7 @@ class CmdDataImport(CmdBase):
 
     @staticmethod
     def is_url(url):
-        return CmdDataImport.URL_REGEX.match(url) is not None
+        return CmdImportFile.URL_REGEX.match(url) is not None
 
     @staticmethod
     def download_file(from_url, to_file):

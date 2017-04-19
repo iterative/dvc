@@ -30,17 +30,19 @@ class CmdDataRemove(CmdBase):
         pass
 
     def run(self):
-        lock = fasteners.InterProcessLock(self.git.lock_file)
-        gotten = lock.acquire(timeout=5)
-        if not gotten:
-            Logger.info('[Cmd-Remove] Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-            return 1
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                Logger.info('[Cmd-Remove] Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+                return 1
 
         try:
             if not self.remove_all_targets():
                 return 1
         finally:
-            lock.release()
+            if self.is_locker:
+                lock.release()
 
         return 0
 
@@ -103,7 +105,7 @@ class CmdDataRemove(CmdBase):
 
     def _remove_cloud_cache(self, data_item):
         if not self.parsed_args.keep_in_cloud:
-            aws_key = self.cache_file_aws_key(data_item.cache.dvc)
+            aws_key = self.cache_file_key(data_item.cache.dvc)
             self.remove_from_cloud(aws_key)
 
     def _remove_state_file(self, data_item):

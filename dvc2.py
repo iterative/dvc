@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+from dvc.command.import_file import CmdImportFile
+
 """
 main entry point / argument parsing for dvc
 
@@ -10,12 +12,12 @@ import sys
 
 from dvc.runtime import Runtime
 from dvc.command.init import CmdInit
-from dvc.command.data_import import CmdDataImport
+from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.remove import CmdDataRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
-from dvc.command.data_import import CmdDataImport
+from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.test import CmdTest
 
 
@@ -40,7 +42,7 @@ def print_usage():
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'data-remove', 'data-import', 'cloud', \
+    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'data-remove', 'import', 'import-file', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
     cmds_expand = {'data':  ['sync', 'remove', 'import'],
@@ -75,8 +77,10 @@ if __name__ == '__main__':
         Runtime.run(CmdRepro, args_start_loc=2)
     elif cmd == 'data-sync' or (cmd == 'data' and subcmd == 'sync'):
         Runtime.run(CmdDataSync, args_start_loc=argv_offset)
-    elif cmd == 'data-import' or (cmd == 'data' and subcmd == 'import'):
-        Runtime.run(CmdDataImport, args_start_loc=argv_offset)
+    elif cmd == 'import':
+        Runtime.run(CmdImportBulk, args_start_loc=argv_offset)
+    elif cmd == 'import-file' or (cmd == 'data' and subcmd == 'import'):
+        Runtime.run(CmdImportFile, args_start_loc=argv_offset)
     elif cmd == 'data-remove' or (cmd == 'data' and subcmd == 'remove'):
         Runtime.run(CmdDataRemove, args_start_loc=argv_offset)
     elif cmd == 'cloud-run' or (cmd == 'cloud' and subcmd == 'run'):

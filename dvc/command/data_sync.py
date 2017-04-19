@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 
+import fasteners
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
@@ -46,14 +47,25 @@ class CmdDataSync(CmdBase):
         self.add_string_arg(parser, 'target', 'Target to sync - file or directory')
 
     def run(self):
-        if System.islink(self.parsed_args.target):
-            data_item = self.settings.path_factory.data_item(self.parsed_args.target)
-            return self.sync_symlink(data_item)
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+                return 1
 
-        if os.path.isdir(self.parsed_args.target):
-            return self.sync_dir(self.parsed_args.target)
+        try:
+            if System.islink(self.parsed_args.target):
+                data_item = self.settings.path_factory.data_item(self.parsed_args.target)
+                return self.sync_symlink(data_item)
 
-        raise DataSyncError('File "{}" does not exit'.format(self.parsed_args.target))
+            if os.path.isdir(self.parsed_args.target):
+                return self.sync_dir(self.parsed_args.target)
+
+            raise DataSyncError('File "{}" does not exit'.format(self.parsed_args.target))
+        finally:
+            if self.is_locker:
+                lock.release()
 
     def sync_dir(self, dir):
         for f in os.listdir(dir):

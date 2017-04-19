@@ -181,8 +181,11 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def get_target_commit(file):
-        commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
-        return commit.strip('"')
+        try:
+            commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
+            return commit.strip('"')
+        except ExecutorError:
+            return None
 
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []

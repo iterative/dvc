@@ -54,26 +54,35 @@ class CmdRun(CmdBase):
         return self._data_items_from_params(self.parsed_args.output, 'Output')
 
     def run(self):
-        lock = fasteners.InterProcessLock(self.git.lock_file)
-        gotten = lock.acquire(timeout=5)
-        if not gotten:
-            self.warning_dvc_is_busy()
-            return 1
-
-        try:
-            if not self.skip_git_actions and not self.git.is_ready_to_go():
+        if self.is_locker:
+            lock = fasteners.InterProcessLock(self.git.lock_file)
+            gotten = lock.acquire(timeout=5)
+            if not gotten:
+                self.warning_dvc_is_busy()
                 return 1
 
-            self.run_command(self.command_args,
-                             self.data_items_from_args(self.command_args),
-                             self.parsed_args.stdout,
-                             self.parsed_args.stderr,
-                             self.parsed_args.shell)
-            return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
+        try:
+            return self.run_and_commit_if_needed(self.command_args,
+                                                 self.data_items_from_args(self.command_args),
+                                                 self.parsed_args.stdout,
+                                                 self.parsed_args.stderr,
+                                                 self.parsed_args.shell)
         finally:
-            lock.release()
+            if self.is_locker:
+                lock.release()
 
-        return 1
+    def run_and_commit_if_needed(self, command_args, command_args_data_items,
+                                 stdout, stderr, shell, check_if_ready=True):
+        if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
+            return 1
+
+        self.run_command(command_args,
+                         command_args_data_items,
+                         stdout,
+                         stderr,
+                         shell)
+
+        return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
 
     def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None, shell=False):
         Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
@@ -105,14 +114,17 @@ class CmdRun(CmdBase):
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
 
-            state_file = StateFile(data_item.state.relative, self.git,
+            state_file = StateFile(StateFile.COMMAND_RUN,
+                                   data_item.state.relative,
+                                   self.settings,
                                    input_files_dvc,
                                    output_files_dvc,
                                    code_dependencies_dvc,
                                    argv=cmd_args,
                                    is_reproducible=self.is_reproducible,
                                    stdout=self._stdout_to_dvc(stdout),
-                                   stderr=self._stdout_to_dvc(stderr))
+                                   stderr=self._stdout_to_dvc(stderr),
+                                   shell=shell)
             state_file.save()
             result.append(state_file)
 
