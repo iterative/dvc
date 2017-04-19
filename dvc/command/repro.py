@@ -1,6 +1,8 @@
 import os
 import fasteners
+import copy
 
+from dvc.command.import_file import CmdImportFile
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
@@ -72,7 +74,8 @@ class CmdRepro(CmdRun):
             return 1
 
         if self.repro_data_items(data_item_list, force):
-            return self.commit_if_needed('DVC repro: {}'.format(' '.join(target)))
+            # return self.commit_if_needed('DVC repro: {}'.format(' '.join(target)))
+            return 0
         pass
 
     def repro_data_items(self, data_item_list, force):
@@ -82,6 +85,11 @@ class CmdRepro(CmdRun):
         for data_item in data_item_list:
             try:
                 target_commit = self.git.get_target_commit(data_item.data.relative)
+                if target_commit is None:
+                    msg = 'Data item "{}" cannot be reproduced: file not found or commit not found'
+                    Logger.warn(msg.format(data_item.data.relative))
+                    continue
+
                 repro_change = ReproChange(data_item, self, target_commit)
                 if repro_change.reproduce(force):
                     changed = True
@@ -117,16 +125,12 @@ class ReproChange(object):
 
         self._target_commit = target_commit
 
-        argv = self.state.norm_argv
-
-        if not argv:
-            raise ReproError('Error: parameter {} is nor defined in state file "{}"'.
-                             format(StateFile.PARAM_NORM_ARGV, data_item.state.relative))
-        if len(argv) < 2:
+        if not self.state.argv:
+            raise ReproError('Error: parameter {} is not defined in state file "{}"'.
+                             format(StateFile.PARAM_ARGV, data_item.state.relative))
+        if len(self.state.argv) < 1:
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self.state.file))
-
-        self._repro_argv = argv
         pass
 
     @property
@@ -137,32 +141,63 @@ class ReproChange(object):
     def state(self):
         return self._state
 
-    def reproduce_data_file(self):
+    def reproduce_data_item(self):
         Logger.debug('Reproducing data item "{}". Removing the file...'.format(
             self._data_item.data.dvc))
         os.remove(self._data_item.data.relative)
 
-        Logger.debug('Reproducing data item "{}". Re-runs cmd: {}'.format(
-            self._data_item.data.relative, ' '.join(self._repro_argv)))
+        settings = copy.copy(self._cmd_obj.settings)
+        settings.set_args(self.state.argv)
 
-        data_items_from_args = self.cmd_obj.data_items_from_args(self._repro_argv)
-        return self.cmd_obj.run_command(self._repro_argv,
-                                        data_items_from_args,
-                                        self.state.stdout,
-                                        self.state.stderr)
+        if self.state.is_import_file:
+            Logger.debug('Reproducing data item "{}". Re-import cmd: {}'.format(
+                self._data_item.data.relative, ' '.join(self.state.argv)))
+
+            if len(self.state.argv) != 2:
+                msg = 'Data item "{}" cannot be re-imported because of arguments number {} is incorrect. Argv: {}'
+                raise ReproError(msg.format(self._data_item.data.relative, len(self.state.argv), self.state.argv))
+
+            input = self.state.argv[0]
+            output = self.state.argv[1]
+
+            cmd = CmdImportFile(settings)
+            cmd.set_git_action(True)
+            cmd.set_locker(False)
+
+            if cmd.import_and_commit_if_needed(input, output, is_reproducible=True, check_if_ready=False) != 0:
+                raise ReproError('Import command reproduction failed')
+            return True
+        else:
+            Logger.debug('Reproducing data item "{}". Re-run cmd: {}'.format(
+                self._data_item.data.relative, ' '.join(self.state.argv)))
+
+            cmd = CmdRun(settings)
+            cmd.set_git_action(True)
+            cmd.set_locker(False)
+
+            data_items_from_args = self.cmd_obj.data_items_from_args(self.state.argv)
+            if cmd.run_and_commit_if_needed(self.state.argv,
+                                            data_items_from_args,
+                                            self.state.stdout,
+                                            self.state.stderr,
+                                            self.state.shell,
+                                            check_if_ready=False) != 0:
+                raise ReproError('Run command reproduction failed')
+            return True
 
     def reproduce(self, force=False):
+        dependencies = self.dependencies
         Logger.debug('Reproduce data item {} with dependencies, force={}: {}'.format(
                      self._data_item.data.dvc,
                      force,
-                     ', '.join([x.data.dvc for x in self.dependencies])))
+                     ', '.join([x.data.dvc for x in dependencies])))
 
         if not force and not self.state.is_reproducible:
             Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
         were_input_files_changed = False
-        for data_item in self.dependencies:
+        for data_item in dependencies:
             change = ReproChange(data_item, self._cmd_obj, self._target_commit)
             if change.reproduce(force):
                 were_input_files_changed = True
@@ -178,7 +213,7 @@ class ReproChange(object):
                 self._data_item.data.relative))
             return False
 
-        return self.reproduce_data_file()
+        return self.reproduce_data_item()
 
     @property
     def dependencies(self):

@@ -27,6 +27,9 @@ class Settings(object):
     def args(self):
         return self._args
 
+    def set_args(self, args):
+        self._args = args
+
     @property
     def git(self):
         return self._git

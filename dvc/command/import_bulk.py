@@ -1,32 +1,22 @@
 import os
-from shutil import copyfile
-import re
 import fasteners
-import requests
 
 from dvc.command.base import CmdBase
-from dvc.command.data_sync import sizeof_fmt
+from dvc.command.import_file import CmdImportFile
 from dvc.logger import Logger
-from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
-from dvc.state_file import StateFile
 
 
-class DataImportError(DvcException):
-    def __init__(self, msg):
-        DvcException.__init__(self, 'Import error: {}'.format(msg))
-
-
-class CmdDataImport(CmdBase):
+class CmdImportBulk(CmdBase):
     def __init__(self, settings):
-        super(CmdDataImport, self).__init__(settings)
+        super(CmdImportBulk, self).__init__(settings)
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
         parser.add_argument('input',
                             metavar='',
-                            help='Input file',
+                            help='Input files',
                             nargs='*')
 
         self.add_string_arg(parser, 'output', 'Output file')
@@ -47,93 +37,33 @@ class CmdDataImport(CmdBase):
             if not self.skip_git_actions and not self.git.is_ready_to_go():
                 return 1
 
-            output = self.parsed_args.output
-            for file in self.parsed_args.input:
-                self.import_file(file, output, self.parsed_args.is_reproducible)
+            cmd = CmdImportFile(self.settings)
+            cmd.set_git_action(not self.skip_git_actions)
+            cmd.set_locker(False)
 
-            message = 'DVC data import: {} {}'.format(' '.join(self.parsed_args.input), self.parsed_args.output)
-            return self.commit_if_needed(message)
+            output = self.parsed_args.output
+            for input in self.parsed_args.input:
+                if not os.path.isdir(input):
+                    cmd.import_and_commit_if_needed(input, output, self.parsed_args.is_reproducible)
+                else:
+                    input_dir = os.path.basename(input)
+                    for root, dirs, files in os.walk(input):
+                        for file in files:
+                            filename = os.path.join(root, file)
+
+                            rel = os.path.relpath(filename, input)
+                            out = os.path.join(output, input_dir, rel)
+
+                            out_dir = os.path.dirname(out)
+                            if not os.path.exists(out_dir):
+                                os.mkdir(out_dir)
+
+                            cmd.import_and_commit_if_needed(filename, out, self.parsed_args.is_reproducible)
+                pass
         finally:
             if self.is_locker:
                 lock.release()
         pass
 
-    def import_file(self, input, output, is_reproducible):
-        if not CmdDataImport.is_url(input):
-            if not os.path.exists(input):
-                raise DataImportError('Input file "{}" does not exist'.format(input))
-            if not os.path.isfile(input):
-                raise DataImportError('Input file "{}" has to be a regular file'.format(input))
-
-        if os.path.isdir(output):
-            output = os.path.join(output, os.path.basename(input))
-
-        data_item = self.settings.path_factory.data_item(output)
-
-        if os.path.exists(data_item.data.relative):
-            raise DataImportError('Output file "{}" already exists'.format(data_item.data.relative))
-        if not os.path.isdir(os.path.dirname(data_item.data.relative)):
-            raise DataImportError('Output file directory "{}" does not exists'.format(
-                os.path.dirname(data_item.data.relative)))
-
-        cache_dir = os.path.dirname(data_item.cache.relative)
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
-
-        if CmdDataImport.is_url(input):
-            Logger.debug('Downloading file {} ...'.format(input))
-            self.download_file(input, data_item.cache.relative)
-            Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
-                input, data_item.cache.relative))
-        else:
-            copyfile(input, data_item.cache.relative)
-            Logger.debug('Input file "{}" was copied to cache "{}"'.format(
-                input, data_item.cache.relative))
-
-        data_item.create_symlink()
-        Logger.debug('Symlink from data file "{}" to the cache file "{}" was created'.
-                     format(data_item.data.relative, data_item.cache.relative))
-
-        state_file = StateFile(data_item.state.relative,
-                               self.git,
-                               [],
-                               [output],
-                               [],
-                               is_reproducible)
-        state_file.save()
-        Logger.debug('State file "{}" was created'.format(data_item.state.relative))
-        pass
-
-    URL_REGEX = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-
-    @staticmethod
-    def is_url(url):
-        return CmdDataImport.URL_REGEX.match(url) is not None
-
-    @staticmethod
-    def download_file(from_url, to_file):
-        r = requests.get(from_url, stream=True)
-
-        chunk_size = 1024 * 100
-        downloaded = 0
-        last_reported = 0
-        report_bucket = 100*1024*1024
-        with open(to_file, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                if chunk:  # filter out keep-alive new chunks
-                    downloaded += chunk_size
-                    last_reported += chunk_size
-                    if last_reported >= report_bucket:
-                        last_reported = 0
-                        Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
-                    f.write(chunk)
-        return
-
 if __name__ == '__main__':
-    Runtime.run(CmdDataImport)
+    Runtime.run(CmdImportBulk)

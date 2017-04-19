@@ -105,7 +105,7 @@ class CmdDataRemove(CmdBase):
 
     def _remove_cloud_cache(self, data_item):
         if not self.parsed_args.keep_in_cloud:
-            aws_key = self.cache_file_aws_key(data_item.cache.dvc)
+            aws_key = self.cache_file_key(data_item.cache.dvc)
             self.remove_from_cloud(aws_key)
 
     def _remove_state_file(self, data_item):
