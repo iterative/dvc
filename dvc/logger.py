@@ -38,7 +38,8 @@ class Logger(object):
     @staticmethod
     def info(msg):
         if Logger.is_info():
-            print(u'Info. {}'.format(msg))
+            #print(u'Info. {}'.format(msg))
+            print(msg)
 
     @staticmethod
     def warn(msg):
