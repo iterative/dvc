@@ -61,8 +61,8 @@ StoragePath =
         self.set_skip_git_actions(parser)
 
         self.add_string_arg(parser, '--data-dir',  'NeatLynx data directory', 'data')
-        self.add_string_arg(parser, '--cache-dir', 'NeatLynx cache directory', 'cache')
-        self.add_string_arg(parser, '--state-dir', 'NeatLynx state directory', 'state')
+        self.add_string_arg(parser, '--cache-dir', 'NeatLynx cache directory', '.cache')
+        self.add_string_arg(parser, '--state-dir', 'NeatLynx state directory', '.state')
         pass
 
     def get_not_existing_dir(self, dir):
