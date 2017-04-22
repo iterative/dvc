@@ -42,10 +42,10 @@ def print_usage():
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'data-remove', 'import', 'import-file', 'cloud', \
+    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'remove', 'import', 'import-file', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
-    cmds_expand = {'data':  ['sync', 'remove', 'import'],
+    cmds_expand = {'data':  ['sync'],
                    'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe'],
                    'test':  ['aws', 'cloud', 'gcloud'],
                   }
@@ -79,9 +79,9 @@ if __name__ == '__main__':
         Runtime.run(CmdDataSync, args_start_loc=argv_offset)
     elif cmd == 'import':
         Runtime.run(CmdImportBulk, args_start_loc=argv_offset)
-    elif cmd == 'import-file' or (cmd == 'data' and subcmd == 'import'):
+    elif cmd == 'import-file':
         Runtime.run(CmdImportFile, args_start_loc=argv_offset)
-    elif cmd == 'data-remove' or (cmd == 'data' and subcmd == 'remove'):
+    elif cmd == 'remove':
         Runtime.run(CmdDataRemove, args_start_loc=argv_offset)
     elif cmd == 'cloud-run' or (cmd == 'cloud' and subcmd == 'run'):
         print('cloud-run unimplemented')

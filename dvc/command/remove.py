@@ -68,7 +68,7 @@ class CmdDataRemove(CmdBase):
                 self.remove_file(target)
             return True
         except DvcException as ex:
-            Logger.error('[Cmd-Remove] Unable to remove data file "{}": {}'.format(target, ex))
+            Logger.error('[Cmd-Remove] Unable to remove data item "{}": {}'.format(target, ex))
             return False
 
     def remove_dir(self, target):
@@ -93,7 +93,7 @@ class CmdDataRemove(CmdBase):
         # it raises exception if not a symlink is provided
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
 
-        data_item = self.settings.path_factory.existing_data_item(target)
+        data_item = self.settings.path_factory.data_item(target)
 
         self._remove_cache_file(data_item)
         self._remove_state_file(data_item)
@@ -133,7 +133,7 @@ class CmdDataRemove(CmdBase):
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
 
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
-        bucket_name = self.config.aws_storage_bucket
+        bucket_name = self.config.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket:
             key = bucket.get_key(aws_file_name)
