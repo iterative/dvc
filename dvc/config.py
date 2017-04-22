@@ -36,14 +36,21 @@ class ConfigI(object):
 
 class Config(ConfigI):
     CONFIG = 'dvc.conf'
-
-    def __init__(self, conf_file):
+    def __init__(self, conf_file, conf_pseudo_file=None):
+        """
+        Params:
+            conf_file (String): configuration file
+            conf_pseudo_file (String): for unit testing, something that supports readline; supersedes conf_file
+        """
         self._conf_file = conf_file
         self._config = configparser.SafeConfigParser()
 
-        if not os.path.isfile(conf_file):
-            raise ConfigError('Config file "{}" does not exist'.format(conf_file))
-        self._config.read(conf_file)
+        if conf_pseudo_file is not None:
+            self._config.readfp(conf_pseudo_file)
+        else:
+            if not os.path.isfile(conf_file):
+                raise ConfigError('Config file "{}" does not exist'.format(conf_file))
+            self._config.read(conf_file)
 
         level = self._config['Global']['LogLevel']
         Logger.set_level(level)
@@ -167,10 +174,11 @@ class Config(ConfigI):
             cc = configparser.SafeConfigParser()
             threw = False
             try:
-                read = cc.read(path)
-            except:
+                # use readfp(open( ... to aid mocking.
+                cc.readfp(open(path, 'r'))
+            except Exception as e:
                 threw = True
-            if not threw and len(read) > 0 and read[0] == path and 'default' in cc.keys():
+            if not threw and 'default' in cc.keys():
                 access_key = cc['default'].get('aws_access_key_id', None)
                 secret = cc['default'].get('aws_secret_access_key', None)
 
@@ -194,7 +202,7 @@ class Config(ConfigI):
         errors = []
         for key in ['Cloud']:
             if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
-                errors.append('Please set %s in section Global in config file %s' % (key, self.CONFIG))
+                errors.append('Please set %s in section Global in config file %s' % (key, self.file))
 
         # now that a cloud is chosen, can check StoragePath
         sp = self.storage_path
