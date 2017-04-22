@@ -181,6 +181,48 @@ $ dvc run python code/posts_to_tsv.py data/Posts.xml data/Posts.tsv
 [Git]   A  data/Posts.tsv
 ```
 
+```
+$ echo "cut -d$'\t' -f 1,11-13 \$@" > code/cut_fr.sh
+$ chmod a+x code/cut_fr.sh
+$ git add code/cut_fr.sh
+$ git commit -m 'Cut posts features'
+[master aa9c6c1] Cut posts features
+ 1 file changed, 1 insertion(+)
+  create mode 100755 code/cut_fr.sh
+```
+
+Reducing file size:
+```
+$ dvc run --stdout data/Posts-fr.tsv bash ./code/cut_fr.sh data/Posts.tsv
+[Git] A new commit 39a9544 was made in the current branch. Added files:
+[Git]   A  .state/Posts-fr.tsv.state
+[Git]   A  data/Posts-fr.tsv
+```
+
+Looking for data items:
+```
+$ ls -l data
+total 32
+lrwxr-xr-x  1 dmitry  staff    30B Apr 21 23:36 Posts-fr.tsv@ -> ../.cache/Posts-fr.tsv_e1233ed
+lrwxr-xr-x  1 dmitry  staff    27B Apr 21 18:53 Posts.tsv@ -> ../.cache/Posts.tsv_b58a46d
+lrwxr-xr-x  1 dmitry  staff    27B Apr 21 18:15 Posts.xml@ -> ../.cache/Posts.xml_4a581d9
+lrwxr-xr-x  1 dmitry  staff    31B Apr 21 17:56 Posts.xml.tgz@ -> ../.cache/Posts.xml.tgz_9185f92
+```
+
+Looking for an actual size:
+```
+$ ls -lL data
+total 7744240
+-rw-r--r--  1 dmitry  staff   927M Apr 21 23:36 Posts-fr.tsv
+-rw-r--r--  1 dmitry  staff   990M Apr 21 18:53 Posts.tsv
+-rw-r--r--  1 dmitry  staff   1.4G Apr 20 10:05 Posts.xml
+-rw-r--r--  1 dmitry  staff   405M Apr 21 17:56 Posts.xml.tgz
+```
+
+Note, `ls -lL` doesn't show unresolved symlinks.
+
+
+
 # Copyright
 
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
