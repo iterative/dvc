@@ -59,7 +59,7 @@ This parameter might be applied to any dvc command.
 Data file has to be imported in dvc `data/` directory before using it.
 
 ```
-$ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/small/Posts.xml.tgz data/
+$ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/small/Posts-100k.xml.tgz data/
 [Git] A new commit b69ab31 was made in the current branch. Added files:
 [Git]   A  .state/Posts.xml.tgz.state
 [Git]   A  data/Posts.xml.tgz
@@ -73,7 +73,7 @@ However, it is only a part of the work that dvc has done.
 If you look carefully at the file you could see that this is actually a symlink to
     a cache directory file Badges.xml_a5ed2b9:
 ```
-$ ls -l data/Posts.xml.tgz
+$ ls -l data/Posts-100k.xml.tgz
 lrwxr-xr-x  1 dmitry  staff    31B Apr 21 17:56 data/Posts.xml.tgz@ -> ../.cache/Posts.xml.tgz_9185f92
 ```
 
@@ -87,7 +87,7 @@ The file in the cache directory `cache/Badges.xml_a5ed2b9` has the same name as
 
 In addition to the cache file dvc creates a state file in the `state/` directory for each data file:
 ```
-$ ls -l .state/Posts.xml.tgz.state
+$ ls -l .state/Posts-100k.xml.tgz.state
 -rw-r--r--  1 dmitry  staff   437B Apr 21 17:56 .state/Posts.xml.tgz.state
 ```
 
@@ -97,22 +97,24 @@ The state file contains information for file reproducibility.
 ## Structure data
 
 
-
-
-
 ```
-$ cd data
-$ dvc run tar zxf Posts.xml.tgz
+$ dvc run tar zxf data/Posts-100k.xml.tgz -C data/
 [Git] A new commit fbff960 was made in the current branch. Added files:
 [Git]   A  .state/Posts.xml.state
 [Git]   A  data/Posts.xml
 $ cd ..
 ```
 
+```
+$ dvc run cp data/Posts-100k.xml data/Posts.xml
+```
+
 Full file is here https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/posts_to_tsv.py
 
 ```
-$ wget -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/small/posts_to_tsv.py
+$ mkdir code
+$ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/posts_to_tsv.py
+2017-04-22 12:10:13 URL:https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/posts_to_tsv.py [1689/1689] -> "code/posts_to_tsv.py" [1]
 ```
 
 ```
@@ -227,7 +229,8 @@ with open(sys.argv[2]) as fd_in:
 
 Get code:
 ```
-$ wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/extract_binary_fr.py
+$ wget -nv -P code https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/extract_binary_fr.py
+2017-04-22 13:01:43 URL:https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/extract_binary_fr.py [518/518] -> "code/extract_binary_fr.py" [1]
 $ git add code/extract_binary_fr.py
 $ git commit -m 'Extract binry feature'
 [master 28f8177] Extract binry feature
@@ -241,6 +244,8 @@ $ dvc run python code/extract_binary_fr.py '<python>' data/Posts-fr.tsv data/Pos
 [Git]   A  .state/Posts-bin-fr.tsv.state
 [Git]   A  data/Posts-bin-fr.tsv
 ```
+
+
 
 
 # Copyright
