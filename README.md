@@ -97,17 +97,34 @@ The state file contains information for file reproducibility.
 ## Structure data
 
 
+
+
+
+```
+$ cd data
+$ dvc run tar zxf Posts.xml.tgz
+[Git] A new commit fbff960 was made in the current branch. Added files:
+[Git]   A  .state/Posts.xml.state
+[Git]   A  data/Posts.xml
+$ cd ..
+```
+
+Full file is here https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/posts_to_tsv.py
+
+```
+$ wget -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/small/posts_to_tsv.py
+```
+
+```
+$ git add code/posts_to_tsv.py
+$ git commit -m 'Post to tsv script'
+[master 4a581d9] Post to tsv script
+ 1 file changed, 51 insertions(+)
+  create mode 100644 code/posts_to_tsv.py
+```
+
+
 ```python
-import sys
-import xml.etree.ElementTree
-
-def print_usage(msg):
-    if msg:
-        sys.stderr.write('{}\n'.format(msg))
-    sys.stderr.write('Usage:\n')
-    sys.stderr.write('\tpython posts_to_tsv.py INPUT OUTPUT\n')
-
-
 def process_posts(fd_in, fd_out):
     num = 1
     for line in fd_in:
@@ -134,45 +151,7 @@ def process_posts(fd_in, fd_out):
             num += 1
         except Exception as ex:
             sys.stderr.write('Error in line {}: {}'.format(num, ex))
-
-if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print_usage('Paramet error.')
-        sys.exit(1)
-
-    input = sys.argv[1]
-    if not os.path.exist(input):
-        print_usage('Input file {} does not exist'.format(input))
-        sys.exit(1)
-
-    with open(input) as fd_in:
-        with open(sys.argv[2], 'w') as fd_out:
-            process_posts(fd_in, fd_out)
 ```
-
-
-```
-$ cd data
-$ dvc run tar zxf Posts.xml.tgz
-[Git] A new commit fbff960 was made in the current branch. Added files:
-[Git]   A  .state/Posts.xml.state
-[Git]   A  data/Posts.xml
-$ cd ..
-```
-
-
-```
-$ wget -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/small/posts_to_tsv.py
-```
-
-```
-$ git add code/posts_to_tsv.py
-$ git commit -m 'Post to tsv script'
-[master 4a581d9] Post to tsv script
- 1 file changed, 51 insertions(+)
-  create mode 100644 code/posts_to_tsv.py
-```
-
 
 ```
 $ dvc run python code/posts_to_tsv.py data/Posts.xml data/Posts.tsv
@@ -209,7 +188,7 @@ lrwxr-xr-x  1 dmitry  staff    27B Apr 21 18:15 Posts.xml@ -> ../.cache/Posts.xm
 lrwxr-xr-x  1 dmitry  staff    31B Apr 21 17:56 Posts.xml.tgz@ -> ../.cache/Posts.xml.tgz_9185f92
 ```
 
-Looking for an actual size:
+Looking for the actual size:
 ```
 $ ls -lL data
 total 7744240
@@ -221,6 +200,47 @@ total 7744240
 
 Note, `ls -lL` doesn't show unresolved symlinks.
 
+
+### Extracting a binary feature
+
+Binary feature - if <python> is present in tags.
+
+
+```python
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+if len(sys.argv) != 4:
+    sys.stderr.write('Argument error. Usage:\n')
+    sys.stderr.write('\tpython single_fr.py POST_FEATURE INPUT_FILE OUTPUT_FILE\n')
+
+with open(sys.argv[2]) as fd_in:
+    with open(sys.argv[3], 'w') as fd_out:
+        target = sys.argv[1]
+            for line in fd_in:
+                id, tags, title, body = line.split('\t')
+                fr = 1 if target in tags else 0
+                fd_out.write(u'{}\t{}\t{}\t{}\n'.format(id, fr, title, body))
+```
+
+Get code:
+```
+$ wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/extract_binary_fr.py
+$ git add code/extract_binary_fr.py
+$ git commit -m 'Extract binry feature'
+[master 28f8177] Extract binry feature
+ 1 file changed, 17 insertions(+)
+  create mode 100644 code/extract_binary_fr.py
+```
+
+```
+$ dvc run python code/extract_binary_fr.py '<python>' data/Posts-fr.tsv data/Posts-bin-fr.tsv
+[Git] A new commit dc78360 was made in the current branch. Added files:
+[Git]   A  .state/Posts-bin-fr.tsv.state
+[Git]   A  data/Posts-bin-fr.tsv
+```
 
 
 # Copyright
