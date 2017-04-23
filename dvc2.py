@@ -50,8 +50,6 @@ if __name__ == '__main__':
                    'test':  ['aws', 'cloud', 'gcloud'],
                   }
 
-    print('sys.argv: (%d) %s' % (len(sys.argv), sys.argv))
-
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
         if len(sys.argv) >= 2:
             print('Unimplemented or unrecognized command: ' + ' '.join(sys.argv[1:]))

@@ -246,6 +246,25 @@ $ dvc run python code/extract_binary_fr.py '<python>' data/Posts-fr.tsv data/Pos
 ```
 
 
+```
+$ wget -nv -P code https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/train_test_split.py
+$ git add code/train_test_split.py
+$ git commit -m 'Train and test split code'
+[master ed6ddae] Train and test split code
+ 1 file changed, 50 insertions(+)
+  create mode 100644 code/train_test_split.py
+```
+
+```
+$ dvc run python code/train_test_split.py data/Posts-bin-fr.tsv 0.25 20170422 data/Posts-bin-fr-train.tsv data/Posts-bin-fr-test.tsv
+[Git] A new commit c4c7a86 was made in the current branch. Added files:
+[Git]   A  .state/Posts-bin-fr-test.tsv.state
+[Git]   A  .state/Posts-bin-fr-train.tsv.state
+[Git]   A  data/Posts-bin-fr-test.tsv
+[Git]   A  data/Posts-bin-fr-train.tsv
+```
+
+
 
 
 # Copyright
