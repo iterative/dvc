@@ -147,6 +147,8 @@ class Config(ConfigI):
     def get_aws_credentials(self):
         """ gets aws credentials, looking in various places
 
+        Params:
+
         Searches:
         1 any override in dvc.conf [AWS] CredentialPath;
         2 ~/.aws/credentials
@@ -218,6 +220,7 @@ class Config(ConfigI):
             creds = self.get_aws_credentials()
             if creds is None:
                 errors.append('can\'t find aws credentials.  TODO')
+            self._aws_creds = creds
         elif cloud == 'google':
             project = self._config['GC'].get('ProjectName', None)
             if project is None or len(project) < 1:
