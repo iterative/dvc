@@ -29,6 +29,13 @@ class Runtime(object):
 
             if parse_config:
                 runtime_config = Config(Runtime.conf_file_path(runtime_git.git_dir))
+
+                good = runtime_config.sanity_check()
+                if good[0] == False:
+                    Logger.error('config \'%s\' is not correctly setup.  Please fix:' % Runtime.CONFIG)
+                    for e in good[1]:
+                        Logger.error('    ' + e)
+                    sys.exit(-1)
             else:
                 runtime_config = ConfigI()
 

@@ -18,6 +18,8 @@ class TestExecutor(TestCase):
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
+        if os.path.exists('myfile.py'):
+            os.remove('myfile.py')
 
     def test_suppress_output(self):
         output = Executor.exec_cmd_only_success(['python', self.code_file])

@@ -23,7 +23,7 @@ class CmdTest(CmdBase):
 
     def run(self):
 
-        cloud = self.settings._config.get_cloud
+        cloud = self.settings._config.cloud
         assert cloud in ['amazon', 'google'], 'unknown cloud: %s' % cloud
         if cloud == 'amazon':
             print 'TODO'
