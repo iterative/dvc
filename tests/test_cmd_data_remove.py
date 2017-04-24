@@ -92,42 +92,43 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
 
         self.assertTrue(os.path.isfile(self.file6))
         self.assertIsNone(self.cache6)
+        self.assertTrue(os.path.exists(self.state6))
         self.assertTrue(os.path.isfile(self.state6))
 
-        with self.assertRaises(DataItemError):
-            cmd.remove_file(self.file6)
+        cmd.remove_file(self.file6)
+        self.assertFalse(os.path.exists(self.file6))
 
 
 class TestRemoveEndToEnd(DirHierarchyEnvironment):
     def setUp(self):
         DirHierarchyEnvironment.init_environment(self)
 
-    def test_end_to_end_with_an_error(self):
-        cmd = CmdDataRemove(self.settings)
-        cmd.parsed_args.keep_in_cloud = True
-
-        dir11_full = os.path.join('data', self.dir11)
-        dir2_full = os.path.join('data', self.dir2)
-        file6_full = os.path.join('data', self.file6)
-
-        cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
-        cmd.parsed_args.recursive = True
-
-        cmd.parsed_args.skip_git_actions = True
-
-        self.assertTrue(os.path.exists(dir11_full))
-        self.assertTrue(os.path.exists(self.file5))
-        self.assertTrue(os.path.exists(dir2_full))
-        self.assertTrue(os.path.exists(self.file1))
-        self.assertTrue(os.path.exists(self.file6))
-
-        self.assertFalse(cmd.remove_all_targets())
-
-        self.assertFalse(os.path.exists(dir11_full))
-        self.assertFalse(os.path.exists(self.file5))
-        self.assertTrue(os.path.exists(dir2_full))
-        self.assertTrue(os.path.exists(self.file1))
-        self.assertTrue(os.path.exists(self.file6))
+    # def test_end_to_end_with_an_error(self):
+    #     cmd = CmdDataRemove(self.settings)
+    #     cmd.parsed_args.keep_in_cloud = True
+    #
+    #     dir11_full = self.dir11
+    #     dir2_full = self.dir2
+    #     file6_full = self.file6
+    #
+    #     cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
+    #     cmd.parsed_args.recursive = True
+    #
+    #     cmd.parsed_args.skip_git_actions = True
+    #
+    #     self.assertTrue(os.path.exists(dir11_full))
+    #     self.assertTrue(os.path.exists(self.file5))
+    #     self.assertTrue(os.path.exists(dir2_full))
+    #     self.assertTrue(os.path.exists(self.file1))
+    #     self.assertTrue(os.path.exists(self.file6))
+    #
+    #     self.assertFalse(cmd.remove_all_targets())
+    #
+    #     self.assertFalse(os.path.exists(dir11_full))
+    #     self.assertFalse(os.path.exists(self.file5))
+    #     self.assertTrue(os.path.exists(dir2_full))
+    #     self.assertTrue(os.path.exists(self.file1))
+    #     self.assertTrue(os.path.exists(self.file6))
 
     def test_end_to_end_with_no_error(self):
         cmd = CmdDataRemove(self.settings)
@@ -176,3 +177,35 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(self.file5))
         self.assertTrue(os.path.exists(dir2_full))
         self.assertTrue(os.path.exists(self.file1))
+
+
+class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
+    def setUp(self):
+        DirHierarchyEnvironment.init_environment(self)
+
+    def test(self):
+        cmd = CmdDataRemove(self.settings)
+        cmd.parsed_args.keep_in_cloud = True
+
+        dir11_full = os.path.join(self._config.data_dir, self.dir11)
+        dir2_full = os.path.join(self._config.data_dir, self.dir2)
+        file6_full = self.file6
+
+        cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
+        cmd.parsed_args.recursive = True
+
+        cmd.parsed_args.skip_git_actions = True
+
+        self.assertTrue(os.path.exists(dir11_full))
+        self.assertTrue(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+        self.assertTrue(os.path.exists(self.file6))
+
+        self.assertTrue(cmd.remove_all_targets())
+
+        self.assertFalse(os.path.exists(dir11_full))
+        self.assertFalse(os.path.exists(self.file5))
+        self.assertTrue(os.path.exists(dir2_full))
+        self.assertTrue(os.path.exists(self.file1))
+        self.assertFalse(os.path.exists(self.file6))

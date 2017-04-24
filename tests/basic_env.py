@@ -79,9 +79,9 @@ class DirHierarchyEnvironment(BasicEnvironment):
         self.path_factory = PathFactory(self._git, self._config)
         self.settings = Settings([], self._git, self._config)
 
-        self.dir1 = os.path.join('dir1')
+        self.dir1 = 'dir1'
         self.dir11 = os.path.join('dir1', 'dir11')
-        self.dir2 = os.path.join('dir2')
+        self.dir2 = 'dir2'
 
         self.create_dirs(self.dir1)
         self.create_dirs(self.dir11)
