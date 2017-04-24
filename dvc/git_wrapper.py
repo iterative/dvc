@@ -36,11 +36,11 @@ class GitWrapperI(object):
 
     @staticmethod
     def git_file_statuses():
-        Logger.debug('[Git] Getting file statuses. Command: git status --porcelain')
+        Logger.debug('[dvc-git] Getting file statuses. Command: git status --porcelain')
         code, out, err = Executor.exec_cmd(['git', 'status', '--porcelain'])
         if code != 0:
-            raise ExecutorError('[Git] File status command error - {}'.format(err))
-        Logger.debug('[Git] Getting file statuses. Success.')
+            raise ExecutorError('[dvc-git] File status command error - {}'.format(err))
+        Logger.debug('[dvc-git] Getting file statuses. Success.')
 
         return GitWrapper.parse_porcelain_files(out)
 
@@ -76,8 +76,7 @@ class GitWrapper(GitWrapperI):
     def is_ready_to_go(self):
         statuses = self.git_file_statuses()
         if len(statuses) > 0:
-            Logger.error('[Git] Commit all changed files before running reproducible command.')
-            Logger.error('[Git] Changed files:')
+            Logger.error('[dvc-git] Commit all changed files before running reproducible command. Changed files:')
             for status, file in statuses:
                 Logger.error("{} {}".format(status, file))
             return False
@@ -94,12 +93,12 @@ class GitWrapper(GitWrapperI):
             return self._git_dir
 
         try:
-            Logger.debug('[Git] Getting git directory. Command: git rev-parse --show-toplevel')
+            Logger.debug('[dvc-git] Getting git directory. Command: git rev-parse --show-toplevel')
             code, out, err = Executor.exec_cmd(['git', 'rev-parse', '--show-toplevel'])
 
             if code != 0:
-                raise ExecutorError('[Git] Git directory command error - {}'.format(err))
-            Logger.debug('[Git] Getting git directory. Success.')
+                raise ExecutorError('[dvc-git] Git directory command error - {}'.format(err))
+            Logger.debug('[dvc-git] Getting git directory. Success.')
 
             self._git_dir = out
             return self._git_dir
@@ -111,32 +110,32 @@ class GitWrapper(GitWrapperI):
 
     @property
     def curr_commit(self):
-        Logger.debug('[Git] Getting current git commit. Command: git rev-parse --short HEAD')
+        Logger.debug('[dvc-git] Getting current git commit. Command: git rev-parse --short HEAD')
 
         code, out, err = Executor.exec_cmd(['git', 'rev-parse', '--short', 'HEAD'])
         if code != 0:
-            raise ExecutorError('[Git] Commit command error - {}'.format(err))
-        Logger.debug('[Git] Getting current git commit. Success.')
+            raise ExecutorError('[dvc-git] Commit command error - {}'.format(err))
+        Logger.debug('[dvc-git] Getting current git commit. Success.')
         return out
 
     @staticmethod
     def commit_all_changes(message):
-        Logger.debug('[Git] Commit all changes. Commands: {} && {} && {}'.format(
+        Logger.debug('[dvc-git] Commit all changes. Commands: {} && {} && {}'.format(
             'git add --all', 'git status --porcelain', 'git commit -m'))
 
         Executor.exec_cmd_only_success(['git', 'add', '--all'])
         out_status = Executor.exec_cmd_only_success(['git', 'status', '--porcelain'])
         Executor.exec_cmd_only_success(['git', 'commit', '-m', message])
-        Logger.debug('[Git] Commit all changes. Success.')
+        Logger.debug('[dvc-git] Commit all changes. Success.')
 
         return GitWrapper.parse_porcelain_files(out_status)
 
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
-        Logger.info('[Git] A new commit {} was made in the current branch. Added files:'.format(
+        Logger.info('[dvc-git] A new commit {} was made in the current branch. Added files:'.format(
             self.curr_commit))
         for status, file in statuses:
-            Logger.info('[Git]\t{} {}'.format(status, file))
+            Logger.info('[dvc-git]\t{} {}'.format(status, file))
         pass
 
     @staticmethod
@@ -158,13 +157,13 @@ class GitWrapper(GitWrapperI):
         return results
 
     def were_files_changed(self, code_dependencies, path_factory, target_commit):
-        Logger.debug('[Git] Identify changes. Command: git diff --name-only HEAD {}'.format(
+        Logger.debug('[dvc-git] Identify changes. Command: git diff --name-only HEAD {}'.format(
                      target_commit))
 
         changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', target_commit])
         changed_files = changed_files.strip('"')
 
-        Logger.debug('[Git] Identify changes. Success. Changed files: {}'.format(
+        Logger.debug('[dvc-git] Identify changes. Success. Changed files: {}'.format(
                      changed_files.replace('\n', ', ')))
 
         code_files, code_dirs = self.separate_dependency_files_and_dirs(code_dependencies)

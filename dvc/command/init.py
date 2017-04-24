@@ -75,6 +75,9 @@ ProjectName =
         return file_name
 
     def run(self):
+        if not self.skip_git_actions and not self.git.is_ready_to_go():
+            return 1
+
         data_dir_path = self.get_not_existing_dir(self.parsed_args.data_dir)
         cache_dir_path = self.get_not_existing_dir(self.parsed_args.cache_dir)
         state_dir_path = self.get_not_existing_dir(self.parsed_args.state_dir)
