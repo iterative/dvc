@@ -18,7 +18,7 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
-Cloud =
+Cloud = amazon
 StoragePath =
 
 # Log levels: Debug, Info, Warning and Error
