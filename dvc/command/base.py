@@ -64,7 +64,9 @@ class CmdBase(object):
 
     @property
     def is_locker(self):
-        return not self.parsed_args.no_lock
+        if 'no_lock' in self.parsed_args.__dict__:
+            return not self.parsed_args.no_lock
+        return True
 
     def set_locker(self, value):
         self.parsed_args.no_lock = value
