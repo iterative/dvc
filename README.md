@@ -248,6 +248,7 @@ $ dvc run python code/extract_binary_fr.py '<python>' data/Posts-fr.tsv data/Pos
 
 ```
 $ wget -nv -P code https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/train_test_split.py
+2017-04-23 15:39:23 URL:https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/train_test_split.py [1615/1615] -> "code/train_test_split.py.1" [1]
 $ git add code/train_test_split.py
 $ git commit -m 'Train and test split code'
 [master ed6ddae] Train and test split code
@@ -264,6 +265,29 @@ $ dvc run python code/train_test_split.py data/Posts-bin-fr.tsv 0.25 20170422 da
 [Git]   A  data/Posts-bin-fr-train.tsv
 ```
 
+```
+$ wget -nv -P code  https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/df_to_matrix.py
+2017-04-23 15:38:56 URL:https://s3-us-west-2.amazonaws.com/dvc-share/so/small/code/df_to_matrix.py [1522/1522] -> "code/df_to_matrix.py.1" [1]
+$ git add code/df_to_matrix.py
+$ git commit -m 'Data frame to matrix script'
+[master 51779a5] Data frame to matrix script
+ 1 file changed, 55 insertions(+)
+  create mode 100644 code/df_to_matrix.py
+```
+
+```
+$ run python code/df_to_matrix.py data/Posts-bin-fr-train.tsv data/Posts-train-matrix.p
+[Git] A new commit 56d02ee was made in the current branch. Added files:
+[Git]   A  .state/Posts-train-matrix.p.state
+[Git]   A  data/Posts-train-matrix.p
+```
+
+```
+$ dvc run python code/df_to_matrix.py data/Posts-bin-fr-test.tsv data/Posts-test-matrix.p
+[Git] A new commit 14772f7 was made in the current branch. Added files:
+[Git]   A  .state/Posts-test-matrix.p.state
+[Git]   A  data/Posts-test-matrix.p
+```
 
 
 
