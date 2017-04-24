@@ -62,6 +62,10 @@ ProjectName =
         self.add_string_arg(parser, '--state-dir', 'NeatLynx state directory', '.state')
         pass
 
+    @staticmethod
+    def is_cloud():
+        return False
+
     def get_not_existing_dir(self, dir):
         path = Path(os.path.join(self.git.git_dir, dir))
         if path.exists():

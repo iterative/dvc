@@ -46,6 +46,10 @@ class CmdDataSync(CmdBase):
     def define_args(self, parser):
         self.add_string_arg(parser, 'target', 'Target to sync - file or directory')
 
+    @staticmethod
+    def is_cloud():
+        return True
+
     def run(self):
         if self.is_locker:
             lock = fasteners.InterProcessLock(self.git.lock_file)

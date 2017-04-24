@@ -21,6 +21,10 @@ class CmdTest(CmdBase):
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
+    @staticmethod
+    def is_cloud():
+        return False
+
     def run(self):
 
         cloud = self.settings._config.cloud

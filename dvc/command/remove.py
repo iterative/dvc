@@ -29,6 +29,10 @@ class CmdDataRemove(CmdBase):
                             help='Do not remove data from cache')
         pass
 
+    @staticmethod
+    def is_cloud():
+        return True
+
     def run(self):
         if self.is_locker:
             lock = fasteners.InterProcessLock(self.git.lock_file)

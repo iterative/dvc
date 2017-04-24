@@ -37,6 +37,10 @@ class CmdRun(CmdBase):
         parser.add_argument('--shell', help='Shell command', action='store_true', default=False)
         pass
 
+    @staticmethod
+    def is_cloud():
+        return False
+
     @property
     def is_reproducible(self):
         return not self.parsed_args.not_repro

@@ -30,7 +30,9 @@ class Runtime(object):
             if parse_config:
                 runtime_config = Config(Runtime.conf_file_path(runtime_git.git_dir))
 
-                good = runtime_config.sanity_check()
+
+                Logger.debug('Running %s cloud %s' % (cmd_class.__name__, cmd_class.is_cloud()))
+                good = runtime_config.sanity_check(cmd_class.is_cloud())
                 if good[0] == False:
                     Logger.error('config \'%s\' is not correctly setup.  Please fix:' % Runtime.CONFIG)
                     for e in good[1]:

@@ -190,43 +190,58 @@ class Config(ConfigI):
         return None
 
 
-    def sanity_check(self):
+    def sanity_check(self, is_cloud_command):
         """ sanity check a config
 
-        check that we have a cloud and storagePath
-        if aws, check can read credentials
-        if google, check ProjectName
+        Should not complain about cloud config if not running a cloud-using command
+
+        Cloud checks:
+            check that we have a cloud and storagePath
+            if aws, check can read credentials
+            if google, check ProjectName
+
+        Non-cloud checks:
+
+        Params:
+            is_cloud_command (bool): T if the command interacts w/ the cloud; F otherwise.
 
         Returns:
             (T,) if good
             (F, issues) if bad
         """
         errors = []
-        for key in ['Cloud']:
+        cloud_set = False
+        if is_cloud_command:
+            key = 'Cloud'
             if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
                 errors.append('Please set %s in section Global in config file %s' % (key, self.file))
+                return (False, errors)
 
-        # now that a cloud is chosen, can check StoragePath
-        sp = self.storage_path
-        if sp is None or len(sp) == 0:
-            errors.append('Please set StoragePath = bucket/{optional path} in conf file "%s" '
-                           'either in Global or a cloud specific section' % self.CONFIG)
+            if self.cloud not in ['amazon', 'google']:
+                errors.append('Unknown cloud %s' % self.cloud)
+                return (False, errors)
 
-        cloud = self.cloud
-        if cloud == '':
-            # not set; already complained above
-            pass
-        elif cloud == 'amazon':
-            creds = self.get_aws_credentials()
-            if creds is None:
-                errors.append('can\'t find aws credentials.  TODO')
-            self._aws_creds = creds
-        elif cloud == 'google':
-            project = self._config['GC'].get('ProjectName', None)
-            if project is None or len(project) < 1:
-                errors.append('can\'t read google cloud project name.  Please set ProjectName in section GC.  TODO HOW FIND')
-        else:
-            errors.append('unknown Cloud %s' % cloud)
+            # now that a cloud is chosen, can check StoragePath
+            sp = self.storage_path
+            if sp is None or len(sp) == 0:
+                errors.append('Please set StoragePath = bucket/{optional path} in conf file "%s" '
+                               'either in Global or a cloud specific section' % self.CONFIG)
+
+            cloud = self.cloud
+            if cloud == '':
+                # not set; already complained above
+                pass
+            elif cloud == 'amazon':
+                creds = self.get_aws_credentials()
+                if creds is None:
+                    errors.append('can\'t find aws credentials.  TODO')
+                self._aws_creds = creds
+            elif cloud == 'google':
+                project = self._config['GC'].get('ProjectName', None)
+                if project is None or len(project) < 1:
+                    errors.append('can\'t read google cloud project name.  Please set ProjectName in section [GC].  TODO HOW FIND')
+            else:
+                errors.append('unknown Cloud %s' % cloud)
 
         return (len(errors) == 0, errors)
 

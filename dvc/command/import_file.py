@@ -32,6 +32,10 @@ class CmdImportFile(CmdBase):
                             help='Is data file reproducible')
         pass
 
+    @staticmethod
+    def is_cloud():
+        return False
+
     def run(self):
         if self.is_locker:
             lock = fasteners.InterProcessLock(self.git.lock_file)

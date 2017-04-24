@@ -35,6 +35,10 @@ class CmdRepro(CmdRun):
                             help='Force reproduction')
         pass
 
+    @staticmethod
+    def is_cloud():
+        return False
+
     @property
     def is_reproducible(self):
         return True
