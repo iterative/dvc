@@ -79,7 +79,7 @@ class CmdBase(object):
 
     @staticmethod
     def not_committed_changes_warning():
-        Logger.warn('Warning: changes were not committed to git')
+        Logger.warn('changes were not committed to git')
 
     def add_string_arg(self, parser, name, message, default = None,
                        conf_section=None, conf_name=None):

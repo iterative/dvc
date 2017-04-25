@@ -74,7 +74,6 @@ class CmdRepro(CmdRun):
             return 1
 
         if self.repro_data_items(data_item_list, force):
-            # return self.commit_if_needed('DVC repro: {}'.format(' '.join(target)))
             return 0
         pass
 
@@ -86,12 +85,15 @@ class CmdRepro(CmdRun):
             try:
                 target_commit = self.git.get_target_commit(data_item.data.relative)
                 if target_commit is None:
-                    msg = 'Data item "{}" cannot be reproduced: file not found or commit not found'
+                    msg = 'Data item "{}" cannot be reproduced: cannot obtain commit hashsum'
                     Logger.warn(msg.format(data_item.data.relative))
                     continue
 
-                repro_change = ReproChange(data_item, self, target_commit)
-                if repro_change.reproduce(force):
+                globally_changed_files = self.git.get_changed_files(target_commit)
+                changed_files = set()
+
+                repro_change = ReproChange(data_item, self)
+                if repro_change.reproduce(changed_files, globally_changed_files, force):
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
@@ -115,15 +117,23 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, data_item, cmd_obj, target_commit):
+    def __init__(self, data_item, cmd_obj):
         self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
-        self._state = StateFile.load(data_item.state.relative, self.git)
+
+        if not os.path.exists(data_item.data.relative):
+            raise ReproError('data item {} does not exist'.format(data_item.data.relative))
+
+        try:
+            self._state = StateFile.load(data_item.state.relative, self.git)
+        except Exception as ex:
+            raise ReproError('Error: state file "{}" cannot be loaded: {}'.
+                             format(data_item.state.relative, ex))
 
         cmd_obj._code = self.state.code_dependencies
 
-        self._target_commit = target_commit
+        # self._target_commit = target_commit
 
         if not self.state.argv:
             raise ReproError('Error: parameter {} is not defined in state file "{}"'.
@@ -164,16 +174,17 @@ class ReproChange(object):
             cmd.set_git_action(True)
             cmd.set_locker(False)
 
+            Logger.info(u'Reproducing import command: {}'.format(output))
             if cmd.import_and_commit_if_needed(input, output, is_reproducible=True, check_if_ready=False) != 0:
                 raise ReproError('Import command reproduction failed')
             return True
         else:
-            Logger.debug('Reproducing data item "{}". Re-run cmd: {}'.format(
-                self._data_item.data.relative, ' '.join(self.state.argv)))
-
             cmd = CmdRun(settings)
             cmd.set_git_action(True)
             cmd.set_locker(False)
+
+            Logger.info('Reproducing run command: {}. Args: {}'.format(
+                self._data_item.data.relative, ' '.join(self.state.argv)))
 
             data_items_from_args = self.cmd_obj.data_items_from_args(self.state.argv)
             if cmd.run_and_commit_if_needed(self.state.argv,
@@ -185,35 +196,48 @@ class ReproChange(object):
                 raise ReproError('Run command reproduction failed')
             return True
 
-    def reproduce(self, force=False):
-        dependencies = self.dependencies
+    def reproduce(self, changed_files, globally_changed_files, force=False):
+        input_files_dependencies = self.dependencies
+        data_item_dvc = self._data_item.data.dvc
         Logger.debug('Reproduce data item {} with dependencies, force={}: {}'.format(
-                     self._data_item.data.dvc,
+            data_item_dvc,
                      force,
-                     ', '.join([x.data.dvc for x in dependencies])))
+                     ', '.join([x.data.dvc for x in input_files_dependencies])))
 
         if not force and not self.state.is_reproducible:
             Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
             return False
 
         were_input_files_changed = False
-        for data_item in dependencies:
-            change = ReproChange(data_item, self._cmd_obj, self._target_commit)
-            if change.reproduce(force):
+        for data_item in input_files_dependencies:
+            change = ReproChange(data_item, self._cmd_obj)
+            if change.reproduce(changed_files, globally_changed_files, force=False):
                 were_input_files_changed = True
+                Logger.debug('Repro: data dependency {} was changed for data item {}'.format(
+                    data_item.data.dvc,
+                    data_item_dvc
+                ))
+            else:
+                if data_item.data.dvc in globally_changed_files:
+                    msg = 'Repro: data dependency {} was not changed for data item {} but globally checksum was changed'
+                    Logger.debug(msg.format(data_item.data.dvc, data_item_dvc))
+                    were_input_files_changed = True
 
-        was_source_code_changed = self.git.were_files_changed(self.state.code_dependencies + self.state.input_files,
-                                                              self.cmd_obj.settings.path_factory,
-                                                              self._target_commit)
-        if was_source_code_changed:
-            Logger.debug('Dependencies were changed for "{}"'.format(self._data_item.data.dvc))
+        were_sources_changed = self.git.were_files_changed(
+            self.state.code_dependencies,
+            self.cmd_obj.settings.path_factory,
+            globally_changed_files
+        )
 
-        if not force and not was_source_code_changed and not were_input_files_changed:
-            Logger.debug('Data item "{}" is up to date'.format(
-                self._data_item.data.relative))
+        is_change_needed = were_sources_changed or were_input_files_changed or force
+        if is_change_needed and data_item_dvc not in changed_files:
+            self.reproduce_data_item()
+            changed_files.add(data_item_dvc)
+            return True
+        else:
+            Logger.debug('Data item "{}" is up to date'.format(self._data_item.data.relative))
             return False
-
-        return self.reproduce_data_item()
+        pass
 
     @property
     def dependencies(self):

@@ -156,19 +156,10 @@ class GitWrapper(GitWrapperI):
 
         return results
 
-    def were_files_changed(self, code_dependencies, path_factory, target_commit):
-        Logger.debug('[dvc-git] Identify changes. Command: git diff --name-only HEAD {}'.format(
-                     target_commit))
-
-        changed_files = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', target_commit])
-        changed_files = changed_files.strip('"')
-
-        Logger.debug('[dvc-git] Identify changes. Success. Changed files: {}'.format(
-                     changed_files.replace('\n', ', ')))
-
+    def were_files_changed(self, code_dependencies, path_factory, changed_files):
         code_files, code_dirs = self.separate_dependency_files_and_dirs(code_dependencies)
         code_files_set = set([path_factory.path(x).dvc for x in code_files])
-        for changed_file in changed_files.split('\n'):
+        for changed_file in changed_files:
             if changed_file in code_files_set:
                 return True
 
@@ -177,6 +168,18 @@ class GitWrapper(GitWrapperI):
                     return True
 
         return False
+
+    @staticmethod
+    def get_changed_files(target_commit):
+        Logger.debug('[dvc-git] Identify changes. Command: git diff --name-only HEAD {}'.format(
+            target_commit))
+
+        changed_files_str = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', target_commit])
+        changed_files = changed_files_str.strip('"').split('\n')
+
+        Logger.debug('[dvc-git] Identify changes. Success. Changed files: {}'.format(
+            ', '.join(changed_files)))
+        return changed_files
 
     @staticmethod
     def get_target_commit(file):
