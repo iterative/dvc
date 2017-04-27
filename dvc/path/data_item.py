@@ -33,6 +33,16 @@ class DataItemInStatusDirError(NotInDataDirError):
         return DataItemInStatusDirError(msg)
 
 
+class NotInGitDirError(NotInDataDirError):
+    def __init__(self, msg):
+        super(NotInGitDirError, self).__init__(msg)
+
+    @staticmethod
+    def build(file, git_dir):
+        msg = 'the file "{}" is not in git directory "{}"'.format(file, git_dir)
+        return NotInGitDirError(msg)
+
+
 class DataItem(object):
     STATE_FILE_SUFFIX = '.state'
     CACHE_FILE_SEP = '_'
@@ -43,6 +53,9 @@ class DataItem(object):
         self._cache_file = cache_file
 
         self._data = Path(data_file, git)
+
+        if not self._data.abs.startswith(self._git.git_dir_abs):
+            raise NotInGitDirError.build(data_file, self._git.git_dir_abs)
 
         if self._data.abs.startswith(self.state_dir_abs):
             raise DataItemInStatusDirError.build(data_file, self._config.data_dir)
