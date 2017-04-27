@@ -152,9 +152,17 @@ class ReproChange(object):
         return self._state
 
     def reproduce_data_item(self):
-        Logger.debug('Reproducing data item "{}". Removing the file...'.format(
-            self._data_item.data.dvc))
-        os.remove(self._data_item.data.relative)
+        Logger.debug('Reproducing data item "{}".'.format(self._data_item.data.dvc))
+
+        for output_dvc in self._state.output_files:
+            Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
+
+            try:
+                data_item = self.cmd_obj.settings.path_factory.existing_data_item_from_dvc_path(output_dvc)
+                os.remove(data_item.data.relative)
+            except Exception as ex:
+                msg = 'Data item {} cannot be removed before reproduction: {}'
+                Logger.error(msg.format(output_dvc, ex))
 
         settings = copy.copy(self._cmd_obj.settings)
         settings.set_args(self.state.argv)
@@ -219,7 +227,7 @@ class ReproChange(object):
                 ))
             else:
                 if data_item.data.dvc in globally_changed_files:
-                    msg = 'Repro: data dependency {} was not changed for data item {} but globally checksum was changed'
+                    msg = 'Repro: data dependency {} was not changed for data item {} but global checksum was changed'
                     Logger.debug(msg.format(data_item.data.dvc, data_item_dvc))
                     were_input_files_changed = True
 

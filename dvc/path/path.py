@@ -14,6 +14,10 @@ class Path(object):
         self._relative = os.path.relpath(self._abs, git.curr_dir_abs)
         self._filename = os.path.basename(self._abs)
 
+    @staticmethod
+    def from_dvc_path(dvc_path, git):
+        return Path(os.path.join(git.git_dir_abs, dvc_path), git)
+
     @property
     def dvc(self):
         return self._dvc

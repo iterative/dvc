@@ -21,6 +21,10 @@ class PathFactory(object):
     def stated_data_item(self, state, data_file):
         return StatedDataItem(state, data_file, self._git, self._config)
 
+    def existing_data_item_from_dvc_path(self, dvc_path):
+        path = Path.from_dvc_path(dvc_path, self._git)
+        return self.existing_data_item(path.relative)
+
     def existing_data_item(self, file):
         if not os.path.exists(file):
             raise DataItemError(u'Data file "%s" is not exist' % file)
