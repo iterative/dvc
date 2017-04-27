@@ -194,9 +194,10 @@ class ReproChange(object):
             Logger.info('Reproducing run command: {}. Args: {}'.format(
                 self._data_item.data.relative, ' '.join(self.state.argv)))
 
-            data_items_from_args = self.cmd_obj.data_items_from_args(self.state.argv)
+            data_items_from_args, not_data_items_from_args = self.cmd_obj.argv_files_by_type(self.state.argv)
             if cmd.run_and_commit_if_needed(self.state.argv,
                                             data_items_from_args,
+                                            not_data_items_from_args,
                                             self.state.stdout,
                                             self.state.stderr,
                                             self.state.shell,

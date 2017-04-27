@@ -5,7 +5,7 @@ from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
-from dvc.path.data_item import NotInDataDirError
+from dvc.path.data_item import NotInDataDirError, NotInGitDirError
 from dvc.repository_change import RepositoryChange
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
@@ -62,8 +62,10 @@ class CmdRun(CmdBase):
                 return 1
 
         try:
+            data_items_from_args, not_data_items_from_args = self.argv_files_by_type(self.command_args)
             return self.run_and_commit_if_needed(self.command_args,
-                                                 self.data_items_from_args(self.command_args),
+                                                 data_items_from_args,
+                                                 not_data_items_from_args,
                                                  self.parsed_args.stdout,
                                                  self.parsed_args.stderr,
                                                  self.parsed_args.shell)
@@ -71,20 +73,22 @@ class CmdRun(CmdBase):
             if self.is_locker:
                 lock.release()
 
-    def run_and_commit_if_needed(self, command_args, command_args_data_items,
+    def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
                                  stdout, stderr, shell, check_if_ready=True):
         if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
             return 1
 
         self.run_command(command_args,
-                         command_args_data_items,
+                         data_items_from_args,
+                         not_data_items_from_args,
                          stdout,
                          stderr,
                          shell)
 
         return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
 
-    def run_command(self, cmd_args, data_items_from_args, stdout=None, stderr=None, shell=False):
+    def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
+                    stdout=None, stderr=None, shell=False):
         Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
                      ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
@@ -104,7 +108,7 @@ class CmdRun(CmdBase):
         input_set = set(data_items_from_args + self.declaration_input_data_items) - output_set
         input_files_dvc = [x.data.dvc for x in input_set]
 
-        code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies)
+        code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies + not_data_items_from_args)
 
         result = []
         for data_item in repo_change.changed_data_items:
@@ -155,18 +159,23 @@ class CmdRun(CmdBase):
 
         return not error
 
-    def data_items_from_args(self, argv):
-        result = []
+    def argv_files_by_type(self, argv):
+        data_items = []
+        not_data_items = []
 
         for arg in argv:
             try:
                 if os.path.isfile(arg):
                     data_item = self.settings.path_factory.data_item(arg)
-                    result.append(data_item)
+                    data_items.append(data_item)
+            except NotInGitDirError as ex:
+                msg = 'File {} from argv is outside of git directory and cannot be traced: {}'
+                Logger.warn(msg.format(arg, ex))
             except NotInDataDirError:
+                not_data_items.append(arg)
                 pass
 
-        return result
+        return data_items, not_data_items
 
     def _data_items_from_params(self, files, param_text):
         if not files:

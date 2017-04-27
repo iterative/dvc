@@ -56,7 +56,7 @@ class TestRunOutsideData(RunBasicTest):
         self.settings._args = []
         cmd_run = CmdRun(self.settings)
         with self.assertRaises(RunError):
-            cmd_run.run_command(['echo', 'test'], [], shell=True,
+            cmd_run.run_command(['echo', 'test'], [], [], shell=True,
                                 stdout='file1', stderr='file2')
         pass
 
@@ -75,7 +75,7 @@ class RunTwoFilesBase(RunBasicTest):
 
         self.file_name1 = os.path.join('data', 'file1')
         self.file_name2 = os.path.join('data', 'file2')
-        self.state_objs = cmd_run.run_command(['echo', 'test'], [], shell=True,
+        self.state_objs = cmd_run.run_command(['echo', 'test'], [], [], shell=True,
                                               stdout=self.file_name1,
                                               stderr=self.file_name2)
 
