@@ -101,7 +101,7 @@ class CmdRun(CmdBase):
         output_set = set(self.declaration_output_data_items + repo_change.changed_data_items)
         output_files_dvc = [x.data.dvc for x in output_set]
 
-        input_set = set(data_items_from_args + self.declaration_input_data_items)
+        input_set = set(data_items_from_args + self.declaration_input_data_items) - output_set
         input_files_dvc = [x.data.dvc for x in input_set]
 
         code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies)
