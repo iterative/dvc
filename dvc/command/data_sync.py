@@ -44,7 +44,10 @@ class CmdDataSync(CmdBase):
         super(CmdDataSync, self).__init__(settings)
 
     def define_args(self, parser):
-        self.add_string_arg(parser, 'target', 'Target to sync - file or directory')
+        parser.add_argument('targets',
+                            metavar='',
+                            help='File or directory to sync',
+                            nargs='*')
 
     def run(self):
         if self.is_locker:
@@ -55,12 +58,13 @@ class CmdDataSync(CmdBase):
                 return 1
 
         try:
-            if System.islink(self.parsed_args.target):
-                data_item = self.settings.path_factory.data_item(self.parsed_args.target)
-                return self.sync_symlink(data_item)
+            for target in self.parsed_args.targets:
+                if System.islink(target):
+                    data_item = self.settings.path_factory.data_item(target)
+                    return self.sync_symlink(data_item)
 
-            if os.path.isdir(self.parsed_args.target):
-                return self.sync_dir(self.parsed_args.target)
+                if os.path.isdir(target):
+                    return self.sync_dir(target)
 
             raise DataSyncError('File "{}" does not exit'.format(self.parsed_args.target))
         finally:
