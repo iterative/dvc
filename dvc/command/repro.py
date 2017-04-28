@@ -144,7 +144,8 @@ class ReproChange(object):
         pass
 
     def is_cache_exists(self):
-        return os.path.exists(self._data_item.cache.relative)
+        path = System.realpath(self._data_item.data.relative)
+        return os.path.exists(path)
 
     @property
     def cmd_obj(self):
@@ -255,21 +256,25 @@ class ReproChange(object):
         return result
 
     def is_repro_required(self, changed_files, data_item_dvc):
-        if self._recursive and self.were_dependencies_changed(changed_files, data_item_dvc):
-            self.log_repro_reason(u'input dependencies were changed')
-            return True
+        is_dependency_check_required = self._recursive
+
+        if not is_dependency_check_required and not self.is_cache_exists():
+            is_dependency_check_required = True
+            Logger.info(u'Reproduction {}. Force dependency check since cache file is missing.'.format(
+                self._data_item.data.relative))
+
+        if is_dependency_check_required:
+            if self.were_dependencies_changed(changed_files, data_item_dvc):
+                self.log_repro_reason(u'input dependencies were changed')
+                return True
 
         if self._force:
             self.log_repro_reason(u'it was forced')
             return True
 
-        if self.is_cache_exists():
-            self.log_repro_reason(u'cache file is missing')
+        if not self.is_cache_exists():
+            self.log_repro_reason(u'cache file is missing.')
             return True
-
-        # if data_item_dvc not in changed_files:
-        #     self.log_repro_reason(u'the data item was changed')
-        #     return True
 
         if self.were_sources_changed(self._globally_changed_files):
             self.log_repro_reason(u'sources were changed')
