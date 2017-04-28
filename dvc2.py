@@ -42,11 +42,10 @@ def print_usage():
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'data-sync', 'remove', 'import', 'import-file', 'cloud', \
+    cmds = ['init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'import-file', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
-    cmds_expand = {'data':  ['sync'],
-                   'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe'],
+    cmds_expand = {'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe'],
                    'test':  ['aws', 'cloud', 'gcloud'],
                   }
 
@@ -73,7 +72,7 @@ if __name__ == '__main__':
         Runtime.run(CmdRun, args_start_loc=2)
     elif cmd == 'repro':
         Runtime.run(CmdRepro, args_start_loc=2)
-    elif cmd == 'data-sync' or (cmd == 'data' and subcmd == 'sync'):
+    elif cmd == 'sync':
         Runtime.run(CmdDataSync, args_start_loc=argv_offset)
     elif cmd == 'import':
         Runtime.run(CmdImportBulk, args_start_loc=argv_offset)

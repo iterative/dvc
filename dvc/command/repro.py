@@ -9,6 +9,7 @@ from dvc.exceptions import DvcException
 from dvc.path.data_item import NotInDataDirError
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
+from dvc.system import System
 
 
 class ReproError(DvcException):
@@ -54,7 +55,6 @@ class CmdRepro(CmdRun):
             if not gotten:
                 self.warning_dvc_is_busy()
                 return 1
-
         try:
             return self.repro_target(self.parsed_args.target, self.parsed_args.force)
         finally:
@@ -122,8 +122,8 @@ class ReproChange(object):
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
 
-        if not os.path.exists(data_item.data.relative):
-            raise ReproError('data item {} does not exist'.format(data_item.data.relative))
+        if not System.islink(data_item.data.relative):
+            raise ReproError('data item {} is no symlink'.format(data_item.data.relative))
 
         try:
             self._state = StateFile.load(data_item.state.relative, self.git)
@@ -133,8 +133,6 @@ class ReproChange(object):
 
         cmd_obj._code = self.state.code_dependencies
 
-        # self._target_commit = target_commit
-
         if not self.state.argv:
             raise ReproError('Error: parameter {} is not defined in state file "{}"'.
                              format(StateFile.PARAM_ARGV, data_item.state.relative))
@@ -142,6 +140,9 @@ class ReproChange(object):
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self.state.file))
         pass
+
+    def is_cache_exists(self):
+        return os.path.exists(self._data_item.cache.relative)
 
     @property
     def cmd_obj(self):
@@ -186,7 +187,7 @@ class ReproChange(object):
             if cmd.import_and_commit_if_needed(input, output, is_reproducible=True, check_if_ready=False) != 0:
                 raise ReproError('Import command reproduction failed')
             return True
-        else:
+        elif self.state.is_run:
             cmd = CmdRun(settings)
             cmd.set_git_action(True)
             cmd.set_locker(False)
@@ -204,6 +205,10 @@ class ReproChange(object):
                                             check_if_ready=False) != 0:
                 raise ReproError('Run command reproduction failed')
             return True
+        else:
+            # Ignore EMPTY_FILE command
+            pass
+        pass
 
     def reproduce(self, changed_files, globally_changed_files, force=False):
         input_files_dependencies = self.dependencies
@@ -239,6 +244,7 @@ class ReproChange(object):
         )
 
         is_change_needed = were_sources_changed or were_input_files_changed or force
+        # if not self.is_cache_exists() or (is_change_needed and data_item_dvc not in changed_files):
         if is_change_needed and data_item_dvc not in changed_files:
             self.reproduce_data_item()
             changed_files.add(data_item_dvc)

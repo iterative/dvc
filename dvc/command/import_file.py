@@ -28,7 +28,7 @@ class CmdImportFile(CmdBase):
         self.add_string_arg(parser, 'input', 'Input file')
         self.add_string_arg(parser, 'output', 'Output file')
 
-        parser.add_argument('-i', '--is-reproducible', action='store_false', default=False,
+        parser.add_argument('-r', '--is-reproducible', action='store_false', default=True,
                             help='Is data file reproducible')
         pass
 
@@ -55,7 +55,7 @@ class CmdImportFile(CmdBase):
 
         self.import_file(input, output, is_reproducible)
 
-        message = 'DVC import file: {} {}'.format(' '.join(input), output)
+        message = 'DVC import file: {} {}'.format(input, output)
         return self.commit_if_needed(message)
 
     def import_file(self, input, output, is_reproducible=True):

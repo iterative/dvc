@@ -12,10 +12,12 @@ class ConfigError(DvcException):
 
 class ConfigI(object):
     def __init__(self, data_dir=None, cache_dir=None, state_dir=None):
+        self.set(data_dir, cache_dir, state_dir)
+
+    def set(self, data_dir, cache_dir, state_dir):
         self._data_dir = data_dir
         self._cache_dir = cache_dir
         self._state_dir = state_dir
-        pass
 
     @property
     def data_dir(self):
