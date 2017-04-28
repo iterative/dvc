@@ -22,7 +22,8 @@ class StateFile(object):
 
     COMMAND_RUN = 'run'
     COMMAND_IMPORT_FILE = 'import-file'
-    ACCEPTED_COMMANDS = {COMMAND_IMPORT_FILE, COMMAND_RUN}
+    COMMAND_EMPTY_FILE = 'empty'
+    ACCEPTED_COMMANDS = {COMMAND_IMPORT_FILE, COMMAND_RUN, COMMAND_EMPTY_FILE}
 
     PARAM_COMMAND = 'Command'
     PARAM_TYPE = 'Type'
@@ -137,17 +138,6 @@ class StateFile(object):
         with open(self.file, 'w') as fd:
             json.dump(res, fd, indent=2)
         pass
-
-    # def process_args(self, argv):
-    #     if len(argv) >= 2 and argv[0].endswith(self.DVC_PYTHON_FILE_NAME):
-    #         if argv[1] in self.ACCEPTED_COMMANDS:
-    #             return argv[1], self._argv_paths_normalization(argv[2:])
-    #         else:
-    #             msg = 'File generation error: command "{}" is not allowed. Argv={}'
-    #             raise StateFileError(msg.format(argv[1], argv))
-    #     else:
-    #         msg = 'File generation error: dvc python command "{}" format error. Argv={}'
-    #         raise StateFileError(msg.format(self.DVC_PYTHON_FILE_NAME, argv))
 
     def _argv_paths_normalization(self, argv):
         result = []

@@ -26,9 +26,6 @@ class PathFactory(object):
         return self.existing_data_item(path.relative)
 
     def existing_data_item(self, file):
-        if not os.path.exists(file):
-            raise DataItemError(u'Data file "%s" is not exist' % file)
-
         if not System.islink(file):
             raise DataItemError(u'Data file "%s" must be a symbolic link' % file)
         resolved_symlink = System.realpath(file)

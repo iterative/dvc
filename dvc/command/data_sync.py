@@ -7,6 +7,7 @@ from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
 from dvc.command.base import CmdBase
+from dvc.command.init import CmdInit
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
@@ -59,14 +60,14 @@ class CmdDataSync(CmdBase):
 
         try:
             for target in self.parsed_args.targets:
+                data_item = self.settings.path_factory.data_item(target)
                 if System.islink(target):
-                    data_item = self.settings.path_factory.data_item(target)
-                    return self.sync_symlink(data_item)
-
-                if os.path.isdir(target):
-                    return self.sync_dir(target)
-
-            raise DataSyncError('File "{}" does not exit'.format(self.parsed_args.target))
+                    self.sync_symlink(data_item)
+                elif os.path.isdir(target):
+                    self.sync_dir(target)
+                else:
+                    # if data_item.data.dvc != empty_data_item.data.dvc:
+                    raise DataSyncError('File "{}" does not exit'.format(target))
         finally:
             if self.is_locker:
                 lock.release()

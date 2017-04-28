@@ -28,7 +28,7 @@ class CmdImportFile(CmdBase):
         self.add_string_arg(parser, 'input', 'Input file')
         self.add_string_arg(parser, 'output', 'Output file')
 
-        parser.add_argument('-i', '--is-reproducible', action='store_false', default=False,
+        parser.add_argument('-r', '--is-reproducible', action='store_false', default=True,
                             help='Is data file reproducible')
         pass
 

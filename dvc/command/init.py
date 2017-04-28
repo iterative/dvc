@@ -6,6 +6,8 @@ from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
+from dvc.state_file import StateFile
+from dvc.system import System
 
 
 class InitError(DvcException):
@@ -52,6 +54,7 @@ ProjectName =
 '''
 
     EMPTY_FILE_NAME = 'empty'
+    EMPTY_FILE_CHECKSUM = '0000000'
 
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
@@ -80,9 +83,19 @@ ProjectName =
         if not self.skip_git_actions and not self.git.is_ready_to_go():
             return 1
 
+        if os.path.realpath(os.path.curdir) != self.settings.git.git_dir_abs:
+            Logger.error('DVC error: initialization could be done only from git root directory {}'.format(
+                self.settings.git.git_dir_abs
+            ))
+            return 1
+
         data_dir_path = self.get_not_existing_dir(self.parsed_args.data_dir)
         cache_dir_path = self.get_not_existing_dir(self.parsed_args.cache_dir)
         state_dir_path = self.get_not_existing_dir(self.parsed_args.state_dir)
+
+        self.settings.config.set(self.parsed_args.data_dir,
+                                 self.parsed_args.cache_dir,
+                                 self.parsed_args.state_dir)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
@@ -94,18 +107,7 @@ ProjectName =
             cache_dir_path.name,
             state_dir_path.name))
 
-        data_empty_file = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
-        cache_empty_file = os.path.join(self.parsed_args.cache_dir, self.EMPTY_FILE_NAME)
-        state_empty_file = os.path.join(self.parsed_args.state_dir, self.EMPTY_FILE_NAME)
-
-        open(data_empty_file, 'w').close()
-        open(cache_empty_file, 'w').close()
-        open(state_empty_file, 'w').close()
-
-        Logger.info('Empty files {}, {} and {} were created'.format(
-            data_empty_file,
-            cache_empty_file,
-            state_empty_file))
+        self.create_empty_file()
 
         conf_file = open(conf_file_name, 'wt')
         conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name,
@@ -123,6 +125,23 @@ ProjectName =
 
         self.modify_gitignore(cache_dir_path.name)
         return self.commit_if_needed('DVC init. Commit .gitignore file')
+
+    def create_empty_file(self):
+        empty_data_path = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
+        cache_file_suffix = self.EMPTY_FILE_NAME + '_' + self.EMPTY_FILE_CHECKSUM
+        empty_cache_path = os.path.join(self.parsed_args.cache_dir, cache_file_suffix)
+        empty_state_path = os.path.join(self.parsed_args.state_dir, self.EMPTY_FILE_NAME + '.state')
+
+        open(empty_cache_path, 'w').close()
+        System.symlink(os.path.join('..', empty_cache_path), empty_data_path)
+
+        StateFile(StateFile.COMMAND_EMPTY_FILE,
+                  empty_state_path,
+                  self.settings,
+                  input_files=[],
+                  output_files=[],
+                  is_reproducible=False).save()
+        pass
 
     def modify_gitignore(self, cache_dir_name):
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
