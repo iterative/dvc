@@ -86,7 +86,7 @@ class ReproChangedDependency(ReproBasicEnv):
     def test(self):
         self.recreate_file1()
 
-        self.settings._args = [self.file_name11]
+        self.settings._args = [self.file_name11, '-r']
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name11).read(), 'Goodbye\n')
@@ -107,7 +107,7 @@ class ReproChangedDeepDependency(ReproChangedDependency):
     def test(self):
         self.recreate_file1()
 
-        self.settings._args = [self.file_name_res]
+        self.settings._args = [self.file_name_res, '-r']
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read().strip(), 'Goodbye\nBobby')
