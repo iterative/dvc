@@ -51,6 +51,8 @@ StoragePath =
 ProjectName =
 '''
 
+    EMPTY_FILE_NAME = 'empty'
+
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
 
@@ -92,20 +94,35 @@ ProjectName =
             cache_dir_path.name,
             state_dir_path.name))
 
+        data_empty_file = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
+        cache_empty_file = os.path.join(self.parsed_args.cache_dir, self.EMPTY_FILE_NAME)
+        state_empty_file = os.path.join(self.parsed_args.state_dir, self.EMPTY_FILE_NAME)
+
+        open(data_empty_file, 'w').close()
+        open(cache_empty_file, 'w').close()
+        open(state_empty_file, 'w').close()
+
+        Logger.info('Empty files {}, {} and {} were created'.format(
+            data_empty_file,
+            cache_empty_file,
+            state_empty_file))
+
         conf_file = open(conf_file_name, 'wt')
         conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name,
                                                     cache_dir_path.name,
                                                     state_dir_path.name))
         conf_file.close()
 
-        self.modify_gitignore(cache_dir_path.name)
-
         message = 'DVC init. data dir {}, cache dir {}, state dir {}'.format(
                         data_dir_path.name,
                         cache_dir_path.name,
                         state_dir_path.name
         )
-        return self.commit_if_needed(message)
+        if self.commit_if_needed(message) == 1:
+            return 1
+
+        self.modify_gitignore(cache_dir_path.name)
+        return self.commit_if_needed('DVC init. Commit .gitignore file')
 
     def modify_gitignore(self, cache_dir_name):
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
