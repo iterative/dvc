@@ -17,7 +17,7 @@ class Runtime(object):
         return System.realpath(os.path.join(git_dir, Runtime.CONFIG))
 
     @staticmethod
-    def run(cmd_class, parse_config=True, args_start_loc=1):
+    def run(cmd_class, parse_config=True, args_start_loc=2):
         """
 
         Arguments:

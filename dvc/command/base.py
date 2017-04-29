@@ -52,8 +52,13 @@ class CmdBase(object):
     def set_skip_git_actions(self, parser):
         parser.add_argument('--skip-git-actions', '-s', action='store_true', default=False,
                             help='Skip all git actions including reproducibility check and commits')
-        parser.add_argument('--no-lock', '-L', action='store_true', default=False,
-                            help='Do not set DVC locker')
+        # parser.add_argument('--no-lock', '-L', action='store_true', default=False,
+        #                     help='Do not set DVC locker')
+
+    def set_lock_action(self, parser):
+        parser.add_argument('-l', '--lock', action='store_true', default=False,
+                            help='Lock data item - disable reproduction. ' + \
+                                 'It can be enabled by `dvc lock` command or by forcing reproduction.')
 
     @property
     def skip_git_actions(self):

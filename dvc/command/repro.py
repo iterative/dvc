@@ -39,7 +39,7 @@ class CmdRepro(CmdRun):
         pass
 
     @property
-    def is_reproducible(self):
+    def lock(self):
         return True
 
     @property
@@ -217,7 +217,7 @@ class ReproChange(object):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
             self._data_item.data.relative, self._recursive, self._force))
 
-        if not self.state.is_reproducible:
+        if not self.state.lock:
             Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
             return False
 

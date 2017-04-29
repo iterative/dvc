@@ -23,6 +23,7 @@ class CmdRun(CmdBase):
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
+        self.set_lock_action(parser)
 
         parser.add_argument('--not-repro', help='Not reproducible',
                             action='store_false', default=False)
@@ -38,8 +39,8 @@ class CmdRun(CmdBase):
         pass
 
     @property
-    def is_reproducible(self):
-        return not self.parsed_args.not_repro
+    def lock(self):
+        return not self.parsed_args.lock
 
     @property
     def code_dependencies(self):
@@ -125,7 +126,7 @@ class CmdRun(CmdBase):
                                    output_files_dvc,
                                    code_dependencies_dvc,
                                    argv=cmd_args,
-                                   is_reproducible=self.is_reproducible,
+                                   lock=self.lock,
                                    stdout=self._stdout_to_dvc(stdout),
                                    stderr=self._stdout_to_dvc(stderr),
                                    shell=shell)

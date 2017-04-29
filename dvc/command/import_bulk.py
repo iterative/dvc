@@ -13,6 +13,7 @@ class CmdImportBulk(CmdBase):
 
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
+        self.set_lock_action(parser)
 
         parser.add_argument('input',
                             metavar='',
@@ -21,8 +22,6 @@ class CmdImportBulk(CmdBase):
 
         self.add_string_arg(parser, 'output', 'Output file')
 
-        parser.add_argument('-r', '--is-reproducible', action='store_false', default=True,
-                            help='Is data file reproducible')
         pass
 
     def run(self):
@@ -44,7 +43,7 @@ class CmdImportBulk(CmdBase):
             output = self.parsed_args.output
             for input in self.parsed_args.input:
                 if not os.path.isdir(input):
-                    cmd.import_and_commit_if_needed(input, output, self.parsed_args.is_reproducible)
+                    cmd.import_and_commit_if_needed(input, output, self.parsed_args.lock)
                 else:
                     input_dir = os.path.basename(input)
                     for root, dirs, files in os.walk(input):
@@ -58,7 +57,7 @@ class CmdImportBulk(CmdBase):
                             if not os.path.exists(out_dir):
                                 os.mkdir(out_dir)
 
-                            cmd.import_and_commit_if_needed(filename, out, self.parsed_args.is_reproducible)
+                            cmd.import_and_commit_if_needed(filename, out, self.parsed_args.lock)
                 pass
         finally:
             if self.is_locker:

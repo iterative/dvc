@@ -34,7 +34,7 @@ class StateFile(object):
     PARAM_INPUT_FILES = 'InputFiles'
     PARAM_OUTPUT_FILES = 'OutputFiles'
     PARAM_CODE_DEPENDENCIES = 'CodeDependencies'
-    PARAM_NOT_REPRODUCIBLE = 'NotReproducible'
+    PARAM_LOCK = 'Lock'
     PARAM_STDOUT = "Stdout"
     PARAM_STDERR = "Stderr"
     PARAM_SHELL = "Shell"
@@ -46,7 +46,7 @@ class StateFile(object):
                  input_files,
                  output_files,
                  code_dependencies=[],
-                 is_reproducible=True,
+                 lock=False,
                  argv=sys.argv,
                  stdout=None,
                  stderr=None,
@@ -57,7 +57,7 @@ class StateFile(object):
         self.settings = settings
         self.input_files = input_files
         self.output_files = output_files
-        self.is_reproducible = is_reproducible
+        self.lock = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
 
@@ -91,17 +91,17 @@ class StateFile(object):
         return self._argv
 
     @staticmethod
-    def load(filename, git):
+    def load(filename, settings):
         with open(filename, 'r') as fd:
             data = json.load(fd)
 
         return StateFile(data.get(StateFile.PARAM_COMMAND),
                          filename,
-                         git,
+                         settings,
                          data.get(StateFile.PARAM_INPUT_FILES, []),
                          data.get(StateFile.PARAM_OUTPUT_FILES, []),
                          data.get(StateFile.PARAM_CODE_DEPENDENCIES, []),
-                         not data.get(StateFile.PARAM_NOT_REPRODUCIBLE, False),
+                         data.get(StateFile.PARAM_LOCK, False),
                          data.get(StateFile.PARAM_ARGV),
                          data.get(StateFile.PARAM_STDOUT),
                          data.get(StateFile.PARAM_STDERR),
@@ -110,7 +110,6 @@ class StateFile(object):
                          data.get(StateFile.PARAM_SHELL, False))
 
     def save(self):
-        # cmd, argv = self.process_args(self._argv)
         argv = self._argv_paths_normalization(self._argv)
 
         res = {
@@ -128,8 +127,8 @@ class StateFile(object):
             self.PARAM_SHELL:           self.shell
         }
 
-        if not self.is_reproducible:
-            res[self.PARAM_NOT_REPRODUCIBLE] = True
+        if self.lock:
+            res[self.PARAM_LOCK] = True
 
         file_dir = os.path.dirname(self.file)
         if file_dir != '' and not os.path.isdir(file_dir):

@@ -43,22 +43,22 @@ class CmdImportFile(CmdBase):
         try:
             return self.import_and_commit_if_needed(self.parsed_args.input,
                                                     self.parsed_args.output,
-                                                    self.parsed_args.is_reproducible)
+                                                    self.parsed_args.lock)
         finally:
             if self.is_locker:
                 lock.release()
         pass
 
-    def import_and_commit_if_needed(self, input, output, is_reproducible=True, check_if_ready=True):
+    def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
         if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
             return 1
 
-        self.import_file(input, output, is_reproducible)
+        self.import_file(input, output, lock)
 
         message = 'DVC import file: {} {}'.format(input, output)
         return self.commit_if_needed(message)
 
-    def import_file(self, input, output, is_reproducible=True):
+    def import_file(self, input, output, lock=False):
         if not CmdImportFile.is_url(input):
             if not os.path.exists(input):
                 raise ImportFileError('Input file "{}" does not exist'.format(input))
@@ -100,7 +100,7 @@ class CmdImportFile(CmdBase):
                                argv=[input, output],
                                input_files=[],
                                output_files=[output],
-                               is_reproducible=is_reproducible)
+                               is_reproducible=lock)
         state_file.save()
         Logger.debug('State file "{}" was created'.format(data_item.state.relative))
         pass
