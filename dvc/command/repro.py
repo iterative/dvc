@@ -31,9 +31,11 @@ class CmdRepro(CmdRun):
     def define_args(self, parser):
         self.set_skip_git_actions(parser)
 
-        parser.add_argument('target', metavar='', help='Data item to reproduce', nargs='*')
+        parser.add_argument('target', metavar='', help='Data items to reproduce.', nargs='*')
         parser.add_argument('-f', '--force', action='store_true', default=False,
-                            help='Force reproduction')
+                            help='Reproduce even if dependencies were not changed')
+        parser.add_argument('-r', '--recursive', action='store_true', default=False,
+                            help='Recursively reproduce all changed dependencies')
         pass
 
     @property
@@ -56,14 +58,14 @@ class CmdRepro(CmdRun):
                 self.warning_dvc_is_busy()
                 return 1
         try:
-            return self.repro_target(self.parsed_args.target, self.parsed_args.force)
+            return self.repro_target(self.parsed_args.target, self.parsed_args.recursive, self.parsed_args.force)
         finally:
             if self.is_locker:
                 lock.release()
 
         pass
 
-    def repro_target(self, target, force):
+    def repro_target(self, target, recursive, force):
         if not self.skip_git_actions and not self.git.is_ready_to_go():
             return 1
 
@@ -73,11 +75,11 @@ class CmdRepro(CmdRun):
                          format(self.config.data_dir, ' '.join(external_files_names)))
             return 1
 
-        if self.repro_data_items(data_item_list, force):
+        if self.repro_data_items(data_item_list, recursive, force):
             return 0
         pass
 
-    def repro_data_items(self, data_item_list, force):
+    def repro_data_items(self, data_item_list, recursive, force):
         error = False
         changed = False
 
@@ -91,9 +93,8 @@ class CmdRepro(CmdRun):
 
                 globally_changed_files = self.git.get_changed_files(target_commit)
                 changed_files = set()
-
-                repro_change = ReproChange(data_item, self)
-                if repro_change.reproduce(changed_files, globally_changed_files, force):
+                change = ReproChange(data_item, self, globally_changed_files, recursive, force)
+                if change.reproduce(changed_files):
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
@@ -117,21 +118,22 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, data_item, cmd_obj):
+    def __init__(self, data_item, cmd_obj, globally_changed_files, recursive, force):
         self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
+        self._globally_changed_files = globally_changed_files
+        self._recursive = recursive
+        self._force = force
 
         if not System.islink(data_item.data.relative):
-            raise ReproError('data item {} is no symlink'.format(data_item.data.relative))
+            raise ReproError('data item {} is not symlink'.format(data_item.data.relative))
 
         try:
             self._state = StateFile.load(data_item.state.relative, self.git)
         except Exception as ex:
             raise ReproError('Error: state file "{}" cannot be loaded: {}'.
                              format(data_item.state.relative, ex))
-
-        cmd_obj._code = self.state.code_dependencies
 
         if not self.state.argv:
             raise ReproError('Error: parameter {} is not defined in state file "{}"'.
@@ -142,7 +144,8 @@ class ReproChange(object):
         pass
 
     def is_cache_exists(self):
-        return os.path.exists(self._data_item.cache.relative)
+        path = System.realpath(self._data_item.data.relative)
+        return os.path.exists(path)
 
     @property
     def cmd_obj(self):
@@ -153,7 +156,7 @@ class ReproChange(object):
         return self._state
 
     def reproduce_data_item(self):
-        Logger.debug('Reproducing data item "{}".'.format(self._data_item.data.dvc))
+        Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
 
         for output_dvc in self._state.output_files:
             Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
@@ -169,7 +172,7 @@ class ReproChange(object):
         settings.set_args(self.state.argv)
 
         if self.state.is_import_file:
-            Logger.debug('Reproducing data item "{}". Re-import cmd: {}'.format(
+            Logger.debug('Reproducing data item {}. Re-import cmd: {}'.format(
                 self._data_item.data.relative, ' '.join(self.state.argv)))
 
             if len(self.state.argv) != 2:
@@ -192,7 +195,7 @@ class ReproChange(object):
             cmd.set_git_action(True)
             cmd.set_locker(False)
 
-            Logger.info('Reproducing run command: {}. Args: {}'.format(
+            Logger.info('Reproducing run command for data item {}. Args: {}'.format(
                 self._data_item.data.relative, ' '.join(self.state.argv)))
 
             data_items_from_args, not_data_items_from_args = self.cmd_obj.argv_files_by_type(self.state.argv)
@@ -210,49 +213,86 @@ class ReproChange(object):
             pass
         pass
 
-    def reproduce(self, changed_files, globally_changed_files, force=False):
-        input_files_dependencies = self.dependencies
-        data_item_dvc = self._data_item.data.dvc
-        Logger.debug('Reproduce data item {} with dependencies, force={}: {}'.format(
-            data_item_dvc,
-                     force,
-                     ', '.join([x.data.dvc for x in input_files_dependencies])))
+    def reproduce(self, changed_files):
+        Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
+            self._data_item.data.relative, self._recursive, self._force))
 
-        if not force and not self.state.is_reproducible:
-            Logger.debug('Data item "{}" is not reproducible'.format(self._data_item.data.relative))
+        if not self.state.is_reproducible:
+            Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
             return False
 
-        were_input_files_changed = False
-        for data_item in input_files_dependencies:
-            change = ReproChange(data_item, self._cmd_obj)
-            if change.reproduce(changed_files, globally_changed_files, force=False):
-                were_input_files_changed = True
-                Logger.debug('Repro: data dependency {} was changed for data item {}'.format(
-                    data_item.data.dvc,
-                    data_item_dvc
-                ))
+        data_item_dvc = self._data_item.data.dvc
+        if self.is_repro_required(changed_files, data_item_dvc):
+            if data_item_dvc not in changed_files:
+                Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
+                self.reproduce_data_item()
+                changed_files.add(data_item_dvc)
+                return True
             else:
-                if data_item.data.dvc in globally_changed_files:
-                    msg = 'Repro: data dependency {} was not changed for data item {} but global checksum was changed'
-                    Logger.debug(msg.format(data_item.data.dvc, data_item_dvc))
-                    were_input_files_changed = True
+                msg = 'Data item {} is not going to be reproduced because it is already reproduced'
+                Logger.debug(msg.format(self._data_item.data.relative))
+        else:
+            Logger.debug('Data item {} is up to date'.format(self._data_item.data.relative))
+            return False
+        pass
 
+    def were_dependencies_changed(self, changed_files, data_item_dvc):
+        result = False
+
+        for data_item in self.dependencies:
+            change = ReproChange(data_item, self._cmd_obj, self._globally_changed_files, self._recursive, self._force)
+            if change.reproduce(changed_files):
+                result = True
+                Logger.debug(u'Repro data item {}: dependency {} was changed'.format(
+                    data_item_dvc, data_item.data.dvc))
+            elif data_item.data.dvc in self._globally_changed_files:
+                msg = u'Repro data item {}: dependency {} was not changed but the data item global checksum was changed'
+                Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
+                result = True
+            else:
+                msg = u'Repro data item {}: dependency {} was not changed'
+                Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
+
+        return result
+
+    def is_repro_required(self, changed_files, data_item_dvc):
+        is_dependency_check_required = self._recursive
+
+        if not is_dependency_check_required and not self.is_cache_exists():
+            is_dependency_check_required = True
+            Logger.info(u'Reproduction {}. Force dependency check since cache file is missing.'.format(
+                self._data_item.data.relative))
+
+        if is_dependency_check_required:
+            if self.were_dependencies_changed(changed_files, data_item_dvc):
+                self.log_repro_reason(u'input dependencies were changed')
+                return True
+
+        if self._force:
+            self.log_repro_reason(u'it was forced')
+            return True
+
+        if not self.is_cache_exists():
+            self.log_repro_reason(u'cache file is missing.')
+            return True
+
+        if self.were_sources_changed(self._globally_changed_files):
+            self.log_repro_reason(u'sources were changed')
+            return True
+
+        return False
+
+    def log_repro_reason(self, reason):
+        msg = u'Repro is required for data item {} because of {}'
+        Logger.debug(msg.format(self._data_item.data.relative, reason))
+
+    def were_sources_changed(self, globally_changed_files):
         were_sources_changed = self.git.were_files_changed(
             self.state.code_dependencies,
             self.cmd_obj.settings.path_factory,
             globally_changed_files
         )
-
-        is_change_needed = were_sources_changed or were_input_files_changed or force
-        # if not self.is_cache_exists() or (is_change_needed and data_item_dvc not in changed_files):
-        if is_change_needed and data_item_dvc not in changed_files:
-            self.reproduce_data_item()
-            changed_files.add(data_item_dvc)
-            return True
-        else:
-            Logger.debug('Data item "{}" is up to date'.format(self._data_item.data.relative))
-            return False
-        pass
+        return were_sources_changed
 
     @property
     def dependencies(self):

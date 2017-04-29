@@ -66,21 +66,24 @@ class CmdDataSync(CmdBase):
                 elif os.path.isdir(target):
                     self.sync_dir(target)
                 else:
-                    # if data_item.data.dvc != empty_data_item.data.dvc:
                     raise DataSyncError('File "{}" does not exit'.format(target))
         finally:
             if self.is_locker:
                 lock.release()
 
     def sync_dir(self, dir):
-        for f in os.listdir(dir):
-            fname = os.path.join(dir, f)
-            if os.path.isdir(fname):
-                self.sync_dir(fname)
-            elif System.islink(fname):
-                self.sync_symlink(self.settings.path_factory.data_item(fname))
-            else:
-                raise DataSyncError('Unsupported file type "{}"'.format(fname))
+        for file in os.listdir(dir):
+            try:
+                fname = os.path.join(dir, file)
+                if os.path.isdir(fname):
+                    self.sync_dir(fname)
+                elif System.islink(fname):
+                    self.sync_symlink(self.settings.path_factory.data_item(fname))
+                else:
+                    raise DataSyncError('Unsupported file type "{}"'.format(fname))
+            except DataSyncError as ex:
+                Logger.warn(ex)
+        pass
 
     def sync_symlink(self, data_item):
         if os.path.isfile(data_item.resolved_cache.dvc):
@@ -180,7 +183,6 @@ class CmdDataSync(CmdBase):
         blob = bucket.blob(blob_name)
         blob.upload_from_filename(data_item.resolved_cache.relative)
         Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
-
 
     def sync_from_cloud(self, item):
         cloud = self.settings.config.cloud
