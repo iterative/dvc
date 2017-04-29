@@ -18,6 +18,7 @@ from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
 from dvc.command.import_bulk import CmdImportBulk
+from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
 
@@ -42,12 +43,9 @@ def print_usage():
     print('\n'.join(usage))
 
 if __name__ == '__main__':
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'import-file', 'cloud', \
+    cmds = ['init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
-    cmds_expand = {'cloud': ['run', 'instance-create', 'instance-remove', 'instance-describe'],
-                   'test':  ['aws', 'cloud', 'gcloud'],
-                  }
 
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
         if len(sys.argv) >= 2:
@@ -56,43 +54,36 @@ if __name__ == '__main__':
         sys.exit(-1)
 
     cmd = sys.argv[1]
-    subcmd = None
-    if cmd in cmds_expand:
-        if (len(sys.argv) < 3 or sys.argv[2] not in cmds_expand[cmd]):
-            print('for command %s, eligible actions are %s' % (cmd, cmds_expand[cmd]))
-            print_usage()
-            sys.exit(-1)
-        else:
-            subcmd = sys.argv[2]
 
-    argv_offset = 2 + (0 if subcmd == None else 1)
     if cmd == 'init':
-        Runtime.run(CmdInit, parse_config=False, args_start_loc=2)
+        Runtime.run(CmdInit, parse_config=False)
     elif cmd == 'run':
-        Runtime.run(CmdRun, args_start_loc=2)
+        Runtime.run(CmdRun)
     elif cmd == 'repro':
-        Runtime.run(CmdRepro, args_start_loc=2)
+        Runtime.run(CmdRepro)
     elif cmd == 'sync':
-        Runtime.run(CmdDataSync, args_start_loc=argv_offset)
+        Runtime.run(CmdDataSync)
     elif cmd == 'import':
-        Runtime.run(CmdImportBulk, args_start_loc=argv_offset)
+        Runtime.run(CmdImportBulk)
     elif cmd == 'import-file':
-        Runtime.run(CmdImportFile, args_start_loc=argv_offset)
+        Runtime.run(CmdImportFile)
     elif cmd == 'remove':
-        Runtime.run(CmdDataRemove, args_start_loc=argv_offset)
-    elif cmd == 'cloud-run' or (cmd == 'cloud' and subcmd == 'run'):
+        Runtime.run(CmdDataRemove)
+    elif cmd == 'lock':
+        Runtime.run(CmdLock)
+    elif cmd == 'cloud-run':
         print('cloud-run unimplemented')
-    elif cmd == 'cloud-instance-create' or (cmd == 'cloud' and subcmd == 'instance-create'):
+    elif cmd == 'cloud-instance-create':
         print('cloud-instance-create unimplemented')
-    elif cmd == 'clould-instance-remove' or (cmd == 'cloud' and subcmd == 'instance-remove'):
+    elif cmd == 'clould-instance-remove':
         print('cloud-instance-remove unimplemented')
-    elif cmd == 'cloud-instance-describe' or (cmd == 'cloud' and subcmd == 'instance-describe'):
+    elif cmd == 'cloud-instance-describe':
         print('cloud-instance-describe unimplemented')
 
-    elif cmd == 'test-aws' or (cmd == 'test' and subcmd == 'aws'):
+    elif cmd == 'test-aws':
         print('TODO: test aws credentials')
-    elif cmd == 'test-gcloud' or (cmd=='test' and subcmd in ['cloud', 'gcloud']):
-        Runtime.run(CmdTest, args_start_loc=argv_offset)
+    elif cmd == 'test-gcloud':
+        Runtime.run(CmdTest)
     else:
         print('Unimplemented or unrecognized command. ' + ' '.join(sys.argv[1]))
         print_usage()
