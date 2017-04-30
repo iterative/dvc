@@ -34,7 +34,7 @@ class StateFile(object):
     PARAM_INPUT_FILES = 'InputFiles'
     PARAM_OUTPUT_FILES = 'OutputFiles'
     PARAM_CODE_DEPENDENCIES = 'CodeDependencies'
-    PARAM_LOCK = 'Lock'
+    PARAM_LOCKED = 'Locked'
     PARAM_STDOUT = "Stdout"
     PARAM_STDERR = "Stderr"
     PARAM_SHELL = "Shell"
@@ -57,7 +57,7 @@ class StateFile(object):
         self.settings = settings
         self.input_files = input_files
         self.output_files = output_files
-        self.lock = lock
+        self.locked = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
 
@@ -101,7 +101,7 @@ class StateFile(object):
                          data.get(StateFile.PARAM_INPUT_FILES, []),
                          data.get(StateFile.PARAM_OUTPUT_FILES, []),
                          data.get(StateFile.PARAM_CODE_DEPENDENCIES, []),
-                         data.get(StateFile.PARAM_LOCK, False),
+                         data.get(StateFile.PARAM_LOCKED, False),
                          data.get(StateFile.PARAM_ARGV),
                          data.get(StateFile.PARAM_STDOUT),
                          data.get(StateFile.PARAM_STDERR),
@@ -127,8 +127,8 @@ class StateFile(object):
             self.PARAM_SHELL:           self.shell
         }
 
-        if self.lock:
-            res[self.PARAM_LOCK] = True
+        if self.locked:
+            res[self.PARAM_LOCKED] = True
 
         file_dir = os.path.dirname(self.file)
         if file_dir != '' and not os.path.isdir(file_dir):

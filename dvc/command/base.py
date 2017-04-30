@@ -49,23 +49,21 @@ class CmdBase(object):
     def define_args(self, parser):
         pass
 
-    def set_skip_git_actions(self, parser):
-        parser.add_argument('--skip-git-actions', '-s', action='store_true', default=False,
-                            help='Skip all git actions including reproducibility check and commits')
-        # parser.add_argument('--no-lock', '-L', action='store_true', default=False,
-        #                     help='Do not set DVC locker')
+    def set_no_git_actions(self, parser):
+        parser.add_argument('--no-git-actions', '-G', action='store_true', default=False,
+                            help='Skip all git actions including reproducibility check and commits.')
 
     def set_lock_action(self, parser):
-        parser.add_argument('-l', '--lock', action='store_true', default=False,
-                            help='Lock data item - disable reproduction. ' + \
+        parser.add_argument('--lock', '-l', action='store_true', default=False,
+                            help='Lock data item - disable reproduction. ' +
                                  'It can be enabled by `dvc lock` command or by forcing reproduction.')
 
     @property
-    def skip_git_actions(self):
-        return self.parsed_args.skip_git_actions
+    def no_git_actions(self):
+        return self.parsed_args.no_git_actions
 
     def set_git_action(self, value):
-        self.parsed_args.skip_git_actions = not value
+        self.parsed_args.no_git_actions = not value
 
     @property
     def is_locker(self):
@@ -77,7 +75,7 @@ class CmdBase(object):
         self.parsed_args.no_lock = value
 
     def commit_if_needed(self, message, error=False):
-        if error or self.skip_git_actions:
+        if error or self.no_git_actions:
             self.not_committed_changes_warning()
             return 1
         else:

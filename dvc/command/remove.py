@@ -19,7 +19,7 @@ class CmdDataRemove(CmdBase):
         super(CmdDataRemove, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
 
         parser.add_argument('target', metavar='', help='Target to remove - file or directory', nargs='*')
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively')
@@ -47,7 +47,7 @@ class CmdDataRemove(CmdBase):
         return 0
 
     def remove_all_targets(self):
-        if not self.skip_git_actions and not self.git.is_ready_to_go():
+        if not self.no_git_actions and not self.git.is_ready_to_go():
             return False
 
         error = False

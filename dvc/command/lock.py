@@ -10,7 +10,7 @@ class CmdLock(CmdBase):
         super(CmdLock, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
 
         parser.add_argument('-u', '--unlock', action='store_true', default=False,
                             help='Unlock data item - enable reproduction.')
@@ -41,12 +41,12 @@ class CmdLock(CmdBase):
                 data_item = self.settings.path_factory.existing_data_item(file)
                 state = StateFile.load(data_item.state.relative, self.settings)
 
-                if state.lock and target:
+                if state.locked and target:
                     Logger.warn('Data item {} is already locked'.format(data_item.data.relative))
-                elif not state.lock and not target:
+                elif not state.locked and not target:
                     Logger.warn('Data item {} is already unlocked'.format(data_item.data.relative))
                 else:
-                    state.lock = target
+                    state.locked = target
                     Logger.debug('Saving status file for data item {}'.format(data_item.data.relative))
                     state.save()
                     Logger.info('Data item {} was {}ed'.format(data_item.data.relative, cmd))

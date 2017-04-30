@@ -22,25 +22,23 @@ class CmdRun(CmdBase):
         super(CmdRun, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
         self.set_lock_action(parser)
 
-        parser.add_argument('--not-repro', help='Not reproducible',
-                            action='store_false', default=False)
-        parser.add_argument('--stdout', help='output std output to a file')
-        parser.add_argument('--stderr', help='output std error to a file')
+        parser.add_argument('--stdout', help='Output std output to a file.')
+        parser.add_argument('--stderr', help='Output std error to a file.')
         parser.add_argument('--input', '-i', action='append',
-                            help='Declare input data items for reproducible cmd')
+                            help='Declare input data items for reproducible cmd.')
         parser.add_argument('--output', '-o', action='append',
-                            help='Declare output data items for reproducible cmd')
+                            help='Declare output data items for reproducible cmd.')
         parser.add_argument('--code', '-c', action='append',
-                            help='Code dependencies which produce the output')
+                            help='Code dependencies which produce the output.')
         parser.add_argument('--shell', help='Shell command', action='store_true', default=False)
         pass
 
     @property
     def lock(self):
-        return not self.parsed_args.lock
+        return self.parsed_args.lock
 
     @property
     def code_dependencies(self):
@@ -76,7 +74,7 @@ class CmdRun(CmdBase):
 
     def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
                                  stdout, stderr, shell, check_if_ready=True):
-        if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
+        if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
         self.run_command(command_args,
@@ -99,7 +97,7 @@ class CmdRun(CmdBase):
 
         repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr, shell=shell)
 
-        if not self.skip_git_actions and not self._validate_file_states(repo_change):
+        if not self.no_git_actions and not self._validate_file_states(repo_change):
             self.remove_new_files(repo_change)
             raise RunError('Errors occurred.')
 

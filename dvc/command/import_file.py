@@ -23,7 +23,7 @@ class CmdImportFile(CmdBase):
         super(CmdImportFile, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
 
         self.add_string_arg(parser, 'input', 'Input file')
         self.add_string_arg(parser, 'output', 'Output file')
@@ -50,7 +50,7 @@ class CmdImportFile(CmdBase):
         pass
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
-        if check_if_ready and not self.skip_git_actions and not self.git.is_ready_to_go():
+        if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
         self.import_file(input, output, lock)
@@ -93,14 +93,13 @@ class CmdImportFile(CmdBase):
         Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
         System.symlink(data_item.symlink_file, data_item.data.relative)
 
-        # import_file_argv = [StateFile.DVC_PYTHON_FILE_NAME, StateFile.COMMAND_IMPORT_FILE, input, output]
         state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
                                data_item.state.relative,
                                self.settings,
                                argv=[input, output],
                                input_files=[],
                                output_files=[output],
-                               is_reproducible=lock)
+                               lock=lock)
         state_file.save()
         Logger.debug('State file "{}" was created'.format(data_item.state.relative))
         pass

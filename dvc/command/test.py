@@ -19,7 +19,7 @@ class CmdTest(CmdBase):
         super(CmdTest, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
 
     def run(self):
 

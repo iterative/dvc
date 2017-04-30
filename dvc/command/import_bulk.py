@@ -12,7 +12,7 @@ class CmdImportBulk(CmdBase):
         super(CmdImportBulk, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
         self.set_lock_action(parser)
 
         parser.add_argument('input',
@@ -33,11 +33,11 @@ class CmdImportBulk(CmdBase):
                 return 1
 
         try:
-            if not self.skip_git_actions and not self.git.is_ready_to_go():
+            if not self.no_git_actions and not self.git.is_ready_to_go():
                 return 1
 
             cmd = CmdImportFile(self.settings)
-            cmd.set_git_action(not self.skip_git_actions)
+            cmd.set_git_action(not self.no_git_actions)
             cmd.set_locker(False)
 
             output = self.parsed_args.output

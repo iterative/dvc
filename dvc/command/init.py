@@ -60,11 +60,11 @@ ProjectName =
         super(CmdInit, self).__init__(settings)
 
     def define_args(self, parser):
-        self.set_skip_git_actions(parser)
+        self.set_no_git_actions(parser)
 
-        self.add_string_arg(parser, '--data-dir',  'NeatLynx data directory', 'data')
-        self.add_string_arg(parser, '--cache-dir', 'NeatLynx cache directory', '.cache')
-        self.add_string_arg(parser, '--state-dir', 'NeatLynx state directory', '.state')
+        self.add_string_arg(parser, '--data-dir',  'Data directory', 'data')
+        self.add_string_arg(parser, '--cache-dir', 'Cache directory', '.cache')
+        self.add_string_arg(parser, '--state-dir', 'State directory', '.state')
         pass
 
     def get_not_existing_dir(self, dir):
@@ -80,7 +80,7 @@ ProjectName =
         return file_name
 
     def run(self):
-        if not self.skip_git_actions and not self.git.is_ready_to_go():
+        if not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
         if os.path.realpath(os.path.curdir) != self.settings.git.git_dir_abs:
@@ -140,7 +140,7 @@ ProjectName =
                   self.settings,
                   input_files=[],
                   output_files=[],
-                  is_reproducible=False).save()
+                  lock=False).save()
         pass
 
     def modify_gitignore(self, cache_dir_name):

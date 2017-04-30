@@ -139,7 +139,7 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         cmd.parsed_args.target = [dir11_full, self.file5]
         cmd.parsed_args.recursive = True
 
-        cmd.parsed_args.skip_git_actions = True
+        cmd.parsed_args.no_git_actions = True
 
         self.assertTrue(os.path.exists(dir11_full))
         self.assertTrue(os.path.exists(self.file5))
@@ -163,7 +163,7 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         cmd.parsed_args.target = [dir11_full, self.file5]
         cmd.parsed_args.recursive = True
 
-        cmd.parsed_args.skip_git_actions = True
+        cmd.parsed_args.no_git_actions = True
 
         self.assertTrue(os.path.exists(dir11_full))
         self.assertTrue(os.path.exists(self.file5))
@@ -193,7 +193,7 @@ class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
         cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
         cmd.parsed_args.recursive = True
 
-        cmd.parsed_args.skip_git_actions = True
+        cmd.parsed_args.no_git_actions = True
 
         self.assertTrue(os.path.exists(dir11_full))
         self.assertTrue(os.path.exists(self.file5))
