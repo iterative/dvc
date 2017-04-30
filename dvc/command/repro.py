@@ -158,7 +158,7 @@ class ReproChange(object):
     def state(self):
         return self._state
 
-    def reproduce_data_item(self):
+    def reproduce_data_item(self, changed_files):
         Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
 
         for output_dvc in self._state.output_files:
@@ -170,6 +170,8 @@ class ReproChange(object):
             except Exception as ex:
                 msg = 'Data item {} cannot be removed before reproduction: {}'
                 Logger.error(msg.format(output_dvc, ex))
+
+            changed_files.add(output_dvc)
 
         if self.state.is_import_file:
             Logger.debug('Reproducing data item {}. Re-import cmd: {}'.format(
@@ -224,7 +226,7 @@ class ReproChange(object):
         if self.is_repro_required(changed_files, self._data_item):
             if self._data_item.data.dvc not in changed_files:
                 Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
-                self.reproduce_data_item()
+                self.reproduce_data_item(changed_files)
                 changed_files.add(self._data_item.data.dvc)
                 return True
             else:
