@@ -36,6 +36,7 @@ class CmdLock(CmdBase):
     def lock_files(self, files, target):
         cmd = 'lock' if target else 'unlock'
 
+        error = 0
         for file in files:
             try:
                 data_item = self.settings.path_factory.existing_data_item(file)
@@ -51,8 +52,14 @@ class CmdLock(CmdBase):
                     state.save()
                     Logger.info('Data item {} was {}ed'.format(data_item.data.relative, cmd))
             except Exception as ex:
+                error += 1
                 Logger.error('Unable to {} {}: {}'.format(cmd, file, ex))
-                raise
+
+        if error > 0 and not self.no_git_actions:
+            Logger.error('Errors occurred. One or more repro cmd was not successful.')
+            self.not_committed_changes_warning()
+        else:
+            self.commit_if_needed('DVC lock: {}'.format(' '.join(self.args)))
 
         return 0
 
