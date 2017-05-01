@@ -17,7 +17,7 @@ class StateFile(object):
     MAGIC = 'DVC-State'
     VERSION = '0.1'
 
-    DVC_PYTHON_FILE_NAME = 'dvc2.py'
+    DVC_PYTHON_FILE_NAME = 'dvc.py'
     DVC_COMMAND = 'dvc'
 
     COMMAND_RUN = 'run'
