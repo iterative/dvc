@@ -132,10 +132,10 @@ class GitWrapper(GitWrapperI):
 
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
-        Logger.info('[dvc-git] A new commit {} was made in the current branch. Added files:'.format(
+        Logger.debug('[dvc-git] A new commit {} was made in the current branch. Added files:'.format(
             self.curr_commit))
         for status, file in statuses:
-            Logger.info('[dvc-git]\t{} {}'.format(status, file))
+            Logger.debug('[dvc-git]\t{} {}'.format(status, file))
         pass
 
     @staticmethod
