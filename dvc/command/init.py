@@ -62,9 +62,9 @@ ProjectName =
     def define_args(self, parser):
         self.set_no_git_actions(parser)
 
-        self.add_string_arg(parser, '--data-dir',  'Data directory', 'data')
-        self.add_string_arg(parser, '--cache-dir', 'Cache directory', '.cache')
-        self.add_string_arg(parser, '--state-dir', 'State directory', '.state')
+        self.add_string_arg(parser, '--data-dir',  'Data directory.', 'data')
+        self.add_string_arg(parser, '--cache-dir', 'Cache directory.', '.cache')
+        self.add_string_arg(parser, '--state-dir', 'State directory.', '.state')
         pass
 
     def get_not_existing_dir(self, dir):

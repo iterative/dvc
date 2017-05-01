@@ -47,7 +47,7 @@ class CmdDataSync(CmdBase):
     def define_args(self, parser):
         parser.add_argument('targets',
                             metavar='',
-                            help='File or directory to sync',
+                            help='File or directory to sync.',
                             nargs='*')
 
     def run(self):

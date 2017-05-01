@@ -25,11 +25,8 @@ class CmdImportFile(CmdBase):
     def define_args(self, parser):
         self.set_no_git_actions(parser)
 
-        self.add_string_arg(parser, 'input', 'Input file')
-        self.add_string_arg(parser, 'output', 'Output file')
-
-        parser.add_argument('-r', '--is-reproducible', action='store_false', default=True,
-                            help='Is data file reproducible')
+        self.add_string_arg(parser, 'input', 'Input file.')
+        self.add_string_arg(parser, 'output', 'Output file.')
         pass
 
     def run(self):

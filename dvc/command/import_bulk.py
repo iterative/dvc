@@ -17,10 +17,10 @@ class CmdImportBulk(CmdBase):
 
         parser.add_argument('input',
                             metavar='',
-                            help='Input files',
+                            help='Input files.',
                             nargs='*')
 
-        self.add_string_arg(parser, 'output', 'Output file')
+        self.add_string_arg(parser, 'output', 'Output file.')
 
         pass
 

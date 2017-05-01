@@ -21,12 +21,12 @@ class CmdDataRemove(CmdBase):
     def define_args(self, parser):
         self.set_no_git_actions(parser)
 
-        parser.add_argument('target', metavar='', help='Target to remove - file or directory', nargs='*')
-        parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively')
+        parser.add_argument('target', metavar='', help='Target to remove - file or directory.', nargs='*')
+        parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively.')
         parser.add_argument('-l', '--keep-in-cloud', action='store_true', default=False,
-                            help='Do not remove data from cloud')
+                            help='Do not remove data from cloud.')
         parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
-                            help='Do not remove data from cache')
+                            help='Do not remove data from cache.')
         pass
 
     def run(self):
