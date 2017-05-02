@@ -1,6 +1,5 @@
 altgraph==0.13
 appdirs==1.4.3
-appnope==0.1.0
 backports.shutil-get-terminal-size==1.0.0
 boto==2.46.1
 cachetools==2.0.0
@@ -73,7 +72,6 @@ proto-google-cloud-speech-v1beta1==0.15.3
 proto-google-cloud-vision-v1==0.90.3
 protobuf==3.2.0
 ptyprocess==0.5.1
-py2app==0.12
 pyasn1==0.2.3
 pyasn1-modules==0.0.8
 Pygments==2.2.0
