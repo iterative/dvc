@@ -91,16 +91,9 @@ install_requires = [
     'wcwidth==0.1.7',
 ]
 
-s = platform.system()
-if s == 'Windows':
-    scripts = ['bin/dvc.bat']
-elif s == 'Darwin':
+if platform.system() == 'Darwin':
     install_requires.append('appnope==0.1.0')
     install_requires.append('py2app==0.12')
-elif s == 'Linux':
-    scripts = ['bin/dvc']
-else:
-    raise DistutilsPlatformError("Unsupported platform")
 
 setup(
     name='dvc',
@@ -118,7 +111,8 @@ setup(
     ],
     packages=find_packages(exclude=['bin', 'tests', 'functests']),
     include_package_data=True,
-    data_files=[('', ['dvc.py'])],
-    scripts=scripts,
+    entry_points={
+        'console_scripts': ['dvc = dvc.main:main']
+    },
     zip_safe=False
 )

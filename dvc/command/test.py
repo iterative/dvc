@@ -26,7 +26,7 @@ class CmdTest(CmdBase):
         cloud = self.settings._config.cloud
         assert cloud in ['amazon', 'google'], 'unknown cloud: %s' % cloud
         if cloud == 'amazon':
-            print 'TODO'
+            print('TODO')
             sys.exit(-1)
         elif cloud == 'google':
             Logger.info('testing gcloud')
