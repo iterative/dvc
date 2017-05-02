@@ -4,8 +4,6 @@ from dvc.command.import_file import CmdImportFile
 
 """
 main entry point / argument parsing for dvc
-
-NB: for ${REASONS}, cannot be named dvc.py.  trust me.
 """
 
 import sys
@@ -24,22 +22,19 @@ from dvc.command.test import CmdTest
 
 def print_usage():
     usage = ('',
-            'These are common dvc commands:',
+            'usage: dvc [--version] [--help] command [<args>]',
+            '',
+            'These are common DVC commands:',
             '',
             'start a working area',
-            '    init    initialize dvc control over a dir (should already be a git dir)',
-            '    run TODO',
-            '    sync TODO',
+            '    init           Initialize dvc over a directory (should already be a git dir).',
+            '    run            Run command.',
+            '    import         Import file to data directory.',
+            '    remove         Remove data item from data directory.',
             '',
             'synchronize data between remote and local',
-            '    data sync    TODO',
-            '    data remove  TODO',
-            '    data import  TODO',
-            '',
-            'test credentials',
-            '    test aws TODO',
-            '    test gcloud  test gcloud and credentials are setup correctly',
-            '')
+            '    data sync      Synchronize data file with cloud (cloud settings already setup).',
+)
     print('\n'.join(usage))
 
 def main():
