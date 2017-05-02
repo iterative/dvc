@@ -74,15 +74,18 @@ class CmdDataSync(CmdBase):
     def sync_dir(self, dir):
         for file in os.listdir(dir):
             try:
+                fname = None
                 fname = os.path.join(dir, file)
                 if os.path.isdir(fname):
                     self.sync_dir(fname)
                 elif System.islink(fname):
                     self.sync_symlink(self.settings.path_factory.data_item(fname))
                 else:
-                    raise DataSyncError('Unsupported file type "{}"'.format(fname))
+                    raise DvcException('Unsupported file type "{}"'.format(fname))
             except DataSyncError as ex:
-                Logger.warn(ex)
+                Logger.debug(ex)
+            except Exception as ex:
+                Logger.error('Cannot sync file {}: {}'.format(fname, ex))
         pass
 
     def sync_symlink(self, data_item):
