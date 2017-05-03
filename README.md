@@ -1,4 +1,4 @@
-![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.png)
+![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
 
 DVC is an open source tool for data science projects. It orchestrates your Git code, external data files (local drive, S3, GCP Storage) and dependencies to a single reproducibly and shareable environment.
 
