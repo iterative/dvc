@@ -3,7 +3,6 @@
 # Data version control or DVC
 DVC streamlines your git code, your data (S3 and GCP) and dependencies to a single reproducible environment.
 
-
 # Introduction
 
 It is hardly possible in real life to develop a good machine learning model in a single pass. ML modeling is an iterative process and it is extremely important to keep track of your steps, dependencies between the steps, dependencies between your code and data files and all code running arguments. This becomes even more important and complicated in a team environment where data scientists’ collaboration takes a serious amount of the team’s effort.
