@@ -16,11 +16,11 @@ class Settings(object):
         self._config = config
         self._path_factory = PathFactory(git, config)
 
-        self._dvc_home = os.environ.get('DVC_HOME')
-        if not self._dvc_home:
-            raise SettingsError('DVC_HOME environment variable is not defined')
-        if not os.path.exists(self._dvc_home):
-            raise SettingsError("DVC_HOME directory doesn't exists")
+        # self._dvc_home = os.environ.get('DVC_HOME')
+        # if not self._dvc_home:
+        #     raise SettingsError('DVC_HOME environment variable is not defined')
+        # if not os.path.exists(self._dvc_home):
+        #     raise SettingsError("DVC_HOME directory doesn't exists")
         pass
 
     @property
