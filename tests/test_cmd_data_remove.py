@@ -1,6 +1,7 @@
 import os
 
 from dvc.command.remove import CmdDataRemove, DataRemoveError
+from dvc.path.data_item import DataItemError
 from tests.basic_env import DirHierarchyEnvironment
 
 
@@ -94,8 +95,9 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
         self.assertTrue(os.path.exists(self.state6))
         self.assertTrue(os.path.isfile(self.state6))
 
-        cmd.remove_file(self.file6)
-        self.assertFalse(os.path.exists(self.file6))
+        with self.assertRaises(DataItemError):
+            cmd.remove_file(self.file6)
+        self.assertTrue(os.path.exists(self.file6))
 
 
 class TestRemoveEndToEnd(DirHierarchyEnvironment):
@@ -188,9 +190,8 @@ class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
 
         dir11_full = os.path.join(self._config.data_dir, self.dir11)
         dir2_full = os.path.join(self._config.data_dir, self.dir2)
-        file6_full = self.file6
 
-        cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
+        cmd.parsed_args.target = [dir11_full, self.file5]
         cmd.parsed_args.recursive = True
 
         cmd.parsed_args.no_git_actions = True
@@ -207,4 +208,3 @@ class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(self.file5))
         self.assertTrue(os.path.exists(dir2_full))
         self.assertTrue(os.path.exists(self.file1))
-        self.assertFalse(os.path.exists(self.file6))

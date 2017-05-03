@@ -44,7 +44,7 @@ class TestConfigTest(TestCase):
              "DataDir = ",
              "CacheDir = ",
              "StateDir = ",
-             "Cloud = amazon",
+             "Cloud = Aws",
              "[AWS]",
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath =",
@@ -54,7 +54,7 @@ class TestConfigTest(TestCase):
         s = StringIO.StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file=s)
 
-        self.assertEqual(conf.cloud, 'amazon')
+        self.assertEqual(conf.cloud, 'aws')
         self.assertEqual(conf.storage_bucket, 'awssb')
         self.assertEqual(conf.storage_prefix, 'aws_storage_path')
 
