@@ -20,6 +20,8 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
+
+# Supported clouds: AWS, GCP
 Cloud = AWS
 StoragePath =
 

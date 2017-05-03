@@ -147,7 +147,7 @@ class Config(ConfigI):
 
     @property
     def gc_project_name(self):
-        return self._config['GC']['ProjectName']
+        return self._config['GCP']['ProjectName']
 
     @property
     def cloud(self):
@@ -237,7 +237,7 @@ class Config(ConfigI):
                 errors.append('can\'t find aws credentials.')
             self._aws_creds = creds
         elif cloud == 'gcp':
-            project = self._config['GC'].get('ProjectName', None)
+            project = self._config['GCP'].get('ProjectName', None)
             if project is None or len(project) < 1:
                 errors.append('can\'t read google cloud project name. Please set ProjectName in section GC.')
         else:
