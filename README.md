@@ -1,4 +1,4 @@
-![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon.png)
+![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_small.png)
 
 # Data version control or DVC
 DVC streamlines your git code, your data (S3 and GCP) and dependencies to a single reproducible environment.
