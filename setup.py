@@ -1,6 +1,7 @@
 import platform
 from setuptools import setup, find_packages
 from distutils.errors import DistutilsPlatformError
+from dvc.main import VERSION
 
 install_requires = [
     'altgraph==0.13',
@@ -97,7 +98,7 @@ if platform.system() == 'Darwin':
 
 setup(
     name='dvc',
-    version='0.1',
+    version=VERSION,
     description='Git for data science projects',
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',

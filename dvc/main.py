@@ -19,6 +19,7 @@ from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
+VERSION = '0.8.0'
 
 def print_usage():
     usage = ('',
@@ -38,7 +39,7 @@ def print_usage():
     print('\n'.join(usage))
 
 def main():
-    cmds = ['init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
+    cmds = ['--version', 'init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
 
@@ -50,7 +51,9 @@ def main():
 
     cmd = sys.argv[1]
 
-    if cmd == 'init':
+    if cmd == '--version':
+        print('dvc version {}'.format(VERSION))
+    elif cmd == 'init':
         Runtime.run(CmdInit, parse_config=False)
     elif cmd == 'run':
         Runtime.run(CmdRun)
