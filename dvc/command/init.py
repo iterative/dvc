@@ -20,7 +20,7 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
-Cloud = amazon
+Cloud = AWS
 StoragePath =
 
 # Log levels: Debug, Info, Warning and Error
@@ -48,7 +48,7 @@ KeyName = dvc-key
 
 SecurityGroup = dvc-group
 
-[GC]
+[GCP]
 StoragePath =
 ProjectName =
 '''

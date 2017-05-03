@@ -108,7 +108,7 @@ class CmdDataSync(CmdBase):
         bucket_name = self.config.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket is None:
-            raise DataSyncError('Bucket "{}" can\'t be accessed'.format(bucket_name))
+            raise DataSyncError('Storage path is not setup correctly')
         return bucket
 
     def _sync_from_cloud_aws(self, item):
@@ -197,18 +197,18 @@ class CmdDataSync(CmdBase):
 
     def sync_from_cloud(self, item):
         cloud = self.settings.config.cloud
-        assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
-        if cloud == 'amazon':
+        assert cloud in ['aws', 'gcp'], 'unknown cloud %s' % cloud
+        if cloud == 'aws':
             return self._sync_from_cloud_aws(item)
-        elif cloud == 'google':
+        elif cloud == 'gcp':
             return self._sync_from_cloud_gcp(item)
 
     def sync_to_cloud(self, data_item):
         cloud = self.settings.config.cloud
-        assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
-        if cloud == 'amazon':
+        assert cloud in ['aws', 'gcp'], 'unknown cloud %s' % cloud
+        if cloud == 'aws':
             return self._sync_to_cloud_aws(data_item)
-        elif cloud == 'google':
+        elif cloud == 'gcp':
             return self._sync_to_cloud_gcp(data_item)
 
 

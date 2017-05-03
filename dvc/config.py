@@ -121,11 +121,11 @@ class Config(ConfigI):
             return path
 
         cloud = self.cloud
-        assert cloud in ['amazon', 'google'], 'unknown cloud %s' % cloud
-        if cloud == 'amazon':
+        assert cloud in ['aws', 'gcp'], 'unknown cloud %s' % cloud
+        if cloud == 'aws':
             path = self._config['AWS'].get('StoragePath', None)
-        elif cloud == 'google':
-            path = self._config['GC'].get('StoragePath', None)
+        elif cloud == 'gcp':
+            path = self._config['GCP'].get('StoragePath', None)
         if path is None:
             raise ConfigError('invalid StoragePath: not set for Data or cloud specific')
         return path
@@ -151,12 +151,12 @@ class Config(ConfigI):
 
     @property
     def cloud(self):
-        """ get cloud choice: currently one of ['amazon', 'google'] """
+        """ get cloud choice: currently one of ['AWS', 'GCP'] """
         conf = self._config['Global'].get('Cloud', '')
-        if conf.lower() in ['amazon', 'aws']:
-            return 'amazon'
-        if conf.lower() in ['gc', 'google', 'google cloud', 'googlecloud']:
-            return 'google'
+        if conf.lower() in ['aws']:
+            return 'aws'
+        if conf.lower() in ['gcp']:
+            return 'gcp'
         return conf
 
 
@@ -231,12 +231,12 @@ class Config(ConfigI):
         if cloud == '':
             # not set; already complained above
             pass
-        elif cloud == 'amazon':
+        elif cloud == 'aws':
             creds = self.get_aws_credentials()
             if creds is None:
                 errors.append('can\'t find aws credentials.')
             self._aws_creds = creds
-        elif cloud == 'google':
+        elif cloud == 'gcp':
             project = self._config['GC'].get('ProjectName', None)
             if project is None or len(project) < 1:
                 errors.append('can\'t read google cloud project name. Please set ProjectName in section GC.')
