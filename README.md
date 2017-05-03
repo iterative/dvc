@@ -1,7 +1,6 @@
-![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_small.png)
+![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.png)
 
-# Data version control or DVC
-DVC streamlines your git code, your data (S3 and GCP) and dependencies to a single reproducible environment.
+DVC is an open source tool for data science projects. It orchestrates your Git code, external data files (local drive, S3, GCP Storage) and dependencies to a single reproducibly and shareable environment.
 
 # Introduction
 
