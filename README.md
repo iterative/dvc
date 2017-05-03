@@ -1,4 +1,4 @@
-[DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon.png)
+![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon.png)
 
 # Data version control or DVC
 DVC streamlines your git code, your data (S3 and GCP) and dependencies to a single reproducible environment.
@@ -148,7 +148,7 @@ AUC: 0.670531
 ```
 
 The steps that were reproduced (red):
-[Two steps](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_gray.png)
+![Two steps](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_gray.png)
 
 Thus, the model can be improved iteratively and DVC simplifies the iterative ML process and aids collaboration between data scientists.
 
