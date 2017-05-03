@@ -93,7 +93,7 @@ class CmdDataRemove(CmdBase):
         # it raises exception if not a symlink is provided
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
 
-        data_item = self.settings.path_factory.data_item(target)
+        data_item = self.settings.path_factory.existing_data_item(target)
 
         self._remove_cache_file(data_item)
         self._remove_state_file(data_item)
@@ -120,7 +120,8 @@ class CmdDataRemove(CmdBase):
             self._remove_dvc_path(data_item.cache, 'cache')
         else:
             if not self.parsed_args.keep_in_cache:
-                Logger.warn(u'[Cmd-Remove] Unable to find cache file for data item %s' % data_item.data.relative)
+                msg = u'[Cmd-Remove] Unable to find cache file {} for data item {}'
+                Logger.warn(msg.format(data_item.cache.relative, data_item.data.relative))
         pass
 
     def _remove_dvc_path(self, dvc_path, name):
@@ -132,6 +133,9 @@ class CmdDataRemove(CmdBase):
     def remove_from_cloud(self, aws_file_name):
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
 
+        if not self.config.aws_access_key_id or not self.config.aws_secret_access_key:
+            Logger.debug('[Cmd-Remove] Unable to check cache file in the cloud')
+            return
         conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
         bucket_name = self.config.storage_bucket
         bucket = conn.lookup(bucket_name)

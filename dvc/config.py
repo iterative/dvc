@@ -35,6 +35,16 @@ class ConfigI(object):
     def storage_prefix(self):
         return ''
 
+    def sanity_check(self):
+        pass
+
+    def aws_access_key_id(self):
+        return None
+
+    @property
+    def aws_secret_access_key(self):
+        return None
+
 
 class Config(ConfigI):
     CONFIG = 'dvc.conf'
@@ -72,12 +82,16 @@ class Config(ConfigI):
     def aws_access_key_id(self):
         if not self._aws_creds:
             self._aws_creds = self.get_aws_credentials()
+        if not self._aws_creds:
+            return None
         return self._aws_creds[0]
 
     @property
     def aws_secret_access_key(self):
         if not self._aws_creds:
-            self._aws_creds = get_aws_credentials()
+            self._aws_creds = self.get_aws_credentials()
+        if not self._aws_creds:
+            return None
         return self._aws_creds[1]
 
     @property
@@ -191,7 +205,6 @@ class Config(ConfigI):
 
         return None
 
-
     def sanity_check(self):
         """ sanity check a config
 
@@ -221,12 +234,12 @@ class Config(ConfigI):
         elif cloud == 'amazon':
             creds = self.get_aws_credentials()
             if creds is None:
-                errors.append('can\'t find aws credentials.  TODO')
+                errors.append('can\'t find aws credentials.')
             self._aws_creds = creds
         elif cloud == 'google':
             project = self._config['GC'].get('ProjectName', None)
             if project is None or len(project) < 1:
-                errors.append('can\'t read google cloud project name.  Please set ProjectName in section GC.  TODO HOW FIND')
+                errors.append('can\'t read google cloud project name. Please set ProjectName in section GC.')
         else:
             errors.append('unknown Cloud %s' % cloud)
 

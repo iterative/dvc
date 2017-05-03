@@ -58,6 +58,14 @@ class CmdDataSync(CmdBase):
                 Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
                 return 1
 
+        good = self.config.sanity_check()
+
+        if not good[0]:
+            Logger.error('config \'%s\' is not correctly setup.  Please fix:' % Runtime.CONFIG)
+            for e in good[1]:
+                Logger.error('    ' + e)
+            return 1
+
         try:
             for target in self.parsed_args.targets:
                 data_item = self.settings.path_factory.data_item(target)
