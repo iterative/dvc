@@ -221,6 +221,7 @@ Configuration:
 
 To see your available buckets, run `gsutil ls`.
 
+The following command might be helpful to setup GCP credentials: `gcloud beta auth application-default login`.
 
 # Development
 Create a virtualenv, for example, at `~/.environments/dvc` by `mkdir -p ~/.environments/dvc; virtualenv ~/.environments/dvc` or use `virtualenvwrapper`.
