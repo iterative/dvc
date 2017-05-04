@@ -177,6 +177,7 @@ AUC: 0.670531
 ```
 
 The steps that were reproduced (red):
+
 ![Two steps](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_gray_small_2.png)
 
 Thus, the model can be improved iteratively and DVC simplifies the iterative ML process and aids collaboration between data scientists.
