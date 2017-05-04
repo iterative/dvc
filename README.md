@@ -187,13 +187,14 @@ Thus, the model can be improved iteratively and DVC simplifies the iterative ML 
 
 # Installation
 
-DVC could be installed via the Python Package Index (PyPI).
+Today DVC could be installed only via the Python Package Index (PyPI).
 
 To install using pip:
 ```bash
 pip install dvc
 ```
 
+In the future, in addition to the python packages, a separate system depended packages will be provided: Mac OS X and Windows installer. It will help to reduce dependency to Python language.
 
 # Cloud configuration
 
@@ -241,4 +242,3 @@ pip install -r requirements.txt
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
 By submitting a pull request for this project, you agree to license your contribution under the Apache license version 2.0 to this project.
-
