@@ -1,6 +1,7 @@
 ![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
 
-DVC is an open source tool for data science projects. It orchestrates your Git code, external data files (local drive, S3, GCP Storage) and dependencies to a single reproducibly and shareable environment.
+DVC is an open source tool for data science projects. 
+DVC makes your data science projects reproducible by automatically building data dependency graph (DAG). Your code and the dependencies could be easily shared by Git, and data - through cloud storage (AWS S3, GCP) in a single DVC environment.
 
 # Introduction
 
@@ -10,7 +11,9 @@ It is hardly possible in real life to develop a good machine learning model in a
 
 [Data Version Control](https://dataversioncontrol.com) or DVC is an open source tool which is designed to help data scientists keep track of their ML processes and file dependencies in the simple form of git-like commands: `dvc run python train_model.py data/train_matrix.p data/model.p`. Your existing ML processes can be easily transformed into reproducible DVC pipelines regardless of which programming language or tool was used.
 
-This DVC introduction walks you through an iterative process of building a machine learning model with DVC using [stackoverflow posts dataset](https://archive.org/details/stackexchange).
+# Tutorial
+
+This DVC tutorial walks you through an iterative process of building a machine learning model with DVC using [stackoverflow posts dataset](https://archive.org/details/stackexchange).
 
 First, you should initialize a Git repository and download a modeling source code that we will be using to show DVC in action:
 
@@ -121,7 +124,7 @@ Not only can DVC streamline your work into a single, reproducible environment, i
 The code below shows how to share your code and DAG through the Git and data files through S3:
 
 ```bash
-# Setup cloud settings. Example: Cloud = amazon, StoragePath=/dvc-share/projects/tag_classifier
+# Setup cloud settings. Example: Cloud = AWS, StoragePath=/dvc-share/projects/tag_classifier
 $ vi dvc.conf
 $ git commit -am "Set up AWS path"
 [master ec994b6] Set up AWS path
