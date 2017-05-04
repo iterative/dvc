@@ -194,7 +194,7 @@ To install using pip:
 pip install dvc
 ```
 
-In the future, in addition to the python packages, a separate system depended packages will be provided: Mac OS X and Windows installer. It will help to reduce dependency to Python language.
+In the future, in addition to the python packages, separate system depended packages will be provided: Mac OS X and Windows installer. It will help to reduce dependency to Python language which is important for users who do not use this language in their projects.
 
 # Cloud configuration
 
