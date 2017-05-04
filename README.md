@@ -6,14 +6,41 @@ DVC is an open source tool for data science projects. It orchestrates your Git c
 
 It is hardly possible in real life to develop a good machine learning model in a single pass. ML modeling is an iterative process and it is extremely important to keep track of your steps, dependencies between the steps, dependencies between your code and data files and all code running arguments. This becomes even more important and complicated in a team environment where data scientists’ collaboration takes a serious amount of the team’s effort.
 
-![alt text](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_small.png)
+![Iterative ML](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_small.jpg)
 
 [Data Version Control](https://dataversioncontrol.com) or DVC is an open source tool which is designed to help data scientists keep track of their ML processes and file dependencies in the simple form of git-like commands: `dvc run python train_model.py data/train_matrix.p data/model.p`. Your existing ML processes can be easily transformed into reproducible DVC pipelines regardless of which programming language or tool was used.
 
 This DVC introduction walks you through an iterative process of building a machine learning model with DVC using [stackoverflow posts dataset](https://archive.org/details/stackexchange).
-The full pipeline could be built by running the bash code below.
+
+First, you should initialize a Git repository and download a modeling source code that we will be using to show DVC in action:
 
 ```bash
+$ mkdir myrepo
+$ cd myrepo
+$ mkdir code
+$ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featurization.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/evaluate.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/train_model.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/split_train_test.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/xml_to_tsv.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/requirements.txt
+$ pip install -r code/requirements.txt
+
+$ git init
+$ git add code/
+$ git commit -m 'Download code'
+```
+
+The full pipeline could be built by running the bash code below.
+If you use Python version 3, please replace python to python3 and pip to pip3.
+
+```bash
+# Install DVC
+$ pip install dvc
+
+# Initialize DVC repository
+$ dvc init
+
 # Download a file and put to data/ directory.
 $ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
 
@@ -89,6 +116,10 @@ AUC: 0.633541
 
 Not only can DVC streamline your work into a single, reproducible environment, it also makes it easy to share this environment by Git including the dependencies (DAG)  — an exciting collaboration feature which gives the ability to reproduce the research results in different computers. Moreover, you can share your data files through cloud storage services like AWS S3 or GCP Storage since DVC does not push data files to Git repositories.
 
+![Iterative ML](https://s3-us-west-2.amazonaws.com/dvc-share/images/dvc_sharing_small.jpg)
+
+The code below shows how to share your code and DAG through the Git and data files through S3:
+
 ```bash
 # Setup cloud settings. Example: Cloud = amazon, StoragePath=/dvc-share/projects/tag_classifier
 $ vi dvc.conf
@@ -146,7 +177,7 @@ AUC: 0.670531
 ```
 
 The steps that were reproduced (red):
-![Two steps](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_gray.png)
+![Two steps](https://s3-us-west-2.amazonaws.com/dvc-share/images/iterative_ML_4items_gray_small.png)
 
 Thus, the model can be improved iteratively and DVC simplifies the iterative ML process and aids collaboration between data scientists.
 
