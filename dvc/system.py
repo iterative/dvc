@@ -1,6 +1,7 @@
 import ctypes
 import os
 import re
+from builtins import str
 
 if os.name == 'nt':
     from ctypes import create_unicode_buffer, windll
@@ -85,7 +86,7 @@ class System(object):
 
         buffer = create_unicode_buffer(System.LONG_PATH_BUFFER_SIZE)
         get_long_path_name = windll.kernel32.GetLongPathNameW
-        result = get_long_path_name(unicode(path), buffer, System.LONG_PATH_BUFFER_SIZE)
+        result = get_long_path_name(u'%s' % str(path), buffer, System.LONG_PATH_BUFFER_SIZE)
         if result == 0 or result > System.LONG_PATH_BUFFER_SIZE:
             return path
         return buffer.value
