@@ -1,10 +1,10 @@
 #define MyAppName "Data Version Control"
 ; FIXME: Hardcoded version is not nice, but will do for now.
-#define MyAppVersion "0.8.1"
+#define MyAppVersion "0.8.2"
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
 ;#define MyAppExeName "dvc.exe"
-#define MyAppDir "C:\DVC"
+#define MyAppDir "..\WinPython"
 
 [Setup]
 AppId={{8258CE8A-110E-4E0D-AE60-FEE00B15F041}
@@ -15,17 +15,15 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-;DefaultDirName={pf}\{#MyAppName}
+DefaultDirName={pf64}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 LicenseFile=..\LICENSE
 OutputBaseFilename=dvc-{#MyAppVersion}
-Compression=lzma
+Compression=lzma2/max
 SolidCompression=yes
 OutputDir=..\
 ChangesEnvironment=yes
-DefaultDirName={#MyAppDir}
-DisableDirPage=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -50,7 +48,7 @@ const
 function ModPathDir(): TArrayOfString;
 begin
 	setArrayLength(Result, 1)
-	Result[0] := ExpandConstant('{app}');
+	Result[0] := ExpandConstant('{app}\bin');
 end;
 
 // ----------------------------------------------------------------------------
@@ -223,9 +221,9 @@ var
 	ErrorCode: Integer;
 	SRCdir: String;
 begin
-	SRCdir := ExpandConstant('{app}\Scripts');
+	SRCdir := ExpandConstant('{app}');
 	if isUninstaller() = false then
-		Exec('powershell.exe', '-noexit -executionpolicy bypass -File "' + SRCdir + '\addSymLinkPermissions.ps1"', '', SW_SHOW, ewWaitUntilTerminated, ErrorCode);
+		ShellExec('', 'powershell.exe', '-noninteractive -windowstyle hidden -executionpolicy bypass -File "' + SRCdir + '\addSymLinkPermissions.ps1"', '', SW_HIDE, ewWaitUntilTerminated, ErrorCode);
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

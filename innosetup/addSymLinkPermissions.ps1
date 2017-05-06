@@ -60,3 +60,5 @@ SECreateSymbolicLinkPrivilege = $($currentSetting)
         return $true;
     }
 }
+
+addSymLinkPermissions $(Get-WMIObject -class Win32_ComputerSystem | select username).username
