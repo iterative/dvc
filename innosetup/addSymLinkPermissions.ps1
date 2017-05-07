@@ -1,3 +1,7 @@
+param (
+	[string]$mytype = 'system'
+)
+
 function addSymLinkPermissions($accountToAdd){
     Write-Host "Checking SymLink permissions.."
     $sidstr = $null
@@ -61,4 +65,8 @@ SECreateSymbolicLinkPrivilege = $($currentSetting)
     }
 }
 
-addSymLinkPermissions $(Get-WMIObject -class Win32_ComputerSystem | select username).username
+if ( "$mytype" -eq "user" ) {
+	addSymLinkPermissions $(Get-WMIObject -class Win32_ComputerSystem | select username).username
+} else {
+	addSymLinkPermissions Everyone
+}
