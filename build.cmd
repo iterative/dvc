@@ -1,4 +1,4 @@
-REM @echo OFF
+@echo OFF
 
 rmdir /Q /S dist
 rmdir /Q /S WinPython
