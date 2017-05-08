@@ -5,12 +5,16 @@ param (
 function addSymLinkPermissions($accountToAdd){
     Write-Host "Checking SymLink permissions.."
     $sidstr = $null
-    try {
-        $ntprincipal = new-object System.Security.Principal.NTAccount "$accountToAdd"
-        $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
-        $sidstr = $sid.Value.ToString()
-    } catch {
-        $sidstr = $null
+    if ( "$accountToAdd" -eq "Everyone" ) {
+    	$sidstr = "S-1-1-0"
+    } else {
+        try {
+            $ntprincipal = new-object System.Security.Principal.NTAccount "$accountToAdd"
+            $sid = $ntprincipal.Translate([System.Security.Principal.SecurityIdentifier])
+            $sidstr = $sid.Value.ToString()
+        } catch {
+            $sidstr = $null
+        }
     }
     Write-Host "Account: $($accountToAdd)" -ForegroundColor DarkCyan
     if( [string]::IsNullOrEmpty($sidstr) ) {
@@ -66,7 +70,7 @@ SECreateSymbolicLinkPrivilege = $($currentSetting)
 }
 
 if ( "$mytype" -eq "user" ) {
-	addSymLinkPermissions $(Get-WMIObject -class Win32_ComputerSystem | select username).username
+    addSymLinkPermissions $(Get-WMIObject -class Win32_ComputerSystem | select username).username
 } else {
-	addSymLinkPermissions Everyone
+    addSymLinkPermissions Everyone
 }
