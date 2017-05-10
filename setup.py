@@ -99,12 +99,13 @@ if platform.system() == 'Darwin':
 setup(
     name='dvc',
     version=VERSION,
-    description='Git for data science projects',
+    description='Data Version Control makes your data science projects reproducible and shareable.',
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
     url='https://github.com/dataversioncontrol/dvc.git',
     license='Apache License 2.0',
     install_requires=install_requires,
+    keywords='data science, data version control, machine learning',
     classifiers=[
         'Development Status :: 4 - Beta',
         'Programming Language :: Python :: 2',
@@ -112,6 +113,7 @@ setup(
     ],
     packages=find_packages(exclude=['bin', 'tests', 'functests']),
     include_package_data=True,
+    download_url='dataversioncontrol.com',
     entry_points={
         'console_scripts': ['dvc = dvc.main:main']
     },
