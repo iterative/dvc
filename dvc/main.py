@@ -10,7 +10,6 @@ import sys
 
 from dvc.runtime import Runtime
 from dvc.command.init import CmdInit
-from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.remove import CmdDataRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
@@ -19,7 +18,7 @@ from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
-VERSION = '0.8.2'
+VERSION = '0.8.3'
 
 def print_usage():
     usage = ('',

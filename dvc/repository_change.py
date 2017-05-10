@@ -20,6 +20,8 @@ class RepositoryChange(object):
     def __init__(self, cmd_args, settings, stdout, stderr, shell=False):
         self._settings = settings
 
+        stemps_before = self.data_file_timesteps()
+
         Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}, shell={}'.format(
                      u' '.join(cmd_args),
                      stdout,
@@ -27,10 +29,22 @@ class RepositoryChange(object):
                      shell))
         Executor.exec_cmd_only_success(cmd_args, stdout, stderr, shell=shell)
 
+        stemps_after = self.data_file_timesteps()
+
+        sym_diff = stemps_after ^ stemps_before
+        self._modified_content_filenames = set([filename for filename, timestemp in sym_diff])
+
+        Logger.debug(u'[Repository change] Identified modifications: {}'.format(
+                     u', '.join(self._modified_content_filenames)))
+
         self._stated_data_items = []
         self._externally_created_files = []
         self._created_status_files = []
         self._init_file_states()
+
+    @property
+    def modified_content_data_items(self):
+        return [self._settings.path_factory.data_item(file) for file in self._modified_content_filenames]
 
     @cached_property
     def removed_data_items(self):
@@ -50,7 +64,8 @@ class RepositoryChange(object):
 
     @property
     def changed_data_items(self):
-        return self.new_data_items + self.modified_data_items
+        res = set(self.new_data_items + self.modified_data_items + self.modified_content_data_items)
+        return list(res)
 
     def _add_stated_data_item(self, state, file):
         try:
@@ -98,3 +113,13 @@ class RepositoryChange(object):
     @property
     def created_status_files(self):
         return self._created_status_files
+
+    def data_file_timesteps(self):
+        res = set()
+        for root, dirs, files in os.walk(self._settings.config.data_dir):
+            for file in files:
+                filename = os.path.join(root, file)
+                timestemp = os.path.getmtime(filename)
+                res.add((filename, timestemp))
+
+        return res
