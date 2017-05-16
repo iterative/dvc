@@ -1,9 +1,8 @@
 import os
 
-import fasteners
 from boto.s3.connection import S3Connection
 
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.runtime import Runtime
@@ -30,19 +29,9 @@ class CmdDataRemove(CmdBase):
         pass
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                Logger.info('[Cmd-Remove] Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-                return 1
-
-        try:
+        with DvcLock(self.is_locker, self.git):
             if not self.remove_all_targets():
                 return 1
-        finally:
-            if self.is_locker:
-                lock.release()
 
         return 0
 

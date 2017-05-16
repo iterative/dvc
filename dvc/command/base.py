@@ -1,9 +1,39 @@
 import argparse
 import os
+import fasteners
 
 from dvc.config import ConfigError
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.system import System
+
+
+class CmdBaseError(DvcException):
+    def __init__(self, msg):
+        super(CmdBaseError, self).__init__('{}'.format(msg))
+
+
+class DvcLockerError(CmdBaseError):
+    def __init__(self, msg):
+        super(DvcLockerError, self).__init__('DVC locker error: {}'.format(msg))
+
+
+class DvcLock(object):
+    def __init__(self, is_locker, git):
+        self.is_locker = is_locker
+        self.git = git
+        self.lock = None
+
+    def __enter__(self):
+        if self.is_locker:
+            self.lock = fasteners.InterProcessLock(self.git.lock_file)
+            if not self.lock.acquire(timeout=5):
+                raise DvcLockerError('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
+        return self.lock
+
+    def __exit__(self, type, value, traceback):
+        if self.is_locker:
+            self.lock.release()
 
 
 class CmdBase(object):

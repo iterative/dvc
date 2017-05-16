@@ -2,12 +2,10 @@ import base64
 import hashlib
 import os
 
-import fasteners
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
-from dvc.command.base import CmdBase
-from dvc.command.init import CmdInit
+from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
@@ -16,7 +14,7 @@ from dvc.system import System
 
 class DataSyncError(DvcException):
     def __init__(self, msg):
-        DvcException.__init__(self, 'Data sync error: {}'.format(msg))
+        super(DataSyncError, self).__init__('Data sync error: {}'.format(msg))
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -51,22 +49,9 @@ class CmdDataSync(CmdBase):
                             nargs='*')
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-                return 1
+        with DvcLock(self.is_locker, self.git):
+            self.sync_sanity_check()
 
-        good = self.config.sanity_check()
-
-        if not good[0]:
-            Logger.error('config \'%s\' is not correctly setup.  Please fix:' % Runtime.CONFIG)
-            for e in good[1]:
-                Logger.error('    ' + e)
-            return 1
-
-        try:
             for target in self.parsed_args.targets:
                 data_item = self.settings.path_factory.data_item(target)
                 if System.islink(target):
@@ -75,26 +60,35 @@ class CmdDataSync(CmdBase):
                     self.sync_dir(target)
                 else:
                     raise DataSyncError('File "{}" does not exit'.format(target))
-        finally:
-            if self.is_locker:
-                lock.release()
+        pass
+
+    def sync_sanity_check(self):
+        good = self.config.sanity_check()
+        if not good[0]:
+            error = 'config \'%s\' is not correctly setup.  Please fix:\n' % Runtime.CONFIG
+            for e in good[1]:
+                error += '    \n' + e
+            raise DataSyncError(error)
 
     def sync_dir(self, dir):
         for file in os.listdir(dir):
             try:
                 fname = None
                 fname = os.path.join(dir, file)
-                if os.path.isdir(fname):
-                    self.sync_dir(fname)
-                elif System.islink(fname):
-                    self.sync_symlink(self.settings.path_factory.data_item(fname))
-                else:
-                    raise DvcException('Unsupported file type "{}"'.format(fname))
+                self.sync_object(fname)
             except DataSyncError as ex:
                 Logger.debug(ex)
             except Exception as ex:
                 Logger.error('Cannot sync file {}: {}'.format(fname, ex))
         pass
+
+    def sync_object(self, fname):
+        if os.path.isdir(fname):
+            self.sync_dir(fname)
+        elif System.islink(fname):
+            self.sync_symlink(self.settings.path_factory.data_item(fname))
+        else:
+            raise DvcException('Unsupported file type "{}"'.format(fname))
 
     def sync_symlink(self, data_item):
         if os.path.isfile(data_item.resolved_cache.dvc):
@@ -157,10 +151,7 @@ class CmdDataSync(CmdBase):
         return bucket
 
     def _sync_from_cloud_gcp(self, item):
-        """ sync from cloud, gcp version
-        Params:
-            TODO
-        """
+        """ sync from cloud, gcp version """
 
         bucket = self._get_bucket_gc()
         key = self.cache_file_key(item.resolved_cache.dvc)

@@ -1,10 +1,9 @@
 import os
 from shutil import copyfile
 import re
-import fasteners
 import requests
 
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, DvcLock
 from dvc.command.data_sync import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
@@ -30,20 +29,10 @@ class CmdImportFile(CmdBase):
         pass
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-                return 1
-
-        try:
+        with DvcLock(self.is_locker, self.git):
             return self.import_and_commit_if_needed(self.parsed_args.input,
                                                     self.parsed_args.output,
                                                     self.parsed_args.lock)
-        finally:
-            if self.is_locker:
-                lock.release()
         pass
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):

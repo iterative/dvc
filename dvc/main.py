@@ -18,7 +18,7 @@ from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
-VERSION = '0.8.3'
+VERSION = '0.8.4'
 
 def print_usage():
     usage = ('',

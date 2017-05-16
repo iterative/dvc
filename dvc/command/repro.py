@@ -1,7 +1,7 @@
 import os
-import fasteners
 import copy
 
+from dvc.command.base import DvcLock
 from dvc.command.import_file import CmdImportFile
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
@@ -51,18 +51,9 @@ class CmdRepro(CmdRun):
         return []
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                self.warning_dvc_is_busy()
-                return 1
-        try:
+        with DvcLock(self.is_locker, self.git):
             recursive = not self.parsed_args.single_item
             return self.repro_target(self.parsed_args.target, recursive, self.parsed_args.force)
-        finally:
-            if self.is_locker:
-                lock.release()
         pass
 
     def repro_target(self, target, recursive, force):

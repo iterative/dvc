@@ -1,5 +1,4 @@
-import fasteners
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
@@ -19,19 +18,8 @@ class CmdLock(CmdBase):
         pass
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                self.warning_dvc_is_busy()
-                return 1
-
-        try:
-
+        with DvcLock(self.is_locker, self.git):
             return self.lock_files(self.parsed_args.files, not self.parsed_args.unlock)
-        finally:
-            if self.is_locker:
-                lock.release()
 
     def lock_files(self, files, target):
         cmd = 'lock' if target else 'unlock'

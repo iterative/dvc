@@ -1,7 +1,6 @@
 import os
-import fasteners
 
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
@@ -53,14 +52,7 @@ class CmdRun(CmdBase):
         return self._data_items_from_params(self.parsed_args.output, 'Output')
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                self.warning_dvc_is_busy()
-                return 1
-
-        try:
+        with DvcLock(self.is_locker, self.git):
             data_items_from_args, not_data_items_from_args = self.argv_files_by_type(self.command_args)
             return self.run_and_commit_if_needed(self.command_args,
                                                  data_items_from_args,
@@ -68,9 +60,7 @@ class CmdRun(CmdBase):
                                                  self.parsed_args.stdout,
                                                  self.parsed_args.stderr,
                                                  self.parsed_args.shell)
-        finally:
-            if self.is_locker:
-                lock.release()
+        pass
 
     def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
                                  stdout, stderr, shell, check_if_ready=True):

@@ -1,9 +1,7 @@
 import os
-import fasteners
 
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, DvcLock
 from dvc.command.import_file import CmdImportFile
-from dvc.logger import Logger
 from dvc.runtime import Runtime
 
 
@@ -25,14 +23,7 @@ class CmdImportBulk(CmdBase):
         pass
 
     def run(self):
-        if self.is_locker:
-            lock = fasteners.InterProcessLock(self.git.lock_file)
-            gotten = lock.acquire(timeout=5)
-            if not gotten:
-                Logger.info('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-                return 1
-
-        try:
+        with DvcLock(self.is_locker, self.git):
             if not self.no_git_actions and not self.git.is_ready_to_go():
                 return 1
 
@@ -59,9 +50,6 @@ class CmdImportBulk(CmdBase):
 
                             cmd.import_and_commit_if_needed(filename, out, self.parsed_args.lock)
                 pass
-        finally:
-            if self.is_locker:
-                lock.release()
         pass
 
 if __name__ == '__main__':
