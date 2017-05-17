@@ -1,6 +1,6 @@
 #define MyAppName "Data Version Control"
 ; FIXME: Hardcoded version is not nice, but will do for now.
-#define MyAppVersion "0.8.2"
+#define MyAppVersion ReadIni(".\innosetup\config.ini", "Version", "version", "unknown")
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
 ;#define MyAppExeName "dvc.exe"
