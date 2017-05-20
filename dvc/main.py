@@ -38,7 +38,7 @@ def print_usage():
     print('\n'.join(usage))
 
 def main():
-    cmds = ['--version', 'init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
+    cmds = ['--help', '--version', 'init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
             'test', 'test-aws', 'test-gcloud', 'test-cloud']
 
@@ -50,7 +50,9 @@ def main():
 
     cmd = sys.argv[1]
 
-    if cmd == '--version':
+    if cmd == '--help':
+        print_usage()
+    elif cmd == '--version':
         print('dvc version {}'.format(VERSION))
     elif cmd == 'init':
         Runtime.run(CmdInit, parse_config=False)
