@@ -19,6 +19,14 @@ class Logger(object):
         Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), 'debug'))
 
     @staticmethod
+    def be_quiet():
+        Logger._logger.setLevel(logging.CRITICAL)
+
+    @staticmethod
+    def be_verbose():
+        Logger._logger.setLevel(logging.DEBUG)
+
+    @staticmethod
     def error(msg):
         return Logger._logger.error(msg)
 

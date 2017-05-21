@@ -41,9 +41,12 @@ class CmdBase(object):
         self._settings = settings
 
         parser = argparse.ArgumentParser()
+        self.define_common_args(parser)
         self.define_args(parser)
 
         self._parsed_args, self._command_args = parser.parse_known_args(args=self.args)
+
+        self.process_common_args()
 
     @property
     def settings(self):
@@ -87,6 +90,16 @@ class CmdBase(object):
         parser.add_argument('--lock', '-l', action='store_true', default=False,
                             help='Lock data item - disable reproduction. ' +
                                  'It can be enabled by `dvc lock` command or by forcing reproduction.')
+
+    def define_common_args(self, parser):
+        parser.add_argument('--quiet', '-q', action='store_true', default=False, help='Be quiet.')
+        parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Be verbose.')
+
+    def process_common_args(self):
+        if self._parsed_args.quiet and not self._parsed_args.verbose:
+            Logger.be_quiet()
+        elif not self._parsed_args.quiet and self._parsed_args.verbose:
+            Logger.be_verbose()
 
     @property
     def no_git_actions(self):
