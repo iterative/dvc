@@ -1,52 +1,35 @@
-class Logger(object):
-    DEFAULT_LEVEL = 2
+import logging
 
-    LEVEL = DEFAULT_LEVEL
+class Logger(object):
+    DEFAULT_LEVEL = logging.INFO
 
     LEVEL_MAP = {
-        'debug': 1,
-        'info': 2,
-        'warn': 3,
-        'error': 4
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warn': logging.WARNING,
+        'error': logging.ERROR
     }
+
+    logging.basicConfig(stream=sys.stdout, format='%(message)s', level=DEFAULT_LEVEL)
+
+    _logger = logging.getLogger('dvc')
 
     @staticmethod
     def set_level(level):
-        Logger.LEVEL = Logger.LEVEL_MAP.get(level.lower(), 'debug')
-
-    @staticmethod
-    def is_debug():
-        return Logger.LEVEL <= 1
-
-    @staticmethod
-    def is_info():
-        return Logger.LEVEL <= 2
-
-    @staticmethod
-    def is_warn():
-        return Logger.LEVEL <= 3
-
-    @staticmethod
-    def is_error():
-        return Logger.LEVEL <= 4
-
-    @staticmethod
-    def debug(msg):
-        if Logger.is_debug():
-            print(u'Debug. {}'.format(msg))
-
-    @staticmethod
-    def info(msg):
-        if Logger.is_info():
-            #print(u'Info. {}'.format(msg))
-            print(msg)
-
-    @staticmethod
-    def warn(msg):
-        if Logger.is_warn():
-            print(u'Warning. {}'.format(msg))
+        Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), 'debug'))
 
     @staticmethod
     def error(msg):
-        if Logger.is_error():
-            print(u'Error. {}'.format(msg))
+        return Logger._logger.error(msg)
+
+    @staticmethod
+    def warn(msg):
+        return Logger._logger.warn(msg)
+
+    @staticmethod
+    def debug(msg):
+        return Logger._logger.debug(msg)
+
+    @staticmethod
+    def info(msg):
+        return Logger._logger.info(msg) 
