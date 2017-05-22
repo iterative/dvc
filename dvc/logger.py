@@ -1,52 +1,63 @@
-class Logger(object):
-    DEFAULT_LEVEL = 2
+import sys
+import logging
 
-    LEVEL = DEFAULT_LEVEL
+import colorama
+
+class Logger(object):
+    DEFAULT_LEVEL = logging.INFO
 
     LEVEL_MAP = {
-        'debug': 1,
-        'info': 2,
-        'warn': 3,
-        'error': 4
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warn': logging.WARNING,
+        'error': logging.ERROR
     }
+
+    COLOR_MAP = {
+        'debug': colorama.Fore.BLUE,
+        'warn': colorama.Fore.YELLOW,
+        'error': colorama.Fore.RED
+    }
+
+    logging.basicConfig(stream=sys.stdout, format='%(message)s', level=DEFAULT_LEVEL)
+
+    _logger = logging.getLogger('dvc')
 
     @staticmethod
     def set_level(level):
-        Logger.LEVEL = Logger.LEVEL_MAP.get(level.lower(), 'debug')
+        Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), 'debug'))
 
     @staticmethod
-    def is_debug():
-        return Logger.LEVEL <= 1
+    def be_quiet():
+        Logger._logger.setLevel(logging.CRITICAL)
 
     @staticmethod
-    def is_info():
-        return Logger.LEVEL <= 2
+    def be_verbose():
+        Logger._logger.setLevel(logging.DEBUG)
 
     @staticmethod
-    def is_warn():
-        return Logger.LEVEL <= 3
+    def colorize(msg, typ):
+        header = ''
+        footer = ''
 
-    @staticmethod
-    def is_error():
-        return Logger.LEVEL <= 4
+        if sys.stdout.isatty():
+            header = Logger.COLOR_MAP.get(typ.lower(), '')
+            footer = colorama.Style.RESET_ALL
 
-    @staticmethod
-    def debug(msg):
-        if Logger.is_debug():
-            print(u'Debug. {}'.format(msg))
-
-    @staticmethod
-    def info(msg):
-        if Logger.is_info():
-            #print(u'Info. {}'.format(msg))
-            print(msg)
-
-    @staticmethod
-    def warn(msg):
-        if Logger.is_warn():
-            print(u'Warning. {}'.format(msg))
+        return u'{}{}{}'.format(header, msg, footer)
 
     @staticmethod
     def error(msg):
-        if Logger.is_error():
-            print(u'Error. {}'.format(msg))
+        return Logger._logger.error(Logger.colorize(msg, 'error'))
+
+    @staticmethod
+    def warn(msg):
+        return Logger._logger.warn(Logger.colorize(msg, 'warn'))
+
+    @staticmethod
+    def debug(msg):
+        return Logger._logger.debug(Logger.colorize(msg, 'debug'))
+
+    @staticmethod
+    def info(msg):
+        return Logger._logger.info(Logger.colorize(msg, 'info'))

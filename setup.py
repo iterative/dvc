@@ -90,6 +90,7 @@ install_requires = [
     'six==1.10.0',
     'traitlets==4.3.2',
     'wcwidth==0.1.7',
+    'colorama',
 ]
 
 if platform.system() == 'Darwin':

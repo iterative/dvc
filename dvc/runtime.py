@@ -34,6 +34,9 @@ class Runtime(object):
 
             args = sys.argv[args_start_loc:]
 
+            # To make argparse print "usage: dvc cmd" instead of "usage: dvc"
+            sys.argv[0] = sys.argv[0] + " " + sys.argv[1]
+
             instance = cmd_class(Settings(args, runtime_git, runtime_config))
             sys.exit(instance.run())
         except DvcException as e:
