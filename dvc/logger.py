@@ -3,6 +3,8 @@ import logging
 
 import colorama
 
+colorama.init()
+
 class Logger(object):
     DEFAULT_LEVEL = logging.INFO
 
