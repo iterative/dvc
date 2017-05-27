@@ -27,7 +27,7 @@ class Logger(object):
 
     @staticmethod
     def set_level(level):
-        Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), 'debug'))
+        Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), logging.DEBUG))
 
     @staticmethod
     def be_quiet():
