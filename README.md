@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/efiop/dvc.svg?branch=master)](https://travis-ci.org/dataversioncontrol/dvc)
+
 ![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
 
 DVC is an open source tool for data science projects. 

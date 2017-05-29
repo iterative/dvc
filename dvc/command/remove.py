@@ -6,7 +6,7 @@ from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.runtime import Runtime
-
+from dvc.data_cloud import DataCloud
 
 class DataRemoveError(DvcException):
     def __init__(self, msg):
@@ -30,6 +30,8 @@ class CmdDataRemove(CmdBase):
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
+            self.cloud = DataCloud(self.settings)
+
             if not self.remove_all_targets():
                 return 1
 
@@ -94,8 +96,7 @@ class CmdDataRemove(CmdBase):
 
     def _remove_cloud_cache(self, data_item):
         if not self.parsed_args.keep_in_cloud:
-            aws_key = self.cache_file_key(data_item.cache.dvc)
-            self.remove_from_cloud(aws_key)
+            self.cloud.remove_from_cloud(data_item)
 
     def _remove_state_file(self, data_item):
         if os.path.isfile(data_item.state.relative):
@@ -118,24 +119,6 @@ class CmdDataRemove(CmdBase):
         os.remove(dvc_path.relative)
         self.remove_dir_if_empty(dvc_path.relative)
         Logger.debug(u'[Cmd-Remove] Remove {}. Success.'.format(name))
-
-    def remove_from_cloud(self, aws_file_name):
-        Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
-
-        if not self.config.aws_access_key_id or not self.config.aws_secret_access_key:
-            Logger.debug('[Cmd-Remove] Unable to check cache file in the cloud')
-            return
-        conn = S3Connection(self.config.aws_access_key_id, self.config.aws_secret_access_key)
-        bucket_name = self.config.storage_bucket
-        bucket = conn.lookup(bucket_name)
-        if bucket:
-            key = bucket.get_key(aws_file_name)
-            if not key:
-                Logger.warn('[Cmd-Remove] S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
-            else:
-                key.delete()
-                Logger.info('[Cmd-Remove] File "{}" was removed from S3'.format(aws_file_name))
-        pass
 
     def remove_dir_file_by_file(self, target):
         for f in os.listdir(target):

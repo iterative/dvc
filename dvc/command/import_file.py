@@ -4,7 +4,7 @@ import re
 import requests
 
 from dvc.command.base import CmdBase, DvcLock
-from dvc.command.data_sync import sizeof_fmt
+from dvc.data_cloud import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime

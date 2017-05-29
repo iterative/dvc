@@ -10,7 +10,7 @@ import mock
 from dvc.path.path import Path
 from dvc.system import System
 from dvc.config import Config
-
+from dvc.command.data_cloud import DataCloud
 
 class TestConfigTest(TestCase):
     def setUp(self):
@@ -24,20 +24,20 @@ class TestConfigTest(TestCase):
              "DataDir = ",
              "CacheDir = ",
              "StateDir = ",
-             "Cloud = amazon",
+             "Cloud = aws",
              "StoragePath = globalsb/global_storage_path",
              "[AWS]",
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath =",
-             "[GC]",
+             "[GCP]",
              "StoragePath = googlesb/google_storage_path"
            )
         s = StringIO.StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file = s)
-
-        self.assertEqual(conf.cloud, 'amazon')
-        self.assertEqual(conf.storage_bucket, 'globalsb')
-        self.assertEqual(conf.storage_prefix, 'global_storage_path')
+        cloud = DataCloud(conf)
+        self.assertEqual(cloud.typ, 'aws')
+        self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
+        self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
 
         c = ("[Global]",
              "LogLevel =",
@@ -48,15 +48,15 @@ class TestConfigTest(TestCase):
              "[AWS]",
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath =",
-             "[GC]",
+             "[GCP]",
              "StoragePath = googlesb/google_storage_path"
            )
         s = StringIO.StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file=s)
-
-        self.assertEqual(conf.cloud, 'aws')
-        self.assertEqual(conf.storage_bucket, 'awssb')
-        self.assertEqual(conf.storage_prefix, 'aws_storage_path')
+        cloud = DataCloud(conf)
+        self.assertEqual(cloud.typ, 'aws')
+        self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
+        self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
 
 
     def mocked_open_aws_default_credentials(klass, file, asdf):
@@ -82,7 +82,7 @@ class TestConfigTest(TestCase):
              "DataDir = ",
              "CacheDir = ",
              "StateDir = ",
-             "Cloud = amazon",
+             "Cloud = aws",
              "[AWS]",
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath =",
@@ -92,7 +92,8 @@ class TestConfigTest(TestCase):
         patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
-        aws_creds = conf.get_aws_credentials()
+        cloud = DataCloud(conf)
+        aws_creds = cloud._cloud.get_aws_credentials()
         patcher.stop()
 
         self.assertEqual(aws_creds[0], 'default_access_id')
@@ -112,7 +113,7 @@ class TestConfigTest(TestCase):
              "DataDir = ",
              "CacheDir = ",
              "StateDir = ",
-             "Cloud = amazon",
+             "Cloud = aws",
              "[AWS]",
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath = some_credential_path",
@@ -122,7 +123,8 @@ class TestConfigTest(TestCase):
         patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
-        aws_creds = conf.get_aws_credentials()
+        cloud = DataCloud(conf)
+        aws_creds = cloud._cloud.get_aws_credentials()
         patcher.stop()
 
         self.assertEqual(aws_creds[0], 'override_access_id')
