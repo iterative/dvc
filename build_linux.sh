@@ -1,8 +1,8 @@
 #!/bin/sh
 
 BUILD_DIR=build
-INSTALL_DIR=$BUILD_DIR/usr
-BIN_DIR=$INSTALL_DIR/bin
+INSTALL_DIR=usr
+BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 
 print_error()
 {
@@ -24,7 +24,8 @@ command_exists()
 fpm_build()
 {
 	print_info "Building $1..."
-	fpm -s dir -f -t $1 -n dvc -v $(python -c "import dvc; from dvc.main import VERSION; print(str(VERSION))") $INSTALL_DIR
+	VERSION=$(python -c "import dvc; from dvc.main import VERSION; print(str(VERSION))")
+	fpm -s dir -f -t $1 -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
 }
 
 cleanup()
