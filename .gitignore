@@ -11,3 +11,5 @@ build/
 dist/
 
 *.egg-info/
+
+hooks/*.pyc
