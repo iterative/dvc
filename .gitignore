@@ -11,3 +11,8 @@ build/
 dist/
 
 *.egg-info/
+
+hooks/*.pyc
+
+*.rpm
+*.deb
