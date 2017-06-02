@@ -1,10 +1,8 @@
 #define MyAppName "Data Version Control"
-; FIXME: Hardcoded version is not nice, but will do for now.
 #define MyAppVersion ReadIni(".\innosetup\config.ini", "Version", "version", "unknown")
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
-;#define MyAppExeName "dvc.exe"
-#define MyAppDir "..\WinPython"
+#define MyAppDir "..\dist"
 
 [Setup]
 AppId={{8258CE8A-110E-4E0D-AE60-FEE00B15F041}
@@ -39,7 +37,7 @@ Name: addsymlinkpermissions\system; Description: Add permissions for creating sy
 [Code]
 const
 	ModPathName = 'modifypath';
-	ModPathPath = '{app}\bin';
+	ModPathPath = '{app}';
 	SymLinkName = 'addsymlinkpermissions';
 
 var

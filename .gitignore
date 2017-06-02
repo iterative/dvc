@@ -16,3 +16,7 @@ hooks/*.pyc
 
 *.rpm
 *.deb
+
+innosetup/config.ini
+
+*.exe
