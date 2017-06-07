@@ -3,6 +3,8 @@ from shutil import copyfile
 import re
 import requests
 
+from multiprocessing.pool import ThreadPool
+
 from dvc.command.base import CmdBase, DvcLock
 from dvc.data_cloud import sizeof_fmt
 from dvc.logger import Logger
@@ -10,7 +12,7 @@ from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
-
+from dvc.command.data_sync import POOL_SIZE
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
@@ -23,16 +25,39 @@ class CmdImportFile(CmdBase):
 
     def define_args(self, parser):
         self.set_no_git_actions(parser)
+        self.set_lock_action(parser)
 
-        self.add_string_arg(parser, 'input', 'Input file.')
-        self.add_string_arg(parser, 'output', 'Output file.')
-        pass
+        parser.add_argument('input',
+                            help='Input file/files.',
+                            nargs='+')
+        parser.add_argument('output',
+                            help='Output file/directory.')
 
     def run(self):
+        targets = []
         with DvcLock(self.is_locker, self.git):
-            return self.import_and_commit_if_needed(self.parsed_args.input,
-                                                    self.parsed_args.output,
-                                                    self.parsed_args.lock)
+            output = self.parsed_args.output
+            for input in self.parsed_args.input:
+                if not os.path.isdir(input):
+                    targets.append((input, output))
+                else:
+                    input_dir = os.path.basename(input)
+                    for root, dirs, files in os.walk(input):
+                        for file in files:
+                            filename = os.path.join(root, file)
+
+                            rel = os.path.relpath(filename, input)
+                            out = os.path.join(output, input_dir, rel)
+
+                            out_dir = os.path.dirname(out)
+                            if not os.path.exists(out_dir):
+                                os.mkdir(out_dir)
+
+                            targets.append((filename, out))
+                pass
+            self.import_files(targets, self.parsed_args.lock)
+            message = 'DVC import files: {} -> {}'.format(str(self.parsed_args.input), output)
+            self.commit_if_needed(message)
         pass
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
@@ -44,51 +69,121 @@ class CmdImportFile(CmdBase):
         message = 'DVC import file: {} {}'.format(input, output)
         return self.commit_if_needed(message)
 
-    def import_file(self, input, output, lock=False):
-        if not CmdImportFile.is_url(input):
-            if not os.path.exists(input):
-                raise ImportFileError('Input file "{}" does not exist'.format(input))
-            if not os.path.isfile(input):
-                raise ImportFileError('Input file "{}" has to be a regular file'.format(input))
+    def import_file(self, input, output, lock):
+        return self.import_files([(input, output)], lock)
 
-        if os.path.isdir(output):
-            output = os.path.join(output, os.path.basename(input))
+    def collect_targets(self, targets):
+        """
+        Collect input, output and data_item's into tuples
+        to be able to download them simulteniously later.
+        """
+        data_targets = []
 
-        data_item = self.settings.path_factory.data_item(output)
+        for target in targets:
+            input = target[0]
+            output = target[1]
+            if not CmdImportFile.is_url(input):
+                if not os.path.exists(input):
+                    raise ImportFileError('Input file "{}" does not exist'.format(input))
+                if not os.path.isfile(input):
+                    raise ImportFileError('Input file "{}" has to be a regular file'.format(input))
 
-        if os.path.exists(data_item.data.relative):
-            raise ImportFileError('Output file "{}" already exists'.format(data_item.data.relative))
-        if not os.path.isdir(os.path.dirname(data_item.data.relative)):
-            raise ImportFileError('Output file directory "{}" does not exists'.format(
-                os.path.dirname(data_item.data.relative)))
+            if os.path.isdir(output):
+                output = os.path.join(output, os.path.basename(input))
 
-        cache_dir = os.path.dirname(data_item.cache.relative)
-        if not os.path.exists(cache_dir):
-            os.makedirs(cache_dir)
+            data_item = self.settings.path_factory.data_item(output)
 
-        if CmdImportFile.is_url(input):
-            Logger.debug('Downloading file {} ...'.format(input))
-            self.download_file(input, data_item.cache.relative)
-            Logger.debug('Input file "{}" was downloaded to cache "{}"'.format(
-                input, data_item.cache.relative))
+            if os.path.exists(data_item.data.relative):
+                raise ImportFileError('Output file "{}" already exists'.format(data_item.data.relative))
+            if not os.path.isdir(os.path.dirname(data_item.data.relative)):
+                raise ImportFileError('Output file directory "{}" does not exists'.format(
+                    os.path.dirname(data_item.data.relative)))
+
+            cache_dir = os.path.dirname(data_item.cache.relative)
+            if not os.path.exists(cache_dir):
+                os.makedirs(cache_dir)
+
+            data_targets.append((input, output, data_item))
+
+        return data_targets
+
+    def import_files(self, targets, lock=False):
+        data_targets = self.collect_targets(targets)
+        self.download_targets(data_targets)
+        self.create_state_files(data_targets, lock)
+
+    def download_target(self, target):
+        """
+        Download single target from url or from local path.
+        """
+        input = target[0]
+        output = target[2].cache.relative
+
+        if self.is_url(input):
+            Logger.debug("Downloading {} -> {}.".format(input, output))
+            self.download_file(input, output)
+            Logger.debug("Done downloading {} -> {}.".format(input, output))
         else:
-            copyfile(input, data_item.cache.relative)
-            Logger.debug('Input file "{}" was copied to cache "{}"'.format(
-                input, data_item.cache.relative))
+            Logger.debug("Copying {} -> {}".format(input, output))
+            self.copy_file(input, output)
+            Logger.debug("Dony copying {} -> {}".format(input, output))
 
-        Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
-        System.symlink(data_item.symlink_file, data_item.data.relative)
+    @staticmethod
+    def copy_file(input, output):
+        """
+        Copy single file from local path.
+        """
+        copyfile(input, output)
 
-        state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
+    def download_file(self, from_url, to_file):
+        """
+        Download single file from url.
+        """
+        r = requests.get(from_url, stream=True)
+
+        chunk_size = 1024 * 100
+        downloaded = 0
+        last_reported = 0
+        report_bucket = 100*1024*10
+
+        with open(to_file, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=chunk_size):
+                if chunk:  # filter out keep-alive new chunks
+                    downloaded += chunk_size
+                    last_reported += chunk_size
+                    if last_reported >= report_bucket:
+                        last_reported = 0
+                        Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
+                    f.write(chunk)
+
+    def download_targets(self, targets):
+        """
+        Download targets in a number of threads.
+        """
+        p = ThreadPool(processes=POOL_SIZE)
+        p.map(self.download_target, targets)
+
+    def create_state_files(self, targets, lock):
+        """
+        Create state files for all targets.
+        """
+        for t in targets:
+            input       = t[0]
+            output      = t[1]
+            data_item   = t[2]
+
+            Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
+            System.symlink(data_item.symlink_file, data_item.data.relative)
+
+            state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
                                data_item.state.relative,
                                self.settings,
                                argv=[input, output],
                                input_files=[],
                                output_files=[output],
                                lock=lock)
-        state_file.save()
-        Logger.debug('State file "{}" was created'.format(data_item.state.relative))
-        pass
+            state_file.save()
+            Logger.debug('State file "{}" was created'.format(data_item.state.relative))
 
     URL_REGEX = re.compile(
         r'^(?:http|ftp)s?://'  # http:// or https://
@@ -102,24 +197,6 @@ class CmdImportFile(CmdBase):
     def is_url(url):
         return CmdImportFile.URL_REGEX.match(url) is not None
 
-    @staticmethod
-    def download_file(from_url, to_file):
-        r = requests.get(from_url, stream=True)
-
-        chunk_size = 1024 * 100
-        downloaded = 0
-        last_reported = 0
-        report_bucket = 100*1024*1024
-        with open(to_file, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                if chunk:  # filter out keep-alive new chunks
-                    downloaded += chunk_size
-                    last_reported += chunk_size
-                    if last_reported >= report_bucket:
-                        last_reported = 0
-                        Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
-                    f.write(chunk)
-        return
 
 if __name__ == '__main__':
     Runtime.run(CmdDataImport)

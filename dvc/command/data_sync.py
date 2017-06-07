@@ -14,6 +14,9 @@ from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.data_cloud import DataCloud
 
+#FIXME add cmdline argument and config option for POOL_SIZE
+POOL_SIZE = 4
+
 class DataSyncError(DvcException):
     def __init__(self, msg):
         super(DataSyncError, self).__init__('Data sync error: {}'.format(msg))
@@ -31,8 +34,6 @@ class CmdDataSync(CmdBase):
     def run(self):
         with DvcLock(self.is_locker, self.git):
             cloud = DataCloud(self.settings)
-            #FIXME add cmdline argument and config option for POOL_SIZE
-            POOL_SIZE = 10
             pool = ThreadPool(processes=POOL_SIZE)
             targets = []
 
