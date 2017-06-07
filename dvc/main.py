@@ -14,7 +14,6 @@ from dvc.command.remove import CmdDataRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
-from dvc.command.import_bulk import CmdImportBulk
 from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
@@ -63,8 +62,6 @@ def main():
     elif cmd == 'sync':
         Runtime.run(CmdDataSync)
     elif cmd == 'import':
-        Runtime.run(CmdImportBulk)
-    elif cmd == 'import-file':
         Runtime.run(CmdImportFile)
     elif cmd == 'remove':
         Runtime.run(CmdDataRemove)
