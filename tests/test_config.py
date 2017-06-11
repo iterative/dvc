@@ -1,11 +1,22 @@
 import io
 import os
 import shutil
-import StringIO
 import traceback
 from unittest import TestCase
 import mock
 
+try:
+    from StringIO import StringIO
+except ImportError:
+    # Python 3
+    from io import StringIO
+
+try:
+    import __builtin__
+    builtin_module_name = '__builtin__'
+except ImportError:
+    # Python 3
+    builtin_module_name = 'builtins'
 
 from dvc.path.path import Path
 from dvc.system import System
@@ -33,7 +44,7 @@ class TestConfigTest(TestCase):
              "[GCP]",
              "StoragePath = googlesb/google_storage_path"
            )
-        s = StringIO.StringIO('\n'.join(c))
+        s = StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file = s)
         cloud = DataCloud(Settings(None, None, conf))
         self.assertEqual(cloud.typ, 'AWS')
@@ -52,7 +63,7 @@ class TestConfigTest(TestCase):
              "[GCP]",
              "StoragePath = googlesb/google_storage_path"
            )
-        s = StringIO.StringIO('\n'.join(c))
+        s = StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file=s)
         cloud = DataCloud(Settings(None, None, conf))
         self.assertEqual(cloud.typ, 'AWS')
@@ -66,13 +77,13 @@ class TestConfigTest(TestCase):
             creds0 = ("[default]",
                       "aws_access_key_id = default_access_id",
                       "aws_secret_access_key = default_sekret")
-            return io.BytesIO('\n'.join(creds0))
+            return StringIO('\n'.join(creds0))
 
         creds1 = ("[default]",
                   "aws_access_key_id = override_access_id",
                   "aws_secret_access_key = override_sekret")
 
-        return io.BytesIO('\n'.join(creds1))
+        return StringIO('\n'.join(creds1))
 
     def aws_credentials_default_test(self):
         """ in absence of [AWS] -> CredentialPath, aws creds should be read from ~/.aws/credentials """
@@ -88,9 +99,10 @@ class TestConfigTest(TestCase):
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath =",
            )
-        s = StringIO.StringIO('\n'.join(c))
+        s = StringIO('\n'.join(c))
 
-        patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
+        patcher = mock.patch(builtin_module_name + '.open', side_effect=self.mocked_open_aws_default_credentials)
+
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
         cloud = DataCloud(Settings(None, None, conf))
@@ -119,9 +131,10 @@ class TestConfigTest(TestCase):
              "StoragePath = awssb/aws_storage_path",
              "CredentialPath = some_credential_path",
            )
-        s = StringIO.StringIO('\n'.join(c))
+        s = StringIO('\n'.join(c))
 
-        patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
+        patcher = mock.patch(builtin_module_name + '.open', side_effect=self.mocked_open_aws_default_credentials)
+
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
         cloud = DataCloud(Settings(None, None, conf))
