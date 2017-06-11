@@ -13,6 +13,7 @@ from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.config import ConfigError
+from dvc.settings import Settings
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -333,6 +334,8 @@ class DataCloud(object):
     }
 
     def __init__(self, settings):
+        assert isinstance(settings, Settings) 
+
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):
             self._cloud = DataCloudBase(None, None, None)
