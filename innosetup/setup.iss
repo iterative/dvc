@@ -21,6 +21,10 @@ Compression=lzma2/max
 SolidCompression=yes
 OutputDir=..\
 ChangesEnvironment=yes
+SetupIconFile=dvc.ico
+WizardSmallImageFile=dvc_up.bmp
+WizardImageFile=dvc_left.bmp
+DisableWelcomePage=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
