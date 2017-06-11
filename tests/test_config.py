@@ -10,7 +10,8 @@ import mock
 from dvc.path.path import Path
 from dvc.system import System
 from dvc.config import Config
-from dvc.command.data_cloud import DataCloud
+from dvc.data_cloud import DataCloud
+from dvc.settings import Settings
 
 class TestConfigTest(TestCase):
     def setUp(self):
@@ -34,8 +35,8 @@ class TestConfigTest(TestCase):
            )
         s = StringIO.StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file = s)
-        cloud = DataCloud(conf)
-        self.assertEqual(cloud.typ, 'aws')
+        cloud = DataCloud(Settings(None, None, conf))
+        self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
 
@@ -53,8 +54,8 @@ class TestConfigTest(TestCase):
            )
         s = StringIO.StringIO('\n'.join(c))
         conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(conf)
-        self.assertEqual(cloud.typ, 'aws')
+        cloud = DataCloud(Settings(None, None, conf))
+        self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
         self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
 
@@ -92,7 +93,7 @@ class TestConfigTest(TestCase):
         patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(Settings(None, None, conf))
         aws_creds = cloud._cloud.get_aws_credentials()
         patcher.stop()
 
@@ -123,7 +124,7 @@ class TestConfigTest(TestCase):
         patcher = mock.patch('__builtin__.open', side_effect=self.mocked_open_aws_default_credentials)
         patcher.start()
         conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(Settings(None, None, conf))
         aws_creds = cloud._cloud.get_aws_credentials()
         patcher.stop()
 
