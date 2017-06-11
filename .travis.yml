@@ -9,3 +9,5 @@ install:
   - pip install -r requirements.txt
 script:
   - ./unittests.sh
+after_sucess:
+  - CODECLIMATE_REPO_TOKEN=b27257bacc4812c8e6d37285ba34559804e4a207bf6932723a1c9966e5807670 codeclimate-test-reporter
