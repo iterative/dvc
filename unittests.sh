@@ -1,3 +1,6 @@
+#!/bin/bash
+set -e
+
 nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
 
 if [ "$1" = "report" ]; then
