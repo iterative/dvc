@@ -1,4 +1,7 @@
 [![Build Status](https://travis-ci.org/efiop/dvc.svg?branch=master)](https://travis-ci.org/dataversioncontrol/dvc)
+[![Code Climate](https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)
+[![Test Coverage](https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)
+
 
 ![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
 
