@@ -348,6 +348,9 @@ class DataCloud(object):
         if self.typ not in self.CLOUD_MAP.keys():
             raise ConfigError('Wrong cloud type %s specified' % self.typ)
 
+        if self.typ not in self._config.keys():
+            raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % self.typ)
+
         self._cloud = self.CLOUD_MAP[self.typ](self._settings, self._config, self._config[self.typ])
 
         self.sanity_check()
