@@ -45,7 +45,7 @@ install_dependencies()
 	elif command_exists yum; then
 		sudo yum install ruby-devel gcc make rpm-build
 	elif command_exists apt-get; then
-		sudo apt-get install ruby ruby-dev rubygems build-essential
+		sudo apt-get install ruby ruby-dev rubygems build-essential rpm
 	else
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
