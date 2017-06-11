@@ -7,6 +7,7 @@ python:
 install:
   - pip install --upgrade pip
   - pip install -r requirements.txt
+  - pip install -r test-requirements.txt
 script:
   - ./unittests.sh
 after_sucess:
