@@ -1,14 +1,7 @@
-import base64
-import hashlib
 import os
-
 from multiprocessing.pool import ThreadPool
 
-from boto.s3.connection import S3Connection
-from google.cloud import storage as gc
-
 from dvc.command.base import CmdBase, DvcLock
-from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.system import System

@@ -7,6 +7,8 @@ from dvc.system import System
 
 
 class GitWrapperI(object):
+    COMMIT_LEN = 7
+
     def __init__(self, git_dir=None, commit=None):
         self._git_dir = git_dir
         self._commit = commit

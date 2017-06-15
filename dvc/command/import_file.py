@@ -2,7 +2,6 @@ import os
 from shutil import copyfile
 import re
 import requests
-
 from multiprocessing.pool import ThreadPool
 
 from dvc.command.base import CmdBase, DvcLock

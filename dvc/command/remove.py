@@ -1,90 +1,30 @@
 import os
 
-from boto.s3.connection import S3Connection
-
-from dvc.command.base import CmdBase, DvcLock
-from dvc.exceptions import DvcException
+from dvc.command.traverse import Traverse
 from dvc.logger import Logger
+from dvc.path.data_item import DataItemError
 from dvc.runtime import Runtime
-from dvc.data_cloud import DataCloud
-
-class DataRemoveError(DvcException):
-    def __init__(self, msg):
-        DvcException.__init__(self, 'Data remove error: {}'.format(msg))
 
 
-class CmdDataRemove(CmdBase):
+class CmdDataRemove(Traverse):
     def __init__(self, settings):
-        super(CmdDataRemove, self).__init__(settings)
+        super(CmdDataRemove, self).__init__(settings, "remove")
 
     def define_args(self, parser):
-        self.set_no_git_actions(parser)
-
-        parser.add_argument('target', metavar='', help='Target to remove - file or directory.', nargs='*')
+        super(CmdDataRemove, self).define_args(parser)
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively.')
-        parser.add_argument('-l', '--keep-in-cloud', action='store_true', default=False,
-                            help='Do not remove data from cloud.')
         parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
                             help='Do not remove data from cache.')
         pass
 
-    def run(self):
-        with DvcLock(self.is_locker, self.git):
-            self.cloud = DataCloud(self.settings)
-
-            if not self.remove_all_targets():
-                return 1
-
-        return 0
-
-    def remove_all_targets(self):
-        if not self.no_git_actions and not self.git.is_ready_to_go():
-            return False
-
-        error = False
-        for target in self.parsed_args.target:
-            if not self.remove_target(target):
-                error = True
-
-        message = 'DVC data remove: {}'.format(' '.join(self.parsed_args.target))
-        self.commit_if_needed(message, error)
-
-        return error == 0
-
-    def remove_target(self, target):
-        try:
-            if os.path.isdir(target):
-                self.remove_dir(target)
-            else:
-                self.remove_file(target)
-            return True
-        except DvcException as ex:
-            Logger.error('[Cmd-Remove] Unable to remove data item "{}": {}'.format(target, ex))
-            return False
-
-    def remove_dir(self, target):
-        if not self.parsed_args.recursive:
-            raise DataRemoveError('[Cmd-Remove] Directory "%s" cannot be removed. Use --recurcive flag.' % target)
-
-        data_item = self.settings.path_factory.data_item(target)
-        if data_item.data_dvc_short == '':
-            raise DataRemoveError('[Cmd-Remove] Data directory "%s" cannot be removed' % target)
-
-        return self.remove_dir_file_by_file(target)
-
-    @staticmethod
-    def remove_dir_if_empty(file):
-        dir = os.path.dirname(file)
-        if dir != '' and not os.listdir(dir):
-            Logger.debug(u'[Cmd-Remove] Empty directory was removed {}.'.format(dir))
-            os.rmdir(dir)
-        pass
-
-    def remove_file(self, target):
-        # it raises exception if not a symlink is provided
+    def process_file(self, target):
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
 
-        data_item = self.settings.path_factory.existing_data_item(target)
+        try:
+            data_item = self.settings.path_factory.existing_data_item(target)
+        except DataItemError:
+            Logger.warn(u'[Cmd-Remove] Data file {} is not valid symbolic link'.format(target))
+            data_item = self.settings.path_factory.data_item(target)
 
         self._remove_cache_file(data_item)
         self._remove_state_file(data_item)
@@ -120,16 +60,29 @@ class CmdDataRemove(CmdBase):
         self.remove_dir_if_empty(dvc_path.relative)
         Logger.debug(u'[Cmd-Remove] Remove {}. Success.'.format(name))
 
-    def remove_dir_file_by_file(self, target):
-        for f in os.listdir(target):
-            file = os.path.join(target, f)
-            if os.path.isdir(file):
-                self.remove_dir_file_by_file(file)
-            else:
-                self.remove_file(file)
-
-        os.rmdir(target)
+    @staticmethod
+    def remove_dir_if_empty(file):
+        dir = os.path.dirname(file)
+        if dir != '' and not os.listdir(dir):
+            Logger.debug(u'[Cmd-Remove] Empty directory was removed {}.'.format(dir))
+            os.rmdir(dir)
         pass
+
+    def traverse_dir_finalize(self, target):
+        os.rmdir(target)
+
+    def is_recursive(self):
+        return self.parsed_args.recursive
+
+    # Renaming
+    def remove_dir(self, target):
+        return self._traverse_dir(target)
+
+    def remove_file(self, target):
+        self.process_file(target)
+
+    def remove_all(self):
+        return self._traverse_all()
 
 
 if __name__ == '__main__':

@@ -1,5 +1,7 @@
 import os
+import re
 import shutil
+import fnmatch
 
 from dvc.path.path import Path
 from dvc.exceptions import DvcException
@@ -67,6 +69,11 @@ class DataItem(object):
             raise NotInDataDirError.build(data_file, self._config.data_dir)
         pass
 
+    def copy(self, cache_file=None):
+        if not cache_file:
+            cache_file = self._cache_file
+        return DataItem(self._data.abs, self._git, self._config, cache_file)
+
     def __hash__(self):
         return self.data.dvc.__hash__()
 
@@ -98,6 +105,19 @@ class DataItem(object):
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
+
+    def get_all_caches(self):
+        result = []
+
+        suffix_len = self._git.COMMIT_LEN + len(self.CACHE_FILE_SEP)
+        cache_prefix = os.path.basename(self.cache.relative[:-suffix_len])
+
+        print('DATA={} DIRNAME={}'.format(self._data.relative, self.cache.dirname))
+        for cache_file in os.listdir(self.cache.dirname):
+            if cache_file[:-suffix_len] == cache_prefix:
+                result.append(self.copy(cache_file))
+
+        return result
 
     @cached_property
     def resolved_cache(self):

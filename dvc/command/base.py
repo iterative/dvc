@@ -1,11 +1,9 @@
 import argparse
-import os
 import fasteners
 
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.system import System
 
 
 class CmdBaseError(DvcException):
