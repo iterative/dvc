@@ -26,12 +26,10 @@ class CmdGC(Traverse):
             Logger.warn(u'[Cmd-GC] Data item {} is not a valid symbolic link'.format(target))
             data_item = self.settings.path_factory.data_item(target)
 
-        print('DATA ITEM {} {}'.format(data_item.data.relative, data_item.cache.relative))
-
         for cache_data_item in data_item.get_all_caches():
-            if cache_data_item.cache.relative != data_item.cache.relative:
+            if cache_data_item.cache.relative != data_item.resolved_cache.relative:
                 os.remove(cache_data_item.cache.relative)
-                Logger.info(u'GC cache file {}'.format(cache_data_item.cache.relative))
+                Logger.info(u'GC cache file {} was removed'.format(cache_data_item.cache.relative))
                 self._remove_cloud_cache(cache_data_item)
 
         Logger.debug(u'[Cmd-GC] GC data item {}. Success.'.format(data_item.data.relative))
@@ -46,6 +44,7 @@ class CmdGC(Traverse):
 
     # Renaming
     def gc_dir(self, target):
+        Logger.debug(u'[Cmd-GC] GC dir {}.'.format(target))
         return self._traverse_dir(target)
 
     def gc_file(self, target):

@@ -36,6 +36,45 @@ class TestDataFileObjBasic(BasicEnvironment):
         pass
 
 
+class TestDataItemWithGivenCache(BasicEnvironment):
+    def setUp(self):
+        BasicEnvironment.init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))
+
+        self._git = GitWrapperI(git_dir=self._test_git_dir, commit='ad45ba8')
+        self._config = ConfigI('data', 'cache', 'state')
+
+        self._file = os.path.join('data', 'file.txt')
+        self._cache = os.path.join('cache', 'file.txt_abcd')
+
+        self._data_item = DataItem(self._file, self._git, self._config, self._cache)
+        pass
+
+    def test_basic(self):
+        self.assertEqual(self._data_item.data.relative, self._file)
+        self.assertEqual(self._data_item.cache.relative, self._cache)
+
+    def test_resolve_unexist_symlink(self):
+        self.assertEqual(self._data_item.resolved_cache.relative, self._file)
+
+
+class TestDeepDataItemWithGivenCache(BasicEnvironment):
+    def setUp(self):
+        BasicEnvironment.init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))
+
+        self._git = GitWrapperI(git_dir=self._test_git_dir, commit='ad45ba8')
+        self._config = ConfigI('data', 'cache', 'state')
+
+        self._file = os.path.join('data', 'dir1', 'file.txt')
+        self._cache = os.path.join('cache', 'dir1', 'file.txt_abcd')
+
+        self._data_item = DataItem(self._file, self._git, self._config, self._cache)
+        pass
+
+    def test_basic(self):
+        self.assertEqual(self._data_item.data.relative, self._file)
+        self.assertEqual(self._data_item.cache.relative, self._cache)
+
+
 class TestPathFactory(BasicEnvironment):
     def setUp(self):
         BasicEnvironment.init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))

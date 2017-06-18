@@ -15,8 +15,8 @@ class PathFactory(object):
     def path(self, relative_raw):
         return Path(relative_raw, self._git)
 
-    def data_item(self, data_file):
-        return DataItem(data_file, self._git, self._config)
+    def data_item(self, data_file, cache_file=None):
+        return DataItem(data_file, self._git, self._config, cache_file)
 
     def stated_data_item(self, state, data_file):
         return StatedDataItem(state, data_file, self._git, self._config)

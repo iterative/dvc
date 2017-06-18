@@ -72,6 +72,7 @@ class DataItem(object):
     def copy(self, cache_file=None):
         if not cache_file:
             cache_file = self._cache_file
+
         return DataItem(self._data.abs, self._git, self._config, cache_file)
 
     def __hash__(self):
@@ -99,7 +100,7 @@ class DataItem(object):
         cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
 
         if self._cache_file:
-            file_name = os.path.basename(self._cache_file)
+            file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
             file_name = self.data_dvc_short + self.CACHE_FILE_SEP + self._git.curr_commit
 
@@ -110,12 +111,12 @@ class DataItem(object):
         result = []
 
         suffix_len = self._git.COMMIT_LEN + len(self.CACHE_FILE_SEP)
-        cache_prefix = os.path.basename(self.cache.relative[:-suffix_len])
+        cache_prefix = os.path.basename(self.resolved_cache.relative[:-suffix_len])
 
-        print('DATA={} DIRNAME={}'.format(self._data.relative, self.cache.dirname))
-        for cache_file in os.listdir(self.cache.dirname):
+        for cache_file in os.listdir(self.resolved_cache.dirname):
             if cache_file[:-suffix_len] == cache_prefix:
-                result.append(self.copy(cache_file))
+                data_item = self.copy(os.path.join(self.resolved_cache.dirname, cache_file))
+                result.append(data_item)
 
         return result
 
