@@ -12,6 +12,7 @@ from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.command.data_sync import POOL_SIZE
+from dvc.progress import Progress
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
@@ -140,27 +141,41 @@ class CmdImportFile(CmdBase):
         """
         r = requests.get(from_url, stream=True)
 
+        name = os.path.basename(from_url)
         chunk_size = 1024 * 100
         downloaded = 0
         last_reported = 0
         report_bucket = 100*1024*10
+        total_length = r.headers.get('content-length')
 
         with open(to_file, 'wb') as f:
             for chunk in r.iter_content(chunk_size=chunk_size):
-                if chunk:  # filter out keep-alive new chunks
-                    downloaded += chunk_size
-                    last_reported += chunk_size
-                    if last_reported >= report_bucket:
-                        last_reported = 0
-                        Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
-                    f.write(chunk)
+                if not chunk:  # filter out keep-alive new chunks
+                    continue
+
+                downloaded += chunk_size
+
+                last_reported += chunk_size
+                if last_reported >= report_bucket:
+                    last_reported = 0
+                    Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
+
+                # update progress bar
+                self.progress.update_target(name, downloaded, total_length)
+
+                f.write(chunk)
+
+        # tell progress bar that this target is finished downloading
+        self.progress.finish_target(name)
 
     def download_targets(self, targets):
         """
         Download targets in a number of threads.
         """
+        self.progress = Progress(len(targets))
         p = ThreadPool(processes=POOL_SIZE)
         p.map(self.download_target, targets)
+        self.progress.finish()
 
     def create_state_files(self, targets, lock):
         """
