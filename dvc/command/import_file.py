@@ -14,6 +14,7 @@ from dvc.system import System
 from dvc.command.data_sync import POOL_SIZE
 from dvc.progress import Progress
 
+
 class ImportFileError(DvcException):
     def __init__(self, msg):
         DvcException.__init__(self, 'Import file: {}'.format(msg))
@@ -36,7 +37,10 @@ class CmdImportFile(CmdBase):
     def run(self):
         targets = []
         with DvcLock(self.is_locker, self.git):
-            output = self.parsed_args.output
+            output = self.get_output()
+            if not output:
+                return 1
+
             for input in self.parsed_args.input:
                 if not os.path.isdir(input):
                     targets.append((input, output))
@@ -59,6 +63,19 @@ class CmdImportFile(CmdBase):
             message = 'DVC import files: {} -> {}'.format(str(self.parsed_args.input), output)
             self.commit_if_needed(message)
         pass
+
+    def get_output(self):
+        output = self.parsed_args.output
+
+        if len(output) > 0 and output[-1] == os.path.sep and not os.path.isdir(output):
+            Logger.error(u'Import error: output directory {} does not exist'.format(output))
+            return None
+
+        if type(self.parsed_args.input) == list and len(self.parsed_args.input) > 1 and not os.path.isdir(output):
+            Logger.error(u'Import error: output {} has to be directory for multiple file import'.format(output))
+            return None
+
+        return output
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():

@@ -82,9 +82,7 @@ class System(object):
     def get_long_path(path):
         """Convert short path to a full path. It is needed for Windows."""
         if System.is_unix():
-            print('======================11111111111111111111')
             return path
-        print('======================222222222222222222222')
 
         buffer = create_unicode_buffer(System.LONG_PATH_BUFFER_SIZE)
         get_long_path_name = windll.kernel32.GetLongPathNameW
