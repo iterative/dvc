@@ -65,7 +65,7 @@ class CmdImportFile(CmdBase):
 
     @staticmethod
     def verify_output(output, input):
-        if output.is_dir_path(output) and not os.path.isdir(output):
+        if CmdImportFile.is_dir_path(output) and not os.path.isdir(output):
             raise ImportFileError(u'Import error: output directory {} does not exist'.format(output))
 
         if len(input) > 1 and not os.path.isdir(output):
@@ -74,7 +74,7 @@ class CmdImportFile(CmdBase):
         pass
 
     @staticmethod
-    def is_dir_path(self, output):
+    def is_dir_path(output):
         return len(output) > 0 and output[-1] == os.path.sep
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
