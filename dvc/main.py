@@ -17,7 +17,7 @@ from dvc.command.data_sync import CmdDataSync
 from dvc.command.lock import CmdLock
 from dvc.command.test import CmdTest
 
-VERSION = '0.8.4'
+VERSION = '0.8.5'
 
 def print_usage():
     usage = ('',
