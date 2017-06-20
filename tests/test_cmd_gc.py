@@ -1,4 +1,5 @@
-import glob, os
+import glob
+import os
 
 from dvc.command.gc import CmdGC
 from dvc.config import ConfigI

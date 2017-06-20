@@ -4,7 +4,6 @@ from dvc.command.remove import CmdDataRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.executor import Executor
-from dvc.logger import Logger
 from tests.test_cmd_run import RunBasicTest
 
 

@@ -1,7 +1,4 @@
-import io
 import os
-import shutil
-import traceback
 from unittest import TestCase
 import mock
 
@@ -18,8 +15,6 @@ except ImportError:
     # Python 3
     builtin_module_name = 'builtins'
 
-from dvc.path.path import Path
-from dvc.system import System
 from dvc.config import Config
 from dvc.data_cloud import DataCloud
 from dvc.settings import Settings
