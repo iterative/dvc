@@ -66,10 +66,10 @@ class CmdImportFile(CmdBase):
     @staticmethod
     def verify_output(output, input):
         if CmdImportFile.is_dir_path(output) and not os.path.isdir(output):
-            raise ImportFileError(u'Import error: output directory {} does not exist'.format(output))
+            raise ImportFileError(u'output directory {} does not exist'.format(output))
 
         if len(input) > 1 and not os.path.isdir(output):
-            msg = u'Import error: output {} has to be directory for multiple file import'
+            msg = u'output {} has to be directory for multiple file import'
             raise ImportFileError(msg.format(output))
         pass
 
@@ -230,4 +230,4 @@ class CmdImportFile(CmdBase):
 
 
 if __name__ == '__main__':
-    Runtime.run(CmdDataImport)
+    Runtime.run(CmdImportFile)
