@@ -37,9 +37,8 @@ class CmdImportFile(CmdBase):
     def run(self):
         targets = []
         with DvcLock(self.is_locker, self.git):
-            output = self.get_output()
-            if not output:
-                return 1
+            output = self.parsed_args.output
+            self.verify_output(output)
 
             for input in self.parsed_args.input:
                 if not os.path.isdir(input):
@@ -64,18 +63,14 @@ class CmdImportFile(CmdBase):
             self.commit_if_needed(message)
         pass
 
-    def get_output(self):
-        output = self.parsed_args.output
-
+    def verify_output(self, output):
         if len(output) > 0 and output[-1] == os.path.sep and not os.path.isdir(output):
-            Logger.error(u'Import error: output directory {} does not exist'.format(output))
-            return None
+            raise ImportFileError(u'Import error: output directory {} does not exist'.format(output))
 
         if type(self.parsed_args.input) == list and len(self.parsed_args.input) > 1 and not os.path.isdir(output):
-            Logger.error(u'Import error: output {} has to be directory for multiple file import'.format(output))
-            return None
-
-        return output
+            msg = u'Import error: output {} has to be directory for multiple file import'
+            raise ImportFileError(msg.format(output))
+        pass
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
