@@ -70,6 +70,9 @@ class GitWrapperI(object):
 
         return result
 
+    def commit_all_changes_and_log_status(self, message):
+        pass
+
 
 class GitWrapper(GitWrapperI):
     def __init__(self):

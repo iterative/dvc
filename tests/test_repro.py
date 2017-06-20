@@ -1,10 +1,9 @@
 import os
 
-from dvc.command.remove import CmdDataRemove
+from dvc.command.remove import CmdRemove
 from dvc.command.repro import CmdRepro
 from dvc.command.run import CmdRun
 from dvc.executor import Executor
-from dvc.logger import Logger
 from tests.test_cmd_run import RunBasicTest
 
 
@@ -94,7 +93,7 @@ class ReproChangedDependency(ReproBasicEnv):
 
     def recreate_file1(self):
         self.settings._args = [self.file_name1, '--keep-in-cloud']
-        CmdDataRemove(self.settings).run()
+        CmdRemove(self.settings).run()
 
         file1_code_file = 'file1_2.py'
         self.create_file_and_commit(file1_code_file, 'print("Goodbye")' + os.linesep + 'print("Jack")')

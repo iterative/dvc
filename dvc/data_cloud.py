@@ -1,19 +1,18 @@
 import base64
 import hashlib
 import os
+import threading
 import configparser
 import shutil
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
-from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.runtime import Runtime
-from dvc.system import System
 from dvc.config import ConfigError
 from dvc.settings import Settings
+
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -47,6 +46,7 @@ class DataCloudBase(object):
         self._settings = settings
         self._config = config
         self._cloud_config = cloud_config
+        self._lock = threading.Lock()
 
     @property
     def storage_path(self):
@@ -97,7 +97,24 @@ class DataCloudBase(object):
         if os.path.isfile(item.resolved_cache.dvc):
             self.sync_to_cloud(item)
         else:
+            self.create_directory(fname, item)
             self.sync_from_cloud(item)
+
+    def create_directory(self, fname, item):
+        self._lock.acquire()
+        try:
+            dir = os.path.dirname(item.cache.relative)
+            if not os.path.exists(dir):
+                Logger.debug(u'Creating directory {}'.format(dir))
+                try:
+                    os.makedirs(dir)
+                except OSError as ex:
+                    raise DataCloudError(u'Cannot create directory {}: {}'.format(dir, ex))
+            elif not os.path.isdir(dir):
+                msg = u'File {} cannot be synced because {} is not a directory'
+                raise DataCloudError(msg.format(fname, dir))
+        finally:
+            self._lock.release()
 
     def remove_from_cloud(self, item):
         pass
@@ -115,6 +132,7 @@ class DataCloudLOCAL(DataCloudBase):
     def remove_from_cloud(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
         os.remove(item.resolved_cache.dvc)
+
 
 class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """

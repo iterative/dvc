@@ -1,15 +1,15 @@
 import os
 
-from dvc.command.remove import CmdDataRemove
+from dvc.command.remove import CmdRemove
 from tests.basic_env import DirHierarchyEnvironment
 
 
-class TestCmdDataRemove(DirHierarchyEnvironment):
+class TestCmdRemove(DirHierarchyEnvironment):
     def setUp(self):
         DirHierarchyEnvironment.init_environment(self)
 
     def test_file_by_file_removal(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         dir1_dvc_name = os.path.join('data', self.dir1)
@@ -19,7 +19,7 @@ class TestCmdDataRemove(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(dir1_dvc_name))
 
     def test_remove_deep_dir(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
         cmd.parsed_args.recursive = True
 
@@ -30,7 +30,7 @@ class TestCmdDataRemove(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(dir1_dvc_name))
 
     def test_not_recursive_removal(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
         cmd.parsed_args.recursive = False
 
@@ -41,7 +41,7 @@ class TestCmdDataRemove(DirHierarchyEnvironment):
         pass
 
     def test_data_dir_removal(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
         cmd.parsed_args.recursive = True
 
@@ -57,7 +57,7 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
         DirHierarchyEnvironment.init_environment(self)
 
     def test_remove_data_instance(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         self.assertTrue(os.path.isfile(self.file1))
@@ -70,7 +70,7 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(self.state1))
 
     def test_keep_cache(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
         cmd.parsed_args.keep_in_cache = True
 
@@ -84,7 +84,7 @@ class TestRemoveDataItem(DirHierarchyEnvironment):
         self.assertFalse(os.path.exists(self.state1))
 
     def test_remove_data_instance_without_cache(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         self.assertTrue(os.path.isfile(self.file6))
@@ -100,35 +100,8 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
     def setUp(self):
         DirHierarchyEnvironment.init_environment(self)
 
-    # def test_end_to_end_with_an_error(self):
-    #     cmd = CmdDataRemove(self.settings)
-    #     cmd.parsed_args.keep_in_cloud = True
-    #
-    #     dir11_full = self.dir11
-    #     dir2_full = self.dir2
-    #     file6_full = self.file6
-    #
-    #     cmd.parsed_args.target = [dir11_full, self.file5, file6_full]
-    #     cmd.parsed_args.recursive = True
-    #
-    #     cmd.parsed_args.skip_git_actions = True
-    #
-    #     self.assertTrue(os.path.exists(dir11_full))
-    #     self.assertTrue(os.path.exists(self.file5))
-    #     self.assertTrue(os.path.exists(dir2_full))
-    #     self.assertTrue(os.path.exists(self.file1))
-    #     self.assertTrue(os.path.exists(self.file6))
-    #
-    #     self.assertFalse(cmd.remove_all_targets())
-    #
-    #     self.assertFalse(os.path.exists(dir11_full))
-    #     self.assertFalse(os.path.exists(self.file5))
-    #     self.assertTrue(os.path.exists(dir2_full))
-    #     self.assertTrue(os.path.exists(self.file1))
-    #     self.assertTrue(os.path.exists(self.file6))
-
     def test_end_to_end_with_no_error(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         dir11_full = os.path.join('data', self.dir11)
@@ -152,7 +125,7 @@ class TestRemoveEndToEnd(DirHierarchyEnvironment):
         self.assertTrue(os.path.exists(self.file1))
 
     def test_run(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         dir11_full = os.path.join('data', self.dir11)
@@ -181,7 +154,7 @@ class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
         DirHierarchyEnvironment.init_environment(self)
 
     def test(self):
-        cmd = CmdDataRemove(self.settings)
+        cmd = CmdRemove(self.settings)
         cmd.parsed_args.keep_in_cloud = True
 
         dir11_full = os.path.join(self._config.data_dir, self.dir11)

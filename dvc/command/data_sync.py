@@ -7,12 +7,13 @@ from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.data_cloud import DataCloud
 
-#FIXME add cmdline argument and config option for POOL_SIZE
 POOL_SIZE = 4
+
 
 class DataSyncError(DvcException):
     def __init__(self, msg):
         super(DataSyncError, self).__init__('Data sync error: {}'.format(msg))
+
 
 class CmdDataSync(CmdBase):
     def __init__(self, settings):
@@ -29,6 +30,9 @@ class CmdDataSync(CmdBase):
             cloud = DataCloud(self.settings)
             pool = ThreadPool(processes=POOL_SIZE)
             targets = []
+
+            if len(self.parsed_args.targets) == 0:
+                raise DataSyncError('Sync target is not specified')
 
             for target in self.parsed_args.targets:
                 if System.islink(target):
