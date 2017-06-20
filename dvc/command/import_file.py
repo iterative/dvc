@@ -38,7 +38,7 @@ class CmdImportFile(CmdBase):
         targets = []
         with DvcLock(self.is_locker, self.git):
             output = self.parsed_args.output
-            self.verify_output(output)
+            self.verify_output(output, self.parsed_args.input)
 
             for input in self.parsed_args.input:
                 if not os.path.isdir(input):
@@ -63,11 +63,12 @@ class CmdImportFile(CmdBase):
             self.commit_if_needed(message)
         pass
 
-    def verify_output(self, output):
+    @staticmethod
+    def verify_output(output, input):
         if len(output) > 0 and output[-1] == os.path.sep and not os.path.isdir(output):
             raise ImportFileError(u'Import error: output directory {} does not exist'.format(output))
 
-        if type(self.parsed_args.input) == list and len(self.parsed_args.input) > 1 and not os.path.isdir(output):
+        if len(input) > 1 and not os.path.isdir(output):
             msg = u'Import error: output {} has to be directory for multiple file import'
             raise ImportFileError(msg.format(output))
         pass
