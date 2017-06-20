@@ -65,13 +65,17 @@ class CmdImportFile(CmdBase):
 
     @staticmethod
     def verify_output(output, input):
-        if len(output) > 0 and output[-1] == os.path.sep and not os.path.isdir(output):
+        if output.is_dir_path(output) and not os.path.isdir(output):
             raise ImportFileError(u'Import error: output directory {} does not exist'.format(output))
 
         if len(input) > 1 and not os.path.isdir(output):
             msg = u'Import error: output {} has to be directory for multiple file import'
             raise ImportFileError(msg.format(output))
         pass
+
+    @staticmethod
+    def is_dir_path(self, output):
+        return len(output) > 0 and output[-1] == os.path.sep
 
     def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
