@@ -6,12 +6,12 @@ from dvc.path.data_item import DataItemError
 from dvc.runtime import Runtime
 
 
-class CmdDataRemove(Traverse):
+class CmdRemove(Traverse):
     def __init__(self, settings):
-        super(CmdDataRemove, self).__init__(settings, "remove")
+        super(CmdRemove, self).__init__(settings, "remove")
 
     def define_args(self, parser):
-        super(CmdDataRemove, self).define_args(parser)
+        super(CmdRemove, self).define_args(parser)
         parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively.')
         parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
                             help='Do not remove data from cache.')
@@ -86,4 +86,4 @@ class CmdDataRemove(Traverse):
 
 
 if __name__ == '__main__':
-    Runtime.run(CmdDataRemove)
+    Runtime.run(CmdRemove)

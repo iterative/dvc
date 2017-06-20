@@ -10,7 +10,7 @@ import sys
 
 from dvc.runtime import Runtime
 from dvc.command.init import CmdInit
-from dvc.command.remove import CmdDataRemove
+from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
@@ -64,7 +64,7 @@ def main():
     elif cmd == 'import':
         Runtime.run(CmdImportFile)
     elif cmd == 'remove':
-        Runtime.run(CmdDataRemove)
+        Runtime.run(CmdRemove)
     elif cmd == 'lock':
         Runtime.run(CmdLock)
     elif cmd == 'cloud-run':
