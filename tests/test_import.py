@@ -11,7 +11,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
         DirHierarchyEnvironment.init_environment(self)
 
     def test_import_file_to_dir(self):
-        with tempfile.NamedTemporaryFile() as temp:
+        with tempfile.NamedTemporaryFile(mode='w') as temp:
             content = 'Some data'
             temp.write(content)
             temp.flush()
@@ -36,7 +36,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
         pass
 
     def test_import_file_to_file(self):
-        with tempfile.NamedTemporaryFile() as temp:
+        with tempfile.NamedTemporaryFile(mode='w') as temp:
             content = 'Some data'
             temp.write(content)
             temp.flush()
@@ -53,7 +53,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
         pass
 
     def test_import_to_existing_dir(self):
-        with tempfile.NamedTemporaryFile() as temp:
+        with tempfile.NamedTemporaryFile(mode='w') as temp:
             content = 'Some data'
             temp.write(content)
             temp.flush()
@@ -71,7 +71,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
         pass
 
     def test_import_to_not_existing_dir(self):
-        with tempfile.NamedTemporaryFile() as temp:
+        with tempfile.NamedTemporaryFile(mode='w') as temp:
             content = 'Some data'
             temp.write(content)
             temp.flush()
@@ -91,7 +91,8 @@ class TestCmdRemove(DirHierarchyEnvironment):
         pass
 
     def test_multiple_import(self):
-        with tempfile.NamedTemporaryFile() as temp1, tempfile.NamedTemporaryFile() as temp2:
+        with tempfile.NamedTemporaryFile(mode='w') as temp1,\
+                tempfile.NamedTemporaryFile(mode='w') as temp2:
             content = 'Some data'
 
             temp1.write(content)
