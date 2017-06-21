@@ -12,7 +12,7 @@ from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.command.data_sync import POOL_SIZE
-from dvc.progress import Progress
+from dvc.progress import progress
 
 
 class ImportFileError(DvcException):
@@ -178,21 +178,21 @@ class CmdImportFile(CmdBase):
                     Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
 
                 # update progress bar
-                self.progress.update_target(name, downloaded, total_length)
+                progress.update_target(name, downloaded, total_length)
 
                 f.write(chunk)
 
         # tell progress bar that this target is finished downloading
-        self.progress.finish_target(name)
+        progress.finish_target(name)
 
     def download_targets(self, targets):
         """
         Download targets in a number of threads.
         """
-        self.progress = Progress(len(targets))
+        progress.set_n_total(len(targets))
         p = ThreadPool(processes=POOL_SIZE)
         p.map(self.download_target, targets)
-        self.progress.finish()
+        progress.finish()
 
     def create_state_files(self, targets, lock):
         """
