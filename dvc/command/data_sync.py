@@ -6,6 +6,7 @@ from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.data_cloud import DataCloud
+from dvc.progress import progress
 
 POOL_SIZE = 4
 
@@ -44,7 +45,9 @@ class CmdDataSync(CmdBase):
                 else:
                     raise DataSyncError('File "{}" does not exit'.format(target)) 
 
+            progress.set_n_total(len(targets))
             pool.map(cloud.sync, targets)
+            progress.finish()
         pass
 
 if __name__ == '__main__':

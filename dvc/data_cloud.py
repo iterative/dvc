@@ -12,7 +12,7 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
 from dvc.settings import Settings
-
+from dvc.progress import progress
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -27,8 +27,16 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Y', suffix)
 
 
-def percent_cb(complete, total):
-    Logger.debug('{} transferred out of {}'.format(sizeof_fmt(complete), sizeof_fmt(total)))
+def percent_cb(name, complete, total):
+    Logger.debug('{}: {} transferred out of {}'.format(
+                                    name,
+                                    sizeof_fmt(complete),
+                                    sizeof_fmt(total)))
+    progress.update_target(os.path.basename(name), complete, total)
+
+
+def create_cb(name):
+    return (lambda cur,tot: return percent_cb(name, cur, tot))
 
 
 def file_md5(fname):
@@ -237,7 +245,8 @@ class DataCloudAWS(DataCloudBase):
             raise DataCloudError('File "{}" does not exist in the cloud'.format(key_name))
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
-        key.get_contents_to_filename(item.resolved_cache.relative, cb=percent_cb)
+        key.get_contents_to_filename(item.resolved_cache.relative,
+                                     cb=create_cb(item.resolved_cache.relative))
         Logger.info('Downloading completed')
 
     def sync_to_cloud(self, data_item):
@@ -259,7 +268,8 @@ class DataCloudAWS(DataCloudBase):
 
         Logger.info('Uploading cache file "{}" to S3 "{}"'.format(data_item.resolved_cache.relative, aws_key))
         key = bucket.new_key(aws_key)
-        key.set_contents_from_filename(data_item.resolved_cache.relative, cb=percent_cb)
+        key.set_contents_from_filename(data_item.resolved_cache.relative,
+                                       cb=create_cb(data_item.resolved_cache.relative))
         Logger.info('Uploading completed')
 
     def remove_from_cloud(self, data_item):
