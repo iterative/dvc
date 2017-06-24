@@ -3,7 +3,6 @@ import hashlib
 import os
 import threading
 import configparser
-import shutil
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
@@ -13,6 +12,7 @@ from dvc.exceptions import DvcException
 from dvc.config import ConfigError
 from dvc.settings import Settings
 from dvc.progress import progress
+from dvc.utils import copyfile
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -36,7 +36,7 @@ def percent_cb(name, complete, total):
 
 
 def create_cb(name):
-    return (lambda cur,tot: return percent_cb(name, cur, tot))
+    return (lambda cur,tot: percent_cb(name, cur, tot))
 
 
 def file_md5(fname):
@@ -131,11 +131,11 @@ class DataCloudBase(object):
 class DataCloudLOCAL(DataCloudBase):
     def sync_to_cloud(self, item):
         Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
-        shutil.copy(item.resolved_cache.dvc, self.storage_path)
+        copyfile(item.resolved_cache.dvc, self.storage_path)
 
     def sync_from_cloud(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
-        shutil.copy(self.storage_path, item.resolved_cache.dvc)
+        copyfile(self.storage_path, item.resolved_cache.dvc)
 
     def remove_from_cloud(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)

@@ -1,5 +1,4 @@
 import os
-from shutil import copyfile
 import re
 import requests
 from multiprocessing.pool import ThreadPool
@@ -13,7 +12,7 @@ from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.command.data_sync import POOL_SIZE
 from dvc.progress import progress
-
+from dvc.utils import copyfile
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
