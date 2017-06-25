@@ -6,10 +6,13 @@ class Progress(object):
     """
     Simple multi-target progress bar.
     """
-    def __init__(self, total):
-        self._n_total = total
+    def __init__(self):
+        self._n_total = 0
         self._n_finished = 0
         self._lock = threading.Lock()
+
+    def set_n_total(self, total):
+        self._n_total = total
 
     def _clearln(self):
         print('\r\x1b[K', end='')
@@ -73,3 +76,5 @@ class Progress(object):
         name = target_name[:name_len] if len(target_name) > name_len else target_name
 
         return num + bar + percent + name
+
+progress = Progress()

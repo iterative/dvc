@@ -6,8 +6,7 @@ from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.data_cloud import DataCloud
-
-POOL_SIZE = 4
+from dvc.utils import map_progress
 
 
 class DataSyncError(DvcException):
@@ -28,7 +27,6 @@ class CmdDataSync(CmdBase):
     def run(self):
         with DvcLock(self.is_locker, self.git):
             cloud = DataCloud(self.settings)
-            pool = ThreadPool(processes=POOL_SIZE)
             targets = []
 
             if len(self.parsed_args.targets) == 0:
@@ -44,7 +42,7 @@ class CmdDataSync(CmdBase):
                 else:
                     raise DataSyncError('File "{}" does not exit'.format(target)) 
 
-            pool.map(cloud.sync, targets)
+            map_progress(cloud.sync, targets, self.parsed_args.jobs)
         pass
 
 if __name__ == '__main__':

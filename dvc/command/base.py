@@ -1,6 +1,8 @@
 import argparse
 import fasteners
 
+from multiprocessing import cpu_count
+
 from dvc.config import ConfigError
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
@@ -89,6 +91,8 @@ class CmdBase(object):
     def define_common_args(self, parser):
         parser.add_argument('--quiet', '-q', action='store_true', default=False, help='Be quiet.')
         parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Be verbose.')
+        parser.add_argument('--jobs', '-j', type=int, default=cpu_count(),
+                            help='Number of jobs to run simultaneously.')
 
     def process_common_args(self):
         if self._parsed_args.quiet and not self._parsed_args.verbose:

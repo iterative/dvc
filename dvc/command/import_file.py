@@ -1,8 +1,6 @@
 import os
-from shutil import copyfile
 import re
 import requests
-from multiprocessing.pool import ThreadPool
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.data_cloud import sizeof_fmt
@@ -11,9 +9,8 @@ from dvc.exceptions import DvcException
 from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
-from dvc.command.data_sync import POOL_SIZE
-from dvc.progress import Progress
-
+from dvc.progress import progress
+from dvc.utils import copyfile, map_progress
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
@@ -178,21 +175,18 @@ class CmdImportFile(CmdBase):
                     Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
 
                 # update progress bar
-                self.progress.update_target(name, downloaded, total_length)
+                progress.update_target(name, downloaded, total_length)
 
                 f.write(chunk)
 
         # tell progress bar that this target is finished downloading
-        self.progress.finish_target(name)
+        progress.finish_target(name)
 
     def download_targets(self, targets):
         """
         Download targets in a number of threads.
         """
-        self.progress = Progress(len(targets))
-        p = ThreadPool(processes=POOL_SIZE)
-        p.map(self.download_target, targets)
-        self.progress.finish()
+        map_progress(self.download_target, targets, self.parsed_args.jobs)
 
     def create_state_files(self, targets, lock):
         """
