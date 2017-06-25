@@ -2,6 +2,8 @@ import os
 import stat
 import shutil
 
+from multiprocessing.pool import ThreadPool
+
 from dvc.progress import progress
 
 LOCAL_CHUNK_SIZE = 1024*1024*1024
@@ -54,3 +56,13 @@ def copyfile(src, dest):
 
     f.close()
     o.close()
+
+
+def map_progress(func, targets, n_threads):
+    """
+    Process targets in multi-threaded mode with progress bar
+    """
+    progress.set_n_total(len(targets))
+    p = ThreadPool(processes=n_threads)
+    p.map(func, targets)
+    progress.finish()
