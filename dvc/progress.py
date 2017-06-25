@@ -63,7 +63,7 @@ class Progress(object):
             percent = "?% "
         else:
             total = int(total)
-            progress = int((100 * current)/total) if current <= total else 100
+            progress = int((100 * current)/total) if current < total else 100
             percent = str(progress) + "% "
 
         num = "({}/{}): ".format(self._n_finished + 1, self._n_total)
