@@ -119,7 +119,8 @@ class RepositoryChange(object):
         for root, dirs, files in os.walk(self._settings.config.data_dir):
             for file in files:
                 filename = os.path.join(root, file)
-                timestemp = os.path.getmtime(filename)
-                res.add((filename, timestemp))
+                if os.path.exists(filename):
+                    timestemp = os.path.getmtime(filename)
+                    res.add((filename, timestemp))
 
         return res

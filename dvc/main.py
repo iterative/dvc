@@ -15,6 +15,7 @@ from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
 from dvc.command.lock import CmdLock
+from dvc.command.gc import CmdGC
 from dvc.command.test import CmdTest
 
 VERSION = '0.8.5'
@@ -39,7 +40,7 @@ def print_usage():
 def main():
     cmds = ['--help', '--version', 'init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
-            'test', 'test-aws', 'test-gcloud', 'test-cloud']
+            'test', 'test-aws', 'test-gcloud', 'test-cloud', 'gc']
 
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
         if len(sys.argv) >= 2:
@@ -67,6 +68,8 @@ def main():
         Runtime.run(CmdRemove)
     elif cmd == 'lock':
         Runtime.run(CmdLock)
+    elif cmd == 'gc':
+        Runtime.run(CmdGC)
     elif cmd == 'cloud-run':
         print('cloud-run unimplemented')
     elif cmd == 'cloud-instance-create':

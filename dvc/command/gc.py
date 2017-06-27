@@ -53,6 +53,14 @@ class CmdGC(Traverse):
     def gc_all(self):
         return self._traverse_all()
 
+    @property
+    def no_git_actions(self):
+        return True
+
+    @staticmethod
+    def not_committed_changes_warning():
+        pass
+
 
 if __name__ == '__main__':
     Runtime.run(CmdGC)

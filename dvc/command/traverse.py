@@ -39,7 +39,6 @@ class Traverse(CmdBase):
             return False
 
         error = False
-        print('TARGET={}'.format(self.parsed_args.target))
         for target in self.parsed_args.target:
             if not self._traverse(target):
                 error = True

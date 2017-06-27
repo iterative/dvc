@@ -242,7 +242,8 @@ class DataCloudAWS(DataCloudBase):
         key_name = self.cache_file_key(item.resolved_cache.dvc)
         key = bucket.get_key(key_name)
         if not key:
-            raise DataCloudError('File "{}" does not exist in the cloud'.format(key_name))
+            Logger.error('File "{}" does not exist in the cloud'.format(key_name))
+            return
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
         key.get_contents_to_filename(item.resolved_cache.relative,
@@ -320,7 +321,8 @@ class DataCloudGCP(DataCloudBase):
 
         blob = bucket.get_blob(key)
         if not blob:
-            raise DataCloudError('File "{}" does not exist in the cloud'.format(key))
+            Logger.error('File "{}" does not exist in the cloud'.format(key))
+            return
 
         Logger.info('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
 
