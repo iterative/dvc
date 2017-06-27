@@ -114,7 +114,7 @@ setup(
     ],
     packages=find_packages(exclude=['bin', 'tests', 'functests']),
     include_package_data=True,
-    download_url='dataversioncontrol.com',
+    download_url='http://dataversioncontrol.com',
     entry_points={
         'console_scripts': ['dvc = dvc.main:main']
     },
