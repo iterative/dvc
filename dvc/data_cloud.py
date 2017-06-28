@@ -267,11 +267,9 @@ class DataCloudAWS(DataCloudBase):
 
             Logger.debug('Checksum miss-match. Re-uploading is required.')
 
-        Logger.info('Uploading cache file "{}" to S3 "{}"'.format(data_item.resolved_cache.relative, aws_key))
         key = bucket.new_key(aws_key)
         key.set_contents_from_filename(data_item.resolved_cache.relative,
                                        cb=create_cb(data_item.resolved_cache.relative))
-        Logger.info('Uploading completed')
 
     def remove_from_cloud(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
@@ -343,8 +341,6 @@ class DataCloudGCP(DataCloudBase):
                 Logger.debug('checksum %s matches.  Skipping upload' % data_item.cache.relative)
                 return
             Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
-
-        Logger.info('uploading cache file "{} to gc "{}"'.format(data_item.cache.relative, blob_name))
 
         blob = bucket.blob(blob_name)
         blob.upload_from_filename(data_item.resolved_cache.relative)
