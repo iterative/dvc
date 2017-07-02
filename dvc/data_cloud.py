@@ -271,7 +271,7 @@ class DataCloudAWS(DataCloudBase):
         key = bucket.new_key(aws_key)
         key.set_contents_from_filename(data_item.resolved_cache.relative,
                                        cb=create_cb(data_item.resolved_cache.relative))
-        progress.finish_target(os.path.basename(data_item.resolved_cache.relateive))
+        progress.finish_target(os.path.basename(data_item.resolved_cache.relative))
 
     def remove_from_cloud(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
