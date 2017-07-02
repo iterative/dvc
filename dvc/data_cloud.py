@@ -248,6 +248,7 @@ class DataCloudAWS(DataCloudBase):
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
         key.get_contents_to_filename(item.resolved_cache.relative,
                                      cb=create_cb(item.resolved_cache.relative))
+        progress.finish_target(os.path.basename(item.resolved_cache.relative))
         Logger.info('Downloading completed')
 
     def sync_to_cloud(self, data_item):
@@ -270,6 +271,7 @@ class DataCloudAWS(DataCloudBase):
         key = bucket.new_key(aws_key)
         key.set_contents_from_filename(data_item.resolved_cache.relative,
                                        cb=create_cb(data_item.resolved_cache.relative))
+        progress.finish_target(os.path.basename(data_item.resolved_cache.relateive))
 
     def remove_from_cloud(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
