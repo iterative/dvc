@@ -222,7 +222,7 @@ class DataCloudAWS(DataCloudBase):
     def sanity_check(self):
         creds = self.get_aws_credentials()
         if creds is None:
-            logger.info("can't find aws credetials, assuming envirment variables or iam role")
+            Logger.info("can't find aws credetials, assuming envirment variables or iam role")
         self._aws_creds = creds
 
     def _get_bucket_aws(self):
