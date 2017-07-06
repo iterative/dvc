@@ -222,12 +222,15 @@ class DataCloudAWS(DataCloudBase):
     def sanity_check(self):
         creds = self.get_aws_credentials()
         if creds is None:
-            raise ConfigError('can\'t find aws credentials.')
+            Logger.info("can't find aws credetials, assuming envirment variables or iam role")
         self._aws_creds = creds
 
     def _get_bucket_aws(self):
         """ get a bucket object, aws """
-        conn = S3Connection(self.aws_access_key_id, self.aws_secret_access_key, host=self.aws_region_host)
+        if all([self.aws_access_key_id, self.aws_secret_access_key, self.aws_region_host]):
+            conn = S3Connection(self.aws_access_key_id, self.aws_secret_access_key, host=self.aws_region_host)
+        else:
+            conn = S3Connection()
         bucket_name = self.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket is None:
