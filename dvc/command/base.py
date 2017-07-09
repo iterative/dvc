@@ -40,29 +40,24 @@ class CmdBase(object):
     def __init__(self, settings):
         self._settings = settings
 
-        parser = argparse.ArgumentParser()
-        self.define_common_args(parser)
-        self.define_args(parser)
-
-        self._parsed_args, self._command_args = parser.parse_known_args(args=self.args)
-
-        self.process_common_args()
+        if settings._parsed_args.quiet and not settings._parsed_args.verbose:
+            Logger.be_quiet()
+        elif not settings._parsed_args.quiet and settings._parsed_args.verbose:
+            Logger.be_verbose()
 
     @property
     def settings(self):
         return self._settings
 
+    #NOTE: this name is really confusing. It should really be called "command" or smth,
+    # because it is only used for "command" argument from CmdRun.
     @property
     def args(self):
         return self._settings.args
 
     @property
     def parsed_args(self):
-        return self._parsed_args
-
-    @property
-    def command_args(self):
-        return self._command_args
+        return self._settings._parsed_args
 
     @property
     def config(self):
@@ -75,34 +70,6 @@ class CmdBase(object):
     @property
     def git(self):
         return self._settings.git
-
-    def define_args(self, parser):
-        pass
-
-    def set_no_git_actions(self, parser):
-        parser.add_argument('--no-git-actions', '-G', action='store_true', default=False,
-                            help='Skip all git actions including reproducibility check and commits.')
-
-    def set_lock_action(self, parser):
-        parser.add_argument('--lock', '-l', action='store_true', default=False,
-                            help='Lock data item - disable reproduction. ' +
-                                 'It can be enabled by `dvc lock` command or by forcing reproduction.')
-
-    def define_common_args(self, parser):
-        parser.add_argument('--quiet', '-q', action='store_true', default=False, help='Be quiet.')
-        parser.add_argument('--verbose', '-v', action='store_true', default=False, help='Be verbose.')
-        parser.add_argument('--jobs', '-j', type=int, default=cpu_count(),
-                            help='Number of jobs to run simultaneously.')
-
-    @staticmethod
-    def set_reset_flag(parser, short_name, long_name, message):
-        parser.add_argument(short_name, long_name, action='store_true', default=False, help=message)
-
-    def process_common_args(self):
-        if self._parsed_args.quiet and not self._parsed_args.verbose:
-            Logger.be_quiet()
-        elif not self._parsed_args.quiet and self._parsed_args.verbose:
-            Logger.be_verbose()
 
     @property
     def no_git_actions(self):
@@ -132,24 +99,5 @@ class CmdBase(object):
     def not_committed_changes_warning():
         Logger.warn('changes were not committed to git')
 
-    def add_string_arg(self, parser, name, message, default = None,
-                       conf_section=None, conf_name=None):
-        if conf_section and conf_name:
-            section = self.config[conf_section]
-            if not section:
-                raise ConfigError("")
-            default_value = section.get(conf_section, default)
-        else:
-            default_value = default
-
-        parser.add_argument(name,
-                            metavar='',
-                            default=default_value,
-                            help=message)
-
     def run(self):
         pass
-
-    @staticmethod
-    def warning_dvc_is_busy():
-        Logger.warn('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')

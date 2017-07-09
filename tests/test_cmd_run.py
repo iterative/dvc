@@ -31,7 +31,7 @@ class RunBasicTest(TestCase):
         self.config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self.git, self.config)
 
-        self.settings = Settings([], self.git, self.config)
+        self.settings = Settings(['run'], self.git, self.config)
         pass
 
     def init_git_repo(self):
@@ -65,13 +65,12 @@ class RunTwoFilesBase(RunBasicTest):
     def setUp(self):
         super(RunTwoFilesBase, self).setUp()
 
+        self.input_param_file = os.path.join('data', 'extra_input')
+        self.extra_output_file = os.path.join('data', 'extra_output')
+
+        self.settings.parse_args('run --input {} --output {}'.format(self.input_param_file, self.extra_output_file))
         self.settings._args = []
         cmd_run = CmdRun(self.settings)
-        self.input_param_file = os.path.join('data', 'extra_input')
-        cmd_run.parsed_args.input = [self.input_param_file]
-
-        self.extra_output_file = os.path.join('data', 'extra_output')
-        cmd_run.parsed_args.output = [self.extra_output_file]
 
         self.file_name1 = os.path.join('data', 'file1')
         self.file_name2 = os.path.join('data', 'file2')

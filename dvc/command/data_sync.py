@@ -3,7 +3,6 @@ from multiprocessing.pool import ThreadPool
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
-from dvc.runtime import Runtime
 from dvc.system import System
 from dvc.data_cloud import DataCloud
 from dvc.utils import map_progress
@@ -17,12 +16,6 @@ class DataSyncError(DvcException):
 class CmdDataSync(CmdBase):
     def __init__(self, settings):
         super(CmdDataSync, self).__init__(settings)
-
-    def define_args(self, parser):
-        parser.add_argument('targets',
-                            metavar='',
-                            help='File or directory to sync.',
-                            nargs='*')
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
@@ -44,6 +37,3 @@ class CmdDataSync(CmdBase):
 
             map_progress(cloud.sync, targets, self.parsed_args.jobs)
         pass
-
-if __name__ == '__main__':
-    Runtime.run(CmdDataSync)

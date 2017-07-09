@@ -7,7 +7,6 @@ from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.path.data_item import NotInDataDirError
-from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
 
@@ -27,16 +26,6 @@ class CmdRepro(CmdRun):
     @property
     def code_dependencies(self):
         return self._code
-
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-
-        parser.add_argument('target', metavar='', help='Data items to reproduce.', nargs='*')
-        parser.add_argument('-f', '--force', action='store_true', default=False,
-                            help='Reproduce even if dependencies were not changed.')
-        parser.add_argument('-s', '--single-item', action='store_true', default=False,
-                            help='Reproduce only single data item without recursive dependencies check.')
-        pass
 
     @property
     def lock(self):
@@ -209,6 +198,10 @@ class ReproChange(object):
                                             self.state.stdout,
                                             self.state.stderr,
                                             self.state.shell,
+                                            [],
+                                            [],
+                                            [],
+                                            True,
                                             check_if_ready=False) != 0:
                 raise ReproError('Run command reproduction failed')
             return True
@@ -317,7 +310,3 @@ class ReproChange(object):
             dependency_data_items.append(data_item)
 
         return dependency_data_items
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdRepro)

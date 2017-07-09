@@ -22,7 +22,7 @@ class TestCmdTarget(BasicEnvironment):
         self._git = GitWrapperI(git_dir=self._test_git_dir, commit=self._commit)
         self._config = ConfigI('data', 'cache', 'state', '.target')
         self.path_factory = PathFactory(self._git, self._config)
-        self.settings = Settings([], self._git, self._config)
+        self.settings = Settings(['target'], self._git, self._config)
 
         os.chdir(self._test_git_dir)
 
@@ -45,53 +45,49 @@ class TestCmdTarget(BasicEnvironment):
         self.assertFalse(os.path.exists('.target'))
 
     def test_single_file(self):
+        self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = self.file1_data
-        cmd.parsed_args.unset = False
 
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), self.file1_data)
 
     def test_multiple_files(self):
+        self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = self.file1_data
-        cmd.parsed_args.unset = False
         cmd.run()
 
         # Another target
-        cmd.parsed_args.target = self.file2_data
+        self.settings.parse_args('target {}'.format(self.file2_data))
+        cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), self.file2_data)
 
         # Unset target
-        cmd.parsed_args.target = ''
-        cmd.parsed_args.unset = True
+        self.settings.parse_args('target --unset')
+        cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), '')
 
     def test_initial_unset(self):
+        self.settings.parse_args('target --unset')
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = ''
-        cmd.parsed_args.unset = True
         self.assertEqual(cmd.run(), 1)
         self.assertFalse(os.path.exists('.target'))
 
     def test_unset_existing_target(self):
+        self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = self.file1_data
-        cmd.parsed_args.unset = False
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), self.file1_data)
 
-        cmd.parsed_args.target = ''
-        cmd.parsed_args.unset = True
+        self.settings.parse_args('target --unset')
+        cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), '')
 
     def test_the_same(self):
+        self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = self.file1_data
-        cmd.parsed_args.unset = False
         self.assertEqual(cmd.run(), 0)
         self.assertEqual(open('.target').read(), self.file1_data)
 
@@ -99,13 +95,11 @@ class TestCmdTarget(BasicEnvironment):
         self.assertEqual(open('.target').read(), self.file1_data)
 
     def test_args_conflict(self):
+        self.settings.parse_args('target {} --unset'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = self.file1_data
-        cmd.parsed_args.unset = True
         self.assertEqual(cmd.run(), 1)
 
     def test_no_args(self):
+        self.settings.parse_args('target --unset')
         cmd = CmdTarget(self.settings)
-        cmd.parsed_args.target = ''
-        cmd.parsed_args.unset = False
         self.assertEqual(cmd.run(), 1)

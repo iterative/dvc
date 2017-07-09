@@ -18,15 +18,6 @@ class Traverse(CmdBase):
         self.cloud = DataCloud(self.settings)
         self._do_not_start_from_root = do_not_start_from_root
 
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-
-        parser.add_argument('target', metavar='', help='Target to remove - file or directory.', nargs='*')
-        # parser.add_argument('-r', '--recursive', action='store_true', help='CmdGarbage collect directory recursively.')
-        parser.add_argument('-l', '--keep-in-cloud', action='store_true', default=False,
-                            help='Do not remove data from cloud.')
-        pass
-
     def run(self):
         with DvcLock(self.is_locker, self.git):
             if not self._traverse_all():

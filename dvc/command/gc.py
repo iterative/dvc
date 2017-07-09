@@ -3,19 +3,11 @@ import os
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError
-from dvc.runtime import Runtime
 
 
 class CmdGC(Traverse):
     def __init__(self, settings):
         super(CmdGC, self).__init__(settings, "garbage collect", do_not_start_from_root=False)
-
-    def define_args(self, parser):
-        super(CmdGC, self).define_args(parser)
-        parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively.')
-        parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
-                            help='Do not remove data from cache.')
-        pass
 
     def process_file(self, target):
         Logger.debug(u'[Cmd-GC] GC file {}.'.format(target))
@@ -60,7 +52,3 @@ class CmdGC(Traverse):
     @staticmethod
     def not_committed_changes_warning():
         pass
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdGC)

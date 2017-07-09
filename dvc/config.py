@@ -46,7 +46,7 @@ class ConfigI(object):
 class Config(ConfigI):
     CONFIG = 'dvc.conf'
 
-    def __init__(self, conf_file, conf_pseudo_file=None):
+    def __init__(self, conf_file=CONFIG, conf_pseudo_file=None):
         """
         Params:
             conf_file (String): configuration file
@@ -59,7 +59,7 @@ class Config(ConfigI):
             self._config.readfp(conf_pseudo_file)
         else:
             if not os.path.isfile(conf_file):
-                raise ConfigError('Config file "{}" does not exist'.format(conf_file))
+                raise ConfigError('Config file "{}" does not exist {}'.format(conf_file, os.getcwd()))
             self._config.read(conf_file)
 
         level = self._config['Global']['LogLevel']

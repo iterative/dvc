@@ -1,6 +1,10 @@
+import os
+
+from dvc.git_wrapper import GitWrapperI, GitWrapper
+from dvc.config import ConfigI, Config
 from dvc.exceptions import DvcException
 from dvc.path.factory import PathFactory
-
+from dvc.cli import parse_args
 
 class SettingsError(DvcException):
     def __init__(self, msg):
@@ -8,18 +12,27 @@ class SettingsError(DvcException):
 
 
 class Settings(object):
-    def __init__(self, args, git, config):
-        self._args = args
+    def __init__(self, argv=None, git=None, config=None):
+        self._args = None
+        args = None
+
+        if argv != None and len(argv) != 0:
+            args = parse_args(argv)
+            self._args = argv[2:]
+
+        if git == None:
+            git = GitWrapper()
+
+        if config == None:
+            if args != None and args.cmd != 'init':
+                config = Config()
+            else:
+                config = ConfigI()
+
         self._git = git
         self._config = config
         self._path_factory = PathFactory(git, config)
-
-        # self._dvc_home = os.environ.get('DVC_HOME')
-        # if not self._dvc_home:
-        #     raise SettingsError('DVC_HOME environment variable is not defined')
-        # if not os.path.exists(self._dvc_home):
-        #     raise SettingsError("DVC_HOME directory doesn't exists")
-        pass
+        self._parsed_args = args
 
     @property
     def args(self):
@@ -27,6 +40,13 @@ class Settings(object):
 
     def set_args(self, args):
         self._args = args
+
+    @property
+    def parsed_args(self):
+        return self._parsed_args
+
+    def parse_args(self, args):
+        self._parsed_args = parse_args(args)
 
     @property
     def git(self):
