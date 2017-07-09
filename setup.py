@@ -1,7 +1,7 @@
 import platform
 from setuptools import setup, find_packages
 from distutils.errors import DistutilsPlatformError
-from dvc.main import VERSION
+from dvc import VERSION
 
 install_requires = [
     'altgraph==0.13',

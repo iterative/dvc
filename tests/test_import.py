@@ -18,7 +18,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
 
             dir = os.path.join('data', self.dir1)
             settings = copy(self.settings)
-            settings.set_args([temp.name, dir])
+            settings.parse_args('import {} {}'.format(temp.name, dir))
             cmd = CmdImportFile(settings)
             cmd.run()
 
@@ -44,7 +44,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
             target_file_name = 'targ.txt'
             target_file = os.path.join('data', self.dir1, target_file_name)
             settings = copy(self.settings)
-            settings.set_args([temp.name, target_file])
+            settings.parse_args('import {} {}'.format(temp.name, target_file))
             cmd = CmdImportFile(settings)
             cmd.run()
 
@@ -60,7 +60,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
 
             dir = os.path.join('data', self.dir11)
             settings = copy(self.settings)
-            settings.set_args([temp.name, dir])
+            settings.parse_args('import {} {}'.format(temp.name, dir))
             cmd = CmdImportFile(settings)
             cmd.run()
 
@@ -78,7 +78,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
 
             dir = os.path.join('data', self.dir1, 'not_existing_dir/')
             settings = copy(self.settings)
-            settings.set_args([temp.name, dir])
+            settings.parse_args('import {} {}'.format(temp.name, dir))
             cmd = CmdImportFile(settings)
 
             with self.assertRaises(ImportFileError):
@@ -103,7 +103,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
 
             dir = os.path.join('data', self.dir11)
             settings = copy(self.settings)
-            settings.set_args([temp1.name, temp2.name, dir])
+            settings.parse_args('import {} {} {}'.format(temp1.name, temp2.name, dir))
             cmd = CmdImportFile(settings)
             cmd.run()
 

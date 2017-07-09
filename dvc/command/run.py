@@ -1,4 +1,5 @@
 import os
+import sys
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
@@ -6,7 +7,6 @@ from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
 from dvc.path.data_item import NotInDataDirError, NotInGitDirError
 from dvc.repository_change import RepositoryChange
-from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
 
@@ -19,21 +19,6 @@ class RunError(DvcException):
 class CmdRun(CmdBase):
     def __init__(self, settings):
         super(CmdRun, self).__init__(settings)
-
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-        self.set_lock_action(parser)
-
-        parser.add_argument('--stdout', help='Output std output to a file.')
-        parser.add_argument('--stderr', help='Output std error to a file.')
-        parser.add_argument('--input', '-i', action='append',
-                            help='Declare input data items for reproducible cmd.')
-        parser.add_argument('--output', '-o', action='append',
-                            help='Declare output data items for reproducible cmd.')
-        parser.add_argument('--code', '-c', action='append',
-                            help='Code dependencies which produce the output.')
-        parser.add_argument('--shell', help='Shell command', action='store_true', default=False)
-        pass
 
     @property
     def lock(self):
@@ -53,8 +38,8 @@ class CmdRun(CmdBase):
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            data_items_from_args, not_data_items_from_args = self.argv_files_by_type(self.command_args)
-            return self.run_and_commit_if_needed(self.command_args,
+            data_items_from_args, not_data_items_from_args = self.argv_files_by_type(self.parsed_args.command)
+            return self.run_and_commit_if_needed(self.parsed_args.command,
                                                  data_items_from_args,
                                                  not_data_items_from_args,
                                                  self.parsed_args.stdout,
@@ -63,7 +48,12 @@ class CmdRun(CmdBase):
         pass
 
     def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
-                                 stdout, stderr, shell, check_if_ready=True):
+                                 stdout, stderr, shell, 
+                                 output_data_items=None,
+                                 input_data_items=None,
+                                 code_dependencies=None,
+                                 lock=None,
+                                 check_if_ready=True):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
@@ -72,12 +62,34 @@ class CmdRun(CmdBase):
                          not_data_items_from_args,
                          stdout,
                          stderr,
-                         shell)
+                         shell,
+                         output_data_items,
+                         input_data_items,
+                         code_dependencies,
+                         lock)
 
-        return self.commit_if_needed('DVC run: {}'.format(' '.join(self.args)))
+        return self.commit_if_needed('DVC run: {}'.format(' '.join(command_args)))
 
     def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
-                    stdout=None, stderr=None, shell=False):
+                    stdout=None, stderr=None, shell=False,
+                    output_data_items=None,
+                    input_data_items=None,
+                    code_dependencies=None,
+                    lock=None):
+
+        # Repro sets these from state file
+        if output_data_items == None:
+            output_data_items = self.declaration_output_data_items
+
+        if input_data_items == None:
+            input_data_items = self.declaration_input_data_items
+
+        if code_dependencies == None:
+            code_dependencies = self.code_dependencies
+
+        if lock == None:
+            lock = self.lock
+
         Logger.debug(u'Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
                      ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
@@ -91,13 +103,13 @@ class CmdRun(CmdBase):
             self.remove_new_files(repo_change)
             raise RunError('Errors occurred.')
 
-        output_set = set(self.declaration_output_data_items + repo_change.changed_data_items)
+        output_set = set(output_data_items + repo_change.changed_data_items)
         output_files_dvc = [x.data.dvc for x in output_set]
 
-        input_set = set(data_items_from_args + self.declaration_input_data_items) - output_set
+        input_set = set(data_items_from_args + input_data_items) - output_set
         input_files_dvc = [x.data.dvc for x in input_set]
 
-        code_dependencies_dvc = self.git.abs_paths_to_dvc(self.code_dependencies + not_data_items_from_args)
+        code_dependencies_dvc = self.git.abs_paths_to_dvc(code_dependencies + not_data_items_from_args)
 
         result = []
         for data_item in repo_change.changed_data_items:
@@ -114,7 +126,7 @@ class CmdRun(CmdBase):
                                    output_files_dvc,
                                    code_dependencies_dvc,
                                    argv=cmd_args,
-                                   lock=self.lock,
+                                   lock=lock,
                                    stdout=self._stdout_to_dvc(stdout),
                                    stderr=self._stdout_to_dvc(stderr),
                                    shell=shell)
@@ -176,7 +188,3 @@ class CmdRun(CmdBase):
                 param_text, ', '.join(external))
             )
         return data_items
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdRun)

@@ -1,18 +1,11 @@
 from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
-from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 
 
 class CmdLock(CmdBase):
     def __init__(self, settings):
         super(CmdLock, self).__init__(settings)
-
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-        CmdLock.set_reset_flag(parser, '-u', '--unlock', 'Unlock data item - enable reproduction.')
-        parser.add_argument('files', metavar='', help='Data items to lock or unlock.', nargs='*')
-        pass
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
@@ -47,7 +40,3 @@ class CmdLock(CmdBase):
             self.commit_if_needed('DVC lock: {}'.format(' '.join(self.args)))
 
         return 0
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdLock, False)

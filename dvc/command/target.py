@@ -2,22 +2,15 @@ import os
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
-from dvc.runtime import Runtime
 
 
 class CmdTarget(CmdBase):
     def __init__(self, settings):
         super(CmdTarget, self).__init__(settings)
 
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-        CmdTarget.set_reset_flag(parser, '-u', '--unset', 'Reset target.')
-        parser.add_argument('target', metavar='', nargs='?', help='Target data item.')
-        pass
-
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            target = self.parsed_args.target
+            target = self.parsed_args.target_file
             unset = self.parsed_args.unset
 
             if target and unset:
@@ -61,7 +54,3 @@ class CmdTarget(CmdBase):
         open(target_conf_file_path, 'a').close()
 
         return self.commit_if_needed('DVC target unset')
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdTarget, False)

@@ -6,7 +6,6 @@ from dvc.command.base import CmdBase, DvcLock
 from dvc.data_cloud import sizeof_fmt
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.progress import progress
@@ -20,16 +19,6 @@ class ImportFileError(DvcException):
 class CmdImportFile(CmdBase):
     def __init__(self, settings):
         super(CmdImportFile, self).__init__(settings)
-
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-        self.set_lock_action(parser)
-
-        parser.add_argument('input',
-                            help='Input file/files.',
-                            nargs='+')
-        parser.add_argument('output',
-                            help='Output file/directory.')
 
     def run(self):
         targets = []
@@ -221,7 +210,3 @@ class CmdImportFile(CmdBase):
     @staticmethod
     def is_url(url):
         return CmdImportFile.URL_REGEX.match(url) is not None
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdImportFile)

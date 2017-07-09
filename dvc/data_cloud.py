@@ -8,10 +8,10 @@ import tempfile
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
+import dvc
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
-from dvc.settings import Settings
 from dvc.progress import progress
 from dvc.utils import copyfile
 
@@ -382,7 +382,7 @@ class DataCloud(object):
     }
 
     def __init__(self, settings):
-        assert isinstance(settings, Settings) 
+        assert isinstance(settings, dvc.settings.Settings) 
 
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):

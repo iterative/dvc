@@ -10,7 +10,6 @@ from dvc.settings import Settings
 from dvc.system import System
 from dvc.utils import rmtree
 
-
 class BasicEnvironment(TestCase):
     def init_environment(self,
                          test_dir=System.get_long_path(tempfile.mkdtemp()),
