@@ -3,6 +3,7 @@ import hashlib
 import os
 import threading
 import configparser
+import tempfile
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
@@ -251,10 +252,14 @@ class DataCloudAWS(DataCloudBase):
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
 
         try:
-            key.get_contents_to_filename(item.resolved_cache.relative,
+            temp_file = tempfile.NamedTemporaryFile(dir=item.resolved_cache.dirname, delete=False)
+            key.get_contents_to_filename(temp_file.name,
                                      cb=create_cb(item.resolved_cache.relative))
+            os.rename(temp_file.name, item.resolved_cache.relative)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key_name, exc))
+            if temp_file and os.path.exists(temp_file.name):
+                os.remove(temp_file.name)
             return
 
         progress.finish_target(os.path.basename(item.resolved_cache.relative))
