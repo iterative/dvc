@@ -1,7 +1,7 @@
 #!/bin/sh
 
 BUILD_DIR=build
-INSTALL_DIR=usr
+INSTALL_DIR=usr/local
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 
 print_error()
@@ -25,7 +25,7 @@ fpm_build()
 {
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc.main import VERSION; print(str(VERSION))")
-	fpm -s dir -f -t $1 --osxpkg-identifier-prefix org.dataversioncontrol -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
+	fpm -s dir -f -t $1 --osxpkg-identifier-prefix com.dataversioncontrol -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
 }
 
 cleanup()
