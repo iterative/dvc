@@ -10,7 +10,7 @@ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featuriza
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/split_train_test.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/xml_to_tsv.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/requirements.txt
-pip install -r code/requirements.txt
+pip install -U -r code/requirements.txt
 
 git init
 git add code/
