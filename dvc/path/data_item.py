@@ -1,7 +1,5 @@
 import os
-import re
 import shutil
-import fnmatch
 
 from dvc.path.path import Path
 from dvc.exceptions import DvcException

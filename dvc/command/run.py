@@ -78,7 +78,7 @@ class CmdRun(CmdBase):
 
     def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
                     stdout=None, stderr=None, shell=False):
-        Logger.debug('Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
+        Logger.debug(u'Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
                      ' '.join(cmd_args),
                      ', '.join([x.data.dvc for x in data_items_from_args]),
                      stdout,
