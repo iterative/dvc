@@ -1,11 +1,8 @@
-import glob
 import os
 
-from dvc.command.gc import CmdGC
 from dvc.command.target import CmdTarget
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI
-from dvc.path.data_item import DataItem
 from dvc.path.factory import PathFactory
 from dvc.settings import Settings
 from dvc.system import System
