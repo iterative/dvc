@@ -16,9 +16,10 @@ from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataSync
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
+from dvc.command.target import CmdTarget
 from dvc.command.test import CmdTest
 
-VERSION = '0.8.6'
+VERSION = '0.8.7'
 
 def print_usage():
     usage = ('',
@@ -70,6 +71,8 @@ def main():
         Runtime.run(CmdLock)
     elif cmd == 'gc':
         Runtime.run(CmdGC)
+    elif cmd == 'target':
+        Runtime.run(CmdTarget)
     elif cmd == 'cloud-run':
         print('cloud-run unimplemented')
     elif cmd == 'cloud-instance-create':
