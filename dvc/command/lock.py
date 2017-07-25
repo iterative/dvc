@@ -10,7 +10,7 @@ class CmdLock(CmdBase):
 
     def define_args(self, parser):
         self.set_no_git_actions(parser)
-        self.set_reset_flag('-u', '--unlock', 'Unlock data item - enable reproduction.')
+        CmdLock.set_reset_flag(parser, '-u', '--unlock', 'Unlock data item - enable reproduction.')
         parser.add_argument('files', metavar='', help='Data items to lock or unlock.', nargs='*')
         pass
 
