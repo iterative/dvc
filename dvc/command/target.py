@@ -11,7 +11,7 @@ class CmdTarget(CmdBase):
 
     def define_args(self, parser):
         self.set_no_git_actions(parser)
-        self.set_reset_flag('-u', '--unset', 'Reset target.')
+        CmdTarget.set_reset_flag(parser, '-u', '--unset', 'Reset target.')
         parser.add_argument('target', metavar='', nargs='?', help='Target data item.')
         pass
 
@@ -35,18 +35,17 @@ class CmdTarget(CmdBase):
         if unset:
             return self.unset_target(target_conf_file_path)
         else:
+            target_dvc_path = self.settings.path_factory.existing_data_item(target).data.dvc
+            if os.path.exists(target_conf_file_path):
+                with open(target_conf_file_path) as fd:
+                    if fd.read() == target_dvc_path:
+                        return 0
             with open(target_conf_file_path, 'w') as fd:
-                target_data_item = self.settings.path_factory.existing_data_item(target)
-                fd.write(target_data_item.data.dvc)
+                fd.write(target_dvc_path)
 
-        if target:
-            msg = 'DVC target: {}'.format(target)
-        else:
-            msg = 'DVC target unset'
-        return self.commit_if_needed(msg)
+        return self.commit_if_needed('DVC target: {}'.format(target))
 
-    @staticmethod
-    def unset_target(target_conf_file_path):
+    def unset_target(self, target_conf_file_path):
         if not os.path.exists(target_conf_file_path):
             Logger.error('Target conf file {} does not exists'.format(
                 target_conf_file_path))
@@ -57,9 +56,11 @@ class CmdTarget(CmdBase):
             return 1
         if open(target_conf_file_path).read() == '':
             return 0
+
         os.remove(target_conf_file_path)
         open(target_conf_file_path, 'a').close()
-        return 0
+
+        return self.commit_if_needed('DVC target unset')
 
 
 if __name__ == '__main__':
