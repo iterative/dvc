@@ -1,5 +1,3 @@
-import os
-
 from dvc.exceptions import DvcException
 from dvc.path.factory import PathFactory
 
