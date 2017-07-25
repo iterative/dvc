@@ -41,7 +41,7 @@ def print_usage():
 def main():
     cmds = ['--help', '--version', 'init', 'run', 'sync', 'repro', 'data', 'remove', 'import', 'lock', 'cloud', \
             'cloud', 'cloud-run', 'cloud-instance-create', 'cloud-instance-remove', 'cloud-instance-describe', \
-            'test', 'test-aws', 'test-gcloud', 'test-cloud', 'gc']
+            'test', 'test-aws', 'test-gcloud', 'test-cloud', 'gc', 'target']
 
     if len(sys.argv) < 2 or sys.argv[1] not in cmds:
         if len(sys.argv) >= 2:
