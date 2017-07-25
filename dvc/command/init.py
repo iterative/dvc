@@ -20,6 +20,7 @@ class CmdInit(CmdBase):
 DataDir = {}
 CacheDir = {}
 StateDir = {}
+TargetFile = {}
 
 # Supported clouds: AWS, GCP
 Cloud = AWS
@@ -67,12 +68,13 @@ ProjectName =
         self.add_string_arg(parser, '--data-dir',  'Data directory.', 'data')
         self.add_string_arg(parser, '--cache-dir', 'Cache directory.', '.cache')
         self.add_string_arg(parser, '--state-dir', 'State directory.', '.state')
+        self.add_string_arg(parser, '--target-file', 'Target file.', Config.TARGET_FILE_DEFAULT)
         pass
 
-    def get_not_existing_dir(self, dir):
+    def get_not_existing_path(self, dir):
         path = Path(os.path.join(self.git.git_dir, dir))
         if path.exists():
-            raise InitError('Directory "{}" already exist'.format(path.name))
+            raise InitError('Path "{}" already exist'.format(path.name))
         return path
 
     def get_not_existing_conf_file_name(self):
@@ -91,33 +93,38 @@ ProjectName =
             ))
             return 1
 
-        data_dir_path = self.get_not_existing_dir(self.parsed_args.data_dir)
-        cache_dir_path = self.get_not_existing_dir(self.parsed_args.cache_dir)
-        state_dir_path = self.get_not_existing_dir(self.parsed_args.state_dir)
+        data_dir_path = self.get_not_existing_path(self.parsed_args.data_dir)
+        cache_dir_path = self.get_not_existing_path(self.parsed_args.cache_dir)
+        state_dir_path = self.get_not_existing_path(self.parsed_args.state_dir)
+        target_file_path = self.get_not_existing_path(self.parsed_args.target_file)
 
         self.settings.config.set(self.parsed_args.data_dir,
                                  self.parsed_args.cache_dir,
-                                 self.parsed_args.state_dir)
+                                 self.parsed_args.state_dir,
+                                 target_file_path)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
-        Logger.info('Directories {}/, {}/ and {}/ were created'.format(
+        target_file_path.touch()
+        Logger.info('Directories {}/, {}/, {}/ and target file {} were created'.format(
             data_dir_path.name,
             cache_dir_path.name,
-            state_dir_path.name))
+            state_dir_path.name,
+            target_file_path.name))
 
         self.create_empty_file()
 
         conf_file = open(conf_file_name, 'wt')
         conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name,
                                                     cache_dir_path.name,
-                                                    state_dir_path.name))
+                                                    state_dir_path.name,
+                                                    target_file_path.name))
         conf_file.close()
 
-        message = 'DVC init. data dir {}, cache dir {}, state dir {}'.format(
+        message = 'DVC init. data dir {}, cache dir {}, state dir {}, '.format(
                         data_dir_path.name,
                         cache_dir_path.name,
                         state_dir_path.name

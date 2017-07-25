@@ -11,13 +11,20 @@ class ConfigError(DvcException):
 
 
 class ConfigI(object):
-    def __init__(self, data_dir=None, cache_dir=None, state_dir=None):
-        self.set(data_dir, cache_dir, state_dir)
+    TARGET_FILE_DEFAULT = '.target'
 
-    def set(self, data_dir, cache_dir, state_dir):
+    def __init__(self, data_dir=None, cache_dir=None, state_dir=None, target_file=None):
+        self._data_dir = None
+        self._cache_dir = None
+        self._state_dir = None
+        self._target_file = None
+        self.set(data_dir, cache_dir, state_dir, target_file)
+
+    def set(self, data_dir, cache_dir, state_dir, target_file):
         self._data_dir = data_dir
         self._cache_dir = cache_dir
         self._state_dir = state_dir
+        self._target_file = target_file
 
     @property
     def data_dir(self):
@@ -31,9 +38,14 @@ class ConfigI(object):
     def state_dir(self):
         return self._state_dir
 
+    @property
+    def target_file(self):
+        return self._target_file
+
 
 class Config(ConfigI):
     CONFIG = 'dvc.conf'
+
     def __init__(self, conf_file, conf_pseudo_file=None):
         """
         Params:
@@ -55,7 +67,8 @@ class Config(ConfigI):
 
         super(Config, self).__init__(self._config['Global']['DataDir'],
                                      self._config['Global']['CacheDir'],
-                                     self._config['Global']['StateDir'])
+                                     self._config['Global']['StateDir'],
+                                     self._config['Global'].get('TargetFile', Config.TARGET_FILE_DEFAULT))
         pass
 
     @property
