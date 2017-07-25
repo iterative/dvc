@@ -94,6 +94,10 @@ class CmdBase(object):
         parser.add_argument('--jobs', '-j', type=int, default=cpu_count(),
                             help='Number of jobs to run simultaneously.')
 
+    @staticmethod
+    def set_reset_flag(parser, short_name, long_name, message):
+        parser.add_argument(short_name, long_name, action='store_true', default=False, help=message)
+
     def process_common_args(self):
         if self._parsed_args.quiet and not self._parsed_args.verbose:
             Logger.be_quiet()
