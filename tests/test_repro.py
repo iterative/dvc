@@ -14,8 +14,10 @@ class ReproBasicEnv(RunBasicTest):
         self.file_name1 = os.path.join('data', 'file1')
         self.file1_code_file = 'file1.py'
         self.create_file_and_commit(self.file1_code_file, 'print("Hello")' + os.linesep + 'print("Mary")')
-        self.settings._args = ['python', self.file1_code_file, '--not-repro',
-                                '--stdout', self.file_name1, '--code', self.file1_code_file]
+        self.settings.parse_args(['run',
+                                  '--stdout', self.file_name1,
+                                  '--code', self.file1_code_file,
+                                  'python', self.file1_code_file, '--not-repro'])
         cmd_file1 = CmdRun(self.settings)
         self.assertEqual(cmd_file1.code_dependencies, [self.file1_code_file])
         cmd_file1.run()
@@ -25,16 +27,19 @@ class ReproBasicEnv(RunBasicTest):
         self.create_file_and_commit(self.file11_code_file,
                                     'import sys' + os.linesep + 'print(open(sys.argv[1]).readline().strip())')
 
-        self.settings._args = ['python', self.file11_code_file, self.file_name1,
-                               '--stdout', self.file_name11, '--code', self.file11_code_file]
+        self.settings.parse_args(['run',
+                                  '--stdout', self.file_name11,
+                                  '--code', self.file11_code_file,
+                                  'python', self.file11_code_file, self.file_name1])
         CmdRun(self.settings).run()
 
         self.file_name2 = os.path.join('data', 'file2')
         self.file2_code_file = 'file2.py'
         self.create_file_and_commit(self.file2_code_file,
                                     'print("Bobby")')
-        self.settings._args = ['python', self.file2_code_file,
-                               '--not-repro', '--stdout', self.file_name2]
+        self.settings.parse_args(['run',
+                                  '--stdout', self.file_name2,
+                                  'python', self.file2_code_file, '--not-repro'])
         CmdRun(self.settings).run()
 
         self.file_res_code_file = 'code_res.py'
@@ -44,11 +49,13 @@ class ReproBasicEnv(RunBasicTest):
                                     'text2 = open(sys.argv[2]).read()' + os.linesep +
                                     'print(text1 + text2)')
         self.file_name_res = os.path.join('data', 'file_res')
-        self.settings._args = ['python', self.file_res_code_file,
-                               self.file_name11,
-                               self.file_name2,
-                               '--stdout', self.file_name_res,
-                               '--code', self.file_res_code_file]
+        self.settings.parse_args(['run',
+                                  '--stdout', self.file_name_res,
+                                  '--code', self.file_res_code_file,
+                                  'python', self.file_res_code_file,
+                                  self.file_name11,
+                                  self.file_name2])
+
         cmd_res = CmdRun(self.settings)
         self.assertEqual(cmd_res.code_dependencies, [self.file_res_code_file])
         cmd_res.run()
@@ -76,7 +83,7 @@ class ReproCodeDependencyTest(ReproBasicEnv):
     def test(self):
         self.modify_file_and_commit(self.file_res_code_file)
 
-        self.settings._args = [self.file_name_res]
+        self.settings.parse_args('repro {}'.format(self.file_name_res))
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read().strip(), 'Hello\nBobby')
@@ -86,19 +93,21 @@ class ReproChangedDependency(ReproBasicEnv):
     def test(self):
         self.recreate_file1()
 
-        self.settings._args = [self.file_name11]
+        self.settings.parse_args('repro {}'.format(self.file_name11))
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name11).read(), 'Goodbye\n')
 
     def recreate_file1(self):
-        self.settings._args = [self.file_name1, '--keep-in-cloud']
+        self.settings.parse_args('remove {} --keep-in-cloud'.format(self.file_name1))
         CmdRemove(self.settings).run()
 
         file1_code_file = 'file1_2.py'
         self.create_file_and_commit(file1_code_file, 'print("Goodbye")' + os.linesep + 'print("Jack")')
-        self.settings._args = ['python', file1_code_file, '--not-repro',
-                               '--stdout', self.file_name1, '--code', file1_code_file]
+        self.settings.parse_args(['run',
+                                 '--stdout', self.file_name1,
+                                 '--code', file1_code_file,
+                                 'python', file1_code_file, '--not-repro'])
 
         CmdRun(self.settings).run()
 
@@ -107,7 +116,7 @@ class ReproChangedDeepDependency(ReproChangedDependency):
     def test(self):
         self.recreate_file1()
 
-        self.settings._args = [self.file_name_res]
+        self.settings.parse_args('repro {}'.format(self.file_name_res))
         CmdRepro(self.settings).run()
 
         self.assertEqual(open(self.file_name_res).read().strip(), 'Goodbye\nBobby')

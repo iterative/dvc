@@ -3,19 +3,11 @@ import os
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError
-from dvc.runtime import Runtime
 
 
 class CmdRemove(Traverse):
     def __init__(self, settings):
         super(CmdRemove, self).__init__(settings, "remove")
-
-    def define_args(self, parser):
-        super(CmdRemove, self).define_args(parser)
-        parser.add_argument('-r', '--recursive', action='store_true', help='Remove directory recursively.')
-        parser.add_argument('-c', '--keep-in-cache', action='store_false', default=False,
-                            help='Do not remove data from cache.')
-        pass
 
     def process_file(self, target):
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
@@ -83,7 +75,3 @@ class CmdRemove(Traverse):
 
     def remove_all(self):
         return self._traverse_all()
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdRemove)

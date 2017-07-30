@@ -5,14 +5,10 @@ from pathlib import Path
 
 from google.cloud import storage
 
+import dvc
 from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
-from dvc.runtime import Runtime
-
-from dvc.settings import SettingsError
-
-
 
 class CmdTest(CmdBase):
     def __init__(self, settings):
@@ -33,7 +29,7 @@ class CmdTest(CmdBase):
 
             if self.settings._config.gc_project_name == '':
                 Logger.error('Please specify the google cloud project name in dvc.conf')
-                raise SettingsError('must specify GC ProjectName')
+                raise dvc.settings.SettingsError('must specify GC ProjectName')
 
             try:
                 client = storage.Client(project=self.settings._config.gc_project_name)
@@ -52,7 +48,3 @@ class CmdTest(CmdBase):
                 sys.exit(-1)
             Logger.info('bucket %s visible: google cloud seems to be configured correctly' % sb)
             sys.exit(0)
-
-
-if __name__ == '__main__':
-    Runtime.run(CmdTest, False)

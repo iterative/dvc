@@ -10,7 +10,6 @@ from dvc.settings import Settings
 from dvc.system import System
 from tests.basic_env import BasicEnvironment
 
-
 class TestCmdDataRemove(BasicEnvironment):
     def setUp(self):
         self._test_dir = os.path.join(os.path.sep, 'tmp', 'dvc_unit_test')
@@ -24,7 +23,7 @@ class TestCmdDataRemove(BasicEnvironment):
         self._git = GitWrapperI(git_dir=self._test_git_dir, commit=self._commit)
         self._config = ConfigI('data', 'cache', 'state')
         self.path_factory = PathFactory(self._git, self._config)
-        self.settings = Settings([], self._git, self._config)
+        self.settings = Settings('gc', self._git, self._config)
 
         self.dir1 = 'dir1'
 
@@ -53,11 +52,10 @@ class TestCmdDataRemove(BasicEnvironment):
         self.assertEqual(5, self.cache_file_nums('file2*'))
         self.assertEqual(5, self.cache_file_nums(os.path.join(self.dir1, 'file3*')))
 
+        self.settings.parse_args('gc --no-git-actions data')
         cmd = CmdGC(self.settings)
         os.chdir(self._test_git_dir)
 
-        cmd.parsed_args.no_git_actions = True
-        cmd.parsed_args.target = ['data']
         cmd.gc_all()
 
         self.assertEqual(1, self.cache_file_nums('file1*'))
@@ -72,10 +70,10 @@ class TestCmdDataRemove(BasicEnvironment):
         self.assertEqual(5, self.cache_file_nums('file1*'))
         self.assertEqual(5, self.cache_file_nums('file2*'))
 
+        self.settings.parse_args('gc --no-git-actions')
         cmd = CmdGC(self.settings)
         os.chdir(self._test_git_dir)
 
-        cmd.parsed_args.no_git_actions = True
         cmd.gc_all()
 
         self.assertEqual(5, self.cache_file_nums('file1*'))

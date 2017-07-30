@@ -5,7 +5,6 @@ from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.runtime import Runtime
 from dvc.state_file import StateFile
 from dvc.system import System
 
@@ -61,15 +60,6 @@ ProjectName =
 
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
-
-    def define_args(self, parser):
-        self.set_no_git_actions(parser)
-
-        self.add_string_arg(parser, '--data-dir',  'Data directory.', 'data')
-        self.add_string_arg(parser, '--cache-dir', 'Cache directory.', '.cache')
-        self.add_string_arg(parser, '--state-dir', 'State directory.', '.state')
-        self.add_string_arg(parser, '--target-file', 'Target file.', Config.TARGET_FILE_DEFAULT)
-        pass
 
     def get_not_existing_path(self, dir):
         path = Path(os.path.join(self.git.git_dir, dir))
@@ -162,6 +152,3 @@ ProjectName =
             fd.write('\n{}'.format(os.path.basename(self.git.lock_file)))
 
         Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
-
-if __name__ == '__main__':
-    Runtime.run(CmdInit, False)
