@@ -13,5 +13,6 @@ install:
   - mkdir -p ~/.aws && printf "[default]\naws_access_key_id = ABCDEFG\naws_secret_access_key = 123456789" > ~/.aws/credentials
 script:
   - ./unittests.sh
+  - ./build_linux.sh
 after_sucess:
   - CODECLIMATE_REPO_TOKEN=7350efa14a67c3911af96dadaabe811b43eead7b466309b47687499bf5d72287 codeclimate-test-reporter
