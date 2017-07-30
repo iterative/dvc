@@ -24,7 +24,7 @@ command_exists()
 fpm_build()
 {
 	print_info "Building $1..."
-	VERSION=$(python -c "import dvc; from dvc.main import VERSION; print(str(VERSION))")
+	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
 	fpm -s dir -f -t $1 --osxpkg-identifier-prefix com.dataversioncontrol -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
 }
 

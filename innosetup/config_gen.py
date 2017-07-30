@@ -1,5 +1,5 @@
 # This script generates config.ini for setup.iss script
-from dvc.main import VERSION
+from dvc import VERSION
 
 try:
     import configparser as ConfigParser
