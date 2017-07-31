@@ -13,34 +13,21 @@ class DataItemError(DvcException):
 
 
 class NotInDataDirError(DvcException):
-    def __init__(self, msg):
+    def __init__(self, file, data_dir, pattern='the file "{}" is not in the data directory "{}"'):
+        msg = pattern.format(file, data_dir)
         super(NotInDataDirError, self).__init__(msg)
-
-    @staticmethod
-    def build(file, data_dir):
-        msg = 'the file "{}" is not in the data directory "{}"'.format(file, data_dir)
-        return NotInDataDirError(msg)
 
 
 class DataItemInStatusDirError(NotInDataDirError):
-    def __init__(self, msg):
-        super(DataItemInStatusDirError, self).__init__(msg)
-
-    @staticmethod
-    def build(file, data_dir):
-        msg = 'the file "{}" is in state directory, not in the data directory "{}"'.format(
-                file, data_dir)
-        return DataItemInStatusDirError(msg)
+    def __init__(self, file, data_dir):
+        pattern = 'the file "{}" is in state directory, not in the data directory "{}"'
+        super(DataItemInStatusDirError, self).__init__(file, data_dir, pattern)
 
 
 class NotInGitDirError(NotInDataDirError):
-    def __init__(self, msg):
-        super(NotInGitDirError, self).__init__(msg)
-
-    @staticmethod
-    def build(file, git_dir):
-        msg = 'the file "{}" is not in git directory "{}"'.format(file, git_dir)
-        return NotInGitDirError(msg)
+    def __init__(self, file, git_dir):
+        pattern = 'the file "{}" is not in git directory "{}"'
+        super(NotInGitDirError, self).__init__(file, git_dir, pattern)
 
 
 class DataItem(object):
@@ -55,16 +42,14 @@ class DataItem(object):
         self._data = Path(data_file, git)
 
         if not self._data.abs.startswith(self._git.git_dir_abs):
-            raise NotInGitDirError.build(data_file, self._git.git_dir_abs)
+            raise NotInGitDirError(data_file, self._git.git_dir_abs)
 
         if self._data.abs.startswith(self.state_dir_abs):
-            raise DataItemInStatusDirError.build(data_file, self._config.data_dir)
+            raise DataItemInStatusDirError(data_file, self._config.data_dir)
 
-        if not self._data.abs.startswith(self.data_dir_abs):
-            raise NotInDataDirError.build(data_file, self._config.data_dir)
-
-        if not self._data.dvc.startswith(self._config.data_dir):
-            raise NotInDataDirError.build(data_file, self._config.data_dir)
+        if not self._data.abs.startswith(self.data_dir_abs) or \
+                not self._data.dvc.startswith(self._config.data_dir):
+            raise NotInDataDirError(data_file, self._config.data_dir)
         pass
 
     def copy(self, cache_file=None):
