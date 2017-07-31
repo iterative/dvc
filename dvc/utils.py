@@ -5,6 +5,8 @@ import shutil
 from multiprocessing.pool import ThreadPool
 
 from dvc.progress import progress
+from dvc.logger import Logger
+
 
 LOCAL_CHUNK_SIZE = 1024*1024*1024
 

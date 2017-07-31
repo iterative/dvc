@@ -14,6 +14,8 @@ from dvc.exceptions import DvcException
 from dvc.config import ConfigError
 from dvc.progress import progress
 from dvc.utils import copyfile
+from dvc.utils import cached_property
+
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -147,19 +149,19 @@ class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
     @property
     def aws_access_key_id(self):
-        if not self._aws_creds:
-            self._aws_creds = self.get_aws_credentials()
-        if not self._aws_creds:
-            return None
-        return self._aws_creds[0]
+        if self.aws_creds:
+            return self.aws_creds[0]
+        return None
 
     @property
     def aws_secret_access_key(self):
-        if not self._aws_creds:
-            self._aws_creds = self.get_aws_credentials()
-        if not self._aws_creds:
-            return None
-        return self._aws_creds[1]
+        if self.aws_creds:
+            return self.aws_creds[1]
+        return None
+
+    @cached_property
+    def aws_creds(self):
+        return self.get_aws_credentials()
 
     @property
     def aws_region_host(self):
@@ -189,8 +191,30 @@ class DataCloudAWS(DataCloudBase):
             if successfully found, (access_key_id, secret)
             None otherwise
         """
+
+        # FIX: It won't work in Windows.
         default = os.path.expanduser('~/.aws/credentials')
 
+        paths = self.credential_paths(default)
+        for path in paths:
+            try:
+                cc = configparser.SafeConfigParser()
+
+                # use readfp(open( ... to aid mocking.
+                cc.readfp(open(path, 'r'))
+
+                if 'default' in cc.keys():
+                    access_key = cc['default'].get('aws_access_key_id', None)
+                    secret = cc['default'].get('aws_secret_access_key', None)
+
+                    if access_key is not None and secret is not None:
+                        return (access_key, secret)
+            except Exception as e:
+                pass
+
+        return None
+
+    def credential_paths(self, default):
         paths = []
         credpath = self._cloud_config.get('CredentialPath', None)
         if credpath is not None and len(credpath) > 0:
@@ -202,23 +226,7 @@ class DataCloudAWS(DataCloudBase):
                 paths.append(default)
         else:
             paths.append(default)
-
-        for path in paths:
-            cc = configparser.SafeConfigParser()
-            threw = False
-            try:
-                # use readfp(open( ... to aid mocking.
-                cc.readfp(open(path, 'r'))
-            except Exception as e:
-                threw = True
-            if not threw and 'default' in cc.keys():
-                access_key = cc['default'].get('aws_access_key_id', None)
-                secret = cc['default'].get('aws_secret_access_key', None)
-
-                if access_key is not None and secret is not None:
-                    return (access_key, secret)
-
-        return None
+        return paths
 
     def sanity_check(self):
         creds = self.get_aws_credentials()
@@ -414,9 +422,9 @@ class DataCloud(object):
             (T,) if good
             (F, issues) if bad
         """
-        for key in ['Cloud']:
-            if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
-                raise ConfigError('Please set %s in section Global in config file %s' % (key, self.file))
+        key = 'Cloud'
+        if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
+            raise ConfigError('Please set %s in section Global in config file %s' % (key, self.file))
 
         # now that a cloud is chosen, can check StoragePath
         sp = self._cloud.storage_path
