@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+
+set -e
 
 BUILD_DIR=build
 INSTALL_DIR=usr
@@ -24,7 +26,7 @@ command_exists()
 fpm_build()
 {
 	print_info "Building $1..."
-	VERSION=$(python -c "import dvc; from dvc.main import VERSION; print(str(VERSION))")
+	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
 	fpm -s dir -f -t $1 -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
 }
 
@@ -36,21 +38,22 @@ cleanup()
 
 install_dependencies()
 {
-	print_info "Installing requirements..."
-	pip install -r requirements.txt
-
 	print_info "Installing fpm..."
 	if command_exists dnf; then
 		sudo dnf install ruby-devel gcc make rpm-build
 	elif command_exists yum; then
 		sudo yum install ruby-devel gcc make rpm-build
 	elif command_exists apt-get; then
-		sudo apt-get install ruby ruby-dev rubygems build-essential rpm
+		sudo apt-get update -y
+		sudo apt-get install ruby-dev build-essential rpm python-pip python-dev
 	else
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
 
 	gem install --no-ri --no-rdoc fpm
+
+	print_info "Installing requirements..."
+	pip install -r requirements.txt
 
 	print_info "Installing pyinstaller..."
 	pip install pyinstaller
