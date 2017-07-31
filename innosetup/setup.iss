@@ -67,13 +67,13 @@ begin
 			ModPathType := 'system';
 		end else begin
 			ModPathType := 'user';
-		end
+		end;
 
 		if IsTaskSelected(SymLinkName + '\system') then begin
 			SymLinkType := 'system';
 		end else begin
 			SymLinkType := 'user';
-		end
+		end;
 
 		if IsTaskSelected(ModPathName) then
 			ModPath();
