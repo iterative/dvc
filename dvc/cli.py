@@ -17,7 +17,7 @@ from dvc.config import Config
 from dvc import VERSION
 
 
-def parse_args(argv=None):
+def parse_args(argv):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument('-q',
@@ -260,52 +260,57 @@ def parse_args(argv=None):
                         help='Reset target.')
     target_parser.set_defaults(func=CmdTarget)
 
-
-    cloud_conf = {}
     # Instance create
     instance_create_parser = subparsers.add_parser('instance-create',
                                                     parents=[parent_parser],
                                                     help='Create cloud instance')
     instance_create_parser.add_argument('name',
-                                        metavar='',
+                                        # metavar='',
                                         nargs='?',
                                         help='Instance name.')
     instance_create_parser.add_argument('-c',
                                         '--cloud',
+                                        # metavar='',
                                         help='Cloud: AWS, GCP.')
     instance_create_parser.add_argument('-t',
                                         '--type',
+                                        # metavar='',
                                         help='Instance type.')
     instance_create_parser.add_argument('-i',
                                         '--image',
+                                        # metavar='',
                                         help='Instance image.')
-    instance_create_parser.add_argument('--spot-price', metavar='',
-                                        default=cloud_conf.get("SpotPrice"),
-                                        help='Spot instance price')
-    instance_create_parser.add_argument('--spot-timeout', metavar='', type=int,
-                                        default=cloud_conf.get("SpotTimeout"),
-                                        help='Spot instances waiting timeout')
-    instance_create_parser.add_argument('--security-group', metavar='',
-                                        default=cloud_conf.get("SecurityGroup"),
-                                        help='Security group')
-    instance_create_parser.add_argument('--monitoring', metavar='',
-                                        default=cloud_conf.get("Monitoring"),
-                                        help='Enable EC2 instance monitoring')
-    instance_create_parser.add_argument('--subnet-id', metavar='',
-                                        default=cloud_conf.get("SubnetId"),
-                                        help='Subnet ID')
-    instance_create_parser.add_argument('--ebs-optimized', metavar='',
-                                        default=cloud_conf.get("EbsOptimization"),
-                                        help='Enable EBS I\O optimization')
-    instance_create_parser.add_argument('--keypair-name', metavar='',
-                                        default=cloud_conf.get("KeyPairName"),
+    instance_create_parser.add_argument('--keypair-name',
+                                        metavar='KEYPAIR',
                                         help='The name of key pair for instance launch')
-    instance_create_parser.add_argument('--storage', metavar='',
-                                        default=cloud_conf.get("Storage"),
+    instance_create_parser.add_argument('--storage',
+                                        # metavar='',
                                         help='The name of attachable storage volume.')
     # WHERE EBS IS?
-    instance_create_parser.add_argument('--disks-to-ride0', metavar='',
-                                        default=cloud_conf.get("AllDisksToRaid0"),
+    instance_create_parser.add_argument('--spot-price',
+                                        metavar='PRICE',
+                                        help='Spot instance price in $ i.e. 1.54')
+    instance_create_parser.add_argument('--spot-timeout',
+                                        metavar='TIMEOUT',
+                                        type=int,
+                                        help='Spot instances waiting timeout in seconds.')
+    instance_create_parser.add_argument('--security-group',
+                                        metavar='GROUP',
+                                        help='Security group')
+    instance_create_parser.add_argument('--subnet-id',
+                                        metavar='SUBNET',
+                                        help='Subnet ID')
+    instance_create_parser.add_argument('--monitoring',
+                                        action='store_true',
+                                        default=False,
+                                        help='Enable EC2 instance monitoring')
+    instance_create_parser.add_argument('--ebs-optimized',
+                                        action='store_true',
+                                        default=False,
+                                        help='Enable EBS I\O optimization')
+    instance_create_parser.add_argument('--disks-to-ride0',
+                                        action='store_true',
+                                        default=False,
                                         help='Detect all ephemeral disks and stripe together in raid-0')
     instance_create_parser.set_defaults(func=CmdInstanceCreate)
 
