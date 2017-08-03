@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from dvc.command.base import CmdBase
 from dvc.logger import Logger
@@ -62,10 +61,10 @@ ProjectName =
         super(CmdInit, self).__init__(settings)
 
     def get_not_existing_path(self, dir):
-        path = Path(os.path.join(self.git.git_dir, dir))
-        if path.exists():
-            raise InitError('Path "{}" already exist'.format(path.name))
-        return path
+        path = os.path.join(self.git.git_dir, dir)
+        if os.path.exists(path):
+            raise InitError('Path "{}" already exist'.format(path))
+        return os.path.basename(path), path
 
     def get_not_existing_conf_file_name(self):
         file_name = os.path.join(self.git.git_dir, Config.CONFIG)
@@ -83,10 +82,10 @@ ProjectName =
             ))
             return 1
 
-        data_dir_path = self.get_not_existing_path(self.parsed_args.data_dir)
-        cache_dir_path = self.get_not_existing_path(self.parsed_args.cache_dir)
-        state_dir_path = self.get_not_existing_path(self.parsed_args.state_dir)
-        target_file_path = self.get_not_existing_path(self.parsed_args.target_file)
+        data_dir, data_dir_path = self.get_not_existing_path(self.parsed_args.data_dir)
+        cache_dir, cache_dir_path = self.get_not_existing_path(self.parsed_args.cache_dir)
+        state_dir, state_dir_path = self.get_not_existing_path(self.parsed_args.state_dir)
+        target_file, target_file_path = self.get_not_existing_path(self.parsed_args.target_file)
 
         self.settings.config.set(self.parsed_args.data_dir,
                                  self.parsed_args.cache_dir,
@@ -95,34 +94,34 @@ ProjectName =
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
-        data_dir_path.mkdir()
-        cache_dir_path.mkdir()
-        state_dir_path.mkdir()
-        target_file_path.touch()
+        os.mkdir(data_dir_path)
+        os.mkdir(cache_dir_path)
+        os.mkdir(state_dir_path)
+        open(target_file_path, 'w').close()
         Logger.info('Directories {}/, {}/, {}/ and target file {} were created'.format(
-            data_dir_path.name,
-            cache_dir_path.name,
-            state_dir_path.name,
-            target_file_path.name))
+            data_dir,
+            cache_dir,
+            state_dir,
+            target_file))
 
         self.create_empty_file()
 
         conf_file = open(conf_file_name, 'wt')
-        conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name,
-                                                    cache_dir_path.name,
-                                                    state_dir_path.name,
-                                                    target_file_path.name))
+        conf_file.write(self.CONFIG_TEMPLATE.format(data_dir,
+                                                    cache_dir,
+                                                    state_dir,
+                                                    target_file))
         conf_file.close()
 
         message = 'DVC init. data dir {}, cache dir {}, state dir {}, '.format(
-                        data_dir_path.name,
-                        cache_dir_path.name,
-                        state_dir_path.name
+                        data_dir,
+                        cache_dir,
+                        state_dir
         )
         if self.commit_if_needed(message) == 1:
             return 1
 
-        self.modify_gitignore(cache_dir_path.name)
+        self.modify_gitignore(cache_dir)
         return self.commit_if_needed('DVC init. Commit .gitignore file')
 
     def create_empty_file(self):
