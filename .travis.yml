@@ -6,6 +6,7 @@ python:
   - "3.4"
   - "3.5"
 #  - "3.6" Not supported by pyinstaller yet
+cache: pip
 install:
   - pip install --upgrade pip
   - pip install -r requirements.txt
