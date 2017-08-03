@@ -110,8 +110,11 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument(
                         'command',
-                        nargs=argparse.REMAINDER,
                         help='Command to execute')
+    run_parser.add_argument(
+                        'args',
+                        nargs=argparse.REMAINDER,
+                        help='Arguments of a command')
     run_parser.set_defaults(func=CmdRun)
 
     # Sync
@@ -121,8 +124,7 @@ def parse_args(argv=None):
                         help='Synchronize data file with cloud (cloud settings already setup.')
     sync_parser.add_argument(
                         'targets',
-                        metavar='',
-                        nargs='*',
+                        nargs='+',
                         help='File or directory to sync.')
     sync_parser.add_argument('-j',
                         '--jobs',
@@ -138,7 +140,6 @@ def parse_args(argv=None):
                         help='Reproduce data')
     repro_parser.add_argument(
                         'target',
-                        metavar='',
                         nargs='*',
                         help='Data items to reproduce.')
     repro_parser.add_argument('-f',
@@ -151,7 +152,7 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Reproduce only single data item without recursive dependencies check.')
-    repro_parser.set_defaults(func=CmdRun)
+    repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
     remove_parser = subparsers.add_parser(
@@ -159,7 +160,6 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Remove data item from data directory.')
     remove_parser.add_argument('target',
-                        metavar='',
                         nargs='*',
                         help='Target to remove - file or directory.')
     remove_parser.add_argument('-l',
@@ -219,7 +219,6 @@ def parse_args(argv=None):
                         help='Unlock data item - enable reproduction.')
     lock_parser.add_argument(
                         'files',
-                        metavar='',
                         nargs='*',
                         help='Data items to lock or unlock.')
     lock_parser.set_defaults(func=CmdLock)
@@ -230,7 +229,6 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Collect garbage')
     gc_parser.add_argument('target',
-                        metavar='',
                         nargs='*',
                         help='Target to remove - file or directory.')
     gc_parser.add_argument('-l',
@@ -255,7 +253,6 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Set default target')
     target_parser.add_argument('target_file',
-                        metavar='',
                         nargs='?',
                         help='Target data item.')
     target_parser.add_argument('-u',
