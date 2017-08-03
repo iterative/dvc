@@ -38,9 +38,13 @@ def parse_args(argv=None):
                         default=False,
                         help='Skip all git actions including reproducibility check and commits.')
 
+    # Main parser
     desc = 'Data Version Control'
-    parser = argparse.ArgumentParser(description=desc, parents=[parent_parser],
-             formatter_class=argparse.RawTextHelpFormatter)
+    parser = argparse.ArgumentParser(
+                        prog='dvc',
+                        description=desc,
+                        parents=[parent_parser],
+                        formatter_class=argparse.RawTextHelpFormatter)
 
     parser.add_argument('-V',
                         '--version',
