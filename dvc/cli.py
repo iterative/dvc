@@ -17,7 +17,7 @@ from dvc.config import Config
 from dvc import VERSION
 
 
-def parse_args(argv):
+def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument('-q',
@@ -265,7 +265,7 @@ def parse_args(argv):
                                                     parents=[parent_parser],
                                                     help='Create cloud instance')
     instance_create_parser.add_argument('name',
-                                        # metavar='',
+                                        metavar='',
                                         nargs='?',
                                         help='Instance name.')
     instance_create_parser.add_argument('-c',
