@@ -60,8 +60,6 @@ install_requires = [
     'nose',
     'oauth2client',
     'packaging',
-    'pathlib',
-    'pathlib2',
     'pbr',
     'pexpect',
     'pickleshare',
