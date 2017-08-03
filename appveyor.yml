@@ -40,6 +40,5 @@ deploy:
   provider: GitHub
   auth_token:
     secure: 25c1pNoXWbtTwUkKLcThwcl2A2xG8oXHsPuD73HVbQ7SRy9X6HzkCc2sXzhpfRtF
-  artifact: dvc*.exe
   on:
     appveyor_repo_tag: true
