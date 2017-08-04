@@ -1,6 +1,15 @@
+from dvc.exceptions import DvcException
+
+
+class InstanceError(DvcException):
+    def __init__(self, msg):
+        super(InstanceError).__init__(u"Instance error: " + msg)
 
 
 class Instance(object):
+    INSTANCE_STATE_TAG = 'dvc-is-active'
+    VOLUME_TAG = 'dvc-volume'
+
     def __init__(self, name, cloud, parsed_args, conf_parser):
         self._name = name
         self._cloud = cloud

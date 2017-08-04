@@ -5,9 +5,6 @@ class AwsBase:
     DEFAULT_REGION = "us-east-1"
     DEFAULT_ZONE = "us-east-1a"
 
-    INSTANCE_STATE_TAG = 'oneboxml-is-active'
-    VOLUME_TAG = 'oneboxml-volume'
-
     def __init__(self, homedir, conf_file):
         self._homedir = homedir
 

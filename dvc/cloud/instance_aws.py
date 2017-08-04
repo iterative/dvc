@@ -1,7 +1,7 @@
-import sys, os, time, configparser, argparse, boto.ec2
-from base_aws import AwsBase
+import sys, os, time, boto.ec2
 
-from dvc.cloud.instance import Instance
+from dvc.cloud.instance import Instance, InstanceError
+from dvc.logger import Logger
 
 
 class InstanceAws(Instance):
@@ -36,13 +36,14 @@ class InstanceAws(Instance):
         return instance
 
     def find_volume(self):
-        (oneboxml_volume, rest_volumes) = self.all_volumes()
+        (volumes, rest_volumes) = self.all_volumes()
 
-        for volume in oneboxml_volume:
-            if  volume.tags[self.VOLUME_TAG] == self._args.storage:
+        for volume in volumes:
+            if volume.tags[self.VOLUME_TAG] == self._storage:
                 return volume
-        raise ValueError("Cannot find OneBoxML storage volume '%s'. Verify that the volume was created."
-                         % self._args.storage)
+        msg = u'Cannot find storage volume {}. Verify that the volume was created.'.format(
+            self._storage)
+        raise InstanceError(msg)
 
     def create_spot_instance(self):
         # Create spot instance
@@ -57,7 +58,7 @@ class InstanceAws(Instance):
                                                 ebs_optimized = self.toBool(self._args.ebs_optimized))
         job_instance_id = None
         sec = 0
-        sys.stdout.write("Waiting for a spot instance. Request %s." % req[0].id)
+        Logger.info(u'Waiting for a spot instance. Request {}.'.format(req[0].id))
         while job_instance_id == None and sec < self._args.spot_timeout:
             sys.stdout.write(".")
             sys.stdout.flush()
@@ -74,22 +75,22 @@ class InstanceAws(Instance):
 
         if not job_instance_id:
             self._conn.cancel_spot_instance_requests(req[0].id)
-            msg = "the request was canceled"
-            raise Exception("Unable to obtain %s spot instance in region %s for price $%s: %s" %
-                            (self._args.instance_type, self._args.region, self._args.spot_price, msg))
+            raise InstanceError(u'Unable to obtain {} spot instance in region {} for price ${}: {}'.format(
+                            (self._args.instance_type, self._args.region, self._args.spot_price,
+                             'the request was canceled')))
 
-        logger.log("%s spot instance was created: %s" % (self._args.instance_type, job_instance_id))
+        Logger.info(u'{} spot instance was created: {}'.format(self._type, job_instance_id))
         reservations = self._conn.get_all_instances(instance_ids = job_instance_id)
         instance = reservations[0].instances[0]
         return instance
 
     def run_instance(self):
-        if self._args.image == None or self._args.image == '':
-            raise Exception("Cannot run EC2 instance: image (AMI) is not defined")
+        if not self._image:
+            raise InstanceError('Cannot run EC2 instance: image (AMI) is not defined')
 
         instance = self.create_instance()
 
-        # Remove oneboxml active tag.
+        # Remove active tag.
         active_filter = {'tag-key': self.INSTANCE_STATE_TAG, 'tag-value': 'True'}
         active_reserv = self._conn.get_all_instances(filters = active_filter)
         active_instances = [i for r in active_reserv for i in r.instances]
@@ -97,18 +98,18 @@ class InstanceAws(Instance):
         if len(active_instances) > 0:
             #active_insts = active_reserv.instances
             if len(active_instances) > 1:
-                logger.error("EC2 instances consistency error - more than one active EC2 instance")
+                Logger.error('EC2 instances consistency error - more than one active EC2 instance')
             for inst in active_instances:
                 inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
                 inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
                 if inst.state != self.TERMINATED_STATE:
-                    logger.log("%s instance %s is not longer active" % (inst.instance_type, inst.id))
+                    Logger.log('{} instance {} is not longer active'.format(inst.instance_type, inst.id))
 
         # Assign the created instace as active.
         instance.add_tag(self.INSTANCE_STATE_TAG, 'True')
-        logger.log("New %s instance %s was selected as active"%(instance.instance_type, instance.id))
+        Logger.info('New {} instance {} was selected as active'.format(instance.instance_type, instance.id))
 
-        sys.stdout.write("Waiting for a running status")
+        Logger.info('Waiting for a running status')
         while instance.state != 'running':
             sys.stdout.write(".")
             sys.stdout.flush()
@@ -127,8 +128,8 @@ class InstanceAws(Instance):
             group = self._conn.get_all_security_groups(groupnames=[group_name])[0]
         except self._conn.ResponseError as e:
             if e.code == 'InvalidGroup.NotFound':
-                logger.log('AWS Security Group %s does not exist: creating the group' % group_name)
-                group = self._conn.create_security_group(group_name, 'OneBoxML group with SSH access')
+                Logger.error('AWS Security Group {} does not exist: creating the group'.format(group_name))
+                group = self._conn.create_security_group(group_name, 'group with SSH access')
             else:
                 raise
 
@@ -143,19 +144,19 @@ class InstanceAws(Instance):
 
     def get_key_name(self):
         if not self._keypair_name:
-            raise Exception("AWS keypair cannot be created: KeyName is not specified in AWS section in the config file")
+            raise InstanceError('AWS keypair cannot be created: KeyName is not specified in AWS section in the config file')
         if not self._keypair_dir:
-            raise Exception("AWS keypair cannot be created: KeyDir is not specified in AWS section in the config file")
+            raise InstanceError('AWS keypair cannot be created: KeyDir is not specified in AWS section in the config file')
 
         # Check if the key exists and create one if does not.
         try:
-            key = self._conn.get_all_key_pairs(keynames = [self._keypair_name])[0]
+            key = self._conn.get_all_key_pairs(keynames=[self._keypair_name])[0]
         except self._conn.ResponseError as e:
             if e.code == 'InvalidKeyPair.NotFound':
-                logger.log('AWS key %s does not exist: creating the key' % self._keypair_name)
+                Logger.info('AWS key {} does not exist: creating the key'.format(self._keypair_name))
                 # Create an SSH key to use when logging into instances.
                 key = self._conn.create_key_pair(self._keypair_name)
-                logger.log("AWS key was created: " + self._keypair_name)
+                Logger.info('AWS key was created: {}'.format(self._keypair_name))
 
                 # Expand key dir.
                 key_dir = os.path.expandvars(self._keypair_dir)
@@ -169,15 +170,15 @@ class InstanceAws(Instance):
                 fp.write(key.material)
                 fp.close()
                 os.chmod(key_file, 0o600)
-                logger.log("AWS private key file was saved: " + key_file)
+                Logger.info('AWS private key file was saved: {}'.format(key_file))
             else:
                 raise
 
         return self._keypair_name
 
     def all_instances(self, terminated = False):
-        oneboxml_active = []
-        oneboxml_not_active = []
+        active = []
+        not_active = []
         rest_inst = []
 
         reserv = self._conn.get_all_instances()
@@ -188,30 +189,29 @@ class InstanceAws(Instance):
 
             if self.INSTANCE_STATE_TAG in inst.tags:
                 if inst.tags[self.INSTANCE_STATE_TAG] == 'True':
-                    oneboxml_active.append(inst)
+                    active.append(inst)
                 else:
-                    oneboxml_not_active.append(inst)
+                    not_active.append(inst)
             else:
                 rest_inst.append(inst)
 
-        if len(oneboxml_active) > 1:
-            logger.error("Instance consistancy error - more than one instance is in active state")
-        if len(oneboxml_active) == 0 and len(oneboxml_not_active) > 0:
-            logger.error("Instance consistancy error - no active instances")
-        return (oneboxml_active, oneboxml_not_active, rest_inst)
+        if len(active) > 1:
+            Logger.error(u'Instance consistancy error - more than one instance is in active state')
+        if len(active) == 0 and len(not_active) > 0:
+            Logger.error(u'Instance consistancy error - no active instances')
+        return (active, not_active, rest_inst)
 
     def describe_instance(self, inst, volumes, is_active):
         ip = inst.ip_address
         ip_private = inst.private_ip_address
         if not ip:
-            ip = ""
+            ip = ''
         if not ip_private:
-            ip_private = ""
+            ip_private = ''
 
         activeFlag = ''
         if is_active:
             activeFlag = ' ***'
-
 
         volume_id = None
         volume_name = ''
@@ -222,7 +222,7 @@ class InstanceAws(Instance):
                     if self.VOLUME_TAG in vol.tags:
                         volume_name = vol.tags[self.VOLUME_TAG]
                     else:
-                        log.error("Instance %s storage volume doesn't have tag", inst.id)
+                        Logger.error('Instance {} storage volume does not have tag'.format(inst.id))
                     break
 
         return self.INSTANCE_FORMAT.format(activeFlag,
@@ -234,21 +234,19 @@ class InstanceAws(Instance):
                                            ip_private[:16])
 
     def describe_instances(self):
-        (oneboxml_active, oneboxml_not_active, rest_inst) = self.all_instances()
-        (oneboxml_volumes, rest_volumes) = self.all_volumes()
+        (active, not_active, rest_inst) = self.all_instances()
+        (volumes, rest_volumes) = self.all_volumes()
 
-        logger.log(self.INSTANCE_FORMAT.format("Active", "Id", "Type", "State", "Storage",
-                                               "IP public", "IP private"))
+        Logger.info(self.INSTANCE_FORMAT.format('Active', 'Id', 'Type', 'State', 'Storage',
+                                                'IP public', 'IP private'))
 
-
-        for inst in oneboxml_active:
-            logger.log(self.describe_instance(inst, oneboxml_volumes, True))
-        for inst in oneboxml_not_active:
-            logger.log(self.describe_instance(inst, oneboxml_volumes, False))
+        for inst in active:
+            Logger.info(self.describe_instance(inst, volumes, True))
+        for inst in not_active:
+            logger.info(self.describe_instance(inst, volumes, False))
 
         if len(rest_inst) > 0:
-            logger.warn("%s addition not OneBoxML instances were found: not in the list"\
-                        % len(rest_inst))
+            Logger.error(u'{} not tracked instances were found: not in the list'.format(len(rest_inst)))
         pass
 
     def get_instance_id(self, instance):
@@ -260,17 +258,17 @@ class InstanceAws(Instance):
         instance = self.get_instance_id(instance)
 
         if not instance:
-            logger.error("Instance Id is not specified")
+            Logger.error('Instance Id is not specified')
             return
 
-        (oneboxml_active, oneboxml_not_active, rest_inst) = self.all_instances()
+        (active, not_active, rest_inst) = self.all_instances()
 
         if instance == 'all':
-            target_in_active = oneboxml_active
-            target_in_not_active = oneboxml_not_active
+            target_in_active = active
+            target_in_not_active = not_active
         else:
-            target_in_active = list(filter(lambda inst: inst.id == instance, oneboxml_active))
-            target_in_not_active = list(filter(lambda inst: inst.id == instance, oneboxml_not_active))
+            target_in_active = list(filter(lambda inst: inst.id == instance, active))
+            target_in_not_active = list(filter(lambda inst: inst.id == instance, not_active))
 
         if target_in_not_active:
             self._conn.terminate_instances(instance_ids = [inst.id for inst in target_in_not_active])
@@ -280,90 +278,64 @@ class InstanceAws(Instance):
             inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
             self._conn.terminate_instances(instance_ids = [inst.id])
 
-        if instance != 'all' and len(target_in_active) > 0 and len(oneboxml_not_active) > 0:
-            new_active_inst = oneboxml_not_active[0]
+        if instance != 'all' and len(target_in_active) > 0 and len(not_active) > 0:
+            new_active_inst = not_active[0]
             new_active_inst.remove_tag(self.INSTANCE_STATE_TAG, 'False')
             new_active_inst.add_tag(self.INSTANCE_STATE_TAG, 'True')
             randomly = ''
-            if len(oneboxml_not_active) > 1:
+            if len(not_active) > 1:
                 randomly = 'randomly '
-            logger.warn("%s instance %s was %sselected as active because of an active instance was terminated" %
-                        (new_active_inst.instance_type, new_active_inst.id, randomly))
+            Logger.error('{} instance {} was {} selected as active because of an active instance was terminated'.format(
+                        new_active_inst.instance_type, new_active_inst.id, randomly))
         pass
 
     def set_active_instance(self, instance):
         instance = self.get_instance_id(instance)
 
         if not instance:
-            logger.error("Instance Id is not specified")
+            Logger.error('Instance Id is not specified')
             return
 
-        (oneboxml_active, oneboxml_not_active, rest_inst) = self.all_instances()
+        (active, not_active, rest_inst) = self.all_instances()
 
-        target_in_active = list(filter(lambda inst: inst.id == instance, oneboxml_active))
+        target_in_active = list(filter(lambda inst: inst.id == instance, active))
         if len(target_in_active) > 0:
-            logger.error("The instance is already active")
+            Logger.error('The instance is already active')
             return
 
-        target_in_not_actives = list(filter(lambda inst: inst.id == instance, oneboxml_not_active))
+        target_in_not_actives = list(filter(lambda inst: inst.id == instance, not_active))
         if len(target_in_not_actives) == 0:
-            logger.error("The instance is not running")
+            Logger.error('The instance is not running')
             return
 
         if len(target_in_not_actives) > 1:
-            logger.error("Instances consistancy error: more than one instance with the same id")
+            Logger.error('Instances consistancy error: more than one instance with the same id')
             return
 
         target_in_not_actives[0].remove_tag(self.INSTANCE_STATE_TAG, 'False')
         target_in_not_actives[0].add_tag(self.INSTANCE_STATE_TAG, 'True')
 
-        for inst in oneboxml_active:
+        for inst in active:
             inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
             inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
         pass
 
     def all_volumes(self):
-        oneboxml_volumes = []
         rest_volumes = []
         volumes = self._conn.get_all_volumes()
         for vol in volumes:
             if self.VOLUME_TAG in vol.tags:
-                oneboxml_volumes.append(vol)
+                volumes.append(vol)
             else:
                 rest_volumes.append(vol)
-        return (oneboxml_volumes, rest_volumes)
-
+        return (volumes, rest_volumes)
 
     def describe_storages(self):
-        logger.log(self.VOLUME_FORMAT.format("Name", "Id", "Size(GB)",
-                                             "Status", "Type", "Encrypted", "Zone"))
-        (oneboxml_volume, rest_volumes) = self.all_volumes()
-        for vol in oneboxml_volume:
-            logger.log(self.VOLUME_FORMAT.format(vol.tags[self.VOLUME_TAG],
-                                                 vol.id, str(vol.size), vol.status,
-                                                 vol.type, str(vol.encrypted), vol.zone))
+        Logger.info(self.VOLUME_FORMAT.format('Name', 'Id', 'Size(GB)',
+                                              'Status', 'Type', 'Encrypted', 'Zone'))
+        (volumes, rest_volumes) = self.all_volumes()
+        for vol in volumes:
+            Logger.info(self.VOLUME_FORMAT.format(vol.tags[self.VOLUME_TAG],
+                                                  vol.id, str(vol.size), vol.status,
+                                                  vol.type, str(vol.encrypted), vol.zone))
         pass
-
-if __name__ == "__main__":
-    HOMEDIR_VAR = "ONEBOXML_HOME"
-    if not (HOMEDIR_VAR in os.environ):
-        raise Exception(HOMEDIR_VAR + " variable is not defined")
-    homedir = os.environ[HOMEDIR_VAR]
-    conf_file = homedir + "/oneboxml.conf"
-
-    logger = Logger()
-
-    instance_tool = InstanceAws(homedir, conf_file)
-
-    (command, param) = instance_tool.get_command()
-    if command == 'run':
-        instance_tool.run_instance()
-    if command == 'describe-instances':
-        instance_tool.describe_instances()
-    if command == 'terminate-instances':
-        instance_tool.terminate_instances(param)
-    if command == 'set-active-instance':
-        instance_tool.set_active_instance(param)
-
-    if command == 'describe-storages':
-        instance_tool.describe_storages()
