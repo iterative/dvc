@@ -1,9 +1,6 @@
 from __future__ import print_function
 
-import os
-import sys
 import argparse
-import configparser
 from multiprocessing import cpu_count
 
 from dvc.command.init import CmdInit
@@ -15,7 +12,7 @@ from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
-from dvc.command.test import CmdTest
+from dvc.command.instance_create import CmdInstanceCreate
 from dvc.config import Config
 from dvc import VERSION
 
@@ -265,6 +262,67 @@ def parse_args(argv=None):
                         default=False,
                         help='Reset target.')
     target_parser.set_defaults(func=CmdTarget)
+
+    # Instance create
+    instance_create_parser = subparsers.add_parser('instance-create',
+                                                    parents=[parent_parser],
+                                                    help='Create cloud instance')
+    instance_create_parser.add_argument('name',
+                                        # metavar='',
+                                        nargs='?',
+                                        help='Instance name.')
+    instance_create_parser.add_argument('-c',
+                                        '--cloud',
+                                        # metavar='',
+                                        help='Cloud: AWS, GCP.')
+    instance_create_parser.add_argument('-t',
+                                        '--type',
+                                        # metavar='',
+                                        help='Instance type.')
+    instance_create_parser.add_argument('-i',
+                                        '--image',
+                                        # metavar='',
+                                        help='Instance image.')
+    instance_create_parser.add_argument('--spot-price',
+                                        metavar='PRICE',
+                                        help='Spot instance price in $ i.e. 1.54')
+    instance_create_parser.add_argument('--spot-timeout',
+                                        metavar='TIMEOUT',
+                                        type=int,
+                                        help='Spot instances waiting timeout in seconds.')
+    instance_create_parser.add_argument('--keypair-name',
+                                        metavar='KEYPAIR',
+                                        help='The name of key pair for instance launch')
+    instance_create_parser.add_argument('--keypair-dir',
+                                        metavar='DIR',
+                                        help='The directory of key pairs')
+    instance_create_parser.add_argument('--security-group',
+                                        metavar='GROUP',
+                                        help='Security group')
+    instance_create_parser.add_argument('--region',
+                                        help='Region')
+    instance_create_parser.add_argument('--zone',
+                                        help='Zone')
+    instance_create_parser.add_argument('--subnet-id',
+                                        metavar='SUBNET',
+                                        help='Subnet ID')
+    instance_create_parser.add_argument('--storage',
+                                        # metavar='',
+                                        help='The name of attachable storage volume.')
+    # WHERE EBS IS?
+    instance_create_parser.add_argument('--monitoring',
+                                        action='store_true',
+                                        default=False,
+                                        help='Enable EC2 instance monitoring')
+    instance_create_parser.add_argument('--ebs-optimized',
+                                        action='store_true',
+                                        default=False,
+                                        help='Enable EBS I\O optimization')
+    instance_create_parser.add_argument('--disks-to-ride0',
+                                        action='store_true',
+                                        default=False,
+                                        help='Detect all ephemeral disks and stripe together in raid-0')
+    instance_create_parser.set_defaults(func=CmdInstanceCreate)
 
     if isinstance(argv, str):
         argv = argv.split()
