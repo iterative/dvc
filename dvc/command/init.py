@@ -29,7 +29,8 @@ StoragePath =
 LogLevel = Info
 
 [AWS]
-CredentialPath =
+CredentialPath = ~/.aws/credentials
+CredentialSection = default
 
 # Default settings for AWS instances:
 Type = t2.nano

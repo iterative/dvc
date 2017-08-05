@@ -14,7 +14,7 @@ from dvc.exceptions import DvcException
 from dvc.config import ConfigError
 from dvc.progress import progress
 from dvc.utils import copyfile
-from dvc.utils import cached_property
+from dvc.cloud.credentials_aws import AWSCredentials
 
 
 class DataCloudError(DvcException):
@@ -147,21 +147,15 @@ class DataCloudLOCAL(DataCloudBase):
 
 class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
-    @property
-    def aws_access_key_id(self):
-        if self.aws_creds:
-            return self.aws_creds[0]
-        return None
+    def __init__(self, settings, config, cloud_config):
+        super(DataCloudAWS, self).__init__(settings, config, cloud_config)
 
-    @property
-    def aws_secret_access_key(self):
-        if self.aws_creds:
-            return self.aws_creds[1]
-        return None
+        credpath = self._cloud_config.get('CredentialPath', None)
+        credsect = self._cloud_config.get('CredentialSection', 'default')
 
-    @cached_property
-    def aws_creds(self):
-        return self.get_aws_credentials()
+        aws_creds = AWSCredentials(credpath, credsect)
+        self.aws_access_key_id = aws_creds.access_key_id
+        self.aws_secret_access_key = aws_creds.secret_access_key
 
     @property
     def aws_region_host(self):
@@ -176,63 +170,6 @@ class DataCloudAWS(DataCloudBase):
         if region == 'us-east-1':
             return 's3.amazonaws.com'
         return 's3.%s.amazonaws.com' % region
-
-    def get_aws_credentials(self):
-        """ gets aws credentials, looking in various places
-
-        Params:
-
-        Searches:
-        1 any override in dvc.conf [AWS] CredentialPath;
-        2 ~/.aws/credentials
-
-
-        Returns:
-            if successfully found, (access_key_id, secret)
-            None otherwise
-        """
-
-        # FIX: It won't work in Windows.
-        default = os.path.expanduser('~/.aws/credentials')
-
-        paths = self.credential_paths(default)
-        for path in paths:
-            try:
-                cc = configparser.SafeConfigParser()
-
-                # use readfp(open( ... to aid mocking.
-                cc.readfp(open(path, 'r'))
-
-                if 'default' in cc.keys():
-                    access_key = cc['default'].get('aws_access_key_id', None)
-                    secret = cc['default'].get('aws_secret_access_key', None)
-
-                    if access_key is not None and secret is not None:
-                        return (access_key, secret)
-            except Exception as e:
-                pass
-
-        return None
-
-    def credential_paths(self, default):
-        paths = []
-        credpath = self._cloud_config.get('CredentialPath', None)
-        if credpath is not None and len(credpath) > 0:
-            credpath = os.path.expanduser(credpath)
-            if os.path.isfile(credpath):
-                paths.append(credpath)
-            else:
-                Logger.warn('AWS CredentialPath "%s" not found; falling back to default "%s"' % (credpath, default))
-                paths.append(default)
-        else:
-            paths.append(default)
-        return paths
-
-    def sanity_check(self):
-        creds = self.get_aws_credentials()
-        if creds is None:
-            Logger.info("can't find aws credetials, assuming envirment variables or iam role")
-        self._aws_creds = creds
 
     def _get_bucket_aws(self):
         """ get a bucket object, aws """
@@ -259,6 +196,7 @@ class DataCloudAWS(DataCloudBase):
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
 
+        temp_file = None
         try:
             temp_file = tempfile.NamedTemporaryFile(dir=item.resolved_cache.dirname, delete=False)
             key.get_contents_to_filename(temp_file.name,
