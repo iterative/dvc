@@ -47,6 +47,15 @@ class GitWrapperI(object):
         return GitWrapper.parse_porcelain_files(out)
 
     @staticmethod
+    def git_config_get(name):
+        code, out, err = Executor.exec_cmd(['git', 'config', '--get', name])
+        Logger.debug('[dvc-git] "git config --get {}": code({}), out({}), err({})'.format(
+                                                               name, code, out, err))
+        if code != 0:
+            return None
+        return out
+
+    @staticmethod
     def git_path_to_system_path(path):
         if os.name == 'nt':
             return path.replace('/', '\\')
@@ -84,6 +93,17 @@ class GitWrapper(GitWrapperI):
             Logger.error('[dvc-git] Commit all changed files before running reproducible command. Changed files:')
             for status, file in statuses:
                 Logger.error("{} {}".format(status, file))
+            return False
+
+        # Sanity check to make sure we will be able to commit
+        name = self.git_config_get('user.name')
+        if name == None:
+            Logger.error('[dvc-git] Please setup user.name in git config')
+            return False
+
+        email = self.git_config_get('user.email')
+        if email == None:
+            Logger.error('[dvc-git] Please setup user.email in git config')
             return False
 
         return True
