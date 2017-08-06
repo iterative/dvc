@@ -9,7 +9,7 @@ from tests.basic_env import DirHierarchyEnvironment
 
 class TestExecutor(DirHierarchyEnvironment):
     def setUp(self):
-        pass
+        DirHierarchyEnvironment.init_environment(self)
 
     def tearDown(self):
         pass
