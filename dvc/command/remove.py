@@ -2,7 +2,6 @@ import os
 
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
-from dvc.path.data_item import DataItemError
 
 
 class CmdRemove(Traverse):
@@ -12,11 +11,7 @@ class CmdRemove(Traverse):
     def process_file(self, target):
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))
 
-        try:
-            data_item = self.settings.path_factory.existing_data_item(target)
-        except DataItemError:
-            Logger.warn(u'[Cmd-Remove] Data file {} is not valid symbolic link'.format(target))
-            data_item = self.settings.path_factory.data_item(target)
+        data_item = self._get_data_item(target)
 
         self._remove_cache_file(data_item)
         self._remove_state_file(data_item)
@@ -25,10 +20,6 @@ class CmdRemove(Traverse):
         os.remove(data_item.data.relative)
         Logger.debug(u'[Cmd-Remove] Remove data item {}. Success.'.format(data_item.data.relative))
         pass
-
-    def _remove_cloud_cache(self, data_item):
-        if not self.parsed_args.keep_in_cloud:
-            self.cloud.remove_from_cloud(data_item)
 
     def _remove_state_file(self, data_item):
         if os.path.isfile(data_item.state.relative):
