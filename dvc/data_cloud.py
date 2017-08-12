@@ -15,6 +15,8 @@ from dvc.config import ConfigError
 from dvc.progress import progress
 from dvc.utils import copyfile
 from dvc.utils import cached_property
+from dvc.system import System
+from dvc.utils import map_progress
 
 
 class DataCloudError(DvcException):
@@ -434,8 +436,37 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def sync(self, fname):
-        return self._cloud.sync(fname)
+    def _collect_dir(self, d):
+        targets = []
+
+        for root, dirs, files in os.walk(d):
+            for f in files:
+                targets.append(os.path.join(root, f))
+
+        return targets
+
+    def _collect_target(self, target):
+        if System.islink(target):
+            return [target]
+        elif os.path.isdir(target):
+            return self._collect_dir(target)
+
+        Logger.warn('Target "{}" does not exist'.format(target))
+
+        return []
+
+    def _collect_targets(self, targets):
+        collected = []
+
+        for t in targets:
+            collected += self._collect_target(t)
+
+        return collected
+
+    def sync(self, targets, jobs=1):
+        collected = self._collect_targets(targets)
+
+        map_progress(self._cloud.sync, collected, jobs)
 
     def remove_from_cloud(self, item):
         return self._cloud.remove_from_cloud(item)
