@@ -10,7 +10,7 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataSync
+from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
@@ -121,21 +121,40 @@ def parse_args(argv=None):
                         help='Arguments of a command')
     run_parser.set_defaults(func=CmdRun)
 
-    # Sync
-    sync_parser = subparsers.add_parser(
-                        'sync',
-                        parents=[parent_parser],
-                        help='Synchronize data file with cloud (cloud settings already setup.')
-    sync_parser.add_argument(
+    # Parent parser used in sync/pull/push
+    parent_sync_parser = argparse.ArgumentParser(
+                        add_help=False,
+                        parents=[parent_parser])
+    parent_sync_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='File or directory to sync.')
-    sync_parser.add_argument('-j',
+    parent_sync_parser.add_argument('-j',
                         '--jobs',
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
+
+    # Sync
+    sync_parser = subparsers.add_parser(
+                        'sync',
+                        parents=[parent_sync_parser],
+                        help='Synchronize data file with cloud (cloud settings already setup.')
     sync_parser.set_defaults(func=CmdDataSync)
+
+    # Pull
+    pull_parser = subparsers.add_parser(
+                        'pull',
+                        parents=[parent_sync_parser],
+                        help='Pull data files from the cloud')
+    pull_parser.set_defaults(func=CmdDataPull)
+
+    # Push
+    push_parser = subparsers.add_parser(
+                        'push',
+                        parents=[parent_sync_parser],
+                        help='Push data files to the cloud')
+    push_parser.set_defaults(func=CmdDataPush)
 
     # Repro
     repro_parser = subparsers.add_parser(

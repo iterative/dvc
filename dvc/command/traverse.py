@@ -3,7 +3,6 @@ import os
 from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.data_cloud import DataCloud
 from dvc.path.data_item import DataItemError
 
 class TraverseError(DvcException):
@@ -15,7 +14,6 @@ class Traverse(CmdBase):
     def __init__(self, settings, cmd_name, do_not_start_from_root=True):
         super(Traverse, self).__init__(settings)
         self._cmd_name = cmd_name
-        self.cloud = DataCloud(self.settings)
         self._do_not_start_from_root = do_not_start_from_root
 
     def run(self):
@@ -81,7 +79,7 @@ class Traverse(CmdBase):
 
     def _remove_cloud_cache(self, data_item):
         if not self.parsed_args.keep_in_cloud:
-            self.cloud.remove_from_cloud(data_item)
+            self.settings.cloud.remove(data_item)
 
     ## API:
     def is_recursive(self):

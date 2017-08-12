@@ -15,6 +15,8 @@ from dvc.config import ConfigError
 from dvc.progress import progress
 from dvc.utils import copyfile
 from dvc.utils import cached_property
+from dvc.system import System
+from dvc.utils import map_progress
 
 
 class DataCloudError(DvcException):
@@ -97,21 +99,20 @@ class DataCloudBase(object):
     def sanity_check(self):
         pass
 
-    def sync_to_cloud(self, item):
+    def push(self, item):
         pass
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         pass
 
-    def sync(self, fname):
-        item = self._settings.path_factory.data_item(fname)
+    def sync(self, item):
         if os.path.isfile(item.resolved_cache.dvc):
-            self.sync_to_cloud(item)
+            self.push(item)
         else:
-            self.create_directory(fname, item)
-            self.sync_from_cloud(item)
+            self.create_directory(item)
+            self.pull(item)
 
-    def create_directory(self, fname, item):
+    def create_directory(self, item):
         self._lock.acquire()
         try:
             dir = os.path.dirname(item.cache.relative)
@@ -123,24 +124,24 @@ class DataCloudBase(object):
                     raise DataCloudError(u'Cannot create directory {}: {}'.format(dir, ex))
             elif not os.path.isdir(dir):
                 msg = u'File {} cannot be synced because {} is not a directory'
-                raise DataCloudError(msg.format(fname, dir))
+                raise DataCloudError(msg.format(item.cache.relative, dir))
         finally:
             self._lock.release()
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         pass
 
 
 class DataCloudLOCAL(DataCloudBase):
-    def sync_to_cloud(self, item):
+    def push(self, item):
         Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
         copyfile(item.resolved_cache.dvc, self.storage_path)
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
         copyfile(self.storage_path, item.resolved_cache.dvc)
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
         os.remove(item.resolved_cache.dvc)
 
@@ -246,15 +247,29 @@ class DataCloudAWS(DataCloudBase):
             raise DataCloudError('Storage path is not setup correctly')
         return bucket
 
-    def sync_from_cloud(self, item):
+    def _cmp_checksum(self, key, fname):
+        md5_cloud = key.etag[1:-1]
+        md5_local = file_md5(fname)[0]
+
+        if md5_cloud == md5_local:
+            return True
+
+        return False
+
+    def pull(self, item):
         """ sync from cloud, aws version """
 
         bucket = self._get_bucket_aws()
 
-        key_name = self.cache_file_key(item.resolved_cache.dvc)
+        fname = item.resolved_cache.dvc
+        key_name = self.cache_file_key(fname)
         key = bucket.get_key(key_name)
         if not key:
             Logger.error('File "{}" does not exist in the cloud'.format(key_name))
+            return
+
+        if self._cmp_checksum(key, fname):
+            Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
             return
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
@@ -273,8 +288,8 @@ class DataCloudAWS(DataCloudBase):
         progress.finish_target(os.path.basename(item.resolved_cache.relative))
         Logger.info('Downloading completed')
 
-    def sync_to_cloud(self, data_item):
-        """ sync_to_cloud, aws version """
+    def push(self, data_item):
+        """ push, aws version """
 
         aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
         bucket = self._get_bucket_aws()
@@ -282,9 +297,7 @@ class DataCloudAWS(DataCloudBase):
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
-            md5_cloud = key.etag[1:-1]
-            md5_local = file_md5(data_item.resolved_cache.dvc)[0]
-            if md5_cloud == md5_local:
+            if self._cmp_checksum(key, data_item.resolved_cache.dvc):
                 Logger.debug('File checksum matches. No uploading is needed.')
                 return
 
@@ -301,7 +314,7 @@ class DataCloudAWS(DataCloudBase):
 
         progress.finish_target(os.path.basename(data_item.resolved_cache.relative))
 
-    def remove_from_cloud(self, data_item):
+    def remove(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
 
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
@@ -341,7 +354,7 @@ class DataCloudGCP(DataCloudBase):
             raise DataCloudError('sync up: google cloud bucket {} doesn\'t exist'.format(self.storage_bucket))
         return bucket
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         """ sync from cloud, gcp version """
 
         bucket = self._get_bucket_gc()
@@ -357,8 +370,8 @@ class DataCloudGCP(DataCloudBase):
         blob.download_to_filename(item.resolved_cache.dvc)
         Logger.info('Downloading completed')
 
-    def sync_to_cloud(self, data_item):
-        """ sync_to_cloud, gcp version """
+    def push(self, data_item):
+        """ push, gcp version """
 
         bucket = self._get_bucket_gc()
         blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
@@ -376,7 +389,7 @@ class DataCloudGCP(DataCloudBase):
         blob.upload_from_filename(data_item.resolved_cache.relative)
         Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         raise Exception('NOT IMPLEMENTED YET')
 
 
@@ -434,8 +447,49 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def sync(self, fname):
-        return self._cloud.sync(fname)
+    def _collect_dir(self, d):
+        targets = []
 
-    def remove_from_cloud(self, item):
-        return self._cloud.remove_from_cloud(item)
+        for root, dirs, files in os.walk(d):
+            for f in files:
+                path = os.path.join(root, f)
+                item = self._settings.path_factory.data_item(path)
+                targets.append(item)
+
+        return targets
+
+    def _collect_target(self, target):
+        if System.islink(target):
+            item = self._settings.path_factory.data_item(target)
+            return [item]
+        elif os.path.isdir(target):
+            return self._collect_dir(target)
+
+        Logger.warn('Target "{}" does not exist'.format(target))
+
+        return []
+
+    def _collect_targets(self, targets):
+        collected = []
+
+        for t in targets:
+            collected += self._collect_target(t)
+
+        return collected
+
+    def _map_targets(self, f, targets, jobs):
+        collected = self._collect_targets(targets)
+
+        map_progress(f, collected, jobs)
+
+    def sync(self, targets, jobs=1):
+        self._map_targets(self._cloud.sync, targets, jobs)
+
+    def push(self, targets, jobs=1):
+        self._map_targets(self._cloud.push, targets, jobs)
+
+    def pull(self, targets, jobs=1):
+        self._map_targets(self._cloud.pull, targets, jobs)
+
+    def remove(self, item):
+        return self._cloud.remove(item)

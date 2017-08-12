@@ -5,6 +5,7 @@ from dvc.config import ConfigI, Config
 from dvc.exceptions import DvcException
 from dvc.path.factory import PathFactory
 from dvc.cli import parse_args
+from dvc.data_cloud import DataCloud
 
 class SettingsError(DvcException):
     def __init__(self, msg):
@@ -33,6 +34,7 @@ class Settings(object):
         self._config = config
         self._path_factory = PathFactory(git, config)
         self._parsed_args = args
+        self._cloud = DataCloud(self)
 
     @property
     def args(self):
@@ -63,3 +65,7 @@ class Settings(object):
     @property
     def path_factory(self):
         return self._path_factory
+
+    @property
+    def cloud(self):
+        return self._cloud
