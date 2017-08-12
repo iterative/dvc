@@ -99,18 +99,18 @@ class DataCloudBase(object):
     def sanity_check(self):
         pass
 
-    def sync_to_cloud(self, item):
+    def push(self, item):
         pass
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         pass
 
     def sync(self, item):
         if os.path.isfile(item.resolved_cache.dvc):
-            self.sync_to_cloud(item)
+            self.push(item)
         else:
             self.create_directory(item)
-            self.sync_from_cloud(item)
+            self.pull(item)
 
     def create_directory(self, item):
         self._lock.acquire()
@@ -128,20 +128,20 @@ class DataCloudBase(object):
         finally:
             self._lock.release()
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         pass
 
 
 class DataCloudLOCAL(DataCloudBase):
-    def sync_to_cloud(self, item):
+    def push(self, item):
         Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
         copyfile(item.resolved_cache.dvc, self.storage_path)
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
         copyfile(self.storage_path, item.resolved_cache.dvc)
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
         os.remove(item.resolved_cache.dvc)
 
@@ -247,7 +247,7 @@ class DataCloudAWS(DataCloudBase):
             raise DataCloudError('Storage path is not setup correctly')
         return bucket
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         """ sync from cloud, aws version """
 
         bucket = self._get_bucket_aws()
@@ -274,8 +274,8 @@ class DataCloudAWS(DataCloudBase):
         progress.finish_target(os.path.basename(item.resolved_cache.relative))
         Logger.info('Downloading completed')
 
-    def sync_to_cloud(self, data_item):
-        """ sync_to_cloud, aws version """
+    def push(self, data_item):
+        """ push, aws version """
 
         aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
         bucket = self._get_bucket_aws()
@@ -302,7 +302,7 @@ class DataCloudAWS(DataCloudBase):
 
         progress.finish_target(os.path.basename(data_item.resolved_cache.relative))
 
-    def remove_from_cloud(self, data_item):
+    def remove(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
 
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
@@ -342,7 +342,7 @@ class DataCloudGCP(DataCloudBase):
             raise DataCloudError('sync up: google cloud bucket {} doesn\'t exist'.format(self.storage_bucket))
         return bucket
 
-    def sync_from_cloud(self, item):
+    def pull(self, item):
         """ sync from cloud, gcp version """
 
         bucket = self._get_bucket_gc()
@@ -358,8 +358,8 @@ class DataCloudGCP(DataCloudBase):
         blob.download_to_filename(item.resolved_cache.dvc)
         Logger.info('Downloading completed')
 
-    def sync_to_cloud(self, data_item):
-        """ sync_to_cloud, gcp version """
+    def push(self, data_item):
+        """ push, gcp version """
 
         bucket = self._get_bucket_gc()
         blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
@@ -377,7 +377,7 @@ class DataCloudGCP(DataCloudBase):
         blob.upload_from_filename(data_item.resolved_cache.relative)
         Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
 
-    def remove_from_cloud(self, item):
+    def remove(self, item):
         raise Exception('NOT IMPLEMENTED YET')
 
 
@@ -474,10 +474,10 @@ class DataCloud(object):
         self._map_targets(self._cloud.sync, targets, jobs)
 
     def push(self, targets, jobs=1):
-        self._map_targets(self._cloud.sync_to_cloud, targets, jobs)
+        self._map_targets(self._cloud.push, targets, jobs)
 
     def pull(self, targets, jobs=1):
-        self._map_targets(self._cloud.sync_from_cloud, targets, jobs)
+        self._map_targets(self._cloud.pull, targets, jobs)
 
-    def remove_from_cloud(self, item):
-        return self._cloud.remove_from_cloud(item)
+    def remove(self, item):
+        return self._cloud.remove(item)

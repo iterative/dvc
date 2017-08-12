@@ -79,7 +79,7 @@ class Traverse(CmdBase):
 
     def _remove_cloud_cache(self, data_item):
         if not self.parsed_args.keep_in_cloud:
-            self.settings.cloud.remove_from_cloud(data_item)
+            self.settings.cloud.remove(data_item)
 
     ## API:
     def is_recursive(self):
