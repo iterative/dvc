@@ -105,15 +105,14 @@ class DataCloudBase(object):
     def sync_from_cloud(self, item):
         pass
 
-    def sync(self, fname):
-        item = self._settings.path_factory.data_item(fname)
+    def sync(self, item):
         if os.path.isfile(item.resolved_cache.dvc):
             self.sync_to_cloud(item)
         else:
-            self.create_directory(fname, item)
+            self.create_directory(item)
             self.sync_from_cloud(item)
 
-    def create_directory(self, fname, item):
+    def create_directory(self, item):
         self._lock.acquire()
         try:
             dir = os.path.dirname(item.cache.relative)
@@ -125,7 +124,7 @@ class DataCloudBase(object):
                     raise DataCloudError(u'Cannot create directory {}: {}'.format(dir, ex))
             elif not os.path.isdir(dir):
                 msg = u'File {} cannot be synced because {} is not a directory'
-                raise DataCloudError(msg.format(fname, dir))
+                raise DataCloudError(msg.format(item.cache.relative, dir))
         finally:
             self._lock.release()
 
@@ -441,13 +440,16 @@ class DataCloud(object):
 
         for root, dirs, files in os.walk(d):
             for f in files:
-                targets.append(os.path.join(root, f))
+                path = os.path.join(root, f)
+                item = self._settings.path_factory.data_item(path)
+                targets.append(item)
 
         return targets
 
     def _collect_target(self, target):
         if System.islink(target):
-            return [target]
+            item = self._settings.path_factory.data_item(target)
+            return [item]
         elif os.path.isdir(target):
             return self._collect_dir(target)
 
@@ -463,10 +465,19 @@ class DataCloud(object):
 
         return collected
 
-    def sync(self, targets, jobs=1):
+    def _map_targets(self, f, targets, jobs):
         collected = self._collect_targets(targets)
 
-        map_progress(self._cloud.sync, collected, jobs)
+        map_progress(f, collected, jobs)
+
+    def sync(self, targets, jobs=1):
+        self._map_targets(self._cloud.sync, targets, jobs)
+
+    def push(self, targets, jobs=1):
+        self._map_targets(self._cloud.sync_to_cloud, targets, jobs)
+
+    def pull(self, targets, jobs=1):
+        self._map_targets(self._cloud.sync_from_cloud, targets, jobs)
 
     def remove_from_cloud(self, item):
         return self._cloud.remove_from_cloud(item)
