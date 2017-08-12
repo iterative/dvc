@@ -247,15 +247,29 @@ class DataCloudAWS(DataCloudBase):
             raise DataCloudError('Storage path is not setup correctly')
         return bucket
 
+    def _cmp_checksum(self, key, fname):
+        md5_cloud = key.etag[1:-1]
+        md5_local = file_md5(fname)[0]
+
+        if md5_cloud == md5_local:
+            return True
+
+        return False
+
     def pull(self, item):
         """ sync from cloud, aws version """
 
         bucket = self._get_bucket_aws()
 
-        key_name = self.cache_file_key(item.resolved_cache.dvc)
+        fname = item.resolved_cache.dvc
+        key_name = self.cache_file_key(fname)
         key = bucket.get_key(key_name)
         if not key:
             Logger.error('File "{}" does not exist in the cloud'.format(key_name))
+            return
+
+        if self._cmp_checksum(key, fname):
+            Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
             return
 
         Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
@@ -283,9 +297,7 @@ class DataCloudAWS(DataCloudBase):
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
-            md5_cloud = key.etag[1:-1]
-            md5_local = file_md5(data_item.resolved_cache.dvc)[0]
-            if md5_cloud == md5_local:
+            if self._cmp_checksum(key, data_item.resolved_cache.dvc):
                 Logger.debug('File checksum matches. No uploading is needed.')
                 return
 
