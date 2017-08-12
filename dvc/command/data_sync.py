@@ -4,7 +4,6 @@ from multiprocessing.pool import ThreadPool
 from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.system import System
-from dvc.data_cloud import DataCloud
 from dvc.utils import map_progress
 
 
@@ -19,7 +18,6 @@ class CmdDataSync(CmdBase):
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            cloud = DataCloud(self.settings)
             targets = []
 
             if len(self.parsed_args.targets) == 0:
@@ -35,5 +33,5 @@ class CmdDataSync(CmdBase):
                 else:
                     raise DataSyncError('File "{}" does not exit'.format(target)) 
 
-            map_progress(cloud.sync, targets, self.parsed_args.jobs)
+            map_progress(self.settings.cloud.sync, targets, self.parsed_args.jobs)
         pass
