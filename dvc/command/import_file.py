@@ -142,21 +142,45 @@ class CmdImportFile(CmdBase):
         """
         Download single file from url.
         """
-        r = requests.get(from_url, stream=True)
 
+        tmp_file = to_file + '.part'
         name = os.path.basename(from_url)
         chunk_size = 1024 * 100
         downloaded = 0
         last_reported = 0
         report_bucket = 100*1024*10
-        total_length = r.headers.get('content-length')
 
-        with open(to_file, 'wb') as f:
+        resume_header = None
+        mode = 'wb'
+
+        # Resume download if we can
+        if os.path.exists(tmp_file) and self.parsed_args.cont:
+            mode = 'ab'
+
+            downloaded = os.path.getsize(tmp_file)
+            resume_header = {'Range': 'bytes=%d-' % downloaded}
+
+            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
+
+        r = requests.get(from_url, stream=True, headers=resume_header)
+
+        content_range = r.headers.get('content-range')
+        if resume_header and content_range == None:
+            mode = 'wb'
+            downloaded = 0
+
+            Logger.debug('\'range\' is not supported by the server. Can\'t resume download')
+
+        total_length = r.headers.get('content-length')
+        if total_length == None:
+            Logger.debug('\'content-length\' is not supported by the server')
+
+        with open(tmp_file, mode) as f:
             for chunk in r.iter_content(chunk_size=chunk_size):
                 if not chunk:  # filter out keep-alive new chunks
                     continue
 
-                downloaded += chunk_size
+                downloaded += len(chunk)
 
                 last_reported += chunk_size
                 if last_reported >= report_bucket:
@@ -170,6 +194,8 @@ class CmdImportFile(CmdBase):
 
         # tell progress bar that this target is finished downloading
         progress.finish_target(name)
+
+        os.rename(tmp_file, to_file)
 
     def download_targets(self, targets):
         """
