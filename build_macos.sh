@@ -60,4 +60,4 @@ build_dvc
 fpm_build osxpkg
 cleanup
 
-print_info "Successfully built dvc rpm and deb packages"
+print_info "Successfully built dvc osx package"
