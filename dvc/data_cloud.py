@@ -46,11 +46,14 @@ def create_cb(name):
 
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
-    hash_md5 = hashlib.md5()
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(1024*1000), b""):
-            hash_md5.update(chunk)
-    return (hash_md5.hexdigest(), hash_md5.digest())
+    if os.path.exists(fname):
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(1024*1000), b""):
+                hash_md5.update(chunk)
+        return (hash_md5.hexdigest(), hash_md5.digest())
+    else:
+        return (None, None)
 
 
 class DataCloudBase(object):
