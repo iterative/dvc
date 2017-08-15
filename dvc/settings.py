@@ -15,7 +15,7 @@ class SettingsError(DvcException):
 class Settings(object):
     def __init__(self, argv=None, git=None, config=None):
         self._args = None
-        args is None
+        args = None
 
         if argv is not None and len(argv) != 0:
             args = parse_args(argv)
