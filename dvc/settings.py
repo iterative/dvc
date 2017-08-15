@@ -15,17 +15,17 @@ class SettingsError(DvcException):
 class Settings(object):
     def __init__(self, argv=None, git=None, config=None):
         self._args = None
-        args = None
+        args is None
 
-        if argv != None and len(argv) != 0:
+        if argv is not None and len(argv) != 0:
             args = parse_args(argv)
             self._args = argv[2:]
 
-        if git == None:
+        if git is None:
             git = GitWrapper()
 
-        if config == None:
-            if args != None and args.cmd != 'init':
+        if config is None:
+            if args is not None and args.cmd != 'init':
                 config = Config()
             else:
                 config = ConfigI()
