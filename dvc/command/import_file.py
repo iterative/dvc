@@ -3,7 +3,7 @@ import re
 import requests
 
 from dvc.command.base import CmdBase, DvcLock
-from dvc.data_cloud import sizeof_fmt
+from dvc.data_cloud import sizeof_fmt, file_md5
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.state_file import StateFile
@@ -194,6 +194,18 @@ class CmdImportFile(CmdBase):
 
         # tell progress bar that this target is finished downloading
         progress.finish_target(name)
+
+        # Verify checksum if we can
+        content_md5 = r.headers.get('content-md5')
+        if content_md5 != None:
+            md5 = file_md5(tmp_file)[0]
+            if md5 != content_md5:
+                Logger.error('Checksum mismatch')
+                return
+
+            Logger.debug('Checksum matches')
+        else:
+            Logger.debug('\'content-md5\' is not supported by the server. Can\'t verify download')
 
         os.rename(tmp_file, to_file)
 
