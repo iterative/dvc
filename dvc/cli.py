@@ -264,7 +264,15 @@ def parse_args(argv=None):
     target_parser.set_defaults(func=CmdTarget)
 
     # Cloud
-    cloud_parser = subparsers.add_parser(
+    ex_parser = subparsers.add_parser(
+                        'ex',
+                        parents=[parent_parser],
+                        help='Experimental commands')
+    ex_subparsers = ex_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc cloud CMD --help for command-specific help')
+
+    cloud_parser = ex_subparsers.add_parser(
                         'cloud',
                         parents=[parent_parser],
                         help='Cloud manipulation')
