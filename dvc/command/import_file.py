@@ -115,16 +115,21 @@ class CmdImportFile(CmdBase):
 
     def import_files(self, targets, lock=False):
         data_targets = self.collect_targets(targets)
-        self.cloud.import_data(data_targets, self.parsed_args.jobs)
-        self.create_state_files(data_targets, lock)
+        imported_targets = self.cloud.import_data(data_targets, self.parsed_args.jobs)
+        self.create_state_files(imported_targets, lock)
 
     def create_state_files(self, targets, lock):
         """
         Create state files for all targets.
         """
         for t in targets:
-            input, data_item  = t
+            orig_target, processed_data_item = t
+            input, data_item  = orig_target
             output = data_item.data.relative
+
+            if processed_data_item == None:
+                Logger.debug('Skipping creating state file for failed import {}'.format(data_item.state.relative))
+                continue
 
             Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
             System.symlink(data_item.symlink_file, data_item.data.relative)
