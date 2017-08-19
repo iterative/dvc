@@ -34,6 +34,14 @@ STATUS_MODIFIED = 2
 STATUS_NEW      = 3
 STATUS_DELETED  = 4
 
+STATUS_MAP = {
+    # (local_exists, remote_exists, cmp)
+    (True, True, True)  : STATUS_OK,
+    (True, True, False) : STATUS_MODIFIED,
+    (True, False, None) : STATUS_NEW,
+    (False, True, None) : STATUS_DELETED,
+}
+
 class DataCloudError(DvcException):
     def __init__(self, msg):
         super(DataCloudError, self).__init__('Data sync error: {}'.format(msg))
@@ -120,11 +128,22 @@ class DataCloudBase(object):
     def sanity_check(self):
         pass
 
+    def _import(self, bucket, path, fname, item):
+        pass
+
     def push(self, item):
         pass
 
     def pull(self, item):
-        pass
+        fname = item.resolved_cache.dvc
+        key_name = self.cache_file_key(fname)
+
+        return self._import(self.storage_bucket, key_name, fname, data_item)
+
+    def import_data(self, url, item):
+        o = urlparse(url)
+
+        return self._import(o.netloc, o.path, item.cache.relative, item)
 
     def sync(self, item):
         if os.path.isfile(item.resolved_cache.dvc):
@@ -152,12 +171,11 @@ class DataCloudBase(object):
     def remove(self, item):
         pass
 
-    def import_data(self, url, item):
+    def _status(self, item):
         pass
 
     def status(self, item):
-        pass
-
+        return STATUS_MAP.get(self._status(item), STATUS_UNKNOWN)
 
 class DataCloudLOCAL(DataCloudBase):
     def push(self, item):
@@ -188,27 +206,17 @@ class DataCloudLOCAL(DataCloudBase):
         Logger.debug('import from cloud ' + path + " " + item.cache.relative)
         return self._import(path, item.cache.relative, item)
 
-    def status(self, data_item):
+    def _status(self, data_item):
         local = data_item.resolved_cache.relative
         remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
 
         remote_exists = os.path.exists(remove)
         local_exists = os.path.exists(local)
+        c = None
+        if local_exists and remote_exists:
+            c = filecmp.cmp(local, remote)
 
-        if remote_exists and not local_exists:
-            return STATUS_DELETED
-
-        if not remote_exists and local_exists:
-            return STATUS_NEW
-
-        if remote_exists and local_exists:
-            if filecmp.cmp(local, remote):
-                return STATUS_OK
-            else:
-                return STATUS_MODIFIED
-
-        return STATUS_UNKNOWN
-
+        return (local_exists, remote_exists, c)
 
 class DataCloudHTTP(DataCloudBase):
     def push(self, item):
@@ -223,76 +231,86 @@ class DataCloudHTTP(DataCloudBase):
     def status(self, item):
         raise Exception('Not implemented yet')
 
+    def _downloaded_size(self, fname):
+        if os.path.exists(fname) and self.parsed_args.cont:
+            downloaded = os.path.getsize(fname)
+            header = {'Range': 'bytes=%d-' % downloaded}
+
+            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
+
+            return (downloaded, header)
+
+        return (0, None)
+
+    def _get_header(self, r, name):
+        val = r.headers.get(name)
+        if val == None:
+            Logger.debug('\'{}\' not supported by the server'.format(name))
+
+        return val
+
+    def _verify_downloaded_size(self, r, downloaded_size):
+        content_range = self._get_header(r, 'content-range')
+        if downloaded_size and content_range == None:
+            Logger.debug('Can\'t resume download')
+            return 0
+
+        return downloaded_size
+
+    def _download(self, r, fname, downloaded):
+        mode = 'ab' if downloaded else 'wb'
+        name = os.path.basename(r.url)
+        total_length = self._get_header(r, 'content-length')
+        chunk_size = 1024 * 100
+
+        progress.update_target(name, downloaded, total_length)
+
+        with open(fname, mode) as f:
+            for chunk in r.iter_content(chunk_size=chunk_size):
+                if not chunk:  # filter out keep-alive new chunks
+                    continue
+
+                f.write(chunk)
+                downloaded += len(chunk)
+                progress.update_target(name, downloaded, total_length)
+
+
+        progress.finish_target(name)
+
+    def _verify_md5(self, r, fname):
+        md5 = file_md5(fname)[0]
+        content_md5 = self._get_header(r, 'content-md5')
+
+        if content_md5 == None:
+            return True
+
+        if md5 != content_md5:
+            Logger.error('Checksum mismatch')
+            return False
+
+        Logger.debug('Checksum matches')
+        return True
+
     def import_data(self, url, item):
         """
         Download single file from url.
         """
 
         to_file = item.cache.relative
-
         tmp_file = self.tmp_file(to_file)
-        name = os.path.basename(url)
-        chunk_size = 1024 * 100
-        downloaded = 0
-        last_reported = 0
-        report_bucket = 100*1024*10
 
-        resume_header = None
-        mode = 'wb'
+        downloaded, header = self._downloaded_size(tmp_file)
+        r = requests.get(url, stream=True, headers=header)
+        downloaded = self._verify_downloaded_size(r, downloaded)
 
-        # Resume download if we can
-        if os.path.exists(tmp_file) and self.parsed_args.cont:
-            mode = 'ab'
+        try:
+            self._download(r, tmp_file, downloaded)
+        except Exception as exc:
+            Logger.error('Failed to download "{}": {}'.format(url, exc))
+            return None
 
-            downloaded = os.path.getsize(tmp_file)
-            resume_header = {'Range': 'bytes=%d-' % downloaded}
-
-            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
-
-        r = requests.get(url, stream=True, headers=resume_header)
-
-        content_range = r.headers.get('content-range')
-        if resume_header and content_range == None:
-            mode = 'wb'
-            downloaded = 0
-
-            Logger.debug('\'range\' is not supported by the server. Can\'t resume download')
-
-        total_length = r.headers.get('content-length')
-        if total_length == None:
-            Logger.debug('\'content-length\' is not supported by the server')
-
-        with open(tmp_file, mode) as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                if not chunk:  # filter out keep-alive new chunks
-                    continue
-
-                downloaded += len(chunk)
-
-                last_reported += chunk_size
-                if last_reported >= report_bucket:
-                    last_reported = 0
-                    Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
-
-                # update progress bar
-                progress.update_target(name, downloaded, total_length)
-
-                f.write(chunk)
-
-        # tell progress bar that this target is finished downloading
-        progress.finish_target(name)
-
-        # Verify checksum if we can
-        content_md5 = r.headers.get('content-md5')
-        if content_md5 != None:
-            md5 = file_md5(tmp_file)[0]
-            if md5 != content_md5:
-                Logger.error('Checksum mismatch')
-                return None
-
-            Logger.debug('Checksum matches')
-        else:
-            Logger.debug('\'content-md5\' is not supported by the server. Can\'t verify download')
+        if not self._verify_md5(r, tmp_file):
+            return None
 
         os.rename(tmp_file, to_file)
 
@@ -437,22 +455,6 @@ class DataCloudAWS(DataCloudBase):
 
         return data_item
 
-    def pull(self, data_item):
-        """ pull, aws version """
-
-        fname = data_item.resolved_cache.dvc
-        key_name = self.cache_file_key(fname)
-
-        return self._import(self.storage_bucket, key_name, fname, data_item)
-
-    def import_data(self, url, item):
-        """ import, aws version """
-
-        o = urlparse(url)
-        assert o.scheme == 's3'
-
-        return self._import(o.netloc, o.path, item.cache.relative, item)
-
     def push(self, data_item):
         """ push, aws version """
 
@@ -481,29 +483,18 @@ class DataCloudAWS(DataCloudBase):
 
         return data_item
 
-    def status(self, data_item):
-        """ status, aws version """
-
+    def _status(self, data_item):
         aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
         bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
 
         remote_exists = key is not None
         local_exists = os.path.exists(data_item.resolved_cache.relative)
-
-        if remote_exists and not local_exists:
-            return STATUS_DELETED
-
-        if not remote_exists and local_exists:
-            return STATUS_NEW
-
+        c = None
         if remote_exists and local_exists:
-            if self._cmp_checksum(key, data_item.resolved_cache.dvc):
-                return STATUS_OK
-            else:
-                return STATUS_MODIFIED
+            c = self._cmp_checksum(key, data_item.resolved_cache.dvc)
 
-        return STATUS_UNKNOWN
+        return (local_exists, remote_exists, c)
 
     def remove(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
@@ -584,22 +575,6 @@ class DataCloudGCP(DataCloudBase):
 
         return data_item
 
-    def pull(self, item):
-        """ pull, gcp version """
-
-        fname = item.resolved_cache.dvc
-        key_name = self.cache_file_key(fname)
-
-        return self._import(self.storage_bucket, key_name, fname, data_item)
-
-    def import_data(self, url, item):
-        """ import, gcp version """
-
-        o = urlparse(url)
-        assert o.scheme == 'gs'
-
-        return self._import(o.netloc, o.path, item.cache.relative, item)
-
     def push(self, data_item):
         """ push, gcp version """
 
@@ -625,7 +600,7 @@ class DataCloudGCP(DataCloudBase):
 
         return data_item
 
-    def status(self, data_item):
+    def _status(self, data_item):
         """ status, gcp version """
 
         bucket = self._get_bucket_gc(self.storage_bucket)
@@ -634,20 +609,11 @@ class DataCloudGCP(DataCloudBase):
 
         remote_exists = blob is not None and blob.exists()
         local_exists = os.path.exists(data_item.resolved_cache.relative)
-
-        if remote_exists and not local_exists:
-            return STATUS_DELETED
-
-        if not remote_exists and local_exists:
-            return STATUS_NEW
-
+        c = None
         if remote_exists and local_exists:
-            if self._cmp_checksum(blob, data_item.resolved_cache.dvc):
-                return STATUS_OK
-            else:
-                return STATUS_MODIFIED
+            c = self._cmp_checksum(blob, data_item.resolved_cache.dvc)
 
-        return STATUS_UNKNOWN
+        return (local_exists, remote_exists, c)
 
     def remove(self, item):
         raise Exception('NOT IMPLEMENTED YET')
