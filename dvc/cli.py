@@ -10,7 +10,7 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull
+from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull, CmdDataStatus
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
@@ -155,6 +155,13 @@ def parse_args(argv=None):
                         parents=[parent_sync_parser],
                         help='Push data files to the cloud')
     push_parser.set_defaults(func=CmdDataPush)
+
+    # Status
+    status_parser = subparsers.add_parser(
+                        'status',
+                        parents=[parent_sync_parser],
+                        help='Show status for data files')
+    status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
     repro_parser = subparsers.add_parser(

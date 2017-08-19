@@ -6,6 +6,7 @@ import configparser
 import tempfile
 import requests
 import configparser
+import filecmp
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
@@ -26,6 +27,12 @@ from dvc.utils import cached_property
 from dvc.system import System
 from dvc.utils import map_progress
 
+
+STATUS_UNKNOWN  = 0
+STATUS_OK       = 1
+STATUS_MODIFIED = 2
+STATUS_NEW      = 3
+STATUS_DELETED  = 4
 
 class DataCloudError(DvcException):
     def __init__(self, msg):
@@ -148,6 +155,9 @@ class DataCloudBase(object):
     def import_data(self, url, item):
         pass
 
+    def status(self, item):
+        pass
+
 
 class DataCloudLOCAL(DataCloudBase):
     def push(self, item):
@@ -175,6 +185,28 @@ class DataCloudLOCAL(DataCloudBase):
         Logger.debug('import from cloud ' + path + " " + item.cache.relative)
         self._import(path, item.cache.relative)
 
+    def status(self, data_item):
+        local = data_item.resolved_cache.relative
+        remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
+
+        remote_exists = os.path.exists(remove)
+        local_exists = os.path.exists(local)
+
+        if remote_exists and not local_exists:
+            return STATUS_DELETED
+
+        if not remote_exists and local_exists:
+            return STATUS_NEW
+
+        if remote_exists and local_exists:
+            if filecmp.cmp(local, remote):
+                return STATUS_OK
+            else:
+                return STATUS_MODIFIED
+
+        return STATUS_UNKNOWN
+
+
 class DataCloudHTTP(DataCloudBase):
     def push(self, item):
         raise Exception('Not implemented yet')
@@ -183,6 +215,9 @@ class DataCloudHTTP(DataCloudBase):
         raise Exception('Not implemented yet')
 
     def remove(self, item):
+        raise Exception('Not implemented yet')
+
+    def status(self, item):
         raise Exception('Not implemented yet')
 
     def import_data(self, url, item):
@@ -436,6 +471,30 @@ class DataCloudAWS(DataCloudBase):
 
         progress.finish_target(os.path.basename(data_item.resolved_cache.relative))
 
+    def status(self, data_item):
+        """ status, aws version """
+
+        aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
+        bucket = self._get_bucket_aws(self.storage_bucket)
+        key = bucket.get_key(aws_key)
+
+        remote_exists = key is not None
+        local_exists = os.path.exists(data_item.resolved_cache.relative)
+
+        if remote_exists and not local_exists:
+            return STATUS_DELETED
+
+        if not remote_exists and local_exists:
+            return STATUS_NEW
+
+        if remote_exists and local_exists:
+            if self._cmp_checksum(key, data_item.resolved_cache.dvc):
+                return STATUS_OK
+            else:
+                return STATUS_MODIFIED
+
+        return STATUS_UNKNOWN
+
     def remove(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
 
@@ -475,6 +534,14 @@ class DataCloudGCP(DataCloudBase):
         if not bucket.exists():
             raise DataCloudError('sync up: google cloud bucket {} doesn\'t exist'.format(self.storage_bucket))
         return bucket
+
+    def _cmp_checksum(self, blob, fname):
+        b64_encoded_md5 = base64.b64encode(file_md5(fname)[1])
+
+        if blob.md5_hash == b64_encoded_md5:
+            return True
+
+        return False
 
     def _import(self, bucket_name, key, fname):
 
@@ -523,15 +590,13 @@ class DataCloudGCP(DataCloudBase):
     def push(self, data_item):
         """ push, gcp version """
 
-        bucket = self._get_bucket_gc()
+        bucket = self._get_bucket_gc(self.storage_bucket)
         blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
         name = os.path.basename(data_item.resolved_cache.dvc)
 
         blob = bucket.get_blob(blob_name)
         if blob is not None and blob.exists():
-            b64_encoded_md5 = base64.b64encode(file_md5(data_item.resolved_cache.dvc)[1])
-
-            if blob.md5_hash == b64_encoded_md5:
+            if self._cmp_checksum(blob, data_item.resolved_cache.dvc):
                 Logger.debug('checksum %s matches.  Skipping upload' % data_item.cache.relative)
                 return
             Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
@@ -544,6 +609,30 @@ class DataCloudGCP(DataCloudBase):
 
         progress.finish_target(name)
         Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
+
+    def status(self, data_item):
+        """ status, gcp version """
+
+        bucket = self._get_bucket_gc(self.storage_bucket)
+        blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
+        blob = bucket.get_blob(blob_name)
+
+        remote_exists = blob is not None and blob.exists()
+        local_exists = os.path.exists(data_item.resolved_cache.relative)
+
+        if remote_exists and not local_exists:
+            return STATUS_DELETED
+
+        if not remote_exists and local_exists:
+            return STATUS_NEW
+
+        if remote_exists and local_exists:
+            if self._cmp_checksum(blob, data_item.resolved_cache.dvc):
+                return STATUS_OK
+            else:
+                return STATUS_MODIFIED
+
+        return STATUS_UNKNOWN
 
     def remove(self, item):
         raise Exception('NOT IMPLEMENTED YET')
@@ -648,7 +737,7 @@ class DataCloud(object):
     def _map_targets(self, f, targets, jobs):
         collected = self._collect_targets(targets)
 
-        map_progress(f, collected, jobs)
+        return map_progress(f, collected, jobs)
 
     def _import(self, target):
         url, item = target
@@ -681,3 +770,6 @@ class DataCloud(object):
 
     def remove(self, item):
         return self._cloud.remove(item)
+
+    def status(self, targets, jobs=1):
+        return self._map_targets(self._cloud.status, targets, jobs)
