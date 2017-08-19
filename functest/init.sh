@@ -1,5 +1,6 @@
+#!/bin/bash
 
-source common.rc
+source common.sh
 
 ./clean.sh
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 
-source common.rc
+set -e
+
+source common.sh
 
 function run_test() {
     mkdir data/tsv

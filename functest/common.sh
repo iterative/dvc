@@ -1,3 +1,6 @@
+#!/bin/bash
+
+set -e
 
 BASE_DIR_S3=https://s3-us-west-2.amazonaws.com/dataversioncontrol/functests
 RAW_DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
@@ -17,7 +20,7 @@ function _init_repo() {
 
     dvc_info 'import xml files'
     mkdir data/xml
-    dvc data-import ../$RAW_DATA_LOCAL/* data/xml
+    dvc import ../$RAW_DATA_LOCAL/* data/xml
     
     dvc_info 'copy code'
     mkdir code
