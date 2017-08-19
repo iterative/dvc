@@ -4,9 +4,17 @@ import os
 import threading
 import configparser
 import tempfile
+import requests
+import configparser
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    # Python 3
+    from urllib.parse import urlparse
 
 import dvc
 from dvc.logger import Logger
@@ -99,6 +107,9 @@ class DataCloudBase(object):
     def cache_file_key(self, file):
         return '{}/{}'.format(self.storage_prefix, file).strip('/')
 
+    def tmp_file(self, fname):
+        return fname + '.part'
+
     def sanity_check(self):
         pass
 
@@ -134,19 +145,118 @@ class DataCloudBase(object):
     def remove(self, item):
         pass
 
+    def import_data(self, url, item):
+        pass
+
 
 class DataCloudLOCAL(DataCloudBase):
     def push(self, item):
         Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
         copyfile(item.resolved_cache.dvc, self.storage_path)
 
+    def _import(self, i, out):
+        tmp_file = self.tmp_file(out)
+        try:
+            copyfile(i, tmp_file)
+            os.rename(tmp_file, out)
+        except Exception as exc:
+            Logger.error('Failed to copy "{}": {}'.format(i, exc))
+            return
+
     def pull(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
-        copyfile(self.storage_path, item.resolved_cache.dvc)
+        self._import(self.storage_path, item.resolved_cache.dvc)
 
     def remove(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
         os.remove(item.resolved_cache.dvc)
+
+    def import_data(self, path, item):
+        Logger.debug('import from cloud ' + path + " " + item.cache.relative)
+        self._import(path, item.cache.relative)
+
+class DataCloudHTTP(DataCloudBase):
+    def push(self, item):
+        raise Exception('Not implemented yet')
+
+    def pull(self, item):
+        raise Exception('Not implemented yet')
+
+    def remove(self, item):
+        raise Exception('Not implemented yet')
+
+    def import_data(self, url, item):
+        """
+        Download single file from url.
+        """
+
+        to_file = item.cache.relative
+
+        tmp_file = self.tmp_file(to_file)
+        name = os.path.basename(url)
+        chunk_size = 1024 * 100
+        downloaded = 0
+        last_reported = 0
+        report_bucket = 100*1024*10
+
+        resume_header = None
+        mode = 'wb'
+
+        # Resume download if we can
+        if os.path.exists(tmp_file) and self.parsed_args.cont:
+            mode = 'ab'
+
+            downloaded = os.path.getsize(tmp_file)
+            resume_header = {'Range': 'bytes=%d-' % downloaded}
+
+            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
+
+        r = requests.get(url, stream=True, headers=resume_header)
+
+        content_range = r.headers.get('content-range')
+        if resume_header and content_range == None:
+            mode = 'wb'
+            downloaded = 0
+
+            Logger.debug('\'range\' is not supported by the server. Can\'t resume download')
+
+        total_length = r.headers.get('content-length')
+        if total_length == None:
+            Logger.debug('\'content-length\' is not supported by the server')
+
+        with open(tmp_file, mode) as f:
+            for chunk in r.iter_content(chunk_size=chunk_size):
+                if not chunk:  # filter out keep-alive new chunks
+                    continue
+
+                downloaded += len(chunk)
+
+                last_reported += chunk_size
+                if last_reported >= report_bucket:
+                    last_reported = 0
+                    Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
+
+                # update progress bar
+                progress.update_target(name, downloaded, total_length)
+
+                f.write(chunk)
+
+        # tell progress bar that this target is finished downloading
+        progress.finish_target(name)
+
+        # Verify checksum if we can
+        content_md5 = r.headers.get('content-md5')
+        if content_md5 != None:
+            md5 = file_md5(tmp_file)[0]
+            if md5 != content_md5:
+                Logger.error('Checksum mismatch')
+                return
+
+            Logger.debug('Checksum matches')
+        else:
+            Logger.debug('\'content-md5\' is not supported by the server. Can\'t verify download')
+
+        os.rename(tmp_file, to_file)
 
 
 class DataCloudAWS(DataCloudBase):
@@ -238,13 +348,12 @@ class DataCloudAWS(DataCloudBase):
             Logger.info("can't find aws credetials, assuming envirment variables or iam role")
         self._aws_creds = creds
 
-    def _get_bucket_aws(self):
+    def _get_bucket_aws(self, bucket_name):
         """ get a bucket object, aws """
         if all([self.aws_access_key_id, self.aws_secret_access_key, self.aws_region_host]):
             conn = S3Connection(self.aws_access_key_id, self.aws_secret_access_key, host=self.aws_region_host)
         else:
             conn = S3Connection()
-        bucket_name = self.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket is None:
             raise DataCloudError('Storage path is not setup correctly')
@@ -259,13 +368,12 @@ class DataCloudAWS(DataCloudBase):
 
         return False
 
-    def pull(self, item):
-        """ sync from cloud, aws version """
+    def _import(self, bucket_name, key_name, fname):
 
-        bucket = self._get_bucket_aws()
+        bucket = self._get_bucket_aws(bucket_name)
 
-        fname = item.resolved_cache.dvc
-        key_name = self.cache_file_key(fname)
+        tmp_file = self.tmp_file(fname)
+        name = os.path.basename(fname)
         key = bucket.get_key(key_name)
         if not key:
             Logger.error('File "{}" does not exist in the cloud'.format(key_name))
@@ -275,27 +383,38 @@ class DataCloudAWS(DataCloudBase):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
             return
 
-        Logger.info('Downloading cache file from S3 "{}/{}"'.format(bucket.name, key_name))
+        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name, key_name, fname))
 
         try:
-            temp_file = tempfile.NamedTemporaryFile(dir=item.resolved_cache.dirname, delete=False)
-            key.get_contents_to_filename(temp_file.name,
-                                     cb=create_cb(item.resolved_cache.relative))
-            os.rename(temp_file.name, item.resolved_cache.relative)
+            key.get_contents_to_filename(tmp_file, cb=create_cb(name))
+            os.rename(tmp_file, fname)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key_name, exc))
-            if temp_file and os.path.exists(temp_file.name):
-                os.remove(temp_file.name)
             return
 
-        progress.finish_target(os.path.basename(item.resolved_cache.relative))
-        Logger.info('Downloading completed')
+        progress.finish_target(name)
+        Logger.debug('Downloading completed')
+
+    def pull(self, data_item):
+        """ pull, aws version """
+
+        fname = data_item.resolved_cache.dvc
+        key_name = self.cache_file_key(fname)
+        self._import(self.storage_bucket, key_name, fname)
+
+    def import_data(self, url, item):
+        """ import, aws version """
+
+        o = urlparse(url)
+        assert o.scheme == 's3'
+
+        self._import(o.netloc, o.path, item.cache.relative)
 
     def push(self, data_item):
         """ push, aws version """
 
         aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
-        bucket = self._get_bucket_aws()
+        bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
@@ -349,19 +468,20 @@ class DataCloudGCP(DataCloudBase):
         if project is None or len(project) < 1:
             raise ConfigError('can\'t read google cloud project name. Please set ProjectName in section GC.')
 
-    def _get_bucket_gc(self):
+    def _get_bucket_gc(self, storage_bucket):
         """ get a bucket object, gc """
         client = gc.Client(project=self.gc_project_name)
-        bucket = client.bucket(self.storage_bucket)
+        bucket = client.bucket(storage_bucket)
         if not bucket.exists():
             raise DataCloudError('sync up: google cloud bucket {} doesn\'t exist'.format(self.storage_bucket))
         return bucket
 
-    def pull(self, item):
-        """ sync from cloud, gcp version """
+    def _import(self, bucket_name, key, fname):
 
-        bucket = self._get_bucket_gc()
-        key = self.cache_file_key(item.resolved_cache.dvc)
+        bucket = self._get_bucket_gc(bucket_name)
+
+        name = os.path.basename(fname)
+        tmp_file = self.tmp_file(fname)
 
         blob = bucket.get_blob(key)
         if not blob:
@@ -370,14 +490,42 @@ class DataCloudGCP(DataCloudBase):
 
         Logger.info('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
 
-        blob.download_to_filename(item.resolved_cache.dvc)
+        # percent_cb is not available for download_to_filename, so
+        # lets at least update progress at keypoints(start, finish)
+        progress.update_target(name, 0, None)
+
+        try:
+            blob.download_to_filename(tmp_file)
+            os.rename(tmp_file, fname)
+        except Exception as exc:
+            Logger.error('Failed to download "{}": {}'.format(key, exc))
+            return
+
+        progress.finish_target(name)
+
         Logger.info('Downloading completed')
+
+    def pull(self, item):
+        """ pull, gcp version """
+
+        fname = item.resolved_cache.dvc
+        key_name = self.cache_file_key(fname)
+        self._import(self.storage_bucket, key_name, data_item)
+
+    def import_data(self, url, item):
+        """ import, gcp version """
+
+        o = urlparse(url)
+        assert o.scheme == 'gs'
+
+        self._import(o.netloc, o.path, item.cache.relative)
 
     def push(self, data_item):
         """ push, gcp version """
 
         bucket = self._get_bucket_gc()
         blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
+        name = os.path.basename(data_item.resolved_cache.dvc)
 
         blob = bucket.get_blob(blob_name)
         if blob is not None and blob.exists():
@@ -388,8 +536,13 @@ class DataCloudGCP(DataCloudBase):
                 return
             Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
 
+        # same as in _import
+        progress.update_target(name, 0, None)
+
         blob = bucket.blob(blob_name)
         blob.upload_from_filename(data_item.resolved_cache.relative)
+
+        progress.finish_target(name)
         Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
 
     def remove(self, item):
@@ -400,9 +553,19 @@ class DataCloud(object):
     """ Generic class to do initial config parsing and redirect to proper DataCloud methods """
 
     CLOUD_MAP = {
-        'AWS': DataCloudAWS,
-        'GCP': DataCloudGCP,
-        'LOCAL': DataCloudLOCAL,
+        'AWS'   : DataCloudAWS,
+        'GCP'   : DataCloudGCP,
+        'HTTP'  : DataCloudHTTP,
+        'LOCAL' : DataCloudLOCAL,
+    }
+
+    SCHEME_MAP = {
+        's3'    : 'AWS',
+        'http'  : 'HTTP',
+        'https' : 'HTTP',
+        'ftp'   : 'HTTP',
+        'gs'    : 'GCP',
+        ''      : 'LOCAL',
     }
 
     def __init__(self, settings):
@@ -410,6 +573,8 @@ class DataCloud(object):
 
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):
+            self._settings = settings
+            self._config = configparser.ConfigParser()
             self._cloud = DataCloudBase(None, None, None)
             return
 
@@ -485,6 +650,23 @@ class DataCloud(object):
 
         map_progress(f, collected, jobs)
 
+    def _import(self, target):
+        url, item = target
+        o = urlparse(url)
+
+        typ = self.SCHEME_MAP.get(o.scheme, None)
+        if typ == None:
+            Logger.error('Not supported scheme \'{}\''.format(o.scheme))
+            return
+
+        cloud_config = None
+        if self._config.has_section(typ):
+            cloud_config = self._config[typ]
+
+        cloud = self.CLOUD_MAP[typ](self._settings, self._config, cloud_config)
+
+        cloud.import_data(url, item)
+
     def sync(self, targets, jobs=1):
         self._map_targets(self._cloud.sync, targets, jobs)
 
@@ -493,6 +675,9 @@ class DataCloud(object):
 
     def pull(self, targets, jobs=1):
         self._map_targets(self._cloud.pull, targets, jobs)
+
+    def import_data(self, targets, jobs=1):
+        map_progress(self._import, targets, jobs)
 
     def remove(self, item):
         return self._cloud.remove(item)

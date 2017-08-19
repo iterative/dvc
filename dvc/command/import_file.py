@@ -1,6 +1,11 @@
 import os
 import re
-import requests
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    # Python 3
+    from urllib.parse import urlparse
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.data_cloud import sizeof_fmt, file_md5
@@ -8,8 +13,6 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.state_file import StateFile
 from dvc.system import System
-from dvc.progress import progress
-from dvc.utils import copyfile, map_progress
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
@@ -106,123 +109,22 @@ class CmdImportFile(CmdBase):
             if not os.path.exists(cache_dir):
                 os.makedirs(cache_dir)
 
-            data_targets.append((input, output, data_item))
+            data_targets.append((input, data_item))
 
         return data_targets
 
     def import_files(self, targets, lock=False):
         data_targets = self.collect_targets(targets)
-        self.download_targets(data_targets)
+        self.cloud.import_data(data_targets, self.parsed_args.jobs)
         self.create_state_files(data_targets, lock)
-
-    def download_target(self, target):
-        """
-        Download single target from url or from local path.
-        """
-        input = target[0]
-        output = target[2].cache.relative
-
-        if self.is_url(input):
-            Logger.debug("Downloading {} -> {}.".format(input, output))
-            self.download_file(input, output)
-            Logger.debug("Done downloading {} -> {}.".format(input, output))
-        else:
-            Logger.debug("Copying {} -> {}".format(input, output))
-            self.copy_file(input, output)
-            Logger.debug("Dony copying {} -> {}".format(input, output))
-
-    @staticmethod
-    def copy_file(input, output):
-        """
-        Copy single file from local path.
-        """
-        copyfile(input, output)
-
-    def download_file(self, from_url, to_file):
-        """
-        Download single file from url.
-        """
-
-        tmp_file = to_file + '.part'
-        name = os.path.basename(from_url)
-        chunk_size = 1024 * 100
-        downloaded = 0
-        last_reported = 0
-        report_bucket = 100*1024*10
-
-        resume_header = None
-        mode = 'wb'
-
-        # Resume download if we can
-        if os.path.exists(tmp_file) and self.parsed_args.cont:
-            mode = 'ab'
-
-            downloaded = os.path.getsize(tmp_file)
-            resume_header = {'Range': 'bytes=%d-' % downloaded}
-
-            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
-
-        r = requests.get(from_url, stream=True, headers=resume_header)
-
-        content_range = r.headers.get('content-range')
-        if resume_header and content_range == None:
-            mode = 'wb'
-            downloaded = 0
-
-            Logger.debug('\'range\' is not supported by the server. Can\'t resume download')
-
-        total_length = r.headers.get('content-length')
-        if total_length == None:
-            Logger.debug('\'content-length\' is not supported by the server')
-
-        with open(tmp_file, mode) as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
-                if not chunk:  # filter out keep-alive new chunks
-                    continue
-
-                downloaded += len(chunk)
-
-                last_reported += chunk_size
-                if last_reported >= report_bucket:
-                    last_reported = 0
-                    Logger.debug('Downloaded {}'.format(sizeof_fmt(downloaded)))
-
-                # update progress bar
-                progress.update_target(name, downloaded, total_length)
-
-                f.write(chunk)
-
-        # tell progress bar that this target is finished downloading
-        progress.finish_target(name)
-
-        # Verify checksum if we can
-        content_md5 = r.headers.get('content-md5')
-        if content_md5 != None:
-            md5 = file_md5(tmp_file)[0]
-            if md5 != content_md5:
-                Logger.error('Checksum mismatch')
-                return
-
-            Logger.debug('Checksum matches')
-        else:
-            Logger.debug('\'content-md5\' is not supported by the server. Can\'t verify download')
-
-        os.rename(tmp_file, to_file)
-
-    def download_targets(self, targets):
-        """
-        Download targets in a number of threads.
-        """
-        map_progress(self.download_target, targets, self.parsed_args.jobs)
 
     def create_state_files(self, targets, lock):
         """
         Create state files for all targets.
         """
         for t in targets:
-            input       = t[0]
-            output      = t[1]
-            data_item   = t[2]
+            input, data_item  = t
+            output = data_item.data.relative
 
             Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
             System.symlink(data_item.symlink_file, data_item.data.relative)
@@ -237,14 +139,6 @@ class CmdImportFile(CmdBase):
             state_file.save()
             Logger.debug('State file "{}" was created'.format(data_item.state.relative))
 
-    URL_REGEX = re.compile(
-        r'^(?:http|ftp)s?://'  # http:// or https://
-        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'  # domain...
-        r'localhost|'  # localhost...
-        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'  # ...or ip
-        r'(?::\d+)?'  # optional port
-        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-
     @staticmethod
     def is_url(url):
-        return CmdImportFile.URL_REGEX.match(url) is not None
+        return len(urlparse(url).scheme) != 0
