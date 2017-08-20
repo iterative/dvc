@@ -15,6 +15,7 @@ from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
+from dvc.command.config import CmdConfig
 from dvc.command.test import CmdTest
 from dvc.config import Config
 from dvc import VERSION
@@ -297,6 +298,19 @@ def parse_args(argv=None):
                         default=False,
                         help='Reset target.')
     target_parser.set_defaults(func=CmdTarget)
+
+    # Config
+    config_parser = subparsers.add_parser(
+                        'config',
+                        parents=[parent_parser],
+                        help='Get or set repository options')
+    config_parser.add_argument('name',
+                        help='Option name')
+    config_parser.add_argument('value',
+                        nargs='?',
+                        default=None,
+                        help='Option value')
+    config_parser.set_defaults(func=CmdConfig)
 
     if isinstance(argv, str):
         argv = argv.split()
