@@ -7,7 +7,6 @@ import tempfile
 import requests
 import configparser
 import filecmp
-import math
 
 from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
@@ -456,28 +455,6 @@ class DataCloudAWS(DataCloudBase):
 
         return data_item
 
-    def _push_multipart(self, b, aws_key, fname):
-        mp = b.initiate_multipart_upload(aws_key)
-
-        source_size = os.stat(fname).st_size
-        chunk_size = 5000*1024*1024
-        chunk_count = int(math.ceil(source_size / float(chunk_size)))
-
-        with open(fname, 'r') as fp:
-            for i in range(chunk_count):
-                offset = i * chunk_size
-                left = source_size - offset
-                size = min([chunk_size, left])
-                part_num = i + 1
-
-                fp.seek(offset)
-                mp.upload_part_from_file(fp=fp, part_num=part_num, size=size, cb=create_cb(fname))
-
-        if len(mp.get_all_parts()) != chunk_count:
-            raise Exception("Couldn't upload all file parts")
-
-        mp.complete_upload()
-
     def push(self, data_item):
         """ push, aws version """
 
@@ -496,7 +473,8 @@ class DataCloudAWS(DataCloudBase):
         key = bucket.new_key(aws_key)
 
         try:
-            self._push_multipart(bucket, aws_key, data_item.resolved_cache.relative)
+            key.set_contents_from_filename(data_item.resolved_cache.relative,
+                                       cb=create_cb(data_item.resolved_cache.relative))
         except Exception as exc:
             Logger.error('Failed to upload "{}": {}'.format(data_item.resolved_cache.relative, exc))
             return None
