@@ -68,8 +68,10 @@ def map_progress(func, targets, n_threads):
     p = ThreadPool(processes=n_threads)
 
     try:
-        p.map(func, targets)
+        ret = p.map(func, targets)
     except Exception as exc:
         Logger.error('Unexpected exception while processing targets: {}'.format(exc))
     finally:
         progress.finish()
+
+    return zip(targets, ret)

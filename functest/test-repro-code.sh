@@ -1,20 +1,22 @@
 #!/bin/bash
 
-source common.rc
+set -e
 
-function run_test() {
-    mkdir data/tsv
+source common.sh
 
-    dvc_info 'convert Budget.xml to tsv'
-    dvc run --code code/xmltotsv.py python code/xmltotsv.py --extract row/@Id,row/@UserId,row/@Name,row/@Class,row/@TagBased,row/@Date data/xml/Badges.xml data/tsv/Badges.tsv
+dvc_create_repo
+
+mkdir data/tsv
+
+dvc_info 'Convert Budget.xml to tsv'
+pip2 install xmltodict
+dvc run --code code/xmltotsv.py python2 code/xmltotsv.py --extract row/@Id,row/@UserId,row/@Name,row/@Class,row/@TagBased,row/@Date data/xml/Badges.xml data/tsv/Badges.tsv
     
-    dvc_info 'modify code'
-    echo " " >> code/xmltotsv.py 
-    git commit -am 'Change code'
+dvc_info 'Modify code'
+echo " " >> code/xmltotsv.py 
+git commit -am 'Change code'
     
-    dvc_info 'reproduce tsv convertion code'
-    dvc repro data/tsv/Badges.tsv
-}
+dvc_info 'Reproduce tsv convertion code'
+dvc repro data/tsv/Badges.tsv
 
-create_repo
-(cd $TEST_REPO; run_test)
+dvc_pass

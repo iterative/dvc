@@ -92,6 +92,7 @@ install_requires = [
     'wcwidth==0.1.7',
     'colorama==0.3.9',
     'google-compute-engine==2.4.1',
+    'configobj==5.0.6',
 ]
 
 if platform.system() == 'Darwin':

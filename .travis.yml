@@ -39,6 +39,7 @@ install:
   - mkdir -p ~/.aws && printf "[default]\naws_access_key_id = ABCDEFG\naws_secret_access_key = 123456789" > ~/.aws/credentials
 script:
   - ./unittests.sh
+  - ./functests.sh
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build_macos.sh; else ./build_linux.sh; fi
   - ./build_package.sh
 after_sucess:
