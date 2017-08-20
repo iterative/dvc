@@ -138,7 +138,7 @@ class DataCloudBase(object):
         fname = item.resolved_cache.dvc
         key_name = self.cache_file_key(fname)
 
-        return self._import(self.storage_bucket, key_name, fname, data_item)
+        return self._import(self.storage_bucket, key_name, fname, item)
 
     def import_data(self, url, item):
         o = urlparse(url)
