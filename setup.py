@@ -93,6 +93,7 @@ install_requires = [
     'colorama==0.3.9',
     'google-compute-engine==2.4.1',
     'configobj==5.0.6',
+    'networkx==1.11',
 ]
 
 if platform.system() == 'Darwin':
