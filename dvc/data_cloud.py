@@ -56,7 +56,10 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Y', suffix)
 
 
-def percent_cb(name, complete, total):
+def percent_cb(name, part_complete, part_total, offset=0, multipart_total=None):
+    complete = offset + part_complete
+    total = multipart_total if multipart_total != None else part_total
+
     Logger.debug('{}: {} transferred out of {}'.format(
                                     name,
                                     sizeof_fmt(complete),
@@ -64,8 +67,8 @@ def percent_cb(name, complete, total):
     progress.update_target(os.path.basename(name), complete, total)
 
 
-def create_cb(name):
-    return (lambda cur,tot: percent_cb(name, cur, tot))
+def create_cb(name, offset=0, multipart_total=None):
+    return (lambda cur,tot: percent_cb(name, cur, tot, offset, multipart_total))
 
 
 def file_md5(fname):
@@ -467,7 +470,7 @@ class DataCloudAWS(DataCloudBase):
         mp = key.bucket.initiate_multipart_upload(key.name, metadata=metadata)
 
         source_size = os.stat(fname).st_size
-        chunk_size = 5000*1024*1024
+        chunk_size = 50*1024*1024
         chunk_count = int(math.ceil(source_size / float(chunk_size)))
 
         with open(fname, 'rb') as fp:
@@ -478,7 +481,11 @@ class DataCloudAWS(DataCloudBase):
                 part_num = i + 1
 
                 fp.seek(offset)
-                mp.upload_part_from_file(fp=fp, part_num=part_num, size=size, cb=create_cb(fname))
+                mp.upload_part_from_file(fp=fp,
+                                         size=size,
+                                         num_cb=100,
+                                         part_num=part_num,
+                                         cb=create_cb(fname, offset, source_size))
 
         if len(mp.get_all_parts()) != chunk_count:
             raise Exception("Couldn't upload all file parts")
