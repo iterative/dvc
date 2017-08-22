@@ -381,6 +381,11 @@ def parse_args(argv=None):
                         'config',
                         parents=[parent_parser],
                         help='Get or set repository options')
+    config_parser.add_argument('-u',
+                        '--unset',
+                        default=False,
+                        action='store_true',
+                        help='Unset option')
     config_parser.add_argument('name',
                         help='Option name')
     config_parser.add_argument('value',
