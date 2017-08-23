@@ -694,7 +694,10 @@ class DataCloud(object):
 
     @staticmethod
     def get_cloud_settings(config, cloud_type, path_factory):
-        cloud_config = config[cloud_type]
+        if cloud_type not in config.keys():
+            cloud_config = None
+        else:
+            cloud_config = config[cloud_type]
         global_storage_path = config['Global'].get('StoragePath', None)
         cloud_settings = CloudSettings(path_factory, global_storage_path, cloud_config)
         return cloud_settings
@@ -766,8 +769,14 @@ class DataCloud(object):
             Logger.error('Not supported scheme \'{}\''.format(o.scheme))
             return None
 
-        self._config = self._settings.config._config
-        cloud_settings = self.get_cloud_settings(self._config, typ, self._settings.path_factory)
+        #To handle ConfigI case
+        if not hasattr(self._settings.config, '_config'):
+            self._config = None
+            cloud_settings = None
+        else:
+            self._config = self._settings.config._config
+            cloud_settings = self.get_cloud_settings(self._config, typ, self._settings.path_factory)
+
         cloud = self.CLOUD_MAP[typ](cloud_settings)
 
         return cloud.import_data(url, item)
