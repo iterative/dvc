@@ -152,10 +152,10 @@ class DataCloudBase(object):
         item = self._cloud_settings.path_factory.data_item(fname)
 
         if os.path.isfile(item.resolved_cache.dvc):
-                return self.push(item)
-            else:
-                self.create_directory(item)
-                return self.pull(item)
+            return self.push(item)
+        else:
+            self.create_directory(item)
+            return self.pull(item)
 
     def create_directory(self, item):
         self._lock.acquire()
@@ -381,7 +381,7 @@ class DataCloudAWS(DataCloudBase):
 
     def credential_paths(self, default):
         paths = []
-        credpath = self._cloud_config.get('CredentialPath', None)
+        credpath = self._cloud_settings.cloud_config.get('CredentialPath', None)
         if credpath is not None and len(credpath) > 0:
             credpath = os.path.expanduser(credpath)
             if os.path.isfile(credpath):
@@ -671,6 +671,7 @@ class DataCloud(object):
 
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):
+            self._settings = settings
             self._cloud = DataCloudBase(None)
             return
 
@@ -765,11 +766,9 @@ class DataCloud(object):
             Logger.error('Not supported scheme \'{}\''.format(o.scheme))
             return None
 
-        cloud_config = None
-        if self._config.has_section(typ):
-            cloud_config = self._config[typ]
-
-        cloud = self.CLOUD_MAP[typ](self._settings, self._config, cloud_config)
+        self._config = self._settings.config._config
+        cloud_settings = self.get_cloud_settings(self._config, typ, self._settings.path_factory)
+        cloud = self.CLOUD_MAP[typ](cloud_settings)
 
         return cloud.import_data(url, item)
 

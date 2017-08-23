@@ -12,12 +12,9 @@ from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
-<<<<<<< HEAD
 from dvc.command.instance_create import CmdInstanceCreate
-=======
 from dvc.command.config import CmdConfig
 from dvc.command.test import CmdTest
->>>>>>> f0b75172e7a0d4b14191354e8d0960a41a56ccb6
 from dvc.config import Config
 from dvc import VERSION
 
@@ -300,7 +297,6 @@ def parse_args(argv=None):
                         help='Reset target.')
     target_parser.set_defaults(func=CmdTarget)
 
-<<<<<<< HEAD
     # Cloud
     ex_parser = subparsers.add_parser(
                         'ex',
@@ -378,7 +374,7 @@ def parse_args(argv=None):
                                         default=False,
                                         help='Detect all ephemeral disks and stripe together in raid-0')
     instance_create_parser.set_defaults(func=CmdInstanceCreate)
-=======
+
     # Config
     config_parser = subparsers.add_parser(
                         'config',
@@ -391,7 +387,6 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
->>>>>>> f0b75172e7a0d4b14191354e8d0960a41a56ccb6
 
     if isinstance(argv, str):
         argv = argv.split()
