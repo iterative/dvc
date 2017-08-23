@@ -62,6 +62,9 @@ class DataItem(object):
         return self.data.dvc.__hash__()
 
     def __eq__(self, other):
+        if other == None:
+            return False
+
         return self.data.dvc == other.data.dvc
 
     @property

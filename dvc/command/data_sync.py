@@ -1,17 +1,7 @@
-import os
-from multiprocessing.pool import ThreadPool
-
 from dvc.command.base import CmdBase, DvcLock
-from dvc.exceptions import DvcException
-from dvc.system import System
-from dvc.data_cloud import DataCloud
-from dvc.utils import map_progress
+from dvc.logger import Logger
 
-
-class DataSyncError(DvcException):
-    def __init__(self, msg):
-        super(DataSyncError, self).__init__('Data sync error: {}'.format(msg))
-
+import dvc.data_cloud as cloud
 
 class CmdDataSync(CmdBase):
     def __init__(self, settings):
@@ -19,21 +9,44 @@ class CmdDataSync(CmdBase):
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            cloud = DataCloud(self.settings)
-            targets = []
+            self.cloud.sync(self.parsed_args.targets, self.parsed_args.jobs)
 
-            if len(self.parsed_args.targets) == 0:
-                raise DataSyncError('Sync target is not specified')
 
-            for target in self.parsed_args.targets:
-                if System.islink(target):
-                    targets.append(target)
-                elif os.path.isdir(target):
-                    for root, dirs, files in os.walk(target):
-                        for f in files:
-                            targets.append(os.path.join(root, f))
-                else:
-                    raise DataSyncError('File "{}" does not exit'.format(target)) 
+class CmdDataPull(CmdBase):
+    def __init__(self, settings):
+        super(CmdDataPull, self).__init__(settings)
 
-            map_progress(cloud.sync, targets, self.parsed_args.jobs)
-        pass
+    def run(self):
+        with DvcLock(self.is_locker, self.git):
+            self.cloud.pull(self.parsed_args.targets, self.parsed_args.jobs)
+
+
+class CmdDataPush(CmdBase):
+    def __init__(self, settings):
+        super(CmdDataPush, self).__init__(settings)
+
+    def run(self):
+        with DvcLock(self.is_locker, self.git):
+            self.cloud.push(self.parsed_args.targets, self.parsed_args.jobs)
+
+class CmdDataStatus(CmdBase):
+    def __init__(self, settings):
+        super(CmdDataStatus, self).__init__(settings)
+
+    def run(self):
+        with DvcLock(self.is_locker, self.git):
+            status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
+
+            for s in status:
+                target, ret = s
+
+                if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
+                    continue
+
+                prefix_map = {
+                    cloud.STATUS_DELETED  : 'deleted: ',
+                    cloud.STATUS_MODIFIED : 'modified:',
+                    cloud.STATUS_NEW      : 'new file:',
+                }
+
+                Logger.info('\t{}\t{}'.format(prefix_map[ret], target.resolved_cache.dvc))

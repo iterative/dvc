@@ -3,8 +3,7 @@ import os
 from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.data_cloud import DataCloud
-
+from dvc.path.data_item import DataItemError
 
 class TraverseError(DvcException):
     def __init__(self, msg):
@@ -15,7 +14,6 @@ class Traverse(CmdBase):
     def __init__(self, settings, cmd_name, do_not_start_from_root=True):
         super(Traverse, self).__init__(settings)
         self._cmd_name = cmd_name
-        self.cloud = DataCloud(self.settings)
         self._do_not_start_from_root = do_not_start_from_root
 
     def run(self):
@@ -68,6 +66,20 @@ class Traverse(CmdBase):
 
         self.traverse_dir_finalize(target)
         pass
+
+    # Common helpers
+    def _get_data_item(self, target):
+        try:
+            data_item = self.settings.path_factory.existing_data_item(target)
+        except DataItemError:
+            Logger.warn(u'[TraverseFileTree] Data file {} is not valid symbolic link'.format(target))
+            data_item = self.settings.path_factory.data_item(target)
+
+        return data_item
+
+    def _remove_cloud_cache(self, data_item):
+        if not self.parsed_args.keep_in_cloud:
+            self.settings.cloud.remove(data_item)
 
     ## API:
     def is_recursive(self):

@@ -56,6 +56,10 @@ class CmdBase(object):
         return self._settings.args
 
     @property
+    def cloud(self):
+        return self._settings.cloud
+
+    @property
     def parsed_args(self):
         return self._settings._parsed_args
 

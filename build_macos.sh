@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 BUILD_DIR=build
 INSTALL_DIR=usr/local
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
@@ -40,16 +42,6 @@ install_dependencies()
 	pip install -r requirements.txt
 
 	print_info "Installing fpm..."
-	if command_exists dnf; then
-		sudo dnf install ruby-devel gcc make rpm-build
-	elif command_exists yum; then
-		sudo yum install ruby-devel gcc make rpm-build
-	elif command_exists apt-get; then
-		sudo apt-get install ruby ruby-dev rubygems build-essential
-	#else
-	#	echo "Unable to install fpm dependencies" && exit 1
-	fi
-
 	gem install --no-ri --no-rdoc fpm
 
 	print_info "Installing pyinstaller..."
@@ -65,8 +57,7 @@ build_dvc()
 cleanup
 install_dependencies
 build_dvc
-#fpm_build rpm
 fpm_build osxpkg
-#cleanup
+cleanup
 
-print_info "Successfully built dvc rpm and deb packages"
+print_info "Successfully built dvc osx package"

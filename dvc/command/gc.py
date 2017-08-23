@@ -2,7 +2,6 @@ import os
 
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
-from dvc.path.data_item import DataItemError
 
 
 class CmdGC(Traverse):
@@ -12,11 +11,7 @@ class CmdGC(Traverse):
     def process_file(self, target):
         Logger.debug(u'[Cmd-GC] GC file {}.'.format(target))
 
-        try:
-            data_item = self.settings.path_factory.existing_data_item(target)
-        except DataItemError:
-            Logger.warn(u'[Cmd-GC] Data item {} is not a valid symbolic link'.format(target))
-            data_item = self.settings.path_factory.data_item(target)
+        data_item = self._get_data_item(target)
 
         for cache_data_item in data_item.get_all_caches():
             if cache_data_item.cache.relative != data_item.resolved_cache.relative:
@@ -26,10 +21,6 @@ class CmdGC(Traverse):
 
         Logger.debug(u'[Cmd-GC] GC data item {}. Success.'.format(data_item.data.relative))
         pass
-
-    def _remove_cloud_cache(self, data_item):
-        if not self.parsed_args.keep_in_cloud:
-            self.cloud.remove_from_cloud(data_item)
 
     def is_recursive(self):
         return self.parsed_args.recursive

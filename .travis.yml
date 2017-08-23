@@ -7,6 +7,29 @@ python:
   - "3.5"
 #  - "3.6" Not supported by pyinstaller yet
 cache: pip
+# Travis doesn't support testing python on Mac yet, so we need
+# to workaround it by installing it directly with brew.
+#
+# Note that we specify language as ruby-2.4.0 to help us satisfy
+# fpm dependencies, as travis runs el capitan with an old ruby
+# version, that causes fpm to crash.
+matrix:
+  include:
+  - os: osx
+    language: ruby
+    rvm: 2.4.0
+    env: PYTHON_VER=2.7.10
+  - os: osx
+    language: ruby
+    rvm: 2.4.0
+    env: PYTHON_VER=3.4.3
+  - os: osx
+    language: ruby
+    rvm: 2.4.0
+    env: PYTHON_VER=3.5.0
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pyenv install $PYTHON_VER; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then pyenv global $PYTHON_VER; fi
 install:
   - pip install --upgrade pip
   - pip install -r requirements.txt
@@ -16,7 +39,8 @@ install:
   - mkdir -p ~/.aws && printf "[default]\naws_access_key_id = ABCDEFG\naws_secret_access_key = 123456789" > ~/.aws/credentials
 script:
   - ./unittests.sh
-  - ./build_linux.sh
+  - ./functests.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build_macos.sh; else ./build_linux.sh; fi
   - ./build_package.sh
 after_sucess:
   - CODECLIMATE_REPO_TOKEN=7350efa14a67c3911af96dadaabe811b43eead7b466309b47687499bf5d72287 codeclimate-test-reporter
@@ -28,6 +52,7 @@ deploy:
   file:
     - dvc*.rpm
     - dvc*.deb
+    - dvc*.pkg
   skip_cleanup: true
   on:
     tags: true

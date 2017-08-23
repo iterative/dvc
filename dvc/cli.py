@@ -7,12 +7,17 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataSync
+from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull, CmdDataStatus
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
+<<<<<<< HEAD
 from dvc.command.instance_create import CmdInstanceCreate
+=======
+from dvc.command.config import CmdConfig
+from dvc.command.test import CmdTest
+>>>>>>> f0b75172e7a0d4b14191354e8d0960a41a56ccb6
 from dvc.config import Config
 from dvc import VERSION
 
@@ -118,21 +123,47 @@ def parse_args(argv=None):
                         help='Arguments of a command')
     run_parser.set_defaults(func=CmdRun)
 
-    # Sync
-    sync_parser = subparsers.add_parser(
-                        'sync',
-                        parents=[parent_parser],
-                        help='Synchronize data file with cloud (cloud settings already setup.')
-    sync_parser.add_argument(
+    # Parent parser used in sync/pull/push
+    parent_sync_parser = argparse.ArgumentParser(
+                        add_help=False,
+                        parents=[parent_parser])
+    parent_sync_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='File or directory to sync.')
-    sync_parser.add_argument('-j',
+    parent_sync_parser.add_argument('-j',
                         '--jobs',
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
+
+    # Sync
+    sync_parser = subparsers.add_parser(
+                        'sync',
+                        parents=[parent_sync_parser],
+                        help='Synchronize data file with cloud (cloud settings already setup.')
     sync_parser.set_defaults(func=CmdDataSync)
+
+    # Pull
+    pull_parser = subparsers.add_parser(
+                        'pull',
+                        parents=[parent_sync_parser],
+                        help='Pull data files from the cloud')
+    pull_parser.set_defaults(func=CmdDataPull)
+
+    # Push
+    push_parser = subparsers.add_parser(
+                        'push',
+                        parents=[parent_sync_parser],
+                        help='Push data files to the cloud')
+    push_parser.set_defaults(func=CmdDataPush)
+
+    # Status
+    status_parser = subparsers.add_parser(
+                        'status',
+                        parents=[parent_sync_parser],
+                        help='Show status for data files')
+    status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
     repro_parser = subparsers.add_parser(
@@ -201,6 +232,12 @@ def parse_args(argv=None):
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
+    import_parser.add_argument('-c',
+                        '--continue',
+                        dest='cont',
+                        action='store_true',
+                        default=False,
+                        help='Resume downloading file from url')
     import_parser.set_defaults(func=CmdImportFile)
 
     # Lock
@@ -263,6 +300,7 @@ def parse_args(argv=None):
                         help='Reset target.')
     target_parser.set_defaults(func=CmdTarget)
 
+<<<<<<< HEAD
     # Cloud
     ex_parser = subparsers.add_parser(
                         'ex',
@@ -340,6 +378,20 @@ def parse_args(argv=None):
                                         default=False,
                                         help='Detect all ephemeral disks and stripe together in raid-0')
     instance_create_parser.set_defaults(func=CmdInstanceCreate)
+=======
+    # Config
+    config_parser = subparsers.add_parser(
+                        'config',
+                        parents=[parent_parser],
+                        help='Get or set repository options')
+    config_parser.add_argument('name',
+                        help='Option name')
+    config_parser.add_argument('value',
+                        nargs='?',
+                        default=None,
+                        help='Option value')
+    config_parser.set_defaults(func=CmdConfig)
+>>>>>>> f0b75172e7a0d4b14191354e8d0960a41a56ccb6
 
     if isinstance(argv, str):
         argv = argv.split()
