@@ -1,5 +1,5 @@
 import sys, os, argparse, boto.ec2
-from base_aws import AwsBase #logger, Logger
+from dvc.cloud.base_aws import AwsBase #logger, Logger
 
 class StorageTool(AwsBase):
 
