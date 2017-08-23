@@ -9,6 +9,7 @@ from boto.s3.connection import S3Connection
 from google.cloud import storage as gc
 
 import dvc
+from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
@@ -53,10 +54,8 @@ def file_md5(fname):
 
 class DataCloudBase(object):
     """ Base class for DataCloud """
-    def __init__(self, settings, config, cloud_config):
-        self._settings = settings
-        self._config = config
-        self._cloud_config = cloud_config
+    def __init__(self, cloud_settings):
+        self._cloud_settings = cloud_settings
         self._lock = threading.Lock()
 
     @property
@@ -66,11 +65,10 @@ class DataCloudBase(object):
         Precedence: Storage, then cloud specific
         """
 
-        path = self._config['Global'].get('StoragePath', None)
-        if path:
-            return path
+        if self._cloud_settings.global_storage_path:
+            return self._cloud_settings.global_storage_path
 
-        path = self._cloud_config.get('StoragePath', None)
+        path = self._cloud_settings.cloud_config.get('StoragePath', None)
         if path is None:
             raise ConfigError('invalid StoragePath: not set for Data or cloud specific')
 
@@ -104,7 +102,7 @@ class DataCloudBase(object):
         pass
 
     def sync(self, fname):
-        item = self._settings.path_factory.data_item(fname)
+        item = self._cloud_settings.path_factory.data_item(fname)
         if os.path.isfile(item.resolved_cache.dvc):
             self.sync_to_cloud(item)
         else:
@@ -147,15 +145,9 @@ class DataCloudLOCAL(DataCloudBase):
 
 class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
-    def __init__(self, settings, config, cloud_config):
-        super(DataCloudAWS, self).__init__(settings, config, cloud_config)
-
-        credpath = self._cloud_config.get('CredentialPath', None)
-        credsect = self._cloud_config.get('CredentialSection', 'default')
-
-        aws_creds = AWSCredentials(credpath, credsect)
-        self.aws_access_key_id = aws_creds.access_key_id
-        self.aws_secret_access_key = aws_creds.secret_access_key
+    def __init__(self, cloud_settings): # settings, config, cloud_config):
+        super(DataCloudAWS, self).__init__(cloud_settings)
+        self._aws_creds = AWSCredentials(cloud_settings.cloud_config)
 
     @property
     def aws_region_host(self):
@@ -164,7 +156,7 @@ class DataCloudAWS(DataCloudBase):
         See notes http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
         """
 
-        region = self._cloud_config['Region']
+        region = self._cloud_settings.cloud_config['Region']
         if region is None or region == '':
             return 's3.amazonaws.com'
         if region == 'us-east-1':
@@ -173,14 +165,16 @@ class DataCloudAWS(DataCloudBase):
 
     def _get_bucket_aws(self):
         """ get a bucket object, aws """
-        if all([self.aws_access_key_id, self.aws_secret_access_key, self.aws_region_host]):
-            conn = S3Connection(self.aws_access_key_id, self.aws_secret_access_key, host=self.aws_region_host)
+        if all([self._aws_creds.access_key_id, self._aws_creds.secret_access_key, self.aws_region_host]):
+            conn = S3Connection(self._aws_creds.access_key_id,
+                                self._aws_creds.secret_access_key,
+                                host=self.aws_region_host)
         else:
             conn = S3Connection()
         bucket_name = self.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket is None:
-            raise DataCloudError('Storage path is not setup correctly')
+            raise DataCloudError('Storage path {} is not setup correctly'.format(bucket_name))
         return bucket
 
     def sync_from_cloud(self, item):
@@ -244,10 +238,10 @@ class DataCloudAWS(DataCloudBase):
 
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
 
-        if not self.aws_access_key_id or not self.aws_secret_access_key:
+        if not self._aws_creds.access_key_id or not self._aws_creds.secret_access_key:
             Logger.debug('[Cmd-Remove] Unable to check cache file in the cloud')
             return
-        conn = S3Connection(self.aws_access_key_id, self.aws_secret_access_key)
+        conn = S3Connection(self._aws_creds.access_key_id, self._aws_creds.secret_access_key)
         bucket_name = self.storage_bucket
         bucket = conn.lookup(bucket_name)
         if bucket:
@@ -332,22 +326,32 @@ class DataCloud(object):
 
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):
-            self._cloud = DataCloudBase(None, None, None)
+            self._cloud = DataCloudBase(None)
             return
 
         self._settings = settings
         self._config = self._settings.config._config
 
-        self.typ = self._config['Global'].get('Cloud', '').strip().upper()
-        if self.typ not in self.CLOUD_MAP.keys():
-            raise ConfigError('Wrong cloud type %s specified' % self.typ)
+        cloud_type = self._config['Global'].get('Cloud', '').strip().upper()
+        if cloud_type not in self.CLOUD_MAP.keys():
+            raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
-        if self.typ not in self._config.keys():
-            raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % self.typ)
+        if cloud_type not in self._config.keys():
+            raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
-        self._cloud = self.CLOUD_MAP[self.typ](self._settings, self._config, self._config[self.typ])
+        cloud_settings = self.get_cloud_settings(self._config, cloud_type, self._settings.path_factory)
+
+        self.typ = cloud_type
+        self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
 
         self.sanity_check()
+
+    @staticmethod
+    def get_cloud_settings(config, cloud_type, path_factory):
+        cloud_config = config[cloud_type]
+        global_storage_path = config['Global'].get('StoragePath', None)
+        cloud_settings = CloudSettings(path_factory, global_storage_path, cloud_config)
+        return cloud_settings
 
     def sanity_check(self):
         """ sanity check a config

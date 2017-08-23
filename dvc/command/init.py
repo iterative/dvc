@@ -23,7 +23,10 @@ TargetFile = {}
 
 # Supported clouds: AWS, GCP
 Cloud = AWS
-StoragePath =
+
+# This global storage path is going to be deprecated in the next version.
+# Please use StoragePath from a specific cloud instead.
+#StoragePath =
 
 # Log levels: Debug, Info, Warning and Error
 LogLevel = Info
@@ -31,6 +34,8 @@ LogLevel = Info
 [AWS]
 CredentialPath = ~/.aws/credentials
 CredentialSection = default
+
+StoragePath = dvc/tutorial
 
 # Default settings for AWS instances:
 Type = t2.nano
@@ -47,8 +52,7 @@ Region = us-east-1
 Zone = us-east-1a
 SubnetId = 
 
-Storage = my-100gb-drive-io
-#StoragePath = dvc/tutorial
+Volume = my-100gb-drive-io
 
 Monitoring = false
 EbsOptimized = false

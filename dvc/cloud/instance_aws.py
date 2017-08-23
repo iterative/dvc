@@ -1,5 +1,6 @@
 import sys, os, time, boto.ec2
 
+from dvc.cloud.credentials_aws import AWSCredentials
 from dvc.cloud.instance import Instance, InstanceError
 from dvc.logger import Logger
 
@@ -11,11 +12,12 @@ class InstanceAws(Instance):
 
     def __init__(self, homedir, conf_file):
         super(InstanceAws).__init__(homedir, conf_file)
+        self._aws_creds = AWSCredentials(self._cloud_config)
 
         self._conn = boto.ec2.connect_to_region(
                                     self._region,
-                                    aws_access_key_id = self._aws_conf.get("AccessKeyID"),
-                                    aws_secret_access_key = self._aws_conf.get("SecretAccessKey"))
+                                    aws_access_key_id=self._aws_conf.get("AccessKeyID"),
+                                    aws_secret_access_key=self._aws_conf.get("SecretAccessKey"))
 
     def create(self):
         instance = None

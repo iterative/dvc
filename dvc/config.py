@@ -23,7 +23,7 @@ class ConfigI(object):
         self._cloud = None
         self.set(data_dir, cache_dir, state_dir, target_file, cloud, conf_parser)
 
-    def set(self, data_dir, cache_dir, state_dir, target_file, cloud, conf_parser):
+    def set(self, data_dir, cache_dir, state_dir, target_file, cloud=None, conf_parser=None):
         self._data_dir = data_dir
         self._cache_dir = cache_dir
         self._state_dir = state_dir
