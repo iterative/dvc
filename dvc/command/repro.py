@@ -201,7 +201,7 @@ class ReproChange(object):
                                             [],
                                             [],
                                             [],
-                                            True,
+                                            False,
                                             check_if_ready=False) != 0:
                 raise ReproError('Run command reproduction failed')
             return True
