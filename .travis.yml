@@ -37,8 +37,8 @@ install:
   - git config --global user.email "dvctester@example.com"
   - git config --global user.name "DVC Tester"
   - mkdir ~/.aws
-  - echo "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" > ~/.aws/credentials
-  - echo "[default]\n" > ~/.aws/config
+  - printf "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" > ~/.aws/credentials
+  - printf "[default]\n" > ~/.aws/config
 script:
   - ./unittests.sh
   - ./functests.sh
