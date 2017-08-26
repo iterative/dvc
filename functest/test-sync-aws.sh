@@ -4,7 +4,7 @@ set -e
 
 source common.sh
 
-if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
+if [[ "$TRAVIS_PULL_REQUEST" == "false" && "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
 	dvc_create_repo
 
 	dvc_info "Setting up AWS cloud"
