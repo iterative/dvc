@@ -36,7 +36,6 @@ install:
   - pip install -r test-requirements.txt
   - git config --global user.email "dvctester@example.com"
   - git config --global user.name "DVC Tester"
-  - mkdir -p ~/.aws && printf "[default]\naws_access_key_id = ABCDEFG\naws_secret_access_key = 123456789" > ~/.aws/credentials
 script:
   - ./unittests.sh
   - ./functests.sh

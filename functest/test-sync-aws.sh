@@ -4,7 +4,7 @@ set -e
 
 source common.sh
 
-if [ -z $TRAVIS ]; then
+if [ -z $TRAVIS_PULL_REQUEST ]; then
 	dvc_create_repo
 
 	dvc_info "Setting up AWS cloud"
@@ -34,8 +34,6 @@ if [ -z $TRAVIS ]; then
 	dvc status data/xml
 
 	dvc_clean_cloud_aws
-else
-	dvc_info "AWS test is disabled for travis"
 fi
 
 dvc_pass
