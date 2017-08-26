@@ -14,6 +14,7 @@ from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
+from dvc.command.visual import CmdVisual
 from dvc.command.test import CmdTest
 from dvc.config import Config
 from dvc import VERSION
@@ -380,6 +381,11 @@ def parse_args(argv=None):
                         'config',
                         parents=[parent_parser],
                         help='Get or set repository options')
+    config_parser.add_argument('-u',
+                        '--unset',
+                        default=False,
+                        action='store_true',
+                        help='Unset option')
     config_parser.add_argument('name',
                         help='Option name')
     config_parser.add_argument('value',
@@ -387,6 +393,17 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
+
+    # Visual
+    vz_parser = subparsers.add_parser(
+                        'visual',
+                        parents=[parent_parser],
+                        help='Create a dependency graph for data')
+    vz_parser.add_argument(
+                        'target',
+                        nargs='*',
+                        help='Target data')
+    vz_parser.set_defaults(func=CmdVisual)
 
     if isinstance(argv, str):
         argv = argv.split()

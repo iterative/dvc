@@ -63,7 +63,7 @@ StoragePath =
 ProjectName =
 '''
 
-    EMPTY_FILE_NAME = 'empty'
+    EMPTY_FILE_NAME = '.empty'
     EMPTY_FILE_CHECKSUM = '0000000'
 
     def __init__(self, settings):

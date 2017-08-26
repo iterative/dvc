@@ -342,43 +342,6 @@ class DataCloudAWS(DataCloudBase):
             return 's3.amazonaws.com'
         return 's3.%s.amazonaws.com' % region
 
-    def get_aws_credentials(self):
-        """ gets aws credentials, looking in various places
-
-        Params:
-
-        Searches:
-        1 any override in dvc.conf [AWS] CredentialPath;
-        2 ~/.aws/credentials
-
-
-        Returns:
-            if successfully found, (access_key_id, secret)
-            None otherwise
-        """
-
-        # FIX: It won't work in Windows.
-        default = os.path.expanduser('~/.aws/credentials')
-
-        paths = self.credential_paths(default)
-        for path in paths:
-            try:
-                cc = configparser.SafeConfigParser()
-
-                # use readfp(open( ... to aid mocking.
-                cc.readfp(open(path, 'r'))
-
-                if 'default' in cc.keys():
-                    access_key = cc['default'].get('aws_access_key_id', None)
-                    secret = cc['default'].get('aws_secret_access_key', None)
-
-                    if access_key is not None and secret is not None:
-                        return (access_key, secret)
-            except Exception as e:
-                pass
-
-        return None
-
     def credential_paths(self, default):
         paths = []
         credpath = self._cloud_settings.cloud_config.get('CredentialPath', None)
@@ -392,12 +355,6 @@ class DataCloudAWS(DataCloudBase):
         else:
             paths.append(default)
         return paths
-
-    def sanity_check(self):
-        creds = self.get_aws_credentials()
-        if creds is None:
-            Logger.info("can't find aws credetials, assuming envirment variables or iam role")
-        self._aws_creds = creds
 
     def _get_bucket_aws(self, bucket_name):
         """ get a bucket object, aws """
