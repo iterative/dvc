@@ -6,6 +6,7 @@ source common.sh
 
 TESTS+=" test-init.sh"
 TESTS+=" test-import.sh"
+TESTS+=" test-sync-aws.sh"
 TESTS+=" test-repro-code.sh"
 
 for t in $TESTS; do

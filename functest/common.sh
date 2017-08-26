@@ -16,6 +16,9 @@ BASE_DIR_S3=https://s3-$REGION.amazonaws.com/dataversioncontrol/functests
 DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
 CODE_S3=$BASE_DIR_S3/code
 
+TEST_REPO_S3='dvc-test/myrepo'
+TEST_REPO_REGION='us-east-2'
+
 function dvc_print() {
 	echo -e "$1"
 }
@@ -101,6 +104,11 @@ function dvc_create_repo() {
 
 	mkdir data/xml
 	dvc import $DATA_CACHE/* data/xml
+}
+
+function dvc_clean_cloud_aws() {
+	dvc_info "Cleaning $TEST_REPO_S3"
+	aws s3 rm --recursive "s3://$TEST_REPO_S3/"
 }
 
 function dvc_check_dirs() {
