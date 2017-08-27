@@ -1,4 +1,5 @@
 import os
+import ntpath
 import sys
 import json
 import time
@@ -91,40 +92,71 @@ class StateFile(object):
         return self._argv
 
     @staticmethod
+    def _replace_paths(l, old, new):
+        if os.path != ntpath:
+            return l
+
+        ret = []
+        for x in l:
+            if x == None:
+                ret.append(None)
+                continue
+
+            ret.append(x.replace(old, new))
+
+        return ret
+
+    @staticmethod
+    def decode_paths(l):
+        return StateFile._replace_paths(l, '/', '\\')
+
+    @staticmethod
+    def decode_path(p):
+        return StateFile.decode_paths([p])[0]
+
+    @staticmethod
+    def encode_paths(l):
+        return StateFile._replace_paths(l, '\\', '/')
+
+    @staticmethod
+    def encode_path(p):
+        return StateFile.encode_paths([p])[0]
+
+    @staticmethod
     def load(filename, settings):
         with open(filename, 'r') as fd:
             data = json.load(fd)
 
-        return StateFile(data.get(StateFile.PARAM_COMMAND),
+        return StateFile(StateFile.decode_path(data.get(StateFile.PARAM_COMMAND)),
                          filename,
                          settings,
-                         data.get(StateFile.PARAM_INPUT_FILES, []),
-                         data.get(StateFile.PARAM_OUTPUT_FILES, []),
-                         data.get(StateFile.PARAM_CODE_DEPENDENCIES, []),
+                         StateFile.decode_paths(data.get(StateFile.PARAM_INPUT_FILES, [])),
+                         StateFile.decode_paths(data.get(StateFile.PARAM_OUTPUT_FILES, [])),
+                         StateFile.decode_paths(data.get(StateFile.PARAM_CODE_DEPENDENCIES, [])),
                          data.get(StateFile.PARAM_LOCKED, False),
-                         data.get(StateFile.PARAM_ARGV),
-                         data.get(StateFile.PARAM_STDOUT),
-                         data.get(StateFile.PARAM_STDERR),
+                         StateFile.decode_paths(data.get(StateFile.PARAM_ARGV)),
+                         StateFile.decode_path(data.get(StateFile.PARAM_STDOUT)),
+                         StateFile.decode_path(data.get(StateFile.PARAM_STDERR)),
                          data.get(StateFile.PARAM_CREATED_AT),
-                         data.get(StateFile.PARAM_CWD),
+                         StateFile.decode_path(data.get(StateFile.PARAM_CWD)),
                          data.get(StateFile.PARAM_SHELL, False))
 
     def save(self):
         argv = self._argv_paths_normalization(self._argv)
 
         res = {
-            self.PARAM_COMMAND:         self.command,
-            self.PARAM_TYPE:            self.MAGIC,
-            self.PARAM_VERSION:         self.VERSION,
-            self.PARAM_ARGV:            argv,
-            self.PARAM_CWD:             self.cwd,
-            self.PARAM_CREATED_AT:      self.created_at,
-            self.PARAM_INPUT_FILES:     self.input_files,
-            self.PARAM_OUTPUT_FILES:    self.output_files,
-            self.PARAM_CODE_DEPENDENCIES:   self.code_dependencies,
-            self.PARAM_STDOUT:          self.stdout,
-            self.PARAM_STDERR:          self.stderr,
-            self.PARAM_SHELL:           self.shell
+            self.PARAM_COMMAND:             self.encode_path(self.command),
+            self.PARAM_TYPE:                self.MAGIC,
+            self.PARAM_VERSION:             self.VERSION,
+            self.PARAM_ARGV:                self.encode_paths(argv),
+            self.PARAM_CWD:                 self.encode_path(self.cwd),
+            self.PARAM_CREATED_AT:          self.created_at,
+            self.PARAM_INPUT_FILES:         self.encode_paths(self.input_files),
+            self.PARAM_OUTPUT_FILES:        self.encode_paths(self.output_files),
+            self.PARAM_CODE_DEPENDENCIES:   self.encode_paths(self.code_dependencies),
+            self.PARAM_STDOUT:              self.encode_path(self.stdout),
+            self.PARAM_STDERR:              self.encode_path(self.stderr),
+            self.PARAM_SHELL:               self.shell,
         }
 
         if self.locked:
