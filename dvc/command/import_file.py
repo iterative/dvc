@@ -47,7 +47,7 @@ class CmdImportFile(CmdBase):
 
                             targets.append((filename, out))
                 pass
-            self.import_files(targets, self.parsed_args.lock)
+            self.import_files(targets, self.parsed_args.lock, self.parsed_args.jobs)
             message = 'DVC import files: {} -> {}'.format(str(self.parsed_args.input), output)
             self.commit_if_needed(message)
         pass
@@ -113,9 +113,9 @@ class CmdImportFile(CmdBase):
 
         return data_targets
 
-    def import_files(self, targets, lock=False):
+    def import_files(self, targets, lock=False, jobs=1):
         data_targets = self.collect_targets(targets)
-        imported_targets = self.cloud.import_data(data_targets, self.parsed_args.jobs)
+        imported_targets = self.cloud.import_data(data_targets, jobs)
         self.create_state_files(imported_targets, lock)
 
     def create_state_files(self, targets, lock):
