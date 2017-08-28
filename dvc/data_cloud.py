@@ -10,6 +10,15 @@ import filecmp
 import math
 
 from boto.s3.connection import S3Connection
+try:
+    import httplib
+except ImportError:
+    # Python3 workaround for ResumableDownloadHandler.
+    # See https://github.com/boto/boto/pull/3755.
+    import sys
+    import http.client as httplib
+    sys.modules['httplib'] = httplib
+from boto.s3.resumable_download_handler import ResumableDownloadHandler
 from google.cloud import storage as gc
 
 try:
@@ -29,7 +38,6 @@ from dvc.cloud.credentials_aws import AWSCredentials
 from dvc.utils import cached_property
 from dvc.system import System
 from dvc.utils import map_progress
-
 
 STATUS_UNKNOWN  = 0
 STATUS_OK       = 1
@@ -381,6 +389,14 @@ class DataCloudAWS(DataCloudBase):
 
         return False
 
+    @staticmethod
+    def _upload_tracker(fname):
+        return fname + '.upload'
+
+    @staticmethod
+    def _download_tracker(fname):
+        return fname + '.download'
+
     def _import(self, bucket_name, key_name, fname, data_item):
 
         bucket = self._get_bucket_aws(bucket_name)
@@ -398,9 +414,9 @@ class DataCloudAWS(DataCloudBase):
 
         Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name, key_name, fname))
 
-        temp_file = None
+        res_h = ResumableDownloadHandler(tracker_file_name=self._download_tracker(tmp_file), num_retries=10)
         try:
-            key.get_contents_to_filename(tmp_file, cb=create_cb(name))
+            key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
             os.rename(tmp_file, fname)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key_name, exc))
@@ -411,12 +427,65 @@ class DataCloudAWS(DataCloudBase):
 
         return data_item
 
-    def _push_multipart(self, key, fname):
+    def _read_upload_tracker(self, fname):
+        try:
+            return open(self._upload_tracker(fname), 'r').read()
+        except Exception as e:
+            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, e))
+            return None
+
+    def _write_upload_tracker(self, fname, mp_id):
+        try:
+            open(self._upload_tracker(fname), 'w+').write(mp_id)
+        except Exception as e:
+            Logger.debug("Failed to write upload tracker file for {}: {}".format(fname, e))
+
+    def _unlink_upload_tracker(self, fname):
+        try:
+            os.unlink(self._upload_tracker(fname))
+        except Exception as e:
+            Logger.debug("Failed to unlink upload tracker file for {}: {}".format(fname, e))
+
+    def _resume_multipart(self, key, fname):
+        try:
+            mp_id = open(self._upload_tracker(fname), 'r').read()
+        except Exception as e:
+            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, e))
+            return None
+
+        for mp in key.bucket.get_all_multipart_uploads():
+            if mp.id != mp_id:
+                continue
+
+            Logger.debug("Found existing multipart {}".format(mp_id))
+            return mp
+
+        return None
+
+    def _create_multipart(self, key, fname):
         # AWS doesn't provide easilly accessible md5 for multipart
         # objects, so we have to store our own md5 sum to use later.
         metadata = {'dvc-md5' : str(file_md5(fname)[0])}
-
         mp = key.bucket.initiate_multipart_upload(key.name, metadata=metadata)
+        self._write_upload_tracker(fname, mp.id)
+        return mp
+
+    def _get_multipart(self, key, fname):
+        mp = self._resume_multipart(key, fname)
+        if mp != None:
+            return mp
+
+        return self._create_multipart(key, fname)
+
+    def _skip_part(self, mp, fp, part_num, size):
+        for p in mp.get_all_parts():
+            if p.part_number == part_num and p.size == size:# and p.etag and p.last_modified
+                Logger.debug("Skipping part #{}".format(str(part_num)))
+                return True
+        return False
+
+    def _push_multipart(self, key, fname):
+        mp = self._get_multipart(key, fname)
 
         source_size = os.stat(fname).st_size
         chunk_size = 50*1024*1024
@@ -429,8 +498,12 @@ class DataCloudAWS(DataCloudBase):
                 size = min([chunk_size, left])
                 part_num = i + 1
 
+                if self._skip_part(mp, fp, part_num, size):
+                    continue
+
                 fp.seek(offset)
                 mp.upload_part_from_file(fp=fp,
+                                         replace=False,
                                          size=size,
                                          num_cb=100,
                                          part_num=part_num,
@@ -440,6 +513,7 @@ class DataCloudAWS(DataCloudBase):
             raise Exception("Couldn't upload all file parts")
 
         mp.complete_upload()
+        self._unlink_upload_tracker(fname)
 
     def push(self, data_item):
         """ push, aws version """
