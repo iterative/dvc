@@ -7,9 +7,9 @@ from dvc.command.init import CmdInit
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
-class CmdVisual(Traverse):
+class CmdShow(Traverse):
     def __init__(self, settings):
-        super(CmdVisual, self).__init__(settings, "collect", do_not_start_from_root=False)
+        super(CmdShow, self).__init__(settings, "collect", do_not_start_from_root=False)
         self.g = nx.DiGraph()
         self.subs = []
 
@@ -50,7 +50,7 @@ class CmdVisual(Traverse):
         saved_targets = self.settings.parsed_args.target
         self.settings.parsed_args.target = [self.settings.config.data_dir]
  
-        ret = super(CmdVisual, self).run()
+        ret = super(CmdShow, self).run()
 
         self.settings.parsed_args.target = saved_targets
 

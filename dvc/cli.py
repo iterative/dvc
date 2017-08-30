@@ -14,7 +14,7 @@ from dvc.command.import_file import CmdImportFile
 from dvc.command.target import CmdTarget
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
-from dvc.command.visual import CmdVisual
+from dvc.command.show import CmdShow
 from dvc.command.test import CmdTest
 from dvc.config import Config
 from dvc import VERSION
@@ -394,16 +394,16 @@ def parse_args(argv=None):
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
 
-    # Visual
-    vz_parser = subparsers.add_parser(
-                        'visual',
+    # Show
+    show_parser = subparsers.add_parser(
+                        'show',
                         parents=[parent_parser],
                         help='Create a dependency graph for data')
-    vz_parser.add_argument(
+    show_parser.add_argument(
                         'target',
                         nargs='*',
                         help='Target data')
-    vz_parser.set_defaults(func=CmdVisual)
+    show_parser.set_defaults(func=CmdShow)
 
     if isinstance(argv, str):
         argv = argv.split()
