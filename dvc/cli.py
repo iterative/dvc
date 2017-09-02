@@ -403,6 +403,11 @@ def parse_args(argv=None):
                         'target',
                         nargs='*',
                         help='Target data')
+    show_parser.add_argument('-w',
+                             '--workflow',
+                             action='store_true',
+                             default=False,
+                             help='Show workflow')
     show_parser.set_defaults(func=CmdShow)
 
     if isinstance(argv, str):

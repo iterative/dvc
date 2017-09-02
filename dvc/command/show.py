@@ -47,6 +47,13 @@ class CmdShow(Traverse):
         return 0
 
     def run(self):
+
+        if self.parsed_args.workflow:
+            # Workflow
+            wf = self.git.get_all_commits('data/eval_auc.txt')
+            wf.build_graph()
+            return
+
         saved_targets = self.settings.parsed_args.target
         self.settings.parsed_args.target = [self.settings.config.data_dir]
  

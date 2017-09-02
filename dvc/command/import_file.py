@@ -66,13 +66,14 @@ class CmdImportFile(CmdBase):
     def is_dir_path(output):
         return len(output) > 0 and output[-1] == os.path.sep
 
-    def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True):
+    def import_and_commit_if_needed(self, input, output, lock=False, check_if_ready=True, is_repro=False):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
         self.import_file(input, output, lock)
 
-        message = 'DVC import file: {} {}'.format(input, output)
+        cmd_name = 'repro-import' if is_repro else 'import'
+        message = 'DVC {} file: {} {}'.format(cmd_name, input, output)
         return self.commit_if_needed(message)
 
     def import_file(self, input, output, lock):

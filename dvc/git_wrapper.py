@@ -4,6 +4,7 @@ from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
 from dvc.system import System
+from dvc.workflow import Workflow
 
 
 class GitWrapperI(object):
@@ -226,3 +227,47 @@ class GitWrapper(GitWrapperI):
                 code_files.append(code)
 
         return code_files, code_dirs
+
+    LOG_SEPARATOR = '|'
+    LOG_FORMAT = ['%h', '%p', '%an', '%ai', '%s']
+
+    @staticmethod
+    def get_all_commits(target):
+        # git log --all --abbrev=7 --pretty=format:"%h|%p|%an|%ai|%s"
+        try:
+            merges_map = GitWrapper.get_merges_map()
+
+            format_str = GitWrapper.LOG_SEPARATOR.join(GitWrapper.LOG_FORMAT)
+            git_cmd = ['git', 'log', '--all', '--abbrev={}'.format(GitWrapper.COMMIT_LEN),
+                       '--pretty=format:{}'.format(format_str)]
+            lines = Executor.exec_cmd_only_success(git_cmd).split('\n')
+
+            wf = Workflow(target, merges_map)
+            for line in lines:
+                items = line.split(GitWrapper.LOG_SEPARATOR, len(GitWrapper.LOG_FORMAT))
+                assert len(items) == 5, 'Git wrapper: git log format has {} items, 5 expected'.format(len(items))
+                hash, parent_hash, name, date, comment = items
+
+                wf.add_commit(hash, parent_hash, name, date, comment,
+                              GitWrapper.is_target(hash, target))
+
+            return wf
+        except ExecutorError:
+            raise
+
+    @staticmethod
+    def is_target(hash, target):
+        # git show --pretty="" --name-only b6fa39b01
+        git_cmd = ['git', 'show', '--pretty=', '--name-only', hash]
+        files = set(Executor.exec_cmd_only_success(git_cmd).split('\n'))
+        return target in files
+
+    @staticmethod
+    def get_merges_map():
+        # git log --merges --all --abbrev=7
+        # {'a4b56f1': back_to_600_est}
+        git_cmd = ['git', 'log', '--all', '--merges',
+                   '--abbrev={}'.format(GitWrapper.COMMIT_LEN)]
+        # lines = map(str.strip, Executor.exec_cmd_only_success(git_cmd).split('\n'))
+        # lines.map
+        return {}

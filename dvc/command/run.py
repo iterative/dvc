@@ -54,7 +54,8 @@ class CmdRun(CmdBase):
                                  input_data_items=None,
                                  code_dependencies=None,
                                  lock=None,
-                                 check_if_ready=True):
+                                 check_if_ready=True,
+                                 is_repro=False):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
@@ -69,7 +70,8 @@ class CmdRun(CmdBase):
                          code_dependencies,
                          lock)
 
-        return self.commit_if_needed('DVC run: {}'.format(' '.join(command_args)))
+        cmd_name = 'repro-run' if is_repro else 'run'
+        return self.commit_if_needed('DVC {}: {}'.format(cmd_name, ' '.join(command_args)))
 
     def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
                     stdout=None, stderr=None, shell=False,
