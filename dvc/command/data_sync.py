@@ -33,20 +33,28 @@ class CmdDataStatus(CmdBase):
     def __init__(self, settings):
         super(CmdDataStatus, self).__init__(settings)
 
+    def _show(self, status):
+        for s in status:
+            target, ret = s
+
+            if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
+                continue
+
+            prefix_map = {
+                cloud.STATUS_DELETED  : 'deleted: ',
+                cloud.STATUS_MODIFIED : 'modified:',
+                cloud.STATUS_NEW      : 'new file:',
+            }
+
+            Logger.info('\t{}\t{}'.format(prefix_map[ret], target.resolved_cache.dvc))
+
     def run(self):
         with DvcLock(self.is_locker, self.git):
             status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
 
-            for s in status:
-                target, ret = s
+            if len(status) != len(self.parsed_args.targets):
+                return 1
 
-                if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
-                    continue
+            self._show(status)
 
-                prefix_map = {
-                    cloud.STATUS_DELETED  : 'deleted: ',
-                    cloud.STATUS_MODIFIED : 'modified:',
-                    cloud.STATUS_NEW      : 'new file:',
-                }
-
-                Logger.info('\t{}\t{}'.format(prefix_map[ret], target.resolved_cache.dvc))
+            return 0

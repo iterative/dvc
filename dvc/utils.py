@@ -66,6 +66,7 @@ def map_progress(func, targets, n_threads):
     """
     progress.set_n_total(len(targets))
     p = ThreadPool(processes=n_threads)
+    ret = []
 
     try:
         ret = p.map(func, targets)
