@@ -4,6 +4,7 @@ main entry point / argument parsing for dvc
 
 import sys
 from dvc.settings import Settings
+from dvc.logger import Logger
 
 def main():
     try:
