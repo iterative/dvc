@@ -49,17 +49,17 @@ class Logger(object):
         return u'{}{}{}'.format(header, msg, footer)
 
     @staticmethod
-    def error(msg):
-        return Logger._logger.error(Logger.colorize(msg, 'error'))
+    def error(msg, **kwargs):
+        return Logger._logger.error(Logger.colorize(msg, 'error'), **kwargs)
 
     @staticmethod
-    def warn(msg):
-        return Logger._logger.warn(Logger.colorize(msg, 'warn'))
+    def warn(msg, **kwargs):
+        return Logger._logger.warn(Logger.colorize(msg, 'warn'), **kwargs)
 
     @staticmethod
-    def debug(msg):
-        return Logger._logger.debug(Logger.colorize(msg, 'debug'))
+    def debug(msg, **kwargs):
+        return Logger._logger.debug(Logger.colorize(msg, 'debug'), **kwargs)
 
     @staticmethod
-    def info(msg):
-        return Logger._logger.info(Logger.colorize(msg, 'info'))
+    def info(msg, **kwargs):
+        return Logger._logger.info(Logger.colorize(msg, 'info'), **kwargs)
