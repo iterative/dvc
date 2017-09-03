@@ -6,6 +6,13 @@ set -e
 
 mkdir myrepo
 cd myrepo
+
+git init
+echo "This is an empty readme" > README.md
+git add README.md
+git commit -m 'add readme'
+
+git checkout -b first_model
 mkdir code
 wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featurization.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/evaluate.py \
@@ -13,15 +20,14 @@ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featuriza
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/split_train_test.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/xml_to_tsv.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/requirements.txt
-pip install -U -r code/requirements.txt
-
-git init
+#pip install -U -r code/requirements.txt
+# Edit eval file format
 git add code/
 git commit -m 'Download code'
 
 
 dvc init
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/10K/Posts.xml.tgz data/
+dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz data/
 dvc run tar zxf data/Posts.xml.tgz -C data/
 
 dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
@@ -34,17 +40,9 @@ dvc run python code/evaluate.py data/model.p data/matrix-test.p data/eval_auc.tx
 
 dvc target data/eval_auc.txt
 cat data/eval_auc.txt
-# AUC: 0.349
+# AUC: 0.645320
 
 
-git checkout -b input_100K  #  <--
-dvc remove data/Posts.xml.tgz
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz data/
-dvc repro
-cat data/eval_auc.txt
-# 0.645320
-
-git checkout master     # <--
 git checkout -b input_25K # <--
 dvc remove data/Posts.xml.tgz
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
@@ -73,13 +71,18 @@ cat data/eval_auc.txt
 # 0.621002
 
 git checkout 2195f1032 -b three_grams # <--
+dvc repro # not needed
+cat data/eval_auc.txt
+# 0.630682
+
+git checkout first_model
+git merge three_grams
+dvc repro
+
+
+
 vi code/featurization.py
 # 0.578447
-
-
-
-
-
 
 
 

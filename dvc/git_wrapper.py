@@ -4,7 +4,7 @@ from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
 from dvc.system import System
-from dvc.workflow import Workflow
+from dvc.workflow import Workflow, Commit
 
 
 class GitWrapperI(object):
@@ -248,8 +248,8 @@ class GitWrapper(GitWrapperI):
                 assert len(items) == 5, 'Git wrapper: git log format has {} items, 5 expected'.format(len(items))
                 hash, parent_hash, name, date, comment = items
 
-                wf.add_commit(hash, parent_hash, name, date, comment,
-                              GitWrapper.is_target(hash, target))
+                wf.add_commit(Commit(hash, parent_hash, name, date, comment,
+                              GitWrapper.is_target(hash, target)))
 
             return wf
         except ExecutorError:
