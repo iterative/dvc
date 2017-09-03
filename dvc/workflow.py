@@ -82,7 +82,7 @@ class Workflow(object):
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
         if self._no_repro_commits:
-            self.collaps_repro_commits()
+            self.collapse_repro_commits()
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
@@ -115,31 +115,35 @@ class Workflow(object):
 
         self._build_graph(next, g)
 
-    def collaps_repro_commits(self):
+    def collapse_repro_commits(self):
         hashes_to_remove = []
         for commit in self._commits.values():
             if commit.is_repro:
-                parent_commit_hashes = self._back_edges[commit.hash]
-                child_commit_hashes = self._edges.get(commit.hash)
-
-                # Remove if next commit is dvc-repro as well
-                if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
-                    for hash in child_commit_hashes:
-                        self._commits[hash].add_parents(commit.parent_hashes)
-                        self._commits[hash].remove_parent(commit.hash)
-                        pass
-
-                    self._redirect_edges(self._edges, child_commit_hashes, commit.hash, parent_commit_hashes)
-                    self._redirect_edges(self._back_edges, parent_commit_hashes, commit.hash, child_commit_hashes)
-
+                if self._remove_or_collapse(commit):
                     hashes_to_remove.append(commit.hash)
-                else:
-                    commit.make_colapsed()
 
         for hash in hashes_to_remove:
             del self._commits[hash]
             del self._edges[hash]
             del self._back_edges[hash]
+        pass
+
+    def _remove_or_collapse(self, commit):
+        parent_commit_hashes = self._back_edges[commit.hash]
+        child_commit_hashes = self._edges.get(commit.hash)
+
+        if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
+            for hash in child_commit_hashes:
+                self._commits[hash].add_parents(commit.parent_hashes)
+                self._commits[hash].remove_parent(commit.hash)
+
+            self._redirect_edges(self._edges, child_commit_hashes, commit.hash, parent_commit_hashes)
+            self._redirect_edges(self._back_edges, parent_commit_hashes, commit.hash, child_commit_hashes)
+
+            return True
+        else:
+            commit.make_colapsed()
+            return False
         pass
 
     @staticmethod

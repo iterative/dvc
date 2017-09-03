@@ -47,7 +47,6 @@ class CmdShow(Traverse):
         return 0
 
     def run(self):
-
         if self.parsed_args.workflow:
             # Workflow
             wf = self.git.get_all_commits('data/eval_auc.txt')
