@@ -129,13 +129,8 @@ class Workflow(object):
                         self._commits[hash].remove_parent(commit.hash)
                         pass
 
-                    for hash in parent_commit_hashes:
-                        self._edges[hash].remove(commit.hash)
-                        self._edges[hash] |= child_commit_hashes
-
-                    for hash in child_commit_hashes:
-                        self._back_edges[hash].remove(commit.hash)
-                        self._back_edges[hash] |= parent_commit_hashes
+                    self._redirect_edges(self._edges, child_commit_hashes, commit.hash, parent_commit_hashes)
+                    self._redirect_edges(self._back_edges, parent_commit_hashes, commit.hash, child_commit_hashes)
 
                     hashes_to_remove.append(commit.hash)
                 else:
@@ -146,3 +141,9 @@ class Workflow(object):
             del self._edges[hash]
             del self._back_edges[hash]
         pass
+
+    @staticmethod
+    def _redirect_edges(edges, child_commit_hashes, hash, commit_hashes):
+        for h in commit_hashes:
+            edges[h].remove(hash)
+            edges[h] |= child_commit_hashes
