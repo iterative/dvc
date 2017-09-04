@@ -48,8 +48,7 @@ class Workflow(object):
             g.add_node(hash,
                        attr_dict={
                            'label': commit.text,
-                           'color': 'red' if commit.hash == '85d03b2' else 'black',
-                           'weight': 8 if commit.hash == '411ea7c' else 18
+                           'color': 'black'
                        }
             )
 
@@ -108,13 +107,11 @@ class Workflow(object):
         pass
 
     def _upstream_metrics(self, child_commit_hashes, commit):
-        if commit.has_target_metric:
-            for hash in child_commit_hashes:
+        for hash in child_commit_hashes:
+            if commit.has_target_metric:
                 if not self._commits[hash].has_target_metric:
                     self._commits[hash].set_target_metric(commit.target_metric)
-
-        if commit.branch_tips:
-            for hash in child_commit_hashes:
+            if commit.branch_tips:
                 self._commits[hash].add_branch_tips(commit.branch_tips)
         pass
 
