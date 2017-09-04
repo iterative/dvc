@@ -180,7 +180,9 @@ class ReproChange(object):
             cmd.set_locker(False)
 
             Logger.info(u'Reproducing import command: {}'.format(output))
-            if cmd.import_and_commit_if_needed(input, output, lock=True, check_if_ready=False) != 0:
+            if cmd.import_and_commit_if_needed(input, output, lock=True,
+                                               check_if_ready=False,
+                                               is_repro=True) != 0:
                 raise ReproError('Import command reproduction failed')
             return True
         elif self.state.is_run:
@@ -202,7 +204,8 @@ class ReproChange(object):
                                             [],
                                             [],
                                             False,
-                                            check_if_ready=False) != 0:
+                                            check_if_ready=False,
+                                            is_repro=True) != 0:
                 raise ReproError('Run command reproduction failed')
             return True
         else:

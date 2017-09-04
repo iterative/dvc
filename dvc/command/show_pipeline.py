@@ -2,14 +2,13 @@ import os
 import networkx as nx
 
 from dvc.command.traverse import Traverse
-from dvc.command.init import CmdInit
-
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
-class CmdShow(Traverse):
+
+class CmdShowPipeline(Traverse):
     def __init__(self, settings):
-        super(CmdShow, self).__init__(settings, "collect", do_not_start_from_root=False)
+        super(CmdShowPipeline, self).__init__(settings, "collect", do_not_start_from_root=False)
         self.g = nx.DiGraph()
         self.subs = []
 
@@ -50,7 +49,7 @@ class CmdShow(Traverse):
         saved_targets = self.settings.parsed_args.target
         self.settings.parsed_args.target = [self.settings.config.data_dir]
  
-        ret = super(CmdShow, self).run()
+        ret = super(CmdShowPipeline, self).run()
 
         self.settings.parsed_args.target = saved_targets
 
