@@ -13,13 +13,15 @@ class Commit(object):
     DVC_REPRO_PREFIX = 'DVC repro'
     COLLAPSED_TEXT = DVC_REPRO_PREFIX + '\n<< collapsed commits >>'
 
-    def __init__(self, hash, parents, name, date, comment, is_target):
+    def __init__(self, hash, parents, name, date, comment, is_target=False, target_metric=None):
         self._hash = hash
         self._parent_hashes = set(parents.split())
         self._name = name
         self._date = date
         self._comment = comment
         self._is_target = is_target
+        self._target_metric = target_metric
+
         self._is_collapsed = False
 
     @property
@@ -38,9 +40,14 @@ class Commit(object):
 
     @property
     def text(self):
+        metric_text = ''
+        if self._is_target and self._target_metric:
+            metric_text = '\nTarget metric: {}'.format(self._target_metric)
+
         if self._is_collapsed:
-            return self.COLLAPSED_TEXT
-        return self._comment[:self.TEXT_LIMIT] + '\n' + self.hash
+            return self.COLLAPSED_TEXT + metric_text
+
+        return self._comment[:self.TEXT_LIMIT] + '\n' + self.hash + metric_text
 
     @property
     def is_repro(self):
@@ -48,6 +55,18 @@ class Commit(object):
 
     def make_colapsed(self):
         self._is_collapsed = True
+
+    @property
+    def has_target_metric(self):
+        return self._is_target and self._target_metric is not None
+
+    @property
+    def target_metric(self):
+        return self._target_metric
+
+    def set_target_metric(self, value):
+        self._target_metric = value
+        self._is_target = True
 
 
 class Workflow(object):
@@ -133,6 +152,11 @@ class Workflow(object):
         child_commit_hashes = self._edges.get(commit.hash)
 
         if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
+            if commit.has_target_metric:
+                for hash in child_commit_hashes:
+                    if not self._commits[hash].has_target_metric:
+                        self._commits[hash].set_target_metric(commit.target_metric)
+
             for hash in child_commit_hashes:
                 self._commits[hash].add_parents(commit.parent_hashes)
                 self._commits[hash].remove_parent(commit.hash)

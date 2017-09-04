@@ -7,6 +7,7 @@ from dvc.command.init import CmdInit
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
+
 class CmdShow(Traverse):
     def __init__(self, settings):
         super(CmdShow, self).__init__(settings, "collect", do_not_start_from_root=False)
@@ -49,7 +50,26 @@ class CmdShow(Traverse):
     def run(self):
         if self.parsed_args.workflow:
             # Workflow
-            wf = self.git.get_all_commits('data/eval_auc.txt')
+            target = self.settings.parsed_args.target
+            if not target:
+                target = self.settings.config.target_file
+
+                if not os.path.exists(target):
+                    Logger.warn(u'Target is not defined: use empty target')
+                    target = ''
+                else:
+                    target = open(target).read()
+                    Logger.debug(u'Set show workflow target as {}'.format(target))
+
+            if type(target) is list:
+                if len(target) != 1:
+                    msg = 'Only one target is expected for show workflow command. Target: {}'
+                    Logger.error(msg.format(target))
+                    return 1
+
+                target = target[0]
+
+            wf = self.git.get_all_commits(target, self.settings)
             wf.build_graph()
             return
 

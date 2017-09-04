@@ -3,6 +3,7 @@ import os
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
+from dvc.path.data_item import DataItemError
 from dvc.system import System
 from dvc.workflow import Workflow, Commit
 
@@ -231,8 +232,7 @@ class GitWrapper(GitWrapperI):
     LOG_SEPARATOR = '|'
     LOG_FORMAT = ['%h', '%p', '%an', '%ai', '%s']
 
-    @staticmethod
-    def get_all_commits(target):
+    def get_all_commits(self, target, settings):
         # git log --all --abbrev=7 --pretty=format:"%h|%p|%an|%ai|%s"
         try:
             merges_map = GitWrapper.get_merges_map()
@@ -249,18 +249,59 @@ class GitWrapper(GitWrapperI):
                 hash, parent_hash, name, date, comment = items
 
                 wf.add_commit(Commit(hash, parent_hash, name, date, comment,
-                              GitWrapper.is_target(hash, target)))
+                              *self.is_target(hash, target, settings)))
 
             return wf
         except ExecutorError:
             raise
 
-    @staticmethod
-    def is_target(hash, target):
-        # git show --pretty="" --name-only b6fa39b01
+    def is_target(self, hash, target, settings):
         git_cmd = ['git', 'show', '--pretty=', '--name-only', hash]
         files = set(Executor.exec_cmd_only_success(git_cmd).split('\n'))
-        return target in files
+
+        if target in files:
+            try:
+                settings.path_factory.data_item(target)
+            except DataItemError as ex:
+                Logger.warn('Target file {} is not data item: {}'.format(target, ex))
+                return True, None
+
+            try:
+                cmd_symlink_data = ['git', 'show', '{}:{}'.format(hash, target)]
+                symlink_content = Executor.exec_cmd_only_success(cmd_symlink_data).split('\n')
+            except ExecutorError as ex:
+                msg = '[dvc-git] Cannot obtain content of target symbolic file {} with hash {}: {}'
+                Logger.warn(msg.format(target, hash, ex))
+                return True, None
+
+            if not symlink_content or len(symlink_content) != 1:
+                msg = '[dvc-git] Target symbolic file {} with hash {} has wrong format'
+                Logger.warn(msg.format(target, hash))
+                return True, None
+
+            return True, self.target_metric_from_git_history(hash, symlink_content[0], target, settings)
+
+        return False, None
+
+    def target_metric_from_git_history(self, hash, symlink_content, target, settings):
+        cache_rel_to_data = os.path.relpath(settings.config.cache_dir, settings.config.data_dir)
+        common_prefix = os.path.commonprefix([symlink_content, cache_rel_to_data])
+        cache_file_name = symlink_content[len(common_prefix):]
+        if cache_file_name[0] == os.path.sep:
+            cache_file_name = cache_file_name[1:]
+
+        file_name = os.path.join(settings.config.cache_dir, cache_file_name)
+        full_file_name = os.path.join(self.git_dir_abs, file_name)
+
+        if os.path.exists(full_file_name):
+            lines = open(full_file_name).readlines(2)
+            if len(lines) != 1:
+                msg = '[dvc-git] Target file {} with hash {} has wrong format: {} lines were obtained, 1 expected.'
+                Logger.warn(msg.format(target, hash, len(lines)))
+            else:
+                return float(lines[0])
+
+        return None
 
     @staticmethod
     def get_merges_map():
