@@ -2,15 +2,13 @@ import os
 import networkx as nx
 
 from dvc.command.traverse import Traverse
-from dvc.command.init import CmdInit
-
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
 
-class CmdShow(Traverse):
+class CmdShowPipeline(Traverse):
     def __init__(self, settings):
-        super(CmdShow, self).__init__(settings, "collect", do_not_start_from_root=False)
+        super(CmdShowPipeline, self).__init__(settings, "collect", do_not_start_from_root=False)
         self.g = nx.DiGraph()
         self.subs = []
 
@@ -48,35 +46,10 @@ class CmdShow(Traverse):
         return 0
 
     def run(self):
-        if self.parsed_args.workflow:
-            # Workflow
-            target = self.settings.parsed_args.target
-            if not target:
-                target = self.settings.config.target_file
-
-                if not os.path.exists(target):
-                    Logger.warn(u'Target is not defined: use empty target')
-                    target = ''
-                else:
-                    target = open(target).read()
-                    Logger.debug(u'Set show workflow target as {}'.format(target))
-
-            if type(target) is list:
-                if len(target) != 1:
-                    msg = 'Only one target is expected for show workflow command. Target: {}'
-                    Logger.error(msg.format(target))
-                    return 1
-
-                target = target[0]
-
-            wf = self.git.get_all_commits(target, self.settings)
-            wf.build_graph()
-            return
-
         saved_targets = self.settings.parsed_args.target
         self.settings.parsed_args.target = [self.settings.config.data_dir]
  
-        ret = super(CmdShow, self).run()
+        ret = super(CmdShowPipeline, self).run()
 
         self.settings.parsed_args.target = saved_targets
 

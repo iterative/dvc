@@ -11,13 +11,15 @@ from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull, CmdData
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
+from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.target import CmdTarget
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
-from dvc.command.show import CmdShow
+from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.test import CmdTest
 from dvc.config import Config
 from dvc import VERSION
+
 
 def parse_args(argv=None):
     # Common args
@@ -398,17 +400,29 @@ def parse_args(argv=None):
     show_parser = subparsers.add_parser(
                         'show',
                         parents=[parent_parser],
-                        help='Create a dependency graph for data')
-    show_parser.add_argument(
+                        help='Show graphs')
+    show_subparsers = show_parser.add_subparsers(
+        dest='cmd',
+        help='Use `dvc show CMD` --help for command-specific help')
+    pipeline_parser = show_subparsers.add_parser(
+        'pipeline',
+        parents=[parent_parser],
+        help='Show pipeline image')
+    pipeline_parser.add_argument(
                         'target',
                         nargs='*',
-                        help='Target data')
-    show_parser.add_argument('-w',
-                             '--workflow',
-                             action='store_true',
-                             default=False,
-                             help='Show workflow')
-    show_parser.set_defaults(func=CmdShow)
+                        help='Target data directory')
+    pipeline_parser.set_defaults(func=CmdShowPipeline)
+
+    workflow_parser = show_subparsers.add_parser(
+                        'workflow',
+                        parents=[parent_parser],
+                        help='Show workflow image')
+    workflow_parser.add_argument(
+                        'target',
+                        nargs='?',
+                        help='Target metric data file')
+    workflow_parser.set_defaults(func=CmdShowWorkflow)
 
     if isinstance(argv, str):
         argv = argv.split()
