@@ -1,6 +1,7 @@
 import networkx as nx
 
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 
 
 class WorkflowError(DvcException):
@@ -9,13 +10,13 @@ class WorkflowError(DvcException):
 
 
 class Workflow(object):
-    def __init__(self, target, merges_map, branches_map=None, root='', no_repro_commits=True):
+    def __init__(self, target, merges_map, branches_map=None, no_repro_commits=True):
         self._target = target
         self._merges_map = merges_map
         self._branches_map = branches_map
 
         self._commits = {}
-        self._root = root
+        self._root_hash = None
 
         self._edges = {}
         self._back_edges = {}
@@ -35,10 +36,15 @@ class Workflow(object):
             self._back_edges[commit.hash] = set()
         for p in commit.parent_hashes:
             self._back_edges[commit.hash].add(p)
+
+        if not commit.parent_hashes:
+            self._root_hash = commit.hash
         pass
 
     def build_graph(self):
         g = nx.DiGraph(name='DVC Workflow', directed=False)
+
+        self.derive_target_metric_deltas()
 
         if self._no_repro_commits:
             self.collapse_repro_commits()
@@ -120,3 +126,29 @@ class Workflow(object):
         for h in commit_hashes:
             edges[h].remove(hash)
             edges[h] |= child_commit_hashes
+
+    def derive_target_metric_deltas(self):
+        if not self._target:
+            return
+
+        if self._root_hash not in self._commits:
+            Logger.warn('Root commit cannot be found')
+
+        current_target_metric = None
+        commit = self._commits[self._root_hash]
+        self._traverse_target_metric(commit, current_target_metric)
+        pass
+
+    def _traverse_target_metric(self, commit, current_target_metric):
+        new_target_metric = current_target_metric
+        if commit.target_metric is not None:
+            new_target_metric = commit.target_metric
+            if current_target_metric is None:
+                commit.set_target_metric_delta(0.0)
+            else:
+                commit.set_target_metric_delta(new_target_metric - current_target_metric)
+
+        if commit.hash in self._edges:
+            for hash in self._edges[commit.hash]:
+                self._traverse_target_metric(self._commits[hash], new_target_metric)
+        pass

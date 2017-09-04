@@ -14,6 +14,7 @@ class Commit(object):
         self._comment = comment
         self._is_target = is_target
         self._target_metric = target_metric
+        self._target_metric_delta = None
         self._branch_tips = [] if branch_tips is None else branch_tips
 
         self._is_collapsed = False
@@ -41,11 +42,13 @@ class Commit(object):
         metric_text = ''
         if self._is_target and self._target_metric:
             metric_text = '\nTarget metric: {}'.format(self._target_metric)
+            if self._target_metric_delta is not None:
+                metric_text += ' ({:+f})'.format(self._target_metric_delta)
 
         if self._is_collapsed:
             return branch_text + self.COLLAPSED_TEXT + metric_text
 
-        return branch_text + self._comment[:self.TEXT_LIMIT] + '\n' + self.hash + metric_text
+        return branch_text + self._comment[:self.TEXT_LIMIT] + metric_text + '\n' + self.hash
 
     @property
     def is_repro(self):
@@ -73,3 +76,10 @@ class Commit(object):
     def add_branch_tips(self, tips):
         for tip in tips:
             self._branch_tips.append(tip)
+
+    def set_target_metric_delta(self, value):
+        self._target_metric_delta = value
+
+    @property
+    def target_metric_delta(self):
+        return self._target_metric_delta
