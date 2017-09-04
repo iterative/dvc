@@ -70,6 +70,6 @@ class Commit(object):
     def branch_tips(self):
         return self._branch_tips
 
-    def add_branch_typs(self, tips):
+    def add_branch_tips(self, tips):
         for tip in tips:
             self._branch_tips.append(tip)
