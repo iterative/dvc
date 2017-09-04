@@ -260,28 +260,37 @@ class GitWrapper(GitWrapperI):
         files = set(Executor.exec_cmd_only_success(git_cmd).split('\n'))
 
         if target in files:
-            try:
-                settings.path_factory.data_item(target)
-            except DataItemError as ex:
-                Logger.warn('Target file {} is not data item: {}'.format(target, ex))
-                return True, None
+            symlink_content = self._get_symlink_content(hash, target, settings)
+            if symlink_content is not None:
+                metric = self.target_metric_from_git_history(hash, symlink_content, target, settings)
+            else:
+                metric = None
 
-            try:
-                cmd_symlink_data = ['git', 'show', '{}:{}'.format(hash, target)]
-                symlink_content = Executor.exec_cmd_only_success(cmd_symlink_data).split('\n')
-            except ExecutorError as ex:
-                msg = '[dvc-git] Cannot obtain content of target symbolic file {} with hash {}: {}'
-                Logger.warn(msg.format(target, hash, ex))
-                return True, None
-
-            if not symlink_content or len(symlink_content) != 1:
-                msg = '[dvc-git] Target symbolic file {} with hash {} has wrong format'
-                Logger.warn(msg.format(target, hash))
-                return True, None
-
-            return True, self.target_metric_from_git_history(hash, symlink_content[0], target, settings)
+            return True, metric
 
         return False, None
+
+    def _get_symlink_content(self, hash, target, settings):
+        try:
+            settings.path_factory.data_item(target)
+        except DataItemError as ex:
+            Logger.warn('Target file {} is not data item: {}'.format(target, ex))
+            return None
+
+        try:
+            cmd_symlink_data = ['git', 'show', '{}:{}'.format(hash, target)]
+            symlink_content = Executor.exec_cmd_only_success(cmd_symlink_data).split('\n')
+        except ExecutorError as ex:
+            msg = '[dvc-git] Cannot obtain content of target symbolic file {} with hash {}: {}'
+            Logger.warn(msg.format(target, hash, ex))
+            return None
+
+        if not symlink_content or len(symlink_content) != 1:
+            msg = '[dvc-git] Target symbolic file {} with hash {} has wrong format'
+            Logger.warn(msg.format(target, hash))
+            return None
+
+        return symlink_content[0]
 
     def target_metric_from_git_history(self, hash, symlink_content, target, settings):
         cache_rel_to_data = os.path.relpath(settings.config.cache_dir, settings.config.data_dir)

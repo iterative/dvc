@@ -152,10 +152,7 @@ class Workflow(object):
         child_commit_hashes = self._edges.get(commit.hash)
 
         if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
-            if commit.has_target_metric:
-                for hash in child_commit_hashes:
-                    if not self._commits[hash].has_target_metric:
-                        self._commits[hash].set_target_metric(commit.target_metric)
+            self._upstream_target_metric(child_commit_hashes, commit)
 
             for hash in child_commit_hashes:
                 self._commits[hash].add_parents(commit.parent_hashes)
@@ -169,6 +166,12 @@ class Workflow(object):
             commit.make_colapsed()
             return False
         pass
+
+    def _upstream_target_metric(self, child_commit_hashes, commit):
+        if commit.has_target_metric:
+            for hash in child_commit_hashes:
+                if not self._commits[hash].has_target_metric:
+                    self._commits[hash].set_target_metric(commit.target_metric)
 
     @staticmethod
     def _redirect_edges(edges, child_commit_hashes, hash, commit_hashes):
