@@ -66,9 +66,11 @@ class TestWorkflow(TestCase):
         self.assertTrue('2' not in wf._commits)
         pass
 
-    def collapse_target_metric_commit_test(self):
+    def collapse_metric_commit_test(self):
         value = 0.812345
-        metric_commit3 = Commit('2', '1', 'name1', 'today', 'DVC repro-run ...', True, value)
+        branches = ['master', 'try_smth']
+        metric_commit3 = Commit('2', '1', 'name1', 'today', 'DVC repro-run ...',
+                                True, value, branch_tips=branches)
 
         wf = Workflow('', '')
         wf.add_commit(self._commit1)
@@ -80,4 +82,5 @@ class TestWorkflow(TestCase):
         self.assertEqual(len(wf._commits), 2)
 
         self.assertEqual(wf._commits['3']._target_metric, value)
+        self.assertEqual(wf._commits['3'].branch_tips, branches)
         pass

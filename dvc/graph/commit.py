@@ -3,7 +3,10 @@ class Commit(object):
     DVC_REPRO_PREFIX = 'DVC repro'
     COLLAPSED_TEXT = DVC_REPRO_PREFIX + '\n<< collapsed commits >>'
 
-    def __init__(self, hash, parents, name, date, comment, is_target=False, target_metric=None):
+    def __init__(self, hash, parents, name, date, comment,
+                 is_target=False,
+                 target_metric=None,
+                 branch_tips=None):
         self._hash = hash
         self._parent_hashes = set(parents.split())
         self._name = name
@@ -11,6 +14,7 @@ class Commit(object):
         self._comment = comment
         self._is_target = is_target
         self._target_metric = target_metric
+        self._branch_tips = [] if branch_tips is None else branch_tips
 
         self._is_collapsed = False
 
@@ -30,14 +34,18 @@ class Commit(object):
 
     @property
     def text(self):
+        branch_text = ''
+        if self._branch_tips:
+            branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
+
         metric_text = ''
         if self._is_target and self._target_metric:
             metric_text = '\nTarget metric: {}'.format(self._target_metric)
 
         if self._is_collapsed:
-            return self.COLLAPSED_TEXT + metric_text
+            return branch_text + self.COLLAPSED_TEXT + metric_text
 
-        return self._comment[:self.TEXT_LIMIT] + '\n' + self.hash + metric_text
+        return branch_text + self._comment[:self.TEXT_LIMIT] + '\n' + self.hash + metric_text
 
     @property
     def is_repro(self):
@@ -57,3 +65,11 @@ class Commit(object):
     def set_target_metric(self, value):
         self._target_metric = value
         self._is_target = True
+
+    @property
+    def branch_tips(self):
+        return self._branch_tips
+
+    def add_branch_typs(self, tips):
+        for tip in tips:
+            self._branch_tips.append(tip)

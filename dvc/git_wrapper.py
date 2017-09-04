@@ -1,4 +1,6 @@
 import os
+import re
+from collections import defaultdict
 
 from dvc.logger import Logger
 from dvc.config import Config
@@ -243,14 +245,18 @@ class GitWrapper(GitWrapperI):
                        '--pretty=format:{}'.format(format_str)]
             lines = Executor.exec_cmd_only_success(git_cmd).split('\n')
 
-            wf = Workflow(target, merges_map)
+            branches_multimap = GitWrapper.branches_multimap()
+
+            wf = Workflow(target, merges_map, branches_multimap)
             for line in lines:
                 items = line.split(GitWrapper.LOG_SEPARATOR, len(GitWrapper.LOG_FORMAT))
                 assert len(items) == 5, 'Git wrapper: git log format has {} items, 5 expected'.format(len(items))
                 hash, parent_hash, name, date, comment = items
 
-                wf.add_commit(Commit(hash, parent_hash, name, date, comment,
-                              *self.is_target(hash, target, settings)))
+                commit = Commit(hash, parent_hash, name, date, comment,
+                                *self.is_target(hash, target, settings),
+                                branch_tips=branches_multimap.get(hash))
+                wf.add_commit(commit)
 
             return wf
         except ExecutorError:
@@ -322,3 +328,15 @@ class GitWrapper(GitWrapperI):
         # lines = map(str.strip, Executor.exec_cmd_only_success(git_cmd).split('\n'))
         # lines.map
         return {}
+
+    @staticmethod
+    def branches_multimap():
+        git_cmd  = ['git', 'show-ref', '--abbrev={}'.format(GitWrapper.COMMIT_LEN)]
+        lines = Executor.exec_cmd_only_success(git_cmd).split('\n')
+        items_full = map(unicode.split, lines)
+        items = map(lambda it: (it[0], re.sub(r'^refs/heads/', '', it[1])), items_full)
+
+        result = defaultdict(list)
+        for (hash, branch) in items:
+            result[hash].append(branch)
+        return result

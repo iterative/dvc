@@ -9,9 +9,10 @@ class WorkflowError(DvcException):
 
 
 class Workflow(object):
-    def __init__(self, target, merges_map, root='', no_repro_commits=True):
+    def __init__(self, target, merges_map, branches_map=None, root='', no_repro_commits=True):
         self._target = target
         self._merges_map = merges_map
+        self._branches_map = branches_map
 
         self._commits = {}
         self._root = root
@@ -91,7 +92,7 @@ class Workflow(object):
         child_commit_hashes = self._edges.get(commit.hash)
 
         if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
-            self._upstream_target_metric(child_commit_hashes, commit)
+            self._upstream_metric(child_commit_hashes, commit)
 
             for hash in child_commit_hashes:
                 self._commits[hash].add_parents(commit.parent_hashes)
@@ -106,11 +107,16 @@ class Workflow(object):
             return False
         pass
 
-    def _upstream_target_metric(self, child_commit_hashes, commit):
+    def _upstream_metric(self, child_commit_hashes, commit):
         if commit.has_target_metric:
             for hash in child_commit_hashes:
                 if not self._commits[hash].has_target_metric:
                     self._commits[hash].set_target_metric(commit.target_metric)
+
+        if commit.branch_tips:
+            for hash in child_commit_hashes:
+                self._commits[hash].add_branch_typs(commit.branch_tips)
+        pass
 
     @staticmethod
     def _redirect_edges(edges, child_commit_hashes, hash, commit_hashes):
