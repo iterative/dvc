@@ -1,6 +1,7 @@
 from unittest import TestCase
 
-from dvc.workflow import Workflow, Commit
+from dvc.graph.workflow import Workflow
+from dvc.graph.commit import Commit
 
 
 class TestWorkflow(TestCase):
