@@ -31,10 +31,8 @@ class Workflow(object):
             if p not in self._edges:
                 self._edges[p] = set()
             self._edges[p].add(commit.hash)
-
-        if commit.hash not in self._back_edges:
-            self._back_edges[commit.hash] = set()
-        for p in commit.parent_hashes:
+            if commit.hash not in self._back_edges:
+                self._back_edges[commit.hash] = set()
             self._back_edges[commit.hash].add(p)
 
         if not commit.parent_hashes:

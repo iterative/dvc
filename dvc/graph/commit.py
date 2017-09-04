@@ -39,16 +39,18 @@ class Commit(object):
         if self._branch_tips:
             branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
 
-        metric_text = ''
-        if self._is_target and self._target_metric:
-            metric_text = '\nTarget metric: {}'.format(self._target_metric)
-            if self._target_metric_delta is not None:
-                metric_text += ' ({:+f})'.format(self._target_metric_delta)
-
         if self._is_collapsed:
-            return branch_text + self.COLLAPSED_TEXT + metric_text
+            return branch_text + self.COLLAPSED_TEXT + self._text_metrics_line()
 
-        return branch_text + self._comment[:self.TEXT_LIMIT] + metric_text + '\n' + self.hash
+        return branch_text + self._comment[:self.TEXT_LIMIT] + self._text_metrics_line() + '\n' + self.hash
+
+    def _text_metrics_line(self):
+        result = ''
+        if self._is_target and self._target_metric:
+            result = '\nTarget metric: {}'.format(self._target_metric)
+            if self._target_metric_delta is not None:
+                result += ' ({:+f})'.format(self._target_metric_delta)
+        return result
 
     @property
     def is_repro(self):
