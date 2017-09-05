@@ -130,7 +130,8 @@ class Workflow(object):
             return
 
         if self._root_hash not in self._commits:
-            Logger.warn('Root commit cannot be found')
+            Logger.warn('Cannot derive target metrics deltas: root commit was not found')
+            return
 
         current_target_metric = None
         commit = self._commits[self._root_hash]
