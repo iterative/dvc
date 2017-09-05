@@ -1,7 +1,7 @@
 class Commit(object):
     TEXT_LIMIT = 30
     DVC_REPRO_PREFIX = 'DVC repro'
-    COLLAPSED_TEXT = DVC_REPRO_PREFIX + '\n<< collapsed commits >>'
+    COLLAPSED_TEXT = DVC_REPRO_PREFIX + ' <<collapsed commits>>'
 
     def __init__(self, hash, parents, name, date, comment,
                  is_target=False,
@@ -42,12 +42,20 @@ class Commit(object):
         if self._is_collapsed:
             return branch_text + self.COLLAPSED_TEXT + self._text_metrics_line()
 
-        return branch_text + self._comment[:self.TEXT_LIMIT] + self._text_metrics_line() + '\n' + self.hash
+        return branch_text + self._text_comment() + self._text_metrics_line() + '\n' + self._text_hash()
+
+    def _text_hash(self):
+        return 'Commit: ' + self.hash
+
+    def _text_comment(self):
+        if len(self._comment) < self.TEXT_LIMIT:
+            return self._comment
+        return self._comment[:self.TEXT_LIMIT] + '...'
 
     def _text_metrics_line(self):
         result = ''
         if self._is_target and self._target_metric:
-            result = '\nTarget metric: {}'.format(self._target_metric)
+            result = '\nTarget: {}'.format(self._target_metric)
             if self._target_metric_delta is not None:
                 result += ' ({:+f})'.format(self._target_metric_delta)
         return result

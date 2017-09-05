@@ -49,10 +49,11 @@ class Workflow(object):
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
+
             g.add_node(hash,
                        attr_dict={
                            'label': commit.text,
-                           'color': 'black'
+                           'color': self.node_color(commit)
                        }
             )
 
@@ -66,6 +67,15 @@ class Workflow(object):
         A.write(fname + '.dot')
         A.draw(fname, format='jpeg', prog='dot')
         pass
+
+    @staticmethod
+    def node_color(commit):
+        if commit.target_metric_delta is not None:
+            if commit.target_metric_delta >= 0:
+                return 'green'
+            if commit.target_metric_delta < 0:
+                return 'red'
+        return 'black'
 
     def _build_graph(self, curr, g):
         if '' not in self._commits or curr.hash not in self._commits:
@@ -95,7 +105,7 @@ class Workflow(object):
         child_commit_hashes = self._edges.get(commit.hash)
 
         if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
-            self._upstream_metrics(child_commit_hashes, commit)
+            self._upstream_metrics_and_branch_tips(child_commit_hashes, commit)
 
             for hash in child_commit_hashes:
                 self._commits[hash].add_parents(commit.parent_hashes)
@@ -110,7 +120,7 @@ class Workflow(object):
             return False
         pass
 
-    def _upstream_metrics(self, child_commit_hashes, commit):
+    def _upstream_metrics_and_branch_tips(self, child_commit_hashes, commit):
         for hash in child_commit_hashes:
             if commit.has_target_metric:
                 if not self._commits[hash].has_target_metric:
