@@ -422,6 +422,19 @@ def parse_args(argv=None):
                         'target',
                         nargs='?',
                         help='Target metric data file')
+    workflow_parser.add_argument(
+                        '-a',
+                        '--all-commits',
+                        action='store_true',
+                        default=False,
+                        help='Show all commits')
+    workflow_parser.add_argument(
+                        '-d',
+                        '--deltas',
+                        action='store_true',
+                        default=False,
+                        help='Show only metric deltas')
+
     workflow_parser.set_defaults(func=CmdShowWorkflow)
 
     if isinstance(argv, str):

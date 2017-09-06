@@ -10,7 +10,7 @@ class WorkflowError(DvcException):
 
 
 class Workflow(object):
-    def __init__(self, target, merges_map, branches_map=None, no_repro_commits=True):
+    def __init__(self, target, merges_map, branches_map=None):
         self._target = target
         self._merges_map = merges_map
         self._branches_map = branches_map
@@ -20,8 +20,6 @@ class Workflow(object):
 
         self._edges = {}
         self._back_edges = {}
-
-        self._no_repro_commits = no_repro_commits
         pass
 
     def add_commit(self, commit):
@@ -39,13 +37,16 @@ class Workflow(object):
             self._root_hash = commit.hash
         pass
 
-    def build_graph(self):
+    def build_graph(self, all_commits, deltas):
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
         self.derive_target_metric_deltas()
 
-        if self._no_repro_commits:
+        if not all_commits:
             self.collapse_repro_commits()
+        elif deltas:
+            self.collapse_repro_commits()
+            self.deltas_only()
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
@@ -87,6 +88,10 @@ class Workflow(object):
 
         self._build_graph(next, g)
 
+    def deltas_only(self):
+
+        pass
+
     def collapse_repro_commits(self):
         hashes_to_remove = []
         for commit in self._commits.values():
@@ -116,7 +121,7 @@ class Workflow(object):
 
             return True
         else:
-            commit.make_colapsed()
+            commit.make_collapsed()
             return False
         pass
 

@@ -1,7 +1,7 @@
 class Commit(object):
     TEXT_LIMIT = 30
     DVC_REPRO_PREFIX = 'DVC repro'
-    COLLAPSED_TEXT = DVC_REPRO_PREFIX + ' <<collapsed commits>>'
+    COLLAPSED_TEXT = DVC_REPRO_PREFIX + ' <<collapsed>>'
 
     def __init__(self, hash, parents, name, date, comment,
                  is_target=False,
@@ -39,32 +39,36 @@ class Commit(object):
         if self._branch_tips:
             branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
 
-        if self._is_collapsed:
-            return branch_text + self.COLLAPSED_TEXT + self._text_metrics_line()
-
-        return branch_text + self._text_comment() + self._text_metrics_line() + '\n' + self._text_hash()
+        return self._text_metrics_line() + branch_text + self._text_comment
 
     def _text_hash(self):
         return 'Commit: ' + self.hash
 
+    @property
     def _text_comment(self):
-        if len(self._comment) < self.TEXT_LIMIT:
-            return self._comment
-        return self._comment[:self.TEXT_LIMIT] + '...'
+        result = self.hash + ': '
+        if self._is_collapsed:
+            result += self.COLLAPSED_TEXT
+        elif len(self._comment) < self.TEXT_LIMIT:
+            result += self._comment
+        else:
+            result += self._comment[:self.TEXT_LIMIT] + '...'
+        return result
 
     def _text_metrics_line(self):
         result = ''
         if self._is_target and self._target_metric:
-            result = '\nTarget: {}'.format(self._target_metric)
+            result = 'Target: {}'.format(self._target_metric)
             if self._target_metric_delta is not None:
                 result += ' ({:+f})'.format(self._target_metric_delta)
+            result += '\n'
         return result
 
     @property
     def is_repro(self):
         return self._comment.startswith(self.DVC_REPRO_PREFIX)
 
-    def make_colapsed(self):
+    def make_collapsed(self):
         self._is_collapsed = True
 
     @property
@@ -93,3 +97,4 @@ class Commit(object):
     @property
     def target_metric_delta(self):
         return self._target_metric_delta
+
