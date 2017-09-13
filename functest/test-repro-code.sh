@@ -9,8 +9,7 @@ dvc_create_repo
 mkdir data/tsv
 
 dvc_info 'Convert Budget.xml to tsv'
-pip2 install xmltodict
-dvc run --code code/xmltotsv.py python2 code/xmltotsv.py --extract row/@Id,row/@UserId,row/@Name,row/@Class,row/@TagBased,row/@Date data/xml/Badges.xml data/tsv/Badges.tsv
+dvc run --code code/xmltotsv.py python code/xmltotsv.py --extract row/@Id,row/@UserId,row/@Name,row/@Class,row/@TagBased,row/@Date data/xml/Badges.xml data/tsv/Badges.tsv
     
 dvc_info 'Modify code'
 echo " " >> code/xmltotsv.py 
