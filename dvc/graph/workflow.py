@@ -9,6 +9,65 @@ class WorkflowError(DvcException):
         super(WorkflowError, self).__init__('Workflow error: ' + msg)
 
 
+class CommitCollapseStrategy(object):
+    def __init__(self, workflow):
+        self._workflow = workflow
+        pass
+
+    def is_change_needed(self, commit, child_commits):
+        raise NotImplementedError()
+
+    def is_remove_needed(self, commit):
+        raise NotImplementedError()
+
+    def make_collapsed(self, commit):
+        commit.make_collapsed()
+
+    def upstream(self, commit):
+        for child in self._workflow.child_commits(commit.hash):
+            self.upstream_to_child(commit, child)
+        pass
+
+    def upstream_to_child(self, commit, child):
+        if commit.has_target_metric:
+            if not child.has_target_metric:
+                child.set_target_metric(commit.target_metric)
+        if commit.branch_tips:
+            child.add_branch_tips(commit.branch_tips)
+
+
+class CollapseDvcCommitsStrategy(CommitCollapseStrategy):
+    def __init__(self, workflow):
+        super(CollapseDvcCommitsStrategy, self).__init__(workflow)
+
+    def is_change_needed(self, commit, hash):
+        return commit.is_repro
+
+    def is_remove_needed(self, commit):
+        child_commits = self._workflow.child_commits(commit.hash)
+        return child_commits and all(ch.is_repro for ch in child_commits)
+
+
+class CollapseNotMeticsCommitsStrategy(CommitCollapseStrategy):
+    def __init__(self, workflow):
+        super(CollapseNotMeticsCommitsStrategy, self).__init__(workflow)
+
+    def is_change_needed(self, commit, hash):
+        return not commit.has_target_metric
+
+    def is_remove_needed(self, commit):
+        child_commits = self._workflow.child_commits(commit.hash)
+        return len(child_commits) == 1 and child_commits[0].has_target_metric
+
+    def upstream_to_child(self, commit, child):
+        super(CollapseNotMeticsCommitsStrategy, self).upstream_to_child(commit, child)
+        if not commit.is_repro:
+            child.add_collapsed_commit(commit)
+
+    def make_collapsed(self, commit):
+        pass
+
+
 class Workflow(object):
     def __init__(self, target, merges_map, branches_map=None):
         self._target = target
@@ -37,16 +96,32 @@ class Workflow(object):
             self._root_hash = commit.hash
         pass
 
+    def get_commit(self, hash):
+        return self._commits.get(hash)
+
+    def child_commits(self, hash):
+        if hash not in self._edges:
+            return []
+        return [self._commits[h] for h in self._edges[hash]]
+
+    def parent_commits(self, hash):
+        if hash not in self._back_edges:
+            return []
+        return [self._commits[h] for h in self._back_edges[hash]]
+
     def build_graph(self, all_commits, deltas):
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
         self.derive_target_metric_deltas()
 
-        if not all_commits:
-            self.collapse_repro_commits()
-        elif deltas:
-            self.collapse_repro_commits()
-            self.deltas_only()
+        # if not all_commits:
+        #     self.collapse_commits(CollapseDvcCommitsStrategy(self))
+        # elif deltas:
+        #     self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
+        #     self.deltas_only()
+
+        self.collapse_commits(CollapseDvcCommitsStrategy(self))
+        self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
@@ -92,11 +167,11 @@ class Workflow(object):
 
         pass
 
-    def collapse_repro_commits(self):
+    def collapse_commits(self, strategy):
         hashes_to_remove = []
         for commit in self._commits.values():
-            if commit.is_repro:
-                if self._remove_or_collapse(commit):
+            if strategy.is_change_needed(commit, commit.hash):
+                if self._remove_or_collapse(commit, strategy):
                     hashes_to_remove.append(commit.hash)
 
         for hash in hashes_to_remove:
@@ -105,12 +180,15 @@ class Workflow(object):
             del self._back_edges[hash]
         pass
 
-    def _remove_or_collapse(self, commit):
-        parent_commit_hashes = self._back_edges[commit.hash]
+    def _remove_or_collapse(self, commit, strategy):
+        parent_commit_hashes = self._back_edges.get(commit.hash)
         child_commit_hashes = self._edges.get(commit.hash)
 
-        if child_commit_hashes and all(self._commits[hash].is_repro for hash in child_commit_hashes):
-            self._upstream_metrics_and_branch_tips(child_commit_hashes, commit)
+        if parent_commit_hashes is None or child_commit_hashes is None:
+            return False
+
+        if strategy.is_remove_needed(commit):
+            strategy.upstream(commit)
 
             for hash in child_commit_hashes:
                 self._commits[hash].add_parents(commit.parent_hashes)
@@ -121,18 +199,18 @@ class Workflow(object):
 
             return True
         else:
-            commit.make_collapsed()
+            strategy.make_collapsed(commit)
             return False
         pass
 
-    def _upstream_metrics_and_branch_tips(self, child_commit_hashes, commit):
-        for hash in child_commit_hashes:
-            if commit.has_target_metric:
-                if not self._commits[hash].has_target_metric:
-                    self._commits[hash].set_target_metric(commit.target_metric)
-            if commit.branch_tips:
-                self._commits[hash].add_branch_tips(commit.branch_tips)
-        pass
+    # def _upstream_metrics_and_branch_tips(self, child_commit_hashes, commit):
+    #     for hash in child_commit_hashes:
+    #         if commit.has_target_metric:
+    #             if not self._commits[hash].has_target_metric:
+    #                 self._commits[hash].set_target_metric(commit.target_metric)
+    #         if commit.branch_tips:
+    #             self._commits[hash].add_branch_tips(commit.branch_tips)
+    #     pass
 
     @staticmethod
     def _redirect_edges(edges, child_commit_hashes, hash, commit_hashes):

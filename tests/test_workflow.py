@@ -40,7 +40,7 @@ class TestWorkflow(TestCase):
         wf.add_commit(self._commit3)
         wf.add_commit(self._commit4)
 
-        wf.collapse_repro_commits()
+        wf.collapse_commits()
 
         self.assertEqual(len(wf._commits), 3)
         self.assertEqual(wf._commits[self._commit1.hash].text, self._commit1._comment + '\n' + self._commit1.hash)
@@ -58,7 +58,7 @@ class TestWorkflow(TestCase):
         wf.add_commit(self._commit3) # Dead end which cannot be collapsed
 
         self.assertEqual(len(wf._commits), 3)
-        wf.collapse_repro_commits()
+        wf.collapse_commits()
         self.assertEqual(len(wf._commits), 2)
 
         self.assertEqual(wf._commits[self._commit1.hash].text, self._commit1._comment + '\n' + self._commit1.hash)
@@ -78,7 +78,7 @@ class TestWorkflow(TestCase):
         wf.add_commit(self._commit3)
 
         self.assertEqual(len(wf._commits), 3)
-        wf.collapse_repro_commits()
+        wf.collapse_commits()
         self.assertEqual(len(wf._commits), 2)
 
         self.assertEqual(wf._commits['3']._target_metric, value)

@@ -16,6 +16,7 @@ class Commit(object):
         self._target_metric = target_metric
         self._target_metric_delta = None
         self._branch_tips = [] if branch_tips is None else branch_tips
+        self._added_commits_pairs = []
 
         self._is_collapsed = False
 
@@ -33,27 +34,37 @@ class Commit(object):
     def remove_parent(self, hash):
         self._parent_hashes.remove(hash)
 
+    def add_collapsed_commit(self, commit):
+        self._added_commits_pairs.append((commit.hash, commit._comment))
+
     @property
     def text(self):
         branch_text = ''
         if self._branch_tips:
             branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
 
-        return self._text_metrics_line() + branch_text + self._text_comment
+        return self._text_metrics_line() + branch_text + self._text_comment + self._text_added_comments
 
     def _text_hash(self):
         return 'Commit: ' + self.hash
 
     @property
     def _text_comment(self):
-        result = self.hash + ': '
-        if self._is_collapsed:
-            result += self.COLLAPSED_TEXT
-        elif len(self._comment) < self.TEXT_LIMIT:
-            result += self._comment
+        text = self.COLLAPSED_TEXT if self._is_collapsed else self._limit_text(self._comment)
+        return '{}: {}'.format(self.hash, text)
+
+    def _limit_text(self, comment):
+        if len(comment) < self.TEXT_LIMIT:
+            return self._comment
         else:
-            result += self._comment[:self.TEXT_LIMIT] + '...'
-        return result
+            return comment[:self.TEXT_LIMIT-3] + '...'
+
+    @property
+    def _text_added_comments(self):
+        res = ''
+        for hash, commit in self._added_commits_pairs:
+            res += '\n{}: {}'.format(hash, self._limit_text(commit))
+        return res
 
     def _text_metrics_line(self):
         result = ''
@@ -97,4 +108,3 @@ class Commit(object):
     @property
     def target_metric_delta(self):
         return self._target_metric_delta
-
