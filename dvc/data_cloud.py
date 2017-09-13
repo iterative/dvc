@@ -148,7 +148,7 @@ class DataCloudBase(object):
     def pull(self, item):
         fname = item.resolved_cache.dvc
         key_name = self.cache_file_key(fname)
-
+        self.create_directory(item)
         return self._import(self.storage_bucket, key_name, fname, item)
 
     def import_data(self, url, item):
@@ -162,7 +162,6 @@ class DataCloudBase(object):
         if os.path.isfile(item.resolved_cache.dvc):
             return self.push(item)
         else:
-            self.create_directory(item)
             return self.pull(item)
 
     def create_directory(self, item):

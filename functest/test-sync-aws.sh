@@ -33,6 +33,15 @@ if [[ "$TRAVIS_PULL_REQUEST" == "false" && "$TRAVIS_SECURE_ENV_VARS" == "true" ]
 	dvc_info "Checking status"
 	dvc status data/xml
 
+	dvc_info "Removing all cache"
+	rm -rf .cache/xml
+
+	dvc_info "Checking status"
+	dvc status data/xml
+
+	dvc_info "Pulling data"
+	dvc pull data/xml
+
 	dvc_clean_cloud_aws
 fi
 

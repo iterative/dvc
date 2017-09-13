@@ -27,10 +27,14 @@ class TestWorkflow(TestCase):
 
         self.assertEqual(len(wf._commits), 4)
 
-        self.assertEqual(wf._commits['1'].text, self._commit1._comment + '\n' + self._commit1.hash)
-        self.assertEqual(wf._commits['2'].text, self._commit2._comment + '\n' + self._commit2.hash)
-        self.assertEqual(wf._commits['3'].text, self._commit3._comment + '\n' + self._commit3.hash)
-        self.assertEqual(wf._commits['4'].text, self._commit4._comment + '\n' + self._commit4.hash)
+        self.assertEqual(wf._commits['1'].text,
+                         self._commit1._comment + '\n' + self._commit1._text_hash())
+        self.assertEqual(wf._commits['2'].text,
+                         self._commit2._comment + '\n' + self._commit2._text_hash())
+        self.assertEqual(wf._commits['3'].text,
+                         self._commit3._comment + '\n' + self._commit3._text_hash())
+        self.assertEqual(wf._commits['4'].text,
+                         self._commit4._comment + '\n' + self._commit4._text_hash())
         pass
 
     def collapse_test(self):
@@ -43,7 +47,8 @@ class TestWorkflow(TestCase):
         wf.collapse_repro_commits()
 
         self.assertEqual(len(wf._commits), 3)
-        self.assertEqual(wf._commits[self._commit1.hash].text, self._commit1._comment + '\n' + self._commit1.hash)
+        self.assertEqual(wf._commits[self._commit1.hash].text,
+                         self._commit1._comment + '\n' + self._commit1._text_hash())
         self.assertEqual(wf._commits[self._commit3.hash].text, Commit.COLLAPSED_TEXT)
         self.assertTrue('2' not in wf._commits)
 
@@ -61,7 +66,8 @@ class TestWorkflow(TestCase):
         wf.collapse_repro_commits()
         self.assertEqual(len(wf._commits), 2)
 
-        self.assertEqual(wf._commits[self._commit1.hash].text, self._commit1._comment + '\n' + self._commit1.hash)
+        self.assertEqual(wf._commits[self._commit1.hash].text,
+                         self._commit1._comment + '\n' + self._commit1._text_hash())
         self.assertEqual(wf._commits[self._commit3.hash].text, Commit.COLLAPSED_TEXT)
         self.assertTrue('2' not in wf._commits)
         pass
