@@ -52,9 +52,6 @@ class CmdDataStatus(CmdBase):
         with DvcLock(self.is_locker, self.git):
             status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
 
-            if len(list(status)) != len(self.parsed_args.targets):
-                return 1
-
             self._show(status)
 
             return 0
