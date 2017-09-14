@@ -19,6 +19,9 @@ CODE_S3=$BASE_DIR_S3/code
 TEST_REPO_S3='dvc-test/myrepo'
 TEST_REPO_REGION='us-east-2'
 
+TEST_REPO_GCP='dvc-test/myrepo'
+TEST_REPO_GCP_PROJECT='dvc-project'
+
 function dvc_print() {
 	echo -e "$1"
 }
@@ -81,6 +84,7 @@ function dvc_create_git_repo() {
 
 	dvc_prepare_cache
 
+	rm -rf $TEST_REPO
 	mkdir $TEST_REPO
         cd $TEST_REPO
 
@@ -109,6 +113,11 @@ function dvc_create_repo() {
 function dvc_clean_cloud_aws() {
 	dvc_info "Cleaning $TEST_REPO_S3"
 	aws s3 rm --recursive "s3://$TEST_REPO_S3/"
+}
+
+function dvc_clean_cloud_gcp() {
+	dvc_info "Cleaning $TEST_REPO_GCP_PROJECT/$TEST_REPO_GCP"
+	gsutil rm -rf "gs://$TEST_REPO_GCP/" || true
 }
 
 function dvc_check_dirs() {

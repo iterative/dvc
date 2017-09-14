@@ -579,7 +579,7 @@ class DataCloudGCP(DataCloudBase):
     """ DataCloud class for Google Cloud Platform """
     @property
     def gc_project_name(self):
-        return self._cloud_config.get('ProjectName', None)
+        return self._cloud_settings.cloud_config.get('ProjectName', None)
 
     def sanity_check(self):
         project = self.gc_project_name
@@ -614,7 +614,11 @@ class DataCloudGCP(DataCloudBase):
             Logger.error('File "{}" does not exist in the cloud'.format(key))
             return None
 
-        Logger.info('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
+        if self._cmp_checksum(blob, fname):
+            Logger.debug('File "{}" matches with "{}".'.format(fname, key))
+            return data_item
+
+        Logger.debug('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
 
         # percent_cb is not available for download_to_filename, so
         # lets at least update progress at keypoints(start, finish)
@@ -629,7 +633,7 @@ class DataCloudGCP(DataCloudBase):
 
         progress.finish_target(name)
 
-        Logger.info('Downloading completed')
+        Logger.debug('Downloading completed')
 
         return data_item
 
@@ -654,7 +658,7 @@ class DataCloudGCP(DataCloudBase):
         blob.upload_from_filename(data_item.resolved_cache.relative)
 
         progress.finish_target(name)
-        Logger.info('uploading %s completed' % data_item.resolved_cache.relative)
+        Logger.debug('uploading %s completed' % data_item.resolved_cache.relative)
 
         return data_item
 
