@@ -579,7 +579,7 @@ class DataCloudGCP(DataCloudBase):
     """ DataCloud class for Google Cloud Platform """
     @property
     def gc_project_name(self):
-        return self._cloud_config.get('ProjectName', None)
+        return self._cloud_settings.cloud_config.get('ProjectName', None)
 
     def sanity_check(self):
         project = self.gc_project_name
