@@ -16,7 +16,7 @@ class Commit(object):
         self._target_metric = target_metric
         self._target_metric_delta = None
         self._branch_tips = [] if branch_tips is None else branch_tips
-        self._added_commits_pairs = []
+        self._collapsed_commits = []
 
         self._is_collapsed = False
 
@@ -35,7 +35,7 @@ class Commit(object):
         self._parent_hashes.remove(hash)
 
     def add_collapsed_commit(self, commit):
-        self._added_commits_pairs.append((commit.hash, commit._comment))
+        self._collapsed_commits.append(commit)
 
     @property
     def text(self):
@@ -43,28 +43,37 @@ class Commit(object):
         if self._branch_tips:
             branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
 
-        return self._text_metrics_line() + branch_text + self._text_comment + self._text_added_comments
+        # text = self._text_comment(self.hash, self._comment, self._is_collapsed)
+        text = ''
+        return self._text_metrics_line() + branch_text + text + self._text_added_comments
 
     def _text_hash(self):
         return 'Commit: ' + self.hash
 
-    @property
-    def _text_comment(self):
-        text = self.COLLAPSED_TEXT if self._is_collapsed else self._limit_text(self._comment)
-        return '{}: {}'.format(self.hash, text)
+    # @property
+    @staticmethod
+    def _text_comment(hash, comment, is_collapsed):
+        text = Commit.COLLAPSED_TEXT if is_collapsed else Commit._limit_text(comment)
+        return '{}: {}'.format(hash, text)
 
-    def _limit_text(self, comment):
-        if len(comment) < self.TEXT_LIMIT:
-            return self._comment
+    @staticmethod
+    def _limit_text(comment):
+        if len(comment) < Commit.TEXT_LIMIT:
+            return comment
         else:
-            return comment[:self.TEXT_LIMIT-3] + '...'
+            return comment[:Commit.TEXT_LIMIT-3] + '...'
 
     @property
     def _text_added_comments(self):
-        res = ''
-        for hash, commit in self._added_commits_pairs:
-            res += '\n{}: {}'.format(hash, self._limit_text(commit))
-        return res
+        res = [self._text_comment(self.hash, self._comment, self._is_collapsed)]
+
+        for commit in self._collapsed_commits:
+            text = self._text_comment(commit.hash, commit._comment, commit.is_repro)
+            res.append(text)
+
+        max_len = max(map(lambda x: len(x), res))
+        res_extended_len = map(lambda x: x.ljust(max_len), res)
+        return '\n'.join(res_extended_len)
 
     def _text_metrics_line(self):
         result = ''
