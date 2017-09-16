@@ -22,13 +22,14 @@ class RunBasicTest(TestCase):
         os.mkdir(self.test_dir)
         os.chdir(self.test_dir)
         os.mkdir('data')
-        os.mkdir('cache')
-        os.mkdir('state')
+        os.mkdir(ConfigI.CONFIG_DIR)
+        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR))
+        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR))
 
         self.init_git_repo()
         self.git = GitWrapper()
 
-        self.config = ConfigI('data', 'cache', 'state')
+        self.config = ConfigI('data')
         self.path_factory = PathFactory(self.git, self.config)
 
         self.settings = Settings('run cmd', self.git, self.config)
@@ -36,7 +37,10 @@ class RunBasicTest(TestCase):
 
     def init_git_repo(self):
         Executor.exec_cmd_only_success(['git', 'init'])
-        self.create_file('.gitignore', 'cache\n.dvc.conf.lock')
+        msg = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR)
+        msg += '\n'
+        msg += os.path.join(ConfigI.CONFIG_DIR, '.' + ConfigI.CONFIG + '.lock')
+        self.create_file('.gitignore', msg)
         Executor.exec_cmd_only_success(['git', 'add', '.gitignore'])
         Executor.exec_cmd_only_success(['git', 'commit', '-m', '"Init test repo"'])
 
@@ -78,8 +82,8 @@ class RunTwoFilesBase(RunBasicTest):
                                               stdout=self.file_name1,
                                               stderr=self.file_name2)
 
-        self.state_file_name1 = os.path.join('state', 'file1' + DataItem.STATE_FILE_SUFFIX)
-        self.state_file_name2 = os.path.join('state', 'file2' + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name1 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file1' + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name2 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file2' + DataItem.STATE_FILE_SUFFIX)
 
         self.state_file1 = None
         self.state_file2 = None

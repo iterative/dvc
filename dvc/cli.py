@@ -67,18 +67,6 @@ def parse_args(argv=None):
                         '--data-dir',
                         default='data',
                         help='Data directory.')
-    init_parser.add_argument(
-                        '--cache-dir',
-                        default='.cache',
-                        help='Cache directory.')
-    init_parser.add_argument(
-                        '--state-dir',
-                        default='.state',
-                        help='State directory.')
-    init_parser.add_argument(
-                        '--target-file',
-                        default=Config.TARGET_FILE_DEFAULT,
-                        help='Target file.')
     init_parser.set_defaults(func=CmdInit)
 
     # Run

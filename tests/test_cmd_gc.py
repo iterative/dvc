@@ -81,11 +81,11 @@ class TestCmdDataRemove(BasicEnvironment):
 
     def create_dirs(self, dir):
         os.mkdir(os.path.join(self._test_git_dir, 'data', dir))
-        os.mkdir(os.path.join(self._test_git_dir, 'cache', dir))
-        os.mkdir(os.path.join(self._test_git_dir, 'state', dir))
+        os.mkdir(os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir))
+        os.mkdir(os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, dir))
 
     def cache_file_nums(self, pattern):
-        os.chdir(os.path.join(self._test_git_dir, 'cache'))
+        os.chdir(os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR))
         files = []
         for file in glob.glob(pattern):
             files.append(file)
@@ -96,11 +96,11 @@ class TestCmdDataRemove(BasicEnvironment):
 
         file_result = os.path.join('data', dir, data_file)
 
-        state_result = os.path.join('state', dir, data_file + DataItem.STATE_FILE_SUFFIX)
+        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, dir, data_file + DataItem.STATE_FILE_SUFFIX)
         self.create_content_file(state_result, 'state content')
 
         file_prefix = data_file + DataItem.CACHE_FILE_SEP
-        cache_result = os.path.join('cache', dir, file_prefix + self._commit)
+        cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir, file_prefix + self._commit)
         self.create_content_file(cache_result, content)
         relevant_dir = self.relevant_dir(os.path.join(dir, data_file))
         cache_file = os.path.join(relevant_dir, cache_result)
@@ -117,10 +117,10 @@ class TestCmdDataRemove(BasicEnvironment):
         print('----> {} {} {} {}'.format(dir, data_file, cache_file, file_result))
 
         # Additional cache files
-        self.create_content_file(os.path.join('cache', dir, file_prefix + 'aaaaaaa'))
-        self.create_content_file(os.path.join('cache', dir, file_prefix + '1111111'))
-        self.create_content_file(os.path.join('cache', dir, file_prefix + '5555555'))
-        self.create_content_file(os.path.join('cache', dir, file_prefix + '123abff'))
+        self.create_content_file(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir, file_prefix + 'aaaaaaa'))
+        self.create_content_file(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir, file_prefix + '1111111'))
+        self.create_content_file(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir, file_prefix + '5555555'))
+        self.create_content_file(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir, file_prefix + '123abff'))
         return
 
     @staticmethod
