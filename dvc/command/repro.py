@@ -42,18 +42,20 @@ class CmdRepro(CmdRun):
     def run(self):
         with DvcLock(self.is_locker, self.git):
             recursive = not self.parsed_args.single_item
-            if self.parsed_args.target:
-                target = self.parsed_args.target
-            else:
-                target_conf_file_path = self.settings.path_factory.path(self.settings.config.target_file)
-                target_file = open(target_conf_file_path.relative).read()
-                if not target_file:
-                    Logger.error('Reproduction target is not defined. ' +
-                                 'Specify data file or set target by `dvc target` command.')
-                    return 1
-                target = [target_file]
+            targets = []
 
-            return self.repro_target(target, recursive, self.parsed_args.force)
+            if self.parsed_args.target:
+                targets += self.parsed_args.target
+            else:
+                target = self.settings.config.get('Target', None)
+                if not target or len(target) == 0:
+                    Logger.error('Reproduction target is not defined. ' +
+                                 'Specify data file or set target by ' +
+                                 '`dvc config global.target target` command.')
+                    return 1
+                targets += [target]
+
+            return self.repro_target(targets, recursive, self.parsed_args.force)
         pass
 
     def repro_target(self, target, recursive, force):
