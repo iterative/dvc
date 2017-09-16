@@ -17,9 +17,6 @@ class InitError(DvcException):
 class CmdInit(CmdBase):
     CONFIG_TEMPLATE = '''[Global]
 DataDir = {}
-CacheDir = {}
-StateDir = {}
-TargetFile = {}
 
 # Supported clouds: AWS, GCP
 Cloud = AWS
@@ -69,14 +66,14 @@ ProjectName =
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
 
-    def get_not_existing_path(self, dir):
-        path = Path(os.path.join(self.git.git_dir, dir))
+    def get_not_existing_path(self, *args):
+        path = Path(os.path.join(self.git.git_dir, *args))
         if path.exists():
             raise InitError('Path "{}" already exist'.format(path.name))
         return path
 
     def get_not_existing_conf_file_name(self):
-        file_name = os.path.join(self.git.git_dir, Config.CONFIG)
+        file_name = os.path.join(self.git.git_dir, Config.CONFIG_DIR, Config.CONFIG)
         if os.path.exists(file_name):
             raise InitError('Configuration file "{}" already exist'.format(file_name))
         return file_name
@@ -91,23 +88,23 @@ ProjectName =
             ))
             return 1
 
+        config_dir_path = self.get_not_existing_path(Config.CONFIG_DIR)
         data_dir_path = self.get_not_existing_path(self.parsed_args.data_dir)
-        cache_dir_path = self.get_not_existing_path(self.parsed_args.cache_dir)
-        state_dir_path = self.get_not_existing_path(self.parsed_args.state_dir)
-        target_file_path = self.get_not_existing_path(self.parsed_args.target_file)
+        cache_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.CACHE_DIR)
+        state_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.STATE_DIR)
+        target_file_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.TARGET_FILE_DEFAULT)
 
-        self.settings.config.set(self.parsed_args.data_dir,
-                                 self.parsed_args.cache_dir,
-                                 self.parsed_args.state_dir,
-                                 target_file_path)
+        self.settings.config.set(self.parsed_args.data_dir)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
+        config_dir_path.mkdir()
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
         target_file_path.touch()
-        Logger.info('Directories {}/, {}/, {}/ and target file {} were created'.format(
+        Logger.info('Directories {}/, {}/, {}/, {}/ and target file {} were created'.format(
+            config_dir_path.name,
             data_dir_path.name,
             cache_dir_path.name,
             state_dir_path.name,
@@ -116,10 +113,7 @@ ProjectName =
         self.create_empty_file()
 
         conf_file = open(conf_file_name, 'wt')
-        conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name,
-                                                    cache_dir_path.name,
-                                                    state_dir_path.name,
-                                                    target_file_path.name))
+        conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name))
         conf_file.close()
 
         message = 'DVC init. data dir {}, cache dir {}, state dir {}, '.format(
@@ -130,14 +124,14 @@ ProjectName =
         if self.commit_if_needed(message) == 1:
             return 1
 
-        self.modify_gitignore(cache_dir_path.name)
+        self.modify_gitignore(config_dir_path.name, cache_dir_path.name)
         return self.commit_if_needed('DVC init. Commit .gitignore file')
 
     def create_empty_file(self):
         empty_data_path = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
         cache_file_suffix = self.EMPTY_FILE_NAME + '_' + self.EMPTY_FILE_CHECKSUM
-        empty_cache_path = os.path.join(self.parsed_args.cache_dir, cache_file_suffix)
-        empty_state_path = os.path.join(self.parsed_args.state_dir, self.EMPTY_FILE_NAME + '.state')
+        empty_cache_path = os.path.join(Config.CONFIG_DIR, Config.CACHE_DIR, cache_file_suffix)
+        empty_state_path = os.path.join(Config.CONFIG_DIR, Config.STATE_DIR, self.EMPTY_FILE_NAME + '.state')
 
         open(empty_cache_path, 'w').close()
         System.symlink(os.path.join('..', empty_cache_path), empty_data_path)
@@ -150,13 +144,13 @@ ProjectName =
                   lock=False).save()
         pass
 
-    def modify_gitignore(self, cache_dir_name):
+    def modify_gitignore(self, config_dir_name, cache_dir_name):
         gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
         if not os.path.exists(gitignore_file):
             open(gitignore_file, 'a').close()
             Logger.info('File .gitignore was created')
         with open(gitignore_file, 'a') as fd:
-            fd.write('\n{}'.format(cache_dir_name))
-            fd.write('\n{}'.format(os.path.basename(self.git.lock_file)))
+            fd.write('\n{}'.format(os.path.join(config_dir_name, cache_dir_name)))
+            fd.write('\n{}'.format(os.path.join(config_dir_name, os.path.basename(self.git.lock_file))))
 
         Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))

@@ -11,23 +11,20 @@ class ConfigError(DvcException):
 
 
 class ConfigI(object):
-    TARGET_FILE_DEFAULT = '.target'
+    CONFIG_DIR          = '.dvc'
+    TARGET_FILE_DEFAULT = 'target'
+    CONFIG              = 'config'
+    STATE_DIR           = 'state'
+    CACHE_DIR           = 'cache'
 
-    def __init__(self, data_dir=None, cache_dir=None, state_dir=None, target_file=None,
-                 cloud=None, conf_parser=None):
+    def __init__(self, data_dir=None, cloud=None, conf_parser=None):
         self._data_dir = None
-        self._cache_dir = None
-        self._state_dir = None
-        self._target_file = None
         self._conf_parser = None
         self._cloud = None
-        self.set(data_dir, cache_dir, state_dir, target_file, cloud, conf_parser)
+        self.set(data_dir, cloud, conf_parser)
 
-    def set(self, data_dir, cache_dir, state_dir, target_file, cloud=None, conf_parser=None):
+    def set(self, data_dir, cloud=None, conf_parser=None):
         self._data_dir = data_dir
-        self._cache_dir = cache_dir
-        self._state_dir = state_dir
-        self._target_file = target_file
         self._cloud = cloud
         self._conf_parser = conf_parser
 
@@ -37,15 +34,15 @@ class ConfigI(object):
 
     @property
     def cache_dir(self):
-        return self._cache_dir
+        return os.path.join(self.CONFIG_DIR, self.CACHE_DIR)
 
     @property
     def state_dir(self):
-        return self._state_dir
+        return os.path.join(self.CONFIG_DIR, self.STATE_DIR)
 
     @property
     def target_file(self):
-        return self._target_file
+        return os.path.join(self.CONFIG_DIR, self.TARGET_FILE_DEFAULT)
 
     @property
     def cloud(self):
@@ -57,9 +54,7 @@ class ConfigI(object):
 
 
 class Config(ConfigI):
-    CONFIG = 'dvc.conf'
-
-    def __init__(self, conf_file=CONFIG, conf_pseudo_file=None):
+    def __init__(self, conf_file=ConfigI.CONFIG, conf_pseudo_file=None):
         """
         Params:
             conf_file (String): configuration file
@@ -71,17 +66,15 @@ class Config(ConfigI):
         if conf_pseudo_file is not None:
             self._config.readfp(conf_pseudo_file)
         else:
-            if not os.path.isfile(conf_file):
-                raise ConfigError('Config file "{}" does not exist {}'.format(conf_file, os.getcwd()))
-            self._config.read(conf_file)
+            fname = os.path.join(self.CONFIG_DIR, conf_file)
+            if not os.path.isfile(fname):
+                raise ConfigError('Config file "{}" does not exist {}'.format(fname, os.getcwd()))
+            self._config.read(fname)
 
         level = self._config['Global']['LogLevel']
         Logger.set_level(level)
 
         super(Config, self).__init__(self._config['Global']['DataDir'],
-                                     self._config['Global']['CacheDir'],
-                                     self._config['Global']['StateDir'],
-                                     self._config['Global'].get('TargetFile', Config.TARGET_FILE_DEFAULT),
                                      self._config['Global']['Cloud'],
                                      self._config)
         pass

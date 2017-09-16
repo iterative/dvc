@@ -15,7 +15,7 @@ class CmdConfig(CmdBase):
 
     @property
     def _config_path(self):
-        return os.path.join(self.git.git_dir, Config.CONFIG)
+        return os.path.join(self.git.git_dir, Config.CONFIG_DIR, Config.CONFIG)
 
     def _get_key(self, d, name, add=False):
         for k in d.keys():

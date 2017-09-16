@@ -24,7 +24,7 @@ class GitWrapperI(object):
 
     @property
     def lock_file(self):
-        return os.path.join(self.git_dir_abs, '.' + Config.CONFIG + '.lock')
+        return os.path.join(self.git_dir_abs, Config.CONFIG_DIR, '.' + Config.CONFIG + '.lock')
 
     @property
     def git_dir_abs(self):

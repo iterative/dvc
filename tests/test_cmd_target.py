@@ -20,36 +20,36 @@ class TestCmdTarget(BasicEnvironment):
         self._commit = commit
 
         self._git = GitWrapperI(git_dir=self._test_git_dir, commit=self._commit)
-        self._config = ConfigI('data', 'cache', 'state', '.target')
+        self._config = ConfigI('data')
         self.path_factory = PathFactory(self._git, self._config)
         self.settings = Settings(['target'], self._git, self._config)
 
         os.chdir(self._test_git_dir)
 
         os.mkdir(os.path.join('data', 'dir1'))
-        os.mkdir(os.path.join('cache', 'dir1'))
+        os.mkdir(os.path.join('.dvc', 'cache', 'dir1'))
 
-        self.file1_cache = os.path.join('cache', 'dir1', 'file1')
+        self.file1_cache = os.path.join('.dvc', 'cache', 'dir1', 'file1')
         self.file1_data = os.path.join('data', 'dir1', 'file1')
 
         open(self.file1_cache, 'w').write('ddfdff')
         System.symlink(self.file1_cache, self.file1_data)
 
-        self.file2_cache = os.path.join('cache', 'file2')
+        self.file2_cache = os.path.join('.dvc', 'cache', 'file2')
         self.file2_data = os.path.join('data', 'file2')
 
         open(self.file2_cache, 'w').write('ddfdff')
         System.symlink(self.file2_cache, self.file2_data)
 
     def test_initial_default_target(self):
-        self.assertFalse(os.path.exists('.target'))
+        self.assertFalse(os.path.exists('.dvc/target'))
 
     def test_single_file(self):
         self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
 
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), self.file1_data)
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), self.file1_data)
 
     def test_multiple_files(self):
         self.settings.parse_args('target {}'.format(self.file1_data))
@@ -60,39 +60,39 @@ class TestCmdTarget(BasicEnvironment):
         self.settings.parse_args('target {}'.format(self.file2_data))
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), self.file2_data)
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), self.file2_data)
 
         # Unset target
         self.settings.parse_args('target --unset')
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), '')
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), '')
 
     def test_initial_unset(self):
         self.settings.parse_args('target --unset')
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 1)
-        self.assertFalse(os.path.exists('.target'))
+        self.assertFalse(os.path.exists(os.path.join('.dvc', '.target')))
 
     def test_unset_existing_target(self):
         self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), self.file1_data)
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), self.file1_data)
 
         self.settings.parse_args('target --unset')
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), '')
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), '')
 
     def test_the_same(self):
         self.settings.parse_args('target {}'.format(self.file1_data))
         cmd = CmdTarget(self.settings)
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), self.file1_data)
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), self.file1_data)
 
         self.assertEqual(cmd.run(), 0)
-        self.assertEqual(open('.target').read(), self.file1_data)
+        self.assertEqual(open(os.path.join('.dvc', 'target')).read(), self.file1_data)
 
     def test_args_conflict(self):
         self.settings.parse_args('target {} --unset'.format(self.file1_data))
