@@ -44,6 +44,7 @@ class StateFile(object):
     PARAM_SHELL = "Shell"
     PARAM_TARGET_METRICS = 'TargetMetrics'
     TARGET_METRICS_SINGLE_METRIC = 'SingleMetric'
+    PARAM_TARGET_COMMIT = 'TargetCommit'
 
     def __init__(self,
                  command,
@@ -59,7 +60,8 @@ class StateFile(object):
                  created_at=time.strftime('%Y-%m-%d %H:%M:%S %z'),
                  cwd=None,
                  shell=False,
-                 target_metrics={}):
+                 target_metrics={},
+                 target_commit=None):
         self.data_item = data_item
 
         self.settings = settings
@@ -68,6 +70,7 @@ class StateFile(object):
         self.locked = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
+        self.target_commit = target_commit
 
         if command not in self.ACCEPTED_COMMANDS:
             raise StateFileError('Args error: unknown command %s' % command)
@@ -188,7 +191,8 @@ class StateFile(object):
                          json.get(StateFile.PARAM_CREATED_AT),
                          StateFile.decode_path(json.get(StateFile.PARAM_CWD)),
                          json.get(StateFile.PARAM_SHELL, False),
-                         json.get(StateFile.PARAM_TARGET_METRICS, {}))
+                         json.get(StateFile.PARAM_TARGET_METRICS, {}),
+                         json.get(StateFile.PARAM_TARGET_COMMIT, None))
 
     @staticmethod
     def load(data_item, settings):
@@ -200,6 +204,13 @@ class StateFile(object):
     def loads(content, settings):
         data = json.loads(content)
         return StateFile.load_json(data, settings)
+
+    def add_target_commit(self, commit):
+        with open(self.file, 'r') as state_file:
+            state = json.load(state_file)
+        state[self.PARAM_TARGET_COMMIT] = commit
+        with open(self.file, 'w') as state_file:
+            json.dump(state, state_file, indent=2)
 
     def save(self, is_update_target_metrics=True):
         argv = self._argv_paths_normalization(self._argv)

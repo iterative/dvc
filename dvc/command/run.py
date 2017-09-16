@@ -59,19 +59,30 @@ class CmdRun(CmdBase):
         if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
             return 1
 
-        self.run_command(command_args,
-                         data_items_from_args,
-                         not_data_items_from_args,
-                         stdout,
-                         stderr,
-                         shell,
-                         output_data_items,
-                         input_data_items,
-                         code_dependencies,
-                         lock)
+        state_files = self.run_command(command_args,
+                                       data_items_from_args,
+                                       not_data_items_from_args,
+                                       stdout,
+                                       stderr,
+                                       shell,
+                                       output_data_items,
+                                       input_data_items,
+                                       code_dependencies,
+                                       lock)
 
+        return self.add_commit(state_files, command_args, is_repro)
+
+    def add_commit(self, state_files, command_args, is_repro):
+        """ Commit and update TargetCommit in state files """
         cmd_name = 'repro-run' if is_repro else 'run'
-        return self.commit_if_needed('DVC {}: {}'.format(cmd_name, ' '.join(command_args)))
+        ret = self.commit_if_needed('DVC {}: {}'.format(cmd_name, ' '.join(command_args)))
+        if ret != 0:
+            return ret
+
+        for state in state_files:
+            state.add_target_commit(self.git.curr_commit)
+
+        return self.commit_if_needed('DVC add target commit to state files')
 
     def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
                     stdout=None, stderr=None, shell=False,
