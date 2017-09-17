@@ -59,10 +59,6 @@ class Settings(object):
         return self._config
 
     @property
-    def dvc_home(self):
-        return self._dvc_home
-
-    @property
     def path_factory(self):
         return self._path_factory
 

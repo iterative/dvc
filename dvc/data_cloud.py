@@ -1,11 +1,11 @@
+"""
+Data cloud(Local, AWS, GCP) drivers.
+"""
 import base64
 import hashlib
 import os
 import threading
-import configparser
-import tempfile
 import requests
-import configparser
 import filecmp
 import math
 
@@ -25,6 +25,7 @@ try:
     from urlparse import urlparse
 except ImportError:
     # Python 3
+    # pylint: disable=no-name-in-module, import-error
     from urllib.parse import urlparse
 
 import dvc
@@ -35,15 +36,14 @@ from dvc.config import ConfigError
 from dvc.progress import progress
 from dvc.utils import copyfile
 from dvc.cloud.credentials_aws import AWSCredentials
-from dvc.utils import cached_property
 from dvc.system import System
 from dvc.utils import map_progress
 
-STATUS_UNKNOWN  = 0
-STATUS_OK       = 1
+STATUS_UNKNOWN = 0
+STATUS_OK = 1
 STATUS_MODIFIED = 2
-STATUS_NEW      = 3
-STATUS_DELETED  = 4
+STATUS_NEW = 3
+STATUS_DELETED = 4
 
 STATUS_MAP = {
     # (local_exists, remote_exists, cmp)
@@ -54,11 +54,13 @@ STATUS_MAP = {
 }
 
 class DataCloudError(DvcException):
+    """ Data Cloud exception """
     def __init__(self, msg):
         super(DataCloudError, self).__init__('Data sync error: {}'.format(msg))
 
 
 def sizeof_fmt(num, suffix='B'):
+    """ Convert number of bytes to human-readable string """
     for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
@@ -67,26 +69,27 @@ def sizeof_fmt(num, suffix='B'):
 
 
 def percent_cb(name, part_complete, part_total, offset=0, multipart_total=None):
+    """ Callback for updating target progress """
     complete = offset + part_complete
     total = multipart_total if multipart_total != None else part_total
 
-    Logger.debug('{}: {} transferred out of {}'.format(
-                                    name,
-                                    sizeof_fmt(complete),
-                                    sizeof_fmt(total)))
+    Logger.debug('{}: {} transferred out of {}'.format(name,
+                                                       sizeof_fmt(complete),
+                                                       sizeof_fmt(total)))
     progress.update_target(os.path.basename(name), complete, total)
 
 
 def create_cb(name, offset=0, multipart_total=None):
-    return (lambda cur,tot: percent_cb(name, cur, tot, offset, multipart_total))
+    """ Create callback function for multipart object """
+    return (lambda cur, tot: percent_cb(name, cur, tot, offset, multipart_total))
 
 
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
-        with open(fname, "rb") as f:
-            for chunk in iter(lambda: f.read(1024*1000), b""):
+        with open(fname, "rb") as fobj:
+            for chunk in iter(lambda: fobj.read(1024*1000), b""):
                 hash_md5.update(chunk)
         return (hash_md5.hexdigest(), hash_md5.digest())
     else:
@@ -116,6 +119,9 @@ class DataCloudBase(object):
         return path
 
     def _storage_path_parts(self):
+        """
+        Split storage path into parts. I.e. 'dvc-test/myrepo' -> ['dvc', 'myrepo']
+        """
         return self.storage_path.strip('/').split('/', 1)
 
     @property
@@ -125,38 +131,57 @@ class DataCloudBase(object):
 
     @property
     def storage_prefix(self):
+        """
+        Prefix within the bucket. I.e. 'myrepo' in 'dvc-test/myrepo'.
+        """
         parts = self._storage_path_parts()
         if len(parts) > 1:
             return parts[1]
         return ''
 
-    def cache_file_key(self, file):
-        return '{}/{}'.format(self.storage_prefix, file).strip('/')
+    def cache_file_key(self, fname):
+        """ Key of a file within the bucket """
+        return '{}/{}'.format(self.storage_prefix, fname).strip('/')
 
-    def tmp_file(self, fname):
+    @staticmethod
+    def tmp_file(fname):
+        """ Temporary name for a partial download """
         return fname + '.part'
 
     def sanity_check(self):
+        """
+        Cloud-specific method to check config for basic requirements.
+        """
         pass
 
     def _import(self, bucket, path, fname, item):
+        """
+        Cloud-specific method for importing data file.
+        """
         pass
 
     def push(self, item):
+        """ Cloud-specific method for pushing data """
         pass
 
     def pull(self, item):
+        """ Generic method for pulling data from the cloud """
         fname = item.resolved_cache.dvc
         key_name = self.cache_file_key(fname)
         self.create_directory(item)
         return self._import(self.storage_bucket, key_name, fname, item)
 
     def import_data(self, url, item):
-        o = urlparse(url)
+        """ Generic method for importing data """
+        parsed = urlparse(url)
 
-        return self._import(o.netloc, o.path, item.cache.relative, item)
+        return self._import(parsed.netloc, parsed.path, item.cache.relative, item)
 
     def sync(self, fname):
+        """
+        Generic method for syncing data. It will decide on its own whether it needs
+        to push or pull data, depending on existance of local cache file.
+        """
         item = self._cloud_settings.path_factory.data_item(fname)
 
         if os.path.isfile(item.resolved_cache.dvc):
@@ -165,37 +190,50 @@ class DataCloudBase(object):
             return self.pull(item)
 
     def create_directory(self, item):
+        """ Create local directories for data item cache """
         self._lock.acquire()
         try:
-            dir = os.path.dirname(item.cache.relative)
-            if not os.path.exists(dir):
-                Logger.debug(u'Creating directory {}'.format(dir))
+            directory = os.path.dirname(item.cache.relative)
+            if not os.path.exists(directory):
+                Logger.debug(u'Creating directory {}'.format(directory))
                 try:
-                    os.makedirs(dir)
+                    os.makedirs(directory)
                 except OSError as ex:
-                    raise DataCloudError(u'Cannot create directory {}: {}'.format(dir, ex))
-            elif not os.path.isdir(dir):
+                    raise DataCloudError(u'Cannot create directory {}: {}'.format(directory, ex))
+            elif not os.path.isdir(directory):
                 msg = u'File {} cannot be synced because {} is not a directory'
-                raise DataCloudError(msg.format(item.cache.relative, dir))
+                raise DataCloudError(msg.format(item.cache.relative, directory))
         finally:
             self._lock.release()
 
     def remove(self, item):
+        """
+        Cloud-specific method for removing data item from the cloud.
+        """
         pass
 
     def _status(self, item):
+        """
+        Cloud-specific method for checking data item status.
+        """
         pass
 
     def status(self, item):
+        """
+        Generic method for checking data item status.
+        """
         return STATUS_MAP.get(self._status(item), STATUS_UNKNOWN)
 
 class DataCloudLOCAL(DataCloudBase):
+    """
+    Driver for local storage.
+    """
     def push(self, item):
         Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
         copyfile(item.resolved_cache.dvc, self.storage_path)
         return item
 
-    def _import(self, i, out, item):
+    def _import(self, bucket, i, out, item):
         tmp_file = self.tmp_file(out)
         try:
             copyfile(i, tmp_file)
@@ -208,7 +246,7 @@ class DataCloudLOCAL(DataCloudBase):
 
     def pull(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
-        return self._import(self.storage_path, item.resolved_cache.dvc, item)
+        return self._import(None, self.storage_path, item.resolved_cache.dvc, item)
 
     def remove(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
@@ -216,21 +254,24 @@ class DataCloudLOCAL(DataCloudBase):
 
     def import_data(self, path, item):
         Logger.debug('import from cloud ' + path + " " + item.cache.relative)
-        return self._import(path, item.cache.relative, item)
+        return self._import(None, path, item.cache.relative, item)
 
     def _status(self, data_item):
         local = data_item.resolved_cache.relative
         remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
 
-        remote_exists = os.path.exists(remove)
+        remote_exists = os.path.exists(remote)
         local_exists = os.path.exists(local)
-        c = None
+        diff = None
         if local_exists and remote_exists:
-            c = filecmp.cmp(local, remote)
+            diff = filecmp.cmp(local, remote)
 
-        return (local_exists, remote_exists, c)
+        return (local_exists, remote_exists, diff)
 
 class DataCloudHTTP(DataCloudBase):
+    """
+    Driver for http cloud.
+    """
     def push(self, item):
         raise Exception('Not implemented yet')
 
@@ -243,55 +284,72 @@ class DataCloudHTTP(DataCloudBase):
     def status(self, item):
         raise Exception('Not implemented yet')
 
-    def _downloaded_size(self, fname):
-        if os.path.exists(fname) and self.parsed_args.cont:
+    @staticmethod
+    def _downloaded_size(fname):
+        """
+        Check how much is already downloaded.
+        """
+        if os.path.exists(fname):
             downloaded = os.path.getsize(fname)
             header = {'Range': 'bytes=%d-' % downloaded}
 
-            Logger.debug('found existing {} file, resuming download'.format(tmp_file))
+            Logger.debug('found existing {} file, resuming download'.format(fname))
 
             return (downloaded, header)
 
         return (0, None)
 
-    def _get_header(self, r, name):
-        val = r.headers.get(name)
+    @staticmethod
+    def _get_header(req, name):
+        """
+        Get header value from request.
+        """
+        val = req.headers.get(name)
         if val == None:
             Logger.debug('\'{}\' not supported by the server'.format(name))
 
         return val
 
-    def _verify_downloaded_size(self, r, downloaded_size):
-        content_range = self._get_header(r, 'content-range')
+    def _verify_downloaded_size(self, req, downloaded_size):
+        """
+        Check that server supports resuming downloads.
+        """
+        content_range = self._get_header(req, 'content-range')
         if downloaded_size and content_range == None:
             Logger.debug('Can\'t resume download')
             return 0
 
         return downloaded_size
 
-    def _download(self, r, fname, downloaded):
+    def _download(self, req, fname, downloaded):
+        """
+        Download file with progress bar.
+        """
         mode = 'ab' if downloaded else 'wb'
-        name = os.path.basename(r.url)
-        total_length = self._get_header(r, 'content-length')
+        name = os.path.basename(req.url)
+        total_length = self._get_header(req, 'content-length')
         chunk_size = 1024 * 100
 
         progress.update_target(name, downloaded, total_length)
 
-        with open(fname, mode) as f:
-            for chunk in r.iter_content(chunk_size=chunk_size):
+        with open(fname, mode) as fobj:
+            for chunk in req.iter_content(chunk_size=chunk_size):
                 if not chunk:  # filter out keep-alive new chunks
                     continue
 
-                f.write(chunk)
+                fobj.write(chunk)
                 downloaded += len(chunk)
                 progress.update_target(name, downloaded, total_length)
 
 
         progress.finish_target(name)
 
-    def _verify_md5(self, r, fname):
+    def _verify_md5(self, req, fname):
+        """
+        Verify md5 of a downloaded file if server supports 'content-md5' header.
+        """
         md5 = file_md5(fname)[0]
-        content_md5 = self._get_header(r, 'content-md5')
+        content_md5 = self._get_header(req, 'content-md5')
 
         if content_md5 == None:
             return True
@@ -312,16 +370,16 @@ class DataCloudHTTP(DataCloudBase):
         tmp_file = self.tmp_file(to_file)
 
         downloaded, header = self._downloaded_size(tmp_file)
-        r = requests.get(url, stream=True, headers=header)
-        downloaded = self._verify_downloaded_size(r, downloaded)
+        req = requests.get(url, stream=True, headers=header)
+        downloaded = self._verify_downloaded_size(req, downloaded)
 
         try:
-            self._download(r, tmp_file, downloaded)
+            self._download(req, tmp_file, downloaded)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(url, exc))
             return None
 
-        if not self._verify_md5(r, tmp_file):
+        if not self._verify_md5(req, tmp_file):
             return None
 
         os.rename(tmp_file, to_file)
@@ -350,6 +408,9 @@ class DataCloudAWS(DataCloudBase):
         return 's3.%s.amazonaws.com' % region
 
     def credential_paths(self, default):
+        """
+        Try obtaining path to aws credentials from config file.
+        """
         paths = []
         credpath = self._cloud_settings.cloud_config.get('CredentialPath', None)
         if credpath is not None and len(credpath) > 0:
@@ -357,7 +418,8 @@ class DataCloudAWS(DataCloudBase):
             if os.path.isfile(credpath):
                 paths.append(credpath)
             else:
-                Logger.warn('AWS CredentialPath "%s" not found; falling back to default "%s"' % (credpath, default))
+                Logger.warn('AWS CredentialPath "%s" not found;'
+                            'falling back to default "%s"' % (credpath, default))
                 paths.append(default)
         else:
             paths.append(default)
@@ -365,7 +427,9 @@ class DataCloudAWS(DataCloudBase):
 
     def _get_bucket_aws(self, bucket_name):
         """ get a bucket object, aws """
-        if all([self._aws_creds.access_key_id, self._aws_creds.secret_access_key, self.aws_region_host]):
+        if all([self._aws_creds.access_key_id,
+                self._aws_creds.secret_access_key,
+                self.aws_region_host]):
             conn = S3Connection(self._aws_creds.access_key_id,
                                 self._aws_creds.secret_access_key,
                                 host=self.aws_region_host)
@@ -376,7 +440,12 @@ class DataCloudAWS(DataCloudBase):
             raise DataCloudError('Storage path {} is not setup correctly'.format(bucket_name))
         return bucket
 
-    def _cmp_checksum(self, key, fname):
+    @staticmethod
+    def _cmp_checksum(key, fname):
+        """
+        Verify local and remote checksums. Used 'dvc-md5' metadata if supported
+        or falls back to etag.
+        """
         md5_cloud = key.metadata.get('dvc-md5', None)
         md5_local = file_md5(fname)[0]
 
@@ -390,10 +459,16 @@ class DataCloudAWS(DataCloudBase):
 
     @staticmethod
     def _upload_tracker(fname):
+        """
+        File name for upload tracker.
+        """
         return fname + '.upload'
 
     @staticmethod
     def _download_tracker(fname):
+        """
+        File name for download tracker.
+        """
         return fname + '.download'
 
     def _import(self, bucket_name, key_name, fname, data_item):
@@ -411,9 +486,12 @@ class DataCloudAWS(DataCloudBase):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
             return data_item
 
-        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name, key_name, fname))
+        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name,
+                                                                             key_name,
+                                                                             fname))
 
-        res_h = ResumableDownloadHandler(tracker_file_name=self._download_tracker(tmp_file), num_retries=10)
+        res_h = ResumableDownloadHandler(tracker_file_name=self._download_tracker(tmp_file),
+                                         num_retries=10)
         try:
             key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
             os.rename(tmp_file, fname)
@@ -427,91 +505,116 @@ class DataCloudAWS(DataCloudBase):
         return data_item
 
     def _read_upload_tracker(self, fname):
+        """
+        Try reading upload tracker if present.
+        """
         try:
             return open(self._upload_tracker(fname), 'r').read()
-        except Exception as e:
-            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, e))
+        except Exception as exc:
+            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, exc))
             return None
 
     def _write_upload_tracker(self, fname, mp_id):
+        """
+        Write multipart id to upload tracker.
+        """
         try:
             open(self._upload_tracker(fname), 'w+').write(mp_id)
-        except Exception as e:
-            Logger.debug("Failed to write upload tracker file for {}: {}".format(fname, e))
+        except Exception as exc:
+            Logger.debug("Failed to write upload tracker file for {}: {}".format(fname, exc))
 
     def _unlink_upload_tracker(self, fname):
+        """
+        Remove upload tracker file.
+        """
         try:
             os.unlink(self._upload_tracker(fname))
-        except Exception as e:
-            Logger.debug("Failed to unlink upload tracker file for {}: {}".format(fname, e))
+        except Exception as exc:
+            Logger.debug("Failed to unlink upload tracker file for {}: {}".format(fname, exc))
 
     def _resume_multipart(self, key, fname):
+        """
+        Try resuming multipart upload.
+        """
         try:
             mp_id = open(self._upload_tracker(fname), 'r').read()
-        except Exception as e:
-            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, e))
+        except Exception as exc:
+            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, exc))
             return None
 
-        for mp in key.bucket.get_all_multipart_uploads():
-            if mp.id != mp_id:
+        for part in key.bucket.get_all_multipart_uploads():
+            if part.id != mp_id:
                 continue
 
             Logger.debug("Found existing multipart {}".format(mp_id))
-            return mp
+            return part
 
         return None
 
     def _create_multipart(self, key, fname):
+        """
+        Create multipart upload and save info to tracker file.
+        """
         # AWS doesn't provide easilly accessible md5 for multipart
         # objects, so we have to store our own md5 sum to use later.
         metadata = {'dvc-md5' : str(file_md5(fname)[0])}
-        mp = key.bucket.initiate_multipart_upload(key.name, metadata=metadata)
-        self._write_upload_tracker(fname, mp.id)
-        return mp
+        multipart = key.bucket.initiate_multipart_upload(key.name, metadata=metadata)
+        self._write_upload_tracker(fname, multipart.id)
+        return multipart
 
     def _get_multipart(self, key, fname):
-        mp = self._resume_multipart(key, fname)
-        if mp != None:
-            return mp
+        """
+        Try resuming multipart upload if supported.
+        """
+        multipart = self._resume_multipart(key, fname)
+        if multipart != None:
+            return multipart
 
         return self._create_multipart(key, fname)
 
-    def _skip_part(self, mp, fp, part_num, size):
-        for p in mp.get_all_parts():
-            if p.part_number == part_num and p.size == size:# and p.etag and p.last_modified
+    @staticmethod
+    def _skip_part(multipart, part_num, size):
+        """
+        Skip part of multipart upload if it has been already uploaded to the server.
+        """
+        for part in multipart.get_all_parts():
+            if part.part_number == part_num and part.size == size:# and p.etag and p.last_modified
                 Logger.debug("Skipping part #{}".format(str(part_num)))
                 return True
         return False
 
     def _push_multipart(self, key, fname):
-        mp = self._get_multipart(key, fname)
+        """
+        Upload local file to cloud as a multipart upload.
+        """
+        multipart = self._get_multipart(key, fname)
 
         source_size = os.stat(fname).st_size
         chunk_size = 50*1024*1024
         chunk_count = int(math.ceil(source_size / float(chunk_size)))
 
-        with open(fname, 'rb') as fp:
+        with open(fname, 'rb') as fobj:
             for i in range(chunk_count):
                 offset = i * chunk_size
                 left = source_size - offset
                 size = min([chunk_size, left])
                 part_num = i + 1
 
-                if self._skip_part(mp, fp, part_num, size):
+                if self._skip_part(multipart, part_num, size):
                     continue
 
-                fp.seek(offset)
-                mp.upload_part_from_file(fp=fp,
-                                         replace=False,
-                                         size=size,
-                                         num_cb=100,
-                                         part_num=part_num,
-                                         cb=create_cb(fname, offset, source_size))
+                fobj.seek(offset)
+                multipart.upload_part_from_file(fp=fobj,
+                                                replace=False,
+                                                size=size,
+                                                num_cb=100,
+                                                part_num=part_num,
+                                                cb=create_cb(fname, offset, source_size))
 
-        if len(mp.get_all_parts()) != chunk_count:
+        if len(multipart.get_all_parts()) != chunk_count:
             raise Exception("Couldn't upload all file parts")
 
-        mp.complete_upload()
+        multipart.complete_upload()
         self._unlink_upload_tracker(fname)
 
     def push(self, data_item):
@@ -548,11 +651,11 @@ class DataCloudAWS(DataCloudBase):
 
         remote_exists = key is not None
         local_exists = os.path.exists(data_item.resolved_cache.relative)
-        c = None
+        diff = None
         if remote_exists and local_exists:
-            c = self._cmp_checksum(key, data_item.resolved_cache.dvc)
+            diff = self._cmp_checksum(key, data_item.resolved_cache.dvc)
 
-        return (local_exists, remote_exists, c)
+        return (local_exists, remote_exists, diff)
 
     def remove(self, data_item):
         aws_file_name = self.cache_file_key(data_item.cache.dvc)
@@ -568,33 +671,42 @@ class DataCloudAWS(DataCloudBase):
         if bucket:
             key = bucket.get_key(aws_file_name)
             if not key:
-                Logger.warn('[Cmd-Remove] S3 remove warning: file "{}" does not exist in S3'.format(aws_file_name))
+                Logger.warn('[Cmd-Remove] S3 remove warning: '
+                            'file "{}" does not exist in S3'.format(aws_file_name))
             else:
                 key.delete()
                 Logger.info('[Cmd-Remove] File "{}" was removed from S3'.format(aws_file_name))
-        pass
 
 
 class DataCloudGCP(DataCloudBase):
     """ DataCloud class for Google Cloud Platform """
     @property
     def gc_project_name(self):
+        """
+        Get project name from config.
+        """
         return self._cloud_settings.cloud_config.get('ProjectName', None)
 
     def sanity_check(self):
         project = self.gc_project_name
         if project is None or len(project) < 1:
-            raise ConfigError('can\'t read google cloud project name. Please set ProjectName in section GC.')
+            raise ConfigError('can\'t read google cloud project name. '
+                              'Please set ProjectName in section GC.')
 
     def _get_bucket_gc(self, storage_bucket):
         """ get a bucket object, gc """
         client = gc.Client(project=self.gc_project_name)
         bucket = client.bucket(storage_bucket)
         if not bucket.exists():
-            raise DataCloudError('sync up: google cloud bucket {} doesn\'t exist'.format(self.storage_bucket))
+            raise DataCloudError('sync up: google cloud bucket {} '
+                                 'doesn\'t exist'.format(self.storage_bucket))
         return bucket
 
-    def _cmp_checksum(self, blob, fname):
+    @staticmethod
+    def _cmp_checksum(blob, fname):
+        """
+        Verify local and remote checksums.
+        """
         b64_encoded_md5 = base64.b64encode(file_md5(fname)[1])
 
         if blob.md5_hash == b64_encoded_md5:
@@ -671,11 +783,11 @@ class DataCloudGCP(DataCloudBase):
 
         remote_exists = blob is not None and blob.exists()
         local_exists = os.path.exists(data_item.resolved_cache.relative)
-        c = None
+        diff = None
         if remote_exists and local_exists:
-            c = self._cmp_checksum(blob, data_item.resolved_cache.dvc)
+            diff = self._cmp_checksum(blob, data_item.resolved_cache.dvc)
 
-        return (local_exists, remote_exists, c)
+        return (local_exists, remote_exists, diff)
 
     def remove(self, item):
         raise Exception('NOT IMPLEMENTED YET')
@@ -701,7 +813,7 @@ class DataCloud(object):
     }
 
     def __init__(self, settings):
-        assert isinstance(settings, dvc.settings.Settings) 
+        assert isinstance(settings, dvc.settings.Settings)
 
         #To handle ConfigI case
         if not hasattr(settings.config, '_config'):
@@ -719,7 +831,9 @@ class DataCloud(object):
         if cloud_type not in self._config.keys():
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
-        cloud_settings = self.get_cloud_settings(self._config, cloud_type, self._settings.path_factory)
+        cloud_settings = self.get_cloud_settings(self._config,
+                                                 cloud_type,
+                                                 self._settings.path_factory)
 
         self.typ = cloud_type
         self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
@@ -728,6 +842,9 @@ class DataCloud(object):
 
     @staticmethod
     def get_cloud_settings(config, cloud_type, path_factory):
+        """
+        Obtain cloud settings from config.
+        """
         if cloud_type not in config.keys():
             cloud_config = None
         else:
@@ -749,28 +866,34 @@ class DataCloud(object):
         """
         key = 'Cloud'
         if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
-            raise ConfigError('Please set %s in section Global in config file %s' % (key, self.file))
+            raise ConfigError('Please set %s in section Global in config file' % key)
 
         # now that a cloud is chosen, can check StoragePath
-        sp = self._cloud.storage_path
-        if sp is None or len(sp) == 0:
-            raise ConfigError('Please set StoragePath = bucket/{optional path} in conf file "%s" '
-                           'either in Global or a cloud specific section' % self.CONFIG)
+        storage_path = self._cloud.storage_path
+        if storage_path is None or len(storage_path) == 0:
+            raise ConfigError('Please set StoragePath = bucket/{optional path} '
+                              'in config file in a cloud specific section')
 
         self._cloud.sanity_check()
 
-    def _collect_dir(self, d):
+    def _collect_dir(self, directory):
+        """
+        Collect data items in a specified directory tree.
+        """
         targets = []
 
-        for root, dirs, files in os.walk(d):
-            for f in files:
-                path = os.path.join(root, f)
+        for root, dirs, files in os.walk(directory):
+            for fname in files:
+                path = os.path.join(root, fname)
                 item = self._settings.path_factory.data_item(path)
                 targets.append(item)
 
         return targets
 
     def _collect_target(self, target):
+        """
+        Collect target as a file or directory.
+        """
         if System.islink(target):
             item = self._settings.path_factory.data_item(target)
             return [item]
@@ -782,25 +905,34 @@ class DataCloud(object):
         return []
 
     def _collect_targets(self, targets):
+        """
+        Collect every target as a data item.
+        """
         collected = []
 
-        for t in targets:
-            collected += self._collect_target(t)
+        for target in targets:
+            collected += self._collect_target(target)
 
         return collected
 
-    def _map_targets(self, f, targets, jobs):
+    def _map_targets(self, func, targets, jobs):
+        """
+        Process targets as data items in parallel.
+        """
         collected = self._collect_targets(targets)
 
-        return map_progress(f, collected, jobs)
+        return map_progress(func, collected, jobs)
 
     def _import(self, target):
+        """
+        Generic method for importing targets in a cloud-agnostic way.
+        """
         url, item = target
-        o = urlparse(url)
+        parsed = urlparse(url)
 
-        typ = self.SCHEME_MAP.get(o.scheme, None)
+        typ = self.SCHEME_MAP.get(parsed.scheme, None)
         if typ == None:
-            Logger.error('Not supported scheme \'{}\''.format(o.scheme))
+            Logger.error('Not supported scheme \'{}\''.format(parsed.scheme))
             return None
 
         #To handle ConfigI case
@@ -816,19 +948,37 @@ class DataCloud(object):
         return cloud.import_data(url, item)
 
     def sync(self, targets, jobs=1):
+        """
+        Sync data items in a cloud-agnostic way.
+        """
         return self._map_targets(self._cloud.sync, targets, jobs)
 
     def push(self, targets, jobs=1):
+        """
+        Push data items in a cloud-agnostic way.
+        """
         return self._map_targets(self._cloud.push, targets, jobs)
 
     def pull(self, targets, jobs=1):
+        """
+        Pull data items in a cloud-agnostic way.
+        """
         return self._map_targets(self._cloud.pull, targets, jobs)
 
     def import_data(self, targets, jobs=1):
+        """
+        Import data items in a cloud-agnostic way.
+        """
         return map_progress(self._import, targets, jobs)
 
     def remove(self, item):
+        """
+        Remove data items is a cloud-agnostic way.
+        """
         return self._cloud.remove(item)
 
     def status(self, targets, jobs=1):
+        """
+        Check status of data items in a cloud-agnostic way.
+        """
         return self._map_targets(self._cloud.status, targets, jobs)

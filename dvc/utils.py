@@ -1,3 +1,6 @@
+"""
+Helpers for other modules.
+"""
 import os
 import stat
 import shutil
@@ -10,54 +13,57 @@ from dvc.logger import Logger
 
 LOCAL_CHUNK_SIZE = 1024*1024*1024
 
-def cached_property(f):
+def cached_property(func):
+    '''A decorator for caching properties in classes.'''
     def get(self):
+        '''Try obtaining cache'''
         try:
-            return self._property_cache[f]
+            return self._property_cache[func]
         except AttributeError:
             self._property_cache = {}
-            x = self._property_cache[f] = f(self)
-            return x
+            ret = self._property_cache[func] = func(self)
+            return ret
         except KeyError:
-            x = self._property_cache[f] = f(self)
-            return x
+            ret = self._property_cache[func] = func(self)
+            return ret
 
     return property(get)
 
 
-def rmtree(dir):
+def rmtree(directory):
     '''Cross platform rmtree()'''
     if os.name == 'nt':
-        if os.path.exists(dir) and not os.access(dir, os.W_OK):
-            os.chmod(dir, stat.S_IWUSR)
+        if os.path.exists(directory) and not os.access(directory, os.W_OK):
+            os.chmod(directory, stat.S_IWUSR)
 
-    shutil.rmtree(dir, ignore_errors=True)
+    shutil.rmtree(directory, ignore_errors=True)
 
 
 def copyfile(src, dest):
+    '''Copy file with progress bar'''
     copied = 0
     name = os.path.basename(src)
     total = os.stat(src).st_size
 
-    f = open(src, 'rb')
+    fsrc = open(src, 'rb')
 
     if os.path.isdir(dest):
-        o = open(dest + '/' + name, 'wb+')
+        fdest = open(dest + '/' + name, 'wb+')
     else:
-        o = open(dest, 'wb+')
+        fdest = open(dest, 'wb+')
 
     while True:
-        buf = f.read(LOCAL_CHUNK_SIZE)
+        buf = fsrc.read(LOCAL_CHUNK_SIZE)
         if not buf:
             break
-        o.write(buf)
+        fdest.write(buf)
         copied += len(buf)
         progress.update_target(name, copied, total)
 
     progress.finish_target(name)
 
-    f.close()
-    o.close()
+    fsrc.close()
+    fdest.close()
 
 
 def map_progress(func, targets, n_threads):
@@ -65,11 +71,11 @@ def map_progress(func, targets, n_threads):
     Process targets in multi-threaded mode with progress bar
     """
     progress.set_n_total(len(targets))
-    p = ThreadPool(processes=n_threads)
+    pool = ThreadPool(processes=n_threads)
     ret = []
 
     try:
-        ret = p.map(func, targets)
+        ret = pool.map(func, targets)
     except Exception as exc:
         Logger.error('Unexpected exception while processing targets: {}'.format(exc))
     finally:
