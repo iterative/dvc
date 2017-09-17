@@ -11,14 +11,8 @@ class CmdShowWorkflow(CmdBase):
     def run(self):
         target = self.settings.parsed_args.target
         if not target:
-            target = self.settings.config.target_file
-
-            if not os.path.exists(target):
-                Logger.warn(u'Target is not defined: use empty target')
-                target = ''
-            else:
-                target = open(target).read()
-                Logger.debug(u'Set show workflow target as {}'.format(target))
+            target = self._settings.config._config['Global'].get('Target', '')
+            Logger.debug(u'Set show workflow target as {}'.format(target))
 
         wf = self.git.get_all_commits(target, self.settings)
         wf.build_graph(self.settings.parsed_args.dvc_commits, self.settings.parsed_args.all_commits)

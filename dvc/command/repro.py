@@ -47,7 +47,7 @@ class CmdRepro(CmdRun):
             if self.parsed_args.target:
                 targets += self.parsed_args.target
             else:
-                target = self.settings.config.get('Target', None)
+                target = self.settings.config._config['Global'].get('Target', None)
                 if not target or len(target) == 0:
                     Logger.error('Reproduction target is not defined. ' +
                                  'Specify data file or set target by ' +
