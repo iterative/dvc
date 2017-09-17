@@ -389,11 +389,24 @@ def parse_args(argv=None):
     workflow_parser = show_subparsers.add_parser(
                         'workflow',
                         parents=[parent_parser],
-                        help='Show workflow image')
+                        help='Show workflow image. It collapses DVC repro commits if possible.')
     workflow_parser.add_argument(
                         'target',
                         nargs='?',
                         help='Target metric data file')
+    workflow_parser.add_argument(
+                        '-d',
+                        '--dvc-commits',
+                        action='store_true',
+                        default=False,
+                        help='Show DVC repro commits.')
+    workflow_parser.add_argument(
+                        '-a',
+                        '--all-commits',
+                        action='store_true',
+                        default=False,
+                        help='Show all commits')
+
     workflow_parser.set_defaults(func=CmdShowWorkflow)
 
     if isinstance(argv, str):

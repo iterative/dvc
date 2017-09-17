@@ -21,7 +21,7 @@ class CmdShowWorkflow(CmdBase):
                 Logger.debug(u'Set show workflow target as {}'.format(target))
 
         wf = self.git.get_all_commits(target, self.settings)
-        wf.build_graph()
+        wf.build_graph(self.settings.parsed_args.dvc_commits, self.settings.parsed_args.all_commits)
         return 0
 
     @property
