@@ -41,20 +41,17 @@ class Commit(object):
     def text(self):
         branch_text = ''
         if self._branch_tips:
-            branch_text = 'Branch tips: {}\n'.format(', '.join(self._branch_tips))
+            branch_text = 'BRANCH TIPS: {}\n'.format(', '.join(self._branch_tips))
 
-        # text = self._text_comment(self.hash, self._comment, self._is_collapsed)
-        text = ''
-        return self._text_metrics_line() + branch_text + text + self._text_added_comments
+        return self._text_metrics_line() + branch_text + self._comments_text
 
-    def _text_hash(self):
-        return 'Commit: ' + self.hash
-
-    # @property
     @staticmethod
-    def _text_comment(hash, comment, is_collapsed):
-        text = Commit.COLLAPSED_TEXT if is_collapsed else Commit._limit_text(comment)
-        return '{}: {}'.format(hash, text)
+    def _text_comment(commit):
+        if commit._is_collapsed:
+            text = Commit.COLLAPSED_TEXT
+        else:
+            text = Commit._limit_text(commit._comment)
+        return '[{}] {}'.format(commit.hash, text)
 
     @staticmethod
     def _limit_text(comment):
@@ -64,12 +61,17 @@ class Commit(object):
             return comment[:Commit.TEXT_LIMIT-3] + '...'
 
     @property
-    def _text_added_comments(self):
-        res = [self._text_comment(self.hash, self._comment, self._is_collapsed)]
+    def _comments_text(self):
+        res = []
+        if not self.is_repro:
+            res.append(self._text_comment(self))
 
         for commit in self._collapsed_commits:
-            text = self._text_comment(commit.hash, commit._comment, commit.is_repro)
-            res.append(text)
+            if not commit.is_repro:
+                text = self._text_comment(commit)
+                res.append(text)
+        if len(res) == 0:
+            return self._text_comment(self)
 
         max_len = max(map(lambda x: len(x), res))
         res_extended_len = map(lambda x: x.ljust(max_len), res)
@@ -78,7 +80,7 @@ class Commit(object):
     def _text_metrics_line(self):
         result = ''
         if self._is_target and self._target_metric:
-            result = 'Target: {}'.format(self._target_metric)
+            result = 'TARGET: {}'.format(self._target_metric)
             if self._target_metric_delta is not None:
                 result += ' ({:+f})'.format(self._target_metric_delta)
             result += '\n'

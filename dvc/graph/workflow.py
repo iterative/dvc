@@ -36,9 +36,9 @@ class CommitCollapseStrategy(object):
             child.add_branch_tips(commit.branch_tips)
 
 
-class CollapseDvcCommitsStrategy(CommitCollapseStrategy):
+class CollapseDvcReproCommitsStrategy(CommitCollapseStrategy):
     def __init__(self, workflow):
-        super(CollapseDvcCommitsStrategy, self).__init__(workflow)
+        super(CollapseDvcReproCommitsStrategy, self).__init__(workflow)
 
     def is_change_needed(self, commit, hash):
         return commit.is_repro
@@ -57,7 +57,7 @@ class CollapseNotMeticsCommitsStrategy(CommitCollapseStrategy):
 
     def is_remove_needed(self, commit):
         child_commits = self._workflow.child_commits(commit.hash)
-        return len(child_commits) == 1 and child_commits[0].has_target_metric
+        return len(child_commits) == 1 and not commit.has_target_metric
 
     def upstream_to_child(self, commit, child):
         super(CollapseNotMeticsCommitsStrategy, self).upstream_to_child(commit, child)
@@ -109,19 +109,15 @@ class Workflow(object):
             return []
         return [self._commits[h] for h in self._back_edges[hash]]
 
-    def build_graph(self, all_commits, deltas):
+    def build_graph(self, show_dvc_commits, show_all_commits):
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
         self.derive_target_metric_deltas()
 
-        # if not all_commits:
-        #     self.collapse_commits(CollapseDvcCommitsStrategy(self))
-        # elif deltas:
-        #     self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
-        #     self.deltas_only()
-
-        self.collapse_commits(CollapseDvcCommitsStrategy(self))
-        self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
+        if not show_all_commits:
+            self.collapse_commits(CollapseDvcReproCommitsStrategy(self))
+            if not show_dvc_commits:
+                self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
@@ -163,10 +159,6 @@ class Workflow(object):
 
         self._build_graph(next, g)
 
-    def deltas_only(self):
-
-        pass
-
     def collapse_commits(self, strategy):
         hashes_to_remove = []
         for commit in self._commits.values():
@@ -176,15 +168,17 @@ class Workflow(object):
 
         for hash in hashes_to_remove:
             del self._commits[hash]
-            del self._edges[hash]
-            del self._back_edges[hash]
+            if hash in self._edges:
+                del self._edges[hash]
+            if hash in self._back_edges:
+                del self._back_edges[hash]
         pass
 
     def _remove_or_collapse(self, commit, strategy):
         parent_commit_hashes = self._back_edges.get(commit.hash)
         child_commit_hashes = self._edges.get(commit.hash)
 
-        if parent_commit_hashes is None or child_commit_hashes is None:
+        if child_commit_hashes is None:
             return False
 
         if strategy.is_remove_needed(commit):
@@ -203,20 +197,13 @@ class Workflow(object):
             return False
         pass
 
-    # def _upstream_metrics_and_branch_tips(self, child_commit_hashes, commit):
-    #     for hash in child_commit_hashes:
-    #         if commit.has_target_metric:
-    #             if not self._commits[hash].has_target_metric:
-    #                 self._commits[hash].set_target_metric(commit.target_metric)
-    #         if commit.branch_tips:
-    #             self._commits[hash].add_branch_tips(commit.branch_tips)
-    #     pass
-
     @staticmethod
     def _redirect_edges(edges, child_commit_hashes, hash, commit_hashes):
-        for h in commit_hashes:
-            edges[h].remove(hash)
-            edges[h] |= child_commit_hashes
+        if commit_hashes:
+            for h in commit_hashes:
+                edges[h].remove(hash)
+                if child_commit_hashes:
+                    edges[h] |= child_commit_hashes
 
     def derive_target_metric_deltas(self):
         if not self._target:
