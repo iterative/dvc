@@ -104,20 +104,10 @@ class Workflow(object):
             return []
         return [self._commits[h] for h in self._edges[hash]]
 
-    def parent_commits(self, hash):
-        if hash not in self._back_edges:
-            return []
-        return [self._commits[h] for h in self._back_edges[hash]]
-
     def build_graph(self, show_dvc_commits, show_all_commits):
+        self.modify_workflow(show_all_commits, show_dvc_commits)
+
         g = nx.DiGraph(name='DVC Workflow', directed=False)
-
-        self.derive_target_metric_deltas()
-
-        if not show_all_commits:
-            self.collapse_commits(CollapseDvcReproCommitsStrategy(self))
-            if not show_dvc_commits:
-                self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
 
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
@@ -139,6 +129,13 @@ class Workflow(object):
         A.write(fname + '.dot')
         A.draw(fname, format='jpeg', prog='dot')
         pass
+
+    def modify_workflow(self, show_all_commits, show_dvc_commits):
+        self.derive_target_metric_deltas()
+        if not show_all_commits:
+            self.collapse_commits(CollapseDvcReproCommitsStrategy(self))
+            if not show_dvc_commits:
+                self.collapse_commits(CollapseNotMeticsCommitsStrategy(self))
 
     @staticmethod
     def node_color(commit):
@@ -166,6 +163,9 @@ class Workflow(object):
                 if self._remove_or_collapse(commit, strategy):
                     hashes_to_remove.append(commit.hash)
 
+        self.remove_hashes(hashes_to_remove)
+
+    def remove_hashes(self, hashes_to_remove):
         for hash in hashes_to_remove:
             del self._commits[hash]
             if hash in self._edges:
