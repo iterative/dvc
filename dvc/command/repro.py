@@ -18,7 +18,7 @@ class ReproError(DvcException):
 
 class CmdRepro(CmdRun):
     def __init__(self, settings):
-        super(CmdRun, self).__init__(settings)
+        super(CmdRepro, self).__init__(settings)
 
         self._code = []
         pass

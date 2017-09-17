@@ -68,10 +68,6 @@ class CmdBase(object):
         return self._settings.config
 
     @property
-    def dvc_home(self):
-        return self._settings.dvc_home
-
-    @property
     def git(self):
         return self._settings.git
 

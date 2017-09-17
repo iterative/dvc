@@ -54,8 +54,10 @@ class GitWrapperI(object):
     @staticmethod
     def git_config_get(name):
         code, out, err = Executor.exec_cmd(['git', 'config', '--get', name])
-        Logger.debug('[dvc-git] "git config --get {}": code({}), out({}), err({})'.format(
-                                                               name, code, out, err))
+        Logger.debug('[dvc-git] "git config --get {}": code({}), out({}), err({})'.format(name,
+                                                                                          code,
+                                                                                          out,
+                                                                                          err))
         if code != 0:
             return None
         return out
@@ -95,7 +97,8 @@ class GitWrapper(GitWrapperI):
     def is_ready_to_go(self):
         statuses = self.git_file_statuses()
         if len(statuses) > 0:
-            Logger.error('[dvc-git] Commit all changed files before running reproducible command. Changed files:')
+            Logger.error('[dvc-git] Commit all changed files before running '
+                         'reproducible command. Changed files:')
             for status, file in statuses:
                 Logger.error("{} {}".format(status, file))
             return False
@@ -162,8 +165,8 @@ class GitWrapper(GitWrapperI):
 
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
-        Logger.debug('[dvc-git] A new commit {} was made in the current branch. Added files:'.format(
-            self.curr_commit))
+        Logger.debug('[dvc-git] A new commit {} was made in the current branch. '
+                     'Added files:'.format(self.curr_commit))
         for status, file in statuses:
             Logger.debug('[dvc-git]\t{} {}'.format(status, file))
         pass
@@ -201,10 +204,14 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def get_changed_files(target_commit):
-        Logger.debug('[dvc-git] Identify changes. Command: git diff --name-only HEAD {}'.format(
-            target_commit))
+        Logger.debug('[dvc-git] Identify changes. Command: '
+                     'git diff --name-only HEAD {}'.format(target_commit))
 
-        changed_files_str = Executor.exec_cmd_only_success(['git', 'diff', '--name-only', 'HEAD', target_commit])
+        changed_files_str = Executor.exec_cmd_only_success(['git',
+                                                            'diff',
+                                                            '--name-only',
+                                                            'HEAD',
+                                                            target_commit])
         changed_files = changed_files_str.strip('"').split('\n')
 
         Logger.debug('[dvc-git] Identify changes. Success. Changed files: {}'.format(
@@ -212,9 +219,13 @@ class GitWrapper(GitWrapperI):
         return changed_files
 
     @staticmethod
-    def get_target_commit(file):
+    def get_target_commit(fname):
         try:
-            commit = Executor.exec_cmd_only_success(['git', 'log', '-1', '--pretty=format:"%h"', file])
+            commit = Executor.exec_cmd_only_success(['git',
+                                                     'log',
+                                                     '-1',
+                                                     '--pretty=format:"%h"',
+                                                     fname])
             return commit.strip('"')
         except ExecutorError:
             return None

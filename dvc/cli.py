@@ -219,12 +219,6 @@ def parse_args(argv=None):
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
-    import_parser.add_argument('-c',
-                        '--continue',
-                        dest='cont',
-                        action='store_true',
-                        default=False,
-                        help='Resume downloading file from url')
     import_parser.set_defaults(func=CmdImportFile)
 
     # Lock

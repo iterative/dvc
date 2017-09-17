@@ -48,7 +48,7 @@ class CmdConfig(CmdBase):
             self.configobj.write()
         except Exception as exc:
             Logger.error('Failed to set \'{}\' to \'{}\': {}'.format(self.parsed_args.name,
-                                                                     value,
+                                                                     self.parsed_args.value,
                                                                      exc))
             return 1
 

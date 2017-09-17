@@ -5,6 +5,7 @@ try:
     from urlparse import urlparse
 except ImportError:
     # Python 3
+    # pylint: disable=no-name-in-module, import-error
     from urllib.parse import urlparse
 
 from dvc.command.base import CmdBase, DvcLock
