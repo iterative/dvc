@@ -15,7 +15,6 @@ from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
-from dvc.command.test import CmdTest
 from dvc.config import Config
 from dvc import VERSION
 
