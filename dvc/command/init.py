@@ -18,6 +18,9 @@ class CmdInit(CmdBase):
     CONFIG_TEMPLATE = '''[Global]
 DataDir = {}
 
+# Default target
+Target =
+
 # Supported clouds: AWS, GCP
 Cloud = AWS
 
@@ -92,7 +95,6 @@ ProjectName =
         data_dir_path = self.get_not_existing_path(self.parsed_args.data_dir)
         cache_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.CACHE_DIR)
         state_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.STATE_DIR)
-        target_file_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.TARGET_FILE_DEFAULT)
 
         self.settings.config.set(self.parsed_args.data_dir)
 
@@ -102,13 +104,11 @@ ProjectName =
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
-        target_file_path.touch()
-        Logger.info('Directories {}/, {}/, {}/, {}/ and target file {} were created'.format(
+        Logger.info('Directories {}/, {}/, {}/, {}/ were created'.format(
             config_dir_path.name,
             data_dir_path.name,
             cache_dir_path.name,
-            state_dir_path.name,
-            target_file_path.name))
+            state_dir_path.name))
 
         self.create_empty_file()
 

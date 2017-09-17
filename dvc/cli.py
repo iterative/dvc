@@ -12,7 +12,6 @@ from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
 from dvc.command.show_workflow import CmdShowWorkflow
-from dvc.command.target import CmdTarget
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
@@ -272,21 +271,6 @@ def parse_args(argv=None):
                         default=False,
                         help='Do not remove data from cache.')
     gc_parser.set_defaults(func=CmdGC)
-
-    # Target
-    target_parser = subparsers.add_parser(
-                        'target',
-                        parents=[parent_parser],
-                        help='Set default target')
-    target_parser.add_argument('target_file',
-                        nargs='?',
-                        help='Target data item.')
-    target_parser.add_argument('-u',
-                        '--unset',
-                        action='store_true',
-                        default=False,
-                        help='Reset target.')
-    target_parser.set_defaults(func=CmdTarget)
 
     # Cloud
     ex_parser = subparsers.add_parser(

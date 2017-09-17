@@ -41,10 +41,6 @@ class ConfigI(object):
         return os.path.join(self.CONFIG_DIR, self.STATE_DIR)
 
     @property
-    def target_file(self):
-        return os.path.join(self.CONFIG_DIR, self.TARGET_FILE_DEFAULT)
-
-    @property
     def cloud(self):
         return self._cloud
 
