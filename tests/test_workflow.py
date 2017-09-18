@@ -115,5 +115,32 @@ class TestWorkflow(TestCase):
 
         self.assertEqual(wf._commits['3']._target_metric, value)
         self.assertEqual(wf._commits['3'].branch_tips, branches)
+        self.assertTrue('4' in wf._commits)
         pass
 
+    def collapsed_all_commits_comments_test(self):
+        value = 0.812345
+        branches = ['master', 'try_smth']
+        not_metric_commit2 = Commit('2', '1', 'name1', 'today', 'change smth 2...',
+                                    True, branch_tips=branches)
+        metric_commit3 = Commit('3', '2', 'name3', 'today3', 'hello3',
+                                True, value)
+
+        wf = Workflow('', '')
+        wf.add_commit(self._commit1)
+        wf.add_commit(not_metric_commit2)
+        wf.add_commit(metric_commit3)
+        wf.add_commit(self._commit4)
+
+        wf.collapse_commits(CollapseDvcReproCommitsStrategy(wf))
+        wf.collapse_commits(CollapseNotMeticsCommitsStrategy(wf))
+        self.assertEqual(len(wf._commits), 2)
+
+        def is_collapsed_commit_presented(self, commit, collapsed_commit):
+            self.assertTrue('[' + collapsed_commit.hash + ']' in commit.text)
+            self.assertTrue(collapsed_commit._comment in commit.text)
+
+        is_collapsed_commit_presented(self, wf._commits['3'], metric_commit3)
+        is_collapsed_commit_presented(self, wf._commits['3'], not_metric_commit2)
+        is_collapsed_commit_presented(self, wf._commits['3'], self._commit1)
+        pass

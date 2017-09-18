@@ -36,6 +36,7 @@ class Commit(object):
 
     def add_collapsed_commit(self, commit):
         self._collapsed_commits.append(commit)
+        self._collapsed_commits += commit._collapsed_commits
 
     @property
     def text(self):

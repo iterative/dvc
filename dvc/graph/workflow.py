@@ -124,10 +124,10 @@ class Workflow(object):
                 g.add_edge(commit.hash, p)
 
         A = nx.nx_agraph.to_agraph(g)
-        fname = 'workflow.jpeg'
+        fname = 'workflow'
         A = A.to_undirected()
         A.write(fname + '.dot')
-        A.draw(fname, format='jpeg', prog='dot')
+        A.draw(fname + '.jpeg', format='jpeg', prog='dot')
         pass
 
     def modify_workflow(self, show_all_commits, show_dvc_commits):
