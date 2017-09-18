@@ -38,7 +38,9 @@ dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
 
 dvc run python code/evaluate.py data/model.p data/matrix-test.p data/eval_auc.txt
 
-dvc target data/eval_auc.txt
+dvc config Global.Target data/evel_auc.txt
+git commit -am 'Set Target'
+
 cat data/eval_auc.txt
 # AUC: 0.645320
 
