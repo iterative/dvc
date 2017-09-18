@@ -42,7 +42,7 @@ class StateFile(object):
 
     def __init__(self,
                  command,
-                 file,
+                 data_item,
                  settings,
                  input_files,
                  output_files,
@@ -54,7 +54,8 @@ class StateFile(object):
                  created_at=time.strftime('%Y-%m-%d %H:%M:%S %z'),
                  cwd=None,
                  shell=False):
-        self.file = file
+        self.data_item = data_item
+        self.file = data_item.state.relative
         self.settings = settings
         self.input_files = input_files
         self.output_files = output_files
@@ -123,12 +124,12 @@ class StateFile(object):
         return StateFile.encode_paths([p])[0]
 
     @staticmethod
-    def load(filename, settings):
-        with open(filename, 'r') as fd:
+    def load(data_item, settings):
+        with open(data_item.state.relative, 'r') as fd:
             data = json.load(fd)
 
         return StateFile(StateFile.decode_path(data.get(StateFile.PARAM_COMMAND)),
-                         filename,
+                         data_item,
                          settings,
                          StateFile.decode_paths(data.get(StateFile.PARAM_INPUT_FILES, [])),
                          StateFile.decode_paths(data.get(StateFile.PARAM_OUTPUT_FILES, [])),
