@@ -91,6 +91,8 @@ class GitWrapperI(object):
 
 
 class GitWrapper(GitWrapperI):
+    FLOATS_FROM_STRING = re.compile(r'[-+]?(?:(?:\d*\.\d+)|(?:\d+\.?))(?:[Ee][+-]?\d+)?')
+
     def __init__(self):
         super(GitWrapper, self).__init__()
 
@@ -330,13 +332,13 @@ class GitWrapper(GitWrapperI):
             return None
 
         # Extract float from string. I.e. from 'AUC: 0.596182'
-        num = re.findall("\d+\.\d+", lines[0])
-        if len(num) != 1:
+        nums = self.FLOATS_FROM_STRING.findall(lines[0])
+        if len(nums) < 1:
             msg = '[dvc-git] Unable to parse metrics from \'{}\' file {}'
             Logger.warn(msg.format(lines[0], target))
             return None
 
-        return float(num[0])
+        return float(nums[0])
 
     @staticmethod
     def get_merges_map():
