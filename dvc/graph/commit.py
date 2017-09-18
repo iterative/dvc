@@ -38,13 +38,12 @@ class Commit(object):
         self._collapsed_commits.append(commit)
         self._collapsed_commits += commit._collapsed_commits
 
-    @property
-    def text(self):
+    def text(self, max_commits=None):
         branch_text = ''
         if self._branch_tips:
             branch_text = 'BRANCH TIPS: {}\n'.format(', '.join(self._branch_tips))
 
-        return self._text_metrics_line() + branch_text + self._comments_text
+        return self._text_metrics_line() + branch_text + self._comments_text(max_commits)
 
     @staticmethod
     def _text_comment(commit):
@@ -61,8 +60,7 @@ class Commit(object):
         else:
             return comment[:Commit.TEXT_LIMIT-3] + '...'
 
-    @property
-    def _comments_text(self):
+    def _comments_text(self, max_commits):
         res = []
         if not self.is_repro:
             res.append(self._text_comment(self))
@@ -74,8 +72,17 @@ class Commit(object):
         if len(res) == 0:
             return self._text_comment(self)
 
+        was_collapsed = False
+        if max_commits:
+            was_collapsed = len(res) > max_commits
+            res = res[:max_commits]
+
         max_len = max(map(lambda x: len(x), res))
         res_extended_len = map(lambda x: x.ljust(max_len), res)
+
+        if was_collapsed:
+            res_extended_len.append('<<Collapsed commits>>')
+
         return '\n'.join(res_extended_len)
 
     def _text_metrics_line(self):
