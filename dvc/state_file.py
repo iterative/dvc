@@ -5,6 +5,7 @@ import json
 import time
 
 from dvc.exceptions import DvcException
+from dvc.git_wrapper import GitWrapper
 from dvc.path.data_item import NotInDataDirError
 from dvc.system import System
 
@@ -39,6 +40,8 @@ class StateFile(object):
     PARAM_STDOUT = "Stdout"
     PARAM_STDERR = "Stderr"
     PARAM_SHELL = "Shell"
+    PARAM_TARGET_METRICS = 'target_metrics'
+    TARGET_METRICS_SINGLE_METRIC = 'single_metric'
 
     def __init__(self,
                  command,
@@ -55,7 +58,7 @@ class StateFile(object):
                  cwd=None,
                  shell=False):
         self.data_item = data_item
-        self.file = data_item.state.relative
+        self.file = self.data_item.state.relative
         self.settings = settings
         self.input_files = input_files
         self.output_files = output_files
@@ -78,7 +81,12 @@ class StateFile(object):
             self.cwd = cwd
         else:
             self.cwd = self.get_dvc_path()
-        pass
+
+        self.target_metrics = {}
+
+        target_metric = GitWrapper.try_parse_target_metric(self.data_item.data.relative)
+        if target_metric:
+            self.target_metrics[StateFile.TARGET_METRICS_SINGLE_METRIC] = target_metric
 
     @property
     def is_import_file(self):
@@ -158,6 +166,7 @@ class StateFile(object):
             self.PARAM_STDOUT:              self.encode_path(self.stdout),
             self.PARAM_STDERR:              self.encode_path(self.stderr),
             self.PARAM_SHELL:               self.shell,
+            self.PARAM_TARGET_METRICS:      self.target_metrics
         }
 
         if self.locked:

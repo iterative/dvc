@@ -2,6 +2,7 @@ import os
 import re
 from collections import defaultdict
 
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
@@ -9,6 +10,11 @@ from dvc.path.data_item import DataItemError
 from dvc.system import System
 from dvc.graph.workflow import Workflow
 from dvc.graph.commit import Commit
+
+
+class GitWrapperError(DvcException):
+    def __init__(self, msg):
+        DvcException.__init__(self, msg)
 
 
 class GitWrapperI(object):
@@ -325,20 +331,32 @@ class GitWrapper(GitWrapperI):
         if not os.path.exists(full_file_name):
             return None
 
-        lines = open(full_file_name).readlines(2)
-        if len(lines) != 1:
-            msg = '[dvc-git] Target file {} with hash {} has wrong format: {} lines were obtained, 1 expected.'
-            Logger.warn(msg.format(target, hash, len(lines)))
+        try:
+            return self.parse_target_metric(full_file_name)
+        except GitWrapperError as ex:
+            msg = '[dvc-git] Unable to parse target file {} from Git commit {}: {}'
+            Logger.warn(msg.format(target, hash, ex))
             return None
+
+    @staticmethod
+    def parse_target_metric(file_name):
+        lines = open(file_name).readlines(2)
+        if len(lines) != 1:
+            raise GitWrapperError('file contains more then one line')
 
         # Extract float from string. I.e. from 'AUC: 0.596182'
-        nums = self.FLOATS_FROM_STRING.findall(lines[0])
+        nums = GitWrapper.FLOATS_FROM_STRING.findall(lines[0])
         if len(nums) < 1:
-            msg = '[dvc-git] Unable to parse metrics from \'{}\' file {}'
-            Logger.warn(msg.format(lines[0], target))
-            return None
+            raise GitWrapperError("Unable to parse metrics from the first line")
 
         return float(nums[0])
+
+    @staticmethod
+    def try_parse_target_metric(file_name):
+        try:
+            return GitWrapper.parse_target_metric(file_name)
+        except GitWrapperError:
+            return None
 
     @staticmethod
     def get_merges_map():
