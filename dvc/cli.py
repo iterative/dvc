@@ -15,7 +15,6 @@ from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
-from dvc.config import Config
 from dvc import VERSION
 
 
@@ -399,6 +398,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Show all commits')
+    workflow_parser.add_argument(
+                        '-m',
+                        '--max-commits',
+                        metavar='M',
+                        type=int,
+                        default=4,
+                        help='Max commits per graph vertex. 4 by default.')
 
     workflow_parser.set_defaults(func=CmdShowWorkflow)
 

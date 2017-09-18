@@ -137,7 +137,7 @@ class CmdImportFile(CmdBase):
             System.symlink(data_item.symlink_file, data_item.data.relative)
 
             state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
-                               data_item.state.relative,
+                               data_item,
                                self.settings,
                                argv=[input, output],
                                input_files=[],

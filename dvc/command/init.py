@@ -131,17 +131,16 @@ ProjectName =
         empty_data_path = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
         cache_file_suffix = self.EMPTY_FILE_NAME + '_' + self.EMPTY_FILE_CHECKSUM
         empty_cache_path = os.path.join(Config.CONFIG_DIR, Config.CACHE_DIR, cache_file_suffix)
-        empty_state_path = os.path.join(Config.CONFIG_DIR, Config.STATE_DIR, self.EMPTY_FILE_NAME + '.state')
 
         open(empty_cache_path, 'w').close()
         System.symlink(os.path.join('..', empty_cache_path), empty_data_path)
 
         StateFile(StateFile.COMMAND_EMPTY_FILE,
-                  empty_state_path,
+                  self.settings.path_factory.data_item(empty_data_path),
                   self.settings,
                   input_files=[],
                   output_files=[],
-                  lock=False).save()
+                  lock=False).save(is_update_target_metrics=False)
         pass
 
     def modify_gitignore(self, config_dir_name, cache_dir_name):

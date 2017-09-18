@@ -68,7 +68,7 @@ class CmdShowPipeline(Traverse):
     def process_file(self, target):
         data_item = self._get_data_item(target)
         name = data_item.data.relative
-        state = StateFile.load(data_item.state.relative, self.git)
+        state = StateFile.load(data_item, self.git)
 
         if name == os.path.join(self.settings.config.data_dir, CmdInit.EMPTY_FILE_NAME):
             return

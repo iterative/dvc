@@ -35,10 +35,10 @@ class TestWorkflow(TestCase):
 
         self.assertEqual(len(wf._commits), 4)
 
-        self.assertEqual(wf._commits['1'].text, self._showed_text1)
-        self.assertEqual(wf._commits['2'].text, self._showed_text2)
-        self.assertEqual(wf._commits['3'].text, self._showed_text3)
-        self.assertEqual(wf._commits['4'].text, self._showed_text4)
+        self.assertEqual(wf._commits['1'].text(), self._showed_text1)
+        self.assertEqual(wf._commits['2'].text(), self._showed_text2)
+        self.assertEqual(wf._commits['3'].text(), self._showed_text3)
+        self.assertEqual(wf._commits['4'].text(), self._showed_text4)
         pass
 
     def collapse_test(self):
@@ -51,8 +51,8 @@ class TestWorkflow(TestCase):
         wf.collapse_commits(CollapseDvcReproCommitsStrategy(wf))
 
         self.assertEqual(len(wf._commits), 3)
-        self.assertEqual(wf._commits[self._commit1.hash].text, self._showed_text1)
-        self.assertEqual(wf._commits[self._commit3.hash].text, self._showed_text3_collapsed)
+        self.assertEqual(wf._commits[self._commit1.hash].text(), self._showed_text1)
+        self.assertEqual(wf._commits[self._commit3.hash].text(), self._showed_text3_collapsed)
         self.assertTrue('2' not in wf._commits)
 
         self.assertFalse('2' in wf._edges)
@@ -69,8 +69,8 @@ class TestWorkflow(TestCase):
         wf.collapse_commits(CollapseDvcReproCommitsStrategy(wf))
         self.assertEqual(len(wf._commits), 2)
 
-        self.assertEqual(wf._commits[self._commit1.hash].text, self._showed_text1)
-        self.assertEqual(wf._commits[self._commit3.hash].text, self._showed_text3)
+        self.assertEqual(wf._commits[self._commit1.hash].text(), self._showed_text1)
+        self.assertEqual(wf._commits[self._commit3.hash].text(), self._showed_text3)
         self.assertTrue('2' not in wf._commits)
         pass
 
@@ -137,8 +137,8 @@ class TestWorkflow(TestCase):
         self.assertEqual(len(wf._commits), 2)
 
         def is_collapsed_commit_presented(self, commit, collapsed_commit):
-            self.assertTrue('[' + collapsed_commit.hash + ']' in commit.text)
-            self.assertTrue(collapsed_commit._comment in commit.text)
+            self.assertTrue('[' + collapsed_commit.hash + ']' in commit.text())
+            self.assertTrue(collapsed_commit._comment in commit.text())
 
         is_collapsed_commit_presented(self, wf._commits['3'], metric_commit3)
         is_collapsed_commit_presented(self, wf._commits['3'], not_metric_commit2)

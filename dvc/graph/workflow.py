@@ -104,7 +104,7 @@ class Workflow(object):
             return []
         return [self._commits[h] for h in self._edges[hash]]
 
-    def build_graph(self, show_dvc_commits, show_all_commits):
+    def build_graph(self, show_dvc_commits, show_all_commits, max_commits):
         self.modify_workflow(show_all_commits, show_dvc_commits)
 
         g = nx.DiGraph(name='DVC Workflow', directed=False)
@@ -114,7 +114,7 @@ class Workflow(object):
 
             g.add_node(hash,
                        attr_dict={
-                           'label': commit.text,
+                           'label': commit.text(max_commits),
                            'color': self.node_color(commit)
                        }
             )

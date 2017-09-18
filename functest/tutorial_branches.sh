@@ -38,7 +38,7 @@ dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
 
 dvc run python code/evaluate.py data/model.p data/matrix-test.p data/eval_auc.txt
 
-dvc config Global.Target data/evel_auc.txt
+dvc config Global.Target data/eval_auc.txt
 git commit -am 'Set Target'
 
 cat data/eval_auc.txt
@@ -53,6 +53,8 @@ cat data/eval_auc.txt
 # 0.596182
 vi code/train_model.py  # estimators=500
 git commit -am 'estimators=500'
+vi code/train_model.py  # n_jobs=6
+git commit -am 'n_jobs=6'
 dvc repro
 cat data/eval_auc.txt
 # 0.619262

@@ -123,7 +123,7 @@ class ReproChange(object):
             raise ReproError('data item {} is not symlink'.format(data_item.data.relative))
 
         try:
-            self._state = StateFile.load(data_item.state.relative, self.git)
+            self._state = StateFile.load(data_item, self.git)
         except Exception as ex:
             raise ReproError('Error: state file "{}" cannot be loaded: {}'.
                              format(data_item.state.relative, ex))
@@ -257,7 +257,7 @@ class ReproChange(object):
         return result
 
     def is_repro_required(self, changed_files, data_item):
-        state_file = StateFile.load(data_item.state.relative, self._settings)
+        state_file = StateFile.load(data_item, self._settings)
         if state_file.locked:
             Logger.debug(u'Repro is not required for locked data item {}'.format(data_item.data.relative))
             return False

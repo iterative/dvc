@@ -18,7 +18,7 @@ class CmdLock(CmdBase):
         for file in files:
             try:
                 data_item = self.settings.path_factory.existing_data_item(file)
-                state = StateFile.load(data_item.state.relative, self.settings)
+                state = StateFile.load(data_item, self.settings)
 
                 if state.locked and target:
                     Logger.warn('Data item {} is already locked'.format(data_item.data.relative))
