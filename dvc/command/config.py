@@ -5,6 +5,7 @@ from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.config import Config
 
+
 class CmdConfig(CmdBase):
     def __init__(self, settings):
         super(CmdConfig, self).__init__(settings)
@@ -55,15 +56,18 @@ class CmdConfig(CmdBase):
         return 0
 
     def check_opt(self):
-        _section, _opt = self.parsed_args.name.strip().split('.')
+        _section, _opt = self.parsed_args.name.strip().split('.', 1)
         add = (self.parsed_args.value != None and self.parsed_args.unset == False)
 
         section = self._get_key(self.configobj, _section, add)
+
         if not section:
+            Logger.error('Invalid option name {}'.format(_section))
             return 1
 
         opt = self._get_key(self.configobj[section], _opt, add)
         if not opt:
+            Logger.error('Invalid option value: {}'.format(_opt))
             return 1
 
         self.section = section
