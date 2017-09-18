@@ -140,7 +140,7 @@ ProjectName =
                   self.settings,
                   input_files=[],
                   output_files=[],
-                  lock=False).save()
+                  lock=False).save(is_update_target_metrics=False)
         pass
 
     def modify_gitignore(self, config_dir_name, cache_dir_name):

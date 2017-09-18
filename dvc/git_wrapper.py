@@ -7,6 +7,7 @@ from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
 from dvc.path.data_item import DataItemError
+from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.graph.workflow import Workflow
 from dvc.graph.commit import Commit
@@ -228,6 +229,8 @@ class GitWrapper(GitWrapperI):
 
     @staticmethod
     def get_target_commit(fname):
+        Logger.debug('[dvc-git] Get target commit. Command: '
+                     'git log -1 --pretty=format:"%h" {}'.format(fname))
         try:
             commit = Executor.exec_cmd_only_success(['git',
                                                      'log',
@@ -273,7 +276,7 @@ class GitWrapper(GitWrapperI):
                 hash, parent_hash, name, date, comment = items
 
                 commit = Commit(hash, parent_hash, name, date, comment,
-                                *self.is_target(hash, target, settings),
+                                *self.was_target_changed(hash, target, settings),
                                 branch_tips=branches_multimap.get(hash))
                 wf.add_commit(commit)
 
@@ -281,82 +284,36 @@ class GitWrapper(GitWrapperI):
         except ExecutorError:
             raise
 
-    def is_target(self, hash, target, settings):
+    def was_target_changed(self, hash, target, settings):
         git_cmd = ['git', 'show', '--pretty=', '--name-only', hash]
-        files = set(Executor.exec_cmd_only_success(git_cmd).split('\n'))
+        changed_files = set(Executor.exec_cmd_only_success(git_cmd).split('\n'))
 
-        if target in files:
-            symlink_content = self._get_symlink_content(hash, target, settings)
-            if symlink_content is not None:
-                metric = self.target_metric_from_git_history(hash, symlink_content, target, settings)
-            else:
-                metric = None
+        if target not in changed_files:
+            return False, None
 
-            return True, metric
+        metric = self._read_metric_from_state_file(hash, target, settings)
+        if metric is None:
+            return False, None
 
-        return False, None
+        return True, metric
 
-    def _get_symlink_content(self, hash, target, settings):
+    def _read_metric_from_state_file(self, hash, target, settings):
         try:
-            settings.path_factory.data_item(target)
+            data_item = settings.path_factory.data_item(target)
         except DataItemError as ex:
             Logger.warn('Target file {} is not data item: {}'.format(target, ex))
             return None
 
         try:
-            cmd_symlink_data = ['git', 'show', '{}:{}'.format(hash, target)]
-            symlink_content = Executor.exec_cmd_only_success(cmd_symlink_data).split('\n')
+            cmd_corresponded_state_file = ['git', 'show', '{}:{}'.format(hash, data_item.state.relative)]
+            state_file_content = Executor.exec_cmd_only_success(cmd_corresponded_state_file)
         except ExecutorError as ex:
             msg = '[dvc-git] Cannot obtain content of target symbolic file {} with hash {}: {}'
             Logger.warn(msg.format(target, hash, ex))
             return None
 
-        if not symlink_content or len(symlink_content) != 1:
-            msg = '[dvc-git] Target symbolic file {} with hash {} has wrong format'
-            Logger.warn(msg.format(target, hash))
-            return None
-
-        return symlink_content[0]
-
-    def target_metric_from_git_history(self, hash, symlink_content, target, settings):
-        cache_rel_to_data = os.path.relpath(settings.config.cache_dir, settings.config.data_dir)
-        common_prefix = os.path.commonprefix([symlink_content, cache_rel_to_data])
-        cache_file_name = symlink_content[len(common_prefix):]
-        if cache_file_name[0] == os.path.sep:
-            cache_file_name = cache_file_name[1:]
-
-        file_name = os.path.join(settings.config.cache_dir, cache_file_name)
-        full_file_name = os.path.join(self.git_dir_abs, file_name)
-
-        if not os.path.exists(full_file_name):
-            return None
-
-        try:
-            return self.parse_target_metric(full_file_name)
-        except GitWrapperError as ex:
-            msg = '[dvc-git] Unable to parse target file {} from Git commit {}: {}'
-            Logger.warn(msg.format(target, hash, ex))
-            return None
-
-    @staticmethod
-    def parse_target_metric(file_name):
-        lines = open(file_name).readlines(2)
-        if len(lines) != 1:
-            raise GitWrapperError('file contains more then one line')
-
-        # Extract float from string. I.e. from 'AUC: 0.596182'
-        nums = GitWrapper.FLOATS_FROM_STRING.findall(lines[0])
-        if len(nums) < 1:
-            raise GitWrapperError("Unable to parse metrics from the first line")
-
-        return float(nums[0])
-
-    @staticmethod
-    def try_parse_target_metric(file_name):
-        try:
-            return GitWrapper.parse_target_metric(file_name)
-        except GitWrapperError:
-            return None
+        state_file = StateFile.loads(state_file_content, settings)
+        return state_file.single_target_metric
 
     @staticmethod
     def get_merges_map():
