@@ -69,9 +69,7 @@ class Commit(object):
             if not commit.is_repro:
                 text = self._text_comment(commit)
                 res.append(text)
-        if len(res) == 0:
-            return self._text_comment(self)
-
+        
         was_collapsed = len(res) > max_commits
         res = res[:max_commits]
 
