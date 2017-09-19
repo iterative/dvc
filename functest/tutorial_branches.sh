@@ -51,30 +51,30 @@ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz dat
 dvc repro
 cat data/eval_auc.txt
 # 0.596182
-vi code/train_model.py  # estimators=500
+vi code/train_model.py  # Change: estimators=500
 git commit -am 'estimators=500'
-vi code/train_model.py  # n_jobs=6
+vi code/train_model.py  # Change: n_jobs=6
 git commit -am 'n_jobs=6'
 dvc repro
 cat data/eval_auc.txt
 # 0.619262
-vi code/featurization.py
+vi code/featurization.py # Change: add ngram_rang=(1, 2) to CountVectorizer
 git commit -am 'Add bigrams'
 dvc repro
 cat data/eval_auc.txt
 # 0.628989
 vi code/featurization.py
-git commit -am 'Add three-grams'
+git commit -am 'Add three-grams' # Change: ngram_rang=(1, 3)
 dvc repro
 cat data/eval_auc.txt
 # 0.630682
 vi code/featurization.py
-git commit -am 'Add 4-grams'
+git commit -am 'Add 4-grams'    # Change: ngram_rang=(1, 4)
 dvc repro
 cat data/eval_auc.txt
 # 0.621002
 
-git checkout 2195f1032 -b three_grams # <--
+git checkout 2195f1032 -b three_grams # <--  you should find hash by git log
 dvc repro # not needed
 cat data/eval_auc.txt
 # 0.630682
@@ -83,7 +83,7 @@ git checkout first_model
 git merge three_grams
 dvc repro
 
-
+##
 
 vi code/featurization.py
 # 0.578447
