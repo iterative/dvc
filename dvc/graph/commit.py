@@ -61,9 +61,7 @@ class Commit(object):
             return comment[:Commit.TEXT_LIMIT-3] + '...'
 
     def _comments_text(self, max_commits=100):
-        res = []
-        if not self.is_repro:
-            res.append(self._text_comment(self))
+        res = [self._text_comment(self)]
 
         for commit in self._collapsed_commits:
             if not commit.is_repro:
@@ -73,7 +71,7 @@ class Commit(object):
         was_collapsed = len(res) > max_commits
         res = res[:max_commits]
 
-        max_len = max(map(lambda x: len(x), res))
+        max_len = max(map(lambda x: len(x), res + [""]))
         res_extended_len = map(lambda x: x.ljust(max_len), res)
 
         if was_collapsed:

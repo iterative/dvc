@@ -69,6 +69,10 @@ class TestWorkflow(TestCase):
         wf.collapse_commits(CollapseDvcReproCommitsStrategy(wf))
         self.assertEqual(len(wf._commits), 2)
 
+        self.assertTrue('1' in wf._commits)
+        self.assertTrue('3' in wf._commits)
+        self.assertFalse('2' in wf._commits)
+
         self.assertEqual(wf._commits[self._commit1.hash].text(), self._showed_text1)
         self.assertEqual(wf._commits[self._commit3.hash].text(), self._showed_text3)
         self.assertTrue('2' not in wf._commits)
