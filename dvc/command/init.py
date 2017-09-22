@@ -100,7 +100,7 @@ ProjectName =
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
-        config_dir_path.mkdir()
+        config_dir_path.mkdir(parents=True)
         data_dir_path.mkdir()
         cache_dir_path.mkdir()
         state_dir_path.mkdir()
