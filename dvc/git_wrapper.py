@@ -103,7 +103,16 @@ class GitWrapper(GitWrapperI):
     def __init__(self):
         super(GitWrapper, self).__init__()
 
+    def is_inside_work_tree(self):
+        code, out, err = Executor.exec_cmd(['git', 'rev-parse', '--is-inside-work-tree'])
+        if code != 0:
+            Logger.error('[dvc-git] Not inside git tree');
+        return code == 0
+
     def is_ready_to_go(self):
+        if not self.is_inside_work_tree():
+            return False
+
         statuses = self.git_file_statuses()
         if len(statuses) > 0:
             Logger.error('[dvc-git] Commit all changed files before running '
@@ -112,6 +121,9 @@ class GitWrapper(GitWrapperI):
                 Logger.error("{} {}".format(status, file))
             return False
 
+        return self.check_config()
+
+    def check_config(self):
         # Sanity check to make sure we will be able to commit
         name = self.git_config_get('user.name')
         if name == None:
