@@ -154,7 +154,7 @@ class GitWrapper(GitWrapperI):
     def curr_commit(self):
         Logger.debug('[dvc-git] Getting current git commit. Command: git rev-parse --short HEAD')
 
-        code, out, err = Executor.exec_cmd(['git', 'rev-parse', '--short', 'HEAD'])
+        code, out, err = Executor.exec_cmd(['git', 'rev-parse', 'HEAD'])
         if code != 0:
             raise ExecutorError('[dvc-git] Commit command error - {}'.format(err))
         Logger.debug('[dvc-git] Getting current git commit. Success.')
