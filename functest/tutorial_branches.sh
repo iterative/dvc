@@ -58,18 +58,18 @@ git commit -am 'n_jobs=6'
 dvc repro
 cat data/eval_auc.txt
 # 0.619262
-vi code/featurization.py # Change: add ngram_rang=(1, 2) to CountVectorizer
+vi code/featurization.py # Change: add ngram_range=(1, 2) to CountVectorizer
 git commit -am 'Add bigrams'
 dvc repro
 cat data/eval_auc.txt
 # 0.628989
 vi code/featurization.py
-git commit -am 'Add three-grams' # Change: ngram_rang=(1, 3)
+git commit -am 'Add three-grams' # Change: ngram_range=(1, 3)
 dvc repro
 cat data/eval_auc.txt
 # 0.630682
 vi code/featurization.py
-git commit -am 'Add 4-grams'    # Change: ngram_rang=(1, 4)
+git commit -am 'Add 4-grams'    # Change: ngram_range=(1, 4)
 dvc repro
 cat data/eval_auc.txt
 # 0.621002
