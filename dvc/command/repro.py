@@ -78,8 +78,15 @@ class CmdRepro(CmdRun):
 
         for data_item in data_item_list:
             try:
+                target_commit = self.git.get_target_commit(data_item.data.relative)
+                if target_commit is None:
+                    msg = 'Data item "{}" cannot be reproduced: cannot obtain commit hashsum'
+                    Logger.warn(msg.format(data_item.data.relative))
+                    continue
+
+                globally_changed_files = self.git.get_changed_files(target_commit)
                 changed_files = set()
-                change = ReproChange(data_item, self, None, recursive, force)
+                change = ReproChange(data_item, self, globally_changed_files, recursive, force)
                 if change.reproduce(changed_files):
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
@@ -108,6 +115,7 @@ class ReproChange(object):
         self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
+        self._globally_changed_files = globally_changed_files
         self._recursive = recursive
         self._force = force
 
@@ -127,26 +135,9 @@ class ReproChange(object):
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self.state.file))
 
-        self._globally_changed_files = self.get_globally_changed_files(globally_changed_files)
-
         self._settings = copy.copy(self._cmd_obj.settings)
         self._settings.set_args(self.state.argv)
         pass
-
-    def get_globally_changed_files(self, globally_changed_files):
-        if globally_changed_files != None:
-            return globally_changed_files
-
-        target_commit = self.state.target_commit
-        if target_commit is None:
-            # Backward compatibility
-            target_commit = self.git.get_target_commit(data_item.data.relative)
-
-        if target_commit is None:
-            msg = 'Data item "{}" cannot be reproduced: cannot obtain commit hashsum'
-            raise ReproError(msg.format(data_item.data.relative))
-
-        return self.git.get_changed_files(target_commit)
 
     def is_cache_exists(self):
         path = System.realpath(self._data_item.data.relative)
