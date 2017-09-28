@@ -1,19 +1,8 @@
 body, html {
     margin: 15px;
     padding: 5px;
-	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
-}
-
-body, 
-input,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
-    font-weight: 300;
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif;
+	font-weight: 300;
     font-size: 18px;
 }
 
@@ -36,7 +25,7 @@ img {
 }
 
 iframe {
-    border: 0 !important;
+    border: 0;
 }
 
 
@@ -52,51 +41,67 @@ header {
     position: relative;
 }
 
-strong, dt, h3, h4 {
+strong {
     font-weight: 700;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+h1 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
     margin: 10px 0;
-    line-height: 20px;
+    line-height: 40px;
     color: inherit;
     text-rendering: optimizelegibility;
-}
-
-
-h1,
-h2,
-h3 {
-    line-height: 40px;
-}
-
-h1 {
 	font-size: 50px;
 }
 
 h2 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
+    margin: 10px 0;
+    line-height: 40px;
+    color: inherit;
+    text-rendering: optimizelegibility;
     font-size: 36px;
-    line-height: 1.2;
 }
 
 h3 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
+    margin: 10px 0;
+    line-height: 40px;
+    color: inherit;
+    text-rendering: optimizelegibility;
     font-size: 24.5px;
 }
 
 h4 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
+    margin: 10px 0;
+    line-height: 20px;
+    color: inherit;
+    text-rendering: optimizelegibility;
     font-size: 17.5px;
 }
 
 h5 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
+    margin: 10px 0;
+    line-height: 20px;
+    color: inherit;
+    text-rendering: optimizelegibility;
     font-size: 14px;
 }
 
 h6 {
+	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
+    font-weight: 300;
+    margin: 10px 0;
+    line-height: 20px;
+    color: inherit;
+    text-rendering: optimizelegibility;
     font-size: 11.9px;
 }
 
@@ -114,9 +119,8 @@ blockquote {
     text-align: left;
 }
 
-
-
 dt {
+	font-weight: 700;
 }
 
 dd {
