@@ -1,0 +1,558 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <title></title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <meta charset="utf-8">
+  <meta name="description" content="DVC product documnetation">
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Data Version Control (DVC) - Product Documentation</title>
+  <link href="http://fonts.googleapis.com/css?family=Lora" rel="stylesheet" type="text/css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav>
+  <div class="container">
+    <div id="logo"><img src="images/logo.png"></div>
+    <div id="menu">
+		
+		<ul class="toplinks">
+			
+			<li><a target="_new" href="https://dataversioncontrol.com/">DVC Website </a></li>
+			<li><a target="_new" href="https://blog.dataversioncontrol.com/">DVC Blog</a></li>
+		</ul>
+    </div>
+    <a id="menu-toggle" href="#" class=" ">&#9776;</a> </div>
+</nav>
+<div id="TOC">
+<ul>
+<li><a href="#getting-started-with-dvc">Getting Started with DVC</a></li>
+<li><a href="#installation">Installation</a><ul>
+<li><a href="#installing-dvc-with-an-installation-package">Installing DVC with an Installation Package</a></li>
+<li><a href="#installing-dvc-with-python-pip">Installing DVC with Python pip</a><ul>
+<li><a href="#pre-requisites-and-dependencies">Pre-requisites and Dependencies</a></li>
+<li><a href="#installation-with-pip">Installation with pip</a></li>
+<li><a href="#installing-the-development-version-of-dvc">Installing the Development Version of DVC</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#configuration">Configuration</a><ul>
+<li><a href="#dvc-files-and-directories">DVC Files and Directories</a></li>
+<li><a href="#configuring-dvc-to-work-with-cloud-based-data-storages">Configuring DVC to Work with Cloud-based Data Storages</a></li>
+<li><a href="#using-aws-as-a-cloud-data-storage-for-dvc">Using AWS as a Cloud Data Storage for DVC</a></li>
+<li><a href="#using-google-cloud-as-a-cloud-data-storage-for-dvc">Using Google Cloud as a Cloud Data Storage for DVC</a></li>
+</ul></li>
+<li><a href="#using-dvc-commands">Using DVC Commands</a></li>
+<li><a href="#dvc-commands-cheat-sheet">DVC Commands Cheat Sheet</a></li>
+<li><a href="#dvc-command-reference">DVC Command Reference</a><ul>
+<li><a href="#init-command">Init Command</a><ul>
+<li><a href="#examples">Examples</a></li>
+</ul></li>
+<li><a href="#run-command">Run command</a><ul>
+<li><a href="#examples-1">Examples</a></li>
+</ul></li>
+<li><a href="#sync-command">Sync command</a></li>
+<li><a href="#pull-command">Pull Command</a><ul>
+<li><a href="#examples-2">Examples</a></li>
+</ul></li>
+<li><a href="#push-command">Push Command</a><ul>
+<li><a href="#examples-3">Examples</a></li>
+</ul></li>
+<li><a href="#status-command">Status Command</a><ul>
+<li><a href="#examples-4">Examples</a></li>
+</ul></li>
+<li><a href="#repro-command">Repro Command</a><ul>
+<li><a href="#examples-5">Examples</a></li>
+</ul></li>
+<li><a href="#remove-command">Remove Command</a><ul>
+<li><a href="#examples-6">Examples</a></li>
+</ul></li>
+<li><a href="#import-command">Import Command</a><ul>
+<li><a href="#examples-7">Examples</a></li>
+</ul></li>
+<li><a href="#lock-command">Lock Command</a><ul>
+<li><a href="#examples-8">Examples</a></li>
+</ul></li>
+<li><a href="#gc-command">gc Command</a><ul>
+<li><a href="#examples-9">Examples</a></li>
+</ul></li>
+<li><a href="#target-command">Target Command</a><ul>
+<li><a href="#examples-10">Examples</a></li>
+</ul></li>
+<li><a href="#ex-command">ex Command</a><ul>
+<li><a href="#examples-11">Examples</a></li>
+</ul></li>
+<li><a href="#config-command">Config Command</a><ul>
+<li><a href="#examples-12">Examples</a></li>
+</ul></li>
+<li><a href="#show-command">Show Command</a><ul>
+<li><a href="#examples-13">Examples</a></li>
+</ul></li>
+<li><a href="#notes-on-optional-arguments-to-dvc-commands">Notes on Optional Arguments to DVC Commands</a><ul>
+<li><a href="#common-options">Common Options</a></li>
+<li><a href="#number-of-dvc-jobs">Number of DVC Jobs</a></li>
+</ul></li>
+</ul></li>
+<li><a href="#further-reading">Further Reading</a></li>
+</ul>
+</div>
+<h1 id="getting-started-with-dvc">Getting Started with DVC</h1>
+<p>It is hardly possible in real life to develop a good machine learning model in a single pass. ML modeling is an iterative process and it is extremely important to keep track of your steps, dependencies between the steps, dependencies between your code and data files and all code running arguments. This becomes even more important and complicated in a team environment where data scientists’ collaboration takes a serious amount of the team’s effort.</p>
+<p><strong>Data Version Control</strong> application (aka DVC) is a tool that can help you to address such challenges while increasing your every-day productivity.</p>
+<p>DVC an open source tool for data science projects. DVC makes your data science projects reproducible by automatically building data dependency graph (DAG). Your code and the dependencies could be easily shared by Git, and data - through cloud storage (AWS S3, GCP) in a single DVC environment.</p>
+<p>It is quite easy to integrate DVC in your existing ML pipeline/processes without any significant effort to re-implement your ML code/application.</p>
+<p>The one thing to wrap your head around is that DVC automatically derives the dependencies between the steps and builds the dependency graph (DAG) transparently to the user. This graph is used for reproducing parts of your pipeline which were affected by recent changes.</p>
+<p>Not only can DVC streamline your work into a single, reproducible environment, it also makes it easy to share this environment by Git including the dependencies (DAG) — an exciting collaboration feature which gives the ability to reproduce the research results in different computers. Moreover, you can share your data files through cloud storage services like AWS S3 or Google Cloud Project (GCP) Storage since DVC does not push data files to Git repositories.</p>
+<p><strong>Note:</strong> If you are interested in reading more about practical aspects of using DVC in machine learning projects, please refer to the tutorials and articles collected in ‘Further Reading’ section. There are articles there walking you through the end-to-end implementation of DVC-based pipeline for Python- and R-based ML projects.</p>
+<h1 id="installation">Installation</h1>
+<p>Sections below will walk you through the installation of DVC on your computer.</p>
+<h2 id="installing-dvc-with-an-installation-package">Installing DVC with an Installation Package</h2>
+<p>There are well-formed DVC installation packages available for Mac OS, Linux and Windows platforms. You can download them at <a href="https://github.com/dataversioncontrol/dvc/releases/tag/0.8.7.2-travis-macos-release-test" class="uri">https://github.com/dataversioncontrol/dvc/releases/tag/0.8.7.2-travis-macos-release-test</a></p>
+<p>Once you start the installation package, it will walk you through DVC setup. You will have to just follow the installation instructions.</p>
+<h2 id="installing-dvc-with-python-pip">Installing DVC with Python pip</h2>
+<p>Another option to deploy DVC to your machine is to use its standard Python pip package.</p>
+<h3 id="pre-requisites-and-dependencies">Pre-requisites and Dependencies</h3>
+<p>Before you start installation of DVC using pip, please make sure the following software applications are installed on your machine</p>
+<ul>
+<li>Latest stable version of Python 2.7.x or Python 3.x runtime for your OS</li>
+<li>One of the latest versions of command-line C++ compiler and its supplementary tools for your OS</li>
+</ul>
+<p>Below are OS-specific notes as for the command-line C++ compiler</p>
+<ul>
+<li>If you are on a Windows machine, you may want to check if MS Visual C++ compiler is pre-installed in your system - if it is not, you can download it from <a href="http://landinghub.visualstudio.com/visual-cpp-build-tools" class="uri">http://landinghub.visualstudio.com/visual-cpp-build-tools</a> (you should have Visual C++ 2014 Build Tools or later deployed on your Windows machine)</li>
+<li>Without it pre-installed, your attempt to install DVC on Windows machine will fail with the error similar to one described in <a href="https://stackoverflow.com/questions/29846087/microsoft-visual-c-14-0-is-required-unable-to-find-vcvarsall-bat" class="uri">https://stackoverflow.com/questions/29846087/microsoft-visual-c-14-0-is-required-unable-to-find-vcvarsall-bat</a> (one of DVC dependency packages requires MS Visual C++ compiler to be pre-installed)</li>
+<li>Non-Windows OS platforms are often shipped with the pre-installed version of the command-line C++ compiler thus you should be safe there</li>
+</ul>
+<h3 id="installation-with-pip">Installation with pip</h3>
+<p>When you install DVC on your local machine for the first time, go to your command line prompt and type the command below:</p>
+<pre><code>pip install dvc</code></pre>
+<p><strong>Note:</strong> if you use the special data science-centric Python environment provided by <em>Anaconda</em>, you can use the above-mentioned command there as well. It will work in <em>Anaconda’s</em> command prompt tool. As of the moment, DVC does not provide a special installation package for a native <em>Anaconda</em> package manager (that is, <em>conda</em>).</p>
+<h3 id="installing-the-development-version-of-dvc">Installing the Development Version of DVC</h3>
+<p>If you like to pull the latest version of DVC from the master branch in its repo at github, you execute the following command in your command prompt:</p>
+<pre><code>pip install git+git://github.com/dataversioncontrol/dvc</code></pre>
+<p>This command will automatically upgrade your DVC version in case it is behind the latest version in the master branch of the github repo.</p>
+<p><strong>Note:</strong> if you use the special data science-centric Python environment provided by <em>Anaconda</em>, you can use the above-mentioned command there as well. It will work in <em>Anaconda’s</em> command prompt tool. As of the moment, DVC does not provide a special installation package for a native <em>Anaconda</em> package manager (that is, <em>conda</em>).</p>
+<h1 id="configuration">Configuration</h1>
+<p>Once you install DVC, you should be able to start using it (in its local setup) immediately.</p>
+<p>However, you can optionally proceed to further configure DVC (especially if you intend to use it in a Cloud-based scenario).</p>
+<h2 id="dvc-files-and-directories">DVC Files and Directories</h2>
+<p>Once installed, dvc will populate its installation folder (hereinafter referred to as .dvc) with essential shared and internal files and folders will be stored</p>
+<ul>
+<li><strong>Dvc.conf</strong> - This is a configuration file with default global settings for DVC (to change your DVC instance options, you edit it; in particular, you will edit it if decided to use DVC in the cloud data storage setup - see below)</li>
+<li><strong>.dvc/cache</strong> - the cache folder will contain your data files (the data directories of DVC repositories will only contain only symlinks to the data files in the global cache).</li>
+<li><strong>.dvc/state</strong> - it will It contains DAG (direct acyclic graph) of all dependencies and history of the commands in your DVC repositories</li>
+</ul>
+<h2 id="configuring-dvc-to-work-with-cloud-based-data-storages">Configuring DVC to Work with Cloud-based Data Storages</h2>
+<p><strong>Note:</strong> Using DVC with Cloud-based Data Storages is an optional feature. By default, DVC is configured to use local data storage, and it enables basic DVC usage scenarios out of the box.</p>
+<p>If your organization or team uses a cloud storage for your data, you can leverage DVC cloud storage integration capabilities.</p>
+<p>As of this version, DVC supports two types of cloud-based data storage providers * AWS * Google Cloud (GC)</p>
+<p>The subsections below explain how to configure DVC to use of the data cloud storages above.</p>
+<h2 id="using-aws-as-a-cloud-data-storage-for-dvc">Using AWS as a Cloud Data Storage for DVC</h2>
+<p>If you decide to use AWS as a data cloud storage for your DVC repositories, you should update <strong>dvc.conf</strong> options respectively</p>
+<ul>
+<li>Set <strong>Cloud = AWS</strong> in <em>Global</em> section of <strong>dvc.conf</strong></li>
+</ul>
+<p>In <em>AWS</em> section of <strong>dvc.conf</strong>, specify essential details about your AWS data storage as follows</p>
+<ul>
+<li><strong>StoragePath</strong> - path to a cloud storage bucket (like /mybucket) or bucket and a directory path (/mybucket/ml/dvc/ranking)</li>
+<li><strong>CredentialPath</strong> - path to AWS credentials in your local machine (AWS tools create this dir); In Mac, it is <em>~/.aws/</em>, and it is <em>%USERPATH%/.aws</em> in Windows</li>
+<li><strong>Region</strong> - the valid AWS region where your AWS server instance is rolled out (for example, <em>us-east-1</em>)</li>
+<li><strong>Zone</strong> - the valid zone with the AWS Region where your server is located (for instance, <em>us-east-1a</em>)</li>
+<li><strong>Image</strong> - (optional) the name of the image used to create your AWS server instance (for example, <em>ami-2d39803a</em>)</li>
+<li><strong>InstanceType</strong> - (optional) indicate your AWS instance type (for example, <em>t2.nano</em>)</li>
+<li><strong>KeyDir</strong> - a path to your ssh key in your local machine (for instance, <em>~/.ssh</em>)</li>
+<li><strong>KeyName</strong> - a name of your ssh key file (for instance, <em>dvc-key</em>)</li>
+</ul>
+<p>Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with AWS as a cloud data storage.</p>
+<p><strong>Note:</strong> the current version of DVC uses cloud for data storage purposes only. It does not use it for computations.</p>
+<h2 id="using-google-cloud-as-a-cloud-data-storage-for-dvc">Using Google Cloud as a Cloud Data Storage for DVC</h2>
+<p>If you decide to use AWS as a data cloud storage for your DVC repositories, you should update dvc.conf options respectively</p>
+<ul>
+<li>Set <strong>Cloud = GC</strong> in <em>Global</em> section of <strong>dvc.conf</strong></li>
+</ul>
+<p>Specify additional values in GC section of dvc.conf as follows</p>
+<ul>
+<li><strong>StoragePath</strong> - has the same meaning as AWS one above</li>
+<li><strong>ProjectName</strong> - a GCP specific stuff(just called it GCP project name for simplicity)</li>
+</ul>
+<p>Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with Google Cloud as a cloud data storage.</p>
+<p><strong>Note:</strong> the current version of DVC uses cloud for data storage purposes only. It does not use it for computations.</p>
+<h1 id="using-dvc-commands">Using DVC Commands</h1>
+<p>Since DVC is a command-line application, the appropriate method of use of DVC commands is essential to properly utilize it to the benefit of your machine learning projects.</p>
+<p>The typical method of use of DVC is as follows</p>
+<ul>
+<li>You initialize a local DVC repository with <strong>dvc init</strong> command</li>
+<li>You pull or import data files into DVC repository either with <strong>dvc pull</strong> command or via external process invoked by <strong>dvc run</strong> command</li>
+<li>You clone a git repo with the code of your ML application pipeline</li>
+<li>You execute the steps in your ML pipeline as needed (<strong>dvc run</strong> command is often used to run respective processes/steps of your ML pipeline)</li>
+<li>You use <strong>dvc repro</strong> command to quickly reproduce your ML pipeline on a new iteration, once either the data item files or the source code of your ML application are modified</li>
+<li>You push the results of calculations back to your data storage using <strong>dvc push</strong> command</li>
+</ul>
+<p><strong>Note:</strong> please refer to “Further Reading” section to see in-depth articles and tutorials on the end-to-end ML pipeline setup with DVC for real-world ML projects in Python and R.</p>
+<h1 id="dvc-commands-cheat-sheet">DVC Commands Cheat Sheet</h1>
+<p>Below is the quick summary of the most important commands of DVC</p>
+<ul>
+<li><strong>dvc init ARGUMENTS</strong> - Initialize a new local DVC repository in a folder of your choice (this folder should be already initialized either as a local git repository or a clone of a remote git repository)</li>
+<li><strong>dvc run ARGUMENTS</strong> - Run an external command (for example, launch Python runtime with a python script to execute as its argument)</li>
+<li><strong>dvc pull ARGUMENTS</strong> - Pull data files from the cloud (cloud settings for your DVC environment should be already configured prior to using this command).</li>
+<li><strong>dvc push ARGUMENTS</strong> - Push data files to the cloud (cloud settings for your DVC environment should be already configured prior to using this command).</li>
+<li><strong>dvc status ARGUMENTS</strong> - Show status of a data file in the DVC repository</li>
+<li><strong>dvc repro ARGUMENTS</strong> - Reproduce the entire ML pipeline (or its part) where affected changes relate to the arguments passed (for example, rerun machine learning models where a changed data file is used as an input)</li>
+<li><strong>dvc remove ARGUMENTS</strong> - Remove data items (files or/and folders) from the local DVC repository storage</li>
+<li><strong>dvc import ARGUMENTS</strong> - Import a data file into a local DVC repository</li>
+<li><strong>dvc lock ARGUMENTS</strong> - Lock files in the DVC repository</li>
+<li><strong>dvc gc ARGUMENTS</strong> - Do garbage collection and clear DVC cache</li>
+<li><strong>dvc target ARGUMENTS</strong> - Set default target</li>
+<li><strong>dvc ex ARGUMENTS</strong> - Execute experimental commands supported by DVC</li>
+<li><strong>dvc config ARGUMENTS</strong> - Alter configuration settings of the DVC repository (as specified in dvc.conf) for the current session</li>
+<li><strong>dvc show ARGUMENTS</strong> - Show graphs</li>
+<li><strong>dvc CMD --help</strong> - Display help to use a specific DVC command (CMD)</li>
+<li><strong>dvc CMD -h</strong> - Display help to use a specific DVC command (CMD)</li>
+</ul>
+<h1 id="dvc-command-reference">DVC Command Reference</h1>
+<h2 id="init-command">Init Command</h2>
+<p>This command initializes a local DVC environment (repository) in a local directory on your machine.</p>
+<p><strong>Note:</strong> such a directory should contain either a local git repo or a remote git repo clone.</p>
+<pre class="sourceCode shell"><code>usage:
+
+dvc init [-h] [-q] [-v] [-G] [--data-dir DATA_DIR]
+    [--cache-dir CACHE_DIR] [--state-dir STATE_DIR] 
+
+optional arguments:
+    -h, --help             show this help message and exit
+    -q, --quiet            Be quiet.
+    -v, --verbose          Be verbose.
+    -G, --no-git-actions   Skip all git actions including reproducibility check and commits.
+    --data-dir DATA_DIR    Data directory.
+    --cache-dir CACHE_DIR  A well-formed path to the Cache directory.
+    --state-dir STATE_DIR  A well-formed path to the State directory.</code></pre>
+<h3 id="examples">Examples</h3>
+<p>Initializing DVC repository in the current directory:</p>
+<pre><code>dvc init</code></pre>
+<p>Requesting help about using dvc init command:</p>
+<pre><code>dvc init -h</code></pre>
+<h2 id="run-command">Run command</h2>
+<p>This command executes an OS command (command-line utility) on your local machine. It is often used to execute the steps in your ML pipeline, for instance * Running a python or R script * Running a database SQL script * Etc.</p>
+<pre class="sourceCode shell"><code>usage: dvc run [-h] [-q] [-v] [-G] [--stdout STDOUT] [--stderr STDERR]
+           [-i INPUT] [-o OUTPUT] [-c CODE] [--shell] [-l]
+           command [args]
+
+positional arguments:
+    command     Command to execute
+    args        Arguments of a command (optional; it can be a list of the command-line arguments of command separated by spaces)
+
+optional arguments:
+    -h, --help                   show this help message and exit
+    -q, --quiet                  Be quiet.
+    -v, --verbose                Be verbose.
+    -G, --no-git-actions         Skip all git actions including reproducibility check and commits.
+    --stdout STDOUT              Output std output to a file.
+    --stderr STDERR              Output std error to a file.
+    -i INPUT, --input INPUT      Declare input data items for reproducible cmd.
+    -o OUTPUT, --output OUTPUT   Declare output data items for reproducible cmd.
+    -c CODE, --code CODE         Code dependencies which produce the output.
+    --shell                      Shell command
+    -l, --lock                   Lock data item - disable reproduction.</code></pre>
+<h3 id="examples-1">Examples</h3>
+<p>Get help for Run command:</p>
+<pre><code>dvc run -h</code></pre>
+<p>Execute a Python script as a DVC ML pipeline step:</p>
+<pre><code># Train ML model out of the training dataset. 20170426 is another seed value.
+dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p</code></pre>
+<p><strong>Note:</strong> In this example, the external command is <em>Python</em> (Python runtime). <em>code/train_model.py</em> is the Python script to be executed by Python. <em>data/matrix-train.p, 20170426</em>, and <em>data/model.p</em> are command-line arguments that are passed to code/train_model.py script.</p>
+<p>Execute an R script as a DVC ML pipeline step:</p>
+<pre><code>dvc run Rscript code/parsingxml.R data/Posts.xml data/Posts.csv</code></pre>
+<p><strong>Note:</strong> In this example, the external command is <em>Rscript</em> (R runtime script execution utility). <em>code/parsingxml.R</em> is the R script to be executed by Rscript. <em>data/Posts.xml</em> and <em>data/Posts.csv</em> are command-line arguments that are passed to code/parsingxml.R script.</p>
+<p>Extract an XML file from an archive to data subfolder:</p>
+<pre><code>dvc run tar zxf data/Posts.xml.tgz -C data/</code></pre>
+<h2 id="sync-command">Sync command</h2>
+<p>This command synchronizes data file with the cloud storage (the cloud settings should be specified in dvc.conf prior to running this command).</p>
+<pre class="sourceCode shell"><code>usage: dvc sync [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
+
+positional arguments:
+targets               File or directory to sync.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.</code></pre>
+<p><strong>Note:</strong> this command is deprecated and it is going to be removed in one of the next releases of DVC. Technically, running <strong>dvc sync</strong> is equivalent to running a sequence of <strong>dvc pull</strong> and <strong>dvc push</strong> commands.</p>
+<h2 id="pull-command">Pull Command</h2>
+<p>This command pulls data from the cloud storage you configured for DVC.</p>
+<pre class="sourceCode shell"><code>usage: dvc pull [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
+
+positional arguments:
+    targets               File or directory to sync.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.</code></pre>
+<h3 id="examples-2">Examples</h3>
+<p>Get help for Pull command:</p>
+<pre><code>dvc pull -h</code></pre>
+<h2 id="push-command">Push Command</h2>
+<p>This command pushes data files to the cloud storage you configured for DVC.</p>
+<pre class="sourceCode shell"><code>usage: dvc push [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
+
+positional arguments:
+    targets               File or directory to sync.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.
+    -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.</code></pre>
+<h3 id="examples-3">Examples</h3>
+<p>Get help for Push command:</p>
+<pre><code>dvc push -h</code></pre>
+<h2 id="status-command">Status Command</h2>
+<p>This command shows status for data files in the DVC repository</p>
+<pre class="sourceCode shell"><code>usage: dvc status [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
+
+positional arguments:
+    targets               File or directory to sync.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.
+    -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.</code></pre>
+<h3 id="examples-4">Examples</h3>
+<p>Get help for Status command:</p>
+<pre><code>dvc status -h</code></pre>
+<p>Get status of data in <em>training.csv</em> file:</p>
+<pre><code>dvc status data/training.csv</code></pre>
+<h2 id="repro-command">Repro Command</h2>
+<p>This command reproduces the that part of the ML pipeline that is dependent on the data or code file targeted by it.</p>
+<pre class="sourceCode shell"><code>usage: dvc repro [-h] [-q] [-v] [-G] [-f] [-s] [target [target ...]]
+
+positional arguments:
+    target                Data items to reproduce.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -f, --force           Reproduce even if dependencies were not changed.
+    -s, --single-item     Reproduce only single data item without recursive dependencies check.</code></pre>
+<h3 id="examples-5">Examples</h3>
+<p>Get help for Repro command:</p>
+<pre><code>dvc repro -h</code></pre>
+<p>Reproduce the part of the pipeline where <em>training.csv</em> data file is involved, forcing reproduce:</p>
+<pre><code>dvc repro data/training.csv -f</code></pre>
+<h2 id="remove-command">Remove Command</h2>
+<p>This command removes a data item from the data directory of a DVC repository.</p>
+<pre class="sourceCode shell"><code>usage: dvc remove [-h] [-q] [-v] [-G] [-l] [-r] [-c] [target [target ...]]
+
+positional arguments:
+    target                Target to remove - file or directory.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.
+    -l, --keep-in-cloud   Do not remove data from cloud.
+    -r, --recursive       Remove directory recursively.
+    -c, --keep-in-cache   Do not remove data from cache.</code></pre>
+<h3 id="examples-6">Examples</h3>
+<p>Get help for Remove command:</p>
+<pre><code>dvc remove -h</code></pre>
+<p>Remove <em>training.csv</em> data file from the DVC repository:</p>
+<pre><code>dvc remove data/training.csv</code></pre>
+<h2 id="import-command">Import Command</h2>
+<p>This command imports a new data file to the data directory of the DVC repository.</p>
+<pre class="sourceCode shell"><code>usage: dvc import [-h] [-q] [-v] [-G] [-l] [-j JOBS] [-c]
+           input [input ...] output
+
+positional arguments:
+    input             Input file/files.
+    output            Output file/directory.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -l, --lock            Lock data item - disable reproduction.
+    -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
+    -c, --continue        Resume downloading file from url</code></pre>
+<h3 id="examples-7">Examples</h3>
+<p>Get help for Import command:</p>
+<pre><code>dvc import -h</code></pre>
+<p>Download a file and put to data/ directory:</p>
+<pre><code>dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/</code></pre>
+<h2 id="lock-command">Lock Command</h2>
+<p>This command is used to</p>
+<ul>
+<li>Lock the data item in the DVC repository, protecting it from further changes</li>
+<li>Unlock the data item locked earlier (switch -u is added in this case)</li>
+</ul>
+<pre class="sourceCode shell"><code>usage: dvc lock [-h] [-q] [-v] [-G] [-l] [-u] [files [files ...]]
+
+positional arguments:
+    files                 Data items to lock or unlock.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.
+    -l, --lock            Lock data item - disable reproduction.
+    -u, --unlock          Unlock data item - enable reproduction.</code></pre>
+<h3 id="examples-8">Examples</h3>
+<p>Get help for Lock command:</p>
+<pre><code>dvc lock -h</code></pre>
+<p>Lock <em>data/Posts.xml</em> file:</p>
+<pre><code>dvc lock data/Posts.xml</code></pre>
+<p>Unlock a previously locked <em>data/Posts.xml</em> file:</p>
+<pre><code>dvc lock -u data/Posts.xml</code></pre>
+<p><strong>Notes</strong></p>
+<ul>
+<li>If you invoke lock command with <em>-u</em> switch against a locked target file, it will be unlocked</li>
+<li>Adding <em>-l</em> switch to any other command where <em>-l</em> switch is enabled will automatically lock/unlock the target files (much like you do with a separate lock command against that target)</li>
+</ul>
+<h2 id="gc-command">gc Command</h2>
+<p>This command collects the garbage in DVC environment. It is especially important when you work with large data files. Under such a condition, keeping previous versions of the large files may slow down performance/drain the disk quota thus swift removing of unnecessary files will be beneficial.</p>
+<pre class="sourceCode shell"><code>usage: dvc gc [-h] [-q] [-v] [-G] [-l] [-r] [-c] [target [target ...]]
+
+positional arguments:
+    target                Target to remove - file or directory.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -l, --keep-in-cloud   Do not remove data from cloud.
+    -r, --recursive       Remove directory recursively.
+    -c, --keep-in-cache   Do not remove data from cache.</code></pre>
+<h3 id="examples-9">Examples</h3>
+<p>Get help for gc command:</p>
+<pre><code>dvc gc -h</code></pre>
+<p>Remove all versions of <em>data/Posts.xml</em> file (but the latest one) from the local cache directory but keep it in the cloud storage:</p>
+<pre><code>dvc gc data/Posts.xml --keep-in-cloud</code></pre>
+<h2 id="target-command">Target Command</h2>
+<p>This command sets the default target for the current DVC repository.</p>
+<pre class="sourceCode shell"><code>usage: dvc target [-h] [-q] [-v] [-G] [-u] [target_file]
+
+positional arguments:
+    target_file           Target data item.
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+    -u, --unset           Reset target.</code></pre>
+<h3 id="examples-10">Examples</h3>
+<p>Get help for Target command:</p>
+<pre><code>dvc target -h</code></pre>
+<p>Set <em>data/Posts.xml</em> file as a default target in the current DVC repository:</p>
+<pre><code>dvc target data/Posts.xml</code></pre>
+<h2 id="ex-command">ex Command</h2>
+<p>This command is designed for risky enthusiasts who would like to try the newest capabilities of DVC which are still under active development.</p>
+<p><strong>Note:</strong> It is provided for your reference and early try only. DVC development team does not provide any warranty as for this piece of DVC functionality to work in a stable manner, in your environment. We do not recommend you to use the experimental functionality in production mode unless you really clear as for what you are going to do.</p>
+<pre class="sourceCode shell"><code>usage: dvc ex [-h] [-q] [-v] [-G] {cloud} ...
+
+positional arguments:
+    {cloud}             Use dvc cloud CMD --help for command-specific help
+    cloud               Cloud manipulation
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.</code></pre>
+<h3 id="examples-11">Examples</h3>
+<p>Display help for experimental commands in DVC:</p>
+<pre><code>dvc ex -h</code></pre>
+<h2 id="config-command">Config Command</h2>
+<p>This command is designed to overwrite some configuration options for just this session of DVC (as you remember, default configuration values are specified in <strong>dvc.conf</strong> , which is located in root of your DVC installation folder).</p>
+<pre class="sourceCode shell"><code>usage: dvc config [-h] [-q] [-v] [-G] [-u] name [value]
+
+positional arguments:
+    name                  Option name
+    value                 Option value
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.
+    -u, --unset           Unset option</code></pre>
+<h3 id="examples-12">Examples</h3>
+<p>Overwrite the value of DataDir configuration option with <em>etc/data</em> for a current dvc session only:</p>
+<pre><code>dvc config DataDir etc/data</code></pre>
+<h2 id="show-command">Show Command</h2>
+<p>This command is used to display either pipeline or workflow image for your current ML project managed by DVC</p>
+<pre class="sourceCode shell"><code>usage: dvc show [-h] [-q] [-v] [-G] {pipeline,workflow} ...
+
+positional arguments:
+    {pipeline,workflow}   Use dvc show CMD --help for command-specific help
+    pipeline              Show pipeline image
+    workflow              Show workflow image
+
+optional arguments:
+    -h, --help            show this help message and exit
+    -q, --quiet           Be quiet.
+    -v, --verbose         Be verbose.
+    -G, --no-git-actions  Skip all git actions including reproducibility check
+                          and commits.</code></pre>
+<h3 id="examples-13">Examples</h3>
+<p>Show the workflow image for the ML project in your current DVC repository:</p>
+<pre><code>dvc show workflow</code></pre>
+<p>Show the pipeline image for the ML project in your current DVC repository:</p>
+<pre><code>dvc show pipeline</code></pre>
+<h2 id="notes-on-optional-arguments-to-dvc-commands">Notes on Optional Arguments to DVC Commands</h2>
+<h3 id="common-options">Common Options</h3>
+<p>As you can see, there are four optional arguments that are applicable to any DVC command. These are</p>
+<pre class="sourceCode shell"><code>-h, --help            show this help message and exit
+-q, --quiet           Be quiet.
+-v, --verbose         Be verbose.
+-G, --no-git-actions  Skip all git actions including reproducibility check and commits.</code></pre>
+<p>Although these optional arguments are pretty self-explanatory, there is a note on DVC and Git commands used together.</p>
+<ul>
+<li>If you specify <em>--no-git-action</em> option, DVC does not modify (add/commit to) Git repository, however, it can still read it - for example, run <em>git status</em> command etc.</li>
+<li>To see Git commands in DVC, you can set logging level to <em>Debug</em> (in <strong>dvc.conf</strong>) or run dvc with option <em>--verbose</em></li>
+</ul>
+<h3 id="number-of-dvc-jobs">Number of DVC Jobs</h3>
+<p>DVC can benefit from parallel processing and multiple processors/cores available on your machine. It can spin a number of jobs to run in parallel.</p>
+<p>The number of DVC jobs is 5 by default. In case you like to change it to any other reasonable value, you use <em>-j (--jobs)</em> option in DVC commands where it is applicable.</p>
+<h1 id="further-reading">Further Reading</h1>
+<p>If you are interested in more information about technical aspects of using DVC in your machine learning projects, you can review technical tutorials below</p>
+<ul>
+<li>Data Version Control beta release: iterative machine learning: <a href="https://blog.dataversioncontrol.com/data-version-control-beta-release-iterative-machine-learning-a7faf7c8be67" class="uri">https://blog.dataversioncontrol.com/data-version-control-beta-release-iterative-machine-learning-a7faf7c8be67</a> (it exemplifies a practical case study explaining how to use DVC in a Python-based machine learning project)</li>
+<li>R code and reproducible model development with DVC: <a href="https://blog.dataversioncontrol.com/r-code-and-reproducible-model-development-with-dvc-1507a0e3687b" class="uri">https://blog.dataversioncontrol.com/r-code-and-reproducible-model-development-with-dvc-1507a0e3687b</a> (it exemplifies a practical case study explaining how to use DVC in an R-based machine learning project)</li>
+<li>ML Model Ensembling with Fast Iterations: <a href="https://blog.dataversioncontrol.com/ml-model-ensembling-with-fast-iterations-91e8cad6a9b5" class="uri">https://blog.dataversioncontrol.com/ml-model-ensembling-with-fast-iterations-91e8cad6a9b5</a></li>
+</ul>
+<p>If you are interested in a further reading about conceptual impact of DVC on data scientist productivity and data science-to-DevOps convergence, you are welcome to review the articles below</p>
+<ul>
+<li>How A Data Scientist Can Improve His Productivity: <a href="https://blog.dataversioncontrol.com/how-a-data-scientist-can-improve-his-productivity-730425ba4aa0" class="uri">https://blog.dataversioncontrol.com/how-a-data-scientist-can-improve-his-productivity-730425ba4aa0</a></li>
+<li>Data Version Control in Analytical DevOps Paradigm: <a href="https://blog.dataversioncontrol.com/data-version-control-in-analytics-devops-paradigm-35a880e99133" class="uri">https://blog.dataversioncontrol.com/data-version-control-in-analytics-devops-paradigm-35a880e99133</a></li>
+</ul>
+<footer>
+  <div class="container">
+    <p> &copy; 2017 dataversioncontrol.com </p>
+  </div>
+</footer>
+</body>
+</html>
