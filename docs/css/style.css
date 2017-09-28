@@ -267,7 +267,7 @@ nav #logo {
 
 @media only screen and (min-width: 680px) {
     nav, nav #menu {
-        height: 60px !important;
+        height: 60px;
     }
 
     nav li, nav a {
@@ -286,7 +286,7 @@ nav #logo {
     }
 
     nav #menu-toggle {
-        display: none !important;
+        display: none;
     }
 
     nav #menu {
