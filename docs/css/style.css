@@ -306,7 +306,7 @@ nav #logo {
 
 /* Content Styles */
 section { padding: 1em 0 3em; text-align: center; }
-section.vibrant { background: #222; color: #fff; }
+.vibrant { background: #222; color: #fff; }
 
 nav:before, 
 nav:after, 
@@ -421,7 +421,7 @@ input:focus {
     }
 
     section { padding: 3em 0; text-align: left; }
-    section.centered {
+    .centered {
         text-align: center;
     }
 
