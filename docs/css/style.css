@@ -326,7 +326,6 @@ nav, header, section { *zoom: 1; }
 /* Form Styles */
 input {
     display: block;
-    vertical-align: middle;
     line-height: 30px;
     margin: 0 auto;
     width: 100%;
