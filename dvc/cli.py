@@ -8,7 +8,7 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataSync, CmdDataPush, CmdDataPull, CmdDataStatus
+from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.import_file import CmdImportFile
@@ -127,13 +127,6 @@ def parse_args(argv=None):
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
-
-    # Sync
-    sync_parser = subparsers.add_parser(
-                        'sync',
-                        parents=[parent_sync_parser],
-                        help='Synchronize data file with cloud (cloud settings already setup.')
-    sync_parser.set_defaults(func=CmdDataSync)
 
     # Pull
     pull_parser = subparsers.add_parser(
