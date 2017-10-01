@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import sys
 import argparse
 from multiprocessing import cpu_count
 
@@ -54,6 +55,11 @@ def parse_args(argv=None):
     subparsers = parser.add_subparsers(
                         dest='cmd',
                         help='Use dvc CMD --help for command-specific help')
+
+    # NOTE: Workaround for bug in Python 3
+    if sys.version_info[0] == 3:
+        subparsers.required = True
+        subparsers.dest = 'cmd'
 
     # Init
     init_parser = subparsers.add_parser(
