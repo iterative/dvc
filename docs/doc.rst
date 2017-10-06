@@ -4,9 +4,62 @@ Getting Started with DVC
 
 It is hardly possible in real life to develop a good machine learning model in a single pass. ML modeling is an iterative process and it is extremely important to keep track of your steps, dependencies between the steps, dependencies between your code and data files and all code running arguments. This becomes even more important and complicated in a team environment where data scientists’ collaboration takes a serious amount of the team’s effort.
 
-**Data Version Control** application (aka DVC) is a tool that can help you to address such challenges while increasing your every-day productivity.
+**Data Version Control** (aka DVC) is designed to help data scientists keep track of their ML processes and file dependencies in the simple form of git-like commands: "dvc run python train_model.py data/train_matrix.p data/model.p". Your existing ML processes can be easily transformed into reproducible DVC pipelines regardless of which programming language or tool was used.
+
+The full pipeline could be built by running the code below::
+
+	$ # Initialize DVC repository (in your Git repository)
+	$ dvc init
+	
+	$ # Download a file and put to data/ directory.
+	$ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
+	
+	$ # Extract XML from the archive.
+	$ dvc run tar zxf data/Posts.xml.tgz -C data/
+	
+	$ # Prepare data.
+	$ dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
+	
+	$ # Split training and testing dataset. Two output files.
+	$ # 0.33 is the test dataset splitting ratio. 20170426 is a seed for randomization.
+	$ dvc run python code/split_train_test.py data/Posts.tsv 0.33 20170426 data/Posts-train.tsv data/Posts-test.tsv
+	
+	$ # Extract features from text data. Two TSV inputs and two pickle matrixes outputs.
+	$ dvc run python code/featurization.py data/Posts-train.tsv data/Posts-test.tsv data/matrix-train.p data/matrix-test.p
+	
+	$ # Train ML model out of the training dataset. 20170426 is another seed value.
+	$ dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
+	
+	# Evaluate the model by the testing dataset.
+	$ dvc run python code/evaluate.py data/model.p data/matrix-test.p data/evaluation.txt
+	
+	$ # The result.
+	$ cat data/evaluation.txt
+	AUC: 0.596182
+
 
 DVC an open source tool for data science projects. DVC makes your data science projects reproducible by automatically building data dependency graph (DAG). Your code and the dependencies could be easily shared by Git, and data - through cloud storage (AWS S3, GCP) in a single DVC environment.
+
+Your code can be easily reproduced after modification::
+
+	$ # Improve feature extraction step.
+	$ vi code/featurization.py
+	
+	$ # Commit all the changes.
+	$ git commit -am "Add bigram features"
+	[master 50b5a2a] Add bigram features
+	1 file changed, 5 insertion(+), 2 deletion(-)
+	
+	$ # Reproduce all required steps to get our target metrics file.
+	$ dvc repro data/evaluation.txt
+	Reproducing run command for data item data/matrix-train.p. Args: python code/featurization.py data/Posts-train.tsv data/Posts-test.tsv data/matrix-train.p data/matrix-test.p
+	Reproducing run command for data item data/model.p. Args: python code/train_model.py data/matrix-train.p 20170426 data/model.p
+	Reproducing run command for data item data/evaluation.txt. Args: python code/evaluate.py data/model.p data/matrix-test.p data/evaluation.txt
+	Data item "data/evaluation.txt" was reproduced.
+	
+	$ # Take a look at the target metric improvement.
+	$ cat data/evaluation.txt
+	AUC: 0.627196
 
 It is quite easy to integrate DVC in your existing ML pipeline/processes without any significant effort to re-implement your ML code/application.
 
@@ -14,7 +67,6 @@ The one thing to wrap your head around is that DVC automatically derives the dep
 
 Not only can DVC streamline your work into a single, reproducible environment, it also makes it easy to share this environment by Git including the dependencies (DAG) — an exciting collaboration feature which gives the ability to reproduce the research results in different computers. Moreover, you can share your data files through cloud storage services like AWS S3 or Google Cloud Project (GCP)  Storage since DVC does not push data files to Git repositories.
 
-**Note:** If you are interested in reading more about practical aspects of using DVC in machine learning projects, please refer to the tutorials and articles collected in ‘Further Reading’ section. There are articles there walking you through the end-to-end implementation of DVC-based pipeline for Python- and R-based ML projects.
 
 ============
 Installation
@@ -53,7 +105,7 @@ Installation with pip
 
 When you install DVC on your local machine for the first time, go to your command line prompt and type the command below::
 
-	pip install dvc
+	$ pip install dvc
 
 **Note:** if you use the special data science-centric Python environment provided by *Anaconda*, you can use the above-mentioned command there as well. It will work in *Anaconda’s* command prompt tool. As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
 
@@ -62,7 +114,7 @@ Installing the Development Version of DVC
 
 If you like to pull the latest version of DVC from the master branch in its repo at github, you execute the following command in your command prompt::
 
-	pip install git+git://github.com/dataversioncontrol/dvc
+	$ pip install git+git://github.com/dataversioncontrol/dvc
 
 This command will automatically upgrade your DVC version in case it is behind the latest version in the master branch of the github repo.
 
@@ -109,16 +161,9 @@ In *AWS* section of **dvc.conf**, specify essential details about your AWS data 
 
 * **StoragePath** - path to a cloud storage bucket (like /mybucket) or bucket and a directory path (/mybucket/ml/dvc/ranking)
 * **CredentialPath** - path to AWS credentials in your local machine (AWS tools create this dir); In Mac, it is *~/.aws/*, and it is *%USERPATH%/.aws* in Windows
-* **Region** - the valid AWS region where your AWS server instance is rolled out (for example, *us-east-1*)
-* **Zone**  - the valid zone with the AWS Region where your server is located (for instance, *us-east-1a*)
-* **Image** - (optional) the name of the image used to create your AWS server instance (for example, *ami-2d39803a*)
-* **InstanceType** - (optional) indicate your AWS instance type (for example, *t2.nano*)
-* **KeyDir** - a path to your ssh key in your local machine (for instance,  *~/.ssh*)
-* **KeyName** - a name of your ssh key file (for instance, *dvc-key*)
 
 Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with AWS as a cloud data storage.
 
-**Note:** the current version of DVC uses cloud for data storage purposes only. It does not use it for computations.
 
 Using Google Cloud as a Cloud Data Storage for DVC
 ==================================================
@@ -134,7 +179,6 @@ Specify additional values in GC section of dvc.conf as follows
 
 Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with Google Cloud as a cloud data storage.
 
-**Note:** the current version of DVC uses cloud for data storage purposes only. It does not use it for computations.
 
 ==================
 Using DVC Commands
@@ -182,9 +226,7 @@ DVC Command Reference
 
 Init Command
 ============
-This command initializes a local DVC environment (repository) in a local directory on your machine.
-
-**Note:** such a directory should contain either a local git repo or a remote git repo clone.
+This command initializes a local DVC environment (repository) in a current Git repository.
 
 .. code-block:: shell
    :linenos:
@@ -205,18 +247,24 @@ This command initializes a local DVC environment (repository) in a local directo
 
 Examples
 ---------
-Initializing DVC repository in the current directory::
+Creating a new Git repository and DVC::
 
-	dvc init
+	$ mkdir tag_classifier
+	$ cd tag_classifier
+	
+	$ git init
+	Initialized empty Git repository in /Users/dmitry/src/tag_classifier__3/.git/
+	
+	$ dvc init
+	Directories .dvc/, data/, cache/, state/ were created
+	File .gitignore was created
+	Directory cache was added to .gitignore file
 
-Requesting help about using dvc init command::
-
-	dvc init -h
 
 Run command
 ===========
 
-This command executes an OS command (command-line utility) on your local machine. It is often used to execute the steps in your ML pipeline, for instance
+This command executes is used to execute the steps in your ML pipeline, for instance
 * Running a python or R script
 * Running a database SQL script
 * Etc.
@@ -248,48 +296,22 @@ This command executes an OS command (command-line utility) on your local machine
 Examples
 --------
 
-Get help for Run command::
-
-	dvc run -h
 
 Execute a Python script as a DVC ML pipeline step::
 
-	# Train ML model out of the training dataset. 20170426 is another seed value.
-	dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
+	$ # Train ML model out of the training dataset. 20170426 is another seed value.
+	$ dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
 
-**Note:** In this example, the external command is *Python* (Python runtime). *code/train_model.py* is the Python script to be executed by Python. *data/matrix-train.p, 20170426*, and *data/model.p* are command-line arguments that are passed to code/train_model.py script.
 
 Execute an R script as a DVC ML pipeline step::
 
 	dvc run Rscript code/parsingxml.R data/Posts.xml data/Posts.csv
 
-**Note:** In this example, the external command is *Rscript* (R runtime script execution utility). *code/parsingxml.R* is the R script to be executed by Rscript. *data/Posts.xml* and *data/Posts.csv* are command-line arguments that are passed to code/parsingxml.R script.
 
 Extract an XML file from an archive to data subfolder::
 
 	dvc run tar zxf data/Posts.xml.tgz -C data/
 
-Sync command
-============
-
-This command synchronizes data file with the cloud storage (the cloud settings should be specified in dvc.conf prior to running this command).
-
-.. code-block:: shell
-   :linenos:
-   
-	usage: dvc sync [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
-
-	positional arguments:
-	targets               File or directory to sync.
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
-
-**Note:** this command is deprecated and it is going to be removed in one of the next releases of DVC. Technically, running **dvc sync** is equivalent to running a sequence of **dvc pull** and **dvc push** commands.
 
 Pull Command
 ============
@@ -314,9 +336,6 @@ This command pulls data from the cloud storage you configured for DVC.
 Examples
 --------
 
-Get help for Pull command::
-
-	dvc pull -h
 
 Push Command
 ============
@@ -342,9 +361,6 @@ This command pushes data files to the cloud storage you configured for DVC.
 Examples
 --------
 
-Get help for Push command::
-
-	dvc push -h
 
 Status Command
 ==============
@@ -370,9 +386,6 @@ This command shows status for data files in the DVC repository
 Examples
 --------
 
-Get help for Status command::
-
-	dvc status -h
 
 Get status of data in *training.csv* file::
 
@@ -402,9 +415,6 @@ This command reproduces the that part of the ML pipeline that is dependent on th
 Examples
 --------
 
-Get help for Repro command::
-
-	dvc repro -h
 
 Reproduce the part of the pipeline where *training.csv* data file is involved, forcing reproduce::
 
@@ -436,9 +446,6 @@ This command removes a data item from the data directory of a DVC repository.
 Examples
 --------
 
-Get help for Remove command::
-
-	dvc remove -h
 
 Remove *training.csv* data file from the DVC repository::
 
@@ -471,9 +478,6 @@ This command imports a new data file to the data directory of the DVC repository
 Examples
 --------
 
-Get help for Import command::
-
-	dvc import -h
 
 Download a file and put to data/ directory::
 
@@ -507,9 +511,6 @@ This command is used to
 Examples
 --------
 
-Get help for Lock command::
-
-	dvc lock -h
 
 Lock *data/Posts.xml* file::
 
@@ -548,9 +549,6 @@ This command collects the garbage in DVC environment. It is especially important
 Examples
 --------
 
-Get help for gc command::
-
-	dvc gc -h
 
 Remove all versions of *data/Posts.xml* file (but the latest one) from the local cache directory but keep it in the cloud storage::
 
@@ -578,9 +576,6 @@ This command sets the default target for the current DVC repository.
 
 Examples
 --------
-Get help for Target command::
-
-	dvc target -h
 
 Set *data/Posts.xml* file as a default target in the current DVC repository::
 
@@ -611,9 +606,6 @@ This command is designed for risky enthusiasts who would like to try the newest 
 
 Examples
 --------
-Display help for experimental commands in DVC::
-
-	dvc ex -h
 
 Config Command
 ==============
