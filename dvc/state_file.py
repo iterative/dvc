@@ -2,7 +2,6 @@ import os
 import ntpath
 import sys
 import json
-import time
 import re
 
 from dvc.exceptions import DvcException
@@ -34,7 +33,6 @@ class StateFile(object):
     PARAM_VERSION = 'Version'
     PARAM_ARGV = 'Argv'
     PARAM_CWD = 'Cwd'
-    PARAM_CREATED_AT = 'CreatedAt'
     PARAM_INPUT_FILES = 'InputFiles'
     PARAM_OUTPUT_FILES = 'OutputFiles'
     PARAM_CODE_DEPENDENCIES = 'CodeDependencies'
@@ -56,7 +54,6 @@ class StateFile(object):
                  argv=sys.argv,
                  stdout=None,
                  stderr=None,
-                 created_at=time.strftime('%Y-%m-%d %H:%M:%S %z'),
                  cwd=None,
                  shell=False,
                  target_metrics={}):
@@ -77,8 +74,6 @@ class StateFile(object):
 
         self.stdout = stdout
         self.stderr = stderr
-
-        self.created_at = created_at
 
         if cwd:
             self.cwd = cwd
@@ -185,7 +180,6 @@ class StateFile(object):
                          StateFile.decode_paths(json.get(StateFile.PARAM_ARGV)),
                          StateFile.decode_path(json.get(StateFile.PARAM_STDOUT)),
                          StateFile.decode_path(json.get(StateFile.PARAM_STDERR)),
-                         json.get(StateFile.PARAM_CREATED_AT),
                          StateFile.decode_path(json.get(StateFile.PARAM_CWD)),
                          json.get(StateFile.PARAM_SHELL, False),
                          json.get(StateFile.PARAM_TARGET_METRICS, {}))
@@ -213,7 +207,6 @@ class StateFile(object):
             self.PARAM_VERSION:             self.VERSION,
             self.PARAM_ARGV:                self.encode_paths(argv),
             self.PARAM_CWD:                 self.encode_path(self.cwd),
-            self.PARAM_CREATED_AT:          self.created_at,
             self.PARAM_INPUT_FILES:         self.encode_paths(self.input_files),
             self.PARAM_OUTPUT_FILES:        self.encode_paths(self.output_files),
             self.PARAM_CODE_DEPENDENCIES:   self.encode_paths(self.code_dependencies),
@@ -231,7 +224,7 @@ class StateFile(object):
             os.makedirs(file_dir)
 
         with open(self.file, 'w') as fd:
-            json.dump(res, fd, indent=2)
+            json.dump(res, fd, indent=2, sort_keys=True)
         pass
 
     def _argv_paths_normalization(self, argv):
