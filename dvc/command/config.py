@@ -12,7 +12,7 @@ class CmdConfig(CmdBase):
 
         # Using configobj because it doesn't
         # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self._config_path)
+        self.configobj = configobj.ConfigObj(self._config_path, write_empty_values=True)
 
     @property
     def _config_path(self):
@@ -82,7 +82,7 @@ class CmdConfig(CmdBase):
         if self.parsed_args.unset:
             return self.unset()
 
-        if self.parsed_args.value == None:
+        if self.parsed_args.value is None:
             return self.show()
 
         return self.set()

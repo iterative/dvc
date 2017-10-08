@@ -19,14 +19,14 @@ class CmdInit(CmdBase):
 DataDir = {}
 
 # Default target
-Target =
+Target = 
 
 # Supported clouds: AWS, GCP
 Cloud = AWS
 
 # This global storage path is going to be deprecated in the next version.
 # Please use StoragePath from a specific cloud instead.
-#StoragePath =
+#StoragePath = 
 
 # Log levels: Debug, Info, Warning and Error
 LogLevel = Info
@@ -41,7 +41,7 @@ StoragePath = dvc/tutorial
 Type = t2.nano
 Image = ami-2d39803a
 
-SpotPrice =
+SpotPrice = 
 SpotTimeout = 300
 
 KeyPairName = dvc-key
@@ -59,8 +59,8 @@ EbsOptimized = false
 AllDisksAsRAID0 = false
 
 [GCP]
-StoragePath =
-ProjectName =
+StoragePath = 
+ProjectName = 
 '''
 
     EMPTY_FILE_NAME = '.empty'
