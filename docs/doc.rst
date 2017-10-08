@@ -97,17 +97,17 @@ Not only can DVC streamline your work into a single, reproducible environment, i
 Installation
 ============
 
-Sections below will walk you through the installation of DVC on your computer.
+Operatio system dependent packages is the recommended way of installing DVC.
+However, you can install DVC from Python repositories using **pip** command or install development version from DVC git repository.
 
-Installing DVC with an Installation Package
-===========================================
+Packages
+========
 
-There are well-formed DVC installation packages available for Mac OS, Linux and Windows platforms. You can download them at https://github.com/dataversioncontrol/dvc/releases/tag/0.8.7.2-travis-macos-release-test
+DVC installation packages available for Mac OS, Linux and Windows platforms.
+You can download the packages at https://github.com/dataversioncontrol/dvc/releases/tag/0.8.7.2-travis-macos-release-test
 
-Once you start the installation package, it will walk you through DVC setup. You will have to just follow the installation instructions.
-
-Installing DVC with Python pip
-==============================
+Python pip
+==========
 
 Another option to deploy DVC to your machine is to use its standard Python pip package::
 
@@ -117,8 +117,8 @@ Another option to deploy DVC to your machine is to use its standard Python pip p
 It will work in *Anaconda’s* command prompt tool.
 As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
 
-Installing the Development Version of DVC
-=========================================
+Development Version
+===================
 
 If you like to pull the latest version of DVC from the master branch in its repo at github, you execute the following command in your command prompt::
 
@@ -251,8 +251,9 @@ Below is the quick summary of the most important commands of DVC
 DVC Command Reference
 =====================
 
-Init Command
-============
+init
+====
+
 This command initializes a local DVC environment (repository) in a current Git repository.
 
 .. code-block:: shell
@@ -272,9 +273,7 @@ This command initializes a local DVC environment (repository) in a current Git r
 		--cache-dir CACHE_DIR  A well-formed path to the Cache directory.
 		--state-dir STATE_DIR  A well-formed path to the State directory.
 
-Examples
----------
-Creating a new Git repository and DVC::
+Example.  Creating a new Git repository and DVC::
 
 	$ mkdir tag_classifier
 	$ cd tag_classifier
@@ -288,8 +287,8 @@ Creating a new Git repository and DVC::
 	Directory cache was added to .gitignore file
 
 
-Run command
-===========
+run
+===
 
 This command executes is used to execute the steps in your ML pipeline, for instance
 * Running a python or R script
@@ -320,9 +319,7 @@ This command executes is used to execute the steps in your ML pipeline, for inst
 		--shell                      Shell command
 		-l, --lock                   Lock data item - disable reproduction.
 
-Examples
---------
-
+Examples:
 
 Execute a Python script as a DVC ML pipeline step::
 
@@ -340,32 +337,8 @@ Extract an XML file from an archive to data subfolder::
 	dvc run tar zxf data/Posts.xml.tgz -C data/
 
 
-Pull Command
-============
-
-This command pulls data from the cloud storage you configured for DVC.
-
-.. code-block:: shell
-   :linenos:
-   
-	usage: dvc pull [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
-
-	positional arguments:
-		targets               File or directory to sync.
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
-
-Examples
---------
-
-
-Push Command
-============
+push
+====
 
 This command pushes data files to the cloud storage you configured for DVC.
 
@@ -385,12 +358,42 @@ This command pushes data files to the cloud storage you configured for DVC.
 							  and commits.
 		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
-Examples
---------
+Examples:
+
+Push all files from the current DVC snapshot to cloud::
+
+	$ dvc push data/
+
+pull
+====
+
+This command pulls data from the cloud storage you configured for DVC.
+
+.. code-block:: shell
+   :linenos:
+   
+	usage: dvc pull [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
+
+	positional arguments:
+		targets               File or directory to sync.
+
+	optional arguments:
+		-h, --help            show this help message and exit
+		-q, --quiet           Be quiet.
+		-v, --verbose         Be verbose.
+		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
+		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
 
-Status Command
-==============
+Examples:
+
+Pull all files from the current DVC snapshot to cloud::
+
+	$ dvc pull data/
+
+
+status
+======
 
 This command shows status for data files in the DVC repository
 
@@ -410,16 +413,14 @@ This command shows status for data files in the DVC repository
                               and commits.
 		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
-Examples
---------
-
+Examples:
 
 Get status of data in *training.csv* file::
 
-	dvc status data/training.csv
+	$ dvc status data/training.csv
 
-Repro Command
-=============
+repro
+=====
 
 This command reproduces the that part of the ML pipeline that is dependent on the data or code file targeted by it.
 
@@ -439,16 +440,15 @@ This command reproduces the that part of the ML pipeline that is dependent on th
 		-f, --force           Reproduce even if dependencies were not changed.
 		-s, --single-item     Reproduce only single data item without recursive dependencies check.
 
-Examples
---------
+Examples:
+
+Reproduce the part of the pipeline where *training.csv* data file is involved::
+
+	$ dvc repro data/training.csv
 
 
-Reproduce the part of the pipeline where *training.csv* data file is involved, forcing reproduce::
-
-	dvc repro data/training.csv -f
-
-Remove Command
-==============
+remove
+======
 
 This command removes a data item from the data directory of a DVC repository.
 
@@ -470,16 +470,15 @@ This command removes a data item from the data directory of a DVC repository.
 		-r, --recursive       Remove directory recursively.
 		-c, --keep-in-cache   Do not remove data from cache.
 
-Examples
---------
+Examples:
 
 
 Remove *training.csv* data file from the DVC repository::
 
-	dvc remove data/training.csv
+	$ dvc remove data/training.csv
 
-Import Command
-==============
+import
+======
 
 This command imports a new data file to the data directory of the DVC repository.
 
@@ -502,16 +501,14 @@ This command imports a new data file to the data directory of the DVC repository
 		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 		-c, --continue        Resume downloading file from url
 
-Examples
---------
-
+Examples:
 
 Download a file and put to data/ directory::
 
-	dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
+	$ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
 
-Lock Command
-============
+lock
+====
 
 This command is used to
 
@@ -535,26 +532,27 @@ This command is used to
 		-l, --lock            Lock data item - disable reproduction.
 		-u, --unlock          Unlock data item - enable reproduction.
 
-Examples
---------
+Examples.
 
 
 Lock *data/Posts.xml* file::
 
-	dvc lock data/Posts.xml
+	$ dvc lock data/Posts.xml
 
 Unlock a previously locked *data/Posts.xml* file::
 
-	dvc lock -u data/Posts.xml
+	$ dvc lock -u data/Posts.xml
 
 **Notes**
 
 * If you invoke lock command with *-u* switch against a locked target file, it will be unlocked
 * Adding *-l* switch to any other command where *-l* switch is enabled will automatically lock/unlock the target files (much like you do with a separate lock command against that target)
 
-gc Command
-==========
-This command collects the garbage in DVC environment. It is especially important when you work with large data files. Under such a condition, keeping previous versions of the large files may slow down performance/drain the disk quota thus swift removing of unnecessary files will be beneficial.
+gc
+===
+This command collects the garbage in DVC environment.
+It is especially important when you work with large data files.
+Under such a condition, keeping previous versions of the large files may slow down performance/drain the disk quota thus swift removing of unnecessary files will be beneficial.
 
 .. code-block:: shell
 	:linenos:
@@ -573,16 +571,18 @@ This command collects the garbage in DVC environment. It is especially important
 		-r, --recursive       Remove directory recursively.
 		-c, --keep-in-cache   Do not remove data from cache.
 
-Examples
---------
+Examples:
 
+Remove all cloud not in the current DVC snapshot::
+
+	$ dvc gc data/
 
 Remove all versions of *data/Posts.xml* file (but the latest one) from the local cache directory but keep it in the cloud storage::
 
-	dvc gc data/Posts.xml --keep-in-cloud
+	$ dvc gc data/Posts.xml --keep-in-cloud
 
-Target Command
-==============
+target
+======
 
 This command sets the default target for the current DVC repository.
 
@@ -601,15 +601,14 @@ This command sets the default target for the current DVC repository.
 		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
 		-u, --unset           Reset target.
 
-Examples
---------
+Examples:
 
 Set *data/Posts.xml* file as a default target in the current DVC repository::
 
-	dvc target data/Posts.xml
+	$ dvc target data/Posts.xml
 
-ex Command
-==========
+ex
+==
 
 This command is designed for risky enthusiasts who would like to try the newest capabilities of DVC which are still under active development. 
 
@@ -631,11 +630,9 @@ This command is designed for risky enthusiasts who would like to try the newest 
 		-G, --no-git-actions  Skip all git actions including reproducibility check
                               and commits.
 
-Examples
---------
 
-Config Command
-==============
+config
+======
 
 This command is designed to overwrite some configuration options for just this session of DVC (as you remember, default configuration values are specified in **dvc.conf** , which is located in root of your DVC installation folder).
 
@@ -656,15 +653,14 @@ This command is designed to overwrite some configuration options for just this s
                               and commits.
 		-u, --unset           Unset option
 
-Examples
---------
+Examples:
 
 Overwrite the value of DataDir configuration option with  *etc/data* for a current dvc session only::
 
-	dvc config DataDir etc/data
+	$ dvc config DataDir etc/data
 
-Show Command
-============
+show
+====
 
 This command is used to display either pipeline or workflow image for your current ML project managed by DVC
 
@@ -685,18 +681,17 @@ This command is used to display either pipeline or workflow image for your curre
 		-G, --no-git-actions  Skip all git actions including reproducibility check
                               and commits.
 
-Examples
---------
+Examples:
 
 Show the workflow image for the ML project in your current DVC repository::
 
-	dvc show workflow
+	$ dvc show workflow
 
 Show the pipeline image for the ML project in your current DVC repository::
 
-	dvc show pipeline
+	$ dvc show pipeline
 
-Notes on Optional Arguments to DVC Commands
+Common Arguments
 ===========================================
 
 Common Options
