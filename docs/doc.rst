@@ -1,10 +1,35 @@
 ========================
-Getting Started with DVC
+Introduction
 ========================
 
 It is hardly possible in real life to develop a good machine learning model in a single pass. ML modeling is an iterative process and it is extremely important to keep track of your steps, dependencies between the steps, dependencies between your code and data files and all code running arguments. This becomes even more important and complicated in a team environment where data scientists’ collaboration takes a serious amount of the team’s effort.
 
 **Data Version Control** (aka DVC) is designed to help data scientists keep track of their ML processes and file dependencies in the simple form of git-like commands: "dvc run python train_model.py data/train_matrix.p data/model.p". Your existing ML processes can be easily transformed into reproducible DVC pipelines regardless of which programming language or tool was used.
+
+========================
+Getting Started with DVC
+========================
+
+To show DVC in action let's play with an actual machine learning (ML) scenario.
+This is going to be a natural language processing (NLP) problem of predicting tags for given 
+    stackoverflow question.
+For instance, for the tag "Java" one classifier will be created which can predict a post that is about the Java language.
+
+First, let's download modeling code and set up Git repository::
+
+	$ mkdir myrepo
+	$ cd myrepo
+	$ mkdir code
+	$ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featurization.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/evaluate.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/train_model.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/split_train_test.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/xml_to_tsv.py \
+        https://s3-us-west-2.amazonaws.com/dvc-share/so/code/requirements.txt
+	$ pip install -U -r code/requirements.txt
+	$ git init
+	$ git add code/
+	$ git commit -m 'Download code'
 
 The full pipeline could be built by running the code below::
 
@@ -84,33 +109,16 @@ Once you start the installation package, it will walk you through DVC setup. You
 Installing DVC with Python pip
 ==============================
 
-Another option to deploy DVC to your machine is to use its standard Python pip package.
-
-Pre-requisites and Dependencies
--------------------------------
-
-Before you start installation of DVC using pip, please make sure the following software applications are installed on your machine
-
-* Latest stable version of Python 2.7.x or Python 3.x runtime for your OS
-* One of the latest versions of command-line C++ compiler and its supplementary tools for your OS
-
-Below are OS-specific notes as for the command-line C++ compiler
-
-* If you are on a Windows machine, you may want to check if MS Visual C++ compiler is pre-installed in your system - if it is not, you can download it from http://landinghub.visualstudio.com/visual-cpp-build-tools (you should have Visual C++ 2014 Build Tools or later deployed on your Windows machine)
-* Without it pre-installed, your attempt to install DVC on Windows machine will fail with the error similar to one described in https://stackoverflow.com/questions/29846087/microsoft-visual-c-14-0-is-required-unable-to-find-vcvarsall-bat (one of DVC dependency packages requires MS Visual C++ compiler to be pre-installed)
-* Non-Windows OS platforms are often shipped with the pre-installed version of the command-line C++ compiler thus you should be safe there
-
-Installation with pip
----------------------
-
-When you install DVC on your local machine for the first time, go to your command line prompt and type the command below::
+Another option to deploy DVC to your machine is to use its standard Python pip package::
 
 	$ pip install dvc
 
-**Note:** if you use the special data science-centric Python environment provided by *Anaconda*, you can use the above-mentioned command there as well. It will work in *Anaconda’s* command prompt tool. As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
+**Note:** if you use *Anaconda*, you can use the above-mentioned command there as well.
+It will work in *Anaconda’s* command prompt tool.
+As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
 
 Installing the Development Version of DVC
------------------------------------------
+=========================================
 
 If you like to pull the latest version of DVC from the master branch in its repo at github, you execute the following command in your command prompt::
 
@@ -118,7 +126,6 @@ If you like to pull the latest version of DVC from the master branch in its repo
 
 This command will automatically upgrade your DVC version in case it is behind the latest version in the master branch of the github repo.
 
-**Note:** if you use the special data science-centric Python environment provided by *Anaconda*, you can use the above-mentioned command there as well. It will work in *Anaconda’s* command prompt tool. As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
 
 =============
 Configuration
@@ -133,51 +140,71 @@ DVC Files and Directories
 
 Once installed, dvc will populate its installation folder (hereinafter referred to as .dvc) with essential shared and internal files and folders will be stored
 
-* **Dvc.conf** - This is a configuration file with default global settings for DVC (to change your DVC instance options, you edit it; in particular, you will edit it if decided to use DVC in the cloud data storage setup - see below)
-* **.dvc/cache** - the cache folder will contain your data files (the data directories of DVC repositories will only contain only symlinks to the data files in the global cache).
-* **.dvc/state** - it will It contains DAG (direct acyclic graph) of all dependencies and history of the commands in your DVC repositories
+* **.dvc/config** - This is a configuration file.
+  The config file can be edited directly or indirectly using command **dvc config name value**.
+* **.dvc/state** - this directory contains DVC state files including DAG (direct acyclic graph) of all dependencies of the commands in your DVC repositories
+* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
+  **Note:** DVC includes the cache directory to **.gitignore** file during the initilization. And no data files (with actual content) will be pushed to Git repository,
+  only data file symlinks and commands to reproduce them.
 
-Configuring DVC to Work with Cloud-based Data Storages
+
+Working with Cloud Data Storages
 ======================================================
 
-**Note:** Using DVC with Cloud-based Data Storages is an optional feature. By default, DVC is configured to use local data storage, and it enables basic DVC usage scenarios out of the box.
+Using DVC with Cloud-based Data Storages is an optional feature.
+By default, DVC is configured to use local data storage only (.dvc/cache directory),
+  and it enables basic DVC usage scenarios out of the box.
 
-If your organization or team uses a cloud storage for your data, you can leverage DVC cloud storage integration capabilities.
+DVC can use cloud storages as a common file storage.
+With cloud storage you might use models and data file which were created by your team members
+  without spending time and resources for re-building models and re-processing data files.
 
-As of this version, DVC supports two types of cloud-based data storage providers
-* AWS
-* Google Cloud (GC)
+As of this version, DVC supports two types of cloud-based data storage providers:
+
+* **AWS** - Amazon Web Services
+* **GCP** - Google Cloud Provider
 
 The subsections below explain how to configure DVC to use of the data cloud storages above.
 
-Using AWS as a Cloud Data Storage for DVC
-=========================================
+Using AWS Cloud
+===============
 
-If you decide to use AWS as a data cloud storage for your DVC repositories, you should update **dvc.conf** options respectively
+For using AWS as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
 
-* Set **Cloud = AWS** in *Global* section of **dvc.conf**
-
-In *AWS* section of **dvc.conf**, specify essential details about your AWS data storage as follows
-
-* **StoragePath** - path to a cloud storage bucket (like /mybucket) or bucket and a directory path (/mybucket/ml/dvc/ranking)
-* **CredentialPath** - path to AWS credentials in your local machine (AWS tools create this dir); In Mac, it is *~/.aws/*, and it is *%USERPATH%/.aws* in Windows
-
-Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with AWS as a cloud data storage.
+* **Cloud = AWS** in *Global* section.
+* **StoragePath = /mybucket/dvc/tag_classifier** in **AWS** section - path to a cloud storage bucket and directory in the bucket.
+* **CredentialPath = ~/aws/credentials** in **AWS** section - path to AWS credentials in your local machine (AWS cli command line tools creates this directory).
+  In Mac, default value is *~/.aws/credentials*, and it is *%USERPATH%/.aws/credentials* in Windows
 
 
-Using Google Cloud as a Cloud Data Storage for DVC
-==================================================
+**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to AWS"**
 
-If you decide to use AWS as a data cloud storage for your DVC repositories, you should update dvc.conf options respectively
+Instead of manual file modification we recommend to run corresponded commands::
 
-* Set **Cloud = GC** in *Global* section of **dvc.conf**
+	$ dvc config Global.Cloud AWS # This step is not needed for new DVC repositories
+	$ dvc config AWS.StoragePath /mybucket/dvc/tag_classifier 
+	$ dvc config AWS.CredentialPath ~/.aws/credentials # Not needed if aws cli is instelled to default path
+	$ dvc config AWS.CredentialSection default # Not needed if you have only one AWS account
+	$ git commit -am "Change cloud to AWS"
 
-Specify additional values in GC section of dvc.conf as follows
 
-* **StoragePath** - has the same meaning as AWS one above
-* **ProjectName** - a GCP specific stuff(just called it GCP project name for simplicity)
+Using Google Cloud
+==================
 
-Once you save the above-mentioned changes to dvc.conf, your instance of DVC will be ready to work with Google Cloud as a cloud data storage.
+For using GCP (Google Cloud Provider) as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
+
+*  **Cloud = GCP** in *Global* section.
+* **StoragePath = /mybucket/dvc/tag_classifier** in GCP section - this option has the same meaning as AWS one above. Run **dvc config GCP.StoragePath /my/path/to/a/bucket**
+* **ProjectName = MyCloud** - a GCP specific project name.
+
+**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to GCP"**
+
+Instead of manual file modification we recommend to run corresponded commands::
+
+	$ dvc config Global.Cloud GCP
+	$ dvc config GCP.StoragePath /mybucket/dvc/tag_classifier 
+	$ dvc config GCP.ProjectName MyCloud
+	$ git commit -am "Change cloud to AWS"
 
 
 ==================
