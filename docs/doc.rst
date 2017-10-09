@@ -167,7 +167,7 @@ As of this version, DVC supports two types of cloud-based data storage providers
 The subsections below explain how to configure DVC to use of the data cloud storages above.
 
 Using AWS Cloud
-===============
+---------------
 
 For using AWS as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
 
@@ -189,7 +189,7 @@ Instead of manual file modification we recommend to run corresponded commands::
 
 
 Using Google Cloud
-==================
+------------------
 
 For using GCP (Google Cloud Provider) as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
 
@@ -230,22 +230,22 @@ DVC Commands Cheat Sheet
 
 Below is the quick summary of the most important commands of DVC
 
-* **dvc init ARGUMENTS** - Initialize a new local DVC repository in a folder of your choice (this folder should be already initialized either as a local git repository or a clone of a remote git repository)
-* **dvc run ARGUMENTS** - Run an external command (for example, launch Python runtime with a python script to execute as its argument)
-* **dvc pull ARGUMENTS** - Pull data files from the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
-* **dvc push ARGUMENTS** - Push data files to the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
-* **dvc status ARGUMENTS** - Show status of a data file in the DVC repository
-* **dvc repro ARGUMENTS** - Reproduce the entire ML pipeline (or its part) where affected changes relate to the arguments passed (for example, rerun machine learning models where a changed data file is used as an input)
-* **dvc remove ARGUMENTS** - Remove data items (files or/and folders) from the local DVC repository storage
-* **dvc import ARGUMENTS** - Import a data file into a local DVC repository
-* **dvc lock ARGUMENTS** - Lock files in the DVC repository
-* **dvc gc ARGUMENTS** - Do garbage collection and clear DVC cache
-* **dvc target ARGUMENTS** - Set default target
-* **dvc ex ARGUMENTS** - Execute experimental commands supported by DVC
-* **dvc config ARGUMENTS** - Alter configuration settings of the DVC repository (as specified in dvc.conf) for the current session
-* **dvc show ARGUMENTS** - Show graphs
-* **dvc CMD --help** - Display help to use a specific DVC command (CMD)
+* **dvc -h** - Show how to use DVC and show the list of commands.
 * **dvc CMD -h** - Display help to use a specific DVC command (CMD)
+* **dvc init** - Initialize a new local DVC repository in a folder of your choice (this folder should be already initialized either as a local git repository or a clone of a remote git repository)
+* **dvc run** - Run an external command (for example, launch Python runtime with a python script to execute as its argument)
+* **dvc pull** - Pull data files from the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
+* **dvc push** - Push data files to the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
+* **dvc status** - Show status of a data file in the DVC repository
+* **dvc repro** - Reproduce the entire ML pipeline (or its part) where affected changes relate to the arguments passed (for example, rerun machine learning models where a changed data file is used as an input)
+* **dvc remove** - Remove data items (files or/and folders) from the local DVC repository storage
+* **dvc import** - Import a data file into a local DVC repository
+* **dvc lock** - Lock files in the DVC repository
+* **dvc gc** - Do garbage collection and clear DVC cache
+* **dvc target** - Set default target
+* **dvc ex** - Execute experimental commands supported by DVC
+* **dvc config** - Alter configuration settings of the DVC repository (as specified in dvc.conf) for the current session
+* **dvc show** - Show graphs.
 
 =====================
 DVC Command Reference
