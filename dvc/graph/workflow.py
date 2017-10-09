@@ -1,7 +1,9 @@
 import networkx as nx
+import json
 
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
+from dvc.graph.workflow_templates import TOP, BOTTOM
 
 
 class WorkflowError(DvcException):
@@ -109,8 +111,22 @@ class Workflow(object):
 
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
+        nodes = []
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
+
+            # node = {"id": hash,
+            #         "color": self.node_color(commit),
+            #         "verticalLevel": len(nodes),
+            #         "horizontalLevel": 0,
+            #         "strings": commit.text(max_commits).split('\n')
+            #         }
+            #
+            # if commit._is_target and commit._target_metric:
+            #     node["targetNumber"] = '{}'.format(commit._target_metric)
+            #
+            # nodes.append(node)
+
 
             g.add_node(hash,
                        attr_dict={
@@ -119,9 +135,17 @@ class Workflow(object):
                        }
             )
 
+        links = []
         for commit in self._commits.values():
             for p in commit.parent_hashes:
+                # links.append({"target": commit.hash, "source": p})
                 g.add_edge(commit.hash, p)
+
+        fname = 'workflow.html'
+        with open(fname, 'w') as fd:
+            graph = {"nodes": nodes, "links": links}
+            fd.write(TOP + "\n" + json.dumps(graph) + "\n" + BOTTOM)
+            fd.close()
 
         A = nx.nx_agraph.to_agraph(g)
         fname = 'workflow'
