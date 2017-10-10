@@ -107,8 +107,8 @@ ProjectName =
         Logger.info('Directories {}/, {}/, {}/, {}/ were created'.format(
             config_dir_path.name,
             data_dir_path.name,
-            cache_dir_path.name,
-            state_dir_path.name))
+            os.path.join(config_dir_path.name, cache_dir_path.name),
+            os.path.join(config_dir_path.name, state_dir_path.name)))
 
         self.create_empty_file()
 

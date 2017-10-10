@@ -12,7 +12,6 @@ echo "This is an empty readme" > README.md
 git add README.md
 git commit -m 'add readme'
 
-git checkout -b first_model
 mkdir code
 wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featurization.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/evaluate.py \
@@ -25,9 +24,17 @@ wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featuriza
 git add code/
 git commit -m 'Download code'
 
-
 dvc init
+
+git checkout -b input_100K
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz data/
+dvc run tar zxf data/Posts.xml.tgz -C data/
+dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
+
+
+git checkout master
+git checkout -b input_25K
+dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
 dvc run tar zxf data/Posts.xml.tgz -C data/
 
 dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
@@ -42,15 +49,16 @@ dvc config Global.Target data/eval_auc.txt
 git commit -am 'Set Target'
 
 cat data/eval_auc.txt
-# AUC: 0.645320
+# AUC: 0.596182
 
 
-git checkout -b input_25K # <--
-dvc remove data/Posts.xml.tgz
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
-dvc repro
-cat data/eval_auc.txt
-# 0.596182
+git checkout input_100K
+git merge input_25K
+
+
+
+# Improve the model:
+git checkout input_25K
 vi code/train_model.py  # Change: estimators=500
 git commit -am 'estimators=500'
 vi code/train_model.py  # Change: n_jobs=6

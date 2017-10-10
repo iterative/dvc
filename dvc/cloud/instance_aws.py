@@ -58,6 +58,20 @@ class InstanceAws(Instance):
                                                 #subnet_id = self._args.subnet_id,
                                                 placement = self._args.zone,
                                                 ebs_optimized = self.toBool(self._args.ebs_optimized))
+        job_instance_id = self._wait_for_an_instance(req)
+
+        if not job_instance_id:
+            self._conn.cancel_spot_instance_requests(req[0].id)
+            raise InstanceError(u'Unable to obtain {} spot instance in region {} for price ${}: {}'.format(
+                            (self._args.instance_type, self._args.region, self._args.spot_price,
+                             'the request was canceled')))
+
+        Logger.info(u'{} spot instance was created: {}'.format(self._type, job_instance_id))
+        reservations = self._conn.get_all_instances(instance_ids = job_instance_id)
+        instance = reservations[0].instances[0]
+        return instance
+
+    def _wait_for_an_instance(self, req):
         job_instance_id = None
         sec = 0
         Logger.info(u'Waiting for a spot instance. Request {}.'.format(req[0].id))
@@ -74,23 +88,11 @@ class InstanceAws(Instance):
             time.sleep(1)
             sec += 1
         sys.stdout.write("\n")
-
-        if not job_instance_id:
-            self._conn.cancel_spot_instance_requests(req[0].id)
-            raise InstanceError(u'Unable to obtain {} spot instance in region {} for price ${}: {}'.format(
-                            (self._args.instance_type, self._args.region, self._args.spot_price,
-                             'the request was canceled')))
-
-        Logger.info(u'{} spot instance was created: {}'.format(self._type, job_instance_id))
-        reservations = self._conn.get_all_instances(instance_ids = job_instance_id)
-        instance = reservations[0].instances[0]
-        return instance
+        return job_instance_id
 
     def run_instance(self):
         if not self._image:
             raise InstanceError('Cannot run EC2 instance: image (AMI) is not defined')
-
-        instance = self.create_instance()
 
         # Remove active tag.
         active_filter = {'tag-key': self.INSTANCE_STATE_TAG, 'tag-value': 'True'}
@@ -105,12 +107,16 @@ class InstanceAws(Instance):
                 inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
                 inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
                 if inst.state != self.TERMINATED_STATE:
-                    Logger.log('{} instance {} is not longer active'.format(inst.instance_type, inst.id))
+                    Logger.info('{} instance {} is not longer active'.format(inst.instance_type, inst.id))
 
+        self._run_instance()
+        pass
+
+    def _run_instance(self):
+        instance = self.create_instance()
         # Assign the created instace as active.
         instance.add_tag(self.INSTANCE_STATE_TAG, 'True')
         Logger.info('New {} instance {} was selected as active'.format(instance.instance_type, instance.id))
-
         Logger.info('Waiting for a running status')
         while instance.state != 'running':
             sys.stdout.write(".")
@@ -118,9 +124,7 @@ class InstanceAws(Instance):
             time.sleep(1)
             instance.update()
         sys.stdout.write("\n")
-
         self._conn.attach_volume(self.find_volume().id, instance.id, "/dev/sdx")
-        pass
 
     def get_security_groups(self, ssh_port = 22):
         group_name = self._security_group
@@ -154,37 +158,51 @@ class InstanceAws(Instance):
         try:
             key = self._conn.get_all_key_pairs(keynames=[self._keypair_name])[0]
         except self._conn.ResponseError as e:
-            if e.code == 'InvalidKeyPair.NotFound':
-                Logger.info('AWS key {} does not exist: creating the key'.format(self._keypair_name))
-                # Create an SSH key to use when logging into instances.
-                key = self._conn.create_key_pair(self._keypair_name)
-                Logger.info('AWS key was created: {}'.format(self._keypair_name))
-
-                # Expand key dir.
-                key_dir = os.path.expandvars(self._keypair_dir)
-                if not os.path.isdir(self._keypair_dir):
-                    os.mkdir(self._keypair_dir, 0o700)
-
-                #  Private key has to be stored locally.
-                key_file = os.path.join(key_dir, self._keypair_name + '.pem')
-                #key.save(key_file) # doesn't work in python3
-                fp = open(key_file, 'w')
-                fp.write(key.material)
-                fp.close()
-                os.chmod(key_file, 0o600)
-                Logger.info('AWS private key file was saved: {}'.format(key_file))
-            else:
+            if e.code != 'InvalidKeyPair.NotFound':
                 raise
+            self.create_new_keypair()
 
         return self._keypair_name
 
+    def create_new_keypair(self):
+        Logger.info('AWS key {} does not exist: creating the key'.format(self._keypair_name))
+        # Create an SSH key to use when logging into instances.
+        key = self._conn.create_key_pair(self._keypair_name)
+        Logger.info('AWS key was created: {}'.format(self._keypair_name))
+        # Expand key dir.
+        key_dir = os.path.expandvars(self._keypair_dir)
+        if not os.path.isdir(self._keypair_dir):
+            os.mkdir(self._keypair_dir, 0o700)
+
+        # Private key has to be stored locally.
+        key_file = os.path.join(key_dir, self._keypair_name + '.pem')
+        # key.save(key_file) # doesn't work in python3
+        fp = open(key_file, 'w')
+        fp.write(key.material)
+        fp.close()
+        os.chmod(key_file, 0o600)
+        Logger.info('AWS private key file was saved: {}'.format(key_file))
+
     def all_instances(self, terminated = False):
-        active = []
-        not_active = []
-        rest_inst = []
+        # active = []
+        # not_active = []
+        # rest_inst = []
 
         reserv = self._conn.get_all_instances()
         instances = [i for r in reserv for i in r.instances]
+
+        active, not_active, rest_inst = self.split_inatances_by_types(instances, terminated)
+
+        if len(active) > 1:
+            Logger.error(u'Instance consistancy error - more than one instance is in active state')
+        if len(active) == 0 and len(not_active) > 0:
+            Logger.error(u'Instance consistancy error - no active instances')
+        return (active, not_active, rest_inst)
+
+    def split_inatances_by_types(self, instances, terminated):
+        active = []
+        not_active = []
+        rest_inst = []
         for inst in instances:
             if terminated == False and inst.state == self.TERMINATED_STATE:
                 continue
@@ -197,11 +215,7 @@ class InstanceAws(Instance):
             else:
                 rest_inst.append(inst)
 
-        if len(active) > 1:
-            Logger.error(u'Instance consistancy error - more than one instance is in active state')
-        if len(active) == 0 and len(not_active) > 0:
-            Logger.error(u'Instance consistancy error - no active instances')
-        return (active, not_active, rest_inst)
+        return active, not_active, rest_inst
 
     def describe_instance(self, inst, volumes, is_active):
         ip = inst.ip_address
@@ -215,7 +229,17 @@ class InstanceAws(Instance):
         if is_active:
             activeFlag = ' ***'
 
-        volume_id = None
+        volume_name = self.get_volume_name(inst, volumes)
+
+        return self.INSTANCE_FORMAT.format(activeFlag,
+                                           inst.id[:12],
+                                           inst.instance_type[:12],
+                                           inst.state[:12],
+                                           volume_name,
+                                           ip[:16],
+                                           ip_private[:16])
+
+    def get_volume_name(self, inst, volumes):
         volume_name = ''
         bdm = inst.block_device_mapping
         for device_type in bdm.values():
@@ -226,14 +250,7 @@ class InstanceAws(Instance):
                     else:
                         Logger.error('Instance {} storage volume does not have tag'.format(inst.id))
                     break
-
-        return self.INSTANCE_FORMAT.format(activeFlag,
-                                           inst.id[:12],
-                                           inst.instance_type[:12],
-                                           inst.state[:12],
-                                           volume_name,
-                                           ip[:16],
-                                           ip_private[:16])
+        return volume_name
 
     def describe_instances(self):
         (active, not_active, rest_inst) = self.all_instances()
@@ -272,13 +289,7 @@ class InstanceAws(Instance):
             target_in_active = list(filter(lambda inst: inst.id == instance, active))
             target_in_not_active = list(filter(lambda inst: inst.id == instance, not_active))
 
-        if target_in_not_active:
-            self._conn.terminate_instances(instance_ids = [inst.id for inst in target_in_not_active])
-
-        for inst in target_in_active:
-            inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
-            inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
-            self._conn.terminate_instances(instance_ids = [inst.id])
+        self._terminate(target_in_active, target_in_not_active)
 
         if instance != 'all' and len(target_in_active) > 0 and len(not_active) > 0:
             new_active_inst = not_active[0]
@@ -291,27 +302,21 @@ class InstanceAws(Instance):
                         new_active_inst.instance_type, new_active_inst.id, randomly))
         pass
 
+    def _terminate(self, target_in_active, target_in_not_active):
+        if target_in_not_active:
+            self._conn.terminate_instances(instance_ids=[inst.id for inst in target_in_not_active])
+        for inst in target_in_active:
+            inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
+            inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
+            self._conn.terminate_instances(instance_ids=[inst.id])
+
     def set_active_instance(self, instance):
         instance = self.get_instance_id(instance)
 
-        if not instance:
-            Logger.error('Instance Id is not specified')
-            return
-
         (active, not_active, rest_inst) = self.all_instances()
 
-        target_in_active = list(filter(lambda inst: inst.id == instance, active))
-        if len(target_in_active) > 0:
-            Logger.error('The instance is already active')
-            return
-
-        target_in_not_actives = list(filter(lambda inst: inst.id == instance, not_active))
-        if len(target_in_not_actives) == 0:
-            Logger.error('The instance is not running')
-            return
-
-        if len(target_in_not_actives) > 1:
-            Logger.error('Instances consistancy error: more than one instance with the same id')
+        target_in_not_actives = InstanceAws._get_target_in_not_active(instance, active, not_active)
+        if not target_in_not_actives:
             return
 
         target_in_not_actives[0].remove_tag(self.INSTANCE_STATE_TAG, 'False')
@@ -321,6 +326,29 @@ class InstanceAws(Instance):
             inst.remove_tag(self.INSTANCE_STATE_TAG, 'True')
             inst.add_tag(self.INSTANCE_STATE_TAG, 'False')
         pass
+
+    @staticmethod
+    def _get_target_in_not_active(instance, active, not_active):
+        if not instance:
+            Logger.error('Instance Id is not specified')
+            return None
+
+        target_in_active = list(filter(lambda inst: inst.id == instance, active))
+        if len(target_in_active) > 0:
+            Logger.error('The instance is already active')
+            return None
+
+        target_in_not_actives = list(filter(lambda inst: inst.id == instance, not_active))
+        if len(target_in_not_actives) == 0:
+            Logger.error('The instance is not running')
+            return None
+
+        if len(target_in_not_actives) > 1:
+            Logger.error('Instances consistancy error: more than one instance with the same id')
+            return None
+
+        return target_in_not_actives
+
 
     def all_volumes(self):
         rest_volumes = []
