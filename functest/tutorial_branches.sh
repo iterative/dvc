@@ -53,8 +53,10 @@ cat data/eval_auc.txt
 
 
 git checkout input_100K
-git merge input_25K
-
+git merge -s theirs input_25K
+git add .
+git commit -m 'After merge'
+dvc repro -f
 
 
 # Improve the model:
@@ -87,16 +89,14 @@ dvc repro # not needed
 cat data/eval_auc.txt
 # 0.630682
 
-git checkout first_model
-git merge three_grams
+git checkout input_100K
+git merge -s theirs input_25K
 dvc repro
 
 ##
 
 vi code/featurization.py
 # 0.578447
-
-
 
 # 2. Reproduce: change input dataset
 
