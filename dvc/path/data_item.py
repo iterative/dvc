@@ -5,6 +5,7 @@ from dvc.path.path import Path
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import cached_property
+from dvc.data_cloud import file_md5
 
 
 class DataItemError(DvcException):
@@ -82,13 +83,18 @@ class DataItem(object):
         return Path(state_file, self._git)
 
     @cached_property
+    def cache_dir(self):
+        return os.path.join(self._git.git_dir_abs, self._config.cache_dir)
+
+    @cached_property
     def cache(self):
-        cache_dir = os.path.join(self._git.git_dir_abs, self._config.cache_dir)
+        cache_dir = self.cache_dir
 
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            file_name = self.data_dvc_short + self.CACHE_FILE_SEP + self._git.curr_commit
+            from dvc.state_file import StateFile
+            file_name = StateFile.load(self, self._git).md5
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
@@ -125,9 +131,9 @@ class DataItem(object):
         return os.path.relpath(self.cache.relative, data_file_dir)
 
     def move_data_to_cache(self):
-        cache_dir = os.path.dirname(self.cache.relative)
-        if not os.path.isdir(cache_dir):
-            os.makedirs(cache_dir)
-
-        shutil.move(self.data.relative, self.cache.relative)
+        self.import_cache(self.data.relative)
         System.symlink(self.symlink_file, self.data.relative)
+
+    def import_cache(self, fname):
+        self._cache_file = os.path.join(self.cache_dir, file_md5(fname)[0])
+        os.rename(fname, self._cache_file)

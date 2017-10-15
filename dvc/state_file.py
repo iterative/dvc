@@ -42,6 +42,7 @@ class StateFile(object):
     PARAM_SHELL = "Shell"
     PARAM_TARGET_METRICS = 'TargetMetrics'
     TARGET_METRICS_SINGLE_METRIC = 'SingleMetric'
+    PARAM_MD5 = 'Md5'
 
     def __init__(self,
                  command,
@@ -56,7 +57,8 @@ class StateFile(object):
                  stderr=None,
                  cwd=None,
                  shell=False,
-                 target_metrics={}):
+                 target_metrics={},
+                 md5=None):
         self.data_item = data_item
 
         self.settings = settings
@@ -65,6 +67,10 @@ class StateFile(object):
         self.locked = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
+
+        self.md5 = md5
+        if not md5 and data_item:
+            self.md5 = os.path.basename(data_item.cache.relative)
 
         if command not in self.ACCEPTED_COMMANDS:
             raise StateFileError('Args error: unknown command %s' % command)
@@ -182,7 +188,8 @@ class StateFile(object):
                          StateFile.decode_path(json.get(StateFile.PARAM_STDERR)),
                          StateFile.decode_path(json.get(StateFile.PARAM_CWD)),
                          json.get(StateFile.PARAM_SHELL, False),
-                         json.get(StateFile.PARAM_TARGET_METRICS, {}))
+                         json.get(StateFile.PARAM_TARGET_METRICS, {}),
+                         json.get(StateFile.PARAM_MD5, ''))
 
     @staticmethod
     def load(data_item, settings):
@@ -213,7 +220,8 @@ class StateFile(object):
             self.PARAM_STDOUT:              self.encode_path(self.stdout),
             self.PARAM_STDERR:              self.encode_path(self.stderr),
             self.PARAM_SHELL:               self.shell,
-            self.PARAM_TARGET_METRICS:      self.target_metrics
+            self.PARAM_TARGET_METRICS:      self.target_metrics,
+            self.PARAM_MD5:                 self.md5
         }
 
         if self.locked:
