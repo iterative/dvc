@@ -105,10 +105,11 @@ class DirHierarchyEnvironment(BasicEnvironment):
         file_result = os.path.join('data', data_file)
         state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, data_file + DataItem.STATE_FILE_SUFFIX)
 
-        self.create_content_file(state_result, 'state content')
+        dummy_md5 = os.path.basename(data_file) + DataItem.CACHE_FILE_SEP + self._commit
+        self.create_content_file(state_result, '{"Md5" : "' + dummy_md5 + '", "Command" : "run", "Cwd" : "dir"}')
 
         if cache_file:
-            cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, data_file + DataItem.CACHE_FILE_SEP + self._commit)
+            cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dummy_md5)
             self.create_content_file(cache_result, content)
 
             relevant_dir = self.relevant_dir(data_file)
