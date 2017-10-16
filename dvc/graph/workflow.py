@@ -1,10 +1,10 @@
-import networkx as nx
 import json
 from dateutil.parser import parse
 
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.graph.workflow_templates import TOP, BOTTOM
+from dvc.graph.workflow_template_head import HEAD
+from dvc.graph.workflow_template_tail import TAIL
 
 
 class WorkflowError(DvcException):
@@ -107,54 +107,40 @@ class Workflow(object):
             return []
         return [self._commits[h] for h in self._edges[hash]]
 
-    def build_graph(self, show_dvc_commits, show_all_commits, max_commits):
+    def build_graph(self, show_dvc_commits, show_all_commits, max_commits_to_show):
         self.modify_workflow(show_all_commits, show_dvc_commits)
-
-        # g = nx.DiGraph(name='DVC Workflow', directed=False)
 
         nodes = []
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
 
             d = parse(commit._date)
-            print(d)
-            node = {"id": int(hash, 16),
-                    "color": self.node_color(commit),
-                    "sequence": int(d.strftime("%s")),  # ????
-                    # "verticalLevel": len(nodes),
-                    # "horizontalLevel": 0,
-                    "strings": commit.text(max_commits).split('\n')
-                    }
+            commits_to_show_json, commits_not_to_how_num = commit.get_to_show_commits_json(max_commits_to_show)
+            node = {
+                "id": hash,
+                "color": self.node_color(commit),
+                "sequence": int(d.strftime("%s")),
+                "commits": commits_to_show_json,
+                "branches": commit.branch_tips,
+                "collapsed_commits_number": commits_not_to_how_num
+            }
 
             if commit._is_target and commit._target_metric:
                 node["targetNumber"] = '{}'.format(commit.target_metric_delta)
 
             nodes.append(node)
 
-            # g.add_node(hash,
-            #            attr_dict={
-            #                'label': commit.text(max_commits),
-            #                'color': self.node_color(commit)
-            #            }
-            # )
-
         links = []
         for commit in self._commits.values():
             for p in commit.parent_hashes:
-                links.append({"target": int(commit.hash, 16), "source": int(p, 16)})
-                # g.add_edge(commit.hash, p)
+                links.append({"target": commit.hash, "source": p})
 
         fname = 'workflow.html'
         with open(fname, 'w') as fd:
             graph = {"nodes": nodes, "links": links}
-            fd.write(TOP + "\n  var data = " + json.dumps(graph, indent=4) + "\n" + BOTTOM)
+            fd.write("{}\n  var data = {}\n{}".format(
+                HEAD, json.dumps(graph, indent=4), TAIL))
             fd.close()
-
-        # A = nx.nx_agraph.to_agraph(g)
-        # fname = 'workflow'
-        # A = A.to_undirected()
-        # A.write(fname + '.dot')
-        # A.draw(fname + '.jpeg', format='jpeg', prog='dot')
         pass
 
     def modify_workflow(self, show_all_commits, show_dvc_commits):

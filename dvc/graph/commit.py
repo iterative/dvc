@@ -21,6 +21,23 @@ class Commit(object):
         self._is_collapsed = False
 
     @property
+    def to_json(self):
+        return {'hash': self.hash, 'text': Commit._limit_text(self._comment)}
+
+    def get_to_show_commits(self, max_commits_to_show):
+        assert max_commits_to_show > 0
+
+        not_repro = [self] + filter(lambda c: not c.is_repro, self._collapsed_commits)
+        commits_to_show = not_repro[:max_commits_to_show - 1]
+        num_commits_to_collapse = 1 + len(self._collapsed_commits) - len(commits_to_show)
+
+        return commits_to_show, num_commits_to_collapse
+
+    def get_to_show_commits_json(self, max_commits_to_show):
+        commits_to_show, num_commits_to_collapse = self.get_to_show_commits(max_commits_to_show)
+        return map(lambda x: x.to_json, commits_to_show), num_commits_to_collapse
+
+    @property
     def hash(self):
         return self._hash
 
@@ -61,19 +78,13 @@ class Commit(object):
             return comment[:Commit.TEXT_LIMIT-3] + '...'
 
     def _comments_text(self, max_commits=100):
-        res = [self._text_comment(self)]
-
-        for commit in self._collapsed_commits:
-            if not commit.is_repro:
-                text = self._text_comment(commit)
-                res.append(text)
-        
-        was_collapsed = len(res) > max_commits
-        res = res[:max_commits]
+        commits_to_show, commits_not_to_show_num = self.get_to_show_commits(max_commits)
+        res = map(lambda c: self._text_comment(c), commits_to_show)
 
         max_len = max(map(lambda x: len(x), res + [""]))
         res_extended_len = map(lambda x: x.ljust(max_len), res)
 
+        was_collapsed = commits_not_to_show_num > 0
         if was_collapsed:
             res_extended_len.append('<<Collapsed commits>>')
 
@@ -109,7 +120,7 @@ class Commit(object):
 
     @property
     def branch_tips(self):
-        return self._branch_tips
+        return map(lambda s: s[5:] if s[:5] == 'refs/' else s, self._branch_tips)
 
     def add_branch_tips(self, tips):
         for tip in tips:
