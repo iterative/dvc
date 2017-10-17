@@ -129,14 +129,13 @@ ProjectName =
 
     def create_empty_file(self):
         empty_data_path = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
-        cache_file_suffix = self.EMPTY_FILE_NAME + '_' + self.EMPTY_FILE_CHECKSUM
-        empty_cache_path = os.path.join(Config.CONFIG_DIR, Config.CACHE_DIR, cache_file_suffix)
 
-        open(empty_cache_path, 'w').close()
-        System.symlink(os.path.join('..', empty_cache_path), empty_data_path)
+        data_item = self.settings.path_factory.data_item(empty_data_path)
+        open(empty_data_path, 'w').close()
+        data_item.move_data_to_cache()
 
         StateFile(StateFile.COMMAND_EMPTY_FILE,
-                  self.settings.path_factory.data_item(empty_data_path),
+                  data_item,
                   self.settings,
                   input_files=[],
                   output_files=[],

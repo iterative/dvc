@@ -154,7 +154,7 @@ class DataCloudBase(object):
         """
         pass
 
-    def _import(self, bucket, path, fname, item):
+    def _import(self, bucket, path, item):
         """
         Cloud-specific method for importing data file.
         """
@@ -168,14 +168,13 @@ class DataCloudBase(object):
         """ Generic method for pulling data from the cloud """
         fname = item.resolved_cache.dvc
         key_name = self.cache_file_key(fname)
-        self.create_directory(item)
-        return self._import(self.storage_bucket, key_name, fname, item)
+        return self._import(self.storage_bucket, key_name, item)
 
     def import_data(self, url, item):
         """ Generic method for importing data """
         parsed = urlparse(url)
 
-        return self._import(parsed.netloc, parsed.path, item.cache.relative, item)
+        return self._import(parsed.netloc, parsed.path, item)
 
     def sync(self, fname):
         """
@@ -188,23 +187,6 @@ class DataCloudBase(object):
             return self.push(item)
         else:
             return self.pull(item)
-
-    def create_directory(self, item):
-        """ Create local directories for data item cache """
-        self._lock.acquire()
-        try:
-            directory = os.path.dirname(item.cache.relative)
-            if not os.path.exists(directory):
-                Logger.debug(u'Creating directory {}'.format(directory))
-                try:
-                    os.makedirs(directory)
-                except OSError as ex:
-                    raise DataCloudError(u'Cannot create directory {}: {}'.format(directory, ex))
-            elif not os.path.isdir(directory):
-                msg = u'File {} cannot be synced because {} is not a directory'
-                raise DataCloudError(msg.format(item.cache.relative, directory))
-        finally:
-            self._lock.release()
 
     def remove(self, item):
         """
@@ -233,11 +215,11 @@ class DataCloudLOCAL(DataCloudBase):
         copyfile(item.resolved_cache.dvc, self.storage_path)
         return item
 
-    def _import(self, bucket, i, out, item):
-        tmp_file = self.tmp_file(out)
+    def _import(self, bucket, i, item):
+        tmp_file = self.tmp_file(item.data.dvc)
         try:
             copyfile(i, tmp_file)
-            os.rename(tmp_file, out)
+            item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(i, exc))
             return None
@@ -246,15 +228,15 @@ class DataCloudLOCAL(DataCloudBase):
 
     def pull(self, item):
         Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
-        return self._import(None, self.storage_path, item.resolved_cache.dvc, item)
+        return self._import(None, self.storage_path, item)
 
     def remove(self, item):
         Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
         os.remove(item.resolved_cache.dvc)
 
     def import_data(self, path, item):
-        Logger.debug('import from cloud ' + path + " " + item.cache.relative)
-        return self._import(None, path, item.cache.relative, item)
+        Logger.debug('import from cloud ' + path + " " + item.data.dvc)
+        return self._import(None, path, item)
 
     def _status(self, data_item):
         local = data_item.resolved_cache.relative
@@ -366,8 +348,7 @@ class DataCloudHTTP(DataCloudBase):
         Download single file from url.
         """
 
-        to_file = item.cache.relative
-        tmp_file = self.tmp_file(to_file)
+        tmp_file = self.tmp_file(item.data.dvc)
 
         downloaded, header = self._downloaded_size(tmp_file)
         req = requests.get(url, stream=True, headers=header)
@@ -382,7 +363,7 @@ class DataCloudHTTP(DataCloudBase):
         if not self._verify_md5(req, tmp_file):
             return None
 
-        os.rename(tmp_file, to_file)
+        item.import_cache(tmp_file)
 
         return item
 
@@ -471,10 +452,11 @@ class DataCloudAWS(DataCloudBase):
         """
         return fname + '.download'
 
-    def _import(self, bucket_name, key_name, fname, data_item):
+    def _import(self, bucket_name, key_name, data_item):
 
         bucket = self._get_bucket_aws(bucket_name)
 
+        fname = data_item.data.dvc
         tmp_file = self.tmp_file(fname)
         name = os.path.basename(fname)
         key = bucket.get_key(key_name)
@@ -494,7 +476,7 @@ class DataCloudAWS(DataCloudBase):
                                          num_retries=10)
         try:
             key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
-            os.rename(tmp_file, fname)
+            data_item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key_name, exc))
             return None
@@ -714,10 +696,11 @@ class DataCloudGCP(DataCloudBase):
 
         return False
 
-    def _import(self, bucket_name, key, fname, data_item):
+    def _import(self, bucket_name, key, data_item):
 
         bucket = self._get_bucket_gc(bucket_name)
 
+        fname = data_item.data.dvc
         name = os.path.basename(fname)
         tmp_file = self.tmp_file(fname)
 
@@ -738,7 +721,7 @@ class DataCloudGCP(DataCloudBase):
 
         try:
             blob.download_to_filename(tmp_file)
-            os.rename(tmp_file, fname)
+            data_item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key, exc))
             return None

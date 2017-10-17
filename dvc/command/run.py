@@ -112,12 +112,12 @@ class CmdRun(CmdBase):
         input_set = set(data_items_from_args + input_data_items) - output_set
         input_files_dvc = [x.data.dvc for x in input_set]
 
-        code_dependencies_dvc = self.git.abs_paths_to_dvc(code_dependencies + not_data_items_from_args)
+        code_dependencies_dvc = self.git.abs_paths_to_dvc(set(code_dependencies + not_data_items_from_args))
 
         result = []
         for data_item in repo_change.changed_data_items:
             Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
-                data_item.data.relative, data_item.cache.relative))
+                data_item.data.relative, data_item.cache_dir))
             data_item.move_data_to_cache()
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))

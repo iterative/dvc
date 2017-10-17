@@ -179,10 +179,13 @@ class GitWrapper(GitWrapperI):
 
         Executor.exec_cmd_only_success(['git', 'add', '--all'])
         out_status = Executor.exec_cmd_only_success(['git', 'status', '--porcelain'])
-        Executor.exec_cmd_only_success(['git', 'commit', '-m', message])
-        Logger.debug('[dvc-git] Commit all changes. Success.')
+        changes = GitWrapper.parse_porcelain_files(out_status)
+        if len(changes) == 0:
+            return []
 
-        return GitWrapper.parse_porcelain_files(out_status)
+        Executor.exec_cmd_only_success(['git', 'commit', '-m', '\'{}\''.format(message)])
+        Logger.debug('[dvc-git] Commit all changes. Success.')
+        return changes
 
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
