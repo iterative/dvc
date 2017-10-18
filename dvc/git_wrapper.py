@@ -256,6 +256,22 @@ class GitWrapper(GitWrapperI):
         except ExecutorError:
             return None
 
+    @staticmethod
+    def get_last_merge_changed_files():
+        cmd = 'git diff --name-only @{1}'
+        Logger.debug('[dvc-git] Get last merge changed files. Command: {}'.format(cmd))
+        try:
+            fstr = Executor.exec_cmd_only_success(cmd.split())
+            return fstr.split('\n')
+        except ExecutorError:
+            return None
+
+    @staticmethod
+    def checkout_file_before_last_merge(fname):
+        cmd = 'git checkout @{1} -- ' + fname
+        Logger.debug('[dvc-git] Checkout file {} before last merge. Command: {}'.format(fname, cmd))
+        Executor.exec_cmd_only_success(cmd.split())
+
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []
         code_dirs = []

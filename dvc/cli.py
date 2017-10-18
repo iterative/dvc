@@ -16,6 +16,7 @@ from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
+from dvc.command.merge import CmdMerge
 from dvc import VERSION
 
 
@@ -406,6 +407,13 @@ def parse_args(argv=None):
                         help='Max commits per graph vertex. 4 by default.')
 
     workflow_parser.set_defaults(func=CmdShowWorkflow)
+
+    # Merge
+    merge_parser = subparsers.add_parser(
+                        'merge',
+                        parents=[parent_parser],
+                        help='Merge')
+    merge_parser.set_defaults(func=CmdMerge)
 
     if isinstance(argv, str):
         argv = argv.split()
