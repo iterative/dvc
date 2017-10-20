@@ -113,7 +113,13 @@ class StateFile(object):
 
     @staticmethod
     def parse_target_metric(file_name):
-        lines = open(file_name).readlines(2)
+        fd = open(file_name, 'r')
+
+        try:
+            lines = fd.readlines(2)
+        except Exception as e:
+            raise StateFileError('Unable to parse target file')
+
         if len(lines) != 1:
             raise StateFileError('file contains more then one line')
 
