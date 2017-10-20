@@ -8,6 +8,7 @@ TESTS+=" test-init.sh"
 TESTS+=" test-import.sh"
 TESTS+=" test-sync.sh"
 TESTS+=" test-repro-code.sh"
+TESTS+=" test-merge.sh"
 
 for t in $TESTS; do
 	rm -rf $TEST_REPO

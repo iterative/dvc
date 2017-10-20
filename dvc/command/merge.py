@@ -10,37 +10,37 @@ class CmdMerge(CmdBase):
         super(CmdMerge, self).__init__(settings)
 
     def print_info(self, targets):
-        for fname in targets:
+        for item in targets:
             Logger.info('Restored original data after merge:')
-            Logger.info(' {}'.format(fname))
+            Logger.info(' {}'.format(item.data.relative))
 
     def collect_targets(self):
         targets = []
         flist = self.git.get_last_merge_changed_files()
-        for fname in flist:
-            try:
-                item = self.settings.path_factory.data_item(fname)
-            except NotInDataDirError:
-                continue
+        items = self.settings.path_factory.to_data_items(flist)[0]
 
+        for item in items:
             try:
                 state = StateFile.load(item, self.git)
             except Exception as ex:
-                Logger.error('Failed to load state file for {}'.format(fname), exc_info=True)
+                Logger.error('Failed to load state file for {}'.format(item.data.relative), exc_info=True)
                 return None
 
             if not state.command == StateFile.COMMAND_IMPORT_FILE:
                 continue
 
-            targets.append(fname)
+            targets.append(item)
 
         return targets
 
     def checkout_targets(self, targets):
-        for fname in targets:
-            self.git.checkout_file_before_last_merge(fname)
+        data = []
+        for item in targets:
+            self.git.checkout_file_before_last_merge(item.data.relative)
+            self.git.checkout_file_before_last_merge(item.state.relative)
+            data.append(item.data.relative)
 
-        msg = 'DVC merge files: {}'.format(' '.join(targets))
+        msg = 'DVC merge files: {}'.format(' '.join(data))
         self.commit_if_needed(msg)
 
     def run(self):

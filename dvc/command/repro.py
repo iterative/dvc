@@ -78,7 +78,7 @@ class CmdRepro(CmdRun):
 
         for data_item in data_item_list:
             try:
-                target_commit = self.git.get_target_commit(data_item.data.relative)
+                target_commit = self.git.get_target_commit(data_item.state.relative)
                 if target_commit is None:
                     msg = 'Data item "{}" cannot be reproduced: cannot obtain commit hashsum'
                     Logger.warn(msg.format(data_item.data.relative))
