@@ -16,7 +16,7 @@ class ConfigError(DvcException):
 
 class ConfigI(object):
     """ Basic config instance """
-    CONFIG_DIR = '.dvc'
+    CONFIG_DIR = os.path.join(os.getenv('DVC_ROOT', ''), '.dvc')
     TARGET_FILE_DEFAULT = 'target'
     CONFIG = 'config'
     STATE_DIR = 'state'
