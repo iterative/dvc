@@ -53,10 +53,12 @@ cat data/eval_auc.txt
 
 
 git checkout input_100K
-git merge -s theirs input_25K
+git merge input_25K # git merge -X theirs input_25K
+# Resolve conflicts by hends!!!
 git add .
-git commit -m 'After merge'
-dvc repro -f
+git commit -m 'Merge conflicts'
+dvc merge
+dvc repro       # <-- Error. Reproducng Posts.xml and Posts.tsv
 
 
 # Improve the model:
@@ -84,13 +86,23 @@ dvc repro
 cat data/eval_auc.txt
 # 0.621002
 
-git checkout 2195f1032 -b three_grams # <--  you should find hash by git log
-dvc repro # not needed
-cat data/eval_auc.txt
-# 0.630682
+# Create a branch for unsuccessful commit
+git checkout -b four_grams
+# The last successful commit which is the second last humman-created commit
+git log --pretty=oneline | grep -v "DVC repro-run: " | head -n 2 | tail -n 1
+# Move the current HEAD to the last successful commit
+git branch -f input_25K `git log --pretty=oneline | grep -v "DVC repro-run: " | head -n 2 | tail -n 1 | cut -d" " -f1`
+git checkout input_25K
+
+# Continue to optimize the target metrics
+vi code/train_model.py  # Change: min_samples_split=5
+git commit -am 'min_samples_split=5'
+dvc repro
 
 git checkout input_100K
-git merge -s theirs input_25K
+git merge -X theirs input_25K
+git add data/
+git commit -am "After merge"
 dvc repro
 
 ##
