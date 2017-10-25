@@ -3,7 +3,6 @@ import json
 from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.state_file import StateFile
-from dvc.path.data_item import NotInDataDirError
 
 class CmdMerge(CmdBase):
     def __init__(self, settings):

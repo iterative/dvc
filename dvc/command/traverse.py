@@ -44,10 +44,6 @@ class Traverse(CmdBase):
                     msg = '[TraverseFileTree] Directory "%s" cannot be traversed. Use --recurcive flag.'
                     raise TraverseError(msg % target)
 
-                if self._do_not_start_from_root and self.settings.path_factory.data_item(target).data_dvc_short == '':
-                    # The entire data directory
-                    raise TraverseError('[Traverse] Root data directory "%s" cannot be traversed' % target)
-
                 self._traverse_dir(target)
             else:
                 self.process_file(target)

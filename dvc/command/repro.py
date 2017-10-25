@@ -6,7 +6,7 @@ from dvc.command.import_file import CmdImportFile
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.path.data_item import NotInDataDirError
+from dvc.path.data_item import DataDirError
 from dvc.state_file import StateFile
 from dvc.system import System
 
@@ -64,8 +64,8 @@ class CmdRepro(CmdRun):
 
         data_item_list, external_files_names = self.settings.path_factory.to_data_items(target)
         if external_files_names:
-            Logger.error('Files from outside of the data directory "{}" could not be reproduced: {}'.
-                         format(self.config.data_dir, ' '.join(external_files_names)))
+            Logger.error('Files from outside of the repo could not be reproduced: {}'.
+                         format(' '.join(external_files_names)))
             return 1
 
         if self.repro_data_items(data_item_list, recursive, force):
@@ -303,7 +303,7 @@ class ReproChange(object):
         for input_file in self.state.input_files:
             try:
                 data_item = self._settings.path_factory.data_item(input_file)
-            except NotInDataDirError:
+            except DataDirError:
                 raise ReproError(u'The dependency file "{}" is not a data item'.format(input_file))
             except Exception as ex:
                 raise ReproError(u'Unable to reproduced the dependency file "{}": {}'.format(

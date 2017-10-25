@@ -36,4 +36,4 @@ class StatedDataItem(DataItem):
         return self.is_new or self.is_modified or self.is_removed
 
     def __repr__(self):
-        return u'({}, {})'.format(self.state, self.data_dvc_short)
+        return u'({}, {})'.format(self.state, self.data.dvc)

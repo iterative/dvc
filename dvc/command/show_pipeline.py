@@ -34,7 +34,7 @@ class CmdShowPipeline(Traverse):
 
     def draw_targets(self, target):
         if not target:
-            target = self.settings.config.data_dir
+            target = '.'
             return self.draw(self.g, target, target)
 
         for t in self.parsed_args.target:
@@ -49,7 +49,7 @@ class CmdShowPipeline(Traverse):
 
     def run(self):
         saved_targets = self.settings.parsed_args.target
-        self.settings.parsed_args.target = [self.settings.config.data_dir]
+        self.settings.parsed_args.target = ['.']
  
         ret = super(CmdShowPipeline, self).run()
 
@@ -70,7 +70,7 @@ class CmdShowPipeline(Traverse):
         name = data_item.data.relative
         state = StateFile.load(data_item, self.git)
 
-        if name == os.path.join(self.settings.config.data_dir, CmdInit.EMPTY_FILE_NAME):
+        if name == os.path.join('.', CmdInit.EMPTY_FILE_NAME):
             return
 
         self.g.add_node(name)

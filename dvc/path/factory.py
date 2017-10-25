@@ -1,6 +1,6 @@
 import os
 
-from dvc.path.data_item import DataItem, DataItemError, NotInDataDirError
+from dvc.path.data_item import DataItem, DataItemError, DataDirError
 from dvc.path.path import Path
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.system import System
@@ -26,7 +26,7 @@ class PathFactory(object):
         return self.existing_data_item(path.relative)
 
     def is_data_item(self, fname):
-        data = os.path.relpath(os.path.realpath(fname), self._config.data_dir)
+        data = os.path.relpath(os.path.realpath(fname), self._git.git_dir_abs)
         state = os.path.join(self._config.state_dir, data + DataItem.STATE_FILE_SUFFIX)
         return os.path.isfile(state)
 
@@ -44,7 +44,7 @@ class PathFactory(object):
             try:
                 data_item = DataItem(file, self._git, self._config)
                 result.append(data_item)
-            except NotInDataDirError:
+            except DataDirError:
                 externally_created_files.append(file)
 
         return result, externally_created_files

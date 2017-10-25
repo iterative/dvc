@@ -4,7 +4,7 @@ from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.executor import Executor
 from dvc.logger import Logger
-from dvc.path.data_item import NotInDataDirError, DataItemInStatusDirError
+from dvc.path.data_item import DataDirError, DataItemInStatusDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
 
@@ -76,7 +76,7 @@ class RepositoryChange(object):
                          item.data.dvc))
         except DataItemInStatusDirError:
             self._created_status_files.append(file)
-        except NotInDataDirError:
+        except DataDirError:
             self._externally_created_files.append(file)
         pass
 
@@ -116,7 +116,7 @@ class RepositoryChange(object):
 
     def data_file_timesteps(self):
         res = set()
-        for root, dirs, files in os.walk(self._settings.config.data_dir):
+        for root, dirs, files in os.walk('.'):
             for file in files:
                 filename = os.path.join(root, file)
                 if os.path.exists(filename):

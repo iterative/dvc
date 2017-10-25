@@ -5,7 +5,7 @@ from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
-from dvc.path.data_item import NotInDataDirError, NotInGitDirError
+from dvc.path.data_item import DataDirError, NotInGitDirError
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
