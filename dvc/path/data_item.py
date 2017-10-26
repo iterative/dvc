@@ -125,15 +125,10 @@ class DataItem(object):
     def state_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
-    @property
-    def symlink_file(self):
-        data_file_dir = os.path.dirname(self.data.relative)
-        return os.path.relpath(self.cache.relative, data_file_dir)
-
     def move_data_to_cache(self):
-        self.import_cache(self.data.relative)
-        System.symlink(self.symlink_file, self.data.relative)
-
-    def import_cache(self, fname):
-        self._cache_file = os.path.join(self.cache_dir, file_md5(fname)[0])
-        os.rename(fname, self._cache_file)
+        md5 = file_md5(self.data.relative)[0]
+        self._cache_file = os.path.join(self.cache_dir, md5)
+        self._git.modify_gitignore([self.data.relative])
+        if os.path.isfile(self.cache.relative):
+            return
+        System.hardlink(self.data.relative, self.cache.relative)

@@ -119,9 +119,6 @@ class ReproChange(object):
         self._recursive = recursive
         self._force = force
 
-        if not System.islink(data_item.data.relative):
-            raise ReproError('data item {} is not symlink'.format(data_item.data.relative))
-
         try:
             self._state = StateFile.load(data_item, self.git)
         except Exception as ex:
@@ -246,8 +243,8 @@ class ReproChange(object):
                 result = True
                 Logger.debug(u'Repro data item {}: dependency {} was changed'.format(
                     data_item_dvc, data_item.data.dvc))
-            elif data_item.data.dvc in self._globally_changed_files:
-                msg = u'Repro data item {}: dependency {} was not changed but the data item global checksum was changed'
+            elif data_item.state.dvc in self._globally_changed_files:
+                msg = u'Repro data item {}: dependency {} was not changed but the state file was changed'
                 Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
                 result = True
             else:

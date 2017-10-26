@@ -25,11 +25,16 @@ class PathFactory(object):
         path = Path.from_dvc_path(dvc_path, self._git)
         return self.existing_data_item(path.relative)
 
-    def existing_data_item(self, file):
-        if not System.islink(file):
-            raise DataItemError(u'Data file "%s" must be a symbolic link' % file)
-        resolved_symlink = System.realpath(file)
-        return DataItem(file, self._git, self._config, resolved_symlink)
+    def is_data_item(self, fname):
+        data = os.path.relpath(os.path.realpath(fname), self._config.data_dir)
+        state = os.path.join(self._config.state_dir, data + DataItem.STATE_FILE_SUFFIX)
+        return os.path.isfile(state)
+
+    def existing_data_item(self, fname):
+        if not self.is_data_item(fname):
+            raise DataItemError(u'No state file found for data file {}'.format(fname))
+
+        return DataItem(fname, self._git, self._config)
 
     def to_data_items(self, files):
         result = []

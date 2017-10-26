@@ -72,7 +72,7 @@ class Traverse(CmdBase):
         try:
             data_item = self.settings.path_factory.existing_data_item(target)
         except DataItemError:
-            Logger.warn(u'[TraverseFileTree] Data file {} is not valid symbolic link'.format(target))
+            Logger.warn(u'[TraverseFileTree] Data file {} does not have existing state file'.format(target))
             data_item = self.settings.path_factory.data_item(target)
 
         return data_item

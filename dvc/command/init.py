@@ -116,16 +116,11 @@ ProjectName =
         conf_file.write(self.CONFIG_TEMPLATE.format(data_dir_path.name))
         conf_file.close()
 
-        message = 'DVC init. data dir {}, cache dir {}, state dir {}, '.format(
-                        data_dir_path.name,
-                        cache_dir_path.name,
-                        state_dir_path.name
-        )
-        if self.commit_if_needed(message) == 1:
-            return 1
+        self.git.modify_gitignore([os.path.join(config_dir_path.name, cache_dir_path.name),
+                                   os.path.join(config_dir_path.name, os.path.basename(self.git.lock_file))])
 
-        self.modify_gitignore(config_dir_path.name, cache_dir_path.name)
-        return self.commit_if_needed('DVC init. Commit .gitignore file')
+        message = 'DVC init. cache dir {}, state dir {}, '.format(cache_dir_path.name, state_dir_path.name)
+        return self.commit_if_needed(message)
 
     def create_empty_file(self):
         empty_data_path = os.path.join(self.parsed_args.data_dir, self.EMPTY_FILE_NAME)
@@ -141,14 +136,3 @@ ProjectName =
                   output_files=[],
                   lock=False).save(is_update_target_metrics=False)
         pass
-
-    def modify_gitignore(self, config_dir_name, cache_dir_name):
-        gitignore_file = os.path.join(self.git.git_dir, '.gitignore')
-        if not os.path.exists(gitignore_file):
-            open(gitignore_file, 'a').close()
-            Logger.info('File .gitignore was created')
-        with open(gitignore_file, 'a') as fd:
-            fd.write('\n{}'.format(os.path.join(config_dir_name, cache_dir_name)))
-            fd.write('\n{}'.format(os.path.join(config_dir_name, os.path.basename(self.git.lock_file))))
-
-        Logger.info('Directory {} was added to .gitignore file'.format(cache_dir_name))
