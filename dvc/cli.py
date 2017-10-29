@@ -17,6 +17,7 @@ from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.merge import CmdMerge
+from dvc.command.checkout import CmdCheckout
 from dvc import VERSION
 
 
@@ -411,6 +412,13 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Merge')
     merge_parser.set_defaults(func=CmdMerge)
+
+    # Checkout
+    checkout_parser = subparsers.add_parser(
+                        'checkout',
+                        parents=[parent_parser],
+                        help='Checkout')
+    checkout_parser.set_defaults(func=CmdCheckout)
 
     if isinstance(argv, str):
         argv = argv.split()

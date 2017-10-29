@@ -48,3 +48,17 @@ class PathFactory(object):
                 externally_created_files.append(file)
 
         return result, externally_created_files
+
+    def all_existing_data_items(self):
+        items = []
+        states = []
+
+        for root, dirs, files in os.walk(self._config.state_dir):
+            for fname in files:
+                states.append(os.path.join(root, fname))
+
+        for state in states:
+            data = os.path.relpath(state, self._config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
+            items.append(self.existing_data_item_from_dvc_path(data))
+
+        return items
