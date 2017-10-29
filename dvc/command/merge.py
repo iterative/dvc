@@ -1,8 +1,11 @@
+import os
 import json
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.state_file import StateFile
+from dvc.path.data_item import DataItem
+from dvc.system import System
 
 class CmdMerge(CmdBase):
     def __init__(self, settings):
@@ -13,9 +16,18 @@ class CmdMerge(CmdBase):
             Logger.info('Restored original data after merge:')
             Logger.info(' {}'.format(item.data.relative))
 
+    def collect_data(self):
+        dlist = []
+        flist = self.git.get_last_merge_changed_files()
+        for fname in flist:
+            if fname.startswith(self.settings.config.state_dir) and fname.endswith(DataItem.STATE_FILE_SUFFIX):
+                data = os.path.relpath(fname, self.settings.config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
+                dlist.append(data)
+        return dlist
+
     def collect_targets(self):
         targets = []
-        flist = self.git.get_last_merge_changed_files()
+        flist = self.collect_data()
         items = self.settings.path_factory.to_data_items(flist)[0]
 
         for item in items:
@@ -35,8 +47,15 @@ class CmdMerge(CmdBase):
     def checkout_targets(self, targets):
         data = []
         for item in targets:
-            self.git.checkout_file_before_last_merge(item.data.relative)
             self.git.checkout_file_before_last_merge(item.state.relative)
+
+            # Reload data item, so we can get restored cache
+            new_item = self.settings.path_factory.data_item(item.data.relative)
+            if os.path.isfile(new_item.data.relative):
+                os.remove(new_item.data.relative)
+
+            System.hardlink(new_item.cache.relative, new_item.data.relative)
+
             data.append(item.data.relative)
 
         msg = 'DVC merge files: {}'.format(' '.join(data))
