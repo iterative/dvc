@@ -1,4 +1,25 @@
-body, html {
+html {
+  padding: 0px;
+  margin: 0px;
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  }
+
+body {
+  font-family: medium-content-sans-serif-font, "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Arial, sans-serif !important;
+  letter-spacing: 0;
+  font-weight: 500;
+  font-style: normal;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -moz-font-feature-settings: "liga" on;
+  color: black;
+  font-size: 18px;
+  line-height: 1.4;
+  }
+
+/* body, html {
     margin: 15px;
     padding: 5px;
 	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif;
@@ -11,12 +32,11 @@ body {
     color: #444;
     background: #fff;
 	
-	max-width: 1000px;
 	margin-left: auto;
 	margin-right: auto;
 	margin-bottom: 15px;
 	min-height: 200px; 
-}
+} */
 
 img {
     height:auto;
@@ -41,30 +61,30 @@ strong {
 
 h1 {
 	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
-    font-weight: 300;
+    font-weight: 600;
     margin: 10px 0;
     line-height: 40px;
-    color: inherit;
+    color: #8b0000; /* darkred */
     text-rendering: optimizelegibility;
 	font-size: 50px;
 }
 
 h2 {
 	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
-    font-weight: 300;
+    font-weight: 500;
     margin: 10px 0;
     line-height: 40px;
-    color: inherit;
+    color: #8b0000; /* darkred */;
     text-rendering: optimizelegibility;
     font-size: 36px;
 }
 
 h3 {
 	font-family: "Lora", Helvetica, Arial, "Lucida Grande", sans-serif; 
-    font-weight: 300;
+    font-weight: 400;
     margin: 10px 0;
     line-height: 40px;
-    color: inherit;
+    color: #8b0000; /* darkred */;
     text-rendering: optimizelegibility;
     font-size: 24.5px;
 }
@@ -84,7 +104,7 @@ h5 {
     font-weight: 300;
     margin: 10px 0;
     line-height: 20px;
-    color: inherit;
+    color: #8b0000; /* darkred */;
     text-rendering: optimizelegibility;
     font-size: 14px;
 }
@@ -94,7 +114,7 @@ h6 {
     font-weight: 300;
     margin: 10px 0;
     line-height: 20px;
-    color: inherit;
+    color: #8b0000; /* darkred */;
     text-rendering: optimizelegibility;
     font-size: 11.9px;
 }
@@ -415,6 +435,11 @@ code {
 
 
 /* Content Styles */
+
+.content-container {
+	max-width: 1000px;
+}
+
 section { padding: 1em 0 3em; text-align: center; }
 .vibrant { background: #222; color: #fff; }
 
