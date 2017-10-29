@@ -106,7 +106,7 @@ function dvc_create_repo() {
 
 	dvc init
 
-	mkdir data/xml
+	mkdir -p data/xml
 	dvc import $DATA_CACHE/* data/xml
 }
 
