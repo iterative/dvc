@@ -91,19 +91,6 @@ class DataItem(object):
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
 
-    def get_all_caches(self):
-        result = []
-
-        suffix_len = self._git.COMMIT_LEN + len(self.CACHE_FILE_SEP)
-        cache_prefix = os.path.basename(self.resolved_cache.relative[:-suffix_len])
-
-        for cache_file in os.listdir(self.resolved_cache.dirname):
-            if cache_file[:-suffix_len] == cache_prefix:
-                data_item = self.copy(os.path.join(self.resolved_cache.dirname, cache_file))
-                result.append(data_item)
-
-        return result
-
     @cached_property
     def resolved_cache(self):
         resolved_cache = os.path.realpath(self._data.relative)

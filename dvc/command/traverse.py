@@ -53,6 +53,9 @@ class Traverse(CmdBase):
             return False
 
     def _traverse_dir(self, target):
+        if target == self.settings.config.CONFIG_DIR:
+            return
+
         for f in os.listdir(target):
             file = os.path.join(target, f)
             if os.path.isdir(file):

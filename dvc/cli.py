@@ -245,9 +245,6 @@ def parse_args(argv=None):
                         'gc',
                         parents=[parent_parser],
                         help='Collect garbage')
-    gc_parser.add_argument('target',
-                        nargs='*',
-                        help='Target to remove - file or directory.')
     gc_parser.add_argument('-l',
                         '--keep-in-cloud',
                         action='store_true',
