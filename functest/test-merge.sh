@@ -18,7 +18,7 @@ git commit -s -m"add code"
 
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/50K/Posts.xml.tgz data/data
 
-ORIG_DATA=$(readlink -- data/data)
+ORIG_DATA=$(dvc_md5 data/data)
 
 dvc run ./code/code1.sh data/data data/data1
 dvc run ./code/code2.sh data/data1 data/data2
@@ -30,7 +30,7 @@ git commit -am 'Set Target'
 
 # Create new branch to work on small data set
 git checkout -b input_10K
-dvc remove data/data
+dvc remove -c -l data/data
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/10K/Posts.xml.tgz data/data
 dvc repro
 
@@ -46,10 +46,10 @@ git merge input_10K
 dvc merge
 
 # Verify that data and respective state file are restored properly
-if [ "$(readlink -- "data/data")" != "$ORIG_DATA" ]; then
+if [ "$(dvc_md5 data/data)" != "$ORIG_DATA" ]; then
 	dvc_fail
 fi
 
-grep $(basename "$ORIG_DATA") .dvc/state/data.state || dvc_fail
+grep $(echo "$ORIG_DATA" | cut -d " " -f1) .dvc/state/data/data.state || dvc_fail
 
 dvc_pass
