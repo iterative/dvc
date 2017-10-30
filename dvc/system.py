@@ -24,6 +24,13 @@ class System(object):
         raise Exception('Not Implemented Yet')
 
     @staticmethod
+    def samefile(path1, path2):
+        if System.is_unix():
+            return os.path.samefile(path1, path2)
+
+        raise Exception('Not Implemented Yet')
+
+    @staticmethod
     def realpath(path):
         # It is definitely not the best way to check a symlink.
 

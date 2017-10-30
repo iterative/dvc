@@ -1,5 +1,4 @@
 import os
-from stat import ST_INO, ST_DEV
 
 from dvc.command.base import CmdBase, DvcLock
 from dvc.logger import Logger
@@ -17,10 +16,7 @@ class CmdCheckout(CmdBase):
         if not os.path.isfile(data) or not os.path.isfile(cache):
             return False
 
-        data_st = os.stat(data)
-        cache_st = os.stat(cache)
-
-        if (data_st[ST_INO], data_st[ST_DEV]) != (cache_st[ST_INO], cache_st[ST_DEV]):
+        if not System.samefile(data, cache):
             return False
 
         return True
