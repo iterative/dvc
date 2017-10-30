@@ -139,8 +139,8 @@ class TestRemoveEndToEndWithAnError(DirHierarchyEnvironment):
         DirHierarchyEnvironment.init_environment(self)
 
     def test(self):
-        dir11_full = os.path.join(self._config.data_dir, self.dir11)
-        dir2_full = os.path.join(self._config.data_dir, self.dir2)
+        dir11_full = os.path.join('data', self.dir11)
+        dir2_full = os.path.join('data', self.dir2)
 
         self.settings.parse_args('remove --no-git-actions --keep-in-cloud --recursive {} {}'.format(dir11_full, self.file5))
         cmd = CmdRemove(self.settings)

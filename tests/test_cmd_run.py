@@ -55,16 +55,6 @@ class RunBasicTest(TestCase):
         os.chdir(self._old_curr_dir_abs)
 
 
-class TestRunOutsideData(RunBasicTest):
-    def test(self):
-        self.settings._args = []
-        cmd_run = CmdRun(self.settings)
-        with self.assertRaises(RunError):
-            cmd_run.run_command(['echo', 'test'], [], [], shell=True,
-                                stdout='file1', stderr='file2')
-        pass
-
-
 class RunTwoFilesBase(RunBasicTest):
     def setUp(self):
         super(RunTwoFilesBase, self).setUp()
@@ -82,8 +72,8 @@ class RunTwoFilesBase(RunBasicTest):
                                               stdout=self.file_name1,
                                               stderr=self.file_name2)
 
-        self.state_file_name1 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file1' + DataItem.STATE_FILE_SUFFIX)
-        self.state_file_name2 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file2' + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name1 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, self.file_name1 + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name2 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, self.file_name2 + DataItem.STATE_FILE_SUFFIX)
 
         self.state_file1 = None
         self.state_file2 = None

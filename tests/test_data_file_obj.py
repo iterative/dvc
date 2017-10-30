@@ -2,7 +2,7 @@ import os
 
 from dvc.config import ConfigI
 from dvc.git_wrapper import GitWrapperI
-from dvc.path.data_item import NotInDataDirError, DataItemError, DataItem
+from dvc.path.data_item import DataDirError, DataItemError, DataItem
 from dvc.path.factory import PathFactory
 from dvc.system import System
 from tests.basic_env import BasicEnvironment
@@ -13,7 +13,7 @@ class TestDataFileObjBasic(BasicEnvironment):
         BasicEnvironment.init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))
 
         git = GitWrapperI(git_dir=self._test_git_dir, commit='ad45ba8')
-        config = ConfigI('data')
+        config = ConfigI()
 
         file = os.path.join('data', 'file.txt')
         self.cache_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'file.txt_ad45ba8')
@@ -28,12 +28,8 @@ class TestDataFileObjBasic(BasicEnvironment):
         self.assertEqual(self._data_path.cache.abs, self.cache_file_full_path)
 
     def test_state_file(self):
-        state_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file.txt.state')
+        state_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file.txt.state')
         self.assertEqual(self._data_path.state.abs, state_file_full_path)
-
-    def test_data_dvs_short(self):
-        self.assertEqual(self._data_path.data_dvc_short, 'file.txt')
-        pass
 
 
 class TestDataItemWithGivenCache(BasicEnvironment):
@@ -52,9 +48,6 @@ class TestDataItemWithGivenCache(BasicEnvironment):
     def test_basic(self):
         self.assertEqual(self._data_item.data.relative, self._file)
         self.assertEqual(self._data_item.cache.relative, self._cache)
-
-    def test_resolve_unexist_symlink(self):
-        self.assertEqual(self._data_item.resolved_cache.relative, self._file)
 
 
 class TestDeepDataItemWithGivenCache(BasicEnvironment):
@@ -80,18 +73,22 @@ class TestPathFactory(BasicEnvironment):
         BasicEnvironment.init_environment(self, test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'))
 
         git = GitWrapperI(git_dir=self._test_git_dir, commit='ad45ba8')
-        config = ConfigI('data')
+        config = ConfigI()
         self.path_factory = PathFactory(git, config)
 
         self.data_file = os.path.join('data', 'file.txt')
-        self.cache_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'fsymlinc.txt')
+        dummy_md5 = 'fsymlinc.txt'
+        self.cache_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dummy_md5)
+        self.state_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file.txt' + DataItem.STATE_FILE_SUFFIX)
 
-        fd = open(self.cache_file, 'w+')
-        fd.write('some text')
-        fd.close()
+        with open(self.cache_file, 'w+') as fd:
+            fd.write('some text')
+
+        with open(self.state_file, 'w+') as fd:
+            fd.write('{"Md5" : "' + dummy_md5 + '", "Command" : "run", "Cwd" : "dir"}')
 
         os.chdir('data')
-        System.symlink(os.path.join('..', self.cache_file), 'file.txt')
+        System.hardlink(os.path.join('..', self.cache_file), 'file.txt')
         os.chdir('..')
         pass
 
@@ -104,17 +101,17 @@ class TestPathFactory(BasicEnvironment):
         self.assertEqual(data_path_indirect.data.dvc, self.data_file)
         pass
 
-    def test_data_symlink_factory(self):
+    def test_data_hardlink_factory(self):
         data_path = self.path_factory.existing_data_item(self.data_file)
         self.assertEqual(data_path.cache.dvc, self.cache_file)
         pass
 
-    def test_data_symlink_factory_cache(self):
+    def test_data_hardlink_factory_cache(self):
         data_path = self.path_factory.existing_data_item(self.data_file)
         self.assertEqual(data_path.data.dvc, self.data_file)
         pass
 
-    def test_data_symlink_factory_exception(self):
+    def test_data_hardlink_factory_exception(self):
         with self.assertRaises(DataItemError):
             self.path_factory.existing_data_item(self.cache_file)
         pass
@@ -126,25 +123,6 @@ class TestPathFactory(BasicEnvironment):
         self.assertEqual(path.relative, file)
         self.assertTrue(path.abs.endswith(file))
 
-    def test_to_data_path(self):
-        exclude_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'file2')
-        data_path_file1 = os.path.join('data', 'file1')
-        data_path_file2 = os.path.join('data', 'file2')
-        files = [
-            data_path_file1,
-            exclude_file,
-            data_path_file2
-        ]
-
-        data_path_list, exclude_file_list = self.path_factory.to_data_items(files)
-
-        self.assertEqual(len(data_path_list), 2)
-        self.assertEqual(len(exclude_file_list), 1)
-
-        self.assertEqual(exclude_file_list[0], exclude_file)
-        data_path_set = set(x.data.dvc for x in data_path_list)
-        self.assertEqual(data_path_set, {data_path_file1, data_path_file2})
-
 
 class TestDataPathInDataDir(BasicEnvironment):
     def setUp(self):
@@ -152,7 +130,7 @@ class TestDataPathInDataDir(BasicEnvironment):
 
         git = GitWrapperI(git_dir=self._test_git_dir, commit='eeeff8f')
         self.data_dir = 'da'
-        config = ConfigI(self.data_dir)
+        config = ConfigI()
         self.path_factory = PathFactory(git, config)
 
         deep_path = os.path.join(self.data_dir, 'dir1', 'd2', 'file.txt')
@@ -168,17 +146,8 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.assertEqual(self.data_path.cache.abs, self.cache_file)
 
     def test_state_file(self):
-        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'dir1', 'd2', 'file.txt.state')
+        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'da', 'dir1', 'd2', 'file.txt.state')
         self.assertEqual(self.data_path.state.abs, target)
-
-    def test_symlink(self):
-        expected = os.path.join('..', '..', '..', ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'dir1', 'd2', 'file.txt_eeeff8f')
-        self.assertEqual(self.data_path.symlink_file, expected)
-
-    def test_data_dir(self):
-        data_path = self.path_factory.data_item(self.data_dir)
-        self.assertEqual(data_path.data.dvc, self.data_dir)
-        self.assertEqual(data_path.data_dvc_short, '')
 
 
 class TestDataFileObjLongPath(BasicEnvironment):
@@ -205,23 +174,8 @@ class TestDataFileObjLongPath(BasicEnvironment):
         self.assertEqual(self.data_path.cache.abs, self.cache_file)
 
     def test_state_file(self):
-        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'file1.txt.state')
+        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file1.txt.state')
         self.assertEqual(self.data_path.state.abs, target)
-
-    def test_file_name_only(self):
-        with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_item('file.txt')
-        pass
-
-    def test_relative_git_dir(self):
-        with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_item('data/file.txt')
-        pass
-
-    def test_relative_path_error(self):
-        with self.assertRaises(NotInDataDirError):
-            self.path_factory.data_item('../data/file.txt')
-        pass
 
 
 class RunOutsideGitRepoTest(BasicEnvironment):
@@ -237,6 +191,6 @@ class RunOutsideGitRepoTest(BasicEnvironment):
         config = ConfigI('data')
         path_factory = PathFactory(git, config)
 
-        with self.assertRaises(NotInDataDirError):
+        with self.assertRaises(DataDirError):
             path_factory.data_item('file.txt')
         pass

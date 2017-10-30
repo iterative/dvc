@@ -26,7 +26,7 @@ class BasicTestRepositoryChange(TestCase):
         subprocess.Popen(['git', 'init'], stdout=self._devnull, stderr=None).wait()
 
         self.git = GitWrapperI(self.test_dir)
-        self.config = ConfigI('data', 'cache', 'state')
+        self.config = ConfigI()
         self.path_factory = PathFactory(self.git, self.config)
         self.settings = Settings([], self.git, self.config)
 
@@ -96,16 +96,3 @@ class TestRepositoryChangeDeepInDirectory(BasicTestRepositoryChange):
         self.assertEqual([x.data.dvc for x in change.new_data_items], [deep_file])
 
 
-class TestRepositoryChangeExternallyCreated(BasicTestRepositoryChange):
-    def test(self):
-        not_in_data_dir_file = 'file1.txt'
-        self.create_file(not_in_data_dir_file)
-
-        change = RepositoryChange(['echo', 'textsd'],
-                                  self.settings,
-                                  not_in_data_dir_file,
-                                  None,
-                                  shell=True)
-
-        self.assertEqual([System.realpath(not_in_data_dir_file)],
-                         change.externally_created_files)

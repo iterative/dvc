@@ -1,5 +1,6 @@
 import os
 import tempfile
+import filecmp
 from copy import copy
 
 from dvc.command.import_file import CmdImportFile, ImportFileError
@@ -26,7 +27,7 @@ class TestCmdRemove(DirHierarchyEnvironment):
             data_item = self.path_factory.existing_data_item(dvc_name)
 
             self.assertTrue(os.path.exists(data_item.data.relative))
-            self.assertTrue(os.path.islink(data_item.data.relative))
+            self.assertTrue(filecmp.cmp(data_item.data.relative, data_item.cache.relative))
             self.assertEqual(open(data_item.data.relative).read(), content)
 
             self.assertTrue(os.path.exists(data_item.cache.relative))
