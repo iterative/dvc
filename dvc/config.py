@@ -22,22 +22,15 @@ class ConfigI(object):
     STATE_DIR = 'state'
     CACHE_DIR = 'cache'
 
-    def __init__(self, data_dir=None, cloud=None, conf_parser=None):
-        self._data_dir = None
+    def __init__(self, cloud=None, conf_parser=None):
         self._conf_parser = None
         self._cloud = None
-        self.set(data_dir, cloud, conf_parser)
+        self.set(cloud, conf_parser)
 
-    def set(self, data_dir, cloud=None, conf_parser=None):
+    def set(self, cloud=None, conf_parser=None):
         """ Set config params """
-        self._data_dir = data_dir
         self._cloud = cloud
         self._conf_parser = conf_parser
-
-    @property
-    def data_dir(self):
-        """ Directory with data files """
-        return self._data_dir
 
     @property
     def cache_dir(self):
@@ -82,8 +75,7 @@ class Config(ConfigI):
         level = self._config['Global']['LogLevel']
         Logger.set_level(level)
 
-        super(Config, self).__init__(self._config['Global']['DataDir'],
-                                     self._config['Global']['Cloud'],
+        super(Config, self).__init__(self._config['Global']['Cloud'],
                                      self._config)
 
     @property

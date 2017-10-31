@@ -5,7 +5,7 @@ import json
 import re
 
 from dvc.exceptions import DvcException
-from dvc.path.data_item import NotInDataDirError
+from dvc.path.data_item import DataDirError
 from dvc.system import System
 
 
@@ -248,7 +248,7 @@ class StateFile(object):
             try:
                 data_item = self.settings.path_factory.data_item(arg)
                 result.append(data_item.data.dvc)
-            except NotInDataDirError:
+            except DataDirError:
                 result.append(arg)
 
         return result

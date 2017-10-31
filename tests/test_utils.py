@@ -1,8 +1,6 @@
 import os
 import shutil
 import filecmp
-from random import randint
-from time import sleep
 
 from dvc import utils
 from tests.basic_env import DirHierarchyEnvironment
@@ -48,10 +46,8 @@ class TestExecutor(DirHierarchyEnvironment):
 
     def test_map_progress(self):
         def f(target):
-            sleep(randint(1,2))
             with open(target, 'w+') as o:
                 o.write(target)
-            sleep(randint(1,2))
 
         targets = ['map{}'.format(i) for i in range(1, 10)]
         n_threads = [1, 10, 20]

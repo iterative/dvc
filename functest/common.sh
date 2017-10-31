@@ -22,6 +22,14 @@ TEST_REPO_REGION='us-east-2'
 TEST_REPO_GCP='dvc-test/myrepo'
 TEST_REPO_GCP_PROJECT='dvc-project'
 
+function dvc_md5() {
+	if [ "$(uname)" == "Darwin" ]; then
+		md5 -r $@
+	else
+		md5sum $@
+	fi
+}
+
 function dvc_print() {
 	echo -e "$1"
 }
@@ -106,7 +114,7 @@ function dvc_create_repo() {
 
 	dvc init
 
-	mkdir data/xml
+	mkdir -p data/xml
 	dvc import $DATA_CACHE/* data/xml
 }
 

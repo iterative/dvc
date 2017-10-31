@@ -96,6 +96,33 @@ class GitWrapperI(object):
     def commit_all_changes_and_log_status(self, message):
         pass
 
+    @staticmethod
+    def _file_contains(fname, s):
+        if not os.path.isfile(fname):
+            return False
+
+        with open(fname, 'r') as fd:
+            if s in fd.read():
+                return True
+
+        return False
+
+    @staticmethod
+    def modify_gitignore(flist):
+        for fname in flist:
+            # We're modifying .gitignore in the same dir as the file itself, so
+            # that if dir consists only of data files it will be still tracked by
+            # git and we will not have any problems with --porcelain output for
+            # specific changed files.
+            gitignore = os.path.join(os.path.dirname(fname), '.gitignore')
+            entry = os.path.basename(fname)
+
+            if GitWrapperI._file_contains(gitignore, entry + '\n'):
+                return
+
+            with open(gitignore, 'a') as fd:
+                fd.write('\n' + entry)
+
 
 class GitWrapper(GitWrapperI):
     FLOATS_FROM_STRING = re.compile(r'[-+]?(?:(?:\d*\.\d+)|(?:\d+\.?))(?:[Ee][+-]?\d+)?')

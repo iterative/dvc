@@ -8,7 +8,7 @@ dvc_create_git_repo
 
 dvc init
 
-DIRS="data .dvc/cache .dvc/state"
+DIRS=".dvc/cache .dvc/state"
 FILES=".dvc/config"
 
 dvc_check_dirs $DIRS

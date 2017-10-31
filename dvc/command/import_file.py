@@ -132,8 +132,7 @@ class CmdImportFile(CmdBase):
                 Logger.debug('Skipping creating state file for failed import {}'.format(data_item.state.relative))
                 continue
 
-            Logger.debug('Creating symlink {} --> {}'.format(data_item.symlink_file, data_item.data.relative))
-            System.symlink(data_item.symlink_file, data_item.data.relative)
+            Logger.debug('Creating state file for {}'.format(data_item.data.relative))
 
             state_file = StateFile(StateFile.COMMAND_IMPORT_FILE,
                                data_item,

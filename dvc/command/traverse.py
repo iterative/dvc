@@ -44,10 +44,6 @@ class Traverse(CmdBase):
                     msg = '[TraverseFileTree] Directory "%s" cannot be traversed. Use --recurcive flag.'
                     raise TraverseError(msg % target)
 
-                if self._do_not_start_from_root and self.settings.path_factory.data_item(target).data_dvc_short == '':
-                    # The entire data directory
-                    raise TraverseError('[Traverse] Root data directory "%s" cannot be traversed' % target)
-
                 self._traverse_dir(target)
             else:
                 self.process_file(target)
@@ -57,6 +53,9 @@ class Traverse(CmdBase):
             return False
 
     def _traverse_dir(self, target):
+        if target == self.settings.config.CONFIG_DIR:
+            return
+
         for f in os.listdir(target):
             file = os.path.join(target, f)
             if os.path.isdir(file):
@@ -72,7 +71,7 @@ class Traverse(CmdBase):
         try:
             data_item = self.settings.path_factory.existing_data_item(target)
         except DataItemError:
-            Logger.warn(u'[TraverseFileTree] Data file {} is not valid symbolic link'.format(target))
+            Logger.warn(u'[TraverseFileTree] Data file {} does not have existing state file'.format(target))
             data_item = self.settings.path_factory.data_item(target)
 
         return data_item

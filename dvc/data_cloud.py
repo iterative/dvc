@@ -219,10 +219,12 @@ class DataCloudLOCAL(DataCloudBase):
         tmp_file = self.tmp_file(item.data.dvc)
         try:
             copyfile(i, tmp_file)
-            item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(i, exc))
             return None
+
+        os.rename(tmp_file, item.data.dvc)
+        item.move_data_to_cache()
 
         return item
 
@@ -363,7 +365,8 @@ class DataCloudHTTP(DataCloudBase):
         if not self._verify_md5(req, tmp_file):
             return None
 
-        item.import_cache(tmp_file)
+        os.rename(tmp_file, item.data.dvc)
+        item.move_data_to_cache()
 
         return item
 
@@ -476,10 +479,12 @@ class DataCloudAWS(DataCloudBase):
                                          num_retries=10)
         try:
             key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
-            data_item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key_name, exc))
             return None
+
+        os.rename(tmp_file, fname)
+        data_item.move_data_to_cache()
 
         progress.finish_target(name)
         Logger.debug('Downloading completed')
@@ -726,6 +731,9 @@ class DataCloudGCP(DataCloudBase):
             Logger.error('Failed to download "{}": {}'.format(key, exc))
             return None
 
+        os.rename(tmp_file, fname)
+        data_item.move_data_to_cache()
+
         progress.finish_target(name)
 
         Logger.debug('Downloading completed')
@@ -877,7 +885,7 @@ class DataCloud(object):
         """
         Collect target as a file or directory.
         """
-        if System.islink(target):
+        if self._settings.path_factory.is_data_item(target):
             item = self._settings.path_factory.data_item(target)
             return [item]
         elif os.path.isdir(target):

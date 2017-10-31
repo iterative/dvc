@@ -5,7 +5,7 @@ from dvc.command.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
-from dvc.path.data_item import NotInDataDirError, NotInGitDirError
+from dvc.path.data_item import DataDirError, NotInGitDirError
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
@@ -116,7 +116,7 @@ class CmdRun(CmdBase):
 
         result = []
         for data_item in repo_change.changed_data_items:
-            Logger.debug('Move output file "{}" to cache dir "{}" and create a symlink'.format(
+            Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
                 data_item.data.relative, data_item.cache_dir))
             data_item.move_data_to_cache()
 
@@ -168,16 +168,13 @@ class CmdRun(CmdBase):
         not_data_items = []
 
         for arg in argv:
-            try:
-                if os.path.isfile(arg):
-                    data_item = self.settings.path_factory.data_item(arg)
-                    data_items.append(data_item)
-            except NotInGitDirError as ex:
-                msg = 'File {} from argv is outside of git directory and cannot be traced: {}'
-                Logger.warn(msg.format(arg, ex))
-            except NotInDataDirError:
+            if self.settings.path_factory.is_data_item(arg):
+                data_items.append(self.settings.path_factory.data_item(arg))
+            elif os.path.isfile(arg):
                 not_data_items.append(arg)
-                pass
+            else:
+                msg = 'File {} from argv is outside of git directory and cannot be traced'
+                Logger.warn(msg.format(arg))
 
         return data_items, not_data_items
 

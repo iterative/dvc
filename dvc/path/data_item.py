@@ -13,22 +13,21 @@ class DataItemError(DvcException):
         super(DataItemError, self).__init__('Data item error: {}'.format(msg))
 
 
-class NotInDataDirError(DvcException):
-    def __init__(self, file, data_dir, pattern='the file "{}" is not in the data directory "{}"'):
-        msg = pattern.format(file, data_dir)
-        super(NotInDataDirError, self).__init__(msg)
+class DataDirError(DvcException):
+    def __init__(self, msg):
+        super(DataDirError, self).__init__(msg)
 
 
-class DataItemInStatusDirError(NotInDataDirError):
-    def __init__(self, file, data_dir):
-        pattern = 'the file "{}" is in state directory, not in the data directory "{}"'
-        super(DataItemInStatusDirError, self).__init__(file, data_dir, pattern)
+class DataItemInStatusDirError(DataDirError):
+    def __init__(self, file):
+        msg = 'File "{}" is in state directory'.format(file)
+        super(DataItemInStatusDirError, self).__init__(msg)
 
 
-class NotInGitDirError(NotInDataDirError):
+class NotInGitDirError(DataDirError):
     def __init__(self, file, git_dir):
-        pattern = 'the file "{}" is not in git directory "{}"'
-        super(NotInGitDirError, self).__init__(file, git_dir, pattern)
+        msg = 'File "{}" is not in git directory "{}"'.format(file, git_dir)
+        super(NotInGitDirError, self).__init__(msg)
 
 
 class DataItem(object):
@@ -46,11 +45,8 @@ class DataItem(object):
             raise NotInGitDirError(data_file, self._git.git_dir_abs)
 
         if self._data.abs.startswith(self.state_dir_abs):
-            raise DataItemInStatusDirError(data_file, self._config.data_dir)
+            raise DataItemInStatusDirError(data_file)
 
-        if not self._data.abs.startswith(self.data_dir_abs) or \
-                not self._data.dvc.startswith(self._config.data_dir):
-            raise NotInDataDirError(data_file, self._config.data_dir)
         pass
 
     def copy(self, cache_file=None):
@@ -72,14 +68,10 @@ class DataItem(object):
     def data(self):
         return self._data
 
-    @property
-    def data_dvc_short(self):
-        return self._data.dvc[len(self._config.data_dir)+1:]
-
     @cached_property
     def state(self):
         state_dir = os.path.join(self._git.git_dir_abs, self._config.state_dir)
-        state_file = os.path.join(state_dir, self.data_dvc_short + self.STATE_FILE_SUFFIX)
+        state_file = os.path.join(state_dir, self.data.dvc + self.STATE_FILE_SUFFIX)
         return Path(state_file, self._git)
 
     @cached_property
@@ -99,41 +91,19 @@ class DataItem(object):
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
 
-    def get_all_caches(self):
-        result = []
-
-        suffix_len = self._git.COMMIT_LEN + len(self.CACHE_FILE_SEP)
-        cache_prefix = os.path.basename(self.resolved_cache.relative[:-suffix_len])
-
-        for cache_file in os.listdir(self.resolved_cache.dirname):
-            if cache_file[:-suffix_len] == cache_prefix:
-                data_item = self.copy(os.path.join(self.resolved_cache.dirname, cache_file))
-                result.append(data_item)
-
-        return result
-
     @cached_property
     def resolved_cache(self):
         resolved_cache = os.path.realpath(self._data.relative)
         return Path(resolved_cache, self._git)
 
     @cached_property
-    def data_dir_abs(self):
-        return os.path.join(self._git.git_dir_abs, self._config.data_dir)
-
-    @cached_property
     def state_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
-    @property
-    def symlink_file(self):
-        data_file_dir = os.path.dirname(self.data.relative)
-        return os.path.relpath(self.cache.relative, data_file_dir)
-
     def move_data_to_cache(self):
-        self.import_cache(self.data.relative)
-        System.symlink(self.symlink_file, self.data.relative)
-
-    def import_cache(self, fname):
-        self._cache_file = os.path.join(self.cache_dir, file_md5(fname)[0])
-        os.rename(fname, self._cache_file)
+        md5 = file_md5(self.data.relative)[0]
+        self._cache_file = os.path.join(self.cache_dir, md5)
+        self._git.modify_gitignore([self.data.relative])
+        if os.path.isfile(self.cache.relative):
+            return
+        System.hardlink(self.data.relative, self.cache.relative)

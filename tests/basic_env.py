@@ -35,7 +35,7 @@ class BasicEnvironment(TestCase):
 
         data_dir = os.path.join(self._test_git_dir, 'data')
         cache_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR)
-        state_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR)
+        state_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data')
 
         os.makedirs(data_dir)
         os.makedirs(cache_dir)
@@ -103,7 +103,7 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
     def crate_data_item(self, data_file, cache_file=True, content='random text'):
         file_result = os.path.join('data', data_file)
-        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, data_file + DataItem.STATE_FILE_SUFFIX)
+        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, file_result + DataItem.STATE_FILE_SUFFIX)
 
         dummy_md5 = os.path.basename(data_file) + DataItem.CACHE_FILE_SEP + self._commit
         self.create_content_file(state_result, '{"Md5" : "' + dummy_md5 + '", "Command" : "run", "Cwd" : "dir"}')
@@ -112,23 +112,13 @@ class DirHierarchyEnvironment(BasicEnvironment):
             cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dummy_md5)
             self.create_content_file(cache_result, content)
 
-            relevant_dir = self.relevant_dir(data_file)
-            System.symlink(os.path.join(relevant_dir, cache_result), file_result)
+            System.hardlink(cache_result, file_result)
         else:
             cache_result = None
             self.create_content_file(file_result, content)
 
         return file_result, cache_result, state_result
 
-    @staticmethod
-    def relevant_dir(data_file):
-        deepth = data_file.count(os.path.sep)
-        relevant_path = '..'
-        for i in range(deepth):
-            relevant_path = os.path.join(relevant_path, '..')
-        return relevant_path
-
     def create_dirs(self, dir):
-        os.mkdir(os.path.join('data', dir))
-        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dir))
-        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, dir))
+        os.makedirs(os.path.join('data', dir))
+        os.makedirs(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', dir))
