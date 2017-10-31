@@ -61,7 +61,6 @@ class PathFactory(object):
                 path = os.path.join(root, fname)
 
                 if not fname.endswith(DataItem.STATE_FILE_SUFFIX):
-                    Logger.warn('Found file \'{}\' without state suffix inside state dir'.format(path))
                     continue
 
                 states.append(path)

@@ -241,3 +241,45 @@ class StateFile(object):
             raise StateFileError('the file cannot be created outside of a git repository')
 
         return os.path.relpath(pwd, self.settings.git.git_dir_abs)
+
+class LocalStateFile(object):
+    MAGIC = 'DVC-Local-State'
+    VERSION = '0.1'
+
+    PARAM_DATA_TIMESTAMP = 'DataTimestamp'
+    PARAM_CACHE_TIMESTAMP = 'CacheTimestamp'
+
+    def __init__(self, data_item, data_timestamp=None, cache_timestamp=None):
+        self.data_item = data_item
+        self.data_timestamp = data_timestamp
+        self.cache_timestamp = cache_timestamp
+
+        if not data_timestamp:
+            self.data_timestamp = os.path.getmtime(self.data_item.data.relative)
+        if not cache_timestamp:
+            self.cache_timestamp = os.path.getmtime(self.data_item.cache.relative)
+
+    @staticmethod
+    def load_json(json):
+        return LocalStateFile(None,
+                              json.get(LocalStateFile.PARAM_DATA_TIMESTAMP, None),
+                              json.get(LocalStateFile.PARAM_CACHE_TIMESTAMP, None))
+
+    @staticmethod
+    def load(data_item):
+        with open(data_item.local_state.relative, 'r') as fd:
+            data = json.load(fd)
+            return LocalStateFile.load_json(data)
+
+    def save(self):
+        res = {
+            self.PARAM_DATA_TIMESTAMP    : self.data_timestamp,
+            self.PARAM_CACHE_TIMESTAMP   : self.cache_timestamp
+        }
+
+        file_dir = os.path.dirname(self.data_item.local_state.relative)
+        if not os.path.isdir(file_dir):
+            os.makedirs(file_dir)
+
+        with open(self.data_item.local_state.relative, 'w') as fd:
+            json.dump(res, fd, indent=2, sort_keys=True)

@@ -33,6 +33,7 @@ class NotInGitDirError(DataDirError):
 
 class DataItem(object):
     STATE_FILE_SUFFIX = '.state'
+    LOCAL_STATE_FILE_SUFFIX = '.local_state'
     CACHE_FILE_SEP = '_'
 
     def __init__(self, data_file, git, config, cache_file=None):
@@ -70,14 +71,26 @@ class DataItem(object):
         return self._data
 
     @cached_property
+    def state_dir(self):
+        return os.path.join(self._git.git_dir_abs, self._config.state_dir)
+
+    @cached_property
     def state(self):
-        state_dir = os.path.join(self._git.git_dir_abs, ConfigI.STATE_DIR)
-        state_file = os.path.join(state_dir, self.data.dvc + self.STATE_FILE_SUFFIX)
+        state_file = os.path.join(self.state_dir, self.data.dvc + self.STATE_FILE_SUFFIX)
         return Path(state_file, self._git)
 
     @cached_property
     def cache_dir_abs(self):
         return os.path.join(self._git.git_dir_abs, ConfigI.CACHE_DIR)
+
+    @cached_property
+    def local_state(self):
+        local_state_file = os.path.join(self.state_dir, self.data.dvc + self.LOCAL_STATE_FILE_SUFFIX)
+        return Path(local_state_file, self._git)
+
+    @cached_property
+    def cache_dir(self):
+        return os.path.join(self._git.git_dir_abs, self._config.cache_dir)
 
     @cached_property
     def cache(self):
@@ -103,3 +116,7 @@ class DataItem(object):
         if not os.path.isfile(self.cache.relative):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
+
+        from dvc.state_file import LocalStateFile
+        local_state = LocalStateFile(self).save()
+        self._git.modify_gitignore([self.local_state.relative])
