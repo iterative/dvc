@@ -4,8 +4,10 @@ set -e
 
 # 1. First ML model
 
+rm -rf myrepo
 mkdir myrepo
 cd myrepo
+mkdir data
 mkdir code
 wget -nv -P code/ https://s3-us-west-2.amazonaws.com/dvc-share/so/code/featurization.py \
         https://s3-us-west-2.amazonaws.com/dvc-share/so/code/evaluate.py \
