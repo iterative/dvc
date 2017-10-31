@@ -116,7 +116,10 @@ class RepositoryChange(object):
 
     def data_file_timesteps(self):
         res = set()
-        for root, dirs, files in os.walk('.'):
+        for root, dirs, files in os.walk(self._settings.git.git_dir_abs):
+            if root.startswith(os.path.join(self._settings.git.git_dir_abs, ConfigI.CONFIG_DIR)):
+                continue
+
             for file in files:
                 filename = os.path.join(root, file)
                 if os.path.exists(filename):
