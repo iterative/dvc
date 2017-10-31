@@ -55,7 +55,13 @@ class PathFactory(object):
 
         for root, dirs, files in os.walk(self._config.state_dir):
             for fname in files:
-                states.append(os.path.join(root, fname))
+                path = os.path.join(root, fname)
+
+                if not fname.endswith(DataItem.STATE_FILE_SUFFIX):
+                    Logger.warn('Found file \'{}\' without state suffix inside state dir'.format(path))
+                    continue
+
+                states.append(path)
 
         for state in states:
             data = os.path.relpath(state, self._config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
