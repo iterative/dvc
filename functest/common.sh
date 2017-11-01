@@ -8,13 +8,13 @@ TEST_REPO=$SDIR/myrepo
 CODE_CACHE=$CACHE_DIR/code
 DATA_CACHE=$CACHE_DIR/data
 
-DATA="Badges.xml Tags.xml PostLinks.xml"
-CODE="xmltotsv.py"
+DATA="foo bar"
+CODE="code.sh"
 
 REGION='us-west-2'
 BASE_DIR_S3=https://s3-$REGION.amazonaws.com/dataversioncontrol/functests
-DATA_S3=$BASE_DIR_S3/stackoverflow_raw_small
-CODE_S3=$BASE_DIR_S3/code
+DATA_S3=$BASE_DIR_S3/dummy_data
+CODE_S3=$BASE_DIR_S3/dummy_code
 
 TEST_REPO_S3='dvc-test/myrepo'
 TEST_REPO_REGION='us-east-2'
@@ -114,8 +114,8 @@ function dvc_create_repo() {
 
 	dvc init
 
-	mkdir -p data/xml
-	dvc import $DATA_CACHE/* data/xml
+	mkdir data
+	dvc import $DATA_CACHE/* data
 }
 
 function dvc_clean_cloud_aws() {

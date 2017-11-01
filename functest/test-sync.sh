@@ -6,26 +6,27 @@ source common.sh
 
 function test_sync() {
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/ | grep "new file" || dvc_fail
 
 	dvc_info "Pushing data"
-	dvc push data/xml
+	dvc push data/
 
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/
 
 	dvc_info "Removing all cache"
 	rm -rf .dvc/cache/*
-	rm -rf data/xml/*.xml
+	rm -rf data/foo data/bar
 
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/ | grep "deleted" || dvc_fail
 
 	dvc_info "Pulling data"
-	dvc pull -v data/xml
+	dvc pull data/
+	dvc_check_files data/foo data/bar
 
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/
 } 
 
 function test_aws() {
