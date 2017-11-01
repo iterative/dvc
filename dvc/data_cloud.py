@@ -166,7 +166,7 @@ class DataCloudBase(object):
 
     def pull(self, item):
         """ Generic method for pulling data from the cloud """
-        fname = item.resolved_cache.dvc
+        fname = item.cache.dvc
         key_name = self.cache_file_key(fname)
         return self._import(self.storage_bucket, key_name, item)
 
@@ -183,7 +183,7 @@ class DataCloudBase(object):
         """
         item = self._cloud_settings.path_factory.data_item(fname)
 
-        if os.path.isfile(item.resolved_cache.dvc):
+        if os.path.isfile(item.cache.dvc):
             return self.push(item)
         else:
             return self.pull(item)
@@ -211,8 +211,8 @@ class DataCloudLOCAL(DataCloudBase):
     Driver for local storage.
     """
     def push(self, item):
-        Logger.debug('sync to cloud ' + item.resolved_cache.dvc + " " + self.storage_path)
-        copyfile(item.resolved_cache.dvc, self.storage_path)
+        Logger.debug('sync to cloud ' + item.cache.dvc + " " + self.storage_path)
+        copyfile(item.cache.dvc, self.storage_path)
         return item
 
     def _import(self, bucket, i, item):
@@ -229,19 +229,19 @@ class DataCloudLOCAL(DataCloudBase):
         return item
 
     def pull(self, item):
-        Logger.debug('sync from cloud ' + self.storage_path + " " + item.resolved_cache.dvc)
+        Logger.debug('sync from cloud ' + self.storage_path + " " + item.cache.dvc)
         return self._import(None, self.storage_path, item)
 
     def remove(self, item):
-        Logger.debug('rm from cloud ' + item.resolved_cache.dvc)
-        os.remove(item.resolved_cache.dvc)
+        Logger.debug('rm from cloud ' + item.cache.dvc)
+        os.remove(item.cache.dvc)
 
     def import_data(self, path, item):
         Logger.debug('import from cloud ' + path + " " + item.data.dvc)
         return self._import(None, path, item)
 
     def _status(self, data_item):
-        local = data_item.resolved_cache.relative
+        local = data_item.cache.relative
         remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
 
         remote_exists = os.path.exists(remote)
@@ -607,13 +607,13 @@ class DataCloudAWS(DataCloudBase):
     def push(self, data_item):
         """ push, aws version """
 
-        aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
+        aws_key = self.cache_file_key(data_item.cache.dvc)
         bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
-            if self._cmp_checksum(key, data_item.resolved_cache.dvc):
+            if self._cmp_checksum(key, data_item.cache.dvc):
                 Logger.debug('File checksum matches. No uploading is needed.')
                 return data_item
 
@@ -622,25 +622,25 @@ class DataCloudAWS(DataCloudBase):
         key = bucket.new_key(aws_key)
 
         try:
-            self._push_multipart(key, data_item.resolved_cache.relative)
+            self._push_multipart(key, data_item.cache.relative)
         except Exception as exc:
-            Logger.error('Failed to upload "{}": {}'.format(data_item.resolved_cache.relative, exc))
+            Logger.error('Failed to upload "{}": {}'.format(data_item.cache.relative, exc))
             return None
 
-        progress.finish_target(os.path.basename(data_item.resolved_cache.relative))
+        progress.finish_target(os.path.basename(data_item.cache.relative))
 
         return data_item
 
     def _status(self, data_item):
-        aws_key = self.cache_file_key(data_item.resolved_cache.dvc)
+        aws_key = self.cache_file_key(data_item.cache.dvc)
         bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
 
         remote_exists = key is not None
-        local_exists = os.path.exists(data_item.resolved_cache.relative)
+        local_exists = os.path.exists(data_item.cache.relative)
         diff = None
         if remote_exists and local_exists:
-            diff = self._cmp_checksum(key, data_item.resolved_cache.dvc)
+            diff = self._cmp_checksum(key, data_item.cache.dvc)
 
         return (local_exists, remote_exists, diff)
 
@@ -744,12 +744,12 @@ class DataCloudGCP(DataCloudBase):
         """ push, gcp version """
 
         bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
-        name = os.path.basename(data_item.resolved_cache.dvc)
+        blob_name = self.cache_file_key(data_item.cache.dvc)
+        name = os.path.basename(data_item.cache.dvc)
 
         blob = bucket.get_blob(blob_name)
         if blob is not None and blob.exists():
-            if self._cmp_checksum(blob, data_item.resolved_cache.dvc):
+            if self._cmp_checksum(blob, data_item.cache.dvc):
                 Logger.debug('checksum %s matches.  Skipping upload' % data_item.cache.relative)
                 return data_item
             Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
@@ -758,10 +758,10 @@ class DataCloudGCP(DataCloudBase):
         progress.update_target(name, 0, None)
 
         blob = bucket.blob(blob_name)
-        blob.upload_from_filename(data_item.resolved_cache.relative)
+        blob.upload_from_filename(data_item.cache.relative)
 
         progress.finish_target(name)
-        Logger.debug('uploading %s completed' % data_item.resolved_cache.relative)
+        Logger.debug('uploading %s completed' % data_item.cache.relative)
 
         return data_item
 
@@ -769,14 +769,14 @@ class DataCloudGCP(DataCloudBase):
         """ status, gcp version """
 
         bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(data_item.resolved_cache.dvc)
+        blob_name = self.cache_file_key(data_item.cache.dvc)
         blob = bucket.get_blob(blob_name)
 
         remote_exists = blob is not None and blob.exists()
-        local_exists = os.path.exists(data_item.resolved_cache.relative)
+        local_exists = os.path.exists(data_item.cache.relative)
         diff = None
         if remote_exists and local_exists:
-            diff = self._cmp_checksum(blob, data_item.resolved_cache.dvc)
+            diff = self._cmp_checksum(blob, data_item.cache.dvc)
 
         return (local_exists, remote_exists, diff)
 
@@ -867,29 +867,15 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def _collect_dir(self, directory):
-        """
-        Collect data items in a specified directory tree.
-        """
-        targets = []
-
-        for root, dirs, files in os.walk(directory):
-            for fname in files:
-                path = os.path.join(root, fname)
-                item = self._settings.path_factory.data_item(path)
-                targets.append(item)
-
-        return targets
-
     def _collect_target(self, target):
         """
         Collect target as a file or directory.
         """
         if self._settings.path_factory.is_data_item(target):
-            item = self._settings.path_factory.data_item(target)
+            item = self._settings.path_factory.existing_data_item(target)
             return [item]
         elif os.path.isdir(target):
-            return self._collect_dir(target)
+            return self._settings.path_factory.all_existing_data_items(target)
 
         Logger.warn('Target "{}" does not exist'.format(target))
 
