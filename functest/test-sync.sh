@@ -14,26 +14,18 @@ function test_sync() {
 	dvc_info "Checking status"
 	dvc status data/xml
 
-	dvc_info "Modifying data"
-	echo "123456" >> data/xml/Tags.xml
-
-	dvc_info "Checking status"
-	dvc status data/xml
-
-	dvc_info "Pulling data"
-	dvc pull data/xml
-
-	dvc_info "Checking status"
-	dvc status data/xml
-
 	dvc_info "Removing all cache"
-	rm -rf .cache/xml
+	rm -rf .dvc/cache/*
+	rm -rf data/xml/*.xml
 
 	dvc_info "Checking status"
 	dvc status data/xml
 
 	dvc_info "Pulling data"
-	dvc pull data/xml
+	dvc pull -v data/xml
+
+	dvc_info "Checking status"
+	dvc status data/xml
 } 
 
 function test_aws() {
@@ -41,9 +33,9 @@ function test_aws() {
 
 	dvc_info "Setting up AWS cloud"
 	dvc_clean_cloud_aws
-	dvc config global.cloud AWS
 	dvc config aws.storagepath $TEST_REPO_S3
 	dvc config aws.region $TEST_REPO_REGION
+	dvc config global.cloud AWS
 
 	test_sync
 
@@ -55,9 +47,9 @@ function test_gcp() {
 
 	dvc_info "Setting up GCP cloud"
 	dvc_clean_cloud_gcp
-	dvc config global.cloud GCP
 	dvc config gcp.storagepath $TEST_REPO_GCP
 	dvc config gcp.projectname $TEST_REPO_GCP_PROJECT
+	dvc config global.cloud GCP
 
 	test_sync
 
