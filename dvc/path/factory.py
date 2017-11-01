@@ -4,7 +4,7 @@ from dvc.path.data_item import DataItem, DataItemError, DataDirError
 from dvc.path.path import Path
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.system import System
-
+from dvc.logger import Logger
 
 class PathFactory(object):
     def __init__(self, git, config):
