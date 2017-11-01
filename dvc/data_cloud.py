@@ -694,7 +694,8 @@ class DataCloudGCP(DataCloudBase):
         """
         Verify local and remote checksums.
         """
-        b64_encoded_md5 = base64.b64encode(file_md5(fname)[1])
+        md5 = file_md5(fname)[1]
+        b64_encoded_md5 = base64.b64encode(md5).decode() if md5 else None
 
         if blob.md5_hash == b64_encoded_md5:
             return True
@@ -726,7 +727,6 @@ class DataCloudGCP(DataCloudBase):
 
         try:
             blob.download_to_filename(tmp_file)
-            data_item.import_cache(tmp_file)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key, exc))
             return None
