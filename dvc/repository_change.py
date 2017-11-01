@@ -7,7 +7,7 @@ from dvc.logger import Logger
 from dvc.path.data_item import DataDirError, DataItemInStatusDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
-
+from dvc.config import ConfigI
 
 class RepositoryChangeError(DvcException):
     def __init__(self, msg):
@@ -116,7 +116,10 @@ class RepositoryChange(object):
 
     def data_file_timesteps(self):
         res = set()
-        for root, dirs, files in os.walk('.'):
+        for root, dirs, files in os.walk(self._settings.git.git_dir_abs):
+            if root.startswith(os.path.join(self._settings.git.git_dir_abs, ConfigI.CONFIG_DIR)):
+                continue
+
             for file in files:
                 filename = os.path.join(root, file)
                 if os.path.exists(filename):
