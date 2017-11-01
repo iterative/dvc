@@ -7,7 +7,7 @@ from dvc.logger import Logger
 from dvc.path.data_item import DataDirError, DataItemInStatusDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
-
+from dvc.config import ConfigI
 
 class RepositoryChangeError(DvcException):
     def __init__(self, msg):
