@@ -4,11 +4,9 @@ set -e
 
 source common.sh
 
-ITEM=data/xml/Badges.xml
-
 dvc_create_repo
 
-rm -f $ITEM
+rm -f data/foo
 dvc checkout
-dvc_check_files $ITEM
+dvc_check_files data/foo
 dvc_pass

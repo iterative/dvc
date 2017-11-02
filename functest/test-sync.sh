@@ -6,34 +6,27 @@ source common.sh
 
 function test_sync() {
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/ | grep "new file" || dvc_fail
 
 	dvc_info "Pushing data"
-	dvc push data/xml
+	dvc push data/
 
 	dvc_info "Checking status"
-	dvc status data/xml
-
-	dvc_info "Modifying data"
-	echo "123456" >> data/xml/Tags.xml
-
-	dvc_info "Checking status"
-	dvc status data/xml
-
-	dvc_info "Pulling data"
-	dvc pull data/xml
-
-	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/
 
 	dvc_info "Removing all cache"
-	rm -rf .cache/xml
+	rm -rf .dvc/cache/*
+	rm -rf data/foo data/bar
 
 	dvc_info "Checking status"
-	dvc status data/xml
+	dvc status data/ | grep "deleted" || dvc_fail
 
 	dvc_info "Pulling data"
-	dvc pull data/xml
+	dvc pull data/
+	dvc_check_files data/foo data/bar
+
+	dvc_info "Checking status"
+	dvc status data/
 } 
 
 function test_aws() {
@@ -41,9 +34,9 @@ function test_aws() {
 
 	dvc_info "Setting up AWS cloud"
 	dvc_clean_cloud_aws
-	dvc config global.cloud AWS
 	dvc config aws.storagepath $TEST_REPO_S3
 	dvc config aws.region $TEST_REPO_REGION
+	dvc config global.cloud AWS
 
 	test_sync
 
@@ -55,9 +48,9 @@ function test_gcp() {
 
 	dvc_info "Setting up GCP cloud"
 	dvc_clean_cloud_gcp
-	dvc config global.cloud GCP
 	dvc config gcp.storagepath $TEST_REPO_GCP
 	dvc config gcp.projectname $TEST_REPO_GCP_PROJECT
+	dvc config global.cloud GCP
 
 	test_sync
 

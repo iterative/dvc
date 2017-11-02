@@ -49,11 +49,11 @@ class PathFactory(object):
 
         return result, externally_created_files
 
-    def all_existing_data_items(self):
+    def all_existing_data_items(self, subdir='.'):
         items = []
         states = []
 
-        for root, dirs, files in os.walk(self._config.state_dir):
+        for root, dirs, files in os.walk(os.path.join(self._config.state_dir, subdir)):
             for fname in files:
                 path = os.path.join(root, fname)
 

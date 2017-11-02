@@ -7,8 +7,8 @@ source common.sh
 dvc_create_repo
 
 # Adding changes to the first branch
-git checkout -b input_50K
-echo -e "#!/bin/bash\nset -x\nset -e\ncp \$1 \$2" > code/code1.sh
+git checkout -b foo
+cp code/code.sh code/code1.sh
 chmod +x code/code1.sh
 cp code/code1.sh code/code2.sh
 cp code/code1.sh code/code3.sh
@@ -16,7 +16,7 @@ cp code/code1.sh code/code4.sh
 git add code
 git commit -s -m"add code"
 
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/50K/Posts.xml.tgz data/data
+dvc import $DATA_CACHE/foo data/data
 
 ORIG_DATA=$(dvc_md5 data/data)
 
@@ -29,19 +29,19 @@ dvc config Global.Target data/data4
 git commit -am 'Set Target'
 
 # Create new branch to work on small data set
-git checkout -b input_10K
+git checkout -b bar
 dvc remove -c -l data/data
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/10K/Posts.xml.tgz data/data
+dvc import $DATA_CACHE/bar data/data
 dvc repro
 
-echo -e "#!/bin/bash\n\n\n\ncp \$1 \$2" > code/code1.sh
+echo -e "\n\n\n\n" >> code/code1.sh
 git commit -am"change code1.sh"
 dvc repro
 
-# Merge input_10K into input_50K
-git checkout input_50K
-git merge input_10K
-# Notice we're running 'dvc merge' on input_50K branch. This
+# Merge bar into foo
+git checkout foo
+git merge bar
+# Notice we're running 'dvc merge' on foo branch. This
 # way dvc knows to favor data files from current branch.
 dvc merge
 

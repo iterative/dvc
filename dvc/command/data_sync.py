@@ -38,7 +38,7 @@ class CmdDataStatus(CmdBase):
                 cloud.STATUS_NEW      : 'new file:',
             }
 
-            Logger.info('\t{}\t{}'.format(prefix_map[ret], target.resolved_cache.dvc))
+            Logger.info('\t{}\t{}'.format(prefix_map[ret], target.data.dvc))
 
     def run(self):
         with DvcLock(self.is_locker, self.git):
