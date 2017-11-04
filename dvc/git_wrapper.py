@@ -299,6 +299,18 @@ class GitWrapper(GitWrapperI):
         Logger.debug('[dvc-git] Checkout file {} before last merge. Command: {}'.format(fname, cmd))
         Executor.exec_cmd_only_success(cmd.split())
 
+    @staticmethod
+    def checkout(commit):
+        Logger.debug('[dvc-git] Checkout {}'.format(commit))
+        cmd = 'git checkout {}'.format(commit)
+        Executor.exec_cmd(cmd.split())
+
+    @staticmethod
+    def checkout_previous():
+        Logger.debug('[dvc-git] Checkout previous')
+        cmd = 'git checkout -'
+        Executor.exec_cmd(cmd.split())
+
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []
         code_dirs = []
