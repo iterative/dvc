@@ -35,7 +35,7 @@ class CmdCheckout(CmdBase):
  
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            curr_commit = self.git.curr_commit
+            curr_commit = self.git.curr_branch_or_commit
             prev_items = []
             try:
                 self.git.checkout_previous()
@@ -55,10 +55,10 @@ class CmdCheckout(CmdBase):
     @staticmethod
     def remove_files(removed_items_set):
         for item in removed_items_set:
-            Logger.info(u'Removing data file not from the current branch {}'.format(item.data.relative))
+            Logger.info(u'Remove \'{}\''.format(item.data.relative))
             os.remove(item.data.relative)
             dir = os.path.dirname(item.data.relative)
             if not os.listdir(dir):
-                Logger.info(u'Removing directory not from the current branch {}'.format(dir))
+                Logger.info(u'Remove directory \'{}\''.format(dir))
                 os.removedirs(dir)
         pass

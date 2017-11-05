@@ -189,15 +189,32 @@ class GitWrapper(GitWrapperI):
             raise ExecutorError('Unable to run git command: {}'.format(e))
         pass
 
-    @property
-    def curr_commit(self):
+    def curr_commit(self, branches=False):
         Logger.debug('[dvc-git] Getting current git commit. Command: git rev-parse --short HEAD')
 
-        code, out, err = Executor.exec_cmd(['git', 'rev-parse', 'HEAD'])
+        if branches:
+            cmd = 'git rev-parse --abbrev-ref HEAD'
+        else:
+            cmd = 'git rev-parse HEAD'
+
+        code, out, err = Executor.exec_cmd(cmd.split())
         if code != 0:
             raise ExecutorError('[dvc-git] Commit command error - {}'.format(err))
         Logger.debug('[dvc-git] Getting current git commit. Success.')
         return out
+
+    @property
+    def curr_branch_or_commit(self):
+        Logger.debug('[dvc-git] Getting current git branch or commit.')
+
+        branch = self.curr_commit(branches=True)
+        if branch == '' or branch == 'HEAD':
+            result = self.curr_commit(branches=False)
+        else:
+            result = branch
+
+        Logger.debug('[dvc-git] Getting current git branch or commit. Result {}. Success.'.format(result))
+        return result
 
     @staticmethod
     def commit_all_changes(message):
@@ -217,7 +234,7 @@ class GitWrapper(GitWrapperI):
     def commit_all_changes_and_log_status(self, message):
         statuses = self.commit_all_changes(message)
         Logger.debug('[dvc-git] A new commit {} was made in the current branch. '
-                     'Added files:'.format(self.curr_commit))
+                     'Added files:'.format(self.curr_commit()))
         for status, file in statuses:
             Logger.debug('[dvc-git]\t{} {}'.format(status, file))
         pass
