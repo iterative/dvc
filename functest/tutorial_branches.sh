@@ -27,13 +27,18 @@ git commit -m 'Download code'
 dvc init
 
 git checkout -b input_100K
+dvc checkout
+mkdir data
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz data/
 dvc run tar zxf data/Posts.xml.tgz -C data/
 dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
 
 
 git checkout master
+dvc checkout
 git checkout -b input_25K
+dvc checkout
+mkdir data
 dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
 dvc run tar zxf data/Posts.xml.tgz -C data/
 
@@ -53,7 +58,8 @@ cat data/eval_auc.txt
 
 
 git checkout input_100K
-git merge input_25K # git merge -X theirs input_25K
+dvc checkout
+git merge -X theirs input_25K # git merge -X theirs input_25K
 # Resolve conflicts by hends!!!
 git add .
 git commit -m 'Merge conflicts'
@@ -63,6 +69,7 @@ dvc repro       # <-- Error. Reproducng Posts.xml and Posts.tsv
 
 # Improve the model:
 git checkout input_25K
+dvc checkout
 vi code/train_model.py  # Change: estimators=500
 git commit -am 'estimators=500'
 vi code/train_model.py  # Change: n_jobs=6
@@ -88,11 +95,13 @@ cat data/eval_auc.txt
 
 # Create a branch for unsuccessful commit
 git checkout -b four_grams
+dvc checkout
 # The last successful commit which is the second last humman-created commit
 git log --pretty=oneline | grep -v "DVC repro-run: " | head -n 2 | tail -n 1
 # Move the current HEAD to the last successful commit
 git branch -f input_25K `git log --pretty=oneline | grep -v "DVC repro-run: " | head -n 2 | tail -n 1 | cut -d" " -f1`
 git checkout input_25K
+dvc checkout
 
 # Continue to optimize the target metrics
 vi code/train_model.py  # Change: min_samples_split=5
@@ -100,9 +109,11 @@ git commit -am 'min_samples_split=5'
 dvc repro
 
 git checkout input_100K
+dvc checkout
 git merge -X theirs input_25K
 git add data/
 git commit -am "After merge"
+dvc merge
 dvc repro
 
 ##
