@@ -70,9 +70,6 @@ class CmdShowPipeline(Traverse):
         name = data_item.data.relative
         state = StateFile.load(data_item, self.git)
 
-        if name == os.path.join('.', CmdInit.EMPTY_FILE_NAME):
-            return
-
         self.g.add_node(name)
 
         for i in state.input_files:
