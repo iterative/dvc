@@ -5,8 +5,6 @@ from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.state_file import StateFile
-from dvc.system import System
 
 
 class InitError(DvcException):
@@ -61,9 +59,6 @@ StoragePath =
 ProjectName = 
 '''
 
-    EMPTY_FILE_NAME = '.empty'
-    EMPTY_FILE_CHECKSUM = '0000000'
-
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
 
@@ -103,8 +98,6 @@ ProjectName =
             os.path.join(config_dir_path.name, cache_dir_path.name),
             os.path.join(config_dir_path.name, state_dir_path.name)))
 
-        self.create_empty_file()
-
         conf_file = open(conf_file_name, 'wt')
         conf_file.write(self.CONFIG_TEMPLATE)
         conf_file.close()
@@ -114,18 +107,3 @@ ProjectName =
 
         message = 'DVC init. cache dir {}, state dir {}, '.format(cache_dir_path.name, state_dir_path.name)
         return self.commit_if_needed(message)
-
-    def create_empty_file(self):
-        empty_data_path = os.path.join(self.settings.git.git_dir_abs, self.EMPTY_FILE_NAME)
-
-        data_item = self.settings.path_factory.data_item(empty_data_path)
-        open(empty_data_path, 'w').close()
-        data_item.move_data_to_cache()
-
-        StateFile(StateFile.COMMAND_EMPTY_FILE,
-                  data_item,
-                  self.settings,
-                  input_files=[],
-                  output_files=[],
-                  lock=False).save(is_update_target_metrics=False)
-        pass
