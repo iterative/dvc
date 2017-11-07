@@ -85,6 +85,7 @@ class CmdRepro(CmdRun):
                     continue
 
                 globally_changed_files = self.git.get_changed_files(target_commit)
+                Logger.debug('Repro globally changed files: {}'.format(', '.join(globally_changed_files)))
                 changed_files = set()
                 change = ReproChange(data_item, self, globally_changed_files, recursive, force)
                 if change.reproduce(changed_files):
@@ -244,9 +245,13 @@ class ReproChange(object):
                 Logger.debug(u'Repro data item {}: dependency {} was changed'.format(
                     data_item_dvc, data_item.data.dvc))
             elif data_item.state.dvc in self._globally_changed_files:
-                msg = u'Repro data item {}: dependency {} was not changed but the state file was changed'
-                Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
-                result = True
+                dep_state = StateFile.load(data_item, self._settings)
+                if dep_state.command != StateFile.COMMAND_IMPORT_FILE:
+                    msg = u'Repro data item {}: dependency {} was not changed but the state file was changed'
+                    Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
+                    result = True
+                else:
+                    Logger.debug(u'Repro data item {}: skip dependency state file change {} due to data source command')
             else:
                 msg = u'Repro data item {}: dependency {} was not changed'
                 Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
