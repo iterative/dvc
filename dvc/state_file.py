@@ -6,7 +6,6 @@ import re
 
 from dvc import utils
 from dvc.exceptions import DvcException
-from dvc.path.data_item import DataDirError
 from dvc.system import System
 from dvc.data_cloud import file_md5
 
@@ -218,6 +217,7 @@ class StateFile(object):
     def _argv_paths_normalization(self, argv):
         result = []
 
+        from dvc.path.data_item import DataDirError
         for arg in argv:
             try:
                 data_item = self.settings.path_factory.data_item(arg)

@@ -7,6 +7,7 @@ from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import cached_property
 from dvc.data_cloud import file_md5
+from dvc.state_file import CacheStateFile, LocalStateFile
 
 
 class DataItemError(DvcException):
@@ -105,7 +106,6 @@ class DataItem(object):
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            from dvc.state_file import CacheStateFile
             file_name = CacheStateFile.load(self).md5
 
         cache_file = os.path.join(cache_dir, file_name)
@@ -123,9 +123,7 @@ class DataItem(object):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
 
-        from dvc.state_file import CacheStateFile
         cache_state = CacheStateFile(self).save()
 
-        from dvc.state_file import LocalStateFile
         local_state = LocalStateFile(self).save()
         self._git.modify_gitignore([self.local_state.relative])
