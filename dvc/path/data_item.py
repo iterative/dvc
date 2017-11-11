@@ -34,6 +34,7 @@ class NotInGitDirError(DataDirError):
 class DataItem(object):
     STATE_FILE_SUFFIX = '.state'
     LOCAL_STATE_FILE_SUFFIX = '.local_state'
+    CACHE_STATE_FILE_SUFFIX = '.cache_state'
     CACHE_FILE_SEP = '_'
 
     def __init__(self, data_file, git, config, cache_file=None):
@@ -89,6 +90,11 @@ class DataItem(object):
         return Path(local_state_file, self._git)
 
     @cached_property
+    def cache_state(self):
+        cache_state_file = os.path.join(self.state_dir, self.data.dvc + self.CACHE_STATE_FILE_SUFFIX)
+        return Path(cache_state_file, self._git)
+
+    @cached_property
     def cache_dir(self):
         return os.path.join(self._git.git_dir_abs, self._config.cache_dir)
 
@@ -99,8 +105,8 @@ class DataItem(object):
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            from dvc.state_file import StateFile
-            file_name = StateFile.load(self, self._git).md5
+            from dvc.state_file import CacheStateFile
+            file_name = CacheStateFile.load(self).md5
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
@@ -116,6 +122,9 @@ class DataItem(object):
         if not os.path.isfile(self.cache.relative):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
+
+        from dvc.state_file import CacheStateFile
+        cache_state = CacheStateFile(self).save()
 
         from dvc.state_file import LocalStateFile
         local_state = LocalStateFile(self).save()

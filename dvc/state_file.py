@@ -8,7 +8,7 @@ from dvc import utils
 from dvc.exceptions import DvcException
 from dvc.path.data_item import DataDirError
 from dvc.system import System
-
+from dvc.data_cloud import file_md5
 
 class StateFileError(DvcException):
     def __init__(self, msg):
@@ -40,7 +40,6 @@ class StateFile(object):
     PARAM_SHELL = "Shell"
     PARAM_TARGET_METRICS = 'TargetMetrics'
     TARGET_METRICS_SINGLE_METRIC = 'SingleMetric'
-    PARAM_MD5 = 'Md5'
 
     def __init__(self,
                  command,
@@ -55,8 +54,7 @@ class StateFile(object):
                  stderr=None,
                  cwd=None,
                  shell=False,
-                 target_metrics={},
-                 md5=None):
+                 target_metrics={}):
         self.data_item = data_item
 
         self.settings = settings
@@ -65,10 +63,6 @@ class StateFile(object):
         self.locked = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
-
-        self.md5 = md5
-        if not md5 and data_item:
-            self.md5 = os.path.basename(data_item.cache.relative)
 
         if command not in self.ACCEPTED_COMMANDS:
             raise StateFileError('Args error: unknown command %s' % command)
@@ -176,8 +170,7 @@ class StateFile(object):
                          StateFile.decode_path(json.get(StateFile.PARAM_STDERR)),
                          StateFile.decode_path(json.get(StateFile.PARAM_CWD)),
                          json.get(StateFile.PARAM_SHELL, False),
-                         json.get(StateFile.PARAM_TARGET_METRICS, {}),
-                         json.get(StateFile.PARAM_MD5, ''))
+                         json.get(StateFile.PARAM_TARGET_METRICS, {}))
 
     @staticmethod
     def load(data_item, settings):
@@ -209,7 +202,6 @@ class StateFile(object):
             self.PARAM_STDERR:              self.encode_path(self.stderr),
             self.PARAM_SHELL:               self.shell,
             self.PARAM_TARGET_METRICS:      self.target_metrics,
-            self.PARAM_MD5:                 self.md5
         }
 
         if self.locked:
@@ -241,6 +233,44 @@ class StateFile(object):
             raise StateFileError('the file cannot be created outside of a git repository')
 
         return os.path.relpath(pwd, self.settings.git.git_dir_abs)
+
+
+class CacheStateFile(object):
+    MAGIC = 'DVC-Cache-State'
+    VERSION = '0.1'
+
+    PARAM_MD5 = 'Md5'
+
+    def __init__(self, data_item, md5=None):
+        self.data_item = data_item
+        self.md5 = md5
+
+        if not md5:
+            self.md5 = file_md5(data_item.data.relative)[0]
+
+    @staticmethod
+    def load_json(json):
+        return CacheStateFile(None,
+                              json.get(CacheStateFile.PARAM_MD5, None))
+
+    @staticmethod
+    def load(data_item):
+        with open(data_item.cache_state.relative, 'r') as fd:
+            data = json.load(fd)
+            return CacheStateFile.load_json(data)
+
+    def save(self):
+        res = {
+            self.PARAM_MD5 : self.md5,
+        }
+
+        file_dir = os.path.dirname(self.data_item.cache_state.relative)
+        if not os.path.isdir(file_dir):
+            os.makedirs(file_dir)
+
+        with open(self.data_item.cache_state.relative, 'w') as fd:
+            json.dump(res, fd, indent=2, sort_keys=True)
+
 
 class LocalStateFile(object):
     MAGIC = 'DVC-Local-State'
