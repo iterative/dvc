@@ -271,16 +271,12 @@ code {
       padding-top: 0;
       padding-bottom: 0;
       line-height: 1.2;
-      --x-height-multiplier: 0.363;
-      --baseline-multiplier: 0.157;
       letter-spacing: -.02em;
       font-weight: 700;
       font-style: normal; }
     .header .promo .subtitle {
       color: #fff;
       font-size: 24px;
-      --x-height-multiplier: 0.363 ;
-      --baseline-multiplier: 0.157 ;
       letter-spacing: -.02em ;
       font-weight: 400;
       font-style: normal; 
