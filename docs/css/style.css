@@ -1,6 +1,7 @@
 @charset "UTF-8";
 a {
-  color: rgba(0, 0, 0, 0.8); }
+	color: #000000;
+	color: rgba(0, 0, 0, 0.8); }
 
 @font-face {
   font-family: medium-content-sans-serif-font;
@@ -235,6 +236,7 @@ code {
     top: 0;
     left: 0;
     right: 0;
+	background: #000000;
     background: rgba(0, 0, 0, 0.175);
     height: 100vh; }
   .header .logo {
@@ -375,6 +377,7 @@ code {
       bottom: 0;
       left: 20px;
       right: 20px;
+	  background-color: #000000;
       background-color: rgba(0, 0, 0, 0.15); }
     @media (max-width: 480px) {
       .navigation-container .inner {
@@ -401,6 +404,7 @@ code {
         font-weight: 600;
         font-size: 14px;
         text-transform: uppercase;
+		color: #000000;
         color: rgba(0, 0, 0, 0.44);
         text-decoration: none; }
     .navigation-container .navigation .divider {
