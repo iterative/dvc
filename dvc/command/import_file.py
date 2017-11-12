@@ -134,7 +134,7 @@ class CmdImportFile(CmdBase):
                                data_item,
                                self.settings,
                                argv=[input, output],
-                               input_files=[],
+                               input_items=[],
                                output_files=[output],
                                lock=lock)
             state_file.save()

@@ -121,7 +121,7 @@ class CmdRun(CmdBase):
             state_file = StateFile(StateFile.COMMAND_RUN,
                                    data_item,
                                    self.settings,
-                                   input_files_dvc,
+                                   input_set,
                                    output_files_dvc,
                                    code_dependencies_dvc,
                                    argv=cmd_args,

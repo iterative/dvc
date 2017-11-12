@@ -39,12 +39,15 @@ class StateFile(object):
     PARAM_SHELL = "Shell"
     PARAM_TARGET_METRICS = 'TargetMetrics'
     TARGET_METRICS_SINGLE_METRIC = 'SingleMetric'
+    PARAM_DEPS = 'Deps'
+    PARAM_PATH = 'Path'
+    PARAM_MD5 = 'Md5'
 
     def __init__(self,
                  command,
                  data_item,
                  settings,
-                 input_files,
+                 input_items,
                  output_files,
                  code_dependencies=[],
                  lock=False,
@@ -53,11 +56,12 @@ class StateFile(object):
                  stderr=None,
                  cwd=None,
                  shell=False,
-                 target_metrics={}):
+                 target_metrics={},
+                 deps=None):
         self.data_item = data_item
 
         self.settings = settings
-        self.input_files = input_files
+        self.input_files = [x.data.dvc for x in input_items]
         self.output_files = output_files
         self.locked = lock
         self.code_dependencies = code_dependencies
@@ -78,6 +82,25 @@ class StateFile(object):
             self.cwd = self.get_dvc_path()
 
         self.target_metrics = target_metrics
+
+        if deps:
+            self.deps = deps
+        else:
+            self.deps = self.parse_deps(settings.git, input_items, code_dependencies)
+
+    @staticmethod
+    def parse_deps(git, input_items, code_files):
+        deps = []
+
+        for item in input_items:
+            deps.append({StateFile.PARAM_PATH : item.data.dvc,
+                         StateFile.PARAM_MD5: CacheStateFile.load(item).md5})
+
+        for code in code_files:
+            deps.append({StateFile.PARAM_PATH: code,
+                         StateFile.PARAM_MD5: file_md5(os.path.join(git.git_dir_abs, code))[0]})
+
+        return deps
 
     @property
     def file(self):
@@ -160,7 +183,7 @@ class StateFile(object):
         return StateFile(StateFile.decode_path(json.get(StateFile.PARAM_COMMAND)),
                          None,
                          settings,
-                         StateFile.decode_paths(json.get(StateFile.PARAM_INPUT_FILES, [])),
+                         settings.path_factory.to_data_items(StateFile.decode_paths(json.get(StateFile.PARAM_INPUT_FILES, [])))[0],
                          StateFile.decode_paths(json.get(StateFile.PARAM_OUTPUT_FILES, [])),
                          StateFile.decode_paths(json.get(StateFile.PARAM_CODE_DEPENDENCIES, [])),
                          json.get(StateFile.PARAM_LOCKED, False),
@@ -169,7 +192,8 @@ class StateFile(object):
                          StateFile.decode_path(json.get(StateFile.PARAM_STDERR)),
                          StateFile.decode_path(json.get(StateFile.PARAM_CWD)),
                          json.get(StateFile.PARAM_SHELL, False),
-                         json.get(StateFile.PARAM_TARGET_METRICS, {}))
+                         json.get(StateFile.PARAM_TARGET_METRICS, {}),
+                         json.get(StateFile.PARAM_DEPS, []))
 
     @staticmethod
     def load(data_item, settings):
@@ -201,6 +225,7 @@ class StateFile(object):
             self.PARAM_STDERR:              self.encode_path(self.stderr),
             self.PARAM_SHELL:               self.shell,
             self.PARAM_TARGET_METRICS:      self.target_metrics,
+            self.PARAM_DEPS:                self.deps
         }
 
         if self.locked:
