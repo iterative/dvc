@@ -244,7 +244,7 @@ code {
     height: 100px;
     display: block;
     float: left;
-    margin: 40px 20px 0px 20px;
+    margin: 40px 20px 0 20px;
     position: relative; }
     .header .logo img {
       width: 100%;
@@ -304,6 +304,7 @@ code {
     margin-left: auto;
     max-width: 1040px;
     min-height: 35px;
+	border-top: 1px solid #000000; 
     border-top: 1px solid rgba(0, 0, 0, 0.15); }
     .footer .inner:before, .footer .inner:after {
       content: " ";
@@ -325,6 +326,7 @@ code {
         border-width: 0;
         padding: 0;
         vertical-align: baseline;
+		color: #000000;
         color: rgba(0, 0, 0, 0.44);
         white-space: normal;
         text-align: left; }
