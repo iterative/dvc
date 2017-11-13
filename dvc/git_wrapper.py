@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.config import Config
+from dvc.config import Config, ConfigI
 from dvc.executor import Executor, ExecutorError
 from dvc.path.data_item import DataItemError
 from dvc.state_file import StateFile
@@ -432,8 +432,8 @@ class GitWrapper(GitWrapperI):
     @staticmethod
     def state_files_for_previous_commit():
         commit = GitWrapper.git_prev_commit()
-        Logger.debug(u'[dvc-git] Previous commit {}'.format(commit))
+        Logger.debug(u'[dvc-git] Previous commit "{}"'.format(commit))
 
         git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
         lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
-        return filter(lambda s: s.startswith('.dvc/state'), map(unicode.split, lines))
+        return filter(lambda s: s.startswith(ConfigI.STATE_DIR), lines)

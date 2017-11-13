@@ -39,7 +39,7 @@ class CmdCheckout(CmdBase):
                 states = self.git.state_files_for_previous_commit()
                 prev_items = self.settings.path_factory.data_items_from_states(states, existing=False)
             except Exception as ex:
-                Logger.error(u'Unable to get data files from previous commit'.format(ex))
+                Logger.error(u'Unable to get data files from previous commit: {}'.format(ex))
                 return 1
 
             curr_items = self.settings.path_factory.all_existing_data_items()
@@ -53,7 +53,8 @@ class CmdCheckout(CmdBase):
         for item in removed_items_set:
             path = item.data.relative
             if not os.path.exists(path):
-                print(u'Remove \'{}\' - file does not exist'.format(path))
+                print(u'Remove \'{}\'.'.format(path))
+                Logger.warn(u'File \'{}\' does not exist'.format(path))
             else:
                 Logger.info(u'Remove \'{}\''.format(path))
                 os.remove(path)
