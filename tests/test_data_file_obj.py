@@ -16,7 +16,7 @@ class TestDataFileObjBasic(BasicEnvironment):
         config = ConfigI()
 
         file = os.path.join('data', 'file.txt')
-        self.cache_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'file.txt_ad45ba8')
+        self.cache_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, 'file.txt_ad45ba8')
         self._data_path = DataItem(file, git, config, cache_file=self.cache_file_full_path)
         pass
 
@@ -28,7 +28,7 @@ class TestDataFileObjBasic(BasicEnvironment):
         self.assertEqual(self._data_path.cache.abs, self.cache_file_full_path)
 
     def test_state_file(self):
-        state_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file.txt.state')
+        state_file_full_path = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data', 'file.txt.state')
         self.assertEqual(self._data_path.state.abs, state_file_full_path)
 
 
@@ -40,7 +40,7 @@ class TestDataItemWithGivenCache(BasicEnvironment):
         self._config = ConfigI('data')
 
         self._file = os.path.join('data', 'file.txt')
-        self._cache = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'file.txt_abcd')
+        self._cache = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, 'file.txt_abcd')
 
         self._data_item = DataItem(self._file, self._git, self._config, self._cache)
         pass
@@ -58,7 +58,7 @@ class TestDeepDataItemWithGivenCache(BasicEnvironment):
         self._config = ConfigI('data')
 
         self._file = os.path.join('data', 'dir1', 'file.txt')
-        self._cache = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'dir1', 'file.txt_abcd')
+        self._cache = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, 'dir1', 'file.txt_abcd')
 
         self._data_item = DataItem(self._file, self._git, self._config, self._cache)
         pass
@@ -78,8 +78,8 @@ class TestPathFactory(BasicEnvironment):
 
         self.data_file = os.path.join('data', 'file.txt')
         dummy_md5 = 'fsymlinc.txt'
-        self.cache_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dummy_md5)
-        self.state_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file.txt' + DataItem.STATE_FILE_SUFFIX)
+        self.cache_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, dummy_md5)
+        self.state_file = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data', 'file.txt' + DataItem.STATE_FILE_SUFFIX)
 
         with open(self.cache_file, 'w+') as fd:
             fd.write('some text')
@@ -134,7 +134,7 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.path_factory = PathFactory(git, config)
 
         deep_path = os.path.join(self.data_dir, 'dir1', 'd2', 'file.txt')
-        self.cache_file = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'dir1', 'd2', 'file.txt_eeeff8f')
+        self.cache_file = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, 'dir1', 'd2', 'file.txt_eeeff8f')
         self.data_path = self.path_factory.data_item(deep_path, cache_file=self.cache_file)
         pass
 
@@ -146,7 +146,7 @@ class TestDataPathInDataDir(BasicEnvironment):
         self.assertEqual(self.data_path.cache.abs, self.cache_file)
 
     def test_state_file(self):
-        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'da', 'dir1', 'd2', 'file.txt.state')
+        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'da', 'dir1', 'd2', 'file.txt.state')
         self.assertEqual(self.data_path.state.abs, target)
 
 
@@ -162,7 +162,7 @@ class TestDataFileObjLongPath(BasicEnvironment):
         self._config = ConfigI('data')
         self.path_factory = PathFactory(self._git, self._config)
 
-        self.cache_file = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, 'file1.txt_123ed8')
+        self.cache_file = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, 'file1.txt_123ed8')
         self.data_path = self.path_factory.data_item(os.path.join('..', '..', 'data', 'file1.txt'), cache_file=self.cache_file)
         pass
 
@@ -174,7 +174,7 @@ class TestDataFileObjLongPath(BasicEnvironment):
         self.assertEqual(self.data_path.cache.abs, self.cache_file)
 
     def test_state_file(self):
-        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', 'file1.txt.state')
+        target = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data', 'file1.txt.state')
         self.assertEqual(self.data_path.state.abs, target)
 
 

@@ -34,8 +34,8 @@ class BasicEnvironment(TestCase):
             os.makedirs(self._test_git_dir)
 
         data_dir = os.path.join(self._test_git_dir, 'data')
-        cache_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR)
-        state_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data')
+        cache_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME)
+        state_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data')
 
         os.makedirs(data_dir)
         os.makedirs(cache_dir)
@@ -103,13 +103,13 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
     def crate_data_item(self, data_file, cache_file=True, content='random text'):
         file_result = os.path.join('data', data_file)
-        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, file_result + DataItem.STATE_FILE_SUFFIX)
+        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, file_result + DataItem.STATE_FILE_SUFFIX)
 
         dummy_md5 = os.path.basename(data_file) + DataItem.CACHE_FILE_SEP + self._commit
         self.create_content_file(state_result, '{"Md5" : "' + dummy_md5 + '", "Command" : "run", "Cwd" : "dir"}')
 
         if cache_file:
-            cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR, dummy_md5)
+            cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, dummy_md5)
             self.create_content_file(cache_result, content)
 
             System.hardlink(cache_result, file_result)
@@ -121,4 +121,4 @@ class DirHierarchyEnvironment(BasicEnvironment):
 
     def create_dirs(self, dir):
         os.makedirs(os.path.join('data', dir))
-        os.makedirs(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, 'data', dir))
+        os.makedirs(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data', dir))

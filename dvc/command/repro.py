@@ -156,7 +156,7 @@ class ReproChange(object):
             Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
 
             try:
-                data_item = self.cmd_obj.settings.path_factory.existing_data_item_from_dvc_path(output_dvc)
+                data_item = self.cmd_obj.settings.path_factory.data_item_from_dvc_path(output_dvc)
                 os.remove(data_item.data.relative)
             except Exception as ex:
                 msg = 'Data item {} cannot be removed before reproduction: {}'

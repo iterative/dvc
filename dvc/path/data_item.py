@@ -1,7 +1,7 @@
 import os
 import stat
-import shutil
 
+from dvc.config import ConfigI
 from dvc.path.path import Path
 from dvc.exceptions import DvcException
 from dvc.system import System
@@ -71,17 +71,17 @@ class DataItem(object):
 
     @cached_property
     def state(self):
-        state_dir = os.path.join(self._git.git_dir_abs, self._config.state_dir)
+        state_dir = os.path.join(self._git.git_dir_abs, ConfigI.STATE_DIR)
         state_file = os.path.join(state_dir, self.data.dvc + self.STATE_FILE_SUFFIX)
         return Path(state_file, self._git)
 
     @cached_property
-    def cache_dir(self):
-        return os.path.join(self._git.git_dir_abs, self._config.cache_dir)
+    def cache_dir_abs(self):
+        return os.path.join(self._git.git_dir_abs, ConfigI.CACHE_DIR)
 
     @cached_property
     def cache(self):
-        cache_dir = self.cache_dir
+        cache_dir = self.cache_dir_abs
 
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
@@ -94,11 +94,11 @@ class DataItem(object):
 
     @cached_property
     def state_dir_abs(self):
-        return os.path.join(self._git.git_dir_abs, self._config.state_dir)
+        return os.path.join(self._git.git_dir_abs, ConfigI.STATE_DIR)
 
     def move_data_to_cache(self):
         md5 = file_md5(self.data.relative)[0]
-        self._cache_file = os.path.join(self.cache_dir, md5)
+        self._cache_file = os.path.join(self.cache_dir_abs, md5)
         self._git.modify_gitignore([self.data.relative])
         if not os.path.isfile(self.cache.relative):
             System.hardlink(self.data.relative, self.cache.relative)

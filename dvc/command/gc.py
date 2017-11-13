@@ -4,6 +4,8 @@ from dvc.command.base import DvcLock
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError
+from dvc.config import ConfigI
+
 
 class CmdGC(Traverse):
     def __init__(self, settings):
@@ -16,8 +18,8 @@ class CmdGC(Traverse):
                 Logger.error('Failed to collect used cache')
                 return 1
 
-            for cache in os.listdir(self.settings.config.cache_dir):
-                fname = os.path.join(self.settings.config.cache_dir, cache)
+            for cache in os.listdir(ConfigI.CACHE_DIR):
+                fname = os.path.join(ConfigI.CACHE_DIR, cache)
                 if fname in self.clist:
                     continue
                 os.remove(fname)

@@ -107,8 +107,8 @@ class CmdImportFile(CmdBase):
                 raise ImportFileError('Output file directory "{}" does not exists'.format(
                     os.path.dirname(data_item.data.relative)))
 
-            if not os.path.exists(data_item.cache_dir):
-                os.makedirs(data_item.cache_dir)
+            if not os.path.exists(data_item.cache_dir_abs):
+                os.makedirs(data_item.cache_dir_abs)
 
             data_targets.append((input, data_item))
 
