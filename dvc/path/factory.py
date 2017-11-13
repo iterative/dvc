@@ -1,5 +1,6 @@
 import os
 
+from dvc.config import ConfigI
 from dvc.path.data_item import DataItem, DataItemError, DataDirError
 from dvc.path.path import Path
 from dvc.path.stated_data_item import StatedDataItem
@@ -30,7 +31,7 @@ class PathFactory(object):
 
     def is_data_item(self, fname):
         data = os.path.relpath(os.path.realpath(fname), self._git.git_dir_abs)
-        state = os.path.join(self._config.state_dir, data + DataItem.STATE_FILE_SUFFIX)
+        state = os.path.join(ConfigI.STATE_DIR, data + DataItem.STATE_FILE_SUFFIX)
         return os.path.isfile(state)
 
     def existing_data_item(self, fname):
@@ -55,7 +56,7 @@ class PathFactory(object):
     def all_existing_data_items(self, subdir='.'):
         states = []
 
-        for root, dirs, files in os.walk(os.path.join(self._config.state_dir, subdir)):
+        for root, dirs, files in os.walk(os.path.join(ConfigI.STATE_DIR, subdir)):
             for fname in files:
                 path = os.path.join(root, fname)
 
@@ -71,5 +72,6 @@ class PathFactory(object):
         return map(lambda s: self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing),
                    states)
 
+    @staticmethod
     def state_path_to_dvc_path(self, state):
-        return os.path.relpath(state, self._config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
+        return os.path.relpath(state, ConfigI.STATE_DIR)[:-len(DataItem.STATE_FILE_SUFFIX)]

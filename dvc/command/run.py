@@ -117,7 +117,7 @@ class CmdRun(CmdBase):
         result = []
         for data_item in repo_change.changed_data_items:
             Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
-                data_item.data.relative, data_item.cache_dir))
+                data_item.data.relative, data_item.cache_dir_abs))
             data_item.move_data_to_cache()
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))

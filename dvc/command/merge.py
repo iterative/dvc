@@ -2,6 +2,7 @@ import os
 import json
 
 from dvc.command.base import CmdBase, DvcLock
+from dvc.config import ConfigI
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 from dvc.path.data_item import DataItem
@@ -20,8 +21,8 @@ class CmdMerge(CmdBase):
         dlist = []
         flist = self.git.get_last_merge_changed_files()
         for fname in flist:
-            if fname.startswith(self.settings.config.state_dir) and fname.endswith(DataItem.STATE_FILE_SUFFIX):
-                data = os.path.relpath(fname, self.settings.config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
+            if fname.startswith(ConfigI.STATE_DIR) and fname.endswith(DataItem.STATE_FILE_SUFFIX):
+                data = os.path.relpath(fname, ConfigI.STATE_DIR)[:-len(DataItem.STATE_FILE_SUFFIX)]
                 dlist.append(data)
         return dlist
 
