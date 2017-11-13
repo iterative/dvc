@@ -35,16 +35,12 @@ class CmdCheckout(CmdBase):
  
     def run(self):
         with DvcLock(self.is_locker, self.git):
-            curr_commit = self.git.curr_branch_or_commit
-            prev_items = []
             try:
-                self.git.checkout_previous()
-                prev_items = self.settings.path_factory.all_existing_data_items()
+                states = self.git.state_files_for_previous_commit()
+                prev_items = self.settings.path_factory.data_items_from_states(states, existing=False)
             except Exception as ex:
-                Logger.error(u'Unable to get '.format(ex))
+                Logger.error(u'Unable to get data files from previous commit'.format(ex))
                 return 1
-            finally:
-                self.git.checkout(curr_commit)
 
             curr_items = self.settings.path_factory.all_existing_data_items()
             self.checkout(curr_items)
@@ -55,10 +51,14 @@ class CmdCheckout(CmdBase):
     @staticmethod
     def remove_files(removed_items_set):
         for item in removed_items_set:
-            Logger.info(u'Remove \'{}\''.format(item.data.relative))
-            os.remove(item.data.relative)
-            dir = os.path.dirname(item.data.relative)
-            if not os.listdir(dir):
-                Logger.info(u'Remove directory \'{}\''.format(dir))
-                os.removedirs(dir)
+            path = item.data.relative
+            if not os.path.exists(path):
+                print(u'Remove \'{}\' - file does not exist'.format(path))
+            else:
+                Logger.info(u'Remove \'{}\''.format(path))
+                os.remove(path)
+                dir = os.path.dirname(path)
+                if not os.listdir(dir):
+                    Logger.info(u'Remove directory \'{}\''.format(dir))
+                    os.removedirs(dir)
         pass

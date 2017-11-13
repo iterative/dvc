@@ -423,3 +423,17 @@ class GitWrapper(GitWrapperI):
         for (hash, branch) in items:
             result[hash].append(branch)
         return result
+
+    @staticmethod
+    def git_prev_commit():
+        cmd = 'git check-ref-format --branch @{-1}'
+        return Executor.exec_cmd_only_success(cmd.split()).strip()
+
+    @staticmethod
+    def state_files_for_previous_commit():
+        commit = GitWrapper.git_prev_commit()
+        Logger.debug(u'[dvc-git] Previous commit {}'.format(commit))
+
+        git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
+        lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
+        return filter(lambda s: s.startswith('.dvc/state'), map(unicode.split, lines))

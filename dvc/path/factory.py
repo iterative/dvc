@@ -21,9 +21,12 @@ class PathFactory(object):
     def stated_data_item(self, state, data_file):
         return StatedDataItem(state, data_file, self._git, self._config)
 
-    def existing_data_item_from_dvc_path(self, dvc_path):
+    def data_item_from_dvc_path(self, dvc_path, existing=True):
         path = Path.from_dvc_path(dvc_path, self._git)
-        return self.existing_data_item(path.relative)
+        if existing:
+            return self.existing_data_item(path.relative)
+        else:
+            return self.data_item(path.relative)
 
     def is_data_item(self, fname):
         data = os.path.relpath(os.path.realpath(fname), self._git.git_dir_abs)
@@ -50,7 +53,6 @@ class PathFactory(object):
         return result, externally_created_files
 
     def all_existing_data_items(self, subdir='.'):
-        items = []
         states = []
 
         for root, dirs, files in os.walk(os.path.join(self._config.state_dir, subdir)):
@@ -63,8 +65,11 @@ class PathFactory(object):
 
                 states.append(path)
 
-        for state in states:
-            data = os.path.relpath(state, self._config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
-            items.append(self.existing_data_item_from_dvc_path(data))
+        return self.data_items_from_states(states)
 
-        return items
+    def data_items_from_states(self, states, existing=True):
+        return map(lambda s: self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing),
+                   states)
+
+    def state_path_to_dvc_path(self, state):
+        return os.path.relpath(state, self._config.state_dir)[:-len(DataItem.STATE_FILE_SUFFIX)]
