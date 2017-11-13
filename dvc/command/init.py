@@ -85,8 +85,8 @@ ProjectName =
             return 1
 
         config_dir_path = self.get_not_existing_path(Config.CONFIG_DIR)
-        cache_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.CACHE_DIR)
-        state_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.STATE_DIR)
+        cache_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.CACHE_DIR_NAME)
+        state_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.STATE_DIR_NAME)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 

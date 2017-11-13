@@ -23,8 +23,8 @@ class RunBasicTest(TestCase):
         os.chdir(self.test_dir)
         os.mkdir('data')
         os.mkdir(ConfigI.CONFIG_DIR)
-        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR))
-        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR))
+        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME))
+        os.mkdir(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME))
 
         self.init_git_repo()
         self.git = GitWrapper()
@@ -37,7 +37,7 @@ class RunBasicTest(TestCase):
 
     def init_git_repo(self):
         Executor.exec_cmd_only_success(['git', 'init'])
-        msg = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR)
+        msg = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME)
         msg += '\n'
         msg += os.path.join(ConfigI.CONFIG_DIR, '.' + ConfigI.CONFIG + '.lock')
         self.create_file('.gitignore', msg)
@@ -72,8 +72,8 @@ class RunTwoFilesBase(RunBasicTest):
                                               stdout=self.file_name1,
                                               stderr=self.file_name2)
 
-        self.state_file_name1 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, self.file_name1 + DataItem.STATE_FILE_SUFFIX)
-        self.state_file_name2 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR, self.file_name2 + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name1 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, self.file_name1 + DataItem.STATE_FILE_SUFFIX)
+        self.state_file_name2 = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, self.file_name2 + DataItem.STATE_FILE_SUFFIX)
 
         self.state_file1 = None
         self.state_file2 = None
