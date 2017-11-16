@@ -428,13 +428,13 @@ def parse_args(argv=None):
                         help='Find branch name')
     find_parser.set_defaults(func=CmdFind)
     find_parser.add_argument(
+                        'branch_name',
+                        nargs='?',
+                        help='Branch name regexp.')
+    find_parser.add_argument(
                         'target',
                         nargs='?',
                         help='Target metric file.')
-    find_parser.add_argument(
-                        '-r',
-                        '--branch-regex',
-                        help='Branch name regexp.')
     find_parser.add_argument(
                         '-c',
                         '--criteria',

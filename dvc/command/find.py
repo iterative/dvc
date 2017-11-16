@@ -11,9 +11,9 @@ class CmdFind(CmdBase):
     def run(self):
         with DvcLock(self.is_locker, self.git):
             fname = self.parsed_args.target
-            regex = self.parsed_args.branch_regex
+            branch_name = self.parsed_args.branch_name
 
-            branches = self.git.branches(regex)
+            branches = self.git.branches(branch_name)
             metrics = [self.read_metrics(fname, b) for b in branches]
 
             zipped = zip(metrics, branches)
