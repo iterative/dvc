@@ -444,3 +444,24 @@ class GitWrapper(GitWrapperI):
         git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
         lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
         return filter(lambda s: s.startswith(ConfigI.STATE_DIR), lines)
+
+    @staticmethod
+    def branches(regexp):
+        cmd = 'git branch --format "%(refname)"'
+        lines = Executor.exec_cmd_only_success(cmd.split()).split('\n')
+        lines = map(lambda l: l.strip('"'), lines)
+
+        if not regexp or '/' not in regexp:
+            # remove remotes like 'refs/heads'
+            lines = map(lambda s: s.split('/')[-1], lines)
+
+        if not regexp:
+            return lines
+
+        reg = re.compile(regexp)
+        return filter(reg.search, lines)
+
+    @staticmethod
+    def get_file_content(fname, branch):
+        cmd = 'git show {}:{}'.format(branch, fname)
+        return Executor.exec_cmd_only_success(cmd.split())
