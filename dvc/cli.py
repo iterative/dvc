@@ -4,6 +4,7 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
+from dvc.command.find import CmdFind
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
@@ -419,6 +420,33 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Checkout')
     checkout_parser.set_defaults(func=CmdCheckout)
+
+    # Find
+    find_parser = subparsers.add_parser(
+                        'find',
+                        parents=[parent_parser],
+                        help='Find branch name')
+    find_parser.set_defaults(func=CmdFind)
+    find_parser.add_argument(
+                        'target',
+                        nargs='?',
+                        help='Target metric file.')
+    find_parser.add_argument(
+                        '-r',
+                        '--branch-regex',
+                        help='Branch name regexp.')
+    find_parser.add_argument(
+                        '-c',
+                        '--criteria',
+                        help='Search criteria. By default it finds max.',
+                        choices=['max', 'min', 'all'],
+                        default='max')
+    find_parser.add_argument(
+                        '-s',
+                        '--show-value',
+                        action='store_true',
+                        default=False,
+                        help='Show metrics value.')
 
     if isinstance(argv, str):
         argv = argv.split()

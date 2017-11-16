@@ -4,6 +4,7 @@ import sys
 import json
 import re
 
+from dvc import utils
 from dvc.exceptions import DvcException
 from dvc.path.data_item import DataDirError
 from dvc.system import System
@@ -17,8 +18,6 @@ class StateFileError(DvcException):
 class StateFile(object):
     MAGIC = 'DVC-State'
     VERSION = '0.1'
-
-    FLOATS_FROM_STRING = re.compile(r'[-+]?(?:(?:\d*\.\d+)|(?:\d+\.?))(?:[Ee][+-]?\d+)?')
 
     DVC_PYTHON_FILE_NAME = 'dvc.py'
     DVC_COMMAND = 'dvc'
@@ -111,28 +110,12 @@ class StateFile(object):
             self.target_metrics[StateFile.TARGET_METRICS_SINGLE_METRIC] = target_metric
 
     @staticmethod
-    def parse_target_metric(file_name):
-        fd = open(file_name, 'r')
-
-        try:
-            lines = fd.readlines(2)
-        except Exception as e:
-            raise StateFileError('Unable to parse target file')
-
-        if len(lines) != 1:
-            raise StateFileError('file contains more then one line')
-
-        # Extract float from string. I.e. from 'AUC: 0.596182'
-        nums = StateFile.FLOATS_FROM_STRING.findall(lines[0])
-        if len(nums) < 1:
-            raise StateFileError("Unable to parse metrics from the first line")
-
-        return float(nums[0])
-
-    @staticmethod
     def try_parse_target_metric(file_name):
         try:
-            return StateFile.parse_target_metric(file_name)
+            metric = utils.parse_target_metric_file(file_name)
+            if not metric:
+                raise StateFileError('Unable to parse metrics from the first line of file {}'.format(file_name))
+            return metric
         except StateFileError:
             return None
 
