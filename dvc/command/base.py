@@ -1,9 +1,5 @@
-import argparse
 import fasteners
 
-from multiprocessing import cpu_count
-
-from dvc.config import ConfigError
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 
@@ -34,6 +30,30 @@ class DvcLock(object):
     def __exit__(self, type, value, traceback):
         if self.is_locker:
             self.lock.release()
+
+
+class ForeignBranch(object):
+    def __init__(self, branch, new_branch, git):
+        self.branch = branch
+        self.new_branch = new_branch
+        self.git = git
+
+        if branch and new_branch:
+            raise DvcLockerError("Commands conflict: --branch and --new-branch cannot be used at the same command")
+
+        self.perform_action = branch or new_branch
+
+    def __enter__(self):
+        if self.perform_action:
+            if self.branch:
+                self.git.checkout(self.branch)
+            else:
+                self.git.checkout_new(self.new_branch)
+        return self
+
+    def __exit__(self, type, value, traceback):
+        if self.perform_action:
+            self.git.checkout()
 
 
 class CmdBase(object):
@@ -99,5 +119,10 @@ class CmdBase(object):
     def not_committed_changes_warning():
         Logger.warn('changes were not committed to git')
 
+    def run_cmd(self):
+        with ForeignBranch(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
+            return self.run()
+
+    # Abstract method that has to be implemented by any inheritance class
     def run(self):
         pass

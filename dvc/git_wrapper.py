@@ -317,9 +317,15 @@ class GitWrapper(GitWrapperI):
         Executor.exec_cmd_only_success(cmd.split())
 
     @staticmethod
-    def checkout(commit):
-        Logger.debug('[dvc-git] Checkout {}'.format(commit))
-        cmd = 'git checkout {}'.format(commit)
+    def checkout(commit_or_branch):
+        Logger.debug('[dvc-git] Checkout {}'.format(commit_or_branch))
+        cmd = 'git checkout {}'.format(commit_or_branch)
+        Executor.exec_cmd(cmd.split())
+
+    @staticmethod
+    def checkout_new(branch):
+        Logger.debug('[dvc-git] Checkout new branch {}'.format(branch))
+        cmd = 'git checkout -b{}'.format(branch)
         Executor.exec_cmd(cmd.split())
 
     @staticmethod

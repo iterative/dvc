@@ -11,10 +11,9 @@ class CmdRemove(Traverse):
     def run(self):
         if not self.parsed_args.target:
             Logger.error('Nothing specified, nothing removed.')
-            return 0
+            return 1
 
-        super(CmdRemove, self).run()
-        pass
+        return super(CmdRemove, self).run()
 
     def process_file(self, target):
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))

@@ -25,21 +25,34 @@ from dvc import VERSION
 def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument('-q',
+    parent_parser.add_argument(
+                        '-q',
                         '--quiet',
                         action='store_true',
                         default=False,
                         help='Be quiet.')
-    parent_parser.add_argument('-v',
+    parent_parser.add_argument(
+                        '-v',
                         '--verbose',
                         action='store_true',
                         default=False,
                         help='Be verbose.')
-    parent_parser.add_argument('-G',
+    parent_parser.add_argument(
+                        '-G',
                         '--no-git-actions',
                         action='store_true',
                         default=False,
                         help='Skip all git actions including reproducibility check and commits.')
+    parent_parser.add_argument(
+                        '-b',
+                        '--branch',
+                        metavar='BRANCH',
+                        help='Execute a command in the branch.')
+    parent_parser.add_argument(
+                        '-n',
+                        '--new-branch',
+                        metavar='BRANCH',
+                        help='Create a new branch and execute a command in the branch.')
 
     # Main parser
     desc = 'Data Version Control'
