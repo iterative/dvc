@@ -1,5 +1,5 @@
 from dvc import utils
-from dvc.command.common.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.executor import ExecutorError
 from dvc.logger import Logger
 
@@ -9,23 +9,22 @@ class CmdFind(CmdBase):
         super(CmdFind, self).__init__(settings)
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            fname = self.parsed_args.target
-            branch_name = self.parsed_args.branch_name
+        fname = self.parsed_args.target
+        branch_name = self.parsed_args.branch_name
 
-            branches = self.git.branches(branch_name)
-            metrics = [self.read_metrics(fname, b) for b in branches]
+        branches = self.git.branches(branch_name)
+        metrics = [self.read_metrics(fname, b) for b in branches]
 
-            zipped = zip(metrics, branches)
-            res = self.filter(zipped, self.parsed_args.criteria)
-            res = filter(lambda x: x[0] is not None, res)
+        zipped = zip(metrics, branches)
+        res = self.filter(zipped, self.parsed_args.criteria)
+        res = filter(lambda x: x[0] is not None, res)
 
-            for (val, branch) in res:
-                if self.parsed_args.show_value:
-                    print('{}: {}'.format(branch, val))
-                else:
-                    print(branch)
-            return 0
+        for (val, branch) in res:
+            if self.parsed_args.show_value:
+                print('{}: {}'.format(branch, val))
+            else:
+                print(branch)
+        return 0
 
     @staticmethod
     def filter(zipped, criteria):

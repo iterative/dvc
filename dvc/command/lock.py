@@ -1,4 +1,4 @@
-from dvc.command.common.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
@@ -8,8 +8,7 @@ class CmdLock(CmdBase):
         super(CmdLock, self).__init__(settings)
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            return self.lock_files(self.parsed_args.files, not self.parsed_args.unlock)
+        return self.lock_files(self.parsed_args.files, not self.parsed_args.unlock)
 
     def lock_files(self, files, target):
         cmd = 'lock' if target else 'unlock'

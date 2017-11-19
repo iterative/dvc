@@ -1,7 +1,7 @@
 import os
 import configobj
 
-from dvc.command.common.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 
@@ -75,7 +75,7 @@ class CmdConfig(CmdBase):
 
         return 0
 
-    def _run(self):
+    def run(self):
         if self.check_opt() != 0:
             return 1
 
@@ -86,7 +86,3 @@ class CmdConfig(CmdBase):
             return self.show()
 
         return self.set()
-
-    def run(self):
-        with DvcLock(self.is_locker, self.git):
-            return self._run()

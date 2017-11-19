@@ -19,7 +19,6 @@ class BranchChanger(object):
 
     def __enter__(self):
         if self.perform_action:
-            print('========PERFORM')
             self.git.checkout(self.branch, self.create_new)
         return self
 

@@ -1,7 +1,6 @@
 import os
 import copy
 
-from dvc.command.common.base import DvcLock
 from dvc.command.import_file import CmdImportFile
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
@@ -40,23 +39,21 @@ class CmdRepro(CmdRun):
         return []
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            recursive = not self.parsed_args.single_item
-            targets = []
+        recursive = not self.parsed_args.single_item
+        targets = []
 
-            if self.parsed_args.target:
-                targets += self.parsed_args.target
-            else:
-                target = self.settings.config._config['Global'].get('Target', None)
-                if not target or len(target) == 0:
-                    Logger.error('Reproduction target is not defined. ' +
-                                 'Specify data file or set target by ' +
-                                 '`dvc config global.target target` command.')
-                    return 1
-                targets += [target]
+        if self.parsed_args.target:
+            targets += self.parsed_args.target
+        else:
+            target = self.settings.config._config['Global'].get('Target', None)
+            if not target or len(target) == 0:
+                Logger.error('Reproduction target is not defined. ' +
+                             'Specify data file or set target by ' +
+                             '`dvc config global.target target` command.')
+                return 1
+            targets += [target]
 
-            return self.repro_target(targets, recursive, self.parsed_args.force)
-        pass
+        return self.repro_target(targets, recursive, self.parsed_args.force)
 
     def repro_target(self, target, recursive, force):
         if not self.no_git_actions and not self.git.is_ready_to_go():

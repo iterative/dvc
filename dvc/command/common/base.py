@@ -45,12 +45,6 @@ class CmdBase(object):
     def set_git_action(self, value):
         self.parsed_args.no_git_actions = not value
 
-    @property
-    def is_locker(self):
-        if 'no_lock' in self.parsed_args.__dict__:
-            return not self.parsed_args.no_lock
-        return True
-
     def set_locker(self, value):
         self.parsed_args.no_lock = value
 
@@ -67,9 +61,16 @@ class CmdBase(object):
         Logger.warn('changes were not committed to git')
 
     def run_cmd(self):
-        with BranchChanger(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
-            return self.run()
+        with DvcLock(self.is_locker, self.git):
+            with BranchChanger(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
+                return self.run()
 
-    # Abstract method that has to be implemented by any inheritance class
+    # Abstract methods that have to be implemented by any inheritance class
     def run(self):
         pass
+
+    @property
+    def is_locker(self):
+        if 'no_lock' in self.parsed_args.__dict__:
+            return not self.parsed_args.no_lock
+        return True

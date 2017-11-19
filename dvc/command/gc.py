@@ -1,6 +1,5 @@
 import os
 
-from dvc.command.common.base import DvcLock
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError
@@ -13,20 +12,19 @@ class CmdGC(Traverse):
         self.clist = []
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            if not self._traverse(self.git.git_dir_abs):
-                Logger.error('Failed to collect used cache')
-                return 1
+        if not self._traverse(self.git.git_dir_abs):
+            Logger.error('Failed to collect used cache')
+            return 1
 
-            for cache in os.listdir(ConfigI.CACHE_DIR):
-                fname = os.path.join(ConfigI.CACHE_DIR, cache)
-                if fname in self.clist:
-                    continue
-                os.remove(fname)
-                self._remove_cloud_cache(self.settings.path_factory.data_item('.empty', fname))
-                Logger.info('Cache \'{}\' was removed'.format(fname))
+        for cache in os.listdir(ConfigI.CACHE_DIR):
+            fname = os.path.join(ConfigI.CACHE_DIR, cache)
+            if fname in self.clist:
+                continue
+            os.remove(fname)
+            self._remove_cloud_cache(self.settings.path_factory.data_item('.empty', fname))
+            Logger.info('Cache \'{}\' was removed'.format(fname))
 
-            return 0
+        return 0
 
     def process_file(self, target):
         Logger.debug(u'[Cmd-GC] GC file {}.'.format(target))

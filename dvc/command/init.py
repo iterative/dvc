@@ -62,6 +62,10 @@ ProjectName =
     def __init__(self, settings):
         super(CmdInit, self).__init__(settings)
 
+    @property
+    def is_locker(self):
+        return False
+
     def get_not_existing_path(self, *args):
         path = Path(os.path.join(self.git.git_dir, *args))
         if path.exists():

@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.common.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.config import ConfigI
 from dvc.logger import Logger
 from dvc.state_file import StateFile
@@ -63,12 +63,11 @@ class CmdMerge(CmdBase):
         self.commit_if_needed(msg)
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            targets = self.collect_targets()
-            if not targets:
-                return 1
+        targets = self.collect_targets()
+        if not targets:
+            return 1
 
-            self.checkout_targets(targets)
-            self.print_info(targets)
+        self.checkout_targets(targets)
+        self.print_info(targets)
 
-            return 0
+        return 0

@@ -1,9 +1,10 @@
 import os
 
-from dvc.command.common.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError
+
 
 class TraverseError(DvcException):
     def __init__(self, msg):
@@ -17,9 +18,8 @@ class Traverse(CmdBase):
         self._do_not_start_from_root = do_not_start_from_root
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            if not self._traverse_all():
-                return 1
+        if not self._traverse_all():
+            return 1
 
         return 0
 
