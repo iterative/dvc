@@ -18,7 +18,7 @@ def main():
         return 255
 
     try:
-        ret = instance.run()
+        ret = instance.run_cmd()
     except Exception as e:
         exc_info = settings.parsed_args.verbose
         Logger.error("{} error: {}".format(instance.__class__.__name__, e), exc_info=exc_info)

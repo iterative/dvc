@@ -317,16 +317,17 @@ class GitWrapper(GitWrapperI):
         Executor.exec_cmd_only_success(cmd.split())
 
     @staticmethod
-    def checkout(commit):
-        Logger.debug('[dvc-git] Checkout {}'.format(commit))
-        cmd = 'git checkout {}'.format(commit)
-        Executor.exec_cmd(cmd.split())
+    def checkout(commit_or_branch, create_new=False):
+        prefix = '-b ' if create_new else ''
+        Logger.debug('[dvc-git] Checkout {}{}'.format(prefix, commit_or_branch))
+        cmd = 'git checkout {}{}'.format(prefix, commit_or_branch)
+        return Executor.exec_cmd(cmd.split())
 
     @staticmethod
     def checkout_previous():
         Logger.debug('[dvc-git] Checkout previous')
         cmd = 'git checkout -'
-        Executor.exec_cmd(cmd.split())
+        return Executor.exec_cmd(cmd.split())
 
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []

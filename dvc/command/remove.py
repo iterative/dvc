@@ -1,12 +1,19 @@
 import os
 
-from dvc.command.traverse import Traverse
+from dvc.command.common.traverse import Traverse
 from dvc.logger import Logger
 
 
 class CmdRemove(Traverse):
     def __init__(self, settings):
         super(CmdRemove, self).__init__(settings, "remove")
+
+    def run(self):
+        if not self.parsed_args.target:
+            Logger.error('Nothing specified, nothing removed.')
+            return 1
+
+        return super(CmdRemove, self).run()
 
     def process_file(self, target):
         Logger.debug(u'[Cmd-Remove] Remove file {}.'.format(target))

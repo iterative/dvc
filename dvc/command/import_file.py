@@ -1,5 +1,4 @@
 import os
-import re
 
 try:
     from urlparse import urlparse
@@ -8,12 +7,11 @@ except ImportError:
     # pylint: disable=no-name-in-module, import-error
     from urllib.parse import urlparse
 
-from dvc.command.base import CmdBase, DvcLock
-from dvc.data_cloud import sizeof_fmt, file_md5
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.state_file import StateFile
-from dvc.system import System
+
 
 class ImportFileError(DvcException):
     def __init__(self, msg):
@@ -26,32 +24,30 @@ class CmdImportFile(CmdBase):
 
     def run(self):
         targets = []
-        with DvcLock(self.is_locker, self.git):
-            output = self.parsed_args.output
-            self.verify_output(output, self.parsed_args.input)
+        output = self.parsed_args.output
+        self.verify_output(output, self.parsed_args.input)
 
-            for input in self.parsed_args.input:
-                if not os.path.isdir(input):
-                    targets.append((input, output))
-                else:
-                    input_dir = os.path.basename(input)
-                    for root, dirs, files in os.walk(input):
-                        for file in files:
-                            filename = os.path.join(root, file)
+        for input in self.parsed_args.input:
+            if not os.path.isdir(input):
+                targets.append((input, output))
+            else:
+                input_dir = os.path.basename(input)
+                for root, dirs, files in os.walk(input):
+                    for file in files:
+                        filename = os.path.join(root, file)
 
-                            rel = os.path.relpath(filename, input)
-                            out = os.path.join(output, input_dir, rel)
+                        rel = os.path.relpath(filename, input)
+                        out = os.path.join(output, input_dir, rel)
 
-                            out_dir = os.path.dirname(out)
-                            if not os.path.exists(out_dir):
-                                os.mkdir(out_dir)
+                        out_dir = os.path.dirname(out)
+                        if not os.path.exists(out_dir):
+                            os.mkdir(out_dir)
 
-                            targets.append((filename, out))
-                pass
-            self.import_files(targets, self.parsed_args.lock, self.parsed_args.jobs)
-            message = 'DVC import files: {} -> {}'.format(str(self.parsed_args.input), output)
-            self.commit_if_needed(message)
-        pass
+                        targets.append((filename, out))
+            pass
+        self.import_files(targets, self.parsed_args.lock, self.parsed_args.jobs)
+        message = 'DVC import files: {} -> {}'.format(str(self.parsed_args.input), output)
+        self.commit_if_needed(message)
 
     @staticmethod
     def verify_output(output, input):

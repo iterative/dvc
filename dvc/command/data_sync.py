@@ -1,25 +1,27 @@
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 
 import dvc.data_cloud as cloud
 
 
-class CmdDataPull(CmdBase):
-    def __init__(self, settings):
-        super(CmdDataPull, self).__init__(settings)
+class CmdDataBase(CmdBase):
+    def __init__(self, settings, cmd):
+        super(CmdDataBase, self).__init__(settings)
+        self.cmd = cmd
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            self.cloud.pull(self.parsed_args.targets, self.parsed_args.jobs)
+        self.cmd(self.parsed_args.targets, self.parsed_args.jobs)
 
 
-class CmdDataPush(CmdBase):
+class CmdDataPull(CmdDataBase):
     def __init__(self, settings):
-        super(CmdDataPush, self).__init__(settings)
+        super(CmdDataPull, self).__init__(settings, self.cloud.pull)
 
-    def run(self):
-        with DvcLock(self.is_locker, self.git):
-            self.cloud.push(self.parsed_args.targets, self.parsed_args.jobs)
+
+class CmdDataPush(CmdDataBase):
+    def __init__(self, settings):
+        super(CmdDataPush, self).__init__(settings, self.cloud.push)
+
 
 class CmdDataStatus(CmdBase):
     def __init__(self, settings):
@@ -41,9 +43,6 @@ class CmdDataStatus(CmdBase):
             Logger.info('\t{}\t{}'.format(prefix_map[ret], target.data.dvc))
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
-
-            self._show(status)
-
-            return 0
+        status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
+        self._show(status)
+        return 0

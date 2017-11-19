@@ -1,39 +1,6 @@
-import argparse
-import fasteners
-
-from multiprocessing import cpu_count
-
-from dvc.config import ConfigError
-from dvc.exceptions import DvcException
 from dvc.logger import Logger
-
-
-class CmdBaseError(DvcException):
-    def __init__(self, msg):
-        super(CmdBaseError, self).__init__('{}'.format(msg))
-
-
-class DvcLockerError(CmdBaseError):
-    def __init__(self, msg):
-        super(DvcLockerError, self).__init__('DVC locker error: {}'.format(msg))
-
-
-class DvcLock(object):
-    def __init__(self, is_locker, git):
-        self.is_locker = is_locker
-        self.git = git
-        self.lock = None
-
-    def __enter__(self):
-        if self.is_locker:
-            self.lock = fasteners.InterProcessLock(self.git.lock_file)
-            if not self.lock.acquire(timeout=5):
-                raise DvcLockerError('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-        return self.lock
-
-    def __exit__(self, type, value, traceback):
-        if self.is_locker:
-            self.lock.release()
+from dvc.command.common.branch_changer import BranchChanger
+from dvc.command.common.dvc_lock import DvcLock
 
 
 class CmdBase(object):
@@ -78,12 +45,6 @@ class CmdBase(object):
     def set_git_action(self, value):
         self.parsed_args.no_git_actions = not value
 
-    @property
-    def is_locker(self):
-        if 'no_lock' in self.parsed_args.__dict__:
-            return not self.parsed_args.no_lock
-        return True
-
     def set_locker(self, value):
         self.parsed_args.no_lock = value
 
@@ -99,5 +60,17 @@ class CmdBase(object):
     def not_committed_changes_warning():
         Logger.warn('changes were not committed to git')
 
+    def run_cmd(self):
+        with DvcLock(self.is_locker, self.git):
+            with BranchChanger(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
+                return self.run()
+
+    # Abstract methods that have to be implemented by any inheritance class
     def run(self):
         pass
+
+    @property
+    def is_locker(self):
+        if 'no_lock' in self.parsed_args.__dict__:
+            return not self.parsed_args.no_lock
+        return True

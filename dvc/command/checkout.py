@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.system import System
 
@@ -34,19 +34,18 @@ class CmdCheckout(CmdBase):
             Logger.info('Checkout \'{}\''.format(item.data.relative))
  
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            try:
-                states = self.git.state_files_for_previous_commit()
-                prev_items = self.settings.path_factory.data_items_from_states(states, existing=False)
-            except Exception as ex:
-                Logger.error(u'Unable to get data files from previous commit: {}'.format(ex))
-                return 1
+        try:
+            states = self.git.state_files_for_previous_commit()
+            prev_items = self.settings.path_factory.data_items_from_states(states, existing=False)
+        except Exception as ex:
+            Logger.error(u'Unable to get data files from previous commit: {}'.format(ex))
+            return 1
 
-            curr_items = self.settings.path_factory.all_existing_data_items()
-            self.checkout(curr_items)
+        curr_items = self.settings.path_factory.all_existing_data_items()
+        self.checkout(curr_items)
 
-            self.remove_files(list(set(prev_items) - set(curr_items)))
-            return 0
+        self.remove_files(list(set(prev_items) - set(curr_items)))
+        return 0
 
     @staticmethod
     def remove_files(removed_items_set):

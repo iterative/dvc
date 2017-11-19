@@ -1,11 +1,9 @@
 import os
-import sys
 
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.logger import Logger
-from dvc.path.data_item import DataDirError, NotInGitDirError
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
@@ -37,16 +35,14 @@ class CmdRun(CmdBase):
         return self._data_items_from_params(self.parsed_args.output, 'Output')
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            cmd = [self.parsed_args.command] + self.parsed_args.args
-            data_items_from_args, not_data_items_from_args = self.argv_files_by_type(cmd)
-            return self.run_and_commit_if_needed(cmd,
-                                                 data_items_from_args,
-                                                 not_data_items_from_args,
-                                                 self.parsed_args.stdout,
-                                                 self.parsed_args.stderr,
-                                                 self.parsed_args.shell)
-        pass
+        cmd = [self.parsed_args.command] + self.parsed_args.args
+        data_items_from_args, not_data_items_from_args = self.argv_files_by_type(cmd)
+        return self.run_and_commit_if_needed(cmd,
+                                             data_items_from_args,
+                                             not_data_items_from_args,
+                                             self.parsed_args.stdout,
+                                             self.parsed_args.stderr,
+                                             self.parsed_args.shell)
 
     def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
                                  stdout, stderr, shell, 
