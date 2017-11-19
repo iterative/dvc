@@ -1,5 +1,5 @@
 from dvc import utils
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase, DvcLock
 from dvc.executor import ExecutorError
 from dvc.logger import Logger
 

@@ -1,7 +1,7 @@
 import os
 import configobj
 
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase, DvcLock
 from dvc.logger import Logger
 from dvc.config import Config
 

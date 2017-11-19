@@ -1,4 +1,4 @@
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase, DvcLock
 from dvc.logger import Logger
 
 import dvc.data_cloud as cloud

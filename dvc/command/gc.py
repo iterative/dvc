@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.base import DvcLock
+from dvc.command.common.base import DvcLock
 from dvc.command.traverse import Traverse
 from dvc.logger import Logger
 from dvc.path.data_item import DataItemError

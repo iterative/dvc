@@ -1,7 +1,7 @@
 import os
 import copy
 
-from dvc.command.base import DvcLock
+from dvc.command.common.base import DvcLock
 from dvc.command.import_file import CmdImportFile
 from dvc.command.run import CmdRun
 from dvc.logger import Logger

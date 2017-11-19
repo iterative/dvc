@@ -1,5 +1,5 @@
 from dvc.cloud.instance_manager import InstanceManager
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase, DvcLock
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 

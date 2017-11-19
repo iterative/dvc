@@ -8,7 +8,7 @@ except ImportError:
     # pylint: disable=no-name-in-module, import-error
     from urllib.parse import urlparse
 
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase, DvcLock
 from dvc.data_cloud import sizeof_fmt, file_md5
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
