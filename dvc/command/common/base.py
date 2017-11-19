@@ -1,59 +1,6 @@
-import fasteners
-
-from dvc.exceptions import DvcException
 from dvc.logger import Logger
-
-
-class CmdBaseError(DvcException):
-    def __init__(self, msg):
-        super(CmdBaseError, self).__init__('{}'.format(msg))
-
-
-class DvcLockerError(CmdBaseError):
-    def __init__(self, msg):
-        super(DvcLockerError, self).__init__('DVC locker error: {}'.format(msg))
-
-
-class DvcLock(object):
-    def __init__(self, is_locker, git):
-        self.is_locker = is_locker
-        self.git = git
-        self.lock = None
-
-    def __enter__(self):
-        if self.is_locker:
-            self.lock = fasteners.InterProcessLock(self.git.lock_file)
-            if not self.lock.acquire(timeout=5):
-                raise DvcLockerError('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
-        return self.lock
-
-    def __exit__(self, type, value, traceback):
-        if self.is_locker:
-            self.lock.release()
-
-
-class ForeignBranch(object):
-    def __init__(self, branch, new_branch, git):
-        self.branch = branch
-        self.new_branch = new_branch
-        self.git = git
-
-        if branch and new_branch:
-            raise DvcLockerError("Commands conflict: --branch and --new-branch cannot be used at the same command")
-
-        self.perform_action = branch or new_branch
-
-    def __enter__(self):
-        if self.perform_action:
-            if self.branch:
-                self.git.checkout(self.branch)
-            else:
-                self.git.checkout_new(self.new_branch)
-        return self
-
-    def __exit__(self, type, value, traceback):
-        if self.perform_action:
-            self.git.checkout()
+from dvc.command.common.branch_changer import BranchChanger
+from dvc.command.common.dvc_lock import DvcLock
 
 
 class CmdBase(object):
@@ -120,7 +67,7 @@ class CmdBase(object):
         Logger.warn('changes were not committed to git')
 
     def run_cmd(self):
-        with ForeignBranch(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
+        with BranchChanger(self.parsed_args.branch, self.parsed_args.new_branch, self.git):
             return self.run()
 
     # Abstract method that has to be implemented by any inheritance class

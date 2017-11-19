@@ -317,15 +317,10 @@ class GitWrapper(GitWrapperI):
         Executor.exec_cmd_only_success(cmd.split())
 
     @staticmethod
-    def checkout(commit_or_branch):
-        Logger.debug('[dvc-git] Checkout {}'.format(commit_or_branch))
-        cmd = 'git checkout {}'.format(commit_or_branch)
-        Executor.exec_cmd(cmd.split())
-
-    @staticmethod
-    def checkout_new(branch):
-        Logger.debug('[dvc-git] Checkout new branch {}'.format(branch))
-        cmd = 'git checkout -b{}'.format(branch)
+    def checkout(commit_or_branch, create_new=False):
+        prefix = '-b ' if create_new else ''
+        Logger.debug('[dvc-git] Checkout {}{}'.format(prefix, commit_or_branch))
+        cmd = 'git checkout {}{}'.format(prefix, commit_or_branch)
         Executor.exec_cmd(cmd.split())
 
     @staticmethod
