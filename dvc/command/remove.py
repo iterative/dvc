@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.traverse import Traverse
+from dvc.command.common.traverse import Traverse
 from dvc.logger import Logger
 
 

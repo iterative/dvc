@@ -1,7 +1,7 @@
 import os
 import networkx as nx
 
-from dvc.command.traverse import Traverse
+from dvc.command.common.traverse import Traverse
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 
