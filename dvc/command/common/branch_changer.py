@@ -2,8 +2,8 @@ from dvc.command.common.common_error import CmdCommonError
 
 
 class BranchChangerError(CmdCommonError):
-    def __init__(self, msg):
-        super(CmdCommonError, self).__init__('DVC locker error: {}'.format(msg))
+    def __init__(self, branch, msg):
+        super(CmdCommonError, self).__init__('Error in changing branch \'{}\': {}'.format(branch, msg))
 
 
 class BranchChanger(object):
@@ -19,9 +19,13 @@ class BranchChanger(object):
 
     def __enter__(self):
         if self.perform_action:
-            self.git.checkout(self.branch, self.create_new)
+            code, _, err = self.git.checkout(self.branch, self.create_new)
+            if code != 0:
+                raise BranchChangerError(self.branch, err)
         return self
 
     def __exit__(self, type, value, traceback):
         if self.perform_action:
-            self.git.checkout_previous()
+            code, _, err = self.git.checkout_previous()
+            if code != 0:
+                raise BranchChangerError(self.branch, err)

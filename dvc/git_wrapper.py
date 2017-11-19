@@ -321,13 +321,13 @@ class GitWrapper(GitWrapperI):
         prefix = '-b ' if create_new else ''
         Logger.debug('[dvc-git] Checkout {}{}'.format(prefix, commit_or_branch))
         cmd = 'git checkout {}{}'.format(prefix, commit_or_branch)
-        Executor.exec_cmd(cmd.split())
+        return Executor.exec_cmd(cmd.split())
 
     @staticmethod
     def checkout_previous():
         Logger.debug('[dvc-git] Checkout previous')
         cmd = 'git checkout -'
-        Executor.exec_cmd(cmd.split())
+        return Executor.exec_cmd(cmd.split())
 
     def separate_dependency_files_and_dirs(self, code_dependencies):
         code_files = []
