@@ -273,14 +273,15 @@ code {
       line-height: 1.2;
       letter-spacing: -.02em;
       font-weight: 700;
-      font-style: normal; }
+      font-style: normal; 
+	  margin: -1px; /* doc-specific */}
     .header .promo .subtitle {
       color: #fff;
       font-size: 24px;
       letter-spacing: -.02em ;
       font-weight: 400;
       font-style: normal; 
-	  margin: -25px; /* doc-specific */}
+	  margin: -1px; /* doc-specific */}
       @media (max-width: 480px) {
         .header .promo .subtitle {
           clear: both;
