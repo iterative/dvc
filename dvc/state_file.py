@@ -264,7 +264,7 @@ class CacheStateFile(object):
     MAGIC = 'DVC-Cache-State'
     VERSION = '0.1'
 
-    PARAM_MD5 = 'Md5'
+    PARAM_MD5 = StateFile.PARAM_MD5
 
     def __init__(self, data_item, md5=None):
         self.data_item = data_item
