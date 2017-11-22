@@ -99,7 +99,7 @@ class DataItem(object):
     def cache_dir(self):
         return os.path.join(self._git.git_dir_abs, self._config.cache_dir)
 
-    @cached_property
+    @property
     def cache(self):
         cache_dir = self.cache_dir_abs
 
