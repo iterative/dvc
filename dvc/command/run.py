@@ -1,4 +1,6 @@
 import os
+import sys
+import yaml
 
 from dvc.command.common.base import CmdBase
 from dvc.exceptions import DvcException
@@ -12,6 +14,37 @@ from dvc.utils import cached_property
 class RunError(DvcException):
     def __init__(self, msg):
         DvcException.__init__(self, 'Run error: {}'.format(msg))
+
+
+class CommandFile(object):
+    MAGIC = 'DVC-Command-State'
+    VERSION = '0.1'
+
+    PARAM_COMMAND = 'Command'
+    PARAM_CWD = 'Cwd'
+    PARAM_INPUT_FILES = 'InputFiles'
+    PARAM_OUTPUT_FILES = 'OutputFiles'
+    PARAM_CODE_DEPENDENCIES = 'CodeDependencies'
+    PARAM_SHELL = "Shell"
+    PARAM_DEPS = 'Deps'
+    PARAM_PATH = 'Path'
+
+    def __init__(self, cmd, cwd, deps):
+        self.cmd = cmd
+        self.cwd = cwd
+        self.deps = deps
+
+    @staticmethod
+    def loads(data):
+        return CommandFile(data.get(CommandFile.PARAM_CMD, None),
+                           data.get(CommandFile.PARAM_CWD, None),
+                           data.get(CommandFile.PARAM_DEPS, []))
+
+    @staticmethod
+    def load(fname):
+        with open(fname, 'r') as fd:
+            data = yaml.load(fd)
+            return CommandFile.loads(data)
 
 
 class CmdRun(CmdBase):
