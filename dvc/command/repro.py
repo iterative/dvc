@@ -76,9 +76,8 @@ class CmdRepro(CmdRun):
 
         for data_item in data_item_list:
             try:
-                changed_files = set()
                 change = ReproChange(data_item, self, recursive, force)
-                if change.reproduce(changed_files):
+                if change.reproduce():
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
@@ -139,7 +138,7 @@ class ReproChange(object):
     def state(self):
         return self._state
 
-    def remove_output_files(self, changed_files):
+    def remove_output_files(self):
         for output_dvc in self._state.output_files:
             Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
 
@@ -149,8 +148,6 @@ class ReproChange(object):
             except Exception as ex:
                 msg = 'Data item {} cannot be removed before reproduction: {}'
                 Logger.error(msg.format(output_dvc, ex))
-
-            changed_files.add(output_dvc)
 
     def reproduce_import(self):
         Logger.debug('Reproducing data item {}. Re-import cmd: {}'.format(
@@ -196,10 +193,10 @@ class ReproChange(object):
                                         is_repro=True) != 0:
             raise ReproError('Run command reproduction failed')
 
-    def reproduce_data_item(self, changed_files):
+    def reproduce_data_item(self):
         Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
 
-        self.remove_output_files(changed_files)
+        self.remove_output_files()
 
         if self.state.is_import_file:
             self.reproduce_import()
@@ -207,7 +204,7 @@ class ReproChange(object):
             self.reproduce_run()
         # Ignore EMPTY_FILE command
 
-    def reproduce(self, changed_files):
+    def reproduce(self):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
             self._data_item.data.relative, self._recursive, self._force))
 
@@ -216,7 +213,7 @@ class ReproChange(object):
             return False
 
         repro_required = False
-        deps_changed = self.reproduce_deps(changed_files, self._data_item, self._recursive)
+        deps_changed = self.reproduce_deps(self._data_item, self._recursive)
         if deps_changed or self._force or not self.is_cache_exists():
             repro_required = True
 
@@ -224,17 +221,11 @@ class ReproChange(object):
             Logger.debug('Data item {} is up to date'.format(self._data_item.data.relative))
             return False
 
-        if self._data_item.data.dvc in changed_files:
-            msg = 'Data item {} is not going to be reproduced because it was already reproduced'
-            Logger.debug(msg.format(self._data_item.data.relative))
-            return False
-
         Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
-        self.reproduce_data_item(changed_files)
-        changed_files.add(self._data_item.data.dvc)
+        self.reproduce_data_item()
         return True
 
-    def reproduce_deps(self, changed_files, data_item_dvc, recursive):
+    def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
         for dep in self._state.deps:
@@ -250,7 +241,7 @@ class ReproChange(object):
             item = self._settings.path_factory.existing_data_item(path)
             if recursive:
                 change = ReproChange(item, self._cmd_obj, self._recursive, self._force)
-                if change.reproduce(changed_files):
+                if change.reproduce():
                    result = True
 
             if md5 != os.path.basename(item.cache.relative):
