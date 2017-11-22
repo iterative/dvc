@@ -45,11 +45,11 @@ git merge bar
 # way dvc knows to favor data files from current branch.
 dvc merge
 
-# Verify that data and respective state file are restored properly
+# Verify that data and respective cache state file are restored properly
 if [ "$(dvc_md5 data/data)" != "$ORIG_DATA" ]; then
 	dvc_fail
 fi
 
-grep $(echo "$ORIG_DATA" | cut -d " " -f1) .dvc/state/data/data.state || dvc_fail
+grep $(echo "$ORIG_DATA" | cut -d " " -f1) .dvc/state/data/data.cache_state || dvc_fail
 
 dvc_pass

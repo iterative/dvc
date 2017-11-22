@@ -6,6 +6,8 @@ from dvc.logger import Logger
 from dvc.state_file import StateFile
 from dvc.path.data_item import DataItem
 from dvc.system import System
+from dvc.command.checkout import CmdCheckout
+
 
 
 class CmdMerge(CmdBase):
@@ -33,7 +35,7 @@ class CmdMerge(CmdBase):
 
         for item in items:
             try:
-                state = StateFile.load(item, self.git)
+                state = StateFile.load(item, self.settings)
             except Exception as ex:
                 Logger.error('Failed to load state file for {}'.format(item.data.relative), exc_info=True)
                 return None
@@ -49,16 +51,17 @@ class CmdMerge(CmdBase):
         data = []
         for item in targets:
             self.git.checkout_file_before_last_merge(item.state.relative)
+            self.git.checkout_file_before_last_merge(item.cache_state.relative)
 
-            # Reload data item, so we can get restored cache
-            new_item = self.settings.path_factory.data_item(item.data.relative)
-            if os.path.isfile(new_item.data.relative):
-                os.remove(new_item.data.relative)
+            CmdCheckout.checkout([item])
 
-            System.hardlink(new_item.cache.relative, new_item.data.relative)
-
-            data.append(item.data.relative)
-
+#            if os.path.isfile(item.data.relative):
+#                os.remove(item.data.relative)
+#
+#            System.hardlink(item.cache.relative, item.data.relative)
+#
+#            data.append(item.data.relative)
+#
         msg = 'DVC merge files: {}'.format(' '.join(data))
         self.commit_if_needed(msg)
 
