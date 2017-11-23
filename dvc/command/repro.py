@@ -1,7 +1,7 @@
 import os
 import copy
 
-from dvc.command.import_file import CmdImportFile
+from dvc.command.base import DvcLock
 from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
@@ -115,10 +115,10 @@ class ReproChange(object):
             raise ReproError('Error: state file "{}" cannot be loaded: {}'.
                              format(data_item.state.relative, ex))
 
-        if not self.state.argv:
+        if not self.state.argv and not self.state.locked:
             raise ReproError('Error: parameter {} is not defined in state file "{}"'.
                              format(StateFile.PARAM_ARGV, data_item.state.relative))
-        if len(self.state.argv) < 1:
+        if len(self.state.argv) < 1 and not self.state.locked:
             raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
                              format(self.state.file))
 
@@ -149,27 +149,6 @@ class ReproChange(object):
                 msg = 'Data item {} cannot be removed before reproduction: {}'
                 Logger.error(msg.format(output_dvc, ex))
 
-    def reproduce_import(self):
-        Logger.debug('Reproducing data item {}. Re-import cmd: {}'.format(
-            self._data_item.data.relative, ' '.join(self.state.argv)))
-
-        if len(self.state.argv) != 2:
-            msg = 'Data item "{}" cannot be re-imported because of arguments number {} is incorrect. Argv: {}'
-            raise ReproError(msg.format(self._data_item.data.relative, len(self.state.argv), self.state.argv))
-
-        input = self.state.argv[0]
-        output = self.state.argv[1]
-
-        cmd = CmdImportFile(self._settings)
-        cmd.set_git_action(True)
-        cmd.set_locker(False)
-
-        Logger.info(u'Reproducing import command: {}'.format(output))
-        if cmd.import_and_commit_if_needed(input, output, lock=True,
-                                           check_if_ready=False,
-                                           is_repro=True) != 0:
-            raise ReproError('Import command reproduction failed')
-
     def reproduce_run(self):
         cmd = CmdRun(self._settings)
         cmd.set_git_action(True)
@@ -195,14 +174,8 @@ class ReproChange(object):
 
     def reproduce_data_item(self):
         Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
-
         self.remove_output_files()
-
-        if self.state.is_import_file:
-            self.reproduce_import()
-        elif self.state.is_run:
-            self.reproduce_run()
-        # Ignore EMPTY_FILE command
+        self.reproduce_run()
 
     def reproduce(self):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(

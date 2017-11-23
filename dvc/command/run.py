@@ -151,8 +151,7 @@ class CmdRun(CmdBase):
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
 
-            state_file = StateFile(StateFile.COMMAND_RUN,
-                                   data_item,
+            state_file = StateFile(data_item,
                                    self.settings,
                                    input_set,
                                    output_files_dvc,

@@ -21,11 +21,6 @@ class StateFile(object):
     DVC_PYTHON_FILE_NAME = 'dvc.py'
     DVC_COMMAND = 'dvc'
 
-    COMMAND_RUN = 'run'
-    COMMAND_IMPORT_FILE = 'import-file'
-    ACCEPTED_COMMANDS = {COMMAND_IMPORT_FILE, COMMAND_RUN}
-
-    PARAM_COMMAND = 'Command'
     PARAM_TYPE = 'Type'
     PARAM_VERSION = 'Version'
     PARAM_ARGV = 'Argv'
@@ -44,7 +39,6 @@ class StateFile(object):
     PARAM_MD5 = 'Md5'
 
     def __init__(self,
-                 command,
                  data_item,
                  settings,
                  input_items,
@@ -66,10 +60,6 @@ class StateFile(object):
         self.locked = lock
         self.code_dependencies = code_dependencies
         self.shell = shell
-
-        if command not in self.ACCEPTED_COMMANDS:
-            raise StateFileError('Args error: unknown command %s' % command)
-        self.command = command
 
         self._argv = argv
 
@@ -136,14 +126,6 @@ class StateFile(object):
             return None
 
     @property
-    def is_import_file(self):
-        return self.command == self.COMMAND_IMPORT_FILE
-
-    @property
-    def is_run(self):
-        return self.command == self.COMMAND_RUN
-
-    @property
     def argv(self):
         return self._argv
 
@@ -180,8 +162,7 @@ class StateFile(object):
 
     @staticmethod
     def load_json(json, settings):
-        return StateFile(StateFile.decode_path(json.get(StateFile.PARAM_COMMAND)),
-                         None,
+        return StateFile(None,
                          settings,
                          settings.path_factory.to_data_items(StateFile.decode_paths(json.get(StateFile.PARAM_INPUT_FILES, [])))[0],
                          StateFile.decode_paths(json.get(StateFile.PARAM_OUTPUT_FILES, [])),
@@ -213,7 +194,6 @@ class StateFile(object):
             self.update_target_metrics()
 
         res = {
-            self.PARAM_COMMAND:             self.encode_path(self.command),
             self.PARAM_TYPE:                self.MAGIC,
             self.PARAM_VERSION:             self.VERSION,
             self.PARAM_ARGV:                self.encode_paths(argv),

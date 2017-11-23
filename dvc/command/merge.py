@@ -23,8 +23,8 @@ class CmdMerge(CmdBase):
         dlist = []
         flist = self.git.get_last_merge_changed_files()
         for fname in flist:
-            if fname.startswith(ConfigI.STATE_DIR) and fname.endswith(DataItem.STATE_FILE_SUFFIX):
-                data = os.path.relpath(fname, ConfigI.STATE_DIR)[:-len(DataItem.STATE_FILE_SUFFIX)]
+            if fname.startswith(self.settings.config.state_dir) and fname.endswith(DataItem.CACHE_STATE_FILE_SUFFIX):
+                data = os.path.relpath(fname, self.settings.config.state_dir)[:-len(DataItem.CACHE_STATE_FILE_SUFFIX)]
                 dlist.append(data)
         return dlist
 
@@ -40,10 +40,8 @@ class CmdMerge(CmdBase):
                 Logger.error('Failed to load state file for {}'.format(item.data.relative), exc_info=True)
                 return None
 
-            if not state.command == StateFile.COMMAND_IMPORT_FILE:
-                continue
-
-            targets.append(item)
+            if not state.argv and state.locked:
+                targets.append(item)
 
         return targets
 
@@ -55,13 +53,6 @@ class CmdMerge(CmdBase):
 
             CmdCheckout.checkout([item])
 
-#            if os.path.isfile(item.data.relative):
-#                os.remove(item.data.relative)
-#
-#            System.hardlink(item.cache.relative, item.data.relative)
-#
-#            data.append(item.data.relative)
-#
         msg = 'DVC merge files: {}'.format(' '.join(data))
         self.commit_if_needed(msg)
 

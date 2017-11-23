@@ -12,7 +12,7 @@ from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus
 from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
-from dvc.command.import_file import CmdImportFile
+from dvc.command.add import CmdAdd
 from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
@@ -210,29 +210,16 @@ def parse_args(argv=None):
                         help='Do not remove data from cache.')
     remove_parser.set_defaults(func=CmdRemove)
 
-    # Import
+    # Add
     import_parser = subparsers.add_parser(
-                        'import',
+                        'add',
                         parents=[parent_parser],
-                        help='Import file to data directory.')
+                        help='Add files/directories to dvc')
     import_parser.add_argument(
                         'input',
                         nargs='+',
-                        help='Input file/files.')
-    import_parser.add_argument(
-                        'output',
-                        help='Output file/directory.')
-    import_parser.add_argument('-l',
-                        '--lock',
-                        action='store_true',
-                        default=False,
-                        help='Lock data item - disable reproduction.')
-    import_parser.add_argument('-j',
-                        '--jobs',
-                        type=int,
-                        default=cpu_count(),
-                        help='Number of jobs to run simultaneously.')
-    import_parser.set_defaults(func=CmdImportFile)
+                        help='Input files/directories')
+    import_parser.set_defaults(func=CmdAdd)
 
     # Lock
     lock_parser = subparsers.add_parser(

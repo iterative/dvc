@@ -16,7 +16,8 @@ cp code/code1.sh code/code4.sh
 git add code
 git commit -s -m"add code"
 
-dvc import $DATA_CACHE/foo data/data
+cp $DATA_CACHE/foo data/data
+dvc add data/data
 
 ORIG_DATA=$(dvc_md5 data/data)
 
@@ -31,7 +32,8 @@ git commit -am 'Set Target'
 # Create new branch to work on small data set
 git checkout -b bar
 dvc remove -c -l data/data
-dvc import $DATA_CACHE/bar data/data
+cp $DATA_CACHE/bar data/data
+dvc add data/data
 dvc repro
 
 echo -e "\n\n\n\n" >> code/code1.sh

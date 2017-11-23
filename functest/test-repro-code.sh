@@ -22,7 +22,8 @@ fi
 
 dvc_info 'Modify foo'
 dvc remove data/foo
-dvc import $DATA_CACHE/bar data/foo
+cp $DATA_CACHE/bar data/foo
+dvc add data/foo
 
 dvc_info 'Set default target'
 dvc config global.target data/foo1

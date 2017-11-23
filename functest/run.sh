@@ -5,7 +5,7 @@ set -e
 source common.sh
 
 TESTS+=" test-init.sh"
-TESTS+=" test-import.sh"
+TESTS+=" test-add.sh"
 TESTS+=" test-sync.sh"
 TESTS+=" test-repro-code.sh"
 TESTS+=" test-merge.sh"
