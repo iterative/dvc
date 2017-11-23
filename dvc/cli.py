@@ -93,29 +93,14 @@ def parse_args(argv=None):
                         'run',
                         parents=[parent_parser],
                         help='Run command')
-    run_parser.add_argument(
-                        '--stdout',
-                        help='Output std output to a file.')
-    run_parser.add_argument(
-                        '--stderr',
-                        help='Output std error to a file.')
-    run_parser.add_argument('-i',
-                        '--input',
+    run_parser.add_argument('-d',
+                        '--deps',
                         action='append',
-                        help='Declare input data items for reproducible cmd.')
+                        help='Declare dependencies for reproducible cmd.')
     run_parser.add_argument('-o',
-                        '--output',
+                        '--out',
                         action='append',
                         help='Declare output data items for reproducible cmd.')
-    run_parser.add_argument('-c',
-                        '--code',
-                        action='append',
-                        help='Code dependencies which produce the output.')
-    run_parser.add_argument(
-                        '--shell',
-                        action='store_true',
-                        default=False,
-                        help='Shell command')
     run_parser.add_argument('-l',
                         '--lock',
                         action='store_true',
@@ -123,11 +108,7 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument(
                         'command',
-                        help='Command to execute')
-    run_parser.add_argument(
-                        'args',
-                        nargs=argparse.REMAINDER,
-                        help='Arguments of a command')
+                        help='Command or command file to execute')
     run_parser.set_defaults(func=CmdRun)
 
     # Parent parser used in sync/pull/push

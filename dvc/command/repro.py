@@ -2,7 +2,7 @@ import os
 import copy
 
 from dvc.command.base import DvcLock
-from dvc.command.run import CmdRun
+from dvc.command.run import CmdRun, CommandFile
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.path.data_item import DataDirError
@@ -19,25 +19,6 @@ class ReproError(DvcException):
 class CmdRepro(CmdRun):
     def __init__(self, settings):
         super(CmdRepro, self).__init__(settings)
-
-        self._code = []
-        pass
-
-    @property
-    def code_dependencies(self):
-        return self._code
-
-    @property
-    def lock(self):
-        return True
-
-    @property
-    def declaration_input_data_items(self):
-        return []
-
-    @property
-    def declaration_output_data_items(self):
-        return []
 
     def run(self):
         recursive = not self.parsed_args.single_item
@@ -110,21 +91,21 @@ class ReproChange(object):
         self._force = force
 
         try:
-            self._state = StateFile.load(data_item, self.settings)
+            self.state = StateFile.load(data_item, self.settings)
         except Exception as ex:
             raise ReproError('Error: state file "{}" cannot be loaded: {}'.
                              format(data_item.state.relative, ex))
 
-        if not self.state.argv and not self.state.locked:
-            raise ReproError('Error: parameter {} is not defined in state file "{}"'.
-                             format(StateFile.PARAM_ARGV, data_item.state.relative))
-        if len(self.state.argv) < 1 and not self.state.locked:
-            raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
-                             format(self.state.file))
+        if isinstance(self.state.command, str):
+            self.command = CommandFile.load(self.state.command)
+        else:
+            self.command = CommandFile.loadd(self.state.command)
+
+        if not self.command.cmd and not self.command.locked:
+            raise ReproError('Error: parameter {} is not defined in "{}"'.
+                            format(CommandFile.PARAM_CMD, self.command.fname if self.command.fname else data_item.state.relative))
 
         self._settings = copy.copy(self._cmd_obj.settings)
-        self._settings.set_args(self.state.argv)
-        pass
 
     def is_cache_exists(self):
         path = System.realpath(self._data_item.data.relative)
@@ -134,12 +115,8 @@ class ReproChange(object):
     def cmd_obj(self):
         return self._cmd_obj
 
-    @property
-    def state(self):
-        return self._state
-
     def remove_output_files(self):
-        for output_dvc in self._state.output_files:
+        for output_dvc in self.command.out:
             Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
 
             try:
@@ -150,27 +127,11 @@ class ReproChange(object):
                 Logger.error(msg.format(output_dvc, ex))
 
     def reproduce_run(self):
-        cmd = CmdRun(self._settings)
-        cmd.set_git_action(True)
-        cmd.set_locker(False)
-
         Logger.info('Reproducing run command for data item {}. Args: {}'.format(
-            self._data_item.data.relative, ' '.join(self.state.argv)))
+            self._data_item.data.relative, self.command.cmd))
 
-        data_items_from_args, not_data_items_from_args = self.cmd_obj.argv_files_by_type(self.state.argv)
-        if cmd.run_and_commit_if_needed(self.state.argv,
-                                        data_items_from_args,
-                                        not_data_items_from_args,
-                                        self.state.stdout,
-                                        self.state.stderr,
-                                        self.state.shell,
-                                        [],
-                                        [],
-                                        [],
-                                        False,
-                                        check_if_ready=False,
-                                        is_repro=True) != 0:
-            raise ReproError('Run command reproduction failed')
+        CmdRun.run_command(self.settings, self.command)
+        self._cmd_obj.commit_if_needed('DVC repro: {}'.format(self.command.cmd)) 
 
     def reproduce_data_item(self):
         Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
@@ -181,7 +142,7 @@ class ReproChange(object):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
             self._data_item.data.relative, self._recursive, self._force))
 
-        if self.state.locked:
+        if self.command.locked:
             Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
             return False
 
@@ -201,7 +162,7 @@ class ReproChange(object):
     def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
-        for dep in self._state.deps:
+        for dep in self.state.deps:
             path = dep[StateFile.PARAM_PATH]
             md5 = dep[StateFile.PARAM_MD5]
 
