@@ -7,7 +7,7 @@ source common.sh
 dvc_create_repo
 
 dvc_info 'Copy foo into foo1'
-dvc run bash code/code.sh data/foo data/foo1
+dvc run -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
 
 dvc_info 'Modify code'
 echo " " >> code/code.sh 

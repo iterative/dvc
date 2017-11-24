@@ -21,10 +21,10 @@ dvc add data/data
 
 ORIG_DATA=$(dvc_md5 data/data)
 
-dvc run ./code/code1.sh data/data data/data1
-dvc run ./code/code2.sh data/data1 data/data2
-dvc run ./code/code3.sh data/data2 data/data3
-dvc run ./code/code4.sh data/data3 data/data4
+dvc run -d code/code1.sh -d data/data -o data/data1 ./code/code1.sh data/data data/data1
+dvc run -d code/code2.sh -d data/data1 -o data/data2 ./code/code2.sh data/data1 data/data2
+dvc run -d code/code3.sh -d data/data2 -o data/data3 ./code/code3.sh data/data2 data/data3
+dvc run -d code/code4.sh -d data/data3 -o data/data4 ./code/code4.sh data/data3 data/data4
 
 dvc config Global.Target data/data4
 git commit -am 'Set Target'
