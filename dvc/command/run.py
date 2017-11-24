@@ -70,17 +70,15 @@ class CmdRun(CmdBase):
         super(CmdRun, self).__init__(settings)
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            cmd = ' '.join(self.parsed_args.command)
-            try:
-                command = CommandFile.load(cmd)
-                #FIXME OLOLO don't forget to overwrite with cmdline args
-            except Exception as exc:
-                Logger.debug("Failed to load {}: {}".format(cmd, str(exc)))
-                command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.deps, self.parsed_args.lock, None)
+        cmd = ' '.join(self.parsed_args.command)
+        try:
+            command = CommandFile.load(cmd)
+        except Exception as exc:
+            Logger.debug("Failed to load {}: {}".format(cmd, str(exc)))
+            command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.deps, self.parsed_args.lock, None)
 
-            self.run_command(self.settings, command)
-            return self.commit_if_needed('DVC run: {}'.format(command.cmd))
+        self.run_command(self.settings, command)
+        return self.commit_if_needed('DVC run: {}'.format(command.cmd))
 
     @staticmethod
     def run_command(settings, command):

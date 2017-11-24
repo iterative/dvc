@@ -1,7 +1,6 @@
 import os
 import copy
 
-from dvc.command.base import DvcLock
 from dvc.command.run import CmdRun, CommandFile
 from dvc.logger import Logger
 from dvc.exceptions import DvcException

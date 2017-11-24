@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.base import CmdBase, DvcLock
+from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.state_file import StateFile
 from dvc.command.run import CommandFile
@@ -49,9 +49,8 @@ class CmdAdd(CmdBase):
             Logger.debug('State file "{}" was created'.format(data_item.state.relative))
 
     def run(self):
-        with DvcLock(self.is_locker, self.git):
-            targets = self.collect_targets(self.parsed_args.input)
-            self.add_files(targets)
-            self.create_state_files(targets)
-            msg = 'DVC add: {}'.format(str(self.parsed_args.input))
-            self.commit_if_needed(msg)
+        targets = self.collect_targets(self.parsed_args.input)
+        self.add_files(targets)
+        self.create_state_files(targets)
+        msg = 'DVC add: {}'.format(str(self.parsed_args.input))
+        self.commit_if_needed(msg)
