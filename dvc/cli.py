@@ -108,6 +108,7 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument(
                         'command',
+                        nargs=argparse.REMAINDER,
                         help='Command or command file to execute')
     run_parser.set_defaults(func=CmdRun)
 
