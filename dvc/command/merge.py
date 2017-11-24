@@ -7,6 +7,7 @@ from dvc.state_file import StateFile
 from dvc.path.data_item import DataItem
 from dvc.system import System
 from dvc.command.checkout import CmdCheckout
+from dvc.command.run import CommandFile
 
 
 
@@ -40,7 +41,16 @@ class CmdMerge(CmdBase):
                 Logger.error('Failed to load state file for {}'.format(item.data.relative), exc_info=True)
                 return None
 
-            if not state.argv and state.locked:
+            if isinstance(state.command, str):
+                try:
+                    command = CommandFile.load(state.command)
+                except Exception as ex:
+                    Logger.error('Failed to load command file for {}'.format(item.data.relative), exc_info=True)
+                    return None
+            else:
+                command = CommandFile.loadd(state.command)
+
+            if not command.cmd and command.locked:
                 targets.append(item)
 
         return targets
@@ -48,7 +58,6 @@ class CmdMerge(CmdBase):
     def checkout_targets(self, targets):
         data = []
         for item in targets:
-            self.git.checkout_file_before_last_merge(item.state.relative)
             self.git.checkout_file_before_last_merge(item.cache_state.relative)
 
             CmdCheckout.checkout([item])
