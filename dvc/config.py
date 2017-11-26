@@ -35,15 +35,15 @@ class ConfigI(object):
         self._cloud = cloud
         self._conf_parser = conf_parser
 
-    # @classmethod
-    # def CACHE_DIR(self):
-    #     """ Directory with cached data files """
-    #     return os.path.join(self.CONFIG_DIR, self.CACHE_DIR_NAME)
-    #
-    # @classmethod
-    # def STATE_DIR(self):
-    #     """ Directory with state files """
-    #     return os.path.join(self.CONFIG_DIR, self.STATE_DIR_NAME)
+    @property
+    def cache_dir(self):
+        """ Directory with cached data files """
+        return self.CACHE_DIR
+    
+    @property
+    def state_dir(self):
+        """ Directory with state files """
+        return self.STATE_DIR
 
     @property
     def cloud(self):

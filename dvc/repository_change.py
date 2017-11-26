@@ -17,17 +17,17 @@ class RepositoryChangeError(DvcException):
 class RepositoryChange(object):
     """Pre-condition: git repository has no changes"""
 
-    def __init__(self, cmd_args, settings, stdout, stderr, shell=False):
+    def __init__(self, command, settings, stdout, stderr, shell=False):
         self._settings = settings
 
         stemps_before = self.data_file_timesteps()
 
         Logger.debug(u'[Repository change] Exec command: {}. stdout={}, stderr={}, shell={}'.format(
-                     u' '.join(cmd_args),
+                     command,
                      stdout,
                      stderr,
                      shell))
-        Executor.exec_cmd_only_success(cmd_args, stdout, stderr, shell=shell)
+        Executor.exec_cmd_only_success(command.split(' '), stdout, stderr, shell=shell)
 
         stemps_after = self.data_file_timesteps()
 

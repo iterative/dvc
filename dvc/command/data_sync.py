@@ -3,24 +3,23 @@ from dvc.logger import Logger
 
 import dvc.data_cloud as cloud
 
-
 class CmdDataBase(CmdBase):
     def __init__(self, settings, cmd):
         super(CmdDataBase, self).__init__(settings)
         self.cmd = cmd
 
     def run(self):
-        self.cmd(self.parsed_args.targets, self.parsed_args.jobs)
+        getattr(self.cloud, self.cmd)(self.parsed_args.targets, self.parsed_args.jobs)
 
 
 class CmdDataPull(CmdDataBase):
     def __init__(self, settings):
-        super(CmdDataPull, self).__init__(settings, self.cloud.pull)
+        super(CmdDataPull, self).__init__(settings, 'pull')
 
 
 class CmdDataPush(CmdDataBase):
     def __init__(self, settings):
-        super(CmdDataPush, self).__init__(settings, self.cloud.push)
+        super(CmdDataPush, self).__init__(settings, 'push')
 
 
 class CmdDataStatus(CmdBase):

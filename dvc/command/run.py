@@ -1,4 +1,6 @@
 import os
+import sys
+import yaml
 
 from dvc.command.common.base import CmdBase
 from dvc.exceptions import DvcException
@@ -7,6 +9,8 @@ from dvc.logger import Logger
 from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
+from dvc.executor import Executor
+from dvc.state_file import StateFileBase
 
 
 class RunError(DvcException):
@@ -14,173 +18,86 @@ class RunError(DvcException):
         DvcException.__init__(self, 'Run error: {}'.format(msg))
 
 
+class CommandFile(StateFileBase):
+    MAGIC = 'DVC-Command-State'
+    VERSION = '0.1'
+
+    PARAM_CMD = 'cmd'
+    PARAM_OUT = 'out'
+    PARAM_DEPS = 'deps'
+    PARAM_LOCK = 'locked'
+
+    def __init__(self, cmd, out, deps, locked, fname):
+        self.cmd = cmd
+        self.out = out
+        self.deps = deps
+        self.locked = locked
+        self.fname = fname
+
+    @property
+    def dict(self):
+        data = {
+            self.PARAM_CMD: self.cmd,
+            self.PARAM_OUT: self.out,
+            self.PARAM_DEPS: self.deps,
+            self.PARAM_LOCK: self.locked
+        }
+
+        return data
+
+    def dumps(self):
+        return yaml.dump(self.dict)
+
+    def dump(self, fname):
+        with open(fname, 'w+') as fd:
+            fd.write(self.dumps())
+
+    @staticmethod
+    def loadd(data, fname=None):
+        return CommandFile(data.get(CommandFile.PARAM_CMD, None),
+                           data.get(CommandFile.PARAM_OUT, None),
+                           data.get(CommandFile.PARAM_DEPS, None),
+                           data.get(CommandFile.PARAM_LOCK, None),
+                           fname)
+
+    @staticmethod
+    def load(fname):
+        return CommandFile._load(fname, CommandFile, fname)
+
+
 class CmdRun(CmdBase):
     def __init__(self, settings):
         super(CmdRun, self).__init__(settings)
 
-    @property
-    def lock(self):
-        return self.parsed_args.lock
-
-    @property
-    def code_dependencies(self):
-        return self.parsed_args.code or []
-
-    @cached_property
-    def declaration_input_data_items(self):
-        return self._data_items_from_params(self.parsed_args.input, 'Input')
-
-    @cached_property
-    def declaration_output_data_items(self):
-        return self._data_items_from_params(self.parsed_args.output, 'Output')
-
     def run(self):
-        cmd = [self.parsed_args.command] + self.parsed_args.args
-        data_items_from_args, not_data_items_from_args = self.argv_files_by_type(cmd)
-        return self.run_and_commit_if_needed(cmd,
-                                             data_items_from_args,
-                                             not_data_items_from_args,
-                                             self.parsed_args.stdout,
-                                             self.parsed_args.stderr,
-                                             self.parsed_args.shell)
+        cmd = ' '.join(self.parsed_args.command)
+        try:
+            command = CommandFile.load(cmd)
+        except Exception as exc:
+            Logger.debug("Failed to load {}: {}".format(cmd, str(exc)))
+            command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.deps, self.parsed_args.lock, None)
 
-    def run_and_commit_if_needed(self, command_args, data_items_from_args, not_data_items_from_args,
-                                 stdout, stderr, shell, 
-                                 output_data_items=None,
-                                 input_data_items=None,
-                                 code_dependencies=None,
-                                 lock=None,
-                                 check_if_ready=True,
-                                 is_repro=False):
-        if check_if_ready and not self.no_git_actions and not self.git.is_ready_to_go():
-            return 1
+        self.run_command(self.settings, command)
+        return self.commit_if_needed('DVC run: {}'.format(command.cmd))
 
-        self.run_command(command_args,
-                         data_items_from_args,
-                         not_data_items_from_args,
-                         stdout,
-                         stderr,
-                         shell,
-                         output_data_items,
-                         input_data_items,
-                         code_dependencies,
-                         lock)
-
-        cmd_name = 'repro-run' if is_repro else 'run'
-        return self.commit_if_needed('DVC {}: {}'.format(cmd_name, ' '.join(command_args)))
-
-    def run_command(self, cmd_args, data_items_from_args, not_data_items_from_args,
-                    stdout=None, stderr=None, shell=False,
-                    output_data_items=None,
-                    input_data_items=None,
-                    code_dependencies=None,
-                    lock=None):
-
-        # Repro sets these from state file
-        if output_data_items == None:
-            output_data_items = self.declaration_output_data_items
-
-        if input_data_items == None:
-            input_data_items = self.declaration_input_data_items
-
-        if code_dependencies == None:
-            code_dependencies = self.code_dependencies
-
-        if lock == None:
-            lock = self.lock
-
-        Logger.debug(u'Run command with args: {}. Data items from args: {}. stdout={}, stderr={}, shell={}'.format(
-                     ' '.join(cmd_args),
-                     ', '.join([x.data.dvc for x in data_items_from_args]),
-                     stdout,
-                     stderr,
-                     shell))
-
-        repo_change = RepositoryChange(cmd_args, self.settings, stdout, stderr, shell=shell)
-
-        if not self.no_git_actions and not self._validate_file_states(repo_change):
-            self.remove_new_files(repo_change)
-            raise RunError('Errors occurred.')
-
-        output_set = set(output_data_items + repo_change.changed_data_items)
-        output_files_dvc = [x.data.dvc for x in output_set]
-
-        input_set = set(data_items_from_args + input_data_items) - output_set
-        input_files_dvc = [x.data.dvc for x in input_set]
-
-        code_dependencies_dvc = self.git.abs_paths_to_dvc(set(code_dependencies + not_data_items_from_args))
+    @staticmethod
+    def run_command(settings, command):
+        Executor.exec_cmd_only_success(command.cmd, shell=True)
 
         result = []
-        for data_item in repo_change.changed_data_items:
+        items = settings.path_factory.to_data_items(command.out)[0]
+        for data_item in items:
             Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
                 data_item.data.relative, data_item.cache_dir_abs))
             data_item.move_data_to_cache()
 
             Logger.debug('Create state file "{}"'.format(data_item.state.relative))
 
-            state_file = StateFile(StateFile.COMMAND_RUN,
-                                   data_item,
-                                   self.settings,
-                                   input_files_dvc,
-                                   output_files_dvc,
-                                   code_dependencies_dvc,
-                                   argv=cmd_args,
-                                   lock=lock,
-                                   stdout=self._stdout_to_dvc(stdout),
-                                   stderr=self._stdout_to_dvc(stderr),
-                                   shell=shell)
+            state_file = StateFile(data_item,
+                                   settings,
+                                   command.fname if command.fname else command.dict,
+                                   StateFile.parse_deps_state(settings, command.deps))
             state_file.save()
             result.append(state_file)
 
         return result
-
-    def _stdout_to_dvc(self, stdout):
-        if stdout in {None, '-'}:
-            return stdout
-        return self.settings.path_factory.data_item(stdout).data.dvc
-
-    @staticmethod
-    def remove_new_files(repo_change):
-        for data_item in repo_change.new_data_items:
-            Logger.error('Removing created file: {}'.format(data_item.data.relative))
-            os.remove(data_item.data.relative)
-        pass
-
-    @staticmethod
-    def _validate_file_states(repo_change):
-        error = False
-        for data_item in repo_change.removed_data_items:
-            Logger.error('Error: file "{}" was removed'.format(data_item.data.relative))
-            error = True
-
-        for file in GitWrapper.abs_paths_to_relative(repo_change.externally_created_files):
-            Logger.error('Error: file "{}" was created outside of the data directory'.format(file))
-            error = True
-
-        return not error
-
-    def argv_files_by_type(self, argv):
-        data_items = []
-        not_data_items = []
-
-        for arg in argv:
-            if self.settings.path_factory.is_data_item(arg):
-                data_items.append(self.settings.path_factory.data_item(arg))
-            elif os.path.isfile(arg):
-                not_data_items.append(arg)
-            else:
-                msg = 'File {} from argv is outside of git directory and cannot be traced'
-                Logger.warn(msg.format(arg))
-
-        return data_items, not_data_items
-
-    def _data_items_from_params(self, files, param_text):
-        if not files:
-            return []
-
-        data_items, external = self.settings.path_factory.to_data_items(files)
-        if external:
-            raise RunError('{} should point to data items from data dir: {}'.format(
-                param_text, ', '.join(external))
-            )
-        return data_items

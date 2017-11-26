@@ -115,7 +115,8 @@ function dvc_create_repo() {
 	dvc init
 
 	mkdir data
-	dvc import $DATA_CACHE/* data
+	cp $DATA_CACHE/* data
+	dvc add data
 }
 
 function dvc_clean_cloud_aws() {

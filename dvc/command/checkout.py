@@ -22,9 +22,10 @@ class CmdCheckout(CmdBase):
 
         return True
 
-    def checkout(self, items):
+    @staticmethod
+    def checkout(items):
         for item in items:
-            if self.cache_ok(item):
+            if CmdCheckout.cache_ok(item):
                 continue
 
             if os.path.isfile(item.data.relative):

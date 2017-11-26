@@ -7,7 +7,7 @@ source common.sh
 dvc_create_repo
 
 dvc_info 'Copy foo into foo1'
-dvc run bash code/code.sh data/foo data/foo1
+dvc run -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
 
 dvc_info 'Modify code'
 echo " " >> code/code.sh 
@@ -22,7 +22,8 @@ fi
 
 dvc_info 'Modify foo'
 dvc remove data/foo
-dvc import $DATA_CACHE/bar data/foo
+cp $DATA_CACHE/bar data/foo
+dvc add data/foo
 
 dvc_info 'Set default target'
 dvc config global.target data/foo1

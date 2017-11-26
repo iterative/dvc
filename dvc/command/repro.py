@@ -1,13 +1,13 @@
 import os
 import copy
 
-from dvc.command.import_file import CmdImportFile
-from dvc.command.run import CmdRun
+from dvc.command.run import CmdRun, CommandFile
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.path.data_item import DataDirError
 from dvc.state_file import StateFile
 from dvc.system import System
+from dvc.data_cloud import file_md5
 
 
 class ReproError(DvcException):
@@ -18,25 +18,6 @@ class ReproError(DvcException):
 class CmdRepro(CmdRun):
     def __init__(self, settings):
         super(CmdRepro, self).__init__(settings)
-
-        self._code = []
-        pass
-
-    @property
-    def code_dependencies(self):
-        return self._code
-
-    @property
-    def lock(self):
-        return True
-
-    @property
-    def declaration_input_data_items(self):
-        return []
-
-    @property
-    def declaration_output_data_items(self):
-        return []
 
     def run(self):
         recursive = not self.parsed_args.single_item
@@ -75,17 +56,8 @@ class CmdRepro(CmdRun):
 
         for data_item in data_item_list:
             try:
-                target_commit = self.git.get_target_commit(data_item.state.relative)
-                if target_commit is None:
-                    msg = 'Data item "{}" cannot be reproduced: cannot obtain commit hashsum'
-                    Logger.warn(msg.format(data_item.data.relative))
-                    continue
-
-                globally_changed_files = self.git.get_changed_files(target_commit)
-                Logger.debug('Repro globally changed files: {}'.format(', '.join(globally_changed_files)))
-                changed_files = set()
-                change = ReproChange(data_item, self, globally_changed_files, recursive, force)
-                if change.reproduce(changed_files):
+                change = ReproChange(data_item, self, recursive, force)
+                if change.reproduce():
                     changed = True
                     Logger.info(u'Data item "{}" was reproduced.'.format(
                         data_item.data.relative
@@ -109,30 +81,26 @@ class CmdRepro(CmdRun):
 
 
 class ReproChange(object):
-    def __init__(self, data_item, cmd_obj, globally_changed_files, recursive, force):
+    def __init__(self, data_item, cmd_obj, recursive, force):
         self._data_item = data_item
         self.git = cmd_obj.git
         self._cmd_obj = cmd_obj
-        self._globally_changed_files = globally_changed_files
+        self.settings = cmd_obj.settings
         self._recursive = recursive
         self._force = force
 
-        try:
-            self._state = StateFile.load(data_item, self.git)
-        except Exception as ex:
-            raise ReproError('Error: state file "{}" cannot be loaded: {}'.
-                             format(data_item.state.relative, ex))
+        self.state = StateFile.load(data_item, self.settings)
 
-        if not self.state.argv:
-            raise ReproError('Error: parameter {} is not defined in state file "{}"'.
-                             format(StateFile.PARAM_ARGV, data_item.state.relative))
-        if len(self.state.argv) < 1:
-            raise ReproError('Error: reproducible cmd in state file "{}" is too short'.
-                             format(self.state.file))
+        if isinstance(self.state.command, str):
+            self.command = CommandFile.load(self.state.command)
+        else:
+            self.command = CommandFile.loadd(self.state.command)
+
+        if not self.command.cmd and not self.command.locked:
+            msg = 'Error: data item "{}" is not locked, but has no command for reproduction'
+            raise ReproError(msg.format(data_item.data.dvc))
 
         self._settings = copy.copy(self._cmd_obj.settings)
-        self._settings.set_args(self.state.argv)
-        pass
 
     def is_cache_exists(self):
         path = System.realpath(self._data_item.data.relative)
@@ -142,14 +110,8 @@ class ReproChange(object):
     def cmd_obj(self):
         return self._cmd_obj
 
-    @property
-    def state(self):
-        return self._state
-
-    def reproduce_data_item(self, changed_files):
-        Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
-
-        for output_dvc in self._state.output_files:
+    def remove_output_files(self):
+        for output_dvc in self.command.out:
             Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
 
             try:
@@ -159,158 +121,69 @@ class ReproChange(object):
                 msg = 'Data item {} cannot be removed before reproduction: {}'
                 Logger.error(msg.format(output_dvc, ex))
 
-            changed_files.add(output_dvc)
+    def reproduce_run(self):
+        Logger.info('Reproducing run command for data item {}. Args: {}'.format(
+            self._data_item.data.relative, self.command.cmd))
 
-        if self.state.is_import_file:
-            Logger.debug('Reproducing data item {}. Re-import cmd: {}'.format(
-                self._data_item.data.relative, ' '.join(self.state.argv)))
+        CmdRun.run_command(self.settings, self.command)
+        self._cmd_obj.commit_if_needed('DVC repro: {}'.format(self.command.cmd)) 
 
-            if len(self.state.argv) != 2:
-                msg = 'Data item "{}" cannot be re-imported because of arguments number {} is incorrect. Argv: {}'
-                raise ReproError(msg.format(self._data_item.data.relative, len(self.state.argv), self.state.argv))
+    def reproduce_data_item(self):
+        Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
+        self.remove_output_files()
+        self.reproduce_run()
 
-            input = self.state.argv[0]
-            output = self.state.argv[1]
-
-            cmd = CmdImportFile(self._settings)
-            cmd.set_git_action(True)
-            cmd.set_locker(False)
-
-            Logger.info(u'Reproducing import command: {}'.format(output))
-            if cmd.import_and_commit_if_needed(input, output, lock=True,
-                                               check_if_ready=False,
-                                               is_repro=True) != 0:
-                raise ReproError('Import command reproduction failed')
+    def is_repro_required(self):
+        deps_changed = self.reproduce_deps(self._data_item, self._recursive)
+        if deps_changed or self._force or not self.is_cache_exists():
             return True
-        elif self.state.is_run:
-            cmd = CmdRun(self._settings)
-            cmd.set_git_action(True)
-            cmd.set_locker(False)
+        return False
 
-            Logger.info('Reproducing run command for data item {}. Args: {}'.format(
-                self._data_item.data.relative, ' '.join(self.state.argv)))
-
-            data_items_from_args, not_data_items_from_args = self.cmd_obj.argv_files_by_type(self.state.argv)
-            if cmd.run_and_commit_if_needed(self.state.argv,
-                                            data_items_from_args,
-                                            not_data_items_from_args,
-                                            self.state.stdout,
-                                            self.state.stderr,
-                                            self.state.shell,
-                                            [],
-                                            [],
-                                            [],
-                                            False,
-                                            check_if_ready=False,
-                                            is_repro=True) != 0:
-                raise ReproError('Run command reproduction failed')
-            return True
-        else:
-            # Ignore EMPTY_FILE command
-            pass
-        pass
-
-    def reproduce(self, changed_files):
+    def reproduce(self):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
             self._data_item.data.relative, self._recursive, self._force))
 
-        if self.state.locked:
+        if self.command.locked:
             Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
             return False
 
-        if self.is_repro_required(changed_files, self._data_item):
-            if self._data_item.data.dvc not in changed_files:
-                Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
-                self.reproduce_data_item(changed_files)
-                changed_files.add(self._data_item.data.dvc)
-                return True
-            else:
-                msg = 'Data item {} is not going to be reproduced because it is already reproduced'
-                Logger.debug(msg.format(self._data_item.data.relative))
-        else:
+        if not self.is_repro_required():
             Logger.debug('Data item {} is up to date'.format(self._data_item.data.relative))
             return False
-        pass
 
-    def were_dependencies_changed(self, changed_files, data_item_dvc):
-        result = False
+        Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
+        self.reproduce_data_item()
+        return True
 
-        for data_item in self.dependencies:
-            change = ReproChange(data_item, self._cmd_obj, self._globally_changed_files, self._recursive, self._force)
-            if change.reproduce(changed_files):
-                result = True
-                Logger.debug(u'Repro data item {}: dependency {} was changed'.format(
-                    data_item_dvc, data_item.data.dvc))
-            elif data_item.state.dvc in self._globally_changed_files:
-                dep_state = StateFile.load(data_item, self._settings)
-                if dep_state.command != StateFile.COMMAND_IMPORT_FILE:
-                    msg = u'Repro data item {}: dependency {} was not changed but the state file was changed'
-                    Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
-                    result = True
-                else:
-                    Logger.debug(u'Repro data item {}: skip dependency state file change {} due to data source command')
-            else:
-                msg = u'Repro data item {}: dependency {} was not changed'
-                Logger.debug(msg.format(data_item_dvc, data_item.data.dvc))
-
-        return result
-
-    def is_repro_required(self, changed_files, data_item):
-        state_file = StateFile.load(data_item, self._settings)
-        if state_file.locked:
-            Logger.debug(u'Repro is not required for locked data item {}'.format(data_item.data.relative))
+    def reproduce_dep(self, path, md5, recursive):
+        if not self._settings.path_factory.is_data_item(path):
+            if md5 != file_md5(os.path.join(self._settings.git.git_dir_abs, path))[0]:
+                self.log_repro_reason('source {} was changed'.format(path))
+                return True
             return False
 
-        is_dependency_check_required = self._recursive
+        item = self._settings.path_factory.existing_data_item(path)
+        if recursive:
+            ReproChange(item, self._cmd_obj, self._recursive, self._force).reproduce()
 
-        if not is_dependency_check_required and not self.is_cache_exists():
-            is_dependency_check_required = True
-            Logger.info(u'Reproduction {}. Force dependency check since cache file is missing.'.format(
-                self._data_item.data.relative))
-
-        if is_dependency_check_required:
-            if self.were_dependencies_changed(changed_files, data_item.data.dvc):
-                self.log_repro_reason(u'input dependencies were changed')
-                return True
-
-        if self._force:
-            self.log_repro_reason(u'it was forced')
-            return True
-
-        if not self.is_cache_exists():
-            self.log_repro_reason(u'cache file is missing.')
-            return True
-
-        if self.were_sources_changed(self._globally_changed_files):
-            self.log_repro_reason(u'sources were changed')
+        if md5 != os.path.basename(item.cache.relative):
+            self.log_repro_reason('data item {} was changed'.format(path))
             return True
 
         return False
 
+    def reproduce_deps(self, data_item_dvc, recursive):
+        result = False
+
+        for dep in self.state.deps:
+            path = dep[StateFile.PARAM_PATH]
+            md5 = dep[StateFile.PARAM_MD5]
+
+            if self.reproduce_dep(path, md5, recursive):
+                result = True
+
+        return result
+
     def log_repro_reason(self, reason):
         msg = u'Repro is required for data item {} because of {}'
         Logger.debug(msg.format(self._data_item.data.relative, reason))
-
-    def were_sources_changed(self, globally_changed_files):
-        were_sources_changed = self.git.were_files_changed(
-            self.state.code_dependencies,
-            self._settings.path_factory,
-            globally_changed_files
-        )
-        return were_sources_changed
-
-    @property
-    def dependencies(self):
-        dependency_data_items = []
-        for input_file in self.state.input_files:
-            try:
-                data_item = self._settings.path_factory.data_item(input_file)
-            except DataDirError:
-                raise ReproError(u'The dependency file "{}" is not a data item'.format(input_file))
-            except Exception as ex:
-                raise ReproError(u'Unable to reproduced the dependency file "{}": {}'.format(
-                    input_file, ex))
-
-            dependency_data_items.append(data_item)
-
-        return dependency_data_items
