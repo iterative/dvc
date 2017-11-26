@@ -155,6 +155,23 @@ class ReproChange(object):
         self.reproduce_data_item()
         return True
 
+    def reproduce_dep(self, path, md5, recursive):
+        if not self._settings.path_factory.is_data_item(path):
+            if md5 != file_md5(os.path.join(self._settings.git.git_dir_abs, path))[0]:
+                self.log_repro_reason('source {} was changed'.format(path))
+                return True
+            return False
+
+        item = self._settings.path_factory.existing_data_item(path)
+        if recursive:
+            ReproChange(item, self._cmd_obj, self._recursive, self._force).reproduce()
+
+        if md5 != os.path.basename(item.cache.relative):
+            self.log_repro_reason('data item {} was changed'.format(path))
+            return True
+
+        return False
+
     def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
@@ -162,20 +179,7 @@ class ReproChange(object):
             path = dep[StateFile.PARAM_PATH]
             md5 = dep[StateFile.PARAM_MD5]
 
-            if not self._settings.path_factory.is_data_item(path):
-                if md5 != file_md5(os.path.join(self._settings.git.git_dir_abs, path))[0]:
-                    self.log_repro_reason('source {} was changed'.format(path))
-                    result = True
-                continue
-
-            item = self._settings.path_factory.existing_data_item(path)
-            if recursive:
-                change = ReproChange(item, self._cmd_obj, self._recursive, self._force)
-                if change.reproduce():
-                   result = True
-
-            if md5 != os.path.basename(item.cache.relative):
-                self.log_repro_reason('data item {} was changed'.format(path))
+            if self.reproduce_dep(path, md5, recursive):
                 result = True
 
         return result
