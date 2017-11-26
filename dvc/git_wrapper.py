@@ -2,6 +2,7 @@ import os
 import re
 from collections import defaultdict
 
+from dvc import utils
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.config import Config, ConfigI
@@ -379,29 +380,11 @@ class GitWrapper(GitWrapperI):
         if target not in changed_files:
             return False, None
 
-        metric = self._read_metric_from_state_file(hash, target, settings)
+        metric = utils.parse_target_metric_file(target)
         if metric is None:
             return False, None
 
         return True, metric
-
-    def _read_metric_from_state_file(self, hash, target, settings):
-        try:
-            data_item = settings.path_factory.data_item(target)
-        except DataItemError as ex:
-            Logger.warn('Target file {} is not data item: {}'.format(target, ex))
-            return None
-
-        try:
-            cmd_corresponded_state_file = ['git', 'show', '{}:{}'.format(hash, data_item.state.relative)]
-            state_file_content = Executor.exec_cmd_only_success(cmd_corresponded_state_file)
-        except ExecutorError as ex:
-            msg = '[dvc-git] Cannot obtain content of target symbolic file {} with hash {}: {}'
-            Logger.warn(msg.format(target, hash, ex))
-            return None
-
-        state_file = StateFile.loads(state_file_content, settings)
-        return state_file.single_target_metric
 
     @staticmethod
     def get_merges_map():
