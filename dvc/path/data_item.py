@@ -76,10 +76,13 @@ class DataItem(object):
     def state_dir(self):
         return os.path.join(self._git.git_dir_abs, self._config.state_dir)
 
+    def _state(self, suffix):
+        state_file = os.path.join(self.state_dir, self.data.dvc + suffix)
+        return Path(state_file, self._git)
+
     @cached_property
     def state(self):
-        state_file = os.path.join(self.state_dir, self.data.dvc + self.STATE_FILE_SUFFIX)
-        return Path(state_file, self._git)
+        return self._state(self.STATE_FILE_SUFFIX)
 
     @cached_property
     def cache_dir_abs(self):
@@ -87,13 +90,11 @@ class DataItem(object):
 
     @cached_property
     def local_state(self):
-        local_state_file = os.path.join(self.state_dir, self.data.dvc + self.LOCAL_STATE_FILE_SUFFIX)
-        return Path(local_state_file, self._git)
+        return self._state(self.LOCAL_STATE_FILE_SUFFIX)
 
     @cached_property
     def cache_state(self):
-        cache_state_file = os.path.join(self.state_dir, self.data.dvc + self.CACHE_STATE_FILE_SUFFIX)
-        return Path(cache_state_file, self._git)
+        return self._state(self.CACHE_STATE_FILE_SUFFIX)
 
     @cached_property
     def cache_dir(self):
