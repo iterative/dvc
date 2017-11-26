@@ -10,7 +10,6 @@ from dvc.command.checkout import CmdCheckout
 from dvc.command.run import CommandFile
 
 
-
 class CmdMerge(CmdBase):
     def __init__(self, settings):
         super(CmdMerge, self).__init__(settings)
@@ -35,18 +34,9 @@ class CmdMerge(CmdBase):
         items = self.settings.path_factory.to_data_items(flist)[0]
 
         for item in items:
-            try:
-                state = StateFile.load(item, self.settings)
-            except Exception as ex:
-                Logger.error('Failed to load state file for {}'.format(item.data.relative), exc_info=True)
-                return None
-
+            state = StateFile.load(item, self.settings)
             if isinstance(state.command, str):
-                try:
-                    command = CommandFile.load(state.command)
-                except Exception as ex:
-                    Logger.error('Failed to load command file for {}'.format(item.data.relative), exc_info=True)
-                    return None
+                command = CommandFile.load(state.command)
             else:
                 command = CommandFile.loadd(state.command)
 
