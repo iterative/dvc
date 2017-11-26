@@ -137,6 +137,12 @@ class ReproChange(object):
         self.remove_output_files()
         self.reproduce_run()
 
+    def is_repro_required(self):
+        deps_changed = self.reproduce_deps(self._data_item, self._recursive)
+        if deps_changed or self._force or not self.is_cache_exists():
+            return True
+        return False
+
     def reproduce(self):
         Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
             self._data_item.data.relative, self._recursive, self._force))
@@ -145,12 +151,7 @@ class ReproChange(object):
             Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
             return False
 
-        repro_required = False
-        deps_changed = self.reproduce_deps(self._data_item, self._recursive)
-        if deps_changed or self._force or not self.is_cache_exists():
-            repro_required = True
-
-        if not repro_required:
+        if not self.is_repro_required():
             Logger.debug('Data item {} is up to date'.format(self._data_item.data.relative))
             return False
 
