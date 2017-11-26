@@ -89,11 +89,7 @@ class ReproChange(object):
         self._recursive = recursive
         self._force = force
 
-        try:
-            self.state = StateFile.load(data_item, self.settings)
-        except Exception as ex:
-            raise ReproError('Error: state file "{}" cannot be loaded: {}'.
-                             format(data_item.state.relative, ex))
+        self.state = StateFile.load(data_item, self.settings)
 
         if isinstance(self.state.command, str):
             self.command = CommandFile.load(self.state.command)
@@ -101,8 +97,8 @@ class ReproChange(object):
             self.command = CommandFile.loadd(self.state.command)
 
         if not self.command.cmd and not self.command.locked:
-            raise ReproError('Error: parameter {} is not defined in "{}"'.
-                            format(CommandFile.PARAM_CMD, self.command.fname if self.command.fname else data_item.state.relative))
+            msg = 'Error: data item "{}" is not locked, but has no command for reproduction'
+            raise ReproError(msg.format(data_item.data.dvc))
 
         self._settings = copy.copy(self._cmd_obj.settings)
 
