@@ -1,7 +1,6 @@
 import os
 import ntpath
 import sys
-import json
 import yaml
 import re
 
@@ -15,7 +14,20 @@ class StateFileError(DvcException):
         DvcException.__init__(self, 'State file error: {}'.format(msg))
 
 
-class StateFile(object):
+class StateFileBase(object):
+    @staticmethod
+    def _save(fname, data):
+        with open(fname, 'w') as fd:
+            yaml.dump(data, fd, default_flow_style=False)
+
+    @staticmethod
+    def _load(fname, state_class, *args):
+        with open(fname, 'r') as fd:
+            data = yaml.load(fd)
+            return state_class.loadd(data, *args)
+
+
+class StateFile(StateFileBase):
     MAGIC = 'DVC-State'
     VERSION = '0.1'
 
@@ -47,6 +59,8 @@ class StateFile(object):
                  command,
                  deps,
                  target_metrics={}):
+        super(StateFile, self).__init__()
+
         self.data_item = data_item
 
         self.settings = settings
@@ -102,23 +116,21 @@ class StateFile(object):
             return None
 
     @staticmethod
-    def load_json(json, settings):
+    def loadd(data, settings):
         return StateFile(None,
                          settings,
-                         json.get(StateFile.PARAM_COMMAND, None),
-                         json.get(StateFile.PARAM_DEPS, []),
-                         json.get(StateFile.PARAM_TARGET_METRICS, {}))
+                         data.get(StateFile.PARAM_COMMAND, None),
+                         data.get(StateFile.PARAM_DEPS, []),
+                         data.get(StateFile.PARAM_TARGET_METRICS, {}))
 
     @staticmethod
     def load(data_item, settings):
-        with open(data_item.state.relative, 'r') as fd:
-            data = yaml.load(fd)
-            return StateFile.load_json(data, settings)
+        return StateFile._load(data_item.state.relative, StateFile, settings)
 
     @staticmethod
     def loads(content, settings):
         data = yaml.loads(content)
-        return StateFile.load_json(data, settings)
+        return StateFile.loadd(data, settings)
 
     def save(self, is_update_target_metrics=True):
         if is_update_target_metrics:
@@ -134,18 +146,18 @@ class StateFile(object):
         if file_dir != '' and not os.path.isdir(file_dir):
             os.makedirs(file_dir)
 
-        with open(self.file, 'w') as fd:
-            yaml.dump(res, fd, default_flow_style=False)
-        pass
+        self._save(self.file, res)
 
 
-class CacheStateFile(object):
+class CacheStateFile(StateFileBase):
     MAGIC = 'DVC-Cache-State'
     VERSION = '0.1'
 
     PARAM_MD5 = StateFile.PARAM_MD5
 
     def __init__(self, data_item, md5=None):
+        super(CacheStateFile, self).__init__()
+
         self.data_item = data_item
         self.md5 = md5
 
@@ -153,15 +165,13 @@ class CacheStateFile(object):
             self.md5 = file_md5(data_item.data.relative)[0]
 
     @staticmethod
-    def load_json(json):
+    def loadd(data):
         return CacheStateFile(None,
-                              json.get(CacheStateFile.PARAM_MD5, None))
+                              data.get(CacheStateFile.PARAM_MD5, None))
 
     @staticmethod
     def load(data_item):
-        with open(data_item.cache_state.relative, 'r') as fd:
-            data = json.load(fd)
-            return CacheStateFile.load_json(data)
+        return CacheStateFile._load(data_item.cache_state.relative, CacheStateFile)
 
     def save(self):
         res = {
@@ -172,11 +182,10 @@ class CacheStateFile(object):
         if not os.path.isdir(file_dir):
             os.makedirs(file_dir)
 
-        with open(self.data_item.cache_state.relative, 'w') as fd:
-            json.dump(res, fd, indent=2, sort_keys=True)
+        self._save(self.data_item.cache_state.relative, res)
 
 
-class LocalStateFile(object):
+class LocalStateFile(StateFileBase):
     MAGIC = 'DVC-Local-State'
     VERSION = '0.1'
 
@@ -184,6 +193,8 @@ class LocalStateFile(object):
     PARAM_CACHE_TIMESTAMP = 'CacheTimestamp'
 
     def __init__(self, data_item, data_timestamp=None, cache_timestamp=None):
+        super(LocalStateFile, self).__init__()
+
         self.data_item = data_item
         self.data_timestamp = data_timestamp
         self.cache_timestamp = cache_timestamp
@@ -194,16 +205,14 @@ class LocalStateFile(object):
             self.cache_timestamp = os.path.getmtime(self.data_item.cache.relative)
 
     @staticmethod
-    def load_json(json):
+    def loadd(data):
         return LocalStateFile(None,
-                              json.get(LocalStateFile.PARAM_DATA_TIMESTAMP, None),
-                              json.get(LocalStateFile.PARAM_CACHE_TIMESTAMP, None))
+                              data.get(LocalStateFile.PARAM_DATA_TIMESTAMP, None),
+                              data.get(LocalStateFile.PARAM_CACHE_TIMESTAMP, None))
 
     @staticmethod
     def load(data_item):
-        with open(data_item.local_state.relative, 'r') as fd:
-            data = json.load(fd)
-            return LocalStateFile.load_json(data)
+        return LocalStateFile._load(data_item.local_state.relative, LocalStateFile)
 
     def save(self):
         res = {
@@ -215,5 +224,4 @@ class LocalStateFile(object):
         if not os.path.isdir(file_dir):
             os.makedirs(file_dir)
 
-        with open(self.data_item.local_state.relative, 'w') as fd:
-            json.dump(res, fd, indent=2, sort_keys=True)
+        self._save(self.data_item.local_state.relative, res)

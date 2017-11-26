@@ -10,13 +10,15 @@ from dvc.repository_change import RepositoryChange
 from dvc.state_file import StateFile
 from dvc.utils import cached_property
 from dvc.executor import Executor
+from dvc.state_file import StateFileBase
+
 
 class RunError(DvcException):
     def __init__(self, msg):
         DvcException.__init__(self, 'Run error: {}'.format(msg))
 
 
-class CommandFile(object):
+class CommandFile(StateFileBase):
     MAGIC = 'DVC-Command-State'
     VERSION = '0.1'
 
@@ -60,9 +62,7 @@ class CommandFile(object):
 
     @staticmethod
     def load(fname):
-        with open(fname, 'r') as fd:
-            data = yaml.load(fd)
-            return CommandFile.loadd(data, fname)
+        return CommandFile._load(fname, CommandFile, fname)
 
 
 class CmdRun(CmdBase):
