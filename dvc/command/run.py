@@ -31,10 +31,13 @@ class CmdRun(CmdBase):
     def run_command(settings, command):
         Executor.exec_cmd_only_success(command.cmd, shell=True)
 
-        map(lambda i: CmdRun._create_cache_and_state_files(i, command, settings),
-            settings.path_factory.to_data_items(command.out)[0])
-        map(lambda i: CmdRun._create_state_file(i, command, settings),
-            settings.path_factory.to_data_items(command.reg)[0])
+        CmdRun.apply_to_files(command.out, command, CmdRun._create_cache_and_state_files, settings)
+        CmdRun.apply_to_files(command.reg, command, CmdRun._create_state_file, settings)
+
+    @staticmethod
+    def apply_to_files(files, command, func, settings):
+        map(lambda i: func(i, command, settings),
+            settings.path_factory.to_data_items(files)[0])
 
     @staticmethod
     def _create_cache_and_state_files(data_item, command, settings):
