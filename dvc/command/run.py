@@ -36,8 +36,7 @@ class CmdRun(CmdBase):
 
     @staticmethod
     def apply_to_files(files, command, func, settings):
-        map(lambda i: func(i, command, settings),
-            settings.path_factory.to_data_items(files)[0])
+        [func(i, command, settings) for i in settings.path_factory.to_data_items(files)[0]]
 
     @staticmethod
     def _create_cache_and_state_files(data_item, command, settings):
