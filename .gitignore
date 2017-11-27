@@ -20,3 +20,6 @@ hooks/*.pyc
 innosetup/config.ini
 
 *.exe
+
+.coverage
+
