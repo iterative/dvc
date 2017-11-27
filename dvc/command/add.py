@@ -3,7 +3,7 @@ import os
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.state_file import StateFile
-from dvc.command.run import CommandFile
+from dvc.command.common.command_file import CommandFile
 
 
 class CmdAdd(CmdBase):
