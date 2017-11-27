@@ -40,7 +40,7 @@ class CmdAdd(CmdBase):
         for data_item in targets:
             Logger.debug('Creating state file for {}'.format(data_item.data.relative))
 
-            command = CommandFile(None, [data_item.data.dvc], [], True, None)
+            command = CommandFile(None, [data_item.data.dvc], [], [], True, None)
             state_file = StateFile(data_item,
                                    self.settings,
                                    command.dict,

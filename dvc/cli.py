@@ -96,11 +96,18 @@ def parse_args(argv=None):
     run_parser.add_argument('-d',
                         '--deps',
                         action='append',
+                        default = [],
                         help='Declare dependencies for reproducible cmd.')
     run_parser.add_argument('-o',
                         '--out',
                         action='append',
-                        help='Declare output data items for reproducible cmd.')
+                        default=[],
+                        help='Declare output data file (sync to cloud) for reproducible cmd.')
+    run_parser.add_argument('-r',
+                        '--reg',
+                        action='append',
+                        default=[],
+                        help='Declare output regular file (sync to Git) for reproducible cmd.')
     run_parser.add_argument('-l',
                         '--lock',
                         action='store_true',
