@@ -10,6 +10,7 @@ TESTS+=" test-sync.sh"
 TESTS+=" test-repro-code.sh"
 TESTS+=" test-merge.sh"
 TESTS+=" test-checkout.sh"
+TESTS+=" test-gc.sh"
 
 for t in $TESTS; do
 	rm -rf $TEST_REPO

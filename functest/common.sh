@@ -22,11 +22,27 @@ TEST_REPO_REGION='us-east-2'
 TEST_REPO_GCP='dvc-test/myrepo'
 TEST_REPO_GCP_PROJECT='dvc-project'
 
-function dvc_md5() {
+function is_osx() {
 	if [ "$(uname)" == "Darwin" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+function dvc_md5() {
+	if is_osx; then
 		md5 -r $@
 	else
 		md5sum $@
+	fi
+}
+
+function dvc_timestamp() {
+	if is_osx; then
+		stat -f "%m%t%Sm %N" $@
+	else
+		stat -c %y data/foo $@
 	fi
 }
 

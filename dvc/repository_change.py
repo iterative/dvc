@@ -4,7 +4,7 @@ from dvc.exceptions import DvcException
 from dvc.git_wrapper import GitWrapper
 from dvc.executor import Executor
 from dvc.logger import Logger
-from dvc.path.data_item import DataDirError, DataItemInStatusDirError
+from dvc.path.data_item import DataDirError, DataItemInConfigDirError
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.utils import cached_property
 from dvc.config import ConfigI
@@ -74,7 +74,7 @@ class RepositoryChange(object):
             Logger.debug('[Repository change] Add status: {} {}'.format(
                          item.status,
                          item.data.dvc))
-        except DataItemInStatusDirError:
+        except DataItemInConfigDirError:
             self._created_status_files.append(file)
         except DataDirError:
             self._externally_created_files.append(file)

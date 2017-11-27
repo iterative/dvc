@@ -20,9 +20,9 @@ class DataDirError(DvcException):
         super(DataDirError, self).__init__(msg)
 
 
-class DataItemInStatusDirError(DataDirError):
+class DataItemInConfigDirError(DataDirError):
     def __init__(self, file):
-        msg = 'File "{}" is in state directory'.format(file)
+        msg = 'File "{}" is in config directory'.format(file)
         super(DataItemInStatusDirError, self).__init__(msg)
 
 
@@ -48,10 +48,8 @@ class DataItem(object):
         if not self._data.abs.startswith(self._git.git_dir_abs):
             raise NotInGitDirError(data_file, self._git.git_dir_abs)
 
-        if self._data.abs.startswith(self.state_dir_abs):
-            raise DataItemInStatusDirError(data_file)
-
-        pass
+        if self._data.abs.startswith(os.path.join(self._git.git_dir_abs, self._config.CONFIG_DIR)):
+            raise DataItemInConfigDirError(data_file)
 
     def copy(self, cache_file=None):
         if not cache_file:
