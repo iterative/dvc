@@ -4,7 +4,6 @@ import copy
 from dvc.command.run import CmdRun, CommandFile
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.path.data_item import DataDirError
 from dvc.state_file import StateFile
 from dvc.system import System
 from dvc.data_cloud import file_md5
@@ -119,7 +118,7 @@ class ReproChange(object):
                 os.remove(data_item.data.relative)
             except Exception as ex:
                 msg = 'Data item {} cannot be removed before reproduction: {}'
-                Logger.error(msg.format(output_dvc, ex))
+                Logger.debug(msg.format(output_dvc, ex))
 
     def reproduce_run(self):
         Logger.info('Reproducing run command for data item {}. Args: {}'.format(

@@ -5,7 +5,7 @@ from dvc.path.data_item import DataItem, DataItemError, DataDirError
 from dvc.path.path import Path
 from dvc.path.stated_data_item import StatedDataItem
 from dvc.system import System
-from dvc.logger import Logger
+
 
 class PathFactory(object):
     def __init__(self, git, config):
@@ -53,7 +53,7 @@ class PathFactory(object):
 
         return result, externally_created_files
 
-    def all_existing_data_items(self, subdir='.'):
+    def all_existing_data_items(self, subdir='.', cache_exists=True):
         states = []
 
         for root, dirs, files in os.walk(os.path.join(ConfigI.STATE_DIR, subdir)):
@@ -65,7 +65,11 @@ class PathFactory(object):
 
                 states.append(path)
 
-        return self.data_items_from_states(states)
+        data_items = self.data_items_from_states(states)
+        if cache_exists:
+            data_items = filter(lambda i: os.path.exists(i.cache_state.relative), data_items)
+
+        return data_items
 
     def data_items_from_states(self, states, existing=True):
         return map(lambda s: self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing),
