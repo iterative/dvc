@@ -125,4 +125,3 @@ class DataItem(object):
         cache_state = CacheStateFile(self).save()
 
         local_state = LocalStateFile(self).save()
-        self._git.modify_gitignore([self.local_state.relative])
