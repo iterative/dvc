@@ -95,6 +95,7 @@ install_requires = [
     'configobj==5.0.6',
     'networkx==1.11',
     'gcs-oauth2-boto-plugin==1.14',
+    'pyyaml==3.12',
 ]
 
 if platform.system() == 'Darwin':
