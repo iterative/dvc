@@ -90,3 +90,4 @@ configobj==5.0.6
 networkx==1.11
 gcs-oauth2-boto-plugin==1.14
 xmltodict==0.11.0
+pyyaml==3.12

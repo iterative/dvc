@@ -5,6 +5,7 @@ from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
+from dvc.path.data_item import DataItem
 
 
 class InitError(DvcException):
@@ -107,7 +108,8 @@ ProjectName =
         conf_file.close()
 
         self.git.modify_gitignore([os.path.join(config_dir_path.name, cache_dir_path.name),
-                                   os.path.join(config_dir_path.name, os.path.basename(self.git.lock_file))])
+                                   os.path.join(config_dir_path.name, os.path.basename(self.git.lock_file)),
+                                   os.path.join(config_dir_path.name, state_dir_path.name, '*' + DataItem.LOCAL_STATE_FILE_SUFFIX)])
 
         message = 'DVC init. cache dir {}, state dir {}, '.format(cache_dir_path.name, state_dir_path.name)
         return self.commit_if_needed(message)
