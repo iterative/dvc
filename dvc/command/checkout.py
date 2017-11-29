@@ -53,8 +53,7 @@ class CmdCheckout(CmdBase):
         for item in removed_items_set:
             path = item.data.relative
             if not os.path.exists(path):
-                print(u'Remove \'{}\'.'.format(path))
-                Logger.warn(u'File \'{}\' does not exist'.format(path))
+                Logger.debug(u'File \'{}\' does not exist'.format(path))
             else:
                 Logger.info(u'Remove \'{}\''.format(path))
                 os.remove(path)
