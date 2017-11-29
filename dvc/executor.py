@@ -58,5 +58,6 @@ class Executor(object):
         code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file,
                                            stderr_file=stderr_file, cwd=cwd, shell=shell)
         if code != 0:
-            raise ExecutorError('Git command error ({}):\n{}\n{}'.format(' '.join(cmd), out, err))
+            cmd_str = ' '.join(cmd) if type(cmd) == list else cmd
+            raise ExecutorError('Git command error ({}):\n{}\n{}'.format(cmd_str, out, err))
         return out
