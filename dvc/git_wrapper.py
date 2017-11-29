@@ -427,7 +427,7 @@ class GitWrapper(GitWrapperI):
 
         git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
         lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
-        return filter(lambda s: s.startswith(ConfigI.STATE_DIR), lines)
+        return list(filter(lambda s: s.startswith(ConfigI.STATE_DIR), lines))
 
     @staticmethod
     def branches(regexp):
@@ -443,7 +443,7 @@ class GitWrapper(GitWrapperI):
             return lines
 
         reg = re.compile(regexp)
-        return filter(reg.search, lines)
+        return list(filter(reg.search, lines))
 
     @staticmethod
     def get_file_content(fname, branch):

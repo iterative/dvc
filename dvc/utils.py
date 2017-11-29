@@ -83,7 +83,7 @@ def map_progress(func, targets, n_threads):
     finally:
         progress.finish()
 
-    return zip(targets, ret)
+    return list(zip(targets, ret))
 
 
 def parse_target_metric_file(file_name):

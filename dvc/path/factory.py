@@ -72,8 +72,8 @@ class PathFactory(object):
         return data_items
 
     def data_items_from_states(self, states, existing=True):
-        return map(lambda s: self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing),
-                   states)
+        return [self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing)
+                for s in states]
 
     @staticmethod
     def state_path_to_dvc_path(state):
