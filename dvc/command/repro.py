@@ -166,7 +166,7 @@ class ReproChange(object):
             ReproChange(item, self._cmd_obj, self._recursive, self._force).reproduce()
 
         if md5 != os.path.basename(item.cache.relative):
-            self.log_repro_reason('data item {} was changed'.format(path))
+            self.log_repro_reason('data item {} was changed - md5 sum doesn\'t match'.format(path))
             return True
 
         return False
