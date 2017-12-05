@@ -9,14 +9,14 @@ class CommandFile(StateFileBase):
 
     PARAM_CMD = 'cmd'
     PARAM_OUT = 'out'
-    PARAM_REG = 'reg'
+    PARAM_OUT_GIT = 'out-git'
     PARAM_DEPS = 'deps'
     PARAM_LOCK = 'locked'
 
-    def __init__(self, cmd, out, reg, deps, locked, fname):
+    def __init__(self, cmd, out, out_git, deps, locked, fname):
         self.cmd = cmd
         self.out = out
-        self.reg = reg
+        self.out_git = out_git
         self.deps = deps
         self.locked = locked
         self.fname = fname
@@ -26,7 +26,7 @@ class CommandFile(StateFileBase):
         data = {
             self.PARAM_CMD: self.cmd,
             self.PARAM_OUT: self.out,
-            self.PARAM_REG: self.reg,
+            self.PARAM_OUT_GIT: self.out_git,
             self.PARAM_DEPS: self.deps,
             self.PARAM_LOCK: self.locked
         }
@@ -44,7 +44,7 @@ class CommandFile(StateFileBase):
     def loadd(data, fname=None):
         return CommandFile(data.get(CommandFile.PARAM_CMD, None),
                            data.get(CommandFile.PARAM_OUT, None),
-                           data.get(CommandFile.PARAM_REG, None),
+                           data.get(CommandFile.PARAM_OUT_GIT, None),
                            data.get(CommandFile.PARAM_DEPS, None),
                            data.get(CommandFile.PARAM_LOCK, None),
                            fname)
