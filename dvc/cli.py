@@ -103,8 +103,8 @@ def parse_args(argv=None):
                         action='append',
                         default=[],
                         help='Declare output data file (sync to cloud) for reproducible cmd.')
-    run_parser.add_argument('-r',
-                        '--reg',
+    run_parser.add_argument('-g',
+                        '--out-git',
                         action='append',
                         default=[],
                         help='Declare output regular file (sync to Git) for reproducible cmd.')

@@ -1,4 +1,5 @@
 import os
+import re
 
 from dvc.config import ConfigI
 from dvc.path.data_item import DataItem, DataItemError, DataDirError
@@ -72,9 +73,10 @@ class PathFactory(object):
         return data_items
 
     def data_items_from_states(self, states, existing=True):
-        return map(lambda s: self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing),
-                   states)
+        return [self.data_item_from_dvc_path(self.state_path_to_dvc_path(s), existing)
+                for s in states]
 
     @staticmethod
     def state_path_to_dvc_path(state):
-        return os.path.relpath(state, ConfigI.STATE_DIR)[:-len(DataItem.STATE_FILE_SUFFIX)]
+        filename = os.path.relpath(state, ConfigI.STATE_DIR)
+        return re.sub(DataItem.STATE_FILE_SUFFIX + '$', '', filename)

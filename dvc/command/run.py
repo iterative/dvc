@@ -21,7 +21,7 @@ class CmdRun(CmdBase):
             command = CommandFile.load(cmd)
         except Exception as exc:
             Logger.debug("Failed to load {}: {}".format(cmd, str(exc)))
-            command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.reg,
+            command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.out_git,
                                   self.parsed_args.deps, self.parsed_args.lock, None)
 
         self.run_command(self.settings, command)
@@ -32,7 +32,7 @@ class CmdRun(CmdBase):
         Executor.exec_cmd_only_success(command.cmd, shell=True)
 
         CmdRun.apply_to_files(command.out, command, CmdRun._create_cache_and_state_files, settings)
-        CmdRun.apply_to_files(command.reg, command, CmdRun._create_state_file, settings)
+        CmdRun.apply_to_files(command.out_git, command, CmdRun._create_state_file, settings)
 
     @staticmethod
     def apply_to_files(files, command, func, settings):
