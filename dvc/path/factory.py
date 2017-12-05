@@ -31,9 +31,7 @@ class PathFactory(object):
             return self.data_item(path.relative)
 
     def is_data_item(self, fname):
-        data = os.path.relpath(os.path.realpath(fname), self._git.git_dir_abs)
-        state = os.path.join(ConfigI.STATE_DIR, data + DataItem.STATE_FILE_SUFFIX)
-        return os.path.isfile(state)
+        return os.path.isfile(fname + DataItem.STATE_FILE_SUFFIX)
 
     def existing_data_item(self, fname):
         if not self.is_data_item(fname):
@@ -57,7 +55,7 @@ class PathFactory(object):
     def all_existing_data_items(self, subdir='.', cache_exists=True):
         states = []
 
-        for root, dirs, files in os.walk(os.path.join(ConfigI.STATE_DIR, subdir)):
+        for root, dirs, files in os.walk(os.path.join(self._git.git_dir_abs, subdir)):
             for fname in files:
                 path = os.path.join(root, fname)
 
@@ -68,7 +66,7 @@ class PathFactory(object):
 
         data_items = self.data_items_from_states(states)
         if cache_exists:
-            data_items = filter(lambda i: os.path.exists(i.cache_state.relative), data_items)
+            data_items = filter(lambda i: os.path.exists(i.state.relative), data_items)
 
         return data_items
 
@@ -78,5 +76,4 @@ class PathFactory(object):
 
     @staticmethod
     def state_path_to_dvc_path(state):
-        filename = os.path.relpath(state, ConfigI.STATE_DIR)
-        return re.sub(DataItem.STATE_FILE_SUFFIX + '$', '', filename)
+        return re.sub(DataItem.STATE_FILE_SUFFIX + '$', '', state)

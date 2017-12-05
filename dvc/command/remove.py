@@ -21,8 +21,8 @@ class CmdRemove(Traverse):
         data_item = self._get_data_item(target)
 
         self._remove_cache_file(data_item)
-        self._remove_state_file(data_item)
         self._remove_cloud_cache(data_item)
+        self._remove_state_file(data_item)
 
         os.remove(data_item.data.relative)
         Logger.debug(u'[Cmd-Remove] Remove data item {}. Success.'.format(data_item.data.relative))

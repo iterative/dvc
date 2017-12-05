@@ -318,6 +318,10 @@ class GitWrapper(GitWrapperI):
         Executor.exec_cmd_only_success(cmd.split())
 
     @staticmethod
+    def get_file_content_before_last_merge(fname):
+        return GitWrapper.get_file_content(fname, '@{1}')
+
+    @staticmethod
     def checkout(commit_or_branch, create_new=False):
         prefix = '-b ' if create_new else ''
         Logger.debug('[dvc-git] Checkout {}{}'.format(prefix, commit_or_branch))
@@ -427,7 +431,7 @@ class GitWrapper(GitWrapperI):
 
         git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
         lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
-        return list(filter(lambda s: s.startswith(ConfigI.STATE_DIR), lines))
+        return list(filter(lambda s: s.endswith(DataItem.STATE_FILE_SUFFIX), lines))
 
     @staticmethod
     def branches(regexp):

@@ -7,7 +7,6 @@ from dvc.state_file import StateFile
 from dvc.path.data_item import DataItem
 from dvc.system import System
 from dvc.command.checkout import CmdCheckout
-from dvc.command.run import CommandFile
 
 
 class CmdMerge(CmdBase):
@@ -23,8 +22,8 @@ class CmdMerge(CmdBase):
         dlist = []
         flist = self.git.get_last_merge_changed_files()
         for fname in flist:
-            if fname.startswith(self.settings.config.state_dir) and fname.endswith(DataItem.CACHE_STATE_FILE_SUFFIX):
-                data = os.path.relpath(fname, self.settings.config.state_dir)[:-len(DataItem.CACHE_STATE_FILE_SUFFIX)]
+            if fname.endswith(DataItem.STATE_FILE_SUFFIX):
+                data = fname[:-len(DataItem.STATE_FILE_SUFFIX)]
                 dlist.append(data)
         return dlist
 
@@ -34,11 +33,7 @@ class CmdMerge(CmdBase):
         items = self.settings.path_factory.to_data_items(flist)[0]
 
         for item in items:
-            state = StateFile.load(item, self.settings)
-            if isinstance(state.command, str):
-                command = CommandFile.load(state.command)
-            else:
-                command = CommandFile.loadd(state.command)
+            command = StateFile.load(item)
 
             if not command.cmd and command.locked:
                 targets.append(item)
@@ -48,7 +43,17 @@ class CmdMerge(CmdBase):
     def checkout_targets(self, targets):
         data = []
         for item in targets:
-            self.git.checkout_file_before_last_merge(item.cache_state.relative)
+            prev_state = StateFile.loads(self.git.get_file_content_before_last_merge(item.state.relative))
+            curr_state = StateFile.load(item)
+
+            state = StateFile(data_item=item,
+                      cmd=curr_state.cmd,
+                      out=curr_state.out,
+                      out_git=curr_state.out_git,
+                      locked=curr_state.locked,
+                      deps=curr_state.deps,
+                      md5=prev_state.md5)
+            state.save()
 
             CmdCheckout.checkout([item])
 

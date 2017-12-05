@@ -91,17 +91,14 @@ ProjectName =
 
         config_dir_path = self.get_not_existing_path(Config.CONFIG_DIR)
         cache_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.CACHE_DIR_NAME)
-        state_dir_path = self.get_not_existing_path(Config.CONFIG_DIR, Config.STATE_DIR_NAME)
 
         conf_file_name = self.get_not_existing_conf_file_name()
 
         config_dir_path.mkdir()
         cache_dir_path.mkdir()
-        state_dir_path.mkdir()
-        Logger.info('Directories {}/, {}/, {}/ were created'.format(
+        Logger.info('Directories {}/, {}/ were created'.format(
             config_dir_path.name,
-            os.path.join(config_dir_path.name, cache_dir_path.name),
-            os.path.join(config_dir_path.name, state_dir_path.name)))
+            os.path.join(config_dir_path.name, cache_dir_path.name)))
 
         conf_file = open(conf_file_name, 'wt')
         conf_file.write(self.CONFIG_TEMPLATE)
@@ -109,7 +106,7 @@ ProjectName =
 
         self.git.modify_gitignore([os.path.join(config_dir_path.name, cache_dir_path.name),
                                    os.path.join(config_dir_path.name, os.path.basename(self.git.lock_file)),
-                                   os.path.join(config_dir_path.name, state_dir_path.name, '*' + DataItem.LOCAL_STATE_FILE_SUFFIX)])
+                                   '*' + DataItem.LOCAL_STATE_FILE_SUFFIX])
 
-        message = 'DVC init. cache dir {}, state dir {}, '.format(cache_dir_path.name, state_dir_path.name)
+        message = 'DVC init. cache dir {}'.format(cache_dir_path.name)
         return self.commit_if_needed(message)

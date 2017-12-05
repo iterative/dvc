@@ -18,7 +18,7 @@ function test_generic() {
 	    
 	dvc_info 'Reproduce foo1'
 	dvc repro data/foo1
-	dvc_check_files data/foo1
+	dvc_check_files data/foo1 data/foo1.dvc
 	if [ "$(cat data/foo1)" != "foo" ]; then
 		dvc_fail
 	fi
@@ -34,7 +34,7 @@ function test_generic() {
 
 	dvc_info 'Reproduce foo1 as default target'
 	dvc repro
-	dvc_check_files data/foo1
+	dvc_check_files data/foo1 data/foo1.dvc
 	if [ "$(cat data/foo1)" != "bar" ]; then
 		dvc_fail
 	fi
