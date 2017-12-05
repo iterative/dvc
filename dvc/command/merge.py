@@ -7,7 +7,6 @@ from dvc.state_file import StateFile
 from dvc.path.data_item import DataItem
 from dvc.system import System
 from dvc.command.checkout import CmdCheckout
-from dvc.command.run import CommandFile
 
 
 class CmdMerge(CmdBase):
@@ -34,11 +33,7 @@ class CmdMerge(CmdBase):
         items = self.settings.path_factory.to_data_items(flist)[0]
 
         for item in items:
-            state = StateFile.load(item)
-            if isinstance(state.command, str):
-                command = CommandFile.load(state.command)
-            else:
-                command = CommandFile.loadd(state.command)
+            command = StateFile.load(item)
 
             if not command.cmd and command.locked:
                 targets.append(item)
@@ -52,8 +47,11 @@ class CmdMerge(CmdBase):
             curr_state = StateFile.load(item)
 
             state = StateFile(data_item=item,
-                      command=curr_state.command,
-                      deps=curr_state.command,
+                      cmd=curr_state.cmd,
+                      out=curr_state.out,
+                      out_git=curr_state.out_git,
+                      locked=curr_state.locked,
+                      deps=curr_state.deps,
                       md5=prev_state.md5)
             state.save()
 

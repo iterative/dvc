@@ -1,7 +1,7 @@
 import os
 import copy
 
-from dvc.command.run import CmdRun, CommandFile
+from dvc.command.run import CmdRun
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.state_file import StateFile
@@ -88,12 +88,7 @@ class ReproChange(object):
         self._recursive = recursive
         self._force = force
 
-        self.state = StateFile.load(data_item)
-
-        if isinstance(self.state.command, str):
-            self.command = CommandFile.load(self.state.command)
-        else:
-            self.command = CommandFile.loadd(self.state.command)
+        self.command = StateFile.load(data_item)
 
         if not self.command.cmd and not self.command.locked:
             msg = 'Error: data item "{}" is not locked, but has no command for reproduction'
@@ -174,7 +169,7 @@ class ReproChange(object):
     def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
-        for dep in self.state.deps:
+        for dep in self.command.deps:
             path = dep[StateFile.PARAM_PATH]
             md5 = dep[StateFile.PARAM_MD5]
 

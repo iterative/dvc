@@ -31,28 +31,40 @@ class StateFile(StateFileBase):
     MAGIC = 'DVC-State'
     VERSION = '0.1'
 
-    PARAM_COMMAND = 'command'
+    PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
+    PARAM_LOCKED = 'locked'
+    PARAM_OUT = 'out'
+    PARAM_OUT_GIT = 'out-git'
 
     def __init__(self,
                  data_item=None,
-                 command=None,
+                 cmd=None,
+                 out=None,
+                 out_git=None,
                  deps=None,
+                 locked=None,
                  md5=None):
         super(StateFile, self).__init__()
 
         self.data_item = data_item
 
-        self.command = command
+        self.cmd = cmd
+        self.out = out
+        self.out_git = out_git
         self.deps = deps
+        self.locked = locked
         self.md5 = md5
 
     @staticmethod
     def parse_deps_state(settings, deps):
         state = []
         for dep in deps:
+            if isinstance(dep, dict):
+                dep = dep[StateFile.PARAM_PATH]
+
             if settings.path_factory.is_data_item(dep):
                 item = settings.path_factory.data_item(dep)
                 state.append({StateFile.PARAM_PATH: item.data.dvc,
@@ -69,9 +81,12 @@ class StateFile(StateFileBase):
     @staticmethod
     def loadd(data):
         return StateFile(data_item=None,
-                         command=data.get(StateFile.PARAM_COMMAND, None),
+                         cmd=data.get(StateFile.PARAM_CMD, None),
+                         out=data.get(StateFile.PARAM_OUT, None),
+                         out_git=data.get(StateFile.PARAM_OUT_GIT, None),
                          deps=data.get(StateFile.PARAM_DEPS, []),
-                         md5=data.get(StateFile.PARAM_MD5, []))
+                         md5=data.get(StateFile.PARAM_MD5, []),
+                         locked=data.get(StateFile.PARAM_LOCKED, None))
 
     @staticmethod
     def load(data_item):
@@ -84,9 +99,12 @@ class StateFile(StateFileBase):
 
     def save(self):
         res = {
-            self.PARAM_COMMAND:             self.command,
-            self.PARAM_DEPS:                self.deps,
-            self.PARAM_MD5:                 self.md5
+            self.PARAM_CMD: self.cmd,
+            self.PARAM_OUT: self.out,
+            self.PARAM_OUT_GIT: self.out_git,
+            self.PARAM_DEPS: self.deps,
+            self.PARAM_LOCKED: self.locked,
+            self.PARAM_MD5: self.md5
         }
 
         file_dir = os.path.dirname(self.file)

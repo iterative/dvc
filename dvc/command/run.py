@@ -1,7 +1,6 @@
 import os
 
 from dvc.command.common.base import CmdBase
-from dvc.command.common.command_file import CommandFile
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.state_file import StateFile
@@ -19,12 +18,13 @@ class CmdRun(CmdBase):
 
     def run(self):
         cmd = ' '.join(self.parsed_args.command)
-        try:
-            command = CommandFile.load(cmd)
-        except Exception as exc:
-            Logger.debug("Failed to load {}: {}".format(cmd, str(exc)))
-            command = CommandFile(cmd, self.parsed_args.out, self.parsed_args.out_git,
-                                  self.parsed_args.deps, self.parsed_args.lock, None)
+        command = StateFile(data_item=None,
+                            cmd=cmd,
+                            out=self.parsed_args.out,
+                            out_git=self.parsed_args.out_git,
+                            deps=self.parsed_args.deps,
+                            locked=self.parsed_args.lock,
+                            md5=None)
 
         self.run_command(self.settings, command)
         return self.commit_if_needed('DVC run: {}'.format(command.cmd))
@@ -51,7 +51,10 @@ class CmdRun(CmdBase):
     def _create_state_file(data_item, command, settings):
         Logger.debug('Create state file "{}"'.format(data_item.state.relative))
         state_file = StateFile(data_item=data_item,
-                               command=command.fname if command.fname else command.dict,
+                               cmd=command.cmd,
+                               out=command.out,
+                               out_git=command.out_git,
+                               locked=command.locked,
                                deps=StateFile.parse_deps_state(settings, command.deps),
                                md5=os.path.basename(data_item.cache.relative))
         state_file.save()
