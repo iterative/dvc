@@ -41,10 +41,10 @@ class CmdAdd(CmdBase):
             Logger.debug('Creating state file for {}'.format(data_item.data.relative))
 
             command = CommandFile(None, [data_item.data.dvc], [], [], True, None)
-            state_file = StateFile(data_item,
-                                   self.settings,
-                                   command.dict,
-                                   [])
+            state_file = StateFile(data_item=data_item,
+                                   command=command.dict,
+                                   deps=[],
+                                   md5=os.path.basename(data_item.cache.relative))
             state_file.save()
             Logger.debug('State file "{}" was created'.format(data_item.state.relative))
 

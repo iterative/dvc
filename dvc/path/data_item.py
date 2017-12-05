@@ -7,7 +7,7 @@ from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import cached_property
 from dvc.data_cloud import file_md5
-from dvc.state_file import CacheStateFile, LocalStateFile
+from dvc.state_file import StateFile, LocalStateFile
 
 
 class DataItemError(DvcException):
@@ -33,9 +33,9 @@ class NotInGitDirError(DataDirError):
 
 
 class DataItem(object):
-    STATE_FILE_SUFFIX = '.state'
-    LOCAL_STATE_FILE_SUFFIX = '.local_state'
-    CACHE_STATE_FILE_SUFFIX = '.cache_state'
+    STATE_FILE_SUFFIX = '.dvc'
+    LOCAL_STATE_FILE_PREFIX = '.'
+    LOCAL_STATE_FILE_SUFFIX = '.dvc_local_state'
     CACHE_FILE_SEP = '_'
 
     def __init__(self, data_file, git, config, cache_file=None):
@@ -70,17 +70,15 @@ class DataItem(object):
     def data(self):
         return self._data
 
-    @cached_property
-    def state_dir(self):
-        return os.path.join(self._git.git_dir_abs, self._config.state_dir)
-
-    def _state(self, suffix):
-        state_file = os.path.join(self.state_dir, self.data.dvc + suffix)
+    def _state(self, prefix, suffix):
+        state_file = os.path.join(self._git.git_dir_abs,
+                                  os.path.dirname(self.data.dvc),
+                                  prefix + os.path.basename(self.data.dvc) + suffix)
         return Path(state_file, self._git)
 
     @cached_property
     def state(self):
-        return self._state(self.STATE_FILE_SUFFIX)
+        return self._state('', self.STATE_FILE_SUFFIX)
 
     @cached_property
     def cache_dir_abs(self):
@@ -88,11 +86,7 @@ class DataItem(object):
 
     @cached_property
     def local_state(self):
-        return self._state(self.LOCAL_STATE_FILE_SUFFIX)
-
-    @cached_property
-    def cache_state(self):
-        return self._state(self.CACHE_STATE_FILE_SUFFIX)
+        return self._state(self.LOCAL_STATE_FILE_PREFIX, self.LOCAL_STATE_FILE_SUFFIX)
 
     @cached_property
     def cache_dir(self):
@@ -105,14 +99,10 @@ class DataItem(object):
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            file_name = CacheStateFile.load(self).md5
+            file_name = StateFile.load(self).md5
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
-
-    @cached_property
-    def state_dir_abs(self):
-        return os.path.join(self._git.git_dir_abs, ConfigI.STATE_DIR)
 
     def move_data_to_cache(self):
         md5 = file_md5(self.data.relative)[0]
@@ -122,6 +112,5 @@ class DataItem(object):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
 
-        cache_state = CacheStateFile(self).save()
-
-        local_state = LocalStateFile(self).save()
+        StateFile(self, md5=md5).save()
+        LocalStateFile(self).save()

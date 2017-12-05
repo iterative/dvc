@@ -88,7 +88,7 @@ class ReproChange(object):
         self._recursive = recursive
         self._force = force
 
-        self.state = StateFile.load(data_item, self.settings)
+        self.state = StateFile.load(data_item)
 
         if isinstance(self.state.command, str):
             self.command = CommandFile.load(self.state.command)

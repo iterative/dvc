@@ -19,11 +19,9 @@ class ConfigI(object):
     CONFIG_DIR = '.dvc'
     TARGET_FILE_DEFAULT = 'target'
     CONFIG = 'config'
-    STATE_DIR_NAME = 'state'
     CACHE_DIR_NAME = 'cache'
 
     CACHE_DIR = os.path.join(CONFIG_DIR, CACHE_DIR_NAME)
-    STATE_DIR = os.path.join(CONFIG_DIR, STATE_DIR_NAME)
 
     def __init__(self, cloud=None, conf_parser=None):
         self._conf_parser = None
@@ -40,11 +38,6 @@ class ConfigI(object):
         """ Directory with cached data files """
         return self.CACHE_DIR
     
-    @property
-    def state_dir(self):
-        """ Directory with state files """
-        return self.STATE_DIR
-
     @property
     def cloud(self):
         """ Cloud config """

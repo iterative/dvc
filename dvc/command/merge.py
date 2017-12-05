@@ -23,8 +23,8 @@ class CmdMerge(CmdBase):
         dlist = []
         flist = self.git.get_last_merge_changed_files()
         for fname in flist:
-            if fname.startswith(self.settings.config.state_dir) and fname.endswith(DataItem.CACHE_STATE_FILE_SUFFIX):
-                data = os.path.relpath(fname, self.settings.config.state_dir)[:-len(DataItem.CACHE_STATE_FILE_SUFFIX)]
+            if fname.endswith(DataItem.STATE_FILE_SUFFIX):
+                data = fname[:-len(DataItem.STATE_FILE_SUFFIX)]
                 dlist.append(data)
         return dlist
 
@@ -34,7 +34,7 @@ class CmdMerge(CmdBase):
         items = self.settings.path_factory.to_data_items(flist)[0]
 
         for item in items:
-            state = StateFile.load(item, self.settings)
+            state = StateFile.load(item)
             if isinstance(state.command, str):
                 command = CommandFile.load(state.command)
             else:
@@ -48,7 +48,14 @@ class CmdMerge(CmdBase):
     def checkout_targets(self, targets):
         data = []
         for item in targets:
-            self.git.checkout_file_before_last_merge(item.cache_state.relative)
+            prev_state = StateFile.loads(self.git.get_file_content_before_last_merge(item.state.relative))
+            curr_state = StateFile.load(item)
+
+            state = StateFile(data_item=item,
+                      command=curr_state.command,
+                      deps=curr_state.command,
+                      md5=prev_state.md5)
+            state.save()
 
             CmdCheckout.checkout([item])
 

@@ -1,3 +1,5 @@
+import os
+
 from dvc.command.common.base import CmdBase
 from dvc.command.common.command_file import CommandFile
 from dvc.exceptions import DvcException
@@ -48,9 +50,9 @@ class CmdRun(CmdBase):
     @staticmethod
     def _create_state_file(data_item, command, settings):
         Logger.debug('Create state file "{}"'.format(data_item.state.relative))
-        state_file = StateFile(data_item,
-                               settings,
-                               command.fname if command.fname else command.dict,
-                               StateFile.parse_deps_state(settings, command.deps))
+        state_file = StateFile(data_item=data_item,
+                               command=command.fname if command.fname else command.dict,
+                               deps=StateFile.parse_deps_state(settings, command.deps),
+                               md5=os.path.basename(data_item.cache.relative))
         state_file.save()
         return state_file

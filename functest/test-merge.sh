@@ -52,6 +52,6 @@ if [ "$(dvc_md5 data/data)" != "$ORIG_DATA" ]; then
 	dvc_fail
 fi
 
-grep $(echo "$ORIG_DATA" | cut -d " " -f1) .dvc/state/data/data.cache_state || dvc_fail
+grep $(echo "$ORIG_DATA" | cut -d " " -f1) data/data.dvc || dvc_fail
 
 dvc_pass
