@@ -5,10 +5,9 @@ from collections import defaultdict
 from dvc import utils
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.config import Config, ConfigI
+from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
-from dvc.path.data_item import DataItemError
-from dvc.state_file import StateFile
+from dvc.path.data_item import DataItem
 from dvc.system import System
 from dvc.graph.workflow import Workflow
 from dvc.graph.commit import Commit

@@ -23,7 +23,7 @@ class DataDirError(DvcException):
 class DataItemInConfigDirError(DataDirError):
     def __init__(self, file):
         msg = 'File "{}" is in config directory'.format(file)
-        super(DataItemInStatusDirError, self).__init__(msg)
+        super(DataDirError, self).__init__(msg)
 
 
 class NotInGitDirError(DataDirError):
