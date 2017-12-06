@@ -24,8 +24,7 @@ class CmdRun(CmdBase):
                             out=self.parsed_args.out,
                             out_git=self.parsed_args.out_git,
                             deps=self.parsed_args.deps,
-                            locked=self.parsed_args.lock,
-                            md5=None)
+                            locked=self.parsed_args.lock)
 
         self.run_command(self.settings, state)
         return self.commit_if_needed('DVC run: {}'.format(state.cmd))
@@ -47,23 +46,17 @@ class CmdRun(CmdBase):
         Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
                      data_item.data.relative, data_item.cache_dir_abs))
         data_item.move_data_to_cache()
-        return CmdRun._create_state_file(data_item, state, settings, cache_file_exists = True)
+        return CmdRun._create_state_file(data_item, state, settings)
 
     @staticmethod
-    def _create_state_file(data_item, state, settings, cache_file_exists=False):
+    def _create_state_file(data_item, state, settings):
         Logger.debug('Create state file "{}"'.format(data_item.state.relative))
 
-        if cache_file_exists:
-            md5 = os.path.basename(data_item.cache.relative)
-        else:
-            md5 = file_md5(data_item.data.relative)[0]
-
-        state_file = StateFile(data_item,
-                               state.cmd,
-                               state.out,
-                               state.out_git,
+        state_file = StateFile(data_item=data_item,
+                               cmd=state.cmd,
+                               out=StateFile.parse_deps_state(settings, state.out),
+                               out_git=StateFile.parse_deps_state(settings, state.out_git),
                                locked=state.locked,
-                               deps=StateFile.parse_deps_state(settings, state.deps),
-                               md5=md5)
+                               deps=StateFile.parse_deps_state(settings, state.deps))
         state_file.save()
         return state_file

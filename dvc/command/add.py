@@ -41,11 +41,10 @@ class CmdAdd(CmdBase):
 
             state_file = StateFile(data_item=data_item,
                                    cmd=None,
-                                   out=[data_item.data.dvc],
+                                   out=StateFile.parse_deps_state(self.settings, [data_item.data.dvc]),
                                    out_git=[],
                                    deps=[],
-                                   locked=True,
-                                   md5=os.path.basename(data_item.cache.relative))
+                                   locked=True)
             state_file.save()
             Logger.debug('State file "{}" was created'.format(data_item.state.relative))
 

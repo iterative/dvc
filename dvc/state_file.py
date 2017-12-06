@@ -29,8 +29,6 @@ class StateFile(StateFileBase):
 
     PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
-    PARAM_PATH = 'path'
-    PARAM_MD5 = 'md5'
     PARAM_LOCKED = 'locked'
     PARAM_OUT = 'out'
     PARAM_OUT_GIT = 'out-git'
@@ -41,8 +39,7 @@ class StateFile(StateFileBase):
                  out=None,
                  out_git=None,
                  deps=None,
-                 locked=None,
-                 md5=None):
+                 locked=None):
         super(StateFile, self).__init__()
         self.data_item = data_item
 
@@ -51,22 +48,16 @@ class StateFile(StateFileBase):
         self.out_git = out_git
         self.deps = deps
         self.locked = locked
-        self.md5 = md5
 
     @staticmethod
     def parse_deps_state(settings, deps):
-        state = []
+        state = {}
         for dep in deps:
-            if isinstance(dep, dict):
-                dep = dep[StateFile.PARAM_PATH]
-
             if settings.path_factory.is_data_item(dep):
                 item = settings.path_factory.data_item(dep)
-                state.append({StateFile.PARAM_PATH: item.data.dvc,
-                              StateFile.PARAM_MD5: StateFile.load(item).md5})
+                state[item.data.dvc] = StateFile.load(item).out[item.data.dvc]
             else:
-                state.append({StateFile.PARAM_PATH: dep,
-                              StateFile.PARAM_MD5: file_md5(os.path.join(settings.git.git_dir_abs, dep))[0]})
+                state[dep] = file_md5(os.path.join(settings.git.git_dir_abs, dep))[0]
         return state
 
     @property
@@ -80,7 +71,6 @@ class StateFile(StateFileBase):
                          out=data.get(StateFile.PARAM_OUT, None),
                          out_git=data.get(StateFile.PARAM_OUT_GIT, None),
                          deps=data.get(StateFile.PARAM_DEPS, []),
-                         md5=data.get(StateFile.PARAM_MD5, []),
                          locked=data.get(StateFile.PARAM_LOCKED, None))
 
     @staticmethod
@@ -98,8 +88,7 @@ class StateFile(StateFileBase):
             self.PARAM_OUT: self.out,
             self.PARAM_OUT_GIT: self.out_git,
             self.PARAM_DEPS: self.deps,
-            self.PARAM_LOCKED: self.locked,
-            self.PARAM_MD5: self.md5
+            self.PARAM_LOCKED: self.locked
         }
 
         file_dir = os.path.dirname(self.file)

@@ -46,14 +46,8 @@ class CmdMerge(CmdBase):
             prev_state = StateFile.loads(self.git.get_file_content_before_last_merge(item.state.relative))
             curr_state = StateFile.load(item)
 
-            state = StateFile(data_item=item,
-                      cmd=curr_state.cmd,
-                      out=curr_state.out,
-                      out_git=curr_state.out_git,
-                      locked=curr_state.locked,
-                      deps=curr_state.deps,
-                      md5=prev_state.md5)
-            state.save()
+            curr_state.out[item.data.dvc] = prev_state.out[item.data.dvc]
+            curr_state.save()
 
             CmdCheckout.checkout([item])
 

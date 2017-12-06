@@ -99,7 +99,7 @@ class DataItem(object):
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            file_name = StateFile.load(self).md5
+            file_name = StateFile.load(self).out[self.data.dvc]
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
@@ -112,5 +112,4 @@ class DataItem(object):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
 
-        StateFile(self, md5=md5).save()
         LocalStateFile(self).save()

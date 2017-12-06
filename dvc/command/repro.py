@@ -169,10 +169,7 @@ class ReproChange(object):
     def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
-        for dep in self.command.deps:
-            path = dep[StateFile.PARAM_PATH]
-            md5 = dep[StateFile.PARAM_MD5]
-
+        for path,md5 in self.command.deps.items():
             if self.reproduce_dep(path, md5, recursive):
                 result = True
 
