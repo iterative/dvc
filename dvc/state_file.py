@@ -1,13 +1,9 @@
 import os
-import ntpath
-import sys
 import yaml
-import re
 
-from dvc import utils
 from dvc.exceptions import DvcException
-from dvc.system import System
 from dvc.data_cloud import file_md5
+
 
 class StateFileError(DvcException):
     def __init__(self, msg):
@@ -48,7 +44,6 @@ class StateFile(StateFileBase):
                  locked=None,
                  md5=None):
         super(StateFile, self).__init__()
-
         self.data_item = data_item
 
         self.cmd = cmd
