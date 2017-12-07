@@ -212,8 +212,4 @@ class LocalStateFile(StateFileBase):
             self.PARAM_CACHE_TIMESTAMP   : self.cache_timestamp
         }
 
-        file_dir = os.path.dirname(self.data_item.local_state.relative)
-        if not os.path.isdir(file_dir):
-            os.makedirs(file_dir)
-
         self._save(self.data_item.local_state.relative, res)
