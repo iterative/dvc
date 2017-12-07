@@ -88,7 +88,7 @@ class ReproChange(object):
         self._recursive = recursive
         self._force = force
 
-        self.command = StateFile.load(data_item)
+        self.command = StateFile.find(data_item)
 
         if not self.command.cmd and not self.command.locked:
             msg = 'Error: data item "{}" is not locked, but has no command for reproduction'
@@ -105,15 +105,15 @@ class ReproChange(object):
         return self._cmd_obj
 
     def remove_output_files(self):
-        for output_dvc in self.command.out:
-            Logger.debug('Removing output file {} before reproduction.'.format(output_dvc))
-
+        for out in self.command.out:
+            path = os.path.join(self.command.cwd, out)
+            Logger.debug('Removing output file {} before reproduction.'.format(path))
             try:
-                data_item = self.cmd_obj.settings.path_factory.data_item_from_dvc_path(output_dvc)
+                data_item = self.cmd_obj.settings.path_factory.data_item(path)
                 os.remove(data_item.data.relative)
             except Exception as ex:
                 msg = 'Data item {} cannot be removed before reproduction: {}'
-                Logger.debug(msg.format(output_dvc, ex))
+                Logger.debug(msg.format(path, ex))
 
     def reproduce_run(self):
         Logger.info('Reproducing run command for data item {}. Args: {}'.format(
@@ -169,10 +169,8 @@ class ReproChange(object):
     def reproduce_deps(self, data_item_dvc, recursive):
         result = False
 
-        for dep in self.command.deps:
-            path = dep[StateFile.PARAM_PATH]
-            md5 = dep[StateFile.PARAM_MD5]
-
+        for name,md5 in self.command.deps.items():
+            path = os.path.join(self.command.cwd, name)
             if self.reproduce_dep(path, md5, recursive):
                 result = True
 

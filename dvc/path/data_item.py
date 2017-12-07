@@ -33,7 +33,6 @@ class NotInGitDirError(DataDirError):
 
 
 class DataItem(object):
-    STATE_FILE_SUFFIX = '.dvc'
     LOCAL_STATE_FILE_PREFIX = '.'
     LOCAL_STATE_FILE_SUFFIX = '.dvc_local_state'
     CACHE_FILE_SEP = '_'
@@ -78,7 +77,7 @@ class DataItem(object):
 
     @cached_property
     def state(self):
-        return self._state('', self.STATE_FILE_SUFFIX)
+        return Path(StateFile.find(self).path, self._git)
 
     @cached_property
     def cache_dir_abs(self):
@@ -99,7 +98,7 @@ class DataItem(object):
         if self._cache_file:
             file_name = os.path.relpath(os.path.realpath(self._cache_file), cache_dir)
         else:
-            file_name = StateFile.load(self).md5
+            file_name = str(StateFile.find_md5(self))
 
         cache_file = os.path.join(cache_dir, file_name)
         return Path(cache_file, self._git)
@@ -112,5 +111,4 @@ class DataItem(object):
             System.hardlink(self.data.relative, self.cache.relative)
         os.chmod(self.data.relative, stat.S_IREAD)
 
-        StateFile(self, md5=md5).save()
         LocalStateFile(self).save()

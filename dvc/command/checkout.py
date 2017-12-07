@@ -35,30 +35,6 @@ class CmdCheckout(CmdBase):
             Logger.info('Checkout \'{}\''.format(item.data.relative))
  
     def run(self):
-        try:
-            states = self.git.state_files_for_previous_commit()
-            prev_items = self.settings.path_factory.data_items_from_states(states, existing=False)
-        except Exception as ex:
-            Logger.error(u'Unable to get data files from previous commit: {}'.format(ex))
-            return 1
-
-        curr_items = self.settings.path_factory.all_existing_data_items()
-        self.checkout(curr_items)
-
-        self.remove_files(list(set(prev_items) - set(curr_items)))
+        items = self.settings.path_factory.all_existing_data_items()
+        self.checkout(items)
         return 0
-
-    @staticmethod
-    def remove_files(removed_items_set):
-        for item in removed_items_set:
-            path = item.data.relative
-            if not os.path.exists(path):
-                Logger.debug(u'File \'{}\' does not exist'.format(path))
-            else:
-                Logger.info(u'Remove \'{}\''.format(path))
-                os.remove(path)
-                dir = os.path.dirname(path)
-                if not os.listdir(dir):
-                    Logger.info(u'Remove directory \'{}\''.format(dir))
-                    os.removedirs(dir)
-        pass

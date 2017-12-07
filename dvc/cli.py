@@ -113,6 +113,10 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Lock data item - disable reproduction.')
+    run_parser.add_argument('-f',
+                        '--file',
+                        default='stage.dvc',
+                        help='Specify name of the state file')
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
