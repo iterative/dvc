@@ -19,44 +19,40 @@ class CmdRun(CmdBase):
 
     def run(self):
         cmd = ' '.join(self.parsed_args.command)
-        state = StateFile(data_item=None,
-                            cmd=cmd,
-                            out=self.parsed_args.out,
-                            out_git=self.parsed_args.out_git,
-                            deps=self.parsed_args.deps,
-                            locked=self.parsed_args.lock)
+
+        if os.path.isfile(self.parsed_args.file):
+            Logger.error("Stage file {} already exists".format(self.parsed_args.file))
+            return 1
+
+        state = StateFile(fname=self.parsed_args.file,
+                          cmd=cmd,
+                          out=self.parsed_args.out,
+                          out_git=self.parsed_args.out_git,
+                          deps=self.parsed_args.deps,
+                          locked=self.parsed_args.lock)
 
         self.run_command(self.settings, state)
         return self.commit_if_needed('DVC run: {}'.format(state.cmd))
 
     @staticmethod
     def run_command(settings, state):
-        Executor.exec_cmd_only_success(state.cmd, shell=True)
+        Executor.exec_cmd_only_success(state.cmd, cwd=state.cwd, shell=True)
 
-        CmdRun.apply_to_files(state.out, state, CmdRun._create_cache_and_state_files, settings)
-        CmdRun.apply_to_files(state.out_git, state, CmdRun._create_state_file, settings)
-
-    @staticmethod
-    def apply_to_files(files, state, func, settings):
-        items = settings.path_factory.to_data_items(files)[0]
-        [func(i, state, settings) for i in items]
+        CmdRun.move_output_to_cache(settings, state)
+        CmdRun.update_state_file(settings, state)
 
     @staticmethod
-    def _create_cache_and_state_files(data_item, state, settings):
-        Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
-                     data_item.data.relative, data_item.cache_dir_abs))
-        data_item.move_data_to_cache()
-        return CmdRun._create_state_file(data_item, state, settings)
+    def update_state_file(settings, state):
+        Logger.debug('Update state file "{}"'.format(state.path))
+        state.out = StateFile.parse_deps_state(settings, state.out)
+        state.out_git = StateFile.parse_deps_state(settings, state.out_git)
+        state.deps = StateFile.parse_deps_state(settings, state.deps)
+        state.save()
 
     @staticmethod
-    def _create_state_file(data_item, state, settings):
-        Logger.debug('Create state file "{}"'.format(data_item.state.relative))
-
-        state_file = StateFile(data_item=data_item,
-                               cmd=state.cmd,
-                               out=StateFile.parse_deps_state(settings, state.out),
-                               out_git=StateFile.parse_deps_state(settings, state.out_git),
-                               locked=state.locked,
-                               deps=StateFile.parse_deps_state(settings, state.deps))
-        state_file.save()
-        return state_file
+    def move_output_to_cache(settings, state):
+        items = settings.path_factory.to_data_items(state.out)[0]
+        for item in items:
+            Logger.debug('Move output file "{}" to cache dir "{}" and create a hardlink'.format(
+                         item.data.relative, item.cache_dir_abs))
+            item.move_data_to_cache()

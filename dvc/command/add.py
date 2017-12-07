@@ -3,6 +3,7 @@ import os
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.state_file import StateFile
+from dvc.path.data_item import DataItem
 
 
 class CmdAdd(CmdBase):
@@ -39,9 +40,9 @@ class CmdAdd(CmdBase):
         for data_item in targets:
             Logger.debug('Creating state file for {}'.format(data_item.data.relative))
 
-            state_file = StateFile(data_item=data_item,
+            state_file = StateFile(fname=data_item.data.relative + StateFile.STATE_FILE_SUFFIX,
                                    cmd=None,
-                                   out=StateFile.parse_deps_state(self.settings, [data_item.data.dvc]),
+                                   out=StateFile.parse_deps_state(self.settings, [data_item.data.relative], currdir=data_item.data.dirname),
                                    out_git=[],
                                    deps=[],
                                    locked=True)
