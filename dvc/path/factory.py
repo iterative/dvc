@@ -10,9 +10,10 @@ from dvc.state_file import StateFile
 
 
 class PathFactory(object):
-    def __init__(self, git, config):
-        self._git = git
-        self._config = config
+    def __init__(self, settings):
+        self._git = settings.git
+        self._config = settings.config
+        self._settings = settings
         self._curr_dir_abs = System.realpath(os.curdir)
 
     def path(self, relative_raw):
@@ -32,8 +33,7 @@ class PathFactory(object):
             return self.data_item(path.relative)
 
     def is_data_item(self, fname):
-        item = DataItem(fname, self._git, self._config)
-        return StateFile.find(item) != None
+        return StateFile.find_by_output(self._settings, fname) != None
 
     def existing_data_item(self, fname):
         if not self.is_data_item(fname):

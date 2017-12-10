@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import os
 import sys
 import argparse
 from multiprocessing import cpu_count
@@ -169,9 +170,10 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Reproduce data')
     repro_parser.add_argument(
-                        'target',
+                        'targets',
                         nargs='*',
-                        help='Data items to reproduce.')
+                        default=[StateFile.DVCFILE_NAME],
+                        help='Data items or stages to reproduce.')
     repro_parser.add_argument('-f',
                         '--force',
                         action='store_true',

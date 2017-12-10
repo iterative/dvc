@@ -121,6 +121,11 @@ class StateFile(StateFileBase):
         return StateFile._find(data_item.data.abs, data_item.data.dirname, data_item._git.git_dir_abs)
 
     @staticmethod
+    def find_by_output(settings, output):
+        path = os.path.abspath(output)
+        return StateFile._find(path, os.path.dirname(path), settings.git.git_dir_abs)
+
+    @staticmethod
     def find_all_state_files(git, subdir='.'):
         states = []
         for root, dirs, files in os.walk(os.path.join(git.git_dir_abs, subdir)):        
