@@ -32,7 +32,7 @@ class Settings(object):
 
         self._git = git
         self._config = config
-        self._path_factory = PathFactory(git, config)
+        self._path_factory = PathFactory(self)
         self._parsed_args = args
         self._cloud = DataCloud(self)
 

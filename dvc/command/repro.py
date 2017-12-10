@@ -20,55 +20,35 @@ class CmdRepro(CmdRun):
 
     def run(self):
         recursive = not self.parsed_args.single_item
-        targets = []
+        stages = []
 
-        if self.parsed_args.target:
-            targets += self.parsed_args.target
-        else:
-            target = self.settings.config._config['Global'].get('Target', None)
-            if not target or len(target) == 0:
-                Logger.error('Reproduction target is not defined. ' +
-                             'Specify data file or set target by ' +
-                             '`dvc config global.target target` command.')
-                return 1
-            targets += [target]
+        for target in self.parsed_args.targets:
+            if StateFile._is_state_file(target):
+                stage = StateFile.load(target)
+            else:
+                stage = StateFile.find_by_output(self.settings, target)
 
-        return self.repro_target(targets, recursive, self.parsed_args.force)
+            if stage:
+                stages.append(stage)
 
-    def repro_target(self, target, recursive, force):
-        if not self.no_git_actions and not self.git.is_ready_to_go():
-            return 1
+        self.repro_stages(stages, recursive, self.parsed_args.force)
+        names = [os.path.relpath(stage.path) for stage in stages]
+        return self.commit_if_needed('DVC repro: {}'.format(names))
 
-        data_item_list, external_files_names = self.settings.path_factory.to_data_items(target)
-        if external_files_names:
-            Logger.error('Files from outside of the repo could not be reproduced: {}'.
-                         format(' '.join(external_files_names)))
-            return 1
-
-        if self.repro_data_items(data_item_list, recursive, force):
-            return 0
-        return 1
-
-    def repro_data_items(self, data_item_list, recursive, force):
+    def repro_stages(self, stages, recursive, force):
         error = False
         changed = False
 
-        for data_item in data_item_list:
+        for stage in stages:
             try:
-                change = ReproChange(data_item, self, recursive, force)
+                change = ReproStage(self.settings, stage, recursive, force)
                 if change.reproduce():
                     changed = True
-                    Logger.info(u'Data item "{}" was reproduced.'.format(
-                        data_item.data.relative
-                    ))
+                    Logger.info(u'Stage "{}" was reproduced.'.format(stage.path))
                 else:
-                    Logger.info(u'Reproduction is not required for data item "{}".'.format(
-                        data_item.data.relative
-                    ))
+                    Logger.info(u'Reproduction is not required for stage "{}".'.format(stage.path))
             except ReproError as err:
-                Logger.error('Error in reproducing data item {}: {}'.format(
-                    data_item.data.relative, str(err)
-                ))
+                Logger.error('Error in reproducing stage {}: {}'.format(stage.path, str(err)))
                 error = True
                 break
 
@@ -79,103 +59,97 @@ class CmdRepro(CmdRun):
         return changed and not error
 
 
-class ReproChange(object):
-    def __init__(self, data_item, cmd_obj, recursive, force):
-        self._data_item = data_item
-        self.git = cmd_obj.git
-        self._cmd_obj = cmd_obj
-        self.settings = cmd_obj.settings
+class ReproStage(object):
+    def __init__(self, settings, stage, recursive, force):
+        self.git = settings.git
+        self.settings = settings
         self._recursive = recursive
         self._force = force
 
-        self.command = StateFile.find(data_item)
+        self.stage = stage
 
-        if not self.command.cmd and not self.command.locked:
-            msg = 'Error: data item "{}" is not locked, but has no command for reproduction'
-            raise ReproError(msg.format(data_item.data.dvc))
-
-        self._settings = copy.copy(self._cmd_obj.settings)
+        if not self.stage.cmd and not self.stage.locked:
+            msg = 'Error: stage "{}" is not locked, but has no command for reproduction'
+            raise ReproError(msg.format(stage.path))
 
     def is_cache_exists(self):
-        path = System.realpath(self._data_item.data.relative)
-        return os.path.exists(path)
-
-    @property
-    def cmd_obj(self):
-        return self._cmd_obj
+        for out in self.stage.out:
+            path = os.path.join(self.stage.cwd, out)
+            if not os.path.exists(path):
+                return False
+        return True
 
     def remove_output_files(self):
-        for out in self.command.out:
-            path = os.path.join(self.command.cwd, out)
+        for out in self.stage.out:
+            path = os.path.join(self.stage.cwd, out)
             Logger.debug('Removing output file {} before reproduction.'.format(path))
             try:
-                data_item = self.cmd_obj.settings.path_factory.data_item(path)
-                os.remove(data_item.data.relative)
+                os.remove(path)
             except Exception as ex:
-                msg = 'Data item {} cannot be removed before reproduction: {}'
+                msg = 'Output file {} cannot be removed before reproduction: {}'
                 Logger.debug(msg.format(path, ex))
 
     def reproduce_run(self):
-        Logger.info('Reproducing run command for data item {}. Args: {}'.format(
-            self._data_item.data.relative, self.command.cmd))
+        Logger.info('Reproducing run command for stage {}. Args: {}'.format(
+            self.stage.path, self.stage.cmd))
 
-        CmdRun.run_command(self.settings, self.command)
-        self._cmd_obj.commit_if_needed('DVC repro: {}'.format(self.command.cmd)) 
+        CmdRun.run_command(self.settings, self.stage)
 
-    def reproduce_data_item(self):
-        Logger.debug('Reproducing data item {}.'.format(self._data_item.data.dvc))
+    def reproduce_stage(self):
+        Logger.debug('Reproducing stage {}.'.format(self.stage.path))
         self.remove_output_files()
         self.reproduce_run()
 
     def is_repro_required(self):
-        deps_changed = self.reproduce_deps(self._data_item, self._recursive)
+        deps_changed = self.reproduce_deps()
         if deps_changed or self._force or not self.is_cache_exists():
             return True
         return False
 
     def reproduce(self):
-        Logger.debug('Reproduce data item {}. recursive={}, force={}'.format(
-            self._data_item.data.relative, self._recursive, self._force))
+        Logger.debug('Reproduce stage {}. recursive={}, force={}'.format(
+            self.stage.path, self._recursive, self._force))
 
-        if self.command.locked:
-            Logger.debug('Data item {} is not reproducible'.format(self._data_item.data.relative))
+        if self.stage.locked:
+            Logger.debug('Stage {} is not reproducible'.format(self.stage.path))
             return False
 
         if not self.is_repro_required():
-            Logger.debug('Data item {} is up to date'.format(self._data_item.data.relative))
+            Logger.debug('Stage {} is up to date'.format(self.stage.path))
             return False
 
-        Logger.debug('Data item {} is going to be reproduced'.format(self._data_item.data.relative))
-        self.reproduce_data_item()
+        Logger.debug('Stage {} is going to be reproduced'.format(self.stage.path))
+        self.reproduce_stage()
         return True
 
     def reproduce_dep(self, path, md5, recursive):
-        if not self._settings.path_factory.is_data_item(path):
-            if md5 != file_md5(os.path.join(self._settings.git.git_dir_abs, path))[0]:
+        if not self.settings.path_factory.is_data_item(path):
+            if md5 != file_md5(os.path.join(self.git.git_dir_abs, path))[0]:
                 self.log_repro_reason('source {} was changed'.format(path))
                 return True
             return False
 
-        item = self._settings.path_factory.existing_data_item(path)
+        stage = StateFile.find_by_output(self.settings, path)
         if recursive:
-            ReproChange(item, self._cmd_obj, self._recursive, self._force).reproduce()
+            ReproStage(self.settings, stage, self._recursive, self._force).reproduce()
 
-        if md5 != os.path.basename(item.cache.relative):
+        stage = StateFile.load(stage.path)
+        if md5 != stage.out[os.path.relpath(path, stage.cwd)]:
             self.log_repro_reason('data item {} was changed - md5 sum doesn\'t match'.format(path))
             return True
 
         return False
 
-    def reproduce_deps(self, data_item_dvc, recursive):
+    def reproduce_deps(self):
         result = False
 
-        for name,md5 in self.command.deps.items():
-            path = os.path.join(self.command.cwd, name)
-            if self.reproduce_dep(path, md5, recursive):
+        for name,md5 in self.stage.deps.items():
+            path = os.path.join(self.stage.cwd, name)
+            if self.reproduce_dep(path, md5, self._recursive):
                 result = True
 
         return result
 
     def log_repro_reason(self, reason):
-        msg = u'Repro is required for data item {} because of {}'
-        Logger.debug(msg.format(self._data_item.data.relative, reason))
+        msg = u'Repro is required for stage {} because of {}'
+        Logger.debug(msg.format(self.stage.path, reason))

@@ -25,6 +25,7 @@ class StateFileBase(object):
 
 
 class StateFile(StateFileBase):
+    DVCFILE_NAME = 'Dvcfile'
     STATE_FILE_SUFFIX = '.dvc'
 
     PARAM_CMD = 'cmd'
@@ -84,7 +85,9 @@ class StateFile(StateFileBase):
 
     @staticmethod
     def _is_state_file(path):
-        return path.endswith(StateFile.STATE_FILE_SUFFIX) and os.path.isfile(path)
+        return (path.endswith(StateFile.STATE_FILE_SUFFIX) or \
+                os.path.basename(path) == StateFile.DVCFILE_NAME) and \
+               os.path.isfile(path)
  
     @staticmethod
     def _find_state(fname, dname):
@@ -92,7 +95,6 @@ class StateFile(StateFileBase):
         for entry in os.listdir(dname):
             state_file = os.path.join(dname, entry)
             if not StateFile._is_state_file(state_file):
-#            if not state_file.endswith(StateFile.STATE_FILE_SUFFIX) or not os.path.isfile(state_file):
                 continue
             state = StateFile.load(os.path.join(dname, state_file))
             if name in state.out:
@@ -117,6 +119,11 @@ class StateFile(StateFileBase):
     @staticmethod
     def find(data_item):
         return StateFile._find(data_item.data.abs, data_item.data.dirname, data_item._git.git_dir_abs)
+
+    @staticmethod
+    def find_by_output(settings, output):
+        path = os.path.abspath(output)
+        return StateFile._find(path, os.path.dirname(path), settings.git.git_dir_abs)
 
     @staticmethod
     def find_all_state_files(git, subdir='.'):

@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import os
 import sys
 import argparse
 from multiprocessing import cpu_count
@@ -19,6 +20,7 @@ from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.merge import CmdMerge
 from dvc.command.checkout import CmdCheckout
+from dvc.state_file import StateFile
 from dvc import VERSION
 
 
@@ -115,8 +117,12 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
-                        default='stage.dvc',
+                        default=StateFile.DVCFILE_NAME,
                         help='Specify name of the state file')
+    run_parser.add_argument('-c',
+                        '--cwd',
+                        default=os.path.curdir,
+                        help='Directory to run your command and place state file in')
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
@@ -164,9 +170,10 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Reproduce data')
     repro_parser.add_argument(
-                        'target',
+                        'targets',
                         nargs='*',
-                        help='Data items to reproduce.')
+                        default=[StateFile.DVCFILE_NAME],
+                        help='Data items or stages to reproduce.')
     repro_parser.add_argument('-f',
                         '--force',
                         action='store_true',

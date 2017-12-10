@@ -24,7 +24,7 @@ class CmdRun(CmdBase):
             Logger.error("Stage file {} already exists".format(self.parsed_args.file))
             return 1
 
-        state = StateFile(fname=self.parsed_args.file,
+        state = StateFile(fname=os.path.join(self.parsed_args.cwd, self.parsed_args.file),
                           cmd=cmd,
                           out=self.parsed_args.out,
                           out_git=self.parsed_args.out_git,
@@ -44,9 +44,9 @@ class CmdRun(CmdBase):
     @staticmethod
     def update_state_file(settings, state):
         Logger.debug('Update state file "{}"'.format(state.path))
-        state.out = StateFile.parse_deps_state(settings, state.out)
-        state.out_git = StateFile.parse_deps_state(settings, state.out_git)
-        state.deps = StateFile.parse_deps_state(settings, state.deps)
+        state.out = StateFile.parse_deps_state(settings, state.out, currdir=state.cwd)
+        state.out_git = StateFile.parse_deps_state(settings, state.out_git, currdir=state.cwd)
+        state.deps = StateFile.parse_deps_state(settings, state.deps, currdir=state.cwd)
         state.save()
 
     @staticmethod

@@ -10,7 +10,7 @@ function test_generic() {
 	dvc_create_repo
 
 	dvc_info 'Copy foo into foo1'
-	dvc run -f copy_foo_foo1.dvc -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
+	dvc run -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
 
 	dvc_info 'Modify code'
 	echo " " >> code/code.sh 
@@ -27,10 +27,6 @@ function test_generic() {
 	dvc remove data/foo
 	cp $DATA_CACHE/bar data/foo
 	dvc add data/foo
-
-	dvc_info 'Set default target'
-	dvc config global.target data/foo1
-	git commit -am 'Set default target'
 
 	dvc_info 'Reproduce foo1 as default target'
 	dvc repro
