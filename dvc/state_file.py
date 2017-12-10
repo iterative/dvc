@@ -25,6 +25,7 @@ class StateFileBase(object):
 
 
 class StateFile(StateFileBase):
+    DVCFILE_NAME = 'Dvcfile'
     STATE_FILE_SUFFIX = '.dvc'
 
     PARAM_CMD = 'cmd'
@@ -84,7 +85,9 @@ class StateFile(StateFileBase):
 
     @staticmethod
     def _is_state_file(path):
-        return path.endswith(StateFile.STATE_FILE_SUFFIX) and os.path.isfile(path)
+        return (path.endswith(StateFile.STATE_FILE_SUFFIX) or \
+                os.path.basename(path) == StateFile.DVCFILE_NAME) and \
+               os.path.isfile(path)
  
     @staticmethod
     def _find_state(fname, dname):
@@ -92,7 +95,6 @@ class StateFile(StateFileBase):
         for entry in os.listdir(dname):
             state_file = os.path.join(dname, entry)
             if not StateFile._is_state_file(state_file):
-#            if not state_file.endswith(StateFile.STATE_FILE_SUFFIX) or not os.path.isfile(state_file):
                 continue
             state = StateFile.load(os.path.join(dname, state_file))
             if name in state.out:

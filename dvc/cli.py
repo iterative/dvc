@@ -19,6 +19,7 @@ from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.merge import CmdMerge
 from dvc.command.checkout import CmdCheckout
+from dvc.state_file import StateFile
 from dvc import VERSION
 
 
@@ -115,7 +116,7 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
-                        default='stage.dvc',
+                        default=StateFile.DVCFILE_NAME,
                         help='Specify name of the state file')
     run_parser.add_argument(
                         'command',

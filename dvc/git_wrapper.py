@@ -420,19 +420,6 @@ class GitWrapper(GitWrapperI):
         return out
 
     @staticmethod
-    def state_files_for_previous_commit():
-        commit = GitWrapper.git_prev_commit()
-        Logger.debug(u'[dvc-git] Previous commit "{}"'.format(commit))
-
-        if not commit:
-            Logger.debug(u'[dvc-git] Previous commit does not exist')
-            return []
-
-        git_cmd = u'git ls-tree --name-only -r {}'.format(commit)
-        lines = Executor.exec_cmd_only_success(git_cmd.split()).split('\n')
-        return list(filter(lambda s: s.endswith(DataItem.STATE_FILE_SUFFIX), lines))
-
-    @staticmethod
     def branches(regexp):
         cmd = 'git branch --format "%(refname)"'
         lines = Executor.exec_cmd_only_success(cmd.split()).split('\n')
