@@ -118,6 +118,10 @@ def parse_args(argv=None):
                         '--file',
                         default=StateFile.DVCFILE_NAME,
                         help='Specify name of the state file')
+    run_parser.add_argument('-c',
+                        '--cwd',
+                        default=os.path.curdir,
+                        help='Directory to run your command and place state file in')
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
