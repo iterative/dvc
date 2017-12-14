@@ -117,7 +117,6 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
-                        default=StateFile.DVCFILE_NAME,
                         help='Specify name of the state file')
     run_parser.add_argument('-c',
                         '--cwd',

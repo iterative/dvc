@@ -1,7 +1,6 @@
 import os
 
 from dvc.command.common.base import CmdBase
-from dvc.data_cloud import file_md5
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.state_file import StateFile
@@ -20,19 +19,34 @@ class CmdRun(CmdBase):
     def run(self):
         cmd = ' '.join(self.parsed_args.command)
 
-        if os.path.isfile(self.parsed_args.file):
-            Logger.error("Stage file {} already exists".format(self.parsed_args.file))
+        stage_file = self.get_stage_file()
+        if os.path.isfile(stage_file):
+            Logger.error("Stage file {} already exists".format(stage_file))
             return 1
 
-        state = StateFile(fname=os.path.join(self.parsed_args.cwd, self.parsed_args.file),
+        state = StateFile(fname=os.path.join(self.parsed_args.cwd, stage_file),
                           cmd=cmd,
                           out=self.parsed_args.out,
                           out_git=self.parsed_args.out_git,
                           deps=self.parsed_args.deps,
-                          locked=self.parsed_args.lock)
+                          locked=self.parsed_args.lock,
+                          cwd=self.parsed_args.cwd)
 
         self.run_command(self.settings, state)
         return self.commit_if_needed('DVC run: {}'.format(state.cmd))
+
+    def get_stage_file(self):
+        if self.parsed_args.file:
+            return self.parsed_args.file
+
+        if self.parsed_args.out or self.parsed_args.out_git:
+            result = self.parsed_args.out[0] if self.parsed_args.out else self.parsed_args.out_git[0]
+            result += StateFile.STATE_FILE_SUFFIX
+            Logger.info(u'Using \'{}\' as a stage file'.format(result))
+            return result
+
+        Logger.info(u'Using \'{}\' as stage file'.format(StateFile.DVCFILE_NAME))
+        return StateFile.DVCFILE_NAME
 
     @staticmethod
     def run_command(settings, state):

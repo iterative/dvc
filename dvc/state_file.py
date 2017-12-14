@@ -40,7 +40,8 @@ class StateFile(StateFileBase):
                  out=None,
                  out_git=None,
                  deps=None,
-                 locked=None):
+                 locked=None,
+                 cwd=None):
         super(StateFile, self).__init__()
 
         self.cmd = cmd
@@ -50,7 +51,7 @@ class StateFile(StateFileBase):
         self.locked = locked
 
         self.path = os.path.abspath(fname) if fname else None
-        self.cwd = os.path.dirname(self.path) if self.path else None
+        self.cwd = cwd
 
     @staticmethod
     def parse_deps_state(settings, deps, currdir=None):
