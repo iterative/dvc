@@ -439,3 +439,11 @@ class GitWrapper(GitWrapperI):
     def get_file_content(fname, branch):
         cmd = 'git show {}:{}'.format(branch, fname)
         return Executor.exec_cmd_only_success(cmd.split())
+
+    @staticmethod
+    def all_untracked_files():
+        cmd = 'git ls-files --others --exclude-standard'
+        res = Executor.exec_cmd_only_success(cmd.split())
+        if not res.strip():
+            return []
+        return res.split('\n')
