@@ -41,7 +41,7 @@ class CmdRun(CmdBase):
 
         if self.parsed_args.out or self.parsed_args.out_git:
             result = self.parsed_args.out[0] if self.parsed_args.out else self.parsed_args.out_git[0]
-            result += StateFile.STATE_FILE_SUFFIX
+            result = os.path.basename(result+StateFile.STATE_FILE_SUFFIX)
             Logger.info(u'Using \'{}\' as a stage file'.format(result))
             return result
 
