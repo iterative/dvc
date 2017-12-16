@@ -41,7 +41,7 @@ class StateFile(StateFileBase):
                  out_git=None,
                  deps=None,
                  locked=None,
-                 cwd=None):
+                 cwd=''):
         super(StateFile, self).__init__()
 
         self.cmd = cmd

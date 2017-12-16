@@ -40,9 +40,12 @@ class CmdAdd(CmdBase):
         for data_item in targets:
             Logger.debug('Creating state file for {}'.format(data_item.data.relative))
 
-            state_file = StateFile(fname=data_item.data.relative + StateFile.STATE_FILE_SUFFIX,
+            fname = os.path.basename(data_item.data.relative + StateFile.STATE_FILE_SUFFIX)
+            out = StateFile.parse_deps_state(self.settings, [data_item.data.relative],
+                                             currdir=os.path.curdir)
+            state_file = StateFile(fname=fname,
                                    cmd=None,
-                                   out=StateFile.parse_deps_state(self.settings, [data_item.data.relative], currdir=data_item.data.dirname),
+                                   out=out,
                                    out_git=[],
                                    deps=[],
                                    locked=True)
