@@ -1,41 +1,27 @@
 from dvc.command.common.base import CmdBase
-from dvc.logger import Logger
-from dvc.state_file import StateFile
+from dvc.stage import Stage
 
 
 class CmdLock(CmdBase):
-    def __init__(self, settings):
-        super(CmdLock, self).__init__(settings)
-
     def run(self):
-        return self.lock_files(self.parsed_args.files, not self.parsed_args.unlock)
-
-    def lock_files(self, files, target):
-        cmd = 'lock' if target else 'unlock'
-
-        error = 0
-        for file in files:
+        lock = not self.args.unlock
+        cmd = 'lock' if lock else 'unlock'
+        ret = 0
+        for file in self.args.files:
             try:
-                data_item = self.settings.path_factory.existing_data_item(file)
-                state = StateFile.load(data_item, self.settings)
+                stage = Stage.load(self.project, file)
 
-                if state.locked and target:
-                    Logger.warn('Data item {} is already locked'.format(data_item.data.relative))
-                elif not state.locked and not target:
-                    Logger.warn('Data item {} is already unlocked'.format(data_item.data.relative))
+                if stage.locked and lock:
+                    self.project.logger.warn('Stage {} is already locked'.format(file))
+                elif not stage.locked and not lock:
+                    self.project.logger.warn('Stage {} is already unlocked'.format(file))
                 else:
-                    state.locked = target
-                    Logger.debug('Saving status file for data item {}'.format(data_item.data.relative))
-                    state.save()
-                    Logger.info('Data item {} was {}ed'.format(data_item.data.relative, cmd))
+                    stage.locked = lock
+                    self.project.logger.debug('Saving stage file {}'.format(file))
+                    stage.dump()
+                    self.project.logger.info('Stage {} was {}ed'.format(file, cmd))
             except Exception as ex:
-                error += 1
-                Logger.error('Unable to {} {}: {}'.format(cmd, file, ex))
+                ret = 1
+                self.project.logger.error('Unable to {} {}: {}'.format(cmd, file, ex))
 
-        if error > 0 and not self.no_git_actions:
-            Logger.error('Errors occurred. One or more repro cmd was not successful.')
-            self.not_committed_changes_warning()
-        else:
-            self.commit_if_needed('DVC lock: {}'.format(' '.join(self.args)))
-
-        return 0
+        return ret

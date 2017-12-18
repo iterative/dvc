@@ -7,17 +7,6 @@ from dvc.config import Config
 
 
 class CmdConfig(CmdBase):
-    def __init__(self, settings):
-        super(CmdConfig, self).__init__(settings)
-
-        # Using configobj because it doesn't
-        # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self._config_path, write_empty_values=True)
-
-    @property
-    def _config_path(self):
-        return os.path.join(self.git.git_dir, Config.CONFIG_DIR, Config.CONFIG)
-
     def _get_key(self, d, name, add=False):
         for k in d.keys():
             if k.lower() == name.lower():
@@ -34,7 +23,7 @@ class CmdConfig(CmdBase):
             del self.configobj[self.section][self.opt]
             self.configobj.write()
         except Exception as exc:
-            Logger.error('Failed to unset \'{}\': {}'.format(self.parsed_args.name, exc))
+            Logger.error('Failed to unset \'{}\': {}'.format(self.args.name, exc))
             return 1
 
         return 0
@@ -45,19 +34,19 @@ class CmdConfig(CmdBase):
 
     def set(self):
         try:
-            self.configobj[self.section][self.opt] = self.parsed_args.value
+            self.configobj[self.section][self.opt] = self.args.value
             self.configobj.write()
         except Exception as exc:
-            Logger.error('Failed to set \'{}\' to \'{}\': {}'.format(self.parsed_args.name,
-                                                                     self.parsed_args.value,
+            Logger.error('Failed to set \'{}\' to \'{}\': {}'.format(self.args.name,
+                                                                     self.args.value,
                                                                      exc))
             return 1
 
         return 0
 
     def check_opt(self):
-        _section, _opt = self.parsed_args.name.strip().split('.', 1)
-        add = (self.parsed_args.value != None and self.parsed_args.unset == False)
+        _section, _opt = self.args.name.strip().split('.', 1)
+        add = (self.args.value != None and self.args.unset == False)
 
         section = self._get_key(self.configobj, _section, add)
 
@@ -76,13 +65,17 @@ class CmdConfig(CmdBase):
         return 0
 
     def run(self):
+        # Using configobj because it doesn't
+        # drop comments like configparser does.
+        self.configobj = configobj.ConfigObj(self.project.config.config_file, write_empty_values=True)
+
         if self.check_opt() != 0:
             return 1
 
-        if self.parsed_args.unset:
+        if self.args.unset:
             return self.unset()
 
-        if self.parsed_args.value is None:
+        if self.args.value is None:
             return self.show()
 
         return self.set()

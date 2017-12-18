@@ -96,6 +96,8 @@ install_requires = [
     'networkx==1.11',
     'gcs-oauth2-boto-plugin==1.14',
     'pyyaml==3.12',
+    'tinydb==3.7.0',
+    'gitpython==2.1.8',
 ]
 
 if platform.system() == 'Darwin':
