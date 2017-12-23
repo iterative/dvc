@@ -141,7 +141,7 @@ class DataCloudBase(object):
 
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
-        return '{}/{}'.format(self.storage_prefix, fname).strip('/')
+        return '{}/{}'.format(self.storage_prefix, os.path.basename(fname)).strip('/')
 
     @staticmethod
     def tmp_file(fname):
@@ -154,57 +154,39 @@ class DataCloudBase(object):
         """
         pass
 
-    def _import(self, bucket, path, item):
+    def _import(self, bucket, fin, fout):
         """
         Cloud-specific method for importing data file.
         """
         pass
 
-    def push(self, item):
+    def push(self, path):
         """ Cloud-specific method for pushing data """
         pass
 
-    def pull(self, item):
+    def pull(self, path):
         """ Generic method for pulling data from the cloud """
-        fname = item.cache.dvc
-        key_name = self.cache_file_key(fname)
-        return self._import(self.storage_bucket, key_name, item)
+        key_name = self.cache_file_key(path)
+        return self._import(self.storage_bucket, key_name, path)
 
-    def import_data(self, url, item):
-        """ Generic method for importing data """
-        parsed = urlparse(url)
-
-        return self._import(parsed.netloc, parsed.path, item)
-
-    def sync(self, fname):
-        """
-        Generic method for syncing data. It will decide on its own whether it needs
-        to push or pull data, depending on existance of local cache file.
-        """
-        item = self._cloud_settings.path_factory.data_item(fname)
-
-        if os.path.isfile(item.cache.dvc):
-            return self.push(item)
-        else:
-            return self.pull(item)
-
-    def remove(self, item):
+    def remove(self, path):
         """
         Cloud-specific method for removing data item from the cloud.
         """
         pass
 
-    def _status(self, item):
+    def _status(self, path):
         """
         Cloud-specific method for checking data item status.
         """
         pass
 
-    def status(self, item):
+    def status(self, path):
         """
         Generic method for checking data item status.
         """
-        return STATUS_MAP.get(self._status(item), STATUS_UNKNOWN)
+        return STATUS_MAP.get(self._status(path), STATUS_UNKNOWN)
+
 
 class DataCloudLOCAL(DataCloudBase):
     """
@@ -373,7 +355,7 @@ class DataCloudHTTP(DataCloudBase):
 
 class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
-    def __init__(self, cloud_settings): # settings, config, cloud_config):
+    def __init__(self, cloud_settings):
         super(DataCloudAWS, self).__init__(cloud_settings)
         self._aws_creds = AWSCredentials(cloud_settings.cloud_config)
 
@@ -455,11 +437,10 @@ class DataCloudAWS(DataCloudBase):
         """
         return fname + '.download'
 
-    def _import(self, bucket_name, key_name, data_item):
+    def _import(self, bucket_name, key_name, fname):
 
         bucket = self._get_bucket_aws(bucket_name)
 
-        fname = data_item.data.dvc
         tmp_file = self.tmp_file(fname)
         name = os.path.basename(fname)
         key = bucket.get_key(key_name)
@@ -469,7 +450,7 @@ class DataCloudAWS(DataCloudBase):
 
         if self._cmp_checksum(key, fname):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
-            return data_item
+            return fname
 
         Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name,
                                                                              key_name,
@@ -484,22 +465,11 @@ class DataCloudAWS(DataCloudBase):
             return None
 
         os.rename(tmp_file, fname)
-        data_item.move_data_to_cache()
 
         progress.finish_target(name)
         Logger.debug('Downloading completed')
 
-        return data_item
-
-    def _read_upload_tracker(self, fname):
-        """
-        Try reading upload tracker if present.
-        """
-        try:
-            return open(self._upload_tracker(fname), 'r').read()
-        except Exception as exc:
-            Logger.debug("Failed to read upload tracker file for {}: {}".format(fname, exc))
-            return None
+        return fname
 
     def _write_upload_tracker(self, fname, mp_id):
         """
@@ -604,48 +574,48 @@ class DataCloudAWS(DataCloudBase):
         multipart.complete_upload()
         self._unlink_upload_tracker(fname)
 
-    def push(self, data_item):
+    def push(self, path):
         """ push, aws version """
 
-        aws_key = self.cache_file_key(data_item.cache.dvc)
+        aws_key = self.cache_file_key(path)
         bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
         if key:
             Logger.debug('File already uploaded to the cloud. Checksum validation...')
 
-            if self._cmp_checksum(key, data_item.cache.dvc):
+            if self._cmp_checksum(key, path):
                 Logger.debug('File checksum matches. No uploading is needed.')
-                return data_item
+                return path
 
             Logger.debug('Checksum miss-match. Re-uploading is required.')
 
         key = bucket.new_key(aws_key)
 
         try:
-            self._push_multipart(key, data_item.cache.relative)
+            self._push_multipart(key, path)
         except Exception as exc:
-            Logger.error('Failed to upload "{}": {}'.format(data_item.cache.relative, exc))
+            Logger.error('Failed to upload "{}": {}'.format(path, exc))
             return None
 
-        progress.finish_target(os.path.basename(data_item.cache.relative))
+        progress.finish_target(os.path.basename(path))
 
-        return data_item
+        return path
 
-    def _status(self, data_item):
-        aws_key = self.cache_file_key(data_item.cache.dvc)
+    def _status(self, path):
+        aws_key = self.cache_file_key(path)
         bucket = self._get_bucket_aws(self.storage_bucket)
         key = bucket.get_key(aws_key)
 
         remote_exists = key is not None
-        local_exists = os.path.exists(data_item.cache.relative)
+        local_exists = os.path.exists(path)
         diff = None
         if remote_exists and local_exists:
-            diff = self._cmp_checksum(key, data_item.cache.dvc)
+            diff = self._cmp_checksum(key, path)
 
         return (local_exists, remote_exists, diff)
 
-    def remove(self, data_item):
-        aws_file_name = self.cache_file_key(data_item.cache.dvc)
+    def remove(self, path):
+        aws_file_name = self.cache_file_key(path)
 
         Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
 
@@ -702,11 +672,10 @@ class DataCloudGCP(DataCloudBase):
 
         return False
 
-    def _import(self, bucket_name, key, data_item):
+    def _import(self, bucket_name, key, fname):
 
         bucket = self._get_bucket_gc(bucket_name)
 
-        fname = data_item.data.dvc
         name = os.path.basename(fname)
         tmp_file = self.tmp_file(fname)
 
@@ -717,7 +686,7 @@ class DataCloudGCP(DataCloudBase):
 
         if self._cmp_checksum(blob, fname):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key))
-            return data_item
+            return fname
 
         Logger.debug('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
 
@@ -732,51 +701,50 @@ class DataCloudGCP(DataCloudBase):
             return None
 
         os.rename(tmp_file, fname)
-        data_item.move_data_to_cache()
 
         progress.finish_target(name)
 
         Logger.debug('Downloading completed')
 
-        return data_item
+        return fname
 
-    def push(self, data_item):
+    def push(self, path):
         """ push, gcp version """
 
         bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(data_item.cache.dvc)
-        name = os.path.basename(data_item.cache.dvc)
+        blob_name = self.cache_file_key(path)
+        name = os.path.basename(path)
 
         blob = bucket.get_blob(blob_name)
         if blob is not None and blob.exists():
-            if self._cmp_checksum(blob, data_item.cache.dvc):
-                Logger.debug('checksum %s matches.  Skipping upload' % data_item.cache.relative)
-                return data_item
-            Logger.debug('checksum %s mismatch.  re-uploading' % data_item.cache.relative)
+            if self._cmp_checksum(blob, path):
+                Logger.debug('checksum %s matches.  Skipping upload' % path)
+                return path
+            Logger.debug('checksum %s mismatch.  re-uploading' % path)
 
         # same as in _import
         progress.update_target(name, 0, None)
 
         blob = bucket.blob(blob_name)
-        blob.upload_from_filename(data_item.cache.relative)
+        blob.upload_from_filename(path)
 
         progress.finish_target(name)
-        Logger.debug('uploading %s completed' % data_item.cache.relative)
+        Logger.debug('uploading %s completed' % path)
 
-        return data_item
+        return path
 
-    def _status(self, data_item):
+    def _status(self, path):
         """ status, gcp version """
 
         bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(data_item.cache.dvc)
+        blob_name = self.cache_file_key(path)
         blob = bucket.get_blob(blob_name)
 
         remote_exists = blob is not None and blob.exists()
-        local_exists = os.path.exists(data_item.cache.relative)
+        local_exists = os.path.exists(path)
         diff = None
         if remote_exists and local_exists:
-            diff = self._cmp_checksum(blob, data_item.cache.dvc)
+            diff = self._cmp_checksum(blob, path)
 
         return (local_exists, remote_exists, diff)
 
@@ -803,17 +771,8 @@ class DataCloud(object):
         ''      : 'LOCAL',
     }
 
-    def __init__(self, settings):
-        assert isinstance(settings, dvc.settings.Settings)
-
-        #To handle ConfigI case
-        if not hasattr(settings.config, '_config'):
-            self._settings = settings
-            self._cloud = DataCloudBase(None)
-            return
-
-        self._settings = settings
-        self._config = self._settings.config._config
+    def __init__(self, config):
+        self._config = config
 
         cloud_type = self._config['Global'].get('Cloud', '').strip().upper()
         if cloud_type not in self.CLOUD_MAP.keys():
@@ -823,8 +782,7 @@ class DataCloud(object):
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
         cloud_settings = self.get_cloud_settings(self._config,
-                                                 cloud_type,
-                                                 self._settings.path_factory)
+                                                 cloud_type)
 
         self.typ = cloud_type
         self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
@@ -832,7 +790,7 @@ class DataCloud(object):
         self.sanity_check()
 
     @staticmethod
-    def get_cloud_settings(config, cloud_type, path_factory):
+    def get_cloud_settings(config, cloud_type):
         """
         Obtain cloud settings from config.
         """
@@ -841,7 +799,7 @@ class DataCloud(object):
         else:
             cloud_config = config[cloud_type]
         global_storage_path = config['Global'].get('StoragePath', None)
-        cloud_settings = CloudSettings(path_factory, global_storage_path, cloud_config)
+        cloud_settings = CloudSettings(global_storage_path, cloud_config)
         return cloud_settings
 
     def sanity_check(self):
@@ -867,62 +825,11 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def _collect_target(self, target):
-        """
-        Collect target as a file or directory.
-        """
-        if self._settings.path_factory.is_data_item(target):
-            item = self._settings.path_factory.existing_data_item(target)
-            return [item]
-        elif os.path.isdir(target):
-            return self._settings.path_factory.all_existing_data_items(target)
-
-        Logger.warn('Target "{}" does not exist'.format(target))
-
-        return []
-
-    def _collect_targets(self, targets):
-        """
-        Collect every target as a data item.
-        """
-        collected = []
-
-        for target in targets:
-            collected += self._collect_target(target)
-
-        return collected
-
     def _map_targets(self, func, targets, jobs):
         """
         Process targets as data items in parallel.
         """
-        collected = self._collect_targets(targets)
-
-        return map_progress(func, collected, jobs)
-
-    def _import(self, target):
-        """
-        Generic method for importing targets in a cloud-agnostic way.
-        """
-        url, item = target
-        parsed = urlparse(url)
-
-        typ = self.SCHEME_MAP.get(parsed.scheme, None)
-        if typ == None:
-            Logger.error('Not supported scheme \'{}\''.format(parsed.scheme))
-            return None
-
-        #To handle ConfigI case
-        if not hasattr(self._settings.config, '_config'):
-            self._config = None
-            cloud_settings = None
-        else:
-            self._config = self._settings.config._config
-            cloud_settings = self.get_cloud_settings(self._config, typ, self._settings.path_factory)
-
-        cloud = self.CLOUD_MAP[typ](cloud_settings)
-
-        return cloud.import_data(url, item)
+        return map_progress(func, targets, jobs)
 
     def sync(self, targets, jobs=1):
         """
@@ -941,18 +848,6 @@ class DataCloud(object):
         Pull data items in a cloud-agnostic way.
         """
         return self._map_targets(self._cloud.pull, targets, jobs)
-
-    def import_data(self, targets, jobs=1):
-        """
-        Import data items in a cloud-agnostic way.
-        """
-        return map_progress(self._import, targets, jobs)
-
-    def remove(self, item):
-        """
-        Remove data items is a cloud-agnostic way.
-        """
-        return self._cloud.remove(item)
 
     def status(self, targets, jobs=1):
         """

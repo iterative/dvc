@@ -5,28 +5,30 @@ set -e
 source common.sh
 
 function test_sync() {
+	dvc run -D code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
+
 	dvc_info "Checking status"
-	dvc status data/ | grep "new file" || dvc_fail
+	dvc status | grep "new file" || dvc_fail
 
 	dvc_info "Pushing data"
-	dvc push data/
+	dvc push
 
 	dvc_info "Checking status"
-	dvc status data/
+	dvc status
 
 	dvc_info "Removing all cache"
 	rm -rf .dvc/cache/*
 	rm -rf data/foo data/bar
 
 	dvc_info "Checking status"
-	dvc status data/ | grep "deleted" || dvc_fail
+	dvc status | grep "deleted" || dvc_fail
 
 	dvc_info "Pulling data"
-	dvc pull data/
+	dvc pull
 	dvc_check_files data/foo data/bar
 
 	dvc_info "Checking status"
-	dvc status data/
+	dvc status
 } 
 
 function test_aws() {

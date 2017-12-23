@@ -7,7 +7,6 @@ from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.config import Config
 from dvc.executor import Executor, ExecutorError
-from dvc.path.data_item import DataItem
 from dvc.system import System
 from dvc.graph.workflow import Workflow
 from dvc.graph.commit import Commit

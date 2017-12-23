@@ -1,31 +1,17 @@
-from dvc.command.common.base import CmdBase
-from dvc.logger import Logger
-
 import dvc.data_cloud as cloud
+from dvc.command.common.base import CmdBase
 
-class CmdDataBase(CmdBase):
-    def __init__(self, settings, cmd):
-        super(CmdDataBase, self).__init__(settings)
-        self.cmd = cmd
-
+class CmdDataPull(CmdBase):
     def run(self):
-        getattr(self.cloud, self.cmd)(self.parsed_args.targets, self.parsed_args.jobs)
+        self.project.pull(self.args.jobs)
 
 
-class CmdDataPull(CmdDataBase):
-    def __init__(self, settings):
-        super(CmdDataPull, self).__init__(settings, 'pull')
-
-
-class CmdDataPush(CmdDataBase):
-    def __init__(self, settings):
-        super(CmdDataPush, self).__init__(settings, 'push')
+class CmdDataPush(CmdBase):
+    def run(self):
+        self.project.push(self.args.jobs)
 
 
 class CmdDataStatus(CmdBase):
-    def __init__(self, settings):
-        super(CmdDataStatus, self).__init__(settings)
-
     def _show(self, status):
         for s in status:
             target, ret = s
@@ -39,9 +25,9 @@ class CmdDataStatus(CmdBase):
                 cloud.STATUS_NEW      : 'new file:',
             }
 
-            Logger.info('\t{}\t{}'.format(prefix_map[ret], target.data.dvc))
+            self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], target))
 
     def run(self):
-        status = self.cloud.status(self.parsed_args.targets, self.parsed_args.jobs)
+        status = self.project.status(self.args.jobs)
         self._show(status)
         return 0

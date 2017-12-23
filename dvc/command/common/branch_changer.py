@@ -7,7 +7,7 @@ class BranchChangerError(CmdCommonError):
 
 
 class BranchChanger(object):
-    def __init__(self, branch, new_branch, git):
+    def __init__(self, scm, branch, new_branch):
         if branch and new_branch:
             raise BranchChangerError("Commands conflict: --branch and --new-branch cannot be used at the same command")
 
@@ -15,17 +15,17 @@ class BranchChanger(object):
 
         self.branch = branch if branch else new_branch
         self.create_new = new_branch is not None
-        self.git = git
+        self.scm = scm
 
     def __enter__(self):
         if self.perform_action:
-            code, _, err = self.git.checkout(self.branch, self.create_new)
+            code, _, err = self.scm.checkout(self.branch, self.create_new)
             if code != 0:
                 raise BranchChangerError(self.branch, err)
         return self
 
     def __exit__(self, type, value, traceback):
         if self.perform_action:
-            code, _, err = self.git.checkout_previous()
+            code, _, err = self.scm.checkout('-')
             if code != 0:
                 raise BranchChangerError(self.branch, err)

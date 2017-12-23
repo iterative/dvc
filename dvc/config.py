@@ -14,67 +14,58 @@ class ConfigError(DvcException):
         DvcException.__init__(self, 'Config file error: {}'.format(msg))
 
 
-class ConfigI(object):
-    """ Basic config instance """
-    CONFIG_DIR = '.dvc'
-    TARGET_FILE_DEFAULT = 'target'
+class Config(object):
     CONFIG = 'config'
-    CACHE_DIR_NAME = 'cache'
+    CONFIG_TEMPLATE = '''
+[Global]
+# Supported clouds: AWS, GCP
+Cloud = AWS
 
-    CACHE_DIR = os.path.join(CONFIG_DIR, CACHE_DIR_NAME)
+# Log levels: Debug, Info, Warning and Error
+LogLevel = Info
 
-    def __init__(self, cloud=None, conf_parser=None):
-        self._conf_parser = None
-        self._cloud = None
-        self.set(cloud, conf_parser)
+[AWS]
+CredentialPath = ~/.aws/credentials
+CredentialSection = default
 
-    def set(self, cloud=None, conf_parser=None):
-        """ Set config params """
-        self._cloud = cloud
-        self._conf_parser = conf_parser
+StoragePath = dvc/tutorial
 
-    @property
-    def cache_dir(self):
-        """ Directory with cached data files """
-        return self.CACHE_DIR
-    
-    @property
-    def cloud(self):
-        """ Cloud config """
-        return self._cloud
+# Default settings for AWS instances:
+Type = t2.nano
+Image = ami-2d39803a
 
-    @property
-    def conf_parser(self):
-        return self._conf_parser
+SpotPrice = 
+SpotTimeout = 300
 
+KeyPairName = dvc-key
+KeyPairDir = ~/.ssh
+SecurityGroup = dvc-sg
 
-class Config(ConfigI):
-    """ Parsed config object """
-    def __init__(self, conf_file=ConfigI.CONFIG, conf_pseudo_file=None):
-        """
-        Params:
-            conf_file (String): configuration file
-            conf_pseudo_file (String): for unit testing, something that supports readline;
-                                                                      supersedes conf_file
-        """
-        self._conf_file = conf_file
+Region = us-east-1
+Zone = us-east-1a
+SubnetId = 
+
+Volume = my-100gb-drive-io
+
+Monitoring = false
+EbsOptimized = false
+AllDisksAsRAID0 = false
+
+[GCP]
+StoragePath = 
+ProjectName = 
+'''
+
+    def __init__(self, dvc_dir):
+        self.dvc_dir = dvc_dir
+        self.config_file = os.path.join(dvc_dir, self.CONFIG)
+        
         self._config = configparser.SafeConfigParser()
+        self._config.read(self.config_file)
+        Logger.set_level(self._config['Global']['LogLevel'])
 
-        if conf_pseudo_file is not None:
-            self._config.readfp(conf_pseudo_file)
-        else:
-            fname = os.path.join(self.CONFIG_DIR, conf_file)
-            if not os.path.isfile(fname):
-                raise ConfigError('Config file "{}" does not exist {}'.format(fname, os.getcwd()))
-            self._config.read(fname)
-
-        level = self._config['Global']['LogLevel']
-        Logger.set_level(level)
-
-        super(Config, self).__init__(self._config['Global']['Cloud'],
-                                     self._config)
-
-    @property
-    def file(self):
-        """ Config file object """
-        return self._conf_file
+    @staticmethod
+    def init(dvc_dir):
+        config_file = os.path.join(dvc_dir, Config.CONFIG)
+        open(config_file, 'w').write(Config.CONFIG_TEMPLATE)
+        return Config(dvc_dir)

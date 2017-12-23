@@ -1,27 +1,16 @@
 from dvc.command.common.base import CmdBase
-from dvc.logger import Logger
+from dvc.git_wrapper import GitWrapper
 
 
 class CmdShowWorkflow(CmdBase):
-    def __init__(self, settings):
-        super(CmdShowWorkflow, self).__init__(settings)
-
     def run(self):
-        target = self.settings.parsed_args.target
+        target = self.args.target
         if not target:
-            target = self._settings.config._config['Global'].get('Target', '')
-            Logger.debug(u'Set show workflow target as {}'.format(target))
+            target = self.project.config._config['Global'].get('Target', '')
+            self.project.logger.debug(u'Set show workflow target as {}'.format(target))
 
-        wf = self.git.get_all_commits(target, self.settings)
-        wf.build_graph(self.settings.parsed_args.dvc_commits,
-                       self.settings.parsed_args.all_commits,
-                       self.settings.parsed_args.max_commits)
+        wf = GitWrapper.get_all_commits(target, self.settings)
+        wf.build_graph(self.args.dvc_commits,
+                       self.args.all_commits,
+                       self.args.max_commits)
         return 0
-
-    @property
-    def no_git_actions(self):
-        return True
-
-    @staticmethod
-    def not_committed_changes_warning():
-        pass

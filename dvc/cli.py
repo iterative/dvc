@@ -18,9 +18,8 @@ from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
-from dvc.command.merge import CmdMerge
 from dvc.command.checkout import CmdCheckout
-from dvc.state_file import StateFile
+from dvc.stage import Stage
 from dvc import VERSION
 
 
@@ -45,6 +44,7 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Skip all git actions including reproducibility check and commits.')
+
     parent_parser.add_argument(
                         '-b',
                         '--branch',
@@ -84,10 +84,6 @@ def parse_args(argv=None):
                         'init',
                         parents=[parent_parser],
                         help='Initialize dvc over a directory (should already be a git dir).')
-    init_parser.add_argument(
-                        '--data-dir',
-                        default='data',
-                        help='Data directory.')
     init_parser.set_defaults(func=CmdInit)
 
     # Run
@@ -98,15 +94,20 @@ def parse_args(argv=None):
     run_parser.add_argument('-d',
                         '--deps',
                         action='append',
-                        default = [],
+                        default=[],
                         help='Declare dependencies for reproducible cmd.')
+    run_parser.add_argument('-D',
+                        '--deps-no-cache',
+                        action='append',
+                        default=[],
+                        help='Declare dependencies that should not be cached for reproducible cmd.') 
     run_parser.add_argument('-o',
-                        '--out',
+                        '--outs',
                         action='append',
                         default=[],
                         help='Declare output data file (sync to cloud) for reproducible cmd.')
-    run_parser.add_argument('-g',
-                        '--out-git',
+    run_parser.add_argument('-O',
+                        '--outs-no-cache',
                         action='append',
                         default=[],
                         help='Declare output regular file (sync to Git) for reproducible cmd.')
@@ -117,6 +118,7 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
+                        default=Stage.STAGE_FILE,
                         help='Specify name of the state file')
     run_parser.add_argument('-c',
                         '--cwd',
@@ -132,10 +134,6 @@ def parse_args(argv=None):
     parent_sync_parser = argparse.ArgumentParser(
                         add_help=False,
                         parents=[parent_parser])
-    parent_sync_parser.add_argument(
-                        'targets',
-                        nargs='+',
-                        help='File or directory to sync.')
     parent_sync_parser.add_argument('-j',
                         '--jobs',
                         type=int,
@@ -171,7 +169,7 @@ def parse_args(argv=None):
     repro_parser.add_argument(
                         'targets',
                         nargs='*',
-                        default=[StateFile.DVCFILE_NAME],
+                        default=[Stage.STAGE_FILE],
                         help='Data items or stages to reproduce.')
     repro_parser.add_argument('-f',
                         '--force',
@@ -190,23 +188,9 @@ def parse_args(argv=None):
                         'remove',
                         parents=[parent_parser],
                         help='Remove data item from data directory.')
-    remove_parser.add_argument('target',
-                        nargs='*',
+    remove_parser.add_argument('targets',
+                        nargs='+',
                         help='Target to remove - file or directory.')
-    remove_parser.add_argument('-l',
-                        '--keep-in-cloud',
-                        action='store_true',
-                        default=False,
-                        help='Do not remove data from cloud.')
-    remove_parser.add_argument('-r',
-                        '--recursive',
-                        action='store_true',
-                        help='Remove directory recursively.')
-    remove_parser.add_argument('-c',
-                        '--keep-in-cache',
-                        action='store_true',
-                        default=False,
-                        help='Do not remove data from cache.')
     remove_parser.set_defaults(func=CmdRemove)
 
     # Add
@@ -215,7 +199,7 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Add files/directories to dvc')
     import_parser.add_argument(
-                        'input',
+                        'targets',
                         nargs='+',
                         help='Input files/directories')
     import_parser.set_defaults(func=CmdAdd)
@@ -225,20 +209,16 @@ def parse_args(argv=None):
                         'lock',
                         parents=[parent_parser],
                         help='Lock')
-    lock_parser.add_argument('-l',
-                        '--lock',
-                        action='store_true',
-                        default=False,
-                        help='Lock data item - disable reproduction.')
     lock_parser.add_argument('-u',
                         '--unlock',
                         action='store_true',
                         default=False,
-                        help='Unlock data item - enable reproduction.')
+                        help='Unlock stage - enable reproduction.')
     lock_parser.add_argument(
                         'files',
                         nargs='*',
-                        help='Data items to lock or unlock.')
+                        default=[Stage.STAGE_FILE],
+                        help='Stages to lock or unlock.')
     lock_parser.set_defaults(func=CmdLock)
 
     # Garbage collector
@@ -405,13 +385,6 @@ def parse_args(argv=None):
                         help='Max commits per graph vertex. 4 by default.')
 
     workflow_parser.set_defaults(func=CmdShowWorkflow)
-
-    # Merge
-    merge_parser = subparsers.add_parser(
-                        'merge',
-                        parents=[parent_parser],
-                        help='Merge')
-    merge_parser.set_defaults(func=CmdMerge)
 
     # Checkout
     checkout_parser = subparsers.add_parser(

@@ -1,17 +1,10 @@
 import os
 import networkx as nx
 
-from dvc.command.common.traverse import Traverse
-from dvc.logger import Logger
-from dvc.state_file import StateFile
+from dvc.command.common.base import CmdBase
 
 
-class CmdShowPipeline(Traverse):
-    def __init__(self, settings):
-        super(CmdShowPipeline, self).__init__(settings, "collect", do_not_start_from_root=False)
-        self.g = nx.DiGraph()
-        self.subs = []
-
+class CmdShowPipeline(CmdBase):
     def draw(self, g, target, fname_suffix):
         fname = 'pipeline_' + fname_suffix
         try:
@@ -36,7 +29,7 @@ class CmdShowPipeline(Traverse):
             target = '.'
             return self.draw(self.g, target, target)
 
-        for t in self.parsed_args.target:
+        for t in self.args.target:
             fname_suffix = os.path.basename(os.path.normpath(t))
             s = self.find_sub(t)
 
@@ -47,16 +40,16 @@ class CmdShowPipeline(Traverse):
         return 0
 
     def run(self):
-        saved_targets = self.settings.parsed_args.target
-        self.settings.parsed_args.target = ['.']
+        self.g = nx.DiGraph()
+        self.subs = []
+
+        saved_targets = self.args.target
+        self.args.target = ['.']
  
-        ret = super(CmdShowPipeline, self).run()
+        for stage in self.project.stages():
+            self.collect_stage(stage)
 
-        self.settings.parsed_args.target = saved_targets
-
-        if ret != 0:
-            Logger.error('Failed to build dependency graph for the project')
-            return 1
+        self.args.target = saved_targets
 
         # Try to find independent clusters which might occure
         # when a bunch of data items were used independently.
@@ -64,27 +57,18 @@ class CmdShowPipeline(Traverse):
 
         return self.draw_targets(saved_targets)
 
-    def process_file(self, target):
-        data_item = self._get_data_item(target)
-        name = data_item.data.relative
+    def collect_stage(self, stage):
+        name = os.path.relpath(stage.path, self.project.root_dir)
         state = StateFile.load(data_item, self.git)
 
         self.g.add_node(name)
 
-        for i in state.input_files:
+        for dep in stage.deps:
+            i = os.path.relpath(dep.path, self.project.root_dir)
             self.g.add_node(i)
             self.g.add_edge(i, name)
 
-        for o in state.output_files:
-            if o == name:
-                continue
+        for out in state.outs:
+            o = os.path.relpath(out.path, self.project.root_dir)
             self.g.add_node(o)
             self.g.add_edge(name, o)
-
-    @property
-    def no_git_actions(self):
-        return True
-
-    @staticmethod
-    def not_committed_changes_warning():
-        pass
