@@ -17,14 +17,14 @@ class Base(object):
     def ignore(self, path):
         pass
 
+    def ignore_file(self):
+        pass
+
     def ignore_list(self, p_list):
         return [self.ignore(path) for path in p_list]
 
-    def add(self, path):
+    def add(self, paths):
         pass
-
-    def add_list(self, p_list):
-        return [self.add(path) for path in p_list]
 
     def commit(self, msg):
         pass
@@ -67,8 +67,11 @@ class Git(Base):
 
         open(gitignore, 'a').write('\n' + entry)
 
-    def add(self, path):
-        self.repo.index.add(path)
+    def ignore_file(self):
+        return self.GITIGNORE
+
+    def add(self, paths):
+        self.repo.index.add(paths)
 
     def commit(self, msg):
         self.repo.index.commit(msg)

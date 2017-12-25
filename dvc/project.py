@@ -86,6 +86,9 @@ class Project(object):
         scm.ignore_list([cache.cache_dir,
                          state.state_file,
                          lock.lock_file])
+
+        ignore_file = os.path.join(dvc_dir, scm.ignore_file())
+        scm.add([config.config_file, ignore_file])
         scm.commit('DVC init')
 
         return Project(root_dir)
