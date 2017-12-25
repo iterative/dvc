@@ -59,7 +59,7 @@ class Git(Base):
         if not gitignore.startswith(self.root_dir):
             raise FileNotInRepoError()
 
-        if os.path.exists(gitignore) and entry in open(gitignore, 'r').read():
+        if os.path.exists(gitignore) and entry in open(gitignore, 'r').readline():
             return
 
         open(gitignore, 'a').write('\n' + entry)
