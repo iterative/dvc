@@ -1,5 +1,6 @@
 from dvc.project import Project
 
+
 class CmdInit(object):
     def __init__(self, args):
         self.args = args

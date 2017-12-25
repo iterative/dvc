@@ -1,14 +1,41 @@
+import os
+
 from dvc.command.common.base import CmdBase
+from dvc.logger import Logger
+from dvc.stage import Stage
 
 
 class CmdRun(CmdBase):
     def run(self):
+        fname = self.stage_file_name(self.args.file, self.args.outs, self.args.outs_no_cache)
+
         self.project.run(cmd=' '.join(self.args.command),
                          outs=self.args.outs,
                          outs_no_cache=self.args.outs_no_cache,
                          deps=self.args.deps,
                          deps_no_cache=self.args.deps_no_cache,
                          locked=self.args.lock,
-                         fname=self.args.file,
+                         fname=fname,
                          cwd=self.args.cwd)
         return 0
+
+    @staticmethod
+    def stage_file_name(args_file, args_outs, args_outs_no_cache):
+        if args_file:
+            return args_file
+
+        if args_outs:
+            result = CmdRun._stage_file_basename(args_outs[0])
+        elif args_outs_no_cache:
+            result = CmdRun._stage_file_basename(args_outs_no_cache[0])
+        else:
+            result = Stage.STAGE_FILE
+
+        Logger.info(u'Using \'{}\' as a stage file'.format(result))
+        return result
+
+    @staticmethod
+    def _stage_file_basename(fname):
+        result = os.path.basename(fname)
+        result += Stage.STAGE_FILE_SUFFIX
+        return result

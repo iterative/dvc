@@ -17,14 +17,14 @@ class Base(object):
     def ignore(self, path):
         pass
 
+    def ignore_file(self):
+        pass
+
     def ignore_list(self, p_list):
         return [self.ignore(path) for path in p_list]
 
-    def add(self, path):
+    def add(self, paths):
         pass
-
-    def add_list(self, p_list):
-        return [self.add(path) for path in p_list]
 
     def commit(self, msg):
         pass
@@ -37,6 +37,9 @@ class Base(object):
 
     def brancher(self, branch, new_branch):
         return BranchChanger(self, branch, new_branch)
+
+    def untracked_files(self):
+        pass
 
 
 class Git(Base):
@@ -59,13 +62,23 @@ class Git(Base):
         if not gitignore.startswith(self.root_dir):
             raise FileNotInRepoError()
 
-        if os.path.exists(gitignore) and entry in open(gitignore, 'r').read():
-            return
+        ignore_list = []
+        if os.path.exists(gitignore):
+            ignore_list = open(gitignore, 'r').readlines()
+            if entry in ignore_list:
+                return
 
-        open(gitignore, 'a').write('\n' + entry)
+        content = entry
+        if ignore_list:
+            content = '\n' + content
 
-    def add(self, path):
-        self.repo.index.add(path)
+        open(gitignore, 'a').write(content)
+
+    def ignore_file(self):
+        return self.GITIGNORE
+
+    def add(self, paths):
+        self.repo.index.add(paths)
 
     def commit(self, msg):
         self.repo.index.commit(msg)
@@ -78,6 +91,9 @@ class Git(Base):
 
     def branch(self, branch):
         self.repo.git.branch(branch)
+
+    def untracked_files(self):
+        return self.repo.untracked_files
 
 
 def SCM(root_dir):

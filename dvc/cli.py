@@ -118,7 +118,6 @@ def parse_args(argv=None):
                         help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
-                        default=Stage.STAGE_FILE,
                         help='Specify name of the state file')
     run_parser.add_argument('-c',
                         '--cwd',

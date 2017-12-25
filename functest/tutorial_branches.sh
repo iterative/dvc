@@ -28,40 +28,48 @@ dvc init
 
 git checkout -b input_100K
 mkdir data
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz data/
-dvc run tar zxf data/Posts.xml.tgz -C data/
-dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
-
+wget https://s3-us-west-2.amazonaws.com/dvc-share/so/100K/Posts.xml.tgz -O data/Posts.xml.tgz
+#cp ../stackoverflow_small_xml/100K/Posts.xml.tgz data/
+dvc add data/Posts.xml.tgz
+dvc run -o data/Posts.xml -d data/Posts.xml.tgz tar zxf data/Posts.xml.tgz -C data/
+dvc run -d code/xml_to_tsv.py -d data/Posts.xml -o data/Posts.tsv python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
+git add .
+git commit -m 'Extract TSV for 100K dataset'
 
 git checkout master
 dvc checkout
 git checkout -b input_25K
 dvc checkout
 mkdir data
-dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
-dvc run tar zxf data/Posts.xml.tgz -C data/
+wget https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz -O data/Posts.xml.tgz
+#cp ../stackoverflow_small_xml/25K/Posts.xml.tgz data/
+dvc add data/Posts.xml.tgz
+dvc run -o data/Posts.xml -d data/Posts.xml.tgz tar zxf data/Posts.xml.tgz -C data/
 
-dvc run python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
-dvc run python code/split_train_test.py data/Posts.tsv 0.33 20170426 data/Posts-train.tsv data/Posts-test.tsv
-dvc run python code/featurization.py data/Posts-train.tsv data/Posts-test.tsv data/matrix-train.p data/matrix-test.p
+dvc run -d code/xml_to_tsv.py -d data/Posts.xml -o data/Posts.tsv python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
+dvc run -d code/split_train_test.py -d data/Posts.tsv -o data/Posts-train.tsv -o data/Posts-test.tsv python code/split_train_test.py data/Posts.tsv 0.33 20170426 data/Posts-train.tsv data/Posts-test.tsv
+dvc run -d code/featurization.py -d data/Posts-train.tsv -d data/Posts-test.tsv -o data/matrix-train.p -o data/matrix-test.p python code/featurization.py data/Posts-train.tsv data/Posts-test.tsv data/matrix-train.p data/matrix-test.p
 
-dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
+dvc run -d code/train_model.py -d data/matrix-train.p -o data/model.p python code/train_model.py data/matrix-train.p 20170426 data/model.p
 
-dvc run python code/evaluate.py data/model.p data/matrix-test.p data/eval_auc.txt
+dvc run -d code/evaluate.py -d data/model.p -d data/matrix-test.p -O data/eval_auc.txt python code/evaluate.py data/model.p data/matrix-test.p data/eval_auc.txt
 
-dvc config Global.Target data/eval_auc.txt
-git commit -am 'Set Target'
+#dvc config Global.Target data/eval_auc.txt
+#git commit -am 'Set Target'
 
 cat data/eval_auc.txt
 # AUC: 0.596182
+
+git add .
+git commit -m 'Full pipeline'
 
 
 git checkout input_100K
 dvc checkout
 git merge -X theirs input_25K # git merge -X theirs input_25K
-# Resolve conflicts by hends!!!
-git add .
-git commit -m 'Merge conflicts'
+## Resolve conflicts by hands!!!
+#git add .
+#git commit -m 'Merge conflicts'
 dvc merge
 dvc repro       # <-- Error. Reproducng Posts.xml and Posts.tsv
 
