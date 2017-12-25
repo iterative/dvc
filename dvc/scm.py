@@ -38,6 +38,9 @@ class Base(object):
     def brancher(self, branch, new_branch):
         return BranchChanger(self, branch, new_branch)
 
+    def untracked_files(self):
+        pass
+
 
 class Git(Base):
     GITIGNORE = '.gitignore'
@@ -78,6 +81,9 @@ class Git(Base):
 
     def branch(self, branch):
         self.repo.git.branch(branch)
+
+    def untracked_files(self):
+        return self.repo.untracked_files
 
 
 def SCM(root_dir):
