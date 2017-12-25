@@ -28,11 +28,8 @@ class CmdCheckout(CmdBase):
         untracked_files = set(self.project.scm.untracked_files())
         cached_files = []
         for cache_file in self.project.cache.all():
-            to_remove = set()
-            for file in untracked_files:
-                if System.samefile(cache_file, file):
-                    cached_files.append(file)
-                    to_remove.add(file)
-                untracked_files = untracked_files - to_remove
+            hardlinks = list(filter(lambda f: System.samefile(cache_file, f), untracked_files))
+            cached_files.extend(hardlinks)
+            untracked_files = untracked_files - set(hardlinks)
 
         return cached_files
