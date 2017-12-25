@@ -17,7 +17,7 @@ function test_generic() {
 	git commit -am 'Change code'
 	    
 	dvc_info 'Reproduce foo1'
-	dvc repro
+	dvc repro foo1.dvc
 	dvc_check_files data/foo1 data/foo1.dvc
 	if [ "$(cat data/foo1)" != "foo" ]; then
 		dvc_fail
@@ -28,7 +28,7 @@ function test_generic() {
 	cp $DATA_CACHE/bar data/foo
 
 	dvc_info 'Reproduce foo1 as default target'
-	dvc repro
+	dvc repro foo1.dvc
 	dvc_check_files data/foo1 data/foo1.dvc
 	if [ "$(cat data/foo1)" != "bar" ]; then
 		dvc_fail
