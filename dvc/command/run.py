@@ -25,9 +25,9 @@ class CmdRun(CmdBase):
             return args_file
 
         if args_outs:
-            result = CmdRun._stage_file_basename(args_outs)
+            result = CmdRun._stage_file_basename(args_outs[0])
         elif args_outs_no_cache:
-            result = CmdRun._stage_file_basename(args_outs_no_cache)
+            result = CmdRun._stage_file_basename(args_outs_no_cache[0])
         else:
             result = Stage.STAGE_FILE
 
