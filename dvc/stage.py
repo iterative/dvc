@@ -31,7 +31,9 @@ class Output(object):
         if not self.use_cache:
             changed = self._changed_md5()
         else:
-            changed = not os.path.samefile(self.path, self.cache)
+            changed = os.path.exists(self.path) \
+                      and os.path.exists(self.cache) \
+                      and not os.path.samefile(self.path, self.cache)
 
         if changed:
             self.project.logger.debug('{} changed'.format(self.path))
@@ -173,8 +175,9 @@ class Stage(object):
 
     def remove_outs(self):
         for out in self.outs:
-            self.project.logger.debug("Removing '{}'".format(out.path))
-            os.unlink(out.path)
+            if os.path.exists(out.path):
+                self.project.logger.debug("Removing '{}'".format(out.path))
+                os.unlink(out.path)
 
     def remove(self):
         self.remove_outs()
