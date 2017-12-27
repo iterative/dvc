@@ -132,8 +132,8 @@ class Dependency(Output):
         state = self.project.state.get(self.path)
         if state and state.mtime == self.mtime():
             md5 = state.md5
-            msg = '{} using md5 from state file for dependency'
-            self.project.logger.debug(msg.format(self.path))
+            msg = '{} using md5 {} from state file for dependency'
+            self.project.logger.debug(msg.format(self.path, md5))
 
         super(Dependency, self).update(md5=md5)
 
