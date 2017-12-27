@@ -149,10 +149,12 @@ class Project(object):
                 raise StageNotFoundError(target)
 
             if recursive:
-                for node in nx.dfs_postorder_nodes(self.graph(), node):
-                    stages[node].reproduce(force=force)
+                for n in nx.dfs_postorder_nodes(self.graph(), node):
+                    stages[n].reproduce(force=force)
+                    stages[n].dump()
 
             stages[node].reproduce(force=force)
+            stages[node].dump()
 
     def checkout(self):
         for stage in self.stages():
