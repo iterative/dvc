@@ -1,7 +1,10 @@
-import networkx as nx
+import json
+from dateutil.parser import parse
 
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
+from dvc.graph.workflow_template_head import HEAD
+from dvc.graph.workflow_template_tail import TAIL
 
 
 class WorkflowError(DvcException):
@@ -104,30 +107,40 @@ class Workflow(object):
             return []
         return [self._commits[h] for h in self._edges[hash]]
 
-    def build_graph(self, show_dvc_commits, show_all_commits, max_commits):
+    def build_graph(self, show_dvc_commits, show_all_commits, max_commits_to_show):
         self.modify_workflow(show_all_commits, show_dvc_commits)
 
-        g = nx.DiGraph(name='DVC Workflow', directed=False)
-
+        nodes = []
         for hash in set(self._edges.keys() + self._back_edges.keys()):
             commit = self._commits[hash]
 
-            g.add_node(hash,
-                       attr_dict={
-                           'label': commit.text(max_commits),
-                           'color': self.node_color(commit)
-                       }
-            )
+            d = parse(commit._date)
+            commits_to_show_json, commits_not_to_how_num = commit.get_to_show_commits_json(max_commits_to_show)
+            node = {
+                "id": hash,
+                "color": self.node_color(commit),
+                "sequence": int(d.strftime("%s")),
+                "commits": commits_to_show_json,
+                "branches": commit.branch_tips,
+                "collapsed_commits_number": commits_not_to_how_num
+            }
 
+            if commit._is_target and commit._target_metric:
+                node["targetNumber"] = '{}'.format(commit.target_metric_delta)
+
+            nodes.append(node)
+
+        links = []
         for commit in self._commits.values():
             for p in commit.parent_hashes:
-                g.add_edge(commit.hash, p)
+                links.append({"target": commit.hash, "source": p})
 
-        A = nx.nx_agraph.to_agraph(g)
-        fname = 'workflow'
-        A = A.to_undirected()
-        A.write(fname + '.dot')
-        A.draw(fname + '.jpeg', format='jpeg', prog='dot')
+        fname = 'workflow.html'
+        with open(fname, 'w') as fd:
+            graph = {"nodes": nodes, "links": links}
+            fd.write("{}\n  var data = {}\n{}".format(
+                HEAD, json.dumps(graph, indent=4), TAIL))
+            fd.close()
         pass
 
     def modify_workflow(self, show_all_commits, show_dvc_commits):
