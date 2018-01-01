@@ -32,15 +32,6 @@ def cached_property(func):
     return property(get)
 
 
-def rmtree(directory):
-    '''Cross platform rmtree()'''
-    if os.name == 'nt':
-        if os.path.exists(directory) and not os.access(directory, os.W_OK):
-            os.chmod(directory, stat.S_IWUSR)
-
-    shutil.rmtree(directory, ignore_errors=True)
-
-
 def copyfile(src, dest):
     '''Copy file with progress bar'''
     copied = 0

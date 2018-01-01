@@ -57,7 +57,7 @@ ProjectName =
 '''
 
     def __init__(self, dvc_dir):
-        self.dvc_dir = dvc_dir
+        self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
         
         self._config = configparser.SafeConfigParser()

@@ -8,9 +8,29 @@ from dvc.data_cloud import file_md5
 from dvc.exceptions import DvcException
 from dvc.executor import Executor
 
+class OutputError(DvcException):
+    def __init__(self, path, msg):
+        super(OutputError, self).__init__('Output file \'{}\' error: {}'.format(path, msg))
 
-class OutputNoCacheError(DvcException):
-    pass
+
+class OutputNoCacheError(OutputError):
+    def __init__(self, path):
+        super(OutputNoCacheError, self).__init__(path, 'no cache')
+
+
+class OutputOutsideOfRepoError(OutputError):
+    def __init__(self, path):
+        super(OutputOutsideOfRepoError, self).__init__(path, 'outside of repository')
+
+
+class OutputDoesNotExistError(OutputError):
+    def __init__(self, path):
+        super(OutputDoesNotExistError, self).__init__(path, 'does not exist')
+
+
+class OutputIsNotFileError(OutputError):
+    def __init__(self, path):
+        super(OutputIsNotFileError, self).__init__(path, 'not a file')
 
 
 class Output(object):
@@ -20,7 +40,11 @@ class Output(object):
 
     def __init__(self, project, path, md5=None, use_cache=False):
         self.project = project
-        self.path = path
+        self.path = os.path.abspath(os.path.realpath(path))
+
+        if not self.path.startswith(self.project.root_dir):
+            raise OutputOutsideOfRepoError(self.path)
+
         self.md5 = md5
         self.use_cache = use_cache
 
@@ -46,10 +70,10 @@ class Output(object):
 
     def link(self, checkout=False):
         if not self.use_cache:
-            raise OutputNoCacheError()
+            raise OutputNoCacheError(self.path)
 
         if not os.path.exists(self.path) and not os.path.exists(self.cache):
-            raise OutputNoCacheError()
+            raise OutputNoCacheError(self.path)
 
         if os.path.exists(self.path) and os.path.exists(self.cache) and os.path.samefile(self.path, self.cache):
             return
@@ -66,7 +90,7 @@ class Output(object):
             src = self.path
             link = self.cache
         else:
-            raise OutputNoCacheError()
+            raise OutputNoCacheError(self.path)
 
         System.hardlink(src, link)
 
@@ -81,6 +105,10 @@ class Output(object):
     def update(self, md5=None):
         self.md5 = md5
         if not self.md5:
+            if not os.path.exists(self.path):
+                raise OutputDoesNotExistError(self.path)
+            if not os.path.isfile(self.path):
+                raise OutputIsNotFileError(self.path)
             self.md5 = file_md5(self.path)[0]
         self.project.state.update(self.path, self.md5, self.mtime())
 

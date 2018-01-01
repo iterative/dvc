@@ -44,8 +44,7 @@ install:
   - printf "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" > ~/.aws/credentials
   - printf "[default]\n" > ~/.aws/config
 script:
-# Temporarily disabled untill dvc is stable
-#  - ./unittests.sh
+  - ./unittests.sh
   - ./functests.sh
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build_macos.sh; else ./build_linux.sh; fi
   - ./build_package.sh

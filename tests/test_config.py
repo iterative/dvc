@@ -1,4 +1,5 @@
 import os
+import configparser
 from unittest import TestCase
 import mock
 
@@ -15,14 +16,17 @@ except ImportError:
     # Python 3
     builtin_module_name = 'builtins'
 
-from dvc.config import Config
 from dvc.data_cloud import DataCloud
-from dvc.settings import Settings
 
 
 class TestConfigTest(TestCase):
     def setUp(self):
         pass
+
+    def _conf(self, s):
+        c = configparser.SafeConfigParser()
+        c.readfp(s)
+        return c
 
     def storage_path_hierarchy_test(self):
         """ StoragePath should be read first from global and then from cloud section """
@@ -41,9 +45,8 @@ class TestConfigTest(TestCase):
              "StoragePath = googlesb/google_storage_path"
            )
         s = StringIO('\n'.join(c))
-        conf = Config(s, conf_pseudo_file = s)
-        settings = Settings(None, None, conf)
-        cloud = DataCloud(settings)
+        conf = self._conf(s)
+        cloud = DataCloud(conf)
         self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
@@ -61,8 +64,8 @@ class TestConfigTest(TestCase):
              "StoragePath = googlesb/google_storage_path"
            )
         s = StringIO('\n'.join(c))
-        conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(Settings(None, None, conf))
+        conf = self._conf(s)
+        cloud = DataCloud(conf)
         self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
         self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
@@ -100,8 +103,8 @@ class TestConfigTest(TestCase):
         patcher = mock.patch(builtin_module_name + '.open', side_effect=self.mocked_open_aws_default_credentials)
 
         # patcher.start()
-        conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(Settings(None, None, conf))
+        conf = self._conf(s)
+        cloud = DataCloud(conf)
         aws_creds = cloud._cloud._get_credentials()
         patcher.stop()
 
@@ -131,8 +134,8 @@ class TestConfigTest(TestCase):
         patcher = mock.patch(builtin_module_name + '.open', side_effect=self.mocked_open_aws_default_credentials)
 
         patcher.start()
-        conf = Config(s, conf_pseudo_file=s)
-        cloud = DataCloud(Settings(None, None, conf))
+        conf = self._conf(s)
+        cloud = DataCloud(conf)
         aws_creds = cloud._cloud._get_credentials()
         patcher.stop()
 
