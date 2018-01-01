@@ -5,7 +5,7 @@ class Cache(object):
     CACHE_DIR = 'cache'
 
     def __init__(self, dvc_dir):
-        self.cache_dir = os.path.join(dvc_dir, self.CACHE_DIR)
+        self.cache_dir = os.path.abspath(os.path.realpath(os.path.join(dvc_dir, self.CACHE_DIR)))
 
     @staticmethod
     def init(dvc_dir):

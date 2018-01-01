@@ -60,7 +60,7 @@ class Project(object):
     DVC_DIR = '.dvc'
 
     def __init__(self, root_dir):
-        self.root_dir = os.path.abspath(root_dir)
+        self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.scm = SCM(self.root_dir)
@@ -73,6 +73,18 @@ class Project(object):
 
     @staticmethod
     def init(root_dir):
+        """
+        Initiate dvc project in directory.
+
+        Args:
+            root_dir: Path to project's root directory.
+
+        Returns:
+            Project instance.
+
+        Raises:
+            KeyError: Raises an exception.
+        """
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
         os.mkdir(dvc_dir)
@@ -106,12 +118,23 @@ class Project(object):
                       locked=True)
         stage.save()
         stage.dump()
+        return stage
 
     def remove(self, fname):
-        path = os.path.abspath(fname)
+        stages = []
+        output = Output.loads(self, fname)
         for out in self.outs():
-            if out.path == path:
-                out.stage().remove()
+            if out.path == output.path:
+                stage = out.stage()
+                stages.append(stage)
+
+        if len(stages) == 0:
+            raise StageNotFoundError(fname) 
+
+        for stage in stages:
+            stage.remove()
+
+        return stages
 
     def _add_orphans(self, deps):
         outs = [out.path for out in self.outs()]
@@ -120,7 +143,15 @@ class Project(object):
                 continue
             self.add(dep.path)
 
-    def run(self, cmd, deps, deps_no_cache, outs, outs_no_cache, locked, fname, cwd):
+    def run(self,
+            cmd=None,
+            deps=[],
+            deps_no_cache=[],
+            outs=[],
+            outs_no_cache=[],
+            locked=False,
+            fname=Stage.STAGE_FILE,
+            cwd=os.curdir):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
         outputs = Output.loads_from(self, outs, use_cache=True, cwd=cwd)
@@ -140,8 +171,10 @@ class Project(object):
                       locked=locked)
         stage.run()
         stage.dump()
+        return stage
 
-    def reproduce(self, targets, recursive=False, force=False):
+    def reproduce(self, targets, recursive=True, force=False):
+        reproduced = []
         stages = nx.get_node_attributes(self.graph(), 'stage')
         for target in targets:
             node = os.path.relpath(os.path.abspath(target), self.root_dir)
@@ -152,9 +185,13 @@ class Project(object):
                 for n in nx.dfs_postorder_nodes(self.graph(), node):
                     stages[n].reproduce(force=force)
                     stages[n].dump()
+                    reproduced.append(stages[n])
 
             stages[node].reproduce(force=force)
             stages[node].dump()
+            reproduced.append(stages[node])
+
+        return reproduced
 
     def checkout(self):
         for stage in self.stages():

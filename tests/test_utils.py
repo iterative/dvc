@@ -3,27 +3,10 @@ import shutil
 import filecmp
 
 from dvc import utils
-from tests.basic_env import DirHierarchyEnvironment
+from tests.basic_env import TestDvc
 
-class TestExecutor(DirHierarchyEnvironment):
-    def setUp(self):
-        DirHierarchyEnvironment.init_environment(self)
 
-    def tearDown(self):
-        pass
-
-    def test_rmtree(self):
-        root = 'testdir'
-
-        os.makedirs(root + '/subdir')
-        with open(root + '/file1', 'w+') as f:
-            f.write('file1contents')
-        with open(root + '/subdir/file2', 'w+') as f:
-            f.write('file2contents')
-
-        utils.rmtree(root)
-        self.assertFalse(os.path.exists(root))
-
+class TestUtils(TestDvc):
     def test_copyfile(self):
         src = 'file1'
         dest = 'file2'

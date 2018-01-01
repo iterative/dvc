@@ -1,124 +1,55 @@
 import os
+import shutil
 import tempfile
+from git import Repo
 from unittest import TestCase
 
-from dvc.config import ConfigI
-from dvc.git_wrapper import GitWrapperI
-from dvc.path.data_item import DataItem
-from dvc.path.factory import PathFactory
-from dvc.settings import Settings
 from dvc.system import System
-from dvc.utils import rmtree
+from dvc.project import Project
 
-class BasicEnvironment(TestCase):
-    def init_environment(self,
-                         test_dir=System.get_long_path(tempfile.mkdtemp()),
-                         curr_dir=None):
-        self._test_dir = System.realpath(test_dir)
-        self._proj_dir = 'proj'
-        self._test_git_dir = os.path.join(self._test_dir, self._proj_dir)
-        self._old_curr_dir_abs = System.realpath(os.curdir)
 
-        if os.path.exists(self._test_dir):
-            rmtree(self._test_dir)
+class TestDir(TestCase):
+    FOO = 'foo'
+    FOO_CONTENTS = FOO
+    BAR = 'bar'
+    BAR_CONTENTS = BAR
+    CODE = 'code.py'
+    CODE_CONTENTS = 'import sys\nimport shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])'
 
-        if curr_dir:
-            self._curr_dir = System.realpath(curr_dir)
-        else:
-            self._curr_dir = self._test_git_dir
+    def _pushd(self, d):
+        self._saved_dir = System.realpath(os.curdir)
+        os.chdir(d)
 
-        if not os.path.exists(self._curr_dir):
-            os.makedirs(self._curr_dir)
+    def _popd(self):
+        os.chdir(self._saved_dir)
+        self._saved_dir = None
 
-        if not os.path.isdir(self._test_git_dir):
-            os.makedirs(self._test_git_dir)
+    def create(self, name, contents):
+        with open(name, 'a') as f:
+            f.write(contents)
 
-        data_dir = os.path.join(self._test_git_dir, 'data')
-        cache_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME)
-        state_dir = os.path.join(self._test_git_dir, ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data')
-
-        os.makedirs(data_dir)
-        os.makedirs(cache_dir)
-        os.makedirs(state_dir)
-
-        os.chdir(self._curr_dir)
+    def setUp(self):
+        self._root_dir = System.get_long_path(tempfile.mkdtemp())
+        self._pushd(self._root_dir)
+        self.create(self.FOO, self.FOO_CONTENTS)
+        self.create(self.BAR, self.BAR_CONTENTS)
+        self.create(self.CODE, self.CODE_CONTENTS)
 
     def tearDown(self):
-        if self._old_curr_dir_abs:
-            os.chdir(self._old_curr_dir_abs)
-        if self._test_git_dir:
-            rmtree(self._test_dir)
-        pass
+        self._popd()
+        shutil.rmtree(self._root_dir)
 
 
-class DirHierarchyEnvironment(BasicEnvironment):
-    def init_environment(self,
-                         test_dir=os.path.join(os.path.sep, 'tmp', 'ntx_unit_test'),
-                         curr_dir=None,
-                         commit='abc12345'):
-        ''' Creates data environment with data, cache and state dirs.
-        data/
-            file1.txt     --> ../cache/file1.txt_abc123
-            dir1/
-                file2.txt      --> ../../cache/dir1/file2.txt_abc123
-                file3.txt      --> ../../cache/dir1/file3.txt_abc123
-                dir11/
-                    file4.txt  --> ../../../cache/dir1/dir11/file4.txt_abc123
-            dir2/
-                file5.txt      --> ../../cache/dir2/file5.txt_abc123
-                file6.txt      --> an actual file
-        '''
+class TestGit(TestDir):
+    def setUp(self):
+        super(TestGit, self).setUp()
+        self.git = Repo.init()
+        self.git.index.add([self.CODE])
+        self.git.index.commit('add code')
 
-        BasicEnvironment.init_environment(self, test_dir, curr_dir)
 
-        self._commit = commit
-
-        self._git = GitWrapperI(git_dir=self._test_git_dir, commit=self._commit)
-        self._config = ConfigI('data')
-        self.path_factory = PathFactory(self._git, self._config)
-        self.settings = Settings([], self._git, self._config)
-
-        self.dir1 = 'dir1'
-        self.dir11 = os.path.join('dir1', 'dir11')
-        self.dir2 = 'dir2'
-
-        self.create_dirs(self.dir1)
-        self.create_dirs(self.dir11)
-        self.create_dirs(self.dir2)
-
-        self.file1, self.cache1, self.state1 = self.crate_data_item('file1.txt')
-        self.file2, self.cache2, self.state2 = self.crate_data_item(os.path.join(self.dir1, 'file2.txt'))
-        self.file3, self.cache3, self.state3 = self.crate_data_item(os.path.join(self.dir1, 'file3.txt'))
-        self.file4, self.cache4, self.state4 = self.crate_data_item(os.path.join(self.dir11, 'file4.txt'))
-        self.file5, self.cache5, self.state5 = self.crate_data_item(os.path.join(self.dir2, 'file5.txt'))
-        self.file6, self.cache6, self.state6 = self.crate_data_item(os.path.join(self.dir2, 'file6.txt'),
-                                                                    cache_file=False)
-        pass
-
-    @staticmethod
-    def create_content_file(file, content='some test'):
-        fd = open(file, 'w+')
-        fd.write(content)
-        fd.close()
-
-    def crate_data_item(self, data_file, cache_file=True, content='random text'):
-        file_result = os.path.join('data', data_file)
-        state_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, file_result + DataItem.STATE_FILE_SUFFIX)
-
-        dummy_md5 = os.path.basename(data_file) + DataItem.CACHE_FILE_SEP + self._commit
-        self.create_content_file(state_result, '{"Md5" : "' + dummy_md5 + '", "Command" : "run", "Cwd" : "dir"}')
-
-        if cache_file:
-            cache_result = os.path.join(ConfigI.CONFIG_DIR, ConfigI.CACHE_DIR_NAME, dummy_md5)
-            self.create_content_file(cache_result, content)
-
-            System.hardlink(cache_result, file_result)
-        else:
-            cache_result = None
-            self.create_content_file(file_result, content)
-
-        return file_result, cache_result, state_result
-
-    def create_dirs(self, dir):
-        os.makedirs(os.path.join('data', dir))
-        os.makedirs(os.path.join(ConfigI.CONFIG_DIR, ConfigI.STATE_DIR_NAME, 'data', dir))
+class TestDvc(TestGit):
+    def setUp(self):
+        super(TestDvc, self).setUp()
+        self.dvc = Project.init(self._root_dir)
+        self.dvc.logger.be_verbose()
