@@ -12,7 +12,7 @@ from dvc.progress import progress
 from dvc.logger import Logger
 
 
-LOCAL_CHUNK_SIZE = 1024*1024*1024
+LOCAL_CHUNK_SIZE = 1024*1024
 
 
 def cached_property(func):

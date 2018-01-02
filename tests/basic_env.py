@@ -37,7 +37,6 @@ class TestDir(TestCase):
 
     def tearDown(self):
         self._popd()
-        shutil.rmtree(self._root_dir)
 
 
 class TestGit(TestDir):

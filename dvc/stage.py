@@ -57,7 +57,7 @@ class Output(object):
         else:
             changed = os.path.exists(self.path) \
                       and os.path.exists(self.cache) \
-                      and not os.path.samefile(self.path, self.cache)
+                      and not System.samefile(self.path, self.cache)
 
         if changed:
             self.project.logger.debug('{} changed'.format(self.path))
@@ -75,7 +75,10 @@ class Output(object):
         if not os.path.exists(self.path) and not os.path.exists(self.cache):
             raise OutputNoCacheError(self.path)
 
-        if os.path.exists(self.path) and os.path.exists(self.cache) and os.path.samefile(self.path, self.cache):
+        if os.path.exists(self.path) and \
+           os.path.exists(self.cache) and \
+           System.samefile(self.path, self.cache) and \
+           os.stat(self.cache).st_mode & stat.S_IREAD:
             return
 
         if os.path.exists(self.cache):
@@ -93,6 +96,8 @@ class Output(object):
             raise OutputNoCacheError(self.path)
 
         System.hardlink(src, link)
+
+        os.chmod(self.path, stat.S_IREAD)
 
     def checkout(self):
         if not self.use_cache:
@@ -118,7 +123,6 @@ class Output(object):
 
         self.project.scm.ignore(self.path)
         self.link()
-        os.chmod(self.path, stat.S_IREAD)
 
     def dumpd(self, cwd):
         return {
@@ -205,7 +209,9 @@ class Stage(object):
         for out in self.outs:
             if os.path.exists(out.path):
                 self.project.logger.debug("Removing '{}'".format(out.path))
+                os.chmod(out.path, stat.S_IWUSR)
                 os.unlink(out.path)
+                os.chmod(out.cache, stat.S_IREAD)
 
     def remove(self):
         self.remove_outs()
