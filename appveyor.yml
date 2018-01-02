@@ -29,7 +29,19 @@ environment:
       PYTHON_VERSION: "3.4.x" # currently 3.4.3
       PYTHON_ARCH: "64"
 
-build_script:
+install:
+  - pip install -r requirements.txt
+  - python setup.py install
+
+build: false
+
+before_test:
+  - pip install -r test-requirements.txt
+
+test_script:
+  - nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
+
+after_test:
   - .\build_windows.cmd
 
 artifacts:

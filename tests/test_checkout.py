@@ -1,4 +1,5 @@
 import os
+import stat
 import shutil
 import filecmp
 
@@ -24,6 +25,7 @@ class TestCheckout(TestDvc):
         stage = self.dvc.run(cmd, deps, deps_no_cache, outs, outs_no_cache, locked, fname, cwd)
 
         shutil.copy(self.FOO, 'orig')
+        os.chmod(self.FOO, stat.S_IWRITE)
         os.unlink(self.FOO)
         self.dvc.checkout()
         self.assertTrue(os.path.isfile(self.FOO))

@@ -98,6 +98,7 @@ install_requires = [
     'pyyaml==3.12',
     'tinydb==3.7.0',
     'gitpython==2.1.8',
+    'ntfsutils==0.1.3',
 ]
 
 if platform.system() == 'Darwin':

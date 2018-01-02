@@ -5,11 +5,13 @@ from builtins import str
 
 if os.name == 'nt':
     from ctypes import create_unicode_buffer, windll
+    import ntfsutils.hardlink as winlink
 
 from dvc.executor import Executor
 
 
 class System(object):
+    SYMLINK_OUTPUT = '<SYMLINK>'
     LONG_PATH_BUFFER_SIZE = 1024
 
     @staticmethod
@@ -21,14 +23,26 @@ class System(object):
         if System.is_unix():
             return os.link(source, link_name)
 
-        raise Exception('Not Implemented Yet')
+        return winlink.create(source, link_name)
 
     @staticmethod
     def samefile(path1, path2):
         if System.is_unix():
             return os.path.samefile(path1, path2)
 
-        raise Exception('Not Implemented Yet')
+        return winlink.samefile(path1, path2)
+
+    @staticmethod
+    def _get_symlink_string(path):
+        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
+        if code != 0:
+            return None
+
+        lines = output.split('\n')
+        for line in lines:
+            if System.SYMLINK_OUTPUT in line:
+                return line
+        return None
 
     @staticmethod
     def realpath(path):
@@ -54,8 +68,8 @@ class System(object):
         if System.is_unix():
             return path
 
-        buffer = create_unicode_buffer(System.LONG_PATH_BUFFER_SIZE)
-        get_long_path_name = windll.kernel32.GetLongPathNameW
+        buffer = ctypes.create_unicode_buffer(System.LONG_PATH_BUFFER_SIZE)
+        get_long_path_name = ctypes.windll.kernel32.GetLongPathNameW
         result = get_long_path_name(u'%s' % str(path), buffer, System.LONG_PATH_BUFFER_SIZE)
         if result == 0 or result > System.LONG_PATH_BUFFER_SIZE:
             return path
