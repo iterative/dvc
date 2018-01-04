@@ -136,17 +136,9 @@ class Project(object):
 
         return stages
 
-    def _add_orphans(self, deps):
-        outs = [out.path for out in self.outs()]
-        for dep in deps:
-            if not dep.use_cache or dep.path in outs:
-                continue
-            self.add(dep.path)
-
     def run(self,
             cmd=None,
             deps=[],
-            deps_no_cache=[],
             outs=[],
             outs_no_cache=[],
             locked=False,
@@ -156,11 +148,7 @@ class Project(object):
         path = os.path.join(cwd, fname)
         outputs = Output.loads_from(self, outs, use_cache=True, cwd=cwd)
         outputs += Output.loads_from(self, outs_no_cache, use_cache=False, cwd=cwd)
-        deps = Dependency.loads_from(self, deps, use_cache=True, cwd=cwd)
-        deps += Dependency.loads_from(self, deps_no_cache, use_cache=False, cwd=cwd)
-
-        # Add files that were specified as cached dependencies and weren't added before
-        self._add_orphans(deps)
+        deps = Dependency.loads_from(self, deps, use_cache=False, cwd=cwd)
 
         stage = Stage(project=self,
                       path=path,

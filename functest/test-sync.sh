@@ -5,7 +5,8 @@ set -e
 source common.sh
 
 function test_sync() {
-	dvc run -D code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
+	dvc add data/foo
+	dvc run -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
 
 	dvc_info "Checking status"
 	dvc status | grep "new file" || dvc_fail

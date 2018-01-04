@@ -14,7 +14,7 @@ class ReproBasicEnv(TestDvc):
         self.create(self.file1_code_file, 'print("Hello")' + os.linesep + 'print("Mary")')
         stage = self.dvc.run(fname='file1.dvc',
                              outs=[self.file_name1],
-                             deps_no_cache=[self.file1_code_file],
+                             deps=[self.file1_code_file],
                              cmd='python {} --not-repro > {}'.format(self.file1_code_file,
                                                                      self.file_name1))
 
@@ -25,8 +25,7 @@ class ReproBasicEnv(TestDvc):
 
         stage = self.dvc.run(fname='file11.dvc',
                              outs=[self.file_name11],
-                             deps=[self.file_name1],
-                             deps_no_cache=[self.file11_code_file],
+                             deps=[self.file_name1, self.file11_code_file],
                              cmd='python {} {} > {}'.format(self.file11_code_file,
                                                             self.file_name1,
                                                             self.file_name11))
@@ -49,8 +48,7 @@ class ReproBasicEnv(TestDvc):
         self.file_name_res = os.path.join('data', 'file_res')
         stage = self.dvc.run(fname='file_res.dvc',
                              outs=[self.file_name_res],
-                             deps_no_cache=[self.file_res_code_file],
-                             deps=[self.file_name11, self.file_name2],
+                             deps=[self.file_res_code_file, self.file_name11, self.file_name2],
                              cmd='python {} {} {} > {}'.format(self.file_res_code_file,
                                                                self.file_name11,
                                                                self.file_name2,
@@ -87,7 +85,7 @@ class ReproChangedDependency(ReproBasicEnv):
         self.create(file1_code_file, 'print("Goodbye")' + os.linesep + 'print("Jack")')
         self.dvc.run(fname='file1.dvc',
                      outs=[self.file_name1],
-                     deps_no_cache=[file1_code_file],
+                     deps=[file1_code_file],
                      cmd='python {} --not-repro > {}'.format(file1_code_file, self.file_name1))
 
 
