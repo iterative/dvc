@@ -51,6 +51,9 @@ class Base(object):
     def untracked_files(self):
         pass
 
+    def is_tracked(self, path):
+        pass
+
 
 class Git(Base):
     GITIGNORE = '.gitignore'
@@ -107,6 +110,9 @@ class Git(Base):
 
     def untracked_files(self):
         return self.repo.untracked_files
+
+    def is_tracked(self, path):
+        return len(self.repo.git.ls_files(path)) != 0
 
 
 def SCM(root_dir=os.curdir):

@@ -14,15 +14,15 @@ from tests.basic_env import TestDvc
 class TestCheckout(TestDvc):
     def test_checkout(self):
         cmd = 'python {} {} {}'.format(self.CODE, self.FOO, 'out')
-        deps = [self.FOO]
-        deps_no_cache = [self.CODE]
+        deps = [self.FOO, self.CODE]
         outs = [os.path.join(self.dvc.root_dir, 'out')]
         outs_no_cache = []
         locked = False
         fname = os.path.join(self.dvc.root_dir, 'out.dvc')
         cwd = os.curdir
 
-        stage = self.dvc.run(cmd, deps, deps_no_cache, outs, outs_no_cache, locked, fname, cwd)
+        self.dvc.add(self.FOO)
+        stage = self.dvc.run(cmd, deps, outs, outs_no_cache, locked, fname, cwd)
 
         shutil.copy(self.FOO, 'orig')
         os.chmod(self.FOO, stat.S_IWRITE)

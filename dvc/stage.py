@@ -33,6 +33,11 @@ class OutputIsNotFileError(OutputError):
         super(OutputIsNotFileError, self).__init__(path, 'not a file')
 
 
+class OutputAlreadyTrackedError(OutputError):
+    def __init__(self, path):
+        super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
+
+
 class Output(object):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
@@ -49,7 +54,13 @@ class Output(object):
         self.use_cache = use_cache
 
     def _changed_md5(self):
-        return self.md5 != file_md5(self.path)[0]
+        state = self.project.state.get(self.path)
+        if state and state.mtime == self.mtime():
+            md5 = state.md5
+        else:
+            md5 = file_md5(self.path)[0]
+
+        return self.md5 != md5
 
     def changed(self):
         if not self.use_cache:
@@ -107,19 +118,28 @@ class Output(object):
     def mtime(self):
         return os.path.getmtime(self.path)
 
-    def update(self, md5=None):
-        self.md5 = md5
-        if not self.md5:
-            if not os.path.exists(self.path):
-                raise OutputDoesNotExistError(self.path)
-            if not os.path.isfile(self.path):
-                raise OutputIsNotFileError(self.path)
+    def update(self):
+        if not os.path.exists(self.path):
+            raise OutputDoesNotExistError(self.path)
+        if not os.path.isfile(self.path):
+            raise OutputIsNotFileError(self.path)
+
+        state = self.project.state.get(self.path)
+        if state and state.mtime == self.mtime():
+            md5 = state.md5
+            msg = '{} using md5 {} from state file'
+            self.project.logger.debug(msg.format(self.path, md5))
+            self.md5 = md5
+        else:
             self.md5 = file_md5(self.path)[0]
-        self.project.state.update(self.path, self.md5, self.mtime())
+            self.project.state.update(self.path, self.md5, self.mtime())
 
     def save(self):
         if not self.use_cache:
             return
+
+        if self.project.scm.is_tracked(self.path):
+            raise OutputAlreadyTrackedError(self.path)
 
         self.project.scm.ignore(self.path)
         self.link()
@@ -134,8 +154,8 @@ class Output(object):
     @classmethod
     def loadd(cls, project, d, cwd='.'):
         path = os.path.join(cwd, d[Output.PARAM_PATH])
-        md5 = d[Output.PARAM_MD5]
-        use_cache = d[Output.PARAM_CACHE]
+        md5 = d.get(Output.PARAM_MD5, None)
+        use_cache = d.get(Output.PARAM_CACHE, False)
         return cls(project, path, md5, use_cache=use_cache)
 
     @classmethod
@@ -159,15 +179,7 @@ class Output(object):
 
 
 class Dependency(Output):
-    def update(self):
-        md5 = None
-        state = self.project.state.get(self.path)
-        if state and state.mtime == self.mtime():
-            md5 = state.md5
-            msg = '{} using md5 {} from state file for dependency'
-            self.project.logger.debug(msg.format(self.path, md5))
-
-        super(Dependency, self).update(md5=md5)
+    pass
 
 
 class Stage(object):
@@ -247,7 +259,7 @@ class Stage(object):
     @staticmethod
     def load(project, fname):
         with open(fname, 'r') as fd:
-            return Stage.loadd(project, yaml.load(fd), fname)
+            return Stage.loadd(project, yaml.safe_load(fd), fname)
 
     def dumpd(self):
         deps = [x.dumpd(self.cwd) for x in self.deps]
@@ -265,7 +277,7 @@ class Stage(object):
             fname = self.path
 
         with open(fname, 'w') as fd:
-            yaml.dump(self.dumpd(), fd, default_flow_style=False)
+            yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
     def save(self):
         for dep in self.deps:

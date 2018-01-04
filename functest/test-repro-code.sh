@@ -10,7 +10,8 @@ function test_generic() {
 	dvc_create_repo
 
 	dvc_info 'Copy foo into foo1'
-	dvc run -D code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
+	dvc add data/foo
+	dvc run -d code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
 
 	dvc_info 'Modify code'
 	echo " " >> code/code.sh 
@@ -47,9 +48,10 @@ function test_partial() {
 	git commit -m "copy code"
 
 	dvc_info "Create repro chain foo -> foo1 -> foo2 -> foo3"
-	dvc run -f copy_foo_foo1.dvc -D code/code1.sh -d data/foo -o data/foo1 cp data/foo data/foo1
-	dvc run -f copy_foo1_foo2.dvc -D code/code2.sh -d data/foo1 -o data/foo2 cp data/foo1 data/foo2
-	dvc run -f copy_foo2_foo3.dvc -D code/code3.sh -d data/foo2 -o data/foo3 cp data/foo2 data/foo3
+	dvc add data/foo
+	dvc run -f copy_foo_foo1.dvc -d code/code1.sh -d data/foo -o data/foo1 cp data/foo data/foo1
+	dvc run -f copy_foo1_foo2.dvc -d code/code2.sh -d data/foo1 -o data/foo2 cp data/foo1 data/foo2
+	dvc run -f copy_foo2_foo3.dvc -d code/code3.sh -d data/foo2 -o data/foo3 cp data/foo2 data/foo3
 
 	dvc_info "Save original timestamps"
 	FOO_TS=$(dvc_timestamp data/foo)

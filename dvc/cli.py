@@ -96,11 +96,6 @@ def parse_args(argv=None):
                         action='append',
                         default=[],
                         help='Declare dependencies for reproducible cmd.')
-    run_parser.add_argument('-D',
-                        '--deps-no-cache',
-                        action='append',
-                        default=[],
-                        help='Declare dependencies that should not be cached for reproducible cmd.') 
     run_parser.add_argument('-o',
                         '--outs',
                         action='append',

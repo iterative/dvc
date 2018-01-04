@@ -6,7 +6,7 @@ source common.sh
 
 dvc_create_repo
 
-dvc run -D code/code.sh -d data/foo -o data/foo1 bash code/code.sh data/foo data/foo1
+dvc add data/foo
 
 rm -f data/foo
 dvc checkout
