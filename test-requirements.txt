@@ -1,3 +1,4 @@
-coverage
-xmltodict
-awscli
+coverage==4.3.1
+codeclimate-test-reporter==0.2.3
+xmltodict==0.11.0
+awscli==1.14.18
