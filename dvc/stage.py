@@ -247,7 +247,7 @@ class Stage(object):
     @staticmethod
     def load(project, fname):
         with open(fname, 'r') as fd:
-            return Stage.loadd(project, yaml.load(fd), fname)
+            return Stage.loadd(project, yaml.safe_load(fd), fname)
 
     def dumpd(self):
         deps = [x.dumpd(self.cwd) for x in self.deps]
@@ -265,7 +265,7 @@ class Stage(object):
             fname = self.path
 
         with open(fname, 'w') as fd:
-            yaml.dump(self.dumpd(), fd, default_flow_style=False)
+            yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
     def save(self):
         for dep in self.deps:
