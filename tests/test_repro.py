@@ -1,98 +1,61 @@
 import os
+import stat
+import shutil
+import filecmp
 
 from tests.basic_env import TestDvc
 
 
-class ReproBasicEnv(TestDvc):
+class TestRepro(TestDvc):
     def setUp(self):
-        super(ReproBasicEnv, self).setUp()
+        super(TestRepro, self).setUp()
 
-        os.mkdir('data')
-
-        self.file_name1 = os.path.join('data', 'file1')
-        self.file1_code_file = 'file1.py'
-        self.create(self.file1_code_file, 'print("Hello")' + os.linesep + 'print("Mary")')
-        stage = self.dvc.run(fname='file1.dvc',
-                             outs=[self.file_name1],
-                             deps=[self.file1_code_file],
-                             cmd='python {} --not-repro > {}'.format(self.file1_code_file,
-                                                                     self.file_name1))
-
-        self.file_name11 = os.path.join('data', 'file11')
-        self.file11_code_file = 'file11.py'
-        self.create(self.file11_code_file,
-                    'import sys' + os.linesep + 'print(open(sys.argv[1]).readline().strip())')
-
-        stage = self.dvc.run(fname='file11.dvc',
-                             outs=[self.file_name11],
-                             deps=[self.file_name1, self.file11_code_file],
-                             cmd='python {} {} > {}'.format(self.file11_code_file,
-                                                            self.file_name1,
-                                                            self.file_name11))
-        self.file_name11_stage_name = stage.path
-
-        self.file_name2 = os.path.join('data', 'file2')
-        self.file2_code_file = 'file2.py'
-        self.create(self.file2_code_file, 'print("Bobby")')
-        self.dvc.run(fname='file2.dvc',
-                     outs=[self.file_name2],
-                     cmd='python {} --not-repro > {}'.format(self.file2_code_file,
-                                                             self.file_name2))
-
-        self.file_res_code_file = 'code_res.py'
-        self.create(self.file_res_code_file,
-                    'import sys' + os.linesep +
-                    'text1 = open(sys.argv[1]).read()' + os.linesep +
-                    'text2 = open(sys.argv[2]).read()' + os.linesep +
-                    'print(text1 + text2)')
-        self.file_name_res = os.path.join('data', 'file_res')
-        stage = self.dvc.run(fname='file_res.dvc',
-                             outs=[self.file_name_res],
-                             deps=[self.file_res_code_file, self.file_name11, self.file_name2],
-                             cmd='python {} {} {} > {}'.format(self.file_res_code_file,
-                                                               self.file_name11,
-                                                               self.file_name2,
-                                                               self.file_name_res))
-        self.file_name_res_stage_name = stage.path
-
-    def modify_file(self, filename, content_to_add=' '):
-        fd = open(filename, 'a')
-        fd.write(content_to_add)
-        fd.close()
+        self.dvc.add(self.FOO)
+        self.file1 = 'file1'
+        self.file1_stage = self.file1 + '.dvc'
+        self.dvc.run(fname=self.file1_stage,
+                     outs=[self.file1],
+                     deps=[self.FOO, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
 
 
-class ReproCodeDependencyTest(ReproBasicEnv):
+class TestReproChangedCode(TestRepro):
     def test(self):
-        self.modify_file(self.file_res_code_file)
+        repro = 'repro'
+        with open(self.CODE, 'a') as code:
+            code.write("\nshutil.copyfile('{}', sys.argv[2])\n".format(self.BAR))
 
-        self.dvc.reproduce([self.file_name_res_stage_name])
+        self.dvc.reproduce([self.file1_stage])
 
-        self.assertEqual(open(self.file_name_res).read().strip(), 'Hello\nBobby')
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
 
 
-class ReproChangedDependency(ReproBasicEnv):
+class TestReproChangedData(TestRepro):
     def test(self):
-        self.recreate_file1()
+        self.swap_foo_with_bar()
 
-        self.dvc.reproduce([self.file_name11_stage_name])
+        self.dvc.reproduce([self.file1_stage])
 
-        self.assertEqual(open(self.file_name11).read(), 'Goodbye\n')
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
 
-    def recreate_file1(self):
-        self.dvc.remove(self.file_name1)
-
-        file1_code_file = 'file1_2.py'
-        self.create(file1_code_file, 'print("Goodbye")' + os.linesep + 'print("Jack")')
-        self.dvc.run(fname='file1.dvc',
-                     outs=[self.file_name1],
-                     deps=[file1_code_file],
-                     cmd='python {} --not-repro > {}'.format(file1_code_file, self.file_name1))
+    def swap_foo_with_bar(self):
+        os.chmod(self.FOO, stat.S_IWRITE)
+        os.unlink(self.FOO)
+        shutil.copyfile(self.BAR, self.FOO)
 
 
-class ReproChangedDeepDependency(ReproChangedDependency):
+class TestReproChangedDeepData(TestReproChangedData):
     def test(self):
-        self.recreate_file1()
+        file2 = 'file2'
+        file2_stage = file2 + '.dvc'
+        self.dvc.run(fname=file2_stage,
+                     outs=[file2],
+                     deps=[self.file1, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.file1, file2))
 
-        self.dvc.reproduce([self.file_name_res_stage_name])
+        self.swap_foo_with_bar()
 
-        self.assertEqual(open(self.file_name_res).read().strip(), 'Goodbye\nBobby')
+        self.dvc.reproduce([file2_stage])
+
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertTrue(filecmp.cmp(file2, self.BAR))
