@@ -33,6 +33,11 @@ class OutputIsNotFileError(OutputError):
         super(OutputIsNotFileError, self).__init__(path, 'not a file')
 
 
+class OutputAlreadyTrackedError(OutputError):
+    def __init__(self, path):
+        super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
+
+
 class Output(object):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
@@ -132,6 +137,9 @@ class Output(object):
     def save(self):
         if not self.use_cache:
             return
+
+        if self.project.scm.is_tracked(self.path):
+            raise OutputAlreadyTrackedError(self.path)
 
         self.project.scm.ignore(self.path)
         self.link()

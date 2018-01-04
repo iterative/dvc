@@ -5,6 +5,7 @@ import filecmp
 from dvc.data_cloud import file_md5
 from dvc.stage import Stage, OutputNoCacheError, OutputOutsideOfRepoError
 from dvc.stage import OutputDoesNotExistError, OutputIsNotFileError
+from dvc.stage import OutputAlreadyTrackedError
 from dvc.project import StageNotFoundError
 
 from tests.basic_env import TestDvc
@@ -43,3 +44,14 @@ class TestAddDirectory(TestDvc):
         os.mkdir(dname)
         with self.assertRaises(OutputIsNotFileError) as cx:
             self.dvc.add(dname)
+
+
+class TestAddTrackedFile(TestDvc):
+    def test(self):
+        fname = 'tracked_file'
+        self.create(fname, 'tracked file contents')
+        self.dvc.scm.add([fname])
+        self.dvc.scm.commit('add {}'.format(fname))
+
+        with self.assertRaises(OutputAlreadyTrackedError) as cx:
+            self.dvc.add(fname)
