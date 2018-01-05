@@ -8,6 +8,7 @@ from dvc.data_cloud import file_md5
 from dvc.exceptions import DvcException
 from dvc.executor import Executor
 
+
 class OutputError(DvcException):
     def __init__(self, path, msg):
         super(OutputError, self).__init__('Output file \'{}\' error: {}'.format(path, msg))
@@ -200,6 +201,10 @@ class Stage(object):
         self.deps = deps
         self.locked = locked
 
+    @property
+    def relpath(self):
+        return os.path.relpath(self.path, '.')
+
     @staticmethod
     def is_stage_file(path):
         if not os.path.isfile(path):
@@ -236,8 +241,10 @@ class Stage(object):
         if self.cmd:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs()
+
+        self.project.logger.info("Reproducing {}:\n\t{}".format(self.relpath, self.cmd))
         self.run()
-        self.project.logger.debug("{} reproduced".format(self.path))
+        self.project.logger.debug("{} was reproduced".format(self.relpath))
 
     @staticmethod
     def loadd(project, d, path):
