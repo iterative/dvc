@@ -178,6 +178,16 @@ class Output(object):
                     return stage
         return None
 
+    def remove(self):
+        if not os.path.exists(self.path):
+            return
+
+        self.project.logger.debug("Removing '{}'".format(self.path))
+        os.chmod(self.path, stat.S_IWUSR)
+        os.unlink(self.path)
+        if os.path.exists(self.cache):
+            os.chmod(self.cache, stat.S_IREAD)
+
 
 class Dependency(Output):
     pass
@@ -224,11 +234,7 @@ class Stage(object):
 
     def remove_outs(self):
         for out in self.outs:
-            if os.path.exists(out.path):
-                self.project.logger.debug("Removing '{}'".format(out.path))
-                os.chmod(out.path, stat.S_IWUSR)
-                os.unlink(out.path)
-                os.chmod(out.cache, stat.S_IREAD)
+            out.remove()
 
     def remove(self):
         self.remove_outs()
