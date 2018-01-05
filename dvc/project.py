@@ -22,7 +22,9 @@ class StageNotInPipelineError(PipelineError):
 
 
 class StageNotFoundError(DvcException):
-    pass
+    def __init__(self, path):
+        msg = 'Stage file {} does not exist'.format(path)
+        super(StageNotFoundError, self).__init__(msg)
 
 
 class Pipeline(object):
@@ -161,23 +163,22 @@ class Project(object):
         stage.dump()
         return stage
 
-    def reproduce(self, targets, recursive=True, force=False):
+    def reproduce(self, target, recursive=True, force=False):
         reproduced = []
         stages = nx.get_node_attributes(self.graph(), 'stage')
-        for target in targets:
-            node = os.path.relpath(os.path.abspath(target), self.root_dir)
-            if node not in stages:
-                raise StageNotFoundError(target)
+        node = os.path.relpath(os.path.abspath(target), self.root_dir)
+        if node not in stages:
+            raise StageNotFoundError(target)
 
-            if recursive:
-                for n in nx.dfs_postorder_nodes(self.graph(), node):
-                    stages[n].reproduce(force=force)
-                    stages[n].dump()
-                    reproduced.append(stages[n])
+        if recursive:
+            for n in nx.dfs_postorder_nodes(self.graph(), node):
+                stages[n].reproduce(force=force)
+                stages[n].dump()
+                reproduced.append(stages[n])
 
-            stages[node].reproduce(force=force)
-            stages[node].dump()
-            reproduced.append(stages[node])
+        stages[node].reproduce(force=force)
+        stages[node].dump()
+        reproduced.append(stages[node])
 
         return reproduced
 
