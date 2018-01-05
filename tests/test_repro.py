@@ -59,3 +59,14 @@ class TestReproChangedDeepData(TestReproChangedData):
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
         self.assertTrue(filecmp.cmp(file2, self.BAR))
+
+
+class TestReproPhony(TestReproChangedData):
+    def test(self):
+        stage = self.dvc.run(deps=[self.file1])
+
+        self.swap_foo_with_bar()
+
+        self.dvc.reproduce([stage.path])
+
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
