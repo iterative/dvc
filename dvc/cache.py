@@ -1,5 +1,7 @@
 import os
 
+from dvc.system import System
+
 
 class Cache(object):
     CACHE_DIR = 'cache'
@@ -23,3 +25,12 @@ class Cache(object):
 
     def get(self, md5):
         return os.path.join(self.cache_dir, md5)
+
+    def find_cache(self, files):
+        file_set = set(files)
+        cached = {}
+        for cache_file in self.all():
+            cached_files = list(filter(lambda f: System.samefile(cache_file, f, True), file_set))
+            cached.update(dict((f, os.path.basename(cache_file)) for f in cached_files))
+            file_set = file_set - set(cached_files)
+        return cached
