@@ -26,7 +26,11 @@ class System(object):
         return winlink.create(source, link_name)
 
     @staticmethod
-    def samefile(path1, path2):
+    def samefile(path1, path2, check_exist=False):
+        if check_exist:
+            if not os.path.exists(path1) or not os.path.exists(path2):
+                return False
+
         if System.is_unix():
             return os.path.samefile(path1, path2)
 

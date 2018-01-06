@@ -38,7 +38,12 @@ class OutputAlreadyTrackedError(OutputError):
         super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
 
 
-class Output(object):
+class Direction(object):
+    DIRECTION_TYPE_OUT = 'Output'
+    DIRECTION_TYPE_DEP = 'Dependency'
+
+
+class Output(Direction):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
     PARAM_CACHE = 'cache'
@@ -52,8 +57,16 @@ class Output(object):
 
         self.md5 = md5
         self.use_cache = use_cache
+        self.direction = self.DIRECTION_TYPE_OUT
+
+    @property
+    def dvc_path(self):
+        return os.path.relpath(self.path, self.project.root_dir)
 
     def _changed_md5(self):
+        if not os.path.exists(self.path):
+            return True
+
         state = self.project.state.get(self.path)
         if state and state.mtime == self.mtime():
             md5 = state.md5
@@ -179,7 +192,9 @@ class Output(object):
 
 
 class Dependency(Output):
-    pass
+    def __init__(self, project, path, md5=None, use_cache=False):
+        super(Dependency, self).__init__(project, path, md5, use_cache)
+        self.direction = self.DIRECTION_TYPE_DEP
 
 
 class Stage(object):
@@ -199,6 +214,10 @@ class Stage(object):
         self.outs = outs
         self.deps = deps
         self.locked = locked
+
+    @property
+    def dvc_path(self):
+        return os.path.relpath(self.path, self.project.root_dir)
 
     @staticmethod
     def is_stage_file(path):
@@ -223,7 +242,8 @@ class Stage(object):
                 self.project.logger.debug("Removing '{}'".format(out.path))
                 os.chmod(out.path, stat.S_IWUSR)
                 os.unlink(out.path)
-                os.chmod(out.cache, stat.S_IREAD)
+                if os.path.exists(out.cache):
+                    os.chmod(out.cache, stat.S_IREAD)
 
     def remove(self):
         self.remove_outs()
