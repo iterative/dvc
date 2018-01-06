@@ -54,7 +54,14 @@ class Output(object):
         self.md5 = md5
         self.use_cache = use_cache
 
+    @property
+    def dvc_path(self):
+        return os.path.relpath(self.path, self.project.root_dir)
+
     def _changed_md5(self):
+        if not os.path.exists(self.path):
+            return True
+
         state = self.project.state.get(self.path)
         if state and state.mtime == self.mtime():
             md5 = state.md5
@@ -213,7 +220,11 @@ class Stage(object):
 
     @property
     def relpath(self):
-        return os.path.relpath(self.path, '.')
+        return os.path.relpath(self.path)
+
+    @property
+    def dvc_path(self):
+        return os.path.relpath(self.path, self.project.root_dir)
 
     @staticmethod
     def is_stage_file(path):

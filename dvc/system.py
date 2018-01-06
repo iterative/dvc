@@ -27,6 +27,9 @@ class System(object):
 
     @staticmethod
     def samefile(path1, path2):
+        if not os.path.exists(path1) or not os.path.exists(path2):
+            return False
+
         if System.is_unix():
             return os.path.samefile(path1, path2)
 

@@ -30,7 +30,7 @@ class Cache(object):
         file_set = set(files)
         cached = {}
         for cache_file in self.all():
-            cached_files = list(filter(lambda f: System.samefile(cache_file, f, True), file_set))
+            cached_files = list(filter(lambda f: System.samefile(cache_file, f), file_set))
             cached.update(dict((f, os.path.basename(cache_file)) for f in cached_files))
             file_set = file_set - set(cached_files)
         return cached
