@@ -424,12 +424,6 @@ def parse_args(argv=None):
                         nargs='*',
                         help='Data files to check')
     fsck_parser.add_argument(
-                        '-a',
-                        '--all',
-                        action='store_true',
-                        default=False,
-                        help='Check all data files')
-    fsck_parser.add_argument(
                         '-p',
                         '--physical',
                         action='store_true',
