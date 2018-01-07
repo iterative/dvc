@@ -107,6 +107,9 @@ class Project(object):
 
         return Project(root_dir)
 
+    def to_dvc_path(self, path):
+        return os.path.relpath(path, self.root_dir)
+
     def add(self, fname):
         path = os.path.abspath(fname) + Stage.STAGE_FILE_SUFFIX
         cwd = os.path.dirname(path)
@@ -202,7 +205,7 @@ class Project(object):
             if cache in clist:
                 continue
             os.unlink(cache)
-            self.logger.info('\'{}\' was removed'.format(cache))
+            self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
     def push(self, jobs=1):
         self.cloud.push(self._used_cache(), jobs)
