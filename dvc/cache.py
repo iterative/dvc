@@ -34,3 +34,4 @@ class Cache(object):
             cached.update(dict((f, os.path.basename(cache_file)) for f in cached_files))
             file_set = file_set - set(cached_files)
         return cached
+
