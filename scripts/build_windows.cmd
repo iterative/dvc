@@ -2,6 +2,8 @@
 
 echo ====== Starting to build dvc installer for Windows... ======
 
+if not exist dvc\NUL (echo Error: Please run this script from repository root && goto :error)
+
 rmdir /Q /S build
 rmdir /Q /S dist
 del /Q /S dvc.spec

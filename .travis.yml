@@ -43,14 +43,17 @@ install:
   - mkdir ~/.aws
   - printf "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" > ~/.aws/credentials
   - printf "[default]\n" > ~/.aws/config
+before_script:
+  - bash ./scripts/ci/before_script.sh
 script:
   - ./unittests.sh
   - ./functests.sh
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build_macos.sh; else ./build_linux.sh; fi
-  - ./build_package.sh
-after_sucess:
-  - CODECLIMATE_REPO_TOKEN=7350efa14a67c3911af96dadaabe811b43eead7b466309b47687499bf5d72287 codeclimate-test-reporter
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./scripts/build_macos.sh; else ./scripts/build_linux.sh; fi
+  - ./scripts/build_package.sh
+after_script:
+  - bash ./scripts/ci/after_scripts.sh
 deploy:
+  condition: "[[ $(python -c 'import sys; print(sys.version_info[0])') == '2' ]]"
   provider: releases
   api_key:
     secure: nyo17gF4Xl6DFL/KVkMewC805Cv+eK99L7SiYCU+WUAYDIzzFL3YJm7fm8bznPeor7DmpO7uSLSveMnJETBtdurW6JWhCTUss4yD66yFzpk6Z5cvHf/1UA5pdMHkkMM54fRaTRt6L2Yal7RPwGEQTBECLXW1Xmf78Y6+0l8lTvXQ9jXOQSRO/63VDKI5Zww2+XytVicUFlr0hLMGKUuaCjjXcQlAPzBgQz3/5Iz6EtzeTf2o+gTPjocbRbSFPikfiBXUn8XlJ8jBj7i114XJRJffw59KxYGDzxp+enfLBULGNoW0Np2hZqkKkPUIdB08C8XVbRXlFYX8cEYBczjqhv8A05p5F5CnltnqQ0KazcoUP2awPVqn68dWNRF+kqrnMBus8euYKIZ4dy/6bVEKJRa84ESJXZVDcwXTAXRqyovSxOlXqg9ZgAImMKBfKn/fpDX2xIvQPaXcnJxKbmcePfdbC1d0HYJ5jkbNaxKE/T15VvhzIho7mJ2WAv1r8QouQUuzqtpzIGbRn/KXHRUzCtyP0k4+eMKMLFOPzg848WsDarP3v8VYiSy4nFY7ZP7DRd3KttvW5bgVbSeO4jPmTgS6TnnpRwual9BJXSG7bjbfpIMii3bNZ7jWL4zpKT9Jfm8w9RGKLcX9HqkZ3+y60+LtYdhEfBvqsIlWQoIJBXg=

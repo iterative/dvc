@@ -42,7 +42,7 @@ test_script:
   - nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
 
 after_test:
-  - .\build_windows.cmd
+  - .\scripts\build_windows.cmd
 
 artifacts:
   - path: dvc*.exe
