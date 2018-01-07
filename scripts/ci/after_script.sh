@@ -5,5 +5,6 @@ if [[ "$TRAVIS_OS_NAME" == "linux" && \
       "$TRAVIS_PULL_REQUEST" == "false" && \
       "$TRAVIS_BRANCH" == "master" && \
       "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
+	coverage xml
 	./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
 fi
