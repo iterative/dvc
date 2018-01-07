@@ -21,7 +21,7 @@ class CmdBase(object):
                 return root
             root = os.path.dirname(root)
         msg = "Not a dvc repository (or any parent up to mount point {})"
-        Logger.error(msg.format(root))
+        self.project.logger.error(msg.format(root))
 
     def run_cmd(self):
         with self.project.lock:

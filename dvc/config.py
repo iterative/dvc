@@ -62,7 +62,6 @@ ProjectName =
         
         self._config = configparser.SafeConfigParser()
         self._config.read(self.config_file)
-        Logger.set_level(self._config['Global']['LogLevel'])
 
     @staticmethod
     def init(dvc_dir):

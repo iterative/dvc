@@ -3,9 +3,12 @@ import logging
 
 import colorama
 
+
 colorama.init()
 
+
 class Logger(object):
+    FMT = '%(message)s'
     DEFAULT_LEVEL = logging.INFO
 
     LEVEL_MAP = {
@@ -21,21 +24,36 @@ class Logger(object):
         'error': colorama.Fore.RED
     }
 
-    logging.basicConfig(stream=sys.stdout, format='%(message)s', level=DEFAULT_LEVEL)
+    def __init__(self, config=None):
+        sh = logging.StreamHandler(sys.stdout)
+        sh.setFormatter(logging.Formatter(self.FMT))
+        sh.setLevel(logging.DEBUG)
 
-    _logger = logging.getLogger('dvc')
+        self.logger().addHandler(sh)
+        level = None
+        if config:
+            level = config['Global'].get('LogLevel', None)
+        self.set_level(level)
 
     @staticmethod
-    def set_level(level):
-        Logger._logger.setLevel(Logger.LEVEL_MAP.get(level.lower(), logging.DEBUG))
+    def logger():
+        return logging.getLogger('dvc')
+
+    @staticmethod
+    def set_level(level=None):
+        if not level:
+            lvl = Logger.DEFAULT_LEVEL
+        else:
+            lvl = Logger.LEVEL_MAP.get(level.lower(), Logger.DEFAULT_LEVEL)
+        Logger.logger().setLevel(lvl)
 
     @staticmethod
     def be_quiet():
-        Logger._logger.setLevel(logging.CRITICAL)
+        Logger.logger().setLevel(logging.CRITICAL)
 
     @staticmethod
     def be_verbose():
-        Logger._logger.setLevel(logging.DEBUG)
+        Logger.logger().setLevel(logging.DEBUG)
 
     @staticmethod
     def colorize(msg, typ):
@@ -50,16 +68,17 @@ class Logger(object):
 
     @staticmethod
     def error(msg, **kwargs):
-        return Logger._logger.error(Logger.colorize(msg, 'error'), **kwargs)
+        exc_info = Logger.logger().getEffectiveLevel() == logging.DEBUG
+        return Logger.logger().error(Logger.colorize(msg, 'error'), exc_info=exc_info, **kwargs)
 
     @staticmethod
     def warn(msg, **kwargs):
-        return Logger._logger.warn(Logger.colorize(msg, 'warn'), **kwargs)
+        return Logger.logger().warn(Logger.colorize(msg, 'warn'), **kwargs)
 
     @staticmethod
     def debug(msg, **kwargs):
-        return Logger._logger.debug(Logger.colorize(msg, 'debug'), **kwargs)
+        return Logger.logger().debug(Logger.colorize(msg, 'debug'), **kwargs)
 
     @staticmethod
     def info(msg, **kwargs):
-        return Logger._logger.info(Logger.colorize(msg, 'info'), **kwargs)
+        return Logger.logger().info(Logger.colorize(msg, 'info'), **kwargs)

@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+ulimit -n 2048
+
 nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
 
 if [ "$1" = "report" ]; then

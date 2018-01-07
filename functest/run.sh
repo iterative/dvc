@@ -8,7 +8,6 @@ TESTS+=" test-init.sh"
 TESTS+=" test-add-remove.sh"
 TESTS+=" test-sync.sh"
 TESTS+=" test-repro-code.sh"
-#TESTS+=" test-merge.sh"
 TESTS+=" test-checkout.sh"
 TESTS+=" test-gc.sh"
 TESTS+=" test-lock.sh"
@@ -19,4 +18,4 @@ for t in $TESTS; do
 	./$t
 done
 
-#rm -rf $TEST_REPO
+rm -rf $TEST_REPO
