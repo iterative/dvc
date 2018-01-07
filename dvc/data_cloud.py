@@ -192,38 +192,38 @@ class DataCloudLOCAL(DataCloudBase):
     """
     Driver for local storage.
     """
-    def push(self, item):
-        Logger.debug('sync to cloud ' + item.cache.dvc + " " + self.storage_path)
-        copyfile(item.cache.dvc, self.storage_path)
-        return item
+    def push(self, path):
+        Logger.debug('sync to cloud ' + path + " " + self.storage_path)
+        copyfile(path, self.storage_path)
+        return path
 
-    def _import(self, bucket, i, item):
-        tmp_file = self.tmp_file(item.data.dvc)
+    def _import(self, bucket, i, path):
+        inp = os.path.join(self.storage_path, i)
+        tmp_file = self.tmp_file(path)
         try:
-            copyfile(i, tmp_file)
+            copyfile(inp, tmp_file)
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(i, exc))
             return None
 
-        os.rename(tmp_file, item.data.dvc)
-        item.move_data_to_cache()
+        os.rename(tmp_file, path)
 
-        return item
+        return path
 
-    def pull(self, item):
-        Logger.debug('sync from cloud ' + self.storage_path + " " + item.cache.dvc)
-        return self._import(None, self.storage_path, item)
+    def pull(self, path):
+        Logger.debug('sync from cloud ' + path)
+        return self._import(None, path, path)
 
-    def remove(self, item):
-        Logger.debug('rm from cloud ' + item.cache.dvc)
-        os.remove(item.cache.dvc)
+    def remove(self, path):
+        Logger.debug('rm from cloud ' + path)
+        os.remove(path)
 
-    def import_data(self, path, item):
-        Logger.debug('import from cloud ' + path + " " + item.data.dvc)
-        return self._import(None, path, item)
+    def import_data(self, path, out):
+        Logger.debug('import from cloud ' + path + " " + out)
+        return self._import(None, path, out)
 
-    def _status(self, data_item):
-        local = data_item.cache.relative
+    def _status(self, path):
+        local = path
         remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
 
         remote_exists = os.path.exists(remote)
@@ -814,7 +814,7 @@ class DataCloud(object):
             (F, issues) if bad
         """
         key = 'Cloud'
-        if key.lower() not in self._config['Global'].keys() or len(self._config['Global'][key]) < 1:
+        if key.lower() not in [k.lower() for k in self._config['Global'].keys()] or len(self._config['Global'][key]) < 1:
             raise ConfigError('Please set %s in section Global in config file' % key)
 
         # now that a cloud is chosen, can check StoragePath
