@@ -29,7 +29,7 @@ class CmdFsck(CmdBase):
 
     def print_fsck(self, caches, dvc_files, files_and_stages):
         for file in dvc_files:
-            print('File {}:'.format(file))
+            print(u'File {}:'.format(file))
 
             full_path = os.path.join(self.project.root_dir, file)
             if self.args.physical:
@@ -51,10 +51,9 @@ class CmdFsck(CmdBase):
             print(u'    Actual mtime:           {}'.format(mtime))
 
             for stage, dep in files_and_stages.get(file, []):
-                direction = type(dep).__name__
                 stage_error = '!!!' if dep.md5 and hardlink_md5 and dep.md5 != hardlink_md5 else ''
                 print(u'    Stage file: {}'.format(stage.dvc_path))
-                print(u'        Type:               {}'.format(direction))
+                print(u'        Type:               {}'.format(type(dep).__name__))
                 print(u'        Checksum:           {} {}'.format(dep.md5, stage_error))
                 print(u'        Use cache:          {}'.format(str(dep.use_cache).lower()))
         pass
