@@ -26,8 +26,7 @@ class CmdShowPipeline(CmdBase):
 
     def draw_targets(self, target):
         if not target:
-            target = '.'
-            return self.draw(self.g, target, target)
+            return self.draw(self.g, '.', 'all')
 
         for t in self.args.target:
             fname_suffix = os.path.basename(os.path.normpath(t))
@@ -59,7 +58,6 @@ class CmdShowPipeline(CmdBase):
 
     def collect_stage(self, stage):
         name = os.path.relpath(stage.path, self.project.root_dir)
-        state = StateFile.load(data_item, self.git)
 
         self.g.add_node(name)
 
@@ -68,7 +66,7 @@ class CmdShowPipeline(CmdBase):
             self.g.add_node(i)
             self.g.add_edge(i, name)
 
-        for out in state.outs:
+        for out in stage.outs:
             o = os.path.relpath(out.path, self.project.root_dir)
             self.g.add_node(o)
             self.g.add_edge(name, o)
