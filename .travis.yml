@@ -51,7 +51,7 @@ script:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./scripts/build_macos.sh; else ./scripts/build_linux.sh; fi
   - ./scripts/build_package.sh
 after_script:
-  - bash ./scripts/ci/after_scripts.sh
+  - bash ./scripts/ci/after_script.sh
 deploy:
   condition: "[[ $(python -c 'import sys; print(sys.version_info[0])') == '2' ]]"
   provider: releases
