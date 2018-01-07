@@ -58,10 +58,6 @@ class Output(object):
     def dvc_path(self):
         return os.path.relpath(self.path, self.project.root_dir)
 
-    @property
-    def dvc_path(self):
-        return os.path.relpath(self.path, self.project.root_dir)
-
     def _changed_md5(self):
         if not os.path.exists(self.path):
             return True
