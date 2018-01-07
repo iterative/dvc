@@ -39,12 +39,6 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Be verbose.')
-    parent_parser.add_argument(
-                        '-G',
-                        '--no-git-actions',
-                        action='store_true',
-                        default=False,
-                        help='Skip all git actions including reproducibility check and commits.')
 
     parent_parser.add_argument(
                         '-b',
@@ -221,20 +215,6 @@ def parse_args(argv=None):
                         'gc',
                         parents=[parent_parser],
                         help='Collect garbage')
-    gc_parser.add_argument('-l',
-                        '--keep-in-cloud',
-                        action='store_true',
-                        default=False,
-                        help='Do not remove data from cloud.')
-    gc_parser.add_argument('-r',
-                        '--recursive',
-                        action='store_true',
-                        help='Remove directory recursively.')
-    gc_parser.add_argument('-c',
-                        '--keep-in-cache',
-                        action='store_false',
-                        default=False,
-                        help='Do not remove data from cache.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Cloud
@@ -339,12 +319,13 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Show graphs')
     show_subparsers = show_parser.add_subparsers(
-        dest='cmd',
-        help='Use `dvc show CMD` --help for command-specific help')
+                        dest='cmd',
+                        help='Use `dvc show CMD` --help for command-specific help')
+
     pipeline_parser = show_subparsers.add_parser(
-        'pipeline',
-        parents=[parent_parser],
-        help='Show pipeline image')
+                        'pipeline',
+                        parents=[parent_parser],
+                        help='Show pipeline image')
     pipeline_parser.add_argument(
                         'target',
                         nargs='*',
@@ -430,8 +411,5 @@ def parse_args(argv=None):
                         default=False,
                         help='Compute actual md5')
     fsck_parser.set_defaults(func=CmdFsck)
-
-    if isinstance(argv, str):
-        argv = argv.split()
 
     return parser.parse_args(argv)
