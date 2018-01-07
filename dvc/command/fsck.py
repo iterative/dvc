@@ -6,18 +6,14 @@ from dvc.data_cloud import file_md5
 
 class CmdFsck(CmdBase):
     def run(self):
-        if not self.args.targets and not self.args.all:
-            self.project.logger.error(u'Data files are not specified')
-            return 1
-
         directions = self.all_directions()
         files_and_stages = self.directions_by_datafile(directions)
 
-        if self.args.all:
-            dvc_files = files_and_stages.keys()
-        else:
+        if self.args.targets:
             dvc_files = [os.path.relpath(os.path.abspath(f), self.project.root_dir)
                          for f in self.args.targets]
+        else:
+            dvc_files = files_and_stages.keys()
 
         caches = self.project.cache.find_cache(dvc_files)
 
