@@ -44,14 +44,14 @@ install:
   - printf "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" > ~/.aws/credentials
   - printf "[default]\n" > ~/.aws/config
 before_script:
-  - bash ./ci/before_script.sh
+  - bash ./scripts/ci/before_script.sh
 script:
   - ./unittests.sh
   - ./functests.sh
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./build_macos.sh; else ./build_linux.sh; fi
-  - ./build_package.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then ./scripts/build_macos.sh; else ./scripts/build_linux.sh; fi
+  - ./scripts/build_package.sh
 after_script:
-  - bash ./ci/after_scripts.sh
+  - bash ./scripts/ci/after_scripts.sh
 deploy:
   condition: "[[ $(python -c 'import sys; print(sys.version_info[0])') == '2' ]]"
   provider: releases

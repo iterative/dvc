@@ -1,15 +1,20 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
 BUILD_DIR=build
-INSTALL_DIR=usr
+INSTALL_DIR=usr/local
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 
 print_error()
 {
 	echo -e "\e[31m$1\e[0m"
 }
+
+if [ ! -d "dvc" ]; then
+	print_error "Please run this script from repository root"
+	exit 1
+fi
 
 trap 'print_error "FAIL"; exit 1' ERR
 
@@ -27,7 +32,7 @@ fpm_build()
 {
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
-	fpm -s dir -f -t $1 -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
+	fpm -s dir -f -t $1 --osxpkg-identifier-prefix com.dataversioncontrol -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
 }
 
 cleanup()
@@ -38,22 +43,11 @@ cleanup()
 
 install_dependencies()
 {
-	print_info "Installing fpm..."
-	if command_exists dnf; then
-		sudo dnf install ruby-devel gcc make rpm-build
-	elif command_exists yum; then
-		sudo yum install ruby-devel gcc make rpm-build
-	elif command_exists apt-get; then
-		sudo apt-get update -y
-		sudo apt-get install ruby-dev build-essential rpm python-pip python-dev
-	else
-		echo "Unable to install fpm dependencies" && exit 1
-	fi
-
-	gem install --no-ri --no-rdoc fpm
-
 	print_info "Installing requirements..."
 	pip install -r requirements.txt
+
+	print_info "Installing fpm..."
+	gem install --no-ri --no-rdoc fpm
 
 	print_info "Installing pyinstaller..."
 	pip install pyinstaller
@@ -68,8 +62,7 @@ build_dvc()
 cleanup
 install_dependencies
 build_dvc
-fpm_build rpm
-fpm_build deb
+fpm_build osxpkg
 cleanup
 
-print_info "Successfully built dvc rpm and deb packages"
+print_info "Successfully built dvc osx package"
