@@ -39,7 +39,7 @@ class CmdFsck(CmdBase):
                 md5 = None
 
             hardlink_md5 = caches.get(file)
-            hardlink_msg = hardlink_md5 if caches else 'Error - cache file not found!'
+            hardlink_msg = hardlink_md5 if hardlink_md5 else 'No cache file found'
             hardlink_error = '!!!' if hardlink_md5 and md5 and md5 != hardlink_md5 else ''
             print(u'    Hardlink to cache file: {} {}'.format(hardlink_msg, hardlink_error))
 
@@ -69,4 +69,3 @@ class CmdFsck(CmdBase):
             result[dep.dvc_path].append((stage, dep))
 
         return result
-
