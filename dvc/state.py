@@ -54,6 +54,7 @@ class State(object):
         return State(root_dir, dvc_dir)
 
     def update(self, path, md5, mtime):
+        mtime = int(mtime)
         existing = self.get(path)
         if not existing:
             return self.add(path, md5, mtime)
@@ -64,6 +65,7 @@ class State(object):
         return state
 
     def add(self, path, md5, mtime):
+        mtime = int(mtime)
         entry = StateEntry(self.root_dir, path, md5, mtime)
         self._db.insert(entry.dumpd())
         return entry

@@ -1,6 +1,7 @@
 import os
 
 from dvc.cache import Cache
+from dvc.system import System
 
 from tests.basic_env import TestDvc
 
@@ -22,3 +23,20 @@ class TestCache(TestDvc):
     def test_get(self):
         cache = Cache(self.dvc.dvc_dir).get(os.path.basename(self.cache1))
         self.assertEquals(cache, self.cache1)
+
+    def test_find_cache(self):
+        fname1 = os.path.basename(self.cache1)
+        fname1_md5 = fname1
+        fname2 = os.path.basename(self.cache2)
+        fname2_md5 = fname2
+        fname3 = 'non_existing'
+
+        System.hardlink(self.cache1, fname1)
+        System.hardlink(self.cache2, fname2)
+
+        cache = Cache(self.dvc.dvc_dir).find_cache([fname1, fname2, fname3])
+
+        expected = {fname1: fname1_md5, fname2: fname2_md5}
+
+        self.assertEqual(len(cache), 2)
+        self.assertEqual(cache, expected)

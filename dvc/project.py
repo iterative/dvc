@@ -233,6 +233,13 @@ class Project(object):
 
         return G
 
+    def all_directions(self):
+        result = []
+        for stage in self.stages():
+            for dep in stage.deps + stage.outs:
+                result.append((stage, dep))
+        return result
+
     def stages(self):
         stages = []
         for root, dirs, files in os.walk(self.root_dir):
