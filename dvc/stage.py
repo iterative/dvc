@@ -39,12 +39,7 @@ class OutputAlreadyTrackedError(OutputError):
         super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
 
 
-class Direction(object):
-    DIRECTION_TYPE_OUT = 'Output'
-    DIRECTION_TYPE_DEP = 'Dependency'
-
-
-class Output(Direction):
+class Output(object):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
     PARAM_CACHE = 'cache'
@@ -58,7 +53,6 @@ class Output(Direction):
 
         self.md5 = md5
         self.use_cache = use_cache
-        self.direction = self.DIRECTION_TYPE_OUT
 
     @property
     def dvc_path(self):
@@ -207,9 +201,7 @@ class Output(Direction):
 
 
 class Dependency(Output):
-    def __init__(self, project, path, md5=None, use_cache=False):
-        super(Dependency, self).__init__(project, path, md5, use_cache)
-        self.direction = self.DIRECTION_TYPE_DEP
+    pass
 
 
 class Stage(object):
