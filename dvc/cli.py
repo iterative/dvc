@@ -415,6 +415,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Compute actual md5')
+    fsck_parser.add_argument(
+                        '-a',
+                        '--all',
+                        action='store_true',
+                        default=False,
+                        help='Show all tracked files including correct ones')
     fsck_parser.set_defaults(func=CmdFsck)
 
     return parser.parse_args(argv)

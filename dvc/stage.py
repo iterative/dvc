@@ -121,7 +121,12 @@ class Output(object):
     def checkout(self):
         if not self.use_cache:
             return
-        self.link(checkout=True)
+        if not os.path.exists(self.cache):
+            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.dvc_path))
+            if os.path.exists(self.path):
+                os.unlink(self.path)
+        else:
+            self.link(checkout=True)
 
     def mtime(self):
         return os.path.getmtime(self.path)
