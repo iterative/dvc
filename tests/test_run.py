@@ -45,3 +45,10 @@ class TestRunEmpty(TestDvc):
                      locked=False,
                      fname='empty.dvc',
                      cwd=os.curdir)
+
+
+class TestRunNoExec(TestDvc):
+    def test(self):
+        self.dvc.run(cmd='python {} {} {}'.format(self.CODE, self.FOO, 'out'),
+                     no_exec=True)
+        self.assertFalse(os.path.exists('out'))

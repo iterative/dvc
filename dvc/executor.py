@@ -59,5 +59,5 @@ class Executor(object):
                                            stderr_file=stderr_file, cwd=cwd, shell=shell)
         if code != 0:
             cmd_str = ' '.join(cmd) if type(cmd) == list else cmd
-            raise ExecutorError('Git command error ({}):\n{}\n{}'.format(cmd_str, out, err))
+            raise ExecutorError('Exec command error ({}):\n{}\n{}'.format(cmd_str, out, err))
         return out

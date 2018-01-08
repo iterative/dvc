@@ -114,6 +114,11 @@ def parse_args(argv=None):
                         default=os.path.curdir,
                         help='Directory to run your command and place state file in')
     run_parser.add_argument(
+                        '--no-exec',
+                        action='store_true',
+                        default=False,
+                        help="Only create stage file without actually running it")
+    run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
                         help='Command or command file to execute')
