@@ -145,7 +145,8 @@ class Project(object):
             outs_no_cache=[],
             locked=False,
             fname=Stage.STAGE_FILE,
-            cwd=os.curdir):
+            cwd=os.curdir,
+            no_exec=False):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
         outputs = Output.loads_from(self, outs, use_cache=True, cwd=cwd)
@@ -159,7 +160,8 @@ class Project(object):
                       outs=outputs,
                       deps=deps,
                       locked=locked)
-        stage.run()
+        if not no_exec:
+            stage.run()
         stage.dump()
         return stage
 

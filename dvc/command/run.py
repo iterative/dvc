@@ -3,19 +3,26 @@ import os
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.stage import Stage
+from dvc.exceptions import DvcException
 
 
 class CmdRun(CmdBase):
     def run(self):
         fname = self.stage_file_name(self.args.file, self.args.outs, self.args.outs_no_cache)
 
-        self.project.run(cmd=' '.join(self.args.command),
-                         outs=self.args.outs,
-                         outs_no_cache=self.args.outs_no_cache,
-                         deps=self.args.deps,
-                         locked=self.args.lock,
-                         fname=fname,
-                         cwd=self.args.cwd)
+        try:
+            self.project.run(cmd=' '.join(self.args.command),
+                             outs=self.args.outs,
+                             outs_no_cache=self.args.outs_no_cache,
+                             deps=self.args.deps,
+                             locked=self.args.lock,
+                             fname=fname,
+                             cwd=self.args.cwd,
+                             no_exec=self.args.no_exec)
+        except DvcException as ex:
+            self.project.logger.error('Failed to run command: {}'.format(str(ex)))
+            return 1
+
         return 0
 
     @staticmethod
