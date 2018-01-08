@@ -1,8 +1,8 @@
 #define MyAppName "Data Version Control"
-#define MyAppVersion ReadIni(".\innosetup\config.ini", "Version", "version", "unknown")
+#define MyAppVersion ReadIni(".\scripts\innosetup\config.ini", "Version", "version", "unknown")
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
-#define MyAppDir "..\dist"
+#define MyAppDir "..\..\dist"
 
 [Setup]
 AppId={{8258CE8A-110E-4E0D-AE60-FEE00B15F041}
@@ -15,11 +15,11 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={code:GetDefaultDirName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile=..\LICENSE
+LicenseFile=..\..\LICENSE
 OutputBaseFilename=dvc-{#MyAppVersion}
 Compression=lzma2/max
 SolidCompression=yes
-OutputDir=..\
+OutputDir=..\..\
 ChangesEnvironment=yes
 SetupIconFile=dvc.ico
 WizardSmallImageFile=dvc_up.bmp

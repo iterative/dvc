@@ -67,7 +67,7 @@ install_dependencies()
 build_dvc()
 {
 	print_info "Building dvc binary..."
-	pyinstaller --onefile --additional-hooks-dir $(pwd)/hooks dvc/__main__.py --name dvc --distpath $BIN_DIR --specpath $BUILD_DIR
+	pyinstaller --onefile --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py --name dvc --distpath $BIN_DIR --specpath $BUILD_DIR
 }
 
 cleanup
