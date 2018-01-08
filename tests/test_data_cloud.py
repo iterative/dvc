@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from dvc.config import ConfigError
 from dvc.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL
@@ -64,7 +65,7 @@ class TestDataCloudBase(TestDvc):
 
 
 class TestDataCloudAWS(TestDataCloudBase):
-    TEST_REPO_S3 = 'dvc-test/myrepo'
+    TEST_REPO_BUCKET = 'dvc-test'
     TEST_REPO_REGION = 'us-east-2'
 
     def _should_test(self):
@@ -77,11 +78,10 @@ class TestDataCloudAWS(TestDataCloudBase):
         if not self._should_test():
             return
 
-        # Cleanup
-        os.system('aws s3 rm --recursive "s3://{}/"'.format(self.TEST_REPO_S3))
+        repo = self.TEST_REPO_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'StoragePath': self.TEST_REPO_S3,
+        config = {'StoragePath': repo,
                   'Region': self.TEST_REPO_REGION}
         cloud_settings = CloudSettings(None, config)
         self.cloud = DataCloudAWS(cloud_settings)
