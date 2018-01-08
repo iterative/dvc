@@ -16,7 +16,7 @@ BASE_DIR_S3=https://s3-$REGION.amazonaws.com/dataversioncontrol/functests
 DATA_S3=$BASE_DIR_S3/dummy_data
 CODE_S3=$BASE_DIR_S3/dummy_code
 
-TEST_REPO_S3='dvc-test/myrepo'
+TEST_REPO_S3="dvc-test/$(uuidgen)"
 TEST_REPO_REGION='us-east-2'
 
 TEST_REPO_GCP='dvc-test/myrepo'
