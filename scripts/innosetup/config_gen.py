@@ -10,5 +10,5 @@ config = ConfigParser.ConfigParser()
 config.add_section('Version')
 config.set('Version', 'Version', VERSION)
 
-with open('innosetup/config.ini', 'w') as f:
+with open('scripts/innosetup/config.ini', 'w') as f:
     config.write(f)
