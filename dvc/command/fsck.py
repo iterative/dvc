@@ -122,8 +122,10 @@ class CmdFsck(CmdBase):
 
         hardlink_md5 = caches.get(dvc_path)
         state = self.project.state.get(dvc_path)
-        fsck_deps = [FileFsckDep(stage.dvc_path, dep.md5, type(dep).__name__, dep.use_cache)
-                     for stage, dep in files_and_stages.get(dvc_path, [])]
+        fsck_deps = []
+        for stage, dep in files_and_stages.get(dvc_path, []):
+            use_cache = dep.use_cache if hasattr(dep, 'use_cache') else False
+            fsck_deps.append(FileFsckDep(stage.dvc_path, dep.md5, type(dep).__name__, use_cache))
 
         return FileFsck(dvc_path, full_path, md5, hardlink_md5, state, fsck_deps)
 

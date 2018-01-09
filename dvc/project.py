@@ -1,5 +1,4 @@
 import os
-import itertools
 import networkx as nx
 
 from dvc.logger import Logger
@@ -154,7 +153,7 @@ class Project(object):
         path = os.path.join(cwd, fname)
         outputs = Output.loads_from(self, outs, use_cache=True, cwd=cwd)
         outputs += Output.loads_from(self, outs_no_cache, use_cache=False, cwd=cwd)
-        deps = Dependency.loads_from(self, deps, use_cache=False, cwd=cwd)
+        deps = Dependency.loads_from(self, deps, cwd=cwd)
 
         stage = Stage(project=self,
                       path=path,
@@ -194,11 +193,11 @@ class Project(object):
     def _used_cache(self):
         clist = []
         for stage in self.stages():
-            for entry in itertools.chain(stage.outs, stage.deps):
-                if not entry.use_cache:
+            for out in stage.outs:
+                if not out.use_cache:
                     continue
-                if entry.cache not in clist:
-                    clist.append(entry.cache)
+                if out.cache not in clist:
+                    clist.append(out.cache)
         return clist
 
     def gc(self):
@@ -215,9 +214,9 @@ class Project(object):
     def pull(self, jobs=1):
         self.cloud.pull(self._used_cache(), jobs)
         for stage in self.stages():
-            for entry in itertools.chain(stage.outs, stage.deps):
-                if entry.use_cache:
-                    entry.link()
+            for out in stage.outs:
+                if out.use_cache:
+                    out.link()
 
     def status(self, jobs=1):
         return self.cloud.status(self._used_cache(), jobs)

@@ -39,12 +39,11 @@ class OutputAlreadyTrackedError(OutputError):
         super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
 
 
-class Output(object):
+class Dependency(object):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
-    PARAM_CACHE = 'cache'
 
-    def __init__(self, project, path, md5=None, use_cache=False):
+    def __init__(self, project, path, md5=None):
         self.project = project
         self.path = os.path.abspath(os.path.realpath(path))
 
@@ -52,7 +51,6 @@ class Output(object):
             raise OutputOutsideOfRepoError(self.path)
 
         self.md5 = md5
-        self.use_cache = use_cache
 
     @property
     def dvc_path(self):
@@ -71,62 +69,7 @@ class Output(object):
         return self.md5 != md5
 
     def changed(self):
-        if not self.use_cache:
-            changed = self._changed_md5()
-        else:
-            changed = os.path.exists(self.path) \
-                      and os.path.exists(self.cache) \
-                      and not System.samefile(self.path, self.cache)
-
-        if changed:
-            self.project.logger.debug('{} changed'.format(self.path))
-
-        return changed
-
-    @property
-    def cache(self):
-        return self.project.cache.get(self.md5)
-
-    def link(self, checkout=False):
-        if not self.use_cache:
-            raise OutputNoCacheError(self.path)
-
-        if not os.path.exists(self.path) and not os.path.exists(self.cache):
-            raise OutputNoCacheError(self.path)
-
-        if os.path.exists(self.path) and \
-           os.path.exists(self.cache) and \
-           System.samefile(self.path, self.cache) and \
-           os.stat(self.cache).st_mode & stat.S_IREAD:
-            return
-
-        if os.path.exists(self.cache):
-            if os.path.exists(self.path):
-                # This means that we already have cache for this data.
-                # We remove data and link it to existing cache to save
-                # some space.
-                os.unlink(self.path)
-            src = self.cache
-            link = self.path
-        elif not checkout:
-            src = self.path
-            link = self.cache
-        else:
-            raise OutputNoCacheError(self.path)
-
-        System.hardlink(src, link)
-
-        os.chmod(self.path, stat.S_IREAD)
-
-    def checkout(self):
-        if not self.use_cache:
-            return
-        if not os.path.exists(self.cache):
-            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.dvc_path))
-            if os.path.exists(self.path):
-                os.unlink(self.path)
-        else:
-            self.link(checkout=True)
+        return self._changed_md5()
 
     def mtime(self):
         return os.path.getmtime(self.path)
@@ -147,6 +90,118 @@ class Output(object):
             self.md5 = file_md5(self.path)[0]
             self.project.state.update(self.path, self.md5, self.mtime())
 
+    def dumpd(self, cwd):
+        return {
+            Output.PARAM_PATH: os.path.relpath(self.path, cwd),
+            Output.PARAM_MD5: self.md5,
+        }
+
+    @classmethod
+    def loadd(cls, project, d, cwd=os.curdir):
+        path = os.path.join(cwd, d[Output.PARAM_PATH])
+        md5 = d.get(Output.PARAM_MD5, None)
+        return cls(project, path, md5=md5)
+
+    @classmethod
+    def loadd_from(cls, project, d_list, cwd=os.curdir):
+        return [cls.loadd(project, x, cwd=cwd) for x in d_list]
+
+    @classmethod
+    def loads(cls, project, s, cwd=os.curdir):
+        return cls(project, os.path.join(cwd, s), md5=None)
+
+    @classmethod
+    def loads_from(cls, project, s_list, cwd=os.curdir):
+        return [cls.loads(project, x, cwd=cwd) for x in s_list]
+
+    def stage(self):
+        for stage in self.project.stages():
+            for out in stage.outs:
+                if self.path == out.path:
+                    return stage
+        return None
+
+
+class Output(Dependency):
+    PARAM_CACHE = 'cache'
+
+    def __init__(self, project, path, md5=None, use_cache=True):
+        super(Output, self).__init__(project, path, md5=md5)
+        self.use_cache = use_cache
+
+    @property
+    def cache(self):
+        return self.project.cache.get(self.md5)
+
+    def dumpd(self, cwd):
+        ret = super(Output, self).dumpd(cwd)
+        ret[Output.PARAM_CACHE] = self.use_cache
+        return ret
+
+    @classmethod
+    def loadd(cls, project, d, cwd=os.curdir):
+        ret = super(Output, cls).loadd(project, d, cwd=cwd)
+        ret.use_cache = d.get(Output.PARAM_CACHE, True)
+        return ret
+
+    @classmethod
+    def loads(cls, project, s, use_cache=True, cwd=os.curdir):
+        ret = super(Output, cls).loads(project, s, cwd=cwd)
+        ret.use_cache = use_cache
+        return ret
+
+    @classmethod
+    def loads_from(cls, project, s_list, use_cache=False, cwd=os.curdir):
+        return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
+
+    def changed(self):
+        if not self.use_cache:
+            return super(Output, self).changed()
+
+        return os.path.exists(self.path) \
+               and os.path.exists(self.cache) \
+               and not System.samefile(self.path, self.cache)
+
+    def link(self, checkout=False):
+        if not self.use_cache:
+            raise OutputNoCacheError(self.path)
+
+        if not os.path.exists(self.path) and not os.path.exists(self.cache):
+            raise OutputNoCacheError(self.path)
+
+        if os.path.exists(self.path) and \
+           os.path.exists(self.cache) and \
+           System.samefile(self.path, self.cache) and \
+           os.stat(self.cache).st_mode & stat.S_IREAD:
+            return
+
+        if os.path.exists(self.cache):
+            if os.path.exists(self.path):
+                # This means that we already have cache for this data.
+                # We remove data and link it to existing cache to save
+                # some space.
+                self.remove()
+            src = self.cache
+            link = self.path
+        elif not checkout:
+            src = self.path
+            link = self.cache
+        else:
+            raise OutputNoCacheError(self.path)
+
+        System.hardlink(src, link)
+
+        os.chmod(self.path, stat.S_IREAD)
+
+    def checkout(self):
+        if not self.use_cache:
+            return
+        if not os.path.exists(self.cache):
+            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.dvc_path))
+            self.remove()
+        else:
+            self.link(checkout=True)
+
     def save(self):
         if not self.use_cache:
             return
@@ -157,39 +212,6 @@ class Output(object):
         self.project.scm.ignore(self.path)
         self.link()
 
-    def dumpd(self, cwd):
-        return {
-            Output.PARAM_PATH: os.path.relpath(self.path, cwd),
-            Output.PARAM_MD5: self.md5,
-            Output.PARAM_CACHE: self.use_cache
-        }
-
-    @classmethod
-    def loadd(cls, project, d, cwd='.'):
-        path = os.path.join(cwd, d[Output.PARAM_PATH])
-        md5 = d.get(Output.PARAM_MD5, None)
-        use_cache = d.get(Output.PARAM_CACHE, False)
-        return cls(project, path, md5, use_cache=use_cache)
-
-    @classmethod
-    def loadd_from(cls, project, d_list, cwd='.'):
-        return [cls.loadd(project, x, cwd=cwd) for x in d_list]
-
-    @classmethod
-    def loads(cls, project, s, use_cache=False, cwd='.'):
-        return cls(project, os.path.join(cwd, s), None, use_cache=use_cache)
-
-    @classmethod
-    def loads_from(cls, project, s_list, use_cache=False, cwd='.'):
-        return [cls.loads(project, x, use_cache, cwd=cwd) for x in s_list]
-
-    def stage(self):
-        for stage in self.project.stages():
-            for out in stage.outs:
-                if self.path == out.path:
-                    return stage
-        return None
-
     def remove(self):
         if not os.path.exists(self.path):
             return
@@ -199,10 +221,6 @@ class Output(object):
         os.unlink(self.path)
         if os.path.exists(self.cache):
             os.chmod(self.cache, stat.S_IREAD)
-
-
-class Dependency(Output):
-    pass
 
 
 class Stage(object):
@@ -311,7 +329,6 @@ class Stage(object):
     def save(self):
         for dep in self.deps:
             dep.update()
-            dep.save()
 
         for out in self.outs:
             out.update()
@@ -323,5 +340,5 @@ class Stage(object):
         self.save()
 
     def checkout(self):
-        for entry in itertools.chain(self.outs, self.deps):
-            entry.checkout()
+        for out in self.outs:
+            out.checkout()
