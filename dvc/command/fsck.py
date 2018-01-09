@@ -10,7 +10,7 @@ class FsckFileDep(object):
         self.dvc_file_name = dvc_file_name
         self.md5 = dep.md5
         self.type_name = type(dep).__name__
-        self.use_cache = dep.use_cache
+        self.use_cache = dep.use_cache if hasattr(dep, 'use_cache') else False
 
     @property
     def is_output(self):
