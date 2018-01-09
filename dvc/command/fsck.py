@@ -5,23 +5,22 @@ from dvc.command.common.base import CmdBase
 from dvc.data_cloud import file_md5
 
 
-class FileFsckDep(object):
-    def __init__(self, dvc_file_name, md5, type_name, use_cache):
+class FsckFileDep(object):
+    def __init__(self, dvc_file_name, dep):
         self.dvc_file_name = dvc_file_name
-        self.md5 = md5
-        self.type_name = type_name
-        self.use_cache = use_cache
-
-    def checksum_msg(self, hardlink_md5):
-        stage_error = '!!!' if self.md5 and hardlink_md5 and self.md5 != hardlink_md5 else ''
-        return '{} {}'.format(self.md5, stage_error)
+        self.md5 = dep.md5
+        self.type_name = type(dep).__name__
+        self.use_cache = dep.use_cache
 
     @property
     def is_output(self):
         return self.type_name == stage.Output.__name__
 
 
-class FileFsck(object):
+class FsckFile(object):
+    ERR_STATUS_NO_CACHE_FILE = 'No cache file found'
+    ERR_STATUS_CHECKSUM_MISMATCH = 'Checksum missmatch'
+
     def __init__(self, dvc_path, full_path, md5, hardlink_md5, state, fsck_deps):
         self.dvc_path = dvc_path
         self.full_path = full_path
@@ -61,9 +60,9 @@ class FileFsck(object):
     @property
     def error_status(self):
         if self.checksums_mismatch():
-            return 'Checksum missmatch'
+            return self.ERR_STATUS_CHECKSUM_MISMATCH
         if self.is_data_file() and self.hardlink_md5 is None:
-            return 'No cache file found'
+            return self.ERR_STATUS_NO_CACHE_FILE
         return None
 
     def print_info(self):
@@ -82,28 +81,36 @@ class FileFsck(object):
 
         for fsck_deps in self.fsck_deps:
             print(u'    Stage file: {}'.format(fsck_deps.dvc_file_name))
-            print(u'        Checksum:           {}'.format(fsck_deps.checksum_msg(self.hardlink_md5)))
+            print(u'        Checksum:           {}'.format(fsck_deps.md5))
             print(u'        Type:               {}'.format(fsck_deps.type_name))
             if fsck_deps.use_cache:
                 print(u'        Use cache:          {}'.format(str(fsck_deps.use_cache).lower()))
         pass
 
 
-class CmdFsck(CmdBase):
-    def run(self):
-        directions = self.all_directions()
-        files_and_stages = self.directions_by_datafile(directions)
+class Fsck(object):
+    def __init__(self, project, targets=None, physical=False, all=False):
+        self.project = project
+        self.targets = targets or []
+        self.physical = physical
+        self.all = all
 
-        if self.args.targets:
+        self.files_and_stages = self.directions_by_datafile(self.all_directions())
+        self.caches = self.project.cache.find_cache(self.files_and_stages)
+
+        self.fsck_objs = self.dvc_files_to_fsck_objs()
+
+    @property
+    def is_target_defined(self):
+        return len(self.targets) > 0
+
+    def file_list(self, files_and_stages, targets):
+        if targets:
             dvc_files = [os.path.relpath(os.path.abspath(f), self.project.root_dir)
-                         for f in self.args.targets]
+                         for f in targets]
         else:
             dvc_files = files_and_stages.keys()
-
-        caches = self.project.cache.find_cache(dvc_files)
-
-        self.print_fsck(caches, dvc_files, files_and_stages)
-        return 0
+        return dvc_files
 
     def all_directions(self):
         result = []
@@ -112,28 +119,34 @@ class CmdFsck(CmdBase):
                 result.append((stage, dep))
         return result
 
-    def create_file_fsck_state(self, dvc_path, caches, files_and_stages):
+    def create_file_fsck_state(self, dvc_path):
         full_path = os.path.join(self.project.root_dir, dvc_path)
 
-        if self.args.physical:
+        if self.physical:
             md5 = file_md5(full_path)[0]
         else:
             md5 = None
 
-        hardlink_md5 = caches.get(dvc_path)
+        hardlink_md5 = self.caches.get(dvc_path)
         state = self.project.state.get(dvc_path)
-        fsck_deps = [FileFsckDep(stage.dvc_path, dep.md5, type(dep).__name__, dep.use_cache)
-                     for stage, dep in files_and_stages.get(dvc_path, [])]
+        fsck_deps = [FsckFileDep(stage.dvc_path, dep)
+                     for stage, dep in self.files_and_stages.get(dvc_path, [])]
 
-        return FileFsck(dvc_path, full_path, md5, hardlink_md5, state, fsck_deps)
+        return FsckFile(dvc_path, full_path, md5, hardlink_md5, state, fsck_deps)
 
-    def print_fsck(self, caches, dvc_files, files_and_stages):
-        for file in dvc_files:
-            file_fsck = self.create_file_fsck_state(file, caches, files_and_stages)
+    def dvc_files_to_fsck_objs(self):
+        if not self.is_target_defined or self.all:
+            files = self.files_and_stages.keys()
+        else:
+            files = map(lambda t: os.path.relpath(os.path.abspath(t), self.project.root_dir),
+                        self.targets)
 
-            if self.args.all or file_fsck.error_status:
-                file_fsck.print_info()
-        pass
+        fsck_objs = map(lambda file: self.create_file_fsck_state(file), files)
+
+        if not self.is_target_defined and not self.all:
+            fsck_objs = filter(lambda o: o.error_status is not None, fsck_objs)
+
+        return list(fsck_objs)
 
     @staticmethod
     def directions_by_datafile(directions):
@@ -145,3 +158,15 @@ class CmdFsck(CmdBase):
             result[dep.dvc_path].append((stage, dep))
 
         return result
+
+
+class CmdFsck(CmdBase):
+    def run(self):
+        return self.fsck(self.args.targets, self.args.physical, self.args.all)
+
+    def fsck(self, targets, physical, all):
+        checker = Fsck(self.project, targets, physical, all)
+
+        for file_fsck in checker.fsck_objs:
+            file_fsck.print_info()
+        return 0
