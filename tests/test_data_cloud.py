@@ -4,7 +4,7 @@ import uuid
 from dvc.config import ConfigError
 from dvc.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL
 from dvc.data_cloud import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
-from dvc.data_cloud import CloudSettings
+from dvc.cloud.instance_manager import CloudSettings
 
 from tests.basic_env import TestDvc
 
