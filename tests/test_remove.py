@@ -1,7 +1,9 @@
 import os
 
+from dvc.main import main
 from dvc.stage import Stage, OutputOutsideOfRepoError
 from dvc.project import StageNotFoundError
+from dvc.command.remove import CmdRemove
 
 from tests.basic_env import TestDvc
 
@@ -26,3 +28,15 @@ class TestRemoveFileOutsideOfRepo(TestDvc):
     def test(self):
         with self.assertRaises(OutputOutsideOfRepoError) as cx:
             self.dvc.remove(os.path.join(os.path.dirname(self.dvc.root_dir), self.FOO))
+
+
+class TestCmdRemove(TestDvc):
+    def test(self):
+        self.dvc.add(self.FOO)
+        ret = main(['remove',
+                    self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(['remove',
+                    'non-existing-file'])
+        self.assertNotEqual(ret, 0)

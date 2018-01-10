@@ -2,7 +2,7 @@ import os
 import uuid
 
 from dvc.config import ConfigError
-from dvc.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL
+from dvc.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudHTTP, DataCloudGCP
 from dvc.data_cloud import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 from dvc.cloud.instance_manager import CloudSettings
 
@@ -87,8 +87,34 @@ class TestDataCloudAWS(TestDataCloudBase):
         self.cloud = DataCloudAWS(cloud_settings)
 
     def test(self):
-        if os.getenv("TRAVIS_PULL_REQUEST") == "false" and \
-           os.getenv("TRAVIS_SECURE_ENV_VARS") == "true":
+        if self._should_test():
+            self._test_cloud()
+
+
+class TestDataCloudGCP(TestDataCloudBase):
+    TEST_REPO_GCP = 'dvc-test/myrepo'
+    TEST_REPO_GCP_PROJECT='dvc-project'
+
+    def _should_test(self):
+        if os.getenv("TRAVIS") == "true" or os.getenv("APPVEYOR") == "True":
+            return False
+        return True
+
+    def _setup_cloud(self):
+        if not self._should_test():
+            return
+
+        # Cleanup
+        os.system("gsutil rm -rf gs://{}/".format(self.TEST_REPO_GCP))
+
+        # Setup cloud
+        config = {'StoragePath': self.TEST_REPO_GCP,
+                  'Region': self.TEST_REPO_GCP_PROJECT}
+        cloud_settings = CloudSettings(None, config)
+        self.cloud = DataCloudGCP(cloud_settings)
+
+    def test(self):
+        if self._should_test():
             self._test_cloud()
 
 
@@ -104,4 +130,15 @@ class TestDataCloudLOCAL(TestDataCloudBase):
         self._test_cloud()
         self.assertTrue(os.path.isdir(self.dname))
         path = os.path.join(self.dname, self.FOO)
+        self.assertTrue(os.path.isfile(path))
+
+
+class TestDataCloudHTTP(TestDvc):
+    def test(self):
+        cloud = DataCloudHTTP(CloudSettings(None, None))
+        path = 'out'
+        url = 'https://github.com/dataversioncontrol/dvc/LICENSE'
+        ret = cloud.import_data(url, path)
+        self.assertEqual(ret, path)
+        self.assertTrue(os.path.exists(path))
         self.assertTrue(os.path.isfile(path))

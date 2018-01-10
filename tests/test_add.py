@@ -2,11 +2,13 @@ import os
 import shutil
 import filecmp
 
+from dvc.main import main
 from dvc.data_cloud import file_md5
 from dvc.stage import Stage, OutputNoCacheError, OutputOutsideOfRepoError
 from dvc.stage import OutputDoesNotExistError, OutputIsNotFileError
 from dvc.stage import OutputAlreadyTrackedError
 from dvc.project import StageNotFoundError
+from dvc.command.add import CmdAdd
 
 from tests.basic_env import TestDvc
 
@@ -55,3 +57,14 @@ class TestAddTrackedFile(TestDvc):
 
         with self.assertRaises(OutputAlreadyTrackedError) as cx:
             self.dvc.add(fname)
+
+
+class TestCmdAdd(TestDvc):
+    def test(self):
+        ret = main(['add',
+                    self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(['add',
+                    'non-existing-file'])
+        self.assertNotEqual(ret, 0)

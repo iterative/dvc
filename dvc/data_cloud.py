@@ -10,25 +10,9 @@ import filecmp
 import math
 
 from boto.s3.connection import S3Connection
-try:
-    import httplib
-except ImportError:
-    # Python3 workaround for ResumableDownloadHandler.
-    # See https://github.com/boto/boto/pull/3755.
-    import sys
-    import http.client as httplib
-    sys.modules['httplib'] = httplib
 from boto.s3.resumable_download_handler import ResumableDownloadHandler
 from google.cloud import storage as gc
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    # Python 3
-    # pylint: disable=no-name-in-module, import-error
-    from urllib.parse import urlparse
-
-import dvc
 from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
@@ -234,20 +218,21 @@ class DataCloudLOCAL(DataCloudBase):
 
         return (local_exists, remote_exists, diff)
 
+
 class DataCloudHTTP(DataCloudBase):
     """
     Driver for http cloud.
     """
-    def push(self, item):
+    def push(self, path):
         raise Exception('Not implemented yet')
 
-    def pull(self, item):
+    def pull(self, path):
         raise Exception('Not implemented yet')
 
-    def remove(self, item):
+    def remove(self, path):
         raise Exception('Not implemented yet')
 
-    def status(self, item):
+    def status(self, path):
         raise Exception('Not implemented yet')
 
     @staticmethod
@@ -327,12 +312,12 @@ class DataCloudHTTP(DataCloudBase):
         Logger.debug('Checksum matches')
         return True
 
-    def import_data(self, url, item):
+    def import_data(self, url, path):
         """
         Download single file from url.
         """
 
-        tmp_file = self.tmp_file(item.data.dvc)
+        tmp_file = self.tmp_file(path)
 
         downloaded, header = self._downloaded_size(tmp_file)
         req = requests.get(url, stream=True, headers=header)
@@ -347,10 +332,9 @@ class DataCloudHTTP(DataCloudBase):
         if not self._verify_md5(req, tmp_file):
             return None
 
-        os.rename(tmp_file, item.data.dvc)
-        item.move_data_to_cache()
+        os.rename(tmp_file, path)
 
-        return item
+        return path
 
 
 class DataCloudAWS(DataCloudBase):

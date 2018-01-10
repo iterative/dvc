@@ -3,6 +3,9 @@ import stat
 import shutil
 import filecmp
 
+from dvc.main import main
+from dvc.command.repro import CmdRepro
+
 from tests.basic_env import TestDvc
 
 
@@ -70,3 +73,14 @@ class TestReproPhony(TestReproChangedData):
         self.dvc.reproduce(stage.path)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+
+
+class TestCmdRepro(TestRepro):
+    def test(self):
+        ret = main(['repro',
+                    self.file1_stage])
+        self.assertEqual(ret, 0)
+
+        ret = main(['repro',
+                    'non-existing-file'])
+        self.assertNotEqual(ret, 0)
