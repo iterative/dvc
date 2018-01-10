@@ -73,7 +73,7 @@ class Project(object):
         self.cloud = DataCloud(self.config._config)
 
     @staticmethod
-    def init(root_dir):
+    def init(root_dir=os.curdir):
         """
         Initiate dvc project in directory.
 
