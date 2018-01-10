@@ -16,7 +16,6 @@ from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.show_workflow import CmdShowWorkflow
-from dvc.command.instance_create import CmdInstanceCreate
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.checkout import CmdCheckout
@@ -221,84 +220,6 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Collect garbage')
     gc_parser.set_defaults(func=CmdGC)
-
-    # Cloud
-    ex_parser = subparsers.add_parser(
-                        'ex',
-                        parents=[parent_parser],
-                        help='Experimental commands')
-    ex_subparsers = ex_parser.add_subparsers(
-                        dest='cmd',
-                        help='Use dvc cloud CMD --help for command-specific help')
-
-    cloud_parser = ex_subparsers.add_parser(
-                        'cloud',
-                        parents=[parent_parser],
-                        help='Cloud manipulation')
-    cloud_subparsers = cloud_parser.add_subparsers(
-                        dest='cmd',
-                        help='Use dvc cloud CMD --help for command-specific help')
-
-    # Instance create
-    instance_create_parser = cloud_subparsers.add_parser(
-                        'create',
-                        help='Create cloud instance')
-    instance_create_parser.add_argument('name',
-                                        # metavar='',
-                                        nargs='?',
-                                        help='Instance name.')
-    instance_create_parser.add_argument('-c',
-                                        '--cloud',
-                                        # metavar='',
-                                        help='Cloud: AWS, GCP.')
-    instance_create_parser.add_argument('-t',
-                                        '--type',
-                                        # metavar='',
-                                        help='Instance type.')
-    instance_create_parser.add_argument('-i',
-                                        '--image',
-                                        # metavar='',
-                                        help='Instance image.')
-    instance_create_parser.add_argument('--spot-price',
-                                        metavar='PRICE',
-                                        help='Spot instance price in $ i.e. 1.54')
-    instance_create_parser.add_argument('--spot-timeout',
-                                        metavar='TIMEOUT',
-                                        type=int,
-                                        help='Spot instances waiting timeout in seconds.')
-    instance_create_parser.add_argument('--keypair-name',
-                                        metavar='KEYPAIR',
-                                        help='The name of key pair for instance launch')
-    instance_create_parser.add_argument('--keypair-dir',
-                                        metavar='DIR',
-                                        help='The directory of key pairs')
-    instance_create_parser.add_argument('--security-group',
-                                        metavar='GROUP',
-                                        help='Security group')
-    instance_create_parser.add_argument('--region',
-                                        help='Region')
-    instance_create_parser.add_argument('--zone',
-                                        help='Zone')
-    instance_create_parser.add_argument('--subnet-id',
-                                        metavar='SUBNET',
-                                        help='Subnet ID')
-    instance_create_parser.add_argument('--storage',
-                                        # metavar='',
-                                        help='The name of attachable storage volume.')
-    # WHERE EBS IS?
-    instance_create_parser.add_argument('--monitoring',
-                                        action='store_true',
-                                        default=False,
-                                        help='Enable EC2 instance monitoring')
-    instance_create_parser.add_argument('--ebs-optimized',
-                                        action='store_true',
-                                        default=False,
-                                        help='Enable EBS I\O optimization')
-    instance_create_parser.add_argument('--disks-to-ride0',
-                                        action='store_true',
-                                        default=False,
-                                        help='Detect all ephemeral disks and stripe together in raid-0')
-    instance_create_parser.set_defaults(func=CmdInstanceCreate)
 
     # Config
     config_parser = subparsers.add_parser(
