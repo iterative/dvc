@@ -1,3 +1,8 @@
+#!/bin/bash
+
+set -x
+set -e
+
 ./unittests.sh
 ./functests.sh
 

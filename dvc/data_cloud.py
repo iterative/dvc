@@ -10,6 +10,14 @@ import filecmp
 import math
 
 from boto.s3.connection import S3Connection
+try:        
+    import httplib        
+except ImportError:       
+    # Python3 workaround for ResumableDownloadHandler.        
+    # See https://github.com/boto/boto/pull/3755.     
+    import sys        
+    import http.client as httplib     
+    sys.modules['httplib'] = httplib
 from boto.s3.resumable_download_handler import ResumableDownloadHandler
 from google.cloud import storage as gc
 

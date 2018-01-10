@@ -109,7 +109,7 @@ class Workflow(object):
 
         g = nx.DiGraph(name='DVC Workflow', directed=False)
 
-        for hash in set(self._edges.keys() + self._back_edges.keys()):
+        for hash in set(list(self._edges.keys()) + list(self._back_edges.keys())):
             commit = self._commits[hash]
 
             g.add_node(hash,
