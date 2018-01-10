@@ -51,7 +51,7 @@ var
 function GetDefaultDirName(Dummy: string): string;
 begin
 	if IsAdminLoggedOn then begin
-		Result := ExpandConstant('{pf64}\{#MyAppName}');
+		Result := ExpandConstant('{pf}\{#MyAppName}');
 	end else begin
 		Result := ExpandConstant('{userpf}\{#MyAppName}');
 	end;
