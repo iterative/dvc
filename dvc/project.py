@@ -26,6 +26,11 @@ class StageNotFoundError(DvcException):
         super(StageNotFoundError, self).__init__(msg)
 
 
+class ReproductionError(DvcException):
+    def __init__(self, dvc_file_name, msg):
+        super(ReproductionError, self).__init__(u'Failed to reproduce \'{}\': {}'.format(dvc_file_name, msg))
+
+
 class Pipeline(object):
 
     def __init__(self, project, G):
@@ -176,9 +181,12 @@ class Project(object):
 
         if recursive:
             for n in nx.dfs_postorder_nodes(self.graph(), node):
-                stages[n].reproduce(force=force)
-                stages[n].dump()
-                reproduced.append(stages[n])
+                try:
+                    stages[n].reproduce(force=force)
+                    stages[n].dump()
+                    reproduced.append(stages[n])
+                except Exception as ex:
+                    raise ReproductionError(n, ex.message)
 
         stages[node].reproduce(force=force)
         stages[node].dump()
