@@ -1,12 +1,15 @@
-from unittest import TestCase
-
+from dvc.main import main
 from dvc.graph.workflow import Workflow,\
     CollapseDvcReproCommitsStrategy, CollapseNotMeticsCommitsStrategy
 from dvc.graph.commit import Commit
 
+from tests.basic_env import TestDvc
 
-class TestWorkflow(TestCase):
+
+class TestWorkflow(TestDvc):
     def setUp(self):
+        super(TestWorkflow, self).setUp()
+
         self._commit4 = Commit('4', '3', 'name1', 'today', 'comment4')
         self._commit3 = Commit('3', '2', 'name1', 'today', 'DVC repro-run ...')
         self._commit2 = Commit('2', '1', 'name1', 'today', 'DVC repro-run ...')
@@ -148,3 +151,8 @@ class TestWorkflow(TestCase):
         is_collapsed_commit_presented(self, wf._commits['3'], not_metric_commit2)
         is_collapsed_commit_presented(self, wf._commits['3'], self._commit1)
         pass
+
+    def test_cli(self):
+        ret = main(['show',
+                    'workflow'])
+        self.assertEqual(ret, 0)

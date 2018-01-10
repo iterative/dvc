@@ -12,7 +12,7 @@ class CmdShowPipeline(CmdBase):
             A.write(fname + '.dot')
             A.draw(fname + '.jpeg', format='jpeg', prog='dot')
         except Exception as exc:
-            Logger.error('Failed to draw dependency graph for {}: {}'.format(target, exc))
+            self.project.logger.error('Failed to draw dependency graph for {}: {}'.format(target, exc))
             return 1
 
         return 0
@@ -22,7 +22,7 @@ class CmdShowPipeline(CmdBase):
             if fname in s.nodes():
                 return s
 
-        return self.g
+        return None
 
     def draw_targets(self, target):
         if not target:
