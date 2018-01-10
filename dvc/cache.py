@@ -8,6 +8,8 @@ class Cache(object):
 
     def __init__(self, dvc_dir):
         self.cache_dir = os.path.abspath(os.path.realpath(os.path.join(dvc_dir, self.CACHE_DIR)))
+        if not os.path.exists(self.cache_dir):
+            os.mkdir(self.cache_dir)
 
     @staticmethod
     def init(dvc_dir):
