@@ -1,4 +1,5 @@
 import re
+import sys
 from collections import defaultdict
 
 from dvc.logger import Logger
@@ -65,7 +66,8 @@ class CmdShowWorkflow(CmdBase):
     def branches_multimap(self):
         git_cmd  = ['git', 'show-ref', '--abbrev={}'.format(self.COMMIT_LEN)]
         lines = Executor.exec_cmd_only_success(git_cmd).split('\n')
-        items_full = map(unicode.split, lines)
+        func = unicode.split if sys.version_info[0] < 3 else str.split
+        items_full = map(func, lines)
         items = map(lambda it: (it[0], re.sub(r'^refs/heads/', '', it[1])), items_full)
 
         result = defaultdict(list)

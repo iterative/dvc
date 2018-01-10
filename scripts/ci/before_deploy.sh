@@ -1,3 +1,8 @@
+#!/bin/bash
+
+set -x
+set -e
+
 if [[ "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
 	git config --local user.name 'Nightly Travis Builds'
 	git config --local user.email '<>'
