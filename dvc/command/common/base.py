@@ -8,9 +8,9 @@ from dvc.exceptions import DvcException
 class CmdBase(object):
     def __init__(self, args):
         if args.quiet and not args.verbose:
-            self.project.logger.be_quiet()
+            Logger.be_quiet()
         elif not args.quiet and args.verbose:
-            self.project.logger.be_verbose()
+            Logger.be_verbose()
 
         self.project = Project(self._find_root())
         self.args = args
