@@ -26,6 +26,13 @@ class StageNotFoundError(DvcException):
         super(StageNotFoundError, self).__init__(msg)
 
 
+class ReproductionError(DvcException):
+    def __init__(self, dvc_file_name, msg):
+        self.dvc_file_name = dvc_file_name
+        self.msg = msg
+        super(ReproductionError, self).__init__(u'Failed to reproduce \'{}\': {}'.format(dvc_file_name, msg))
+
+
 class Pipeline(object):
 
     def __init__(self, project, G):
@@ -168,23 +175,29 @@ class Project(object):
         return stage
 
     def reproduce(self, target, recursive=True, force=False):
-        reproduced = []
         stages = nx.get_node_attributes(self.graph(), 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
         if node not in stages:
             raise StageNotFoundError(target)
 
-        if recursive:
-            for n in nx.dfs_postorder_nodes(self.graph(), node):
-                stages[n].reproduce(force=force)
-                stages[n].dump()
-                reproduced.append(stages[n])
+        reproduced = self._reproduce_stages(force, node, stages) if recursive else []
 
         stages[node].reproduce(force=force)
         stages[node].dump()
         reproduced.append(stages[node])
 
         return reproduced
+
+    def _reproduce_stages(self, force, node, stages):
+        result = []
+        for n in nx.dfs_postorder_nodes(self.graph(), node):
+            try:
+                stages[n].reproduce(force=force)
+                stages[n].dump()
+                result.append(stages[n])
+            except Exception as ex:
+                raise ReproductionError(n, ex.message)
+        return result
 
     def checkout(self):
         for stage in self.stages():
