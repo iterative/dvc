@@ -196,7 +196,7 @@ class Project(object):
                 stages[n].dump()
                 result.append(stages[n])
             except Exception as ex:
-                raise ReproductionError(n, ex.message)
+                raise ReproductionError(n, str(ex))
         return result
 
     def checkout(self):

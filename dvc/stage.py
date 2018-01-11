@@ -158,9 +158,9 @@ class Output(Dependency):
         if not self.use_cache:
             return super(Output, self).changed()
 
-        return os.path.exists(self.path) \
-               and os.path.exists(self.cache) \
-               and not System.samefile(self.path, self.cache)
+        return not os.path.exists(self.path) or \
+               not os.path.exists(self.cache) or \
+               not System.samefile(self.path, self.cache)
 
     def link(self, checkout=False):
         if not self.use_cache:

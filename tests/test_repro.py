@@ -5,6 +5,7 @@ import filecmp
 
 from dvc.main import main
 from dvc.command.repro import CmdRepro
+from dvc.project import ReproductionError
 
 from tests.basic_env import TestDvc
 
@@ -73,6 +74,15 @@ class TestReproPhony(TestReproChangedData):
         self.dvc.reproduce(stage.path)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+
+
+class TestNonExistingOutput(TestRepro):
+    def test(self):
+        os.chmod(self.FOO, stat.S_IWRITE)
+        os.unlink(self.FOO)
+
+        with self.assertRaises(ReproductionError) as cx:
+            self.dvc.reproduce(self.file1_stage)
 
 
 class TestCmdRepro(TestRepro):
