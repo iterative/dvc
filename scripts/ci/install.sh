@@ -3,7 +3,13 @@
 set -x
 set -e
 
-sudo apt-get install graphviz
+
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+	brew install graphviz
+else
+	sudo apt-get install graphviz
+fi
+
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -r test-requirements.txt
