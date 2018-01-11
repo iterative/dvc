@@ -56,6 +56,10 @@ class Dependency(object):
     def dvc_path(self):
         return os.path.relpath(self.path, self.project.root_dir)
 
+    @property
+    def rel_path(self):
+        return os.path.relpath(self.path, '.')
+
     def _changed_md5(self):
         if not os.path.exists(self.path):
             return True
@@ -246,6 +250,10 @@ class Stage(object):
         return os.path.relpath(self.path)
 
     @property
+    def is_data_source(self):
+        return self.cmd is None
+
+    @property
     def dvc_path(self):
         return os.path.relpath(self.path, self.project.root_dir)
 
@@ -275,6 +283,8 @@ class Stage(object):
         os.unlink(self.path)
 
     def reproduce(self, force=False):
+        self.check_missing_data_sources()
+
         if not self.changed() and not force:
             return
 
@@ -285,6 +295,21 @@ class Stage(object):
         self.project.logger.info("Reproducing {}:\n\t{}".format(self.relpath, self.cmd))
         self.run()
         self.project.logger.debug("{} was reproduced".format(self.relpath))
+
+    def check_missing_data_sources(self):
+        if not self.is_data_source:
+            return
+
+        missing_files = list(filter(lambda f: not os.path.exists(f),
+                                    map(lambda out: out.rel_path, self.outs)))
+
+        if missing_files:
+            source = 'source'
+            if len(missing_files) > 1:
+                source += 's'
+            raise DvcException(u'missing data {} - {}'.format(
+                source, ', '.join(missing_files)))
+        pass
 
     @staticmethod
     def loadd(project, d, path):
