@@ -58,6 +58,5 @@ class Executor(object):
         code, out, err = Executor.exec_cmd(cmd, stdout_file=stdout_file,
                                            stderr_file=stderr_file, cwd=cwd, shell=shell)
         if code != 0:
-            cmd_str = ' '.join(cmd) if type(cmd) == list else cmd
-            raise ExecutorError('Exec command error ({}):\n{}\n{}'.format(cmd_str, out, err))
+            raise ExecutorError('Exec command error:\n{}'.format(err))
         return out

@@ -5,8 +5,8 @@ import filecmp
 
 from dvc.main import main
 from dvc.data_cloud import file_md5
-from dvc.stage import Stage, OutputNoCacheError, OutputOutsideOfRepoError
-from dvc.stage import OutputDoesNotExistError, OutputIsNotFileError
+from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
+from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileError
 from dvc.project import StageNotFoundError
 
 from tests.test_repro import TestRepro
