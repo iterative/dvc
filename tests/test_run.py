@@ -15,7 +15,6 @@ class TestRun(TestDvc):
         deps = [self.FOO, self.CODE]
         outs = [os.path.join(self.dvc.root_dir, 'out')]
         outs_no_cache = []
-        locked = False
         fname = os.path.join(self.dvc.root_dir, 'out.dvc')
         cwd = os.curdir
 
@@ -24,7 +23,6 @@ class TestRun(TestDvc):
                              deps=deps,
                              outs=outs,
                              outs_no_cache=outs_no_cache,
-                             locked=locked,
                              fname=fname,
                              cwd=cwd)
 
@@ -35,7 +33,6 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].path, outs[0])
         self.assertEqual(stage.outs[0].md5, file_md5(self.FOO)[0])  
-        self.assertEqual(stage.locked, locked)
         self.assertTrue(stage.path, fname)
 
 
@@ -45,7 +42,6 @@ class TestRunEmpty(TestDvc):
                      deps=[],
                      outs=[],
                      outs_no_cache=[],
-                     locked=False,
                      fname='empty.dvc',
                      cwd=os.curdir)
 

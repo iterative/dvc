@@ -12,7 +12,6 @@ from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus
-from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.show_workflow import CmdShowWorkflow
@@ -100,11 +99,6 @@ def parse_args(argv=None):
                         action='append',
                         default=[],
                         help='Declare output regular file (sync to Git) for reproducible cmd.')
-    run_parser.add_argument('-l',
-                        '--lock',
-                        action='store_true',
-                        default=False,
-                        help='Lock data item - disable reproduction.')
     run_parser.add_argument('-f',
                         '--file',
                         help='Specify name of the state file')
@@ -196,23 +190,6 @@ def parse_args(argv=None):
                         nargs='+',
                         help='Input files/directories')
     import_parser.set_defaults(func=CmdAdd)
-
-    # Lock
-    lock_parser = subparsers.add_parser(
-                        'lock',
-                        parents=[parent_parser],
-                        help='Lock')
-    lock_parser.add_argument('-u',
-                        '--unlock',
-                        action='store_true',
-                        default=False,
-                        help='Unlock stage - enable reproduction.')
-    lock_parser.add_argument(
-                        'files',
-                        nargs='*',
-                        default=[Stage.STAGE_FILE],
-                        help='Stages to lock or unlock.')
-    lock_parser.set_defaults(func=CmdLock)
 
     # Garbage collector
     gc_parser = subparsers.add_parser(
