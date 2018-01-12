@@ -4,9 +4,9 @@ import filecmp
 
 from dvc.main import main
 from dvc.data_cloud import file_md5
-from dvc.stage import Stage, OutputNoCacheError, OutputOutsideOfRepoError
-from dvc.stage import OutputDoesNotExistError, OutputIsNotFileError
-from dvc.stage import OutputAlreadyTrackedError
+from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
+from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileError
+from dvc.stage import CmdOutputAlreadyTrackedError
 from dvc.project import StageNotFoundError
 from dvc.command.add import CmdAdd
 
@@ -30,13 +30,13 @@ class TestAdd(TestDvc):
 
 class TestAddNonExistentFile(TestDvc):
     def test(self):
-        with self.assertRaises(OutputDoesNotExistError) as cx:
+        with self.assertRaises(CmdOutputDoesNotExistError) as cx:
             self.dvc.add('non_existent_file')
 
 
 class TestAddFileOutsideOfRepo(TestDvc):
     def test(self):
-        with self.assertRaises(OutputOutsideOfRepoError) as cx:
+        with self.assertRaises(CmdOutputOutsideOfRepoError) as cx:
             self.dvc.add(os.path.join(os.path.dirname(self.dvc.root_dir), self.FOO))
 
 
@@ -44,7 +44,7 @@ class TestAddDirectory(TestDvc):
     def test(self):
         dname = 'directory'
         os.mkdir(dname)
-        with self.assertRaises(OutputIsNotFileError) as cx:
+        with self.assertRaises(CmdOutputIsNotFileError) as cx:
             self.dvc.add(dname)
 
 
@@ -55,7 +55,7 @@ class TestAddTrackedFile(TestDvc):
         self.dvc.scm.add([fname])
         self.dvc.scm.commit('add {}'.format(fname))
 
-        with self.assertRaises(OutputAlreadyTrackedError) as cx:
+        with self.assertRaises(CmdOutputAlreadyTrackedError) as cx:
             self.dvc.add(fname)
 
 

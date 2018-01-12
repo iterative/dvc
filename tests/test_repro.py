@@ -6,6 +6,7 @@ import filecmp
 from dvc.main import main
 from dvc.command.repro import CmdRepro
 from dvc.project import ReproductionError
+from dvc.data_cloud import file_md5
 
 from tests.basic_env import TestDvc
 
@@ -14,7 +15,8 @@ class TestRepro(TestDvc):
     def setUp(self):
         super(TestRepro, self).setUp()
 
-        self.dvc.add(self.FOO)
+        self.foo_stage = self.dvc.add(self.FOO)
+
         self.file1 = 'file1'
         self.file1_stage = self.file1 + '.dvc'
         self.dvc.run(fname=self.file1_stage,
@@ -83,6 +85,16 @@ class TestNonExistingOutput(TestRepro):
 
         with self.assertRaises(ReproductionError) as cx:
             self.dvc.reproduce(self.file1_stage)
+
+
+class TestReproDataSource(TestReproChangedData):
+    def test(self):
+        self.swap_foo_with_bar()
+
+        stages = self.dvc.reproduce(self.foo_stage.path)
+
+        self.assertTrue(filecmp.cmp(self.FOO, self.BAR))
+        self.assertEqual(stages[0].outs[0].md5, file_md5(self.BAR)[0])
 
 
 class TestCmdRepro(TestRepro):

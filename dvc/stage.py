@@ -10,33 +10,49 @@ from dvc.executor import Executor
 
 
 class OutputError(DvcException):
+    pass
+
+
+class MissingDataSource(OutputError):
+    def __init__(self, missing_files):
+        assert len(missing_files) > 0
+
+        source = 'source'
+        if len(missing_files) > 1:
+            source += 's'
+
+        msg = u'missing data {}: {}'.format(source, ', '.join(missing_files))
+        super(MissingDataSource, self).__init__(msg)
+
+
+class CmdOutputError(DvcException):
     def __init__(self, path, msg):
-        super(OutputError, self).__init__('Output file \'{}\' error: {}'.format(path, msg))
+        super(CmdOutputError, self).__init__('Output file \'{}\' error: {}'.format(path, msg))
 
 
-class OutputNoCacheError(OutputError):
+class CmdOutputNoCacheError(CmdOutputError):
     def __init__(self, path):
-        super(OutputNoCacheError, self).__init__(path, 'no cache')
+        super(CmdOutputNoCacheError, self).__init__(path, 'no cache')
 
 
-class OutputOutsideOfRepoError(OutputError):
+class CmdOutputOutsideOfRepoError(CmdOutputError):
     def __init__(self, path):
-        super(OutputOutsideOfRepoError, self).__init__(path, 'outside of repository')
+        super(CmdOutputOutsideOfRepoError, self).__init__(path, 'outside of repository')
 
 
-class OutputDoesNotExistError(OutputError):
+class CmdOutputDoesNotExistError(CmdOutputError):
     def __init__(self, path):
-        super(OutputDoesNotExistError, self).__init__(path, 'does not exist')
+        super(CmdOutputDoesNotExistError, self).__init__(path, 'does not exist')
 
 
-class OutputIsNotFileError(OutputError):
+class CmdOutputIsNotFileError(CmdOutputError):
     def __init__(self, path):
-        super(OutputIsNotFileError, self).__init__(path, 'not a file')
+        super(CmdOutputIsNotFileError, self).__init__(path, 'not a file')
 
 
-class OutputAlreadyTrackedError(OutputError):
+class CmdOutputAlreadyTrackedError(CmdOutputError):
     def __init__(self, path):
-        super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
+        super(CmdOutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
 
 
 class Dependency(object):
@@ -48,13 +64,17 @@ class Dependency(object):
         self.path = os.path.abspath(os.path.realpath(path))
 
         if not self.path.startswith(self.project.root_dir):
-            raise OutputOutsideOfRepoError(self.path)
+            raise CmdOutputOutsideOfRepoError(self.path)
 
         self.md5 = md5
 
     @property
     def dvc_path(self):
         return os.path.relpath(self.path, self.project.root_dir)
+
+    @property
+    def rel_path(self):
+        return os.path.relpath(self.path, '.')
 
     def _changed_md5(self):
         if not os.path.exists(self.path):
@@ -76,9 +96,9 @@ class Dependency(object):
 
     def update(self):
         if not os.path.exists(self.path):
-            raise OutputDoesNotExistError(self.path)
+            raise CmdOutputDoesNotExistError(self.rel_path)
         if not os.path.isfile(self.path):
-            raise OutputIsNotFileError(self.path)
+            raise CmdOutputIsNotFileError(self.path)
 
         state = self.project.state.get(self.path)
         if state and state.mtime == self.mtime():
@@ -164,10 +184,10 @@ class Output(Dependency):
 
     def link(self, checkout=False):
         if not self.use_cache:
-            raise OutputNoCacheError(self.path)
+            raise CmdOutputNoCacheError(self.path)
 
         if not os.path.exists(self.path) and not os.path.exists(self.cache):
-            raise OutputNoCacheError(self.path)
+            raise CmdOutputNoCacheError(self.path)
 
         if os.path.exists(self.path) and \
            os.path.exists(self.cache) and \
@@ -187,7 +207,7 @@ class Output(Dependency):
             src = self.path
             link = self.cache
         else:
-            raise OutputNoCacheError(self.path)
+            raise CmdOutputNoCacheError(self.path)
 
         System.hardlink(src, link)
 
@@ -207,7 +227,7 @@ class Output(Dependency):
             return
 
         if self.project.scm.is_tracked(self.path):
-            raise OutputAlreadyTrackedError(self.path)
+            raise CmdOutputAlreadyTrackedError(self.path)
 
         self.project.scm.ignore(self.path)
         self.link()
@@ -249,6 +269,10 @@ class Stage(object):
     def dvc_path(self):
         return os.path.relpath(self.path, self.project.root_dir)
 
+    @property
+    def is_data_source(self):
+        return self.cmd is None
+
     @staticmethod
     def is_stage_file(path):
         if not os.path.isfile(path):
@@ -282,9 +306,7 @@ class Stage(object):
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs()
 
-        self.project.logger.info("Reproducing {}:\n\t{}".format(self.relpath, self.cmd))
         self.run()
-        self.project.logger.debug("{} was reproduced".format(self.relpath))
 
     @staticmethod
     def loadd(project, d, path):
@@ -335,9 +357,22 @@ class Stage(object):
             out.save()
 
     def run(self):
-        if self.cmd:
+        if not self.is_data_source:
+            self.project.logger.info(u'Reproducing \'{}\':\n\t{}'.format(self.relpath, self.cmd))
+
             Executor.exec_cmd_only_success(self.cmd, cwd=str(self.cwd), shell=True)
-        self.save()
+            self.save()
+
+            self.project.logger.debug(u'\'{}\' was reproduced'.format(self.relpath))
+        else:
+            self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
+            self.check_missing_outputs()
+            self.save()
+
+    def check_missing_outputs(self):
+        missing_outs = [out.rel_path for out in self.outs if not os.path.exists(out.rel_path)]
+        if missing_outs:
+            raise MissingDataSource(missing_outs)
 
     def checkout(self):
         for out in self.outs:
