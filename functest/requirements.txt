@@ -1,6 +1,0 @@
-dvc
-pandas
-sklearn
-scipy
-configobj
-networkx
