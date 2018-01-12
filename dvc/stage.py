@@ -367,6 +367,7 @@ class Stage(object):
         else:
             self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
             self.check_missing_outputs()
+            self.save()
 
     def check_missing_outputs(self):
         missing_outs = [out.rel_path for out in self.outs if not os.path.exists(out.rel_path)]
