@@ -8,30 +8,35 @@ class StateEntry(object):
     PARAM_PATH = 'path'
     PARAM_MTIME = 'mtime'
     PARAM_MD5 = 'md5'
+    PARAM_INODE = 'inode'
 
-    def __init__(self, root_dir, path, md5, mtime):
+    def __init__(self, root_dir, path, md5, mtime, inode):
         self.root_dir = root_dir
         self.path = path
         self.mtime = mtime
         self.md5 = md5
+        self.inode = inode
         self.dvc_path = os.path.relpath(self.path, self.root_dir)
 
-    def update(self, md5, mtime):
+    def update(self, md5, mtime, inode):
         self.mtime = mtime
         self.md5 = md5
+        self.inode = inode
 
     @staticmethod
     def loadd(root_dir, d):
         path = os.path.join(root_dir, d[StateEntry.PARAM_PATH])
         mtime = d[StateEntry.PARAM_MTIME]
         md5 = d[StateEntry.PARAM_MD5]
-        return StateEntry(root_dir, path, md5, mtime)
+        inode = d[StateEntry.PARAM_INODE]
+        return StateEntry(root_dir, path, md5, mtime, inode)
 
     def dumpd(self):
         return {
             self.PARAM_PATH: self.dvc_path,
             self.PARAM_MD5: self.md5,
-            self.PARAM_MTIME: self.mtime
+            self.PARAM_MTIME: self.mtime,
+            self.PARAM_INODE: self.inode
         }
 
 
@@ -53,18 +58,18 @@ class State(object):
     def init(root_dir, dvc_dir):
         return State(root_dir, dvc_dir)
 
-    def update(self, path, md5, mtime):
+    def update(self, path, md5, mtime, inode):
         existing = self.get(path)
         if not existing:
-            return self.add(path, md5, mtime)
+            return self.add(path, md5, mtime, inode)
 
-        state = StateEntry(self.root_dir, path, md5, mtime)
+        state = StateEntry(self.root_dir, path, md5, mtime, inode)
         self._db.update(state.dumpd(), self._q.path == state.dvc_path)
 
         return state
 
-    def add(self, path, md5, mtime):
-        entry = StateEntry(self.root_dir, path, md5, mtime)
+    def add(self, path, md5, mtime, inode):
+        entry = StateEntry(self.root_dir, path, md5, mtime, inode)
         self._db.insert(entry.dumpd())
         return entry
 

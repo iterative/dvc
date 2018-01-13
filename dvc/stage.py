@@ -94,6 +94,9 @@ class Dependency(object):
     def mtime(self):
         return os.path.getmtime(self.path)
 
+    def inode(self):
+        return os.stat(self.path).st_ino
+
     def update(self):
         if not os.path.exists(self.path):
             raise CmdOutputDoesNotExistError(self.rel_path)
@@ -101,14 +104,14 @@ class Dependency(object):
             raise CmdOutputIsNotFileError(self.path)
 
         state = self.project.state.get(self.path)
-        if state and state.mtime == self.mtime():
+        if state and state.mtime == self.mtime() and state.inode == self.inode():
             md5 = state.md5
             msg = '{} using md5 {} from state file'
             self.project.logger.debug(msg.format(self.path, md5))
             self.md5 = md5
         else:
             self.md5 = file_md5(self.path)[0]
-            self.project.state.update(self.path, self.md5, self.mtime())
+            self.project.state.update(self.path, self.md5, self.mtime(), self.inode())
 
     def dumpd(self, cwd):
         return {
