@@ -7,7 +7,6 @@ from dvc.command.data_sync import CmdDataPull, CmdDataPush, CmdDataStatus
 from dvc.command.repro import CmdRepro
 from dvc.command.add import CmdAdd
 from dvc.command.remove import CmdRemove
-from dvc.command.lock import CmdLock
 from dvc.command.gc import CmdGC
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
@@ -49,7 +48,6 @@ class TestRun(TestDvc):
                            '--outs', out2,
                            '-O', out_no_cache1,
                            '--outs-no-cache', out_no_cache2,
-                           '-l', '--lock',
                            '-f', fname,
                            '--file', fname,
                            '-c', cwd,
@@ -123,21 +121,6 @@ class TestAdd(TestDvc):
 
         self.assertIsInstance(args.func(args), CmdAdd)
         self.assertEqual(args.targets, [target1, target2])
-
-
-class TestLock(TestDvc):
-    def test(self):
-        target1 = '1'
-        target2 = '2'
-
-        args = parse_args(['lock',
-                           target1,
-                           target2,
-                           '-u', '--unlock'])
-
-        self.assertIsInstance(args.func(args), CmdLock)
-        self.assertEqual(args.files, [target1, target2])
-        self.assertEqual(args.unlock, True)
 
 
 class TestGC(TestDvc):

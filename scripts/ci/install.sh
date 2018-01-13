@@ -5,7 +5,8 @@ set -e
 
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-	brew install graphviz
+	wget https://s3-us-west-2.amazonaws.com/dataversioncontrol/graphviz-2.38.0.pkg
+	sudo installer -pkg graphviz-2.38.0.pkg -target /
 else
 	sudo apt-get install graphviz
 fi

@@ -4,7 +4,6 @@ set -x
 set -e
 
 ./unittests.sh
-./functests.sh
 
 if [[ ! -z "$TRAVIS_TAG" ]]; then
 	if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then

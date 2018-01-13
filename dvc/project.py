@@ -125,8 +125,7 @@ class Project(object):
                       cmd=None,
                       cwd=cwd,
                       outs=outputs,
-                      deps=[],
-                      locked=True)
+                      deps=[])
         stage.save()
         stage.dump()
         return stage
@@ -152,7 +151,6 @@ class Project(object):
             deps=[],
             outs=[],
             outs_no_cache=[],
-            locked=False,
             fname=Stage.STAGE_FILE,
             cwd=os.curdir,
             no_exec=False):
@@ -167,8 +165,7 @@ class Project(object):
                       cmd=cmd,
                       cwd=cwd,
                       outs=outputs,
-                      deps=deps,
-                      locked=locked)
+                      deps=deps)
         if not no_exec:
             stage.run()
         stage.dump()

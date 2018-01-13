@@ -23,7 +23,6 @@ class TestAdd(TestDvc):
         self.assertTrue(os.path.isfile(stage.path))
         self.assertEqual(len(stage.outs), 1)
         self.assertEqual(len(stage.deps), 0)
-        self.assertTrue(stage.locked)
         self.assertEqual(stage.cmd, None)
         self.assertEqual(stage.outs[0].md5, md5)
 

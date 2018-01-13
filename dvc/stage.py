@@ -250,16 +250,14 @@ class Stage(object):
     PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
     PARAM_OUTS = 'outs'
-    PARAM_LOCKED = 'locked'
 
-    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], locked=False):
+    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[]):
         self.project = project
         self.path = path
         self.cmd = cmd
         self.cwd = cwd
         self.outs = outs
         self.deps = deps
-        self.locked = locked
 
     @property
     def relpath(self):
@@ -315,15 +313,13 @@ class Stage(object):
         cmd = d[Stage.PARAM_CMD]
         deps = Dependency.loadd_from(project, d[Stage.PARAM_DEPS], cwd=cwd)
         outs = Output.loadd_from(project, d[Stage.PARAM_OUTS], cwd=cwd)
-        locked = d[Stage.PARAM_LOCKED]
 
         return Stage(project=project,
                      path=path,
                      cmd=cmd,
                      cwd=cwd,
                      deps=deps,
-                     outs=outs,
-                     locked=locked)
+                     outs=outs)
 
     @staticmethod
     def load(project, fname):
@@ -338,7 +334,6 @@ class Stage(object):
             Stage.PARAM_CMD: self.cmd,
             Stage.PARAM_DEPS: deps,
             Stage.PARAM_OUTS: outs,
-            Stage.PARAM_LOCKED: self.locked
         }
 
     def dump(self, fname=None):

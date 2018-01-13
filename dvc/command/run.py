@@ -15,7 +15,6 @@ class CmdRun(CmdBase):
                              outs=self.args.outs,
                              outs_no_cache=self.args.outs_no_cache,
                              deps=self.args.deps,
-                             locked=self.args.lock,
                              fname=fname,
                              cwd=self.args.cwd,
                              no_exec=self.args.no_exec)
