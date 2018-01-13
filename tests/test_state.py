@@ -12,20 +12,24 @@ class TestState(TestDvc):
         md5_2 = '2'
         mtime_1 = 1
         mtime_2 = 2
+        inode_1 = 1
+        inode_2 = 2
 
         state = State(self.dvc.root_dir, self.dvc.dvc_dir)
         self.assertIsNone(state.get(path))
 
-        state.add(path, md5_1, mtime_1)
+        state.add(path, md5_1, mtime_1, inode_1)
         entry = state.get(path)
         self.assertIsInstance(entry, StateEntry)
         self.assertEqual(entry.path, path)
         self.assertEqual(entry.md5, md5_1)
         self.assertEqual(entry.mtime, mtime_1)
+        self.assertEqual(entry.inode, inode_1)
 
-        state.update(path, md5_2, mtime_2)
+        state.update(path, md5_2, mtime_2, inode_2)
         entry = state.get(path)
         self.assertIsInstance(entry, StateEntry)
         self.assertEqual(entry.path, path)
         self.assertEqual(entry.md5, md5_2)
         self.assertEqual(entry.mtime, mtime_2)
+        self.assertEqual(entry.inode, inode_2)
