@@ -25,15 +25,19 @@ class Logger(object):
     }
 
     def __init__(self, config=None):
+        self.init(config)
+
+    @staticmethod
+    def init(config=None):
         sh = logging.StreamHandler(sys.stdout)
-        sh.setFormatter(logging.Formatter(self.FMT))
+        sh.setFormatter(logging.Formatter(Logger.FMT))
         sh.setLevel(logging.DEBUG)
 
-        self.logger().addHandler(sh)
+        Logger.logger().addHandler(sh)
         level = None
         if config:
             level = config['Global'].get('LogLevel', None)
-        self.set_level(level)
+        Logger.set_level(level)
 
     @staticmethod
     def logger():

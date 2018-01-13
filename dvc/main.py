@@ -2,6 +2,8 @@ from dvc.logger import Logger
 from dvc.cli import parse_args
 
 def main(argv=None):
+    Logger.init()
+
     args = parse_args(argv)
 
     try:
