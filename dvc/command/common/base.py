@@ -3,6 +3,7 @@ import os
 from dvc.project import Project
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
+from dvc.lock import LockError
 
 
 class CmdBase(object):
@@ -26,8 +27,12 @@ class CmdBase(object):
         raise DvcException(msg.format(root))
 
     def run_cmd(self):
-        with self.project.lock:
+        try:
+            with self.project.lock:
                 return self.run()
+        except LockError as ex:
+            self.project.logger.error(str(ex)) 
+            return 1
 
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):

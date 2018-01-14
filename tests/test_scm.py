@@ -42,3 +42,6 @@ class TestIgnore(TestGit):
 
         git.ignore('foo')
         self.assertEqual(self._count_gitignore(), 1)
+
+        git.ignore_remove('foo')
+        self.assertEqual(self._count_gitignore(), 0)

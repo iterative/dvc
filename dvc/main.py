@@ -12,4 +12,10 @@ def main(argv=None):
         Logger.error('Initialization error: {}'.format(str(ex)))
         return 255
 
-    return cmd.run_cmd()
+    try:
+        ret = cmd.run_cmd()
+    except Exception as ex:
+        Logger.error('Unexpected error: {}'.format(str(ex)))
+        return 254
+
+    return ret

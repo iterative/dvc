@@ -23,6 +23,9 @@ class Base(object):
     def ignore(self, path):
         pass
 
+    def ignore_remove(self, path):
+        pass
+
     def ignore_file(self):
         pass
 
@@ -68,7 +71,7 @@ class Git(Base):
         git_dir = os.path.join(root_dir, Git.GIT_DIR)
         return os.path.isdir(git_dir)
 
-    def ignore(self, path):
+    def _get_gitignore(self, path):
         entry = os.path.basename(path)
         gitignore = os.path.join(os.path.abspath(os.path.dirname(path)),
                                  self.GITIGNORE)
@@ -76,6 +79,11 @@ class Git(Base):
 
         if not gitignore.startswith(self.root_dir):
             raise FileNotInRepoError()
+
+        return entry, gitignore
+
+    def ignore(self, path):
+        entry, gitignore = self._get_gitignore(path)
 
         ignore_list = []
         if os.path.exists(gitignore):
@@ -89,6 +97,20 @@ class Git(Base):
             content = '\n' + content
 
         open(gitignore, 'a').write(content)
+
+    def ignore_remove(self, path):
+        entry, gitignore = self._get_gitignore(path)
+
+        if not os.path.exists(gitignore):
+            return
+
+        with open(gitignore, 'r') as fd:
+            lines = fd.readlines()
+
+        filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
+
+        with open(gitignore, 'w') as fd:
+            fd.writelines(filtered)
 
     def add(self, paths):
         self.repo.index.add(paths)

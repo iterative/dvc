@@ -25,7 +25,9 @@ class Logger(object):
     }
 
     def __init__(self, config=None):
-        self.init(config)
+        if config:
+            level = config['Global'].get('LogLevel', None)
+            Logger.set_level(level)
 
     @staticmethod
     def init(config=None):
@@ -34,10 +36,7 @@ class Logger(object):
         sh.setLevel(logging.DEBUG)
 
         Logger.logger().addHandler(sh)
-        level = None
-        if config:
-            level = config['Global'].get('LogLevel', None)
-        Logger.set_level(level)
+        Logger.set_level()
 
     @staticmethod
     def logger():

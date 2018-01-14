@@ -1,5 +1,11 @@
 import os
 import fasteners
+from dvc.exceptions import DvcException
+
+
+class LockError(DvcException):
+    pass
+
 
 class Lock(object):
     LOCK_FILE = 'lock'
@@ -14,7 +20,8 @@ class Lock(object):
         return Lock(dvc_dir)
 
     def lock(self):
-        self._lock.acquire(timeout=self.TIMEOUT)
+        if not self._lock.acquire(timeout=self.TIMEOUT):
+            raise LockError('Cannot perform the cmd since DVC is busy and locked. Please retry the cmd later.')
 
     def unlock(self):
         self._lock.release()
