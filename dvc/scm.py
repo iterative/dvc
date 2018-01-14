@@ -2,7 +2,6 @@ import os
 import git
 
 from dvc.exceptions import DvcException
-from dvc.command.common.branch_changer import BranchChanger
 
 
 class SCMError(DvcException):
@@ -45,9 +44,6 @@ class Base(object):
     def branch(self, branch):
         pass
 
-    def brancher(self, branch, new_branch):
-        return BranchChanger(self, branch, new_branch)
-
     def untracked_files(self):
         pass
 
@@ -84,11 +80,12 @@ class Git(Base):
         ignore_list = []
         if os.path.exists(gitignore):
             ignore_list = open(gitignore, 'r').readlines()
-            if entry in ignore_list:
+            filtered = list(filter(lambda x: x.strip() == entry.strip(), ignore_list))
+            if len(filtered) != 0:
                 return
 
         content = entry
-        if ignore_list:
+        if len(ignore_list) > 0:
             content = '\n' + content
 
         open(gitignore, 'a').write(content)

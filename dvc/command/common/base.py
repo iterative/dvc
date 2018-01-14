@@ -27,7 +27,6 @@ class CmdBase(object):
 
     def run_cmd(self):
         with self.project.lock:
-            with self.project.scm.brancher(self.args.branch, self.args.new_branch):
                 return self.run()
 
     # Abstract methods that have to be implemented by any inheritance class
