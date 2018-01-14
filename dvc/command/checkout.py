@@ -18,7 +18,7 @@ class CmdCheckout(CmdBase):
             os.remove(file)
 
             dir = os.path.dirname(file)
-            if not os.listdir(dir):
+            if len(dir) != 0 and not os.listdir(dir):
                 Logger.info(u'Remove empty directory \'{}\''.format(dir))
                 os.removedirs(dir)
         pass
