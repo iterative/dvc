@@ -242,6 +242,7 @@ class Output(Dependency):
         self.project.logger.debug("Removing '{}'".format(self.path))
         os.chmod(self.path, stat.S_IWUSR)
         os.unlink(self.path)
+        self.project.scm.ignore_remove(self.path)
         if os.path.exists(self.cache):
             os.chmod(self.cache, stat.S_IREAD)
 
