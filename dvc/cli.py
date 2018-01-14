@@ -5,7 +5,6 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
-from dvc.command.find import CmdFind
 from dvc.command.fsck import CmdFsck
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
@@ -37,17 +36,6 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Be verbose.')
-
-    parent_parser.add_argument(
-                        '-b',
-                        '--branch',
-                        metavar='BRANCH',
-                        help='Execute a command in the branch.')
-    parent_parser.add_argument(
-                        '-n',
-                        '--new-branch',
-                        metavar='BRANCH',
-                        help='Create a new branch and execute a command in the branch.')
 
     # Main parser
     desc = 'Data Version Control'
@@ -272,33 +260,7 @@ def parse_args(argv=None):
                         help='Checkout')
     checkout_parser.set_defaults(func=CmdCheckout)
 
-    # Find
-    find_parser = subparsers.add_parser(
-                        'find',
-                        parents=[parent_parser],
-                        help='Find branch name')
-    find_parser.set_defaults(func=CmdFind)
-    find_parser.add_argument(
-                        'branch_name',
-                        nargs='?',
-                        help='Branch name regexp.')
-    find_parser.add_argument(
-                        'target',
-                        nargs='?',
-                        help='Target metric file.')
-    find_parser.add_argument(
-                        '-c',
-                        '--criteria',
-                        help='Search criteria. By default it finds max.',
-                        choices=['max', 'min', 'all'],
-                        default='max')
-    find_parser.add_argument(
-                        '-s',
-                        '--show-value',
-                        action='store_true',
-                        default=False,
-                        help='Show metrics value.')
-
+    # Fsck
     fsck_parser = subparsers.add_parser(
                         'fsck',
                         parents=[parent_parser],

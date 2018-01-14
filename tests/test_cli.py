@@ -12,7 +12,6 @@ from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.checkout import CmdCheckout
-from dvc.command.find import CmdFind
 from dvc.command.fsck import CmdFsck
 
 from tests.basic_env import TestDvc
@@ -182,26 +181,6 @@ class TestCheckout(TestDvc):
     def test(self):
         args = parse_args(['checkout'])
         self.assertIsInstance(args.func(args), CmdCheckout)
-
-
-class TestFind(TestDvc):
-    def test(self):
-        branch = 'branch'
-        target = 'target'
-        criteria = 'max'
-
-        args = parse_args(['find',
-                           branch,
-                           target,
-                           '-c', criteria,
-                           '--criteria', criteria,
-                           '-s', '--show-value'])
-
-        self.assertIsInstance(args.func(args), CmdFind)
-        self.assertEqual(args.branch_name, branch)
-        self.assertEqual(args.target, target)
-        self.assertEqual(args.criteria, criteria)
-        self.assertTrue(args.show_value)
 
 
 class TestFsck(TestDvc):

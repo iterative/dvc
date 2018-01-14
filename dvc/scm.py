@@ -2,7 +2,6 @@ import os
 import git
 
 from dvc.exceptions import DvcException
-from dvc.command.common.branch_changer import BranchChanger
 
 
 class SCMError(DvcException):
@@ -44,9 +43,6 @@ class Base(object):
 
     def branch(self, branch):
         pass
-
-    def brancher(self, branch, new_branch):
-        return BranchChanger(self, branch, new_branch)
 
     def untracked_files(self):
         pass
