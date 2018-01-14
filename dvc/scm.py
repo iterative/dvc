@@ -80,11 +80,12 @@ class Git(Base):
         ignore_list = []
         if os.path.exists(gitignore):
             ignore_list = open(gitignore, 'r').readlines()
-            if entry in ignore_list:
+            filtered = list(filter(lambda x: x.strip() == entry.strip(), ignore_list))
+            if len(filtered) != 0:
                 return
 
         content = entry
-        if ignore_list:
+        if len(ignore_list) > 0:
             content = '\n' + content
 
         open(gitignore, 'a').write(content)
