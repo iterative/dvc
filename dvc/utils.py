@@ -5,6 +5,7 @@ import os
 import re
 import stat
 import shutil
+import hashlib
 
 from multiprocessing.pool import ThreadPool
 
@@ -13,6 +14,18 @@ from dvc.logger import Logger
 
 
 LOCAL_CHUNK_SIZE = 1024*1024
+
+
+def file_md5(fname):
+    """ get the (md5 hexdigest, md5 digest) of a file """
+    if os.path.exists(fname):
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as fobj:
+            for chunk in iter(lambda: fobj.read(1024*1000), b""):
+                hash_md5.update(chunk)
+        return (hash_md5.hexdigest(), hash_md5.digest())
+    else:
+        return (None, None)
 
 
 def cached_property(func):

@@ -16,7 +16,7 @@ except ImportError:
     # Python 3
     builtin_module_name = 'builtins'
 
-from dvc.data_cloud import DataCloud
+from dvc.cloud.data_cloud import DataCloud
 
 
 class TestConfigTest(TestCase):

@@ -13,7 +13,6 @@ from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
-from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.checkout import CmdCheckout
@@ -222,36 +221,6 @@ def parse_args(argv=None):
                         nargs='*',
                         help='Target data directory')
     pipeline_parser.set_defaults(func=CmdShowPipeline)
-
-    workflow_parser = show_subparsers.add_parser(
-                        'workflow',
-                        parents=[parent_parser],
-                        help='Show workflow image. It collapses DVC repro commits if possible.')
-    workflow_parser.add_argument(
-                        'target',
-                        nargs='?',
-                        help='Target metric file')
-    workflow_parser.add_argument(
-                        '-d',
-                        '--dvc-commits',
-                        action='store_true',
-                        default=False,
-                        help='Show DVC repro commits.')
-    workflow_parser.add_argument(
-                        '-a',
-                        '--all-commits',
-                        action='store_true',
-                        default=False,
-                        help='Show all commits')
-    workflow_parser.add_argument(
-                        '-m',
-                        '--max-commits',
-                        metavar='M',
-                        type=int,
-                        default=4,
-                        help='Max commits per graph vertex. 4 by default.')
-
-    workflow_parser.set_defaults(func=CmdShowWorkflow)
 
     # Checkout
     checkout_parser = subparsers.add_parser(
