@@ -1,4 +1,5 @@
 import os
+import stat
 
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
@@ -15,6 +16,7 @@ class CmdCheckout(CmdBase):
 
         for file in self.project.cache.find_cache(untracked).keys():
             Logger.info(u'Remove \'{}\''.format(file))
+            os.chmod(file, stat.S_IWRITE)
             os.remove(file)
 
             dir = os.path.dirname(file)
