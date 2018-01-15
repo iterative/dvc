@@ -2,7 +2,7 @@ import os
 
 from dvc import stage
 from dvc.command.common.base import CmdBase
-from dvc.data_cloud import file_md5
+from dvc.utils import file_md5
 
 
 class FsckFileDep(object):

@@ -4,7 +4,7 @@ import yaml
 import itertools
 
 from dvc.system import System
-from dvc.data_cloud import file_md5
+from dvc.utils import file_md5
 from dvc.exceptions import DvcException
 from dvc.executor import Executor
 

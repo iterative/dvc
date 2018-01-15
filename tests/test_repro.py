@@ -6,7 +6,7 @@ import filecmp
 from dvc.main import main
 from dvc.command.repro import CmdRepro
 from dvc.project import ReproductionError
-from dvc.data_cloud import file_md5
+from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc
 

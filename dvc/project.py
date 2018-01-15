@@ -9,7 +9,7 @@ from dvc.state import State
 from dvc.lock import Lock
 from dvc.scm import SCM
 from dvc.cache import Cache
-from dvc.data_cloud import DataCloud
+from dvc.cloud.data_cloud import DataCloud
 
 
 class PipelineError(DvcException):
