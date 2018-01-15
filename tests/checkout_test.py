@@ -9,7 +9,7 @@ from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
 from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileError
 from dvc.project import StageNotFoundError
 
-from tests.test_repro import TestRepro
+from tests.repro_test import TestRepro
 
 
 class TestCheckout(TestRepro):

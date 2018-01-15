@@ -3,7 +3,7 @@ import pygraphviz
 
 from dvc.main import main
 
-from tests.test_repro import TestRepro
+from tests.repro_test import TestRepro
 
 
 class TestShowPipeline(TestRepro):
