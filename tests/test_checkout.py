@@ -44,7 +44,7 @@ class CheckoutBase(TestDvc):
         self.dvc.scm.commit('adding ' + fname)
 
     def read_ignored(self):
-        return map(lambda s: s.strip('\n'), open(self.GIT_IGNORE).readlines())
+        return list(map(lambda s: s.strip('\n'), open(self.GIT_IGNORE).readlines()))
 
 
 class TestRemoveFilesWhenCheckout(CheckoutBase):
