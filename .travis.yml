@@ -16,19 +16,19 @@ cache: pip
 # version, that causes fpm to crash.
 matrix:
   include:
-  - if: type = cron
+  - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
     language: ruby
     rvm: 2.4.0
     env: PYTHON_VER=2.7.10
-  - if: type = cron
+  - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
     language: ruby
     rvm: 2.4.0
     env: PYTHON_VER=3.4.3
-  - if: type = cron
+  - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
     language: ruby
