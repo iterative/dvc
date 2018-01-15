@@ -23,7 +23,7 @@ class CmdBase(object):
             if os.path.isdir(dvc_dir):
                 return root
             root = os.path.dirname(root)
-        msg = "Not a dvc repository (or any parent up to mount point {})"
+        msg = "Not a dvc repository (checked up to mount point {})"
         raise DvcException(msg.format(root))
 
     def run_cmd(self):

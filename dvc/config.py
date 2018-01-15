@@ -5,7 +5,6 @@ import os
 import configparser
 
 from dvc.exceptions import DvcException
-from dvc.logger import Logger
 
 
 class ConfigError(DvcException):
@@ -16,6 +15,7 @@ class ConfigError(DvcException):
 
 class Config(object):
     CONFIG = 'config'
+    SECTION_GLOBAL = 'Global'
     CONFIG_TEMPLATE = '''
 [Global]
 # Supported clouds: AWS, GCP
@@ -59,9 +59,16 @@ ProjectName =
     def __init__(self, dvc_dir):
         self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
-        
+
         self._config = configparser.SafeConfigParser()
-        self._config.read(self.config_file)
+
+        try:
+            self._config.read(self.config_file)
+        except configparser.Error as ex:
+            raise ConfigError(ex.message)
+
+        if not self._config.has_section(self.SECTION_GLOBAL):
+            raise ConfigError(u'section \'{}\' was not found'.format(self.SECTION_GLOBAL))
 
     @staticmethod
     def init(dvc_dir):

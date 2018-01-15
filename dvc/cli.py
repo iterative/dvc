@@ -230,7 +230,7 @@ def parse_args(argv=None):
     workflow_parser.add_argument(
                         'target',
                         nargs='?',
-                        help='Target metric data file')
+                        help='Target metric file')
     workflow_parser.add_argument(
                         '-d',
                         '--dvc-commits',

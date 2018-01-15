@@ -7,6 +7,7 @@ from dvc.command.common.base import CmdBase
 from dvc.graph.workflow import Workflow
 from dvc.graph.commit import Commit
 from dvc.executor import Executor, ExecutorError
+from dvc.utils import parse_target_metric_file
 
 
 class CmdShowWorkflow(CmdBase):
@@ -48,7 +49,7 @@ class CmdShowWorkflow(CmdBase):
         if target not in changed_files:
             return False, None
 
-        metric = utils.parse_target_metric_file(target)
+        metric = parse_target_metric_file(target)
         if metric is None:
             return False, None
 

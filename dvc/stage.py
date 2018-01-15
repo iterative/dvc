@@ -232,7 +232,6 @@ class Output(Dependency):
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.path)
 
-        self.project.scm.ignore(self.path)
         self.link()
 
     def remove(self):
@@ -242,7 +241,6 @@ class Output(Dependency):
         self.project.logger.debug("Removing '{}'".format(self.path))
         os.chmod(self.path, stat.S_IWUSR)
         os.unlink(self.path)
-        self.project.scm.ignore_remove(self.path)
         if os.path.exists(self.cache):
             os.chmod(self.cache, stat.S_IREAD)
 
@@ -295,6 +293,7 @@ class Stage(object):
     def remove_outs(self):
         for out in self.outs:
             out.remove()
+            self.project.scm.ignore_remove(out.path)
 
     def remove(self):
         self.remove_outs()
@@ -354,6 +353,7 @@ class Stage(object):
         for out in self.outs:
             out.update()
             out.save()
+            self.project.scm.ignore(out.path)
 
     def run(self):
         if not self.is_data_source:
