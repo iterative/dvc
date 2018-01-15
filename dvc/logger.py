@@ -1,8 +1,8 @@
 import sys
 import logging
-
 import colorama
 
+from dvc.config import Config
 
 colorama.init()
 
@@ -26,7 +26,7 @@ class Logger(object):
 
     def __init__(self, config=None):
         if config:
-            level = config['Global'].get('LogLevel', None)
+            level = config[Config.SECTION_GLOBAL].get('LogLevel', None)
             Logger.set_level(level)
 
     @staticmethod
