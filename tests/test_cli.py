@@ -10,7 +10,6 @@ from dvc.command.remove import CmdRemove
 from dvc.command.gc import CmdGC
 from dvc.command.config import CmdConfig
 from dvc.command.show_pipeline import CmdShowPipeline
-from dvc.command.show_workflow import CmdShowWorkflow
 from dvc.command.checkout import CmdCheckout
 from dvc.command.fsck import CmdFsck
 
@@ -156,25 +155,6 @@ class TestShowPipeline(TestDvc):
 
         self.assertIsInstance(args.func(args), CmdShowPipeline)
         self.assertEqual(args.target, [target1, target2])
-
-
-class TestShowWorkflow(TestDvc):
-    def test(self):
-        target = '1'
-
-        args = parse_args(['show',
-                           'workflow',
-                           '-d', '--dvc-commits',
-                           '-a', '--all-commits',
-                           '-m', '1',
-                           '--max-commits', '1',
-                           target])
-
-        self.assertIsInstance(args.func(args), CmdShowWorkflow)
-        self.assertEqual(args.target, target)
-        self.assertTrue(args.dvc_commits)
-        self.assertTrue(args.all_commits)
-        self.assertEqual(args.max_commits, 1)
 
 
 class TestCheckout(TestDvc):
