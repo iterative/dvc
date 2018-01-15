@@ -124,4 +124,7 @@ class DataCloudGCP(DataCloudBase):
         return (local_exists, remote_exists, diff)
 
     def remove(self, item):
-        raise Exception('NOT IMPLEMENTED YET')
+        bucket = self._get_bucket_gc(self.storage_bucket)
+        blob_name = self.cache_file_key(path)
+        blob = bucket.blob(blob_name)
+        blob.delete()
