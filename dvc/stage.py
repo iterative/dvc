@@ -293,7 +293,8 @@ class Stage(object):
     def remove_outs(self):
         for out in self.outs:
             out.remove()
-            self.project.scm.ignore_remove(out.path)
+            if out.use_cache:
+                self.project.scm.ignore_remove(out.path)
 
     def remove(self):
         self.remove_outs()
@@ -353,7 +354,8 @@ class Stage(object):
         for out in self.outs:
             out.update()
             out.save()
-            self.project.scm.ignore(out.path)
+            if out.use_cache:
+                self.project.scm.ignore(out.path)
 
     def run(self):
         if not self.is_data_source:
