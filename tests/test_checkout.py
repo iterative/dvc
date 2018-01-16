@@ -75,6 +75,7 @@ class TestGitIgnoreBasic(CheckoutBase):
     def test(self):
         fname1 = 'file_1'
         fname2 = 'file_2'
+        fname3 = 'file_3'
 
         self.dvc.scm.add(self.dvc.scm.untracked_files())
         self.dvc.scm.commit('add all files')
@@ -83,15 +84,18 @@ class TestGitIgnoreBasic(CheckoutBase):
 
         self.commit_data_file(fname1)
         self.commit_data_file(fname2)
+        self.dvc.run(cmd='python {} {} {}'.format(self.CODE, self.FOO, fname3),
+                     deps=[self.CODE, self.FOO],
+                     outs_no_cache=[fname3])
 
         self.assertTrue(os.path.exists(self.GIT_IGNORE))
 
         ignored = self.read_ignored()
 
-        self.assertEqual(len(ignored), 2)   # FAILS!!!
+        self.assertEqual(len(ignored), 2)
 
         self.assertIn(fname1, ignored)
-        self.assertIn(fname2, ignored)      # FAILS!!!
+        self.assertIn(fname2, ignored)
 
 
 class TestGitIgnoreWhenCheckout(CheckoutBase):
@@ -120,4 +124,4 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         self.dvc.scm.checkout(branch_1)
         main(['checkout'])
         ignored = self.read_ignored()
-        self.assertIn(fname_branch, ignored)    # FAILS!!!
+        self.assertIn(fname_branch, ignored)
