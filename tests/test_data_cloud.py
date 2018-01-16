@@ -96,7 +96,7 @@ class TestDataCloudGCP(TestDataCloudBase):
     TEST_REPO_GCP_PROJECT='dvc-project'
 
     def _should_test(self):
-        if os.getenv("TRAVIS") == "true" or os.getenv("APPVEYOR") == "True":
+        if os.getenv("TRAVIS") == "true" or os.getenv("APPVEYOR") == "True" or os.getenv("DVC_TEST_GCP") != "true":
             return False
         return True
 
