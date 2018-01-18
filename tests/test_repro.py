@@ -31,18 +31,20 @@ class TestReproChangedCode(TestRepro):
         with open(self.CODE, 'a') as code:
             code.write("\nshutil.copyfile('{}', sys.argv[2])\n".format(self.BAR))
 
-        self.dvc.reproduce(self.file1_stage)
+        stages = self.dvc.reproduce(self.file1_stage)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertEqual(len(stages), 1)
 
 
 class TestReproChangedData(TestRepro):
     def test(self):
         self.swap_foo_with_bar()
 
-        self.dvc.reproduce(self.file1_stage)
+        stages = self.dvc.reproduce(self.file1_stage)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertEqual(len(stages), 2)
 
     def swap_foo_with_bar(self):
         os.chmod(self.FOO, stat.S_IWRITE)
@@ -61,10 +63,11 @@ class TestReproChangedDeepData(TestReproChangedData):
 
         self.swap_foo_with_bar()
 
-        self.dvc.reproduce(file2_stage)
+        stages = self.dvc.reproduce(file2_stage)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
         self.assertTrue(filecmp.cmp(file2, self.BAR))
+        self.assertEqual(len(stages), 3)
 
 
 class TestReproPhony(TestReproChangedData):

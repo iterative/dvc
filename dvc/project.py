@@ -170,27 +170,30 @@ class Project(object):
         stage.dump()
         return stage
 
+    def _reproduce_stage(self, stages, node, force):
+        if not stages[node].changed():
+            return []
+
+        stages[node].reproduce(force=force)
+        stages[node].dump()
+        return [stages[node]]
+
     def reproduce(self, target, recursive=True, force=False):
         stages = nx.get_node_attributes(self.graph(), 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
         if node not in stages:
             raise StageNotFoundError(target)
 
-        reproduced = self._reproduce_stages(force, node, stages) if recursive else []
+        if recursive:
+            return self._reproduce_stages(stages, node, force)
 
-        stages[node].reproduce(force=force)
-        stages[node].dump()
-        reproduced.append(stages[node])
+        return self._reproduce_stage(stages, node, force)
 
-        return reproduced
-
-    def _reproduce_stages(self, force, node, stages):
+    def _reproduce_stages(self, stages, node, force):
         result = []
         for n in nx.dfs_postorder_nodes(self.graph(), node):
             try:
-                stages[n].reproduce(force=force)
-                stages[n].dump()
-                result.append(stages[n])
+                result += self._reproduce_stage(stages, n, force)
             except Exception as ex:
                 raise ReproductionError(n, str(ex))
         return result
