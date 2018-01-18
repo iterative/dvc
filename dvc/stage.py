@@ -324,6 +324,26 @@ class Stage(object):
                      cwd=cwd,
                      deps=deps,
                      outs=outs)
+    @staticmethod
+    def loads(project=None,
+              cmd=None,
+              deps=[],
+              outs=[],
+              outs_no_cache=[],
+              fname=None,
+              cwd=os.curdir):
+        cwd = os.path.abspath(cwd)
+        path = os.path.join(cwd, fname)
+        outputs = Output.loads_from(project, outs, use_cache=True, cwd=cwd)
+        outputs += Output.loads_from(project, outs_no_cache, use_cache=False, cwd=cwd)
+        dependencies = Dependency.loads_from(project, deps, cwd=cwd)
+
+        return Stage(project=project,
+                     path=path,
+                     cmd=cmd,
+                     cwd=cwd,
+                     outs=outputs,
+                     deps=dependencies)
 
     @staticmethod
     def load(project, fname):

@@ -12,6 +12,7 @@ class CmdRepro(CmdBase):
                                        force=self.args.force)
             except ReproductionError as ex:
                 self.project.logger.error(ex)
+                return 1
             except Exception as ex:
                 msg = 'Failed to reproduce \'{}\' - unexpected error: {}'.format(target, ex)
                 self.project.logger.error(msg)
