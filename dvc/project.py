@@ -3,7 +3,7 @@ import networkx as nx
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.stage import Stage, Output, Dependency
+from dvc.stage import Stage, Output
 from dvc.config import Config
 from dvc.state import State
 from dvc.lock import Lock
@@ -116,15 +116,16 @@ class Project(object):
         return os.path.relpath(path, self.root_dir)
 
     def add(self, fname):
-        path = os.path.abspath(fname) + Stage.STAGE_FILE_SUFFIX
-        cwd = os.path.dirname(path)
-        outputs = [Output.loads(self, os.path.basename(fname), use_cache=True, cwd=cwd)]
-        stage = Stage(project=self,
-                      path=path,
-                      cmd=None,
-                      cwd=cwd,
-                      outs=outputs,
-                      deps=[])
+        out = os.path.basename(fname)
+        stage_fname = out + Stage.STAGE_FILE_SUFFIX
+        cwd = os.path.dirname(os.path.abspath(fname))
+        stage = Stage.loads(project=self,
+                            cmd=None,
+                            deps=[],
+                            outs=[out],
+                            fname=stage_fname,
+                            cwd=cwd)
+
         stage.save()
         stage.dump()
         return stage
@@ -153,18 +154,13 @@ class Project(object):
             fname=Stage.STAGE_FILE,
             cwd=os.curdir,
             no_exec=False):
-        cwd = os.path.abspath(cwd)
-        path = os.path.join(cwd, fname)
-        outputs = Output.loads_from(self, outs, use_cache=True, cwd=cwd)
-        outputs += Output.loads_from(self, outs_no_cache, use_cache=False, cwd=cwd)
-        deps = Dependency.loads_from(self, deps, cwd=cwd)
-
-        stage = Stage(project=self,
-                      path=path,
-                      cmd=cmd,
-                      cwd=cwd,
-                      outs=outputs,
-                      deps=deps)
+        stage = Stage.loads(project=self,
+                            fname=fname,
+                            cmd=cmd,
+                            cwd=cwd,
+                            outs=outs,
+                            outs_no_cache=outs_no_cache,
+                            deps=deps)
         if not no_exec:
             stage.run()
         stage.dump()
