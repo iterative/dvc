@@ -2,11 +2,11 @@ import os
 import stat
 import yaml
 import itertools
+import subprocess
 
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.exceptions import DvcException
-from dvc.executor import Executor
 
 
 class OutputError(DvcException):
@@ -245,6 +245,12 @@ class Output(Dependency):
             os.chmod(self.cache, stat.S_IREAD)
 
 
+class StageCmdFailedError(DvcException):
+    def __init__(self, stage):
+        msg = 'Stage {} cmd {} failed'.format(stage.path, stage.cmd)
+        super(StageCmdFailedError, self).__init__(msg)
+
+
 class Stage(object):
     STAGE_FILE = 'Dvcfile'
     STAGE_FILE_SUFFIX = '.dvc'
@@ -381,7 +387,11 @@ class Stage(object):
         if not self.is_data_source:
             self.project.logger.info(u'Reproducing \'{}\':\n\t{}'.format(self.relpath, self.cmd))
 
-            Executor.exec_cmd_only_success(self.cmd, cwd=str(self.cwd), shell=True)
+            p = subprocess.Popen(self.cmd, cwd=self.cwd, shell=True)
+            p.communicate()
+            if p.returncode != 0:
+               raise StageCmdFailedError(self)
+ 
             self.save()
 
             self.project.logger.debug(u'\'{}\' was reproduced'.format(self.relpath))
