@@ -8,13 +8,13 @@ from dvc.lock import LockError
 
 class CmdBase(object):
     def __init__(self, args):
+        self.project = Project(self._find_root())
+        self.args = args
+
         if args.quiet and not args.verbose:
             Logger.be_quiet()
         elif not args.quiet and args.verbose:
             Logger.be_verbose()
-
-        self.project = Project(self._find_root())
-        self.args = args
 
     def _find_root(self):
         root = os.getcwd()

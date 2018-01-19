@@ -1,13 +1,12 @@
 import ctypes
 import os
 import re
+import subprocess
 from builtins import str
 
 if os.name == 'nt':
     from ctypes import create_unicode_buffer, windll
     import ntfsutils.hardlink as winlink
-
-from dvc.executor import Executor
 
 
 class System(object):
@@ -37,8 +36,9 @@ class System(object):
 
     @staticmethod
     def _get_symlink_string(path):
-        code, output, _ = Executor.exec_cmd(["dir", path], shell=True)
-        if code != 0:
+        p = subprocess.Popen(["dir", path], shell=True)
+        output, _ = p.communicate()
+        if p.returncode != 0 or output == None:
             return None
 
         lines = output.split('\n')
