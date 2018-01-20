@@ -102,10 +102,6 @@ install_requires = [
     'pygraphviz==1.3.1',
 ]
 
-if platform.system() == 'Darwin':
-    install_requires.append('appnope==0.1.0')
-    install_requires.append('py2app==0.12')
-
 setup(
     name='dvc',
     version=VERSION,
