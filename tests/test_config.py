@@ -46,7 +46,7 @@ class TestConfigTest(TestCase):
            )
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(None, conf)
         self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
@@ -65,7 +65,7 @@ class TestConfigTest(TestCase):
            )
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(None, conf)
         self.assertEqual(cloud.typ, 'AWS')
         self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
         self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
@@ -104,7 +104,7 @@ class TestConfigTest(TestCase):
 
         # patcher.start()
         conf = self._conf(s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(None, conf)
         aws_creds = cloud._cloud._get_credentials()
         patcher.stop()
 
@@ -135,7 +135,7 @@ class TestConfigTest(TestCase):
 
         patcher.start()
         conf = self._conf(s)
-        cloud = DataCloud(conf)
+        cloud = DataCloud(None, conf)
         aws_creds = cloud._cloud._get_credentials()
         patcher.stop()
 

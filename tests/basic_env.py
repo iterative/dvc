@@ -9,6 +9,12 @@ from dvc.project import Project
 
 
 class TestDir(TestCase):
+    DATA_DIR = 'data_dir'
+    DATA_SUB_DIR = os.path.join(DATA_DIR, 'data_sub_dir')
+    DATA = os.path.join(DATA_DIR, 'data')
+    DATA_SUB = os.path.join(DATA_SUB_DIR, 'data_sub')
+    DATA_CONTENTS = DATA
+    DATA_SUB_CONTENTS = DATA_SUB
     FOO = 'foo'
     FOO_CONTENTS = FOO
     BAR = 'bar'
@@ -34,6 +40,10 @@ class TestDir(TestCase):
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
         self.create(self.CODE, self.CODE_CONTENTS)
+        os.mkdir(self.DATA_DIR)
+        os.mkdir(self.DATA_SUB_DIR)
+        self.create(self.DATA, self.DATA_CONTENTS)
+        self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
 
     def tearDown(self):
         self._popd()

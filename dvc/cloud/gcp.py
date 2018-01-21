@@ -47,84 +47,63 @@ class DataCloudGCP(DataCloudBase):
 
         return False
 
-    def _import(self, bucket_name, key, fname):
+    def _pull_key(self, key, path):
+        self._makedirs(path)
 
-        bucket = self._get_bucket_gc(bucket_name)
+        name = os.path.basename(path)
+        tmp_file = self.tmp_file(path)
 
-        name = os.path.basename(fname)
-        tmp_file = self.tmp_file(fname)
+        if self._cmp_checksum(key, path):
+            Logger.debug('File "{}" matches with "{}".'.format(path, key.name))
+            return path
 
-        blob = bucket.get_blob(key)
-        if not blob:
-            Logger.error('File "{}" does not exist in the cloud'.format(key))
-            return None
-
-        if self._cmp_checksum(blob, fname):
-            Logger.debug('File "{}" matches with "{}".'.format(fname, key))
-            return fname
-
-        Logger.debug('Downloading cache file from gc "{}/{}"'.format(bucket.name, key))
+        Logger.debug('Downloading cache file from gc "{}/{}"'.format(key.bucket.name, key.name))
 
         # percent_cb is not available for download_to_filename, so
         # lets at least update progress at keypoints(start, finish)
         progress.update_target(name, 0, None)
 
         try:
-            blob.download_to_filename(tmp_file)
+            key.download_to_filename(tmp_file)
         except Exception as exc:
-            Logger.error('Failed to download "{}": {}'.format(key, exc))
+            Logger.error('Failed to download "{}": {}'.format(key.name, exc))
             return None
 
-        os.rename(tmp_file, fname)
+        os.rename(tmp_file, path)
 
         progress.finish_target(name)
 
         Logger.debug('Downloading completed')
 
-        return fname
+        return path
 
-    def push(self, path):
-        """ push, gcp version """
-
+    def _get_key(self, path):
+        key_name = self.cache_file_key(path)
         bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(path)
+        return bucket.get_blob(key_name)
+
+    def _get_keys(self, path):
+        key_name = self.cache_file_key(path)
+        bucket = self._get_bucket_gc(self.storage_bucket)
+        keys = bucket.list_blobs(prefix=key_name)
+        if not keys:
+            return None
+        return list(keys)
+
+    def _new_key(self, path):
+        key_name = self.cache_file_key(path)
+        bucket = self._get_bucket_gc(self.storage_bucket)
+        return bucket.blob(key_name)
+
+    def _push_key(self, key, path):
+        """ push, gcp version """
         name = os.path.basename(path)
 
-        blob = bucket.get_blob(blob_name)
-        if blob is not None and blob.exists():
-            if self._cmp_checksum(blob, path):
-                Logger.debug('checksum %s matches.  Skipping upload' % path)
-                return path
-            Logger.debug('checksum %s mismatch.  re-uploading' % path)
-
-        # same as in _import
         progress.update_target(name, 0, None)
 
-        blob = bucket.blob(blob_name)
-        blob.upload_from_filename(path)
+        key.upload_from_filename(path)
 
         progress.finish_target(name)
         Logger.debug('uploading %s completed' % path)
 
         return path
-
-    def _status(self, path):
-        """ status, gcp version """
-
-        bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(path)
-        blob = bucket.get_blob(blob_name)
-
-        remote_exists = blob is not None and blob.exists()
-        local_exists = os.path.exists(path)
-        diff = None
-        if remote_exists and local_exists:
-            diff = self._cmp_checksum(blob, path)
-
-        return (local_exists, remote_exists, diff)
-
-    def remove(self, item):
-        bucket = self._get_bucket_gc(self.storage_bucket)
-        blob_name = self.cache_file_key(path)
-        blob = bucket.blob(blob_name)
-        blob.delete()

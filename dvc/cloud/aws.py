@@ -103,6 +103,10 @@ class DataCloudAWS(DataCloudBase):
         Verify local and remote checksums. Used 'dvc-md5' metadata if supported
         or falls back to etag.
         """
+
+        # Calling get_key() once more to avoid empty metadata.
+        # See http://blog.bidiuk.com/2014/02/get-amazon-s3-metadata-in-python-using-boto/
+        key = key.bucket.get_key(key.name)
         md5_cloud = key.metadata.get('dvc-md5', None)
         md5_local = file_md5(fname)[0]
 
@@ -128,23 +132,21 @@ class DataCloudAWS(DataCloudBase):
         """
         return fname + '.download'
 
-    def _import(self, bucket_name, key_name, fname):
-
-        bucket = self._get_bucket_aws(bucket_name)
+    def _pull_key(self, key, fname):
+        Logger.debug("Pulling key '{}' from bucket '{}' to file '{}'".format(key.name,
+                                                                             key.bucket.name,
+                                                                             fname))
+        self._makedirs(fname)
 
         tmp_file = self.tmp_file(fname)
         name = os.path.basename(fname)
-        key = bucket.get_key(key_name)
-        if not key:
-            Logger.error('File "{}" does not exist in the cloud'.format(key_name))
-            return None
 
         if self._cmp_checksum(key, fname):
-            Logger.debug('File "{}" matches with "{}".'.format(fname, key_name))
+            Logger.debug('File "{}" matches with "{}".'.format(fname, key.name))
             return fname
 
-        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(bucket.name,
-                                                                             key_name,
+        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(key.bucket.name,
+                                                                             key.name,
                                                                              fname))
 
         res_h = ResumableDownloadHandler(tracker_file_name=self._download_tracker(tmp_file),
@@ -152,7 +154,7 @@ class DataCloudAWS(DataCloudBase):
         try:
             key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
         except Exception as exc:
-            Logger.error('Failed to download "{}": {}'.format(key_name, exc))
+            Logger.error('Failed to download "{}": {}'.format(key.name, exc))
             return None
 
         os.rename(tmp_file, fname)
@@ -161,6 +163,24 @@ class DataCloudAWS(DataCloudBase):
         Logger.debug('Downloading completed')
 
         return fname
+
+    def _get_key(self, path):
+        key_name = self.cache_file_key(path)
+        bucket = self._get_bucket_aws(self.storage_bucket)
+        return bucket.get_key(key_name)
+
+    def _get_keys(self, path):
+        key_name = self.cache_file_key(path)
+        bucket = self._get_bucket_aws(self.storage_bucket)
+        keys = bucket.list(prefix=key_name)
+        if not keys:
+            return None
+        return list(keys)
+
+    def _new_key(self, path):
+        key_name = self.cache_file_key(path)
+        bucket = self._get_bucket_aws(self.storage_bucket)
+        return bucket.new_key(key_name)
 
     def _write_upload_tracker(self, fname, mp_id):
         """
@@ -265,23 +285,8 @@ class DataCloudAWS(DataCloudBase):
         multipart.complete_upload()
         self._unlink_upload_tracker(fname)
 
-    def push(self, path):
+    def _push_key(self, key, path):
         """ push, aws version """
-
-        aws_key = self.cache_file_key(path)
-        bucket = self._get_bucket_aws(self.storage_bucket)
-        key = bucket.get_key(aws_key)
-        if key:
-            Logger.debug('File already uploaded to the cloud. Checksum validation...')
-
-            if self._cmp_checksum(key, path):
-                Logger.debug('File checksum matches. No uploading is needed.')
-                return path
-
-            Logger.debug('Checksum miss-match. Re-uploading is required.')
-
-        key = bucket.new_key(aws_key)
-
         try:
             self._push_multipart(key, path)
         except Exception as exc:
@@ -291,36 +296,3 @@ class DataCloudAWS(DataCloudBase):
         progress.finish_target(os.path.basename(path))
 
         return path
-
-    def _status(self, path):
-        aws_key = self.cache_file_key(path)
-        bucket = self._get_bucket_aws(self.storage_bucket)
-        key = bucket.get_key(aws_key)
-
-        remote_exists = key is not None
-        local_exists = os.path.exists(path)
-        diff = None
-        if remote_exists and local_exists:
-            diff = self._cmp_checksum(key, path)
-
-        return (local_exists, remote_exists, diff)
-
-    def remove(self, path):
-        aws_file_name = self.cache_file_key(path)
-
-        Logger.debug(u'[Cmd-Remove] Remove from cloud {}.'.format(aws_file_name))
-
-        if not self._aws_creds.access_key_id or not self._aws_creds.secret_access_key:
-            Logger.debug('[Cmd-Remove] Unable to check cache file in the cloud')
-            return
-        conn = S3Connection(self._aws_creds.access_key_id, self._aws_creds.secret_access_key)
-        bucket_name = self.storage_bucket
-        bucket = conn.lookup(bucket_name)
-        if bucket:
-            key = bucket.get_key(aws_file_name)
-            if not key:
-                Logger.warn('[Cmd-Remove] S3 remove warning: '
-                            'file "{}" does not exist in S3'.format(aws_file_name))
-            else:
-                key.delete()
-                Logger.info('[Cmd-Remove] File "{}" was removed from S3'.format(aws_file_name))

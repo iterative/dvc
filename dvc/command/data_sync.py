@@ -1,4 +1,4 @@
-import dvc.cloud.data_cloud as cloud
+import dvc.cloud.base as cloud
 from dvc.command.common.base import CmdBase
 
 class CmdDataPull(CmdBase):
