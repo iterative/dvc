@@ -6,6 +6,51 @@ It is hardly possible in real life to develop a good machine learning model in a
 
 **Data Version Control** (aka DVC) is designed to help data scientists keep track of their ML processes and file dependencies in the simple form of git-like commands: "dvc run python train_model.py data/train_matrix.p data/model.p". Your existing ML processes can be easily transformed into reproducible DVC pipelines regardless of which programming language or tool was used.
 
+==================
+DVC Basic
+==================
+
+Traditional Makefile based reproducibility
+__________________________________________
+
+Traditional approach in software enginering - reproduce everything from code.
+This is nice and clean way to build software from source code and it is heavely utilised by Makefile and it's analogs.
+The approach is based on some implicit assumptions:
+
+* Project consists on a large amount of small source code files
+* Each code file can be processed (compiled) separately into some object file
+* The final result (an application file) is a combination of these object files
+* It is easy derive what was changed from the last reproduction (last make run)
+* If only a few files were changed it is easy to rebuild only this subset of files and build a final result.
+
+Makefile tool and it's analogs do a good job in recognizing the small changes (step 4), rebuilding small parts of the project and constrcting them together into a single result.
+
+
+Data science project
+____________________
+
+
+Two reproducibility philosophies
+________________________________
+
+
+
+There are two different reproducibility "philosophies":
+* Versioning only code. 
+* Versioning code and data.
+
+Basic assumption: Data and object files can be easily derived from code.
+
+
+
+______________________
+DVC is a command line tool that works on top of an existing Git repository.
+
+Using traditional UNIX-tool terminology DVC might be treated as a Makefile for data projects which
+1. DVC never rebuilds a target if it was already built
+2. DVC 
+
+
 ========================
 Getting Started with DVC
 ========================
@@ -97,14 +142,14 @@ Not only can DVC streamline your work into a single, reproducible environment, i
 Installation
 ============
 
-Operatio system dependent packages is the recommended way of installing DVC.
+Operation system dependent packages is the recommended way of installing DVC.
 However, you can install DVC from Python repositories using **pip** command or install development version from DVC git repository.
 
 Packages
 ========
 
 DVC installation packages available for Mac OS, Linux and Windows platforms.
-You can download the packages at https://github.com/dataversioncontrol/dvc/releases/tag/0.8.7.2-travis-macos-release-test
+You can download the packages at https://github.com/dataversioncontrol/dvc/releases/
 
 Python pip
 ==========
@@ -141,11 +186,11 @@ DVC Files and Directories
 Once installed, dvc will populate its installation folder (hereinafter referred to as .dvc) with essential shared and internal files and folders will be stored
 
 * **.dvc/config** - This is a configuration file.
-  The config file can be edited directly or indirectly using command **dvc config name value**.
-* **.dvc/state** - this directory contains DVC state files including DAG (direct acyclic graph) of all dependencies of the commands in your DVC repositories
+  The config file can be edited directly or indirectly using command **dvc config NAME VALUE**.
 * **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
   **Note:** DVC includes the cache directory to **.gitignore** file during the initilization. And no data files (with actual content) will be pushed to Git repository,
   only data file symlinks and commands to reproduce them.
+* **.dvc/state** - this file is ceated for optimization. The file contains data files checksum and timestemps.
 
 
 Working with Cloud Data Storages
