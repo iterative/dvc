@@ -189,51 +189,53 @@ class Output(Dependency):
 
         return True
 
-    def link(self, checkout=False):
-        if not self.use_cache:
-            raise CmdOutputNoCacheError(self.path)
-
-        if not os.path.exists(self.path) and not os.path.exists(self.cache):
-            raise CmdOutputNoCacheError(self.path)
-
-        if not self.changed():
-            return
-
-        if os.path.exists(self.cache):
-            if os.path.exists(self.path):
-                # This means that we already have cache for this data.
-                # We remove data and link it to existing cache to save
-                # some space.
-                self.remove()
-            src = self.cache
-            link = self.path
-        elif not checkout:
-            src = self.path
-            link = self.cache
-        else:
-            raise CmdOutputNoCacheError(self.path)
-
+    @staticmethod
+    def hardlink(src, link):
         System.hardlink(src, link)
-
-        os.chmod(self.path, stat.S_IREAD)
+        os.chmod(src, stat.S_IREAD)
 
     def checkout(self):
         if not self.use_cache:
             return
+
+        if not self.changed():
+            return
+
         if not os.path.exists(self.cache):
             self.project.logger.warn(u'\'{}\': cache file not found'.format(self.dvc_path))
             self.remove()
-        else:
-            self.link(checkout=True)
+            return
+
+        if os.path.exists(self.path):
+            self.remove()
+
+        self.hardlink(self.cache, self.path)
 
     def save(self):
         if not self.use_cache:
             return
 
+        if not os.path.exists(self.path):
+            raise CmdOutputDoesNotExistError(self.rel_path)
+
+        if not os.path.isfile(self.path):
+            raise CmdOutputIsNotFileError(self.rel_path)
+
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.path)
 
-        self.link()
+        if not self.changed():
+            return
+
+        if os.path.exists(self.cache):
+            # This means that we already have cache for this data.
+            # We remove data and link it to existing cache to save
+            # some space.
+            self.remove()
+            self.hardlink(self.cache, self.path)
+            return
+
+        self.hardlink(self.path, self.cache)
 
     def remove(self):
         if not os.path.exists(self.path):
