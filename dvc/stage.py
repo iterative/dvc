@@ -181,9 +181,13 @@ class Output(Dependency):
         if not self.use_cache:
             return super(Output, self).changed()
 
-        return not os.path.exists(self.path) or \
-               not os.path.exists(self.cache) or \
-               not System.samefile(self.path, self.cache)
+        if os.path.exists(self.path) and \
+           os.path.exists(self.cache) and \
+           System.samefile(self.path, self.cache) and \
+           os.stat(self.cache).st_mode & stat.S_IREAD:
+            return False
+
+        return True
 
     def link(self, checkout=False):
         if not self.use_cache:
@@ -192,10 +196,7 @@ class Output(Dependency):
         if not os.path.exists(self.path) and not os.path.exists(self.cache):
             raise CmdOutputNoCacheError(self.path)
 
-        if os.path.exists(self.path) and \
-           os.path.exists(self.cache) and \
-           System.samefile(self.path, self.cache) and \
-           os.stat(self.cache).st_mode & stat.S_IREAD:
+        if not self.changed():
             return
 
         if os.path.exists(self.cache):
