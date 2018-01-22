@@ -6,48 +6,72 @@ from dvc.utils import copyfile, file_md5
 from dvc.cloud.base import DataCloudError, DataCloudBase
 
 
+class LocalKey(object):
+    def __init__(self, bucket, name):
+        self.name = name
+        self.bucket = bucket
+
+    @property
+    def path(self):
+        return os.path.join(self.bucket, self.name)
+
+    def delete(self):
+        os.unlink(self.path)
+
+
 class DataCloudLOCAL(DataCloudBase):
     """
     Driver for local storage.
     """
-    def push(self, path):
-        Logger.debug('sync to cloud ' + path + " " + self.storage_path)
-        copyfile(path, self.storage_path)
+    def cache_file_key(self, path):
+        return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache_dir)
+
+    def _cmp_checksum(self, key, path):
+        return filecmp.cmp(path, key.path)
+
+    def _get_key(self, path):
+        key_name = self.cache_file_key(path)
+        key = LocalKey(self.storage_path, key_name)
+        if os.path.exists(key.path) and os.path.isfile(key.path):
+            return key
+        return None
+
+    def _get_keys(self, path):
+        key_name = self.cache_file_key(path)
+        key = LocalKey(self.storage_path, key_name)
+
+        if not os.path.isdir(key.path):
+            return None
+
+        res = []
+        for root, dirs, files in os.walk(key.path):
+            for fname in files:
+                p = os.path.join(root, fname)
+                k_name = os.path.relpath(p, self.storage_path)
+                res.append(LocalKey(self.storage_path, k_name))
+        return res
+
+    def _new_key(self, path):
+        key_name = self.cache_file_key(path)
+        key = LocalKey(self.storage_path, key_name)
+        self._makedirs(key.path)
+        return key
+
+    def _push_key(self, key, path):
+        self._makedirs(key.path)
+        copyfile(path, key.path)
         return path
 
-    def _import(self, bucket, i, path):
-        inp = os.path.join(self.storage_path, i)
+    def _pull_key(self, key, path):
+        self._makedirs(path)
+
         tmp_file = self.tmp_file(path)
         try:
-            copyfile(inp, tmp_file)
+            copyfile(key.path, tmp_file)
         except Exception as exc:
-            Logger.error('Failed to copy "{}": {}'.format(i, exc))
+            Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
             return None
 
         os.rename(tmp_file, path)
 
         return path
-
-    def pull(self, path):
-        Logger.debug('sync from cloud ' + path)
-        return self._import(None, path, path)
-
-    def remove(self, path):
-        Logger.debug('rm from cloud ' + path)
-        os.remove(path)
-
-    def import_data(self, path, out):
-        Logger.debug('import from cloud ' + path + " " + out)
-        return self._import(None, path, out)
-
-    def _status(self, path):
-        local = path
-        remote = '{}/{}'.format(self.storage_path, os.path.basename(local))
-
-        remote_exists = os.path.exists(remote)
-        local_exists = os.path.exists(local)
-        diff = None
-        if local_exists and remote_exists:
-            diff = filecmp.cmp(local, remote)
-
-        return (local_exists, remote_exists, diff)

@@ -5,7 +5,7 @@ import filecmp
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
-from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileError
+from dvc.stage import CmdOutputDoesNotExistError
 from dvc.project import StageNotFoundError
 from dvc.command.gc import CmdGC
 

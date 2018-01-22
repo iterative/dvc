@@ -1,8 +1,12 @@
 import os
+import yaml
+import tempfile
+from checksumdir import dirhash
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
+from dvc.stage import Output
 
 
 STATUS_UNKNOWN = 0
@@ -71,7 +75,9 @@ class DataCloudBase(object):
 
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
-        return '{}/{}'.format(self.storage_prefix, os.path.basename(fname)).strip('/')
+        relpath = os.path.relpath(fname, self._cloud_settings.cache_dir)
+        relpath.replace('\\', '/')
+        return '{}/{}'.format(self.storage_prefix, relpath).strip('/')
 
     @staticmethod
     def tmp_file(fname):
@@ -84,35 +90,141 @@ class DataCloudBase(object):
         """
         pass
 
-    def _import(self, bucket, fin, fout):
-        """
-        Cloud-specific method for importing data file.
-        """
+    def _push_key(self, key, path):
         pass
 
     def push(self, path):
-        """ Cloud-specific method for pushing data """
+        """ Generic method for pushing data """
+        if os.path.isfile(path):
+            return self._push(path)
+
+        res = []
+        for root, dirs, files in os.walk(path):
+            for fname in files:
+                p = os.path.join(root, fname)
+                res.append(self._push(p))
+
+                with open(p, 'r') as fd:
+                    d = yaml.safe_load(fd)
+                md5 = d[Output.PARAM_MD5]
+                cache = os.path.join(self._cloud_settings.cache_dir, md5)
+                res.append(self._push(cache))
+        return res
+
+    def _push(self, path):
+        key = self._get_key(path)
+        if key:
+            Logger.debug("File '{}' already uploaded to the cloud. Validating checksum...".format(path))
+            if self._cmp_checksum(key, path):
+                Logger.debug('File checksum matches. No uploading is needed.')
+                return []
+            Logger.debug('Checksum mismatch. Reuploading is required.')
+
+        key = self._new_key(path)
+        return [self._push_key(key, path)]
+
+    def _makedirs(self, fname):
+        dname = os.path.dirname(fname)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+    def _pull_key(self, key, path):
+        """ Cloud-specific method of pulling keys """
+        pass
+
+    def _get_key(self, path):
+        """ Cloud-specific method of getting keys """
+        pass
+
+    def _get_keys(self, path):
+        """ Cloud-specific method of getting keys """
         pass
 
     def pull(self, path):
         """ Generic method for pulling data from the cloud """
-        key_name = self.cache_file_key(path)
-        return self._import(self.storage_bucket, key_name, path)
+        key = self._get_key(path)
+        if key:
+            return [self._pull_key(key, path)]
+
+        keys = self._get_keys(path)
+        if not keys:
+            Logger.error("File '{}' does not exist in the cloud".format(path))
+            return []
+
+        res = []
+        for k in keys:
+            fname = os.path.join(path, os.path.relpath(k.name, self.cache_file_key(path)))
+            res.append(self._pull_key(k, fname))
+            with open(fname, 'r') as fd:
+                d = yaml.safe_load(fd)
+            md5 = d[Output.PARAM_MD5]
+
+            cache = os.path.join(self._cloud_settings.cache_dir, md5)
+            cache_key = self._get_key(cache)
+            if not cache_key:
+                Logger.error("File '{}' does not exist in the cloud".format(path))
+                continue
+
+            res.append(self._pull_key(cache_key, cache))
+
+        return res
 
     def remove(self, path):
         """
-        Cloud-specific method for removing data item from the cloud.
+        Generic method for removing data item from the cloud.
         """
-        pass
+        key = self._get_key(path)
+        if key:
+            key.delete()
+            return [k.name]
 
-    def _status(self, path):
-        """
-        Cloud-specific method for checking data item status.
-        """
-        pass
+        keys = self._get_keys(path)
+        if not keys:
+            Logger.error("File '{}' does not exist in the cloud".format(path))
+            return []
+
+        res = []
+        for k in keys:
+            k.delete()
+            res.append(k.name)
+        return res
+
+    def _status(self, key, path):
+        remote_exists = key != None
+        local_exists = os.path.exists(path)
+
+        diff = None
+        if remote_exists and local_exists:
+            diff = self._cmp_checksum(key, path)
+
+        return STATUS_MAP.get((local_exists, remote_exists, diff), STATUS_UNKNOWN)
 
     def status(self, path):
         """
         Generic method for checking data item status.
         """
-        return STATUS_MAP.get(self._status(path), STATUS_UNKNOWN)
+        key = self._get_key(path)
+        if key:
+            return self._status(key, path)
+
+        keys = self._get_keys(path)
+        if not keys or len(keys) == 0:
+            return STATUS_NEW
+
+        res = []
+        for k in keys:
+            fname = os.path.join(path, os.path.relpath(k.name, self.cache_file_key(path)))
+            res.append(self._status(k, fname))
+
+            tmp = tempfile.NamedTemporaryFile()
+            self._pull_key(k, tmp.name)
+            with open(tmp.name, 'r') as fd:
+                d = yaml.safe_load(fd)
+            tmp.close()
+            md5 = d[Output.PARAM_MD5]
+
+            cache = os.path.join(self._cloud_settings.cache_dir, md5)
+            cache_key = self._get_key(cache)
+            res.append(self._status(cache_key, cache))
+
+        return max(res)

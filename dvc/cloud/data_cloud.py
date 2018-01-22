@@ -7,7 +7,6 @@ from dvc.utils import map_progress
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
 from dvc.cloud.local import DataCloudLOCAL
-from dvc.cloud.http import DataCloudHTTP
 
 
 class DataCloud(object):
@@ -16,20 +15,16 @@ class DataCloud(object):
     CLOUD_MAP = {
         'AWS'   : DataCloudAWS,
         'GCP'   : DataCloudGCP,
-        'HTTP'  : DataCloudHTTP,
         'LOCAL' : DataCloudLOCAL,
     }
 
     SCHEME_MAP = {
         's3'    : 'AWS',
-        'http'  : 'HTTP',
-        'https' : 'HTTP',
-        'ftp'   : 'HTTP',
         'gs'    : 'GCP',
         ''      : 'LOCAL',
     }
 
-    def __init__(self, config):
+    def __init__(self, cache_dir, config):
         self._config = config
 
         cloud_type = self._config['Global'].get('Cloud', '').strip().upper()
@@ -39,7 +34,8 @@ class DataCloud(object):
         if cloud_type not in self._config.keys():
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
-        cloud_settings = self.get_cloud_settings(self._config,
+        cloud_settings = self.get_cloud_settings(cache_dir,
+                                                 self._config,
                                                  cloud_type)
 
         self.typ = cloud_type
@@ -48,7 +44,7 @@ class DataCloud(object):
         self.sanity_check()
 
     @staticmethod
-    def get_cloud_settings(config, cloud_type):
+    def get_cloud_settings(cache_dir, config, cloud_type):
         """
         Obtain cloud settings from config.
         """
@@ -57,7 +53,7 @@ class DataCloud(object):
         else:
             cloud_config = config[cloud_type]
         global_storage_path = config['Global'].get('StoragePath', None)
-        cloud_settings = CloudSettings(global_storage_path, cloud_config)
+        cloud_settings = CloudSettings(cache_dir, global_storage_path, cloud_config)
         return cloud_settings
 
     def sanity_check(self):
@@ -88,12 +84,6 @@ class DataCloud(object):
         Process targets as data items in parallel.
         """
         return map_progress(func, targets, jobs)
-
-    def sync(self, targets, jobs=1):
-        """
-        Sync data items in a cloud-agnostic way.
-        """
-        return self._map_targets(self._cloud.sync, targets, jobs)
 
     def push(self, targets, jobs=1):
         """

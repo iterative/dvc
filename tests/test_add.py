@@ -1,11 +1,12 @@
 import os
 import shutil
 import filecmp
+from checksumdir import dirhash
 
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
-from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileError
+from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileOrDirError
 from dvc.stage import CmdOutputAlreadyTrackedError
 from dvc.project import StageNotFoundError
 from dvc.command.add import CmdAdd
@@ -43,8 +44,8 @@ class TestAddDirectory(TestDvc):
     def test(self):
         dname = 'directory'
         os.mkdir(dname)
-        with self.assertRaises(CmdOutputIsNotFileError) as cx:
-            self.dvc.add(dname)
+        self.create(os.path.join(dname, 'file'), 'file')
+        self.dvc.add(dname)
 
 
 class TestAddTrackedFile(TestDvc):

@@ -1,4 +1,5 @@
 import os
+import stat
 import networkx as nx
 
 from dvc.logger import Logger
@@ -77,7 +78,7 @@ class Project(object):
         self.state = State(self.root_dir, self.dvc_dir)
         self.config = Config(self.dvc_dir)
         self.logger = Logger(self.config._config)
-        self.cloud = DataCloud(self.config._config)
+        self.cloud = DataCloud(self.cache.cache_dir, self.config._config)
 
     @staticmethod
     def init(root_dir=os.curdir):
@@ -208,12 +209,30 @@ class Project(object):
                     clist.append(out.cache)
         return clist
 
+    def _remove_cache_file(self, cache):
+        os.chmod(cache, stat.S_IWRITE)
+        os.unlink(cache)
+
+    def _remove_cache(self, cache):
+        if os.path.isfile(cache):
+            self._remove_cache_file(cache)
+            return
+
+        for root, dirs, files in os.walk(cache, topdown=False):
+            for dname in dirs:
+                path = os.path.join(root, dname)
+                os.rmdir(path)
+            for fname in files:
+                path = os.path.join(root, fname)
+                self._remove_cache_file(path)
+        os.rmdir(cache)
+
     def gc(self):
         clist = self._used_cache()
         for cache in self.cache.all():
             if cache in clist:
                 continue
-            os.unlink(cache)
+            self._remove_cache(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
     def push(self, jobs=1):
@@ -221,10 +240,7 @@ class Project(object):
 
     def pull(self, jobs=1):
         self.cloud.pull(self._used_cache(), jobs)
-        for stage in self.stages():
-            for out in stage.outs:
-                if out.use_cache:
-                    out.link()
+        self.checkout()
 
     def status(self, jobs=1):
         return self.cloud.status(self._used_cache(), jobs)
