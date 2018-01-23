@@ -15,32 +15,43 @@ __________________________________________
 
 Traditional approach in software enginering - reproduce everything from code.
 This is nice and clean way to build software from source code and it is heavely utilised by Makefile and it's analogs.
+
 The approach is based on some implicit assumptions:
 
-* Project consists on a large amount of small source code files
-* Each code file can be processed (compiled) separately into some object file
-* The final result (an application file) is a combination of these object files
-* It is easy derive what was changed from the last reproduction (last make run)
-* If only a few files were changed it is easy to rebuild only this subset of files and build a final result.
+1. Project consists of a large amount of small source code files.
+2. Each code file can be processed (compiled) separately into some object file and this is a fast.
+3. The final result (an application file) is a combination of these object files.
+4. Building the the entire project form scratch is slow.
+
+Makefile and it's analogs optimize the entire project building stage (5) by identifying changed files and quickly processing only this small subset of files (4).
+Because of (5) 
+
+4. It is easy to derive what was changed from the last reproduction (last make run).
+5. If only a few files were changed it is easy to rebuild only this subset of files and build a final result.
 
 Makefile tool and it's analogs do a good job in recognizing the small changes (step 4), rebuilding small parts of the project and constrcting them together into a single result.
 
 
-Data science project
-____________________
+Data science project reproducibility
+____________________________________
+
+Machine learning (ML) modleing process is slightly different from software engineering projects.
+
+1. [Dependencies tree is deep, not wide] To get a final result you need to go through a process with many dependent steps or stages. This is ML pipeline.
+2. [Many steps are slow] Long processing time for many of operations: data cleaning is slow because of size of input raw files, model training is slow because of advanced ML algorithms.
+3. []
+
+IN PROGRESS...
 
 
 Two reproducibility philosophies
 ________________________________
 
-
-
 There are two different reproducibility "philosophies":
 * Versioning only code. 
 * Versioning code and data.
 
-Basic assumption: Data and object files can be easily derived from code.
-
+Makefile versions only code.
 
 
 ______________________
