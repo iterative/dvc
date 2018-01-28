@@ -154,10 +154,10 @@ Installation
 ============
 
 Operation system dependent packages is the recommended way of installing DVC.
-However, you can install DVC from Python repositories using **pip** command or install development version from DVC git repository.
+Some other methods of installation are provided.
 
-Packages
-========
+OS packages
+===========
 
 DVC installation packages available for Mac OS, Linux and Windows platforms.
 You can download the packages at https://github.com/dataversioncontrol/dvc/releases/
@@ -173,6 +173,13 @@ Another option to deploy DVC to your machine is to use its standard Python pip p
 It will work in *Anaconda’s* command prompt tool.
 As of the moment, DVC does not provide a special installation package for a native *Anaconda* package manager (that is, *conda*).
 
+Homebrew Cask
+=============
+
+Mac OS users can install DVC by **brew** command::
+
+	$ brew cask install dataversioncontrol/homebrew-dvc/dvc
+
 Development Version
 ===================
 
@@ -181,86 +188,6 @@ If you like to pull the latest version of DVC from the master branch in its repo
 	$ pip install git+git://github.com/dataversioncontrol/dvc
 
 This command will automatically upgrade your DVC version in case it is behind the latest version in the master branch of the github repo.
-
-
-=============
-Configuration
-=============
-
-Once you install DVC, you should be able to start using it (in its local setup) immediately. 
-
-However, you can optionally proceed to further configure DVC (especially if you intend to use it in a Cloud-based scenario).
-
-DVC Files and Directories
-=========================
-
-Once installed, dvc will populate its installation folder (hereinafter referred to as .dvc) with essential shared and internal files and folders will be stored
-
-* **.dvc/config** - This is a configuration file.
-  The config file can be edited directly or indirectly using command **dvc config NAME VALUE**.
-* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
-  **Note:** DVC includes the cache directory to **.gitignore** file during the initilization. And no data files (with actual content) will be pushed to Git repository,
-  only data file symlinks and commands to reproduce them.
-* **.dvc/state** - this file is ceated for optimization. The file contains data files checksum and timestemps.
-
-
-Working with Cloud Data Storages
-======================================================
-
-Using DVC with Cloud-based Data Storages is an optional feature.
-By default, DVC is configured to use local data storage only (.dvc/cache directory),
-  and it enables basic DVC usage scenarios out of the box.
-
-DVC can use cloud storages as a common file storage.
-With cloud storage you might use models and data file which were created by your team members
-  without spending time and resources for re-building models and re-processing data files.
-
-As of this version, DVC supports two types of cloud-based data storage providers:
-
-* **AWS** - Amazon Web Services
-* **GCP** - Google Cloud Provider
-
-The subsections below explain how to configure DVC to use of the data cloud storages above.
-
-Using AWS Cloud
----------------
-
-For using AWS as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
-
-* **Cloud = AWS** in *Global* section.
-* **StoragePath = /mybucket/dvc/tag_classifier** in **AWS** section - path to a cloud storage bucket and directory in the bucket.
-* **CredentialPath = ~/aws/credentials** in **AWS** section - path to AWS credentials in your local machine (AWS cli command line tools creates this directory).
-  In Mac, default value is *~/.aws/credentials*, and it is *%USERPATH%/.aws/credentials* in Windows
-
-
-**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to AWS"**
-
-Instead of manual file modification we recommend to run corresponded commands::
-
-	$ dvc config Global.Cloud AWS # This step is not needed for new DVC repositories
-	$ dvc config AWS.StoragePath /mybucket/dvc/tag_classifier 
-	$ dvc config AWS.CredentialPath ~/.aws/credentials # Not needed if aws cli is instelled to default path
-	$ dvc config AWS.CredentialSection default # Not needed if you have only one AWS account
-	$ git commit -am "Change cloud to AWS"
-
-
-Using Google Cloud
-------------------
-
-For using GCP (Google Cloud Provider) as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
-
-*  **Cloud = GCP** in *Global* section.
-* **StoragePath = /mybucket/dvc/tag_classifier** in GCP section - this option has the same meaning as AWS one above. Run **dvc config GCP.StoragePath /my/path/to/a/bucket**
-* **ProjectName = MyCloud** - a GCP specific project name.
-
-**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to GCP"**
-
-Instead of manual file modification we recommend to run corresponded commands::
-
-	$ dvc config Global.Cloud GCP
-	$ dvc config GCP.StoragePath /mybucket/dvc/tag_classifier 
-	$ dvc config GCP.ProjectName MyCloud
-	$ git commit -am "Change cloud to AWS"
 
 
 ==================
@@ -827,6 +754,87 @@ Number of DVC Jobs
 DVC can benefit from parallel processing and multiple processors/cores available on your machine. It can spin a number of jobs to run in parallel.
 
 The number of DVC jobs is 5 by default. In case you like to change it to any other reasonable value, you use *-j (--jobs)* option in DVC commands where it is applicable.
+
+
+=============
+Configuration
+=============
+
+Once you install DVC, you should be able to start using it (in its local setup) immediately. 
+
+However, you can optionally proceed to further configure DVC (especially if you intend to use it in a Cloud-based scenario).
+
+DVC Files and Directories
+=========================
+
+Once installed, dvc will populate its installation folder (hereinafter referred to as .dvc) with essential shared and internal files and folders will be stored
+
+* **.dvc/config** - This is a configuration file.
+  The config file can be edited directly or indirectly using command **dvc config NAME VALUE**.
+* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
+  **Note:** DVC includes the cache directory to **.gitignore** file during the initilization. And no data files (with actual content) will be pushed to Git repository,
+  only data file symlinks and commands to reproduce them.
+* **.dvc/state** - this file is ceated for optimization. The file contains data files checksum and timestemps.
+
+
+Working with Cloud Data Storages
+======================================================
+
+Using DVC with Cloud-based Data Storages is an optional feature.
+By default, DVC is configured to use local data storage only (.dvc/cache directory),
+  and it enables basic DVC usage scenarios out of the box.
+
+DVC can use cloud storages as a common file storage.
+With cloud storage you might use models and data file which were created by your team members
+  without spending time and resources for re-building models and re-processing data files.
+
+As of this version, DVC supports two types of cloud-based data storage providers:
+
+* **AWS** - Amazon Web Services
+* **GCP** - Google Cloud Provider
+
+The subsections below explain how to configure DVC to use of the data cloud storages above.
+
+Using AWS Cloud
+---------------
+
+For using AWS as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
+
+* **Cloud = AWS** in *Global* section.
+* **StoragePath = /mybucket/dvc/tag_classifier** in **AWS** section - path to a cloud storage bucket and directory in the bucket.
+* **CredentialPath = ~/aws/credentials** in **AWS** section - path to AWS credentials in your local machine (AWS cli command line tools creates this directory).
+  In Mac, default value is *~/.aws/credentials*, and it is *%USERPATH%/.aws/credentials* in Windows
+
+
+**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to AWS"**
+
+Instead of manual file modification we recommend to run corresponded commands::
+
+	$ dvc config Global.Cloud AWS # This step is not needed for new DVC repositories
+	$ dvc config AWS.StoragePath /mybucket/dvc/tag_classifier 
+	$ dvc config AWS.CredentialPath ~/.aws/credentials # Not needed if aws cli is instelled to default path
+	$ dvc config AWS.CredentialSection default # Not needed if you have only one AWS account
+	$ git commit -am "Change cloud to AWS"
+
+
+Using Google Cloud
+------------------
+
+For using GCP (Google Cloud Provider) as a data cloud storage for your DVC repositories, you should update **.dvc/config** options respectively
+
+*  **Cloud = GCP** in *Global* section.
+* **StoragePath = /mybucket/dvc/tag_classifier** in GCP section - this option has the same meaning as AWS one above. Run **dvc config GCP.StoragePath /my/path/to/a/bucket**
+* **ProjectName = MyCloud** - a GCP specific project name.
+
+**Important:** do not forget to commit the config file change to Git: **git commit -am "Change cloud to GCP"**
+
+Instead of manual file modification we recommend to run corresponded commands::
+
+	$ dvc config Global.Cloud GCP
+	$ dvc config GCP.StoragePath /mybucket/dvc/tag_classifier 
+	$ dvc config GCP.ProjectName MyCloud
+	$ git commit -am "Change cloud to AWS"
+
 
 ===============
 Further Reading
