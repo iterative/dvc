@@ -267,18 +267,15 @@ Instead of manual file modification we recommend to run corresponded commands::
 Using DVC Commands
 ==================
 
-Since DVC is a command-line application, the appropriate method of use of DVC commands is essential to properly utilize it to the benefit of your machine learning projects.
-
+DVC is a command-line tool.
 The typical method of use of DVC is as follows
 
-* You initialize a local DVC repository with **dvc init** command
-* You pull or import data files into DVC repository either with **dvc pull** command or via external process invoked by **dvc run** command
-* You clone a git repo with the code of your ML application pipeline 
-* You execute the steps in your ML pipeline as needed (**dvc run** command is often used to run respective processes/steps of your ML pipeline)
-* You use **dvc repro** command to quickly reproduce your ML pipeline on a new iteration, once either the data item files or the source code of your ML application are modified
-* You push the results of calculations back to your data storage using **dvc push** command
-
-**Note:** please refer to “Further Reading” section to see in-depth articles and tutorials on the end-to-end ML pipeline setup with DVC for real-world ML projects in Python and R.
+* In an existing Git repository initialize a DVC repository with **dvc init** command.
+* Copy source files for modeling into the repository (without checking out to Git) and convert the files in DVC data files with **dvc add** command.
+* Process source data files by your data processing and modeling code through **dvc run** command. In this command generated DVC files to describe these processing steps.
+* Use **--outs** option to specify **dvc run** command outputs which should be to be converted to DVC data files after the code is completed.
+* You clone a git repo with the code of your ML application pipeline. However, it does not copy DVC cache. Use cloud storage settings and **dvc push** command to share the cache (data).
+* You use **dvc repro** command to quickly reproduce your pipeline on a new iteration, once either the data item files or the source code of your ML application are modified.
 
 ========================
 DVC Commands Cheat Sheet
@@ -288,20 +285,19 @@ Below is the quick summary of the most important commands of DVC
 
 * **dvc -h** - Show how to use DVC and show the list of commands.
 * **dvc CMD -h** - Display help to use a specific DVC command (CMD)
-* **dvc init** - Initialize a new local DVC repository in a folder of your choice (this folder should be already initialized either as a local git repository or a clone of a remote git repository)
-* **dvc run** - Run an external command (for example, launch Python runtime with a python script to execute as its argument)
-* **dvc pull** - Pull data files from the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
-* **dvc push** - Push data files to the cloud (cloud settings for your DVC environment should be already configured prior to using this command).
-* **dvc status** - Show status of a data file in the DVC repository
-* **dvc repro** - Reproduce the entire ML pipeline (or its part) where affected changes relate to the arguments passed (for example, rerun machine learning models where a changed data file is used as an input)
-* **dvc remove** - Remove data items (files or/and folders) from the local DVC repository storage
-* **dvc import** - Import a data file into a local DVC repository
-* **dvc lock** - Lock files in the DVC repository
-* **dvc gc** - Do garbage collection and clear DVC cache
-* **dvc target** - Set default target
-* **dvc ex** - Execute experimental commands supported by DVC
-* **dvc config** - Alter configuration settings of the DVC repository (as specified in dvc.conf) for the current session
+* **dvc init** - Initialize a new DVC repository.  
+* **dvc add** - Add data file or data directory. The command converts regular files to DVC data files.
+* **dvc checkout** - Checkout data files and dirs into working tree. The command should be executed after **git checkout** or cloning a repository.
+* **dvc run** - Generate a DVC file from a given command and execute the command. The command dependencies and outputs should be specified.
+* **dvc pull** - Pull data files from the cloud. Cloud settings for your DVC environment should be already configured prior to using this command.
+* **dvc push** - Push data files to the cloud. Cloud settings should be already configured.
+* **dvc status** - Show status of a data file in the DVC repository.
+* **dvc repro** - Reproduce a stage of pipeline. Default stage file is **Dvcfile**.
+* **dvc remove** - Remove data file (files or/and folders).
+* **dvc gc** - Collect garbage by cleaning DVC cache.
+* **dvc config** - Get or set configuration settings (as specified in dvc.conf).
 * **dvc show** - Show graphs.
+* **dvc fsck** - Data file consistency check.
 
 =====================
 DVC Command Reference
@@ -310,392 +306,398 @@ DVC Command Reference
 init
 ====
 
-This command initializes a local DVC environment (repository) in a current Git repository.
+This command initializes a DVC environment in a current Git repository.
 
 .. code-block:: shell
    :linenos:
 
-	usage:
-
-	dvc init [-h] [-q] [-v] [-G] [--data-dir DATA_DIR]
-		[--cache-dir CACHE_DIR] [--state-dir STATE_DIR] 
-
+	usage: dvc init [-h] [-q] [-v]
 	optional arguments:
-		-h, --help             show this help message and exit
-		-q, --quiet            Be quiet.
-		-v, --verbose          Be verbose.
-		-G, --no-git-actions   Skip all git actions including reproducibility check and commits.
-		--data-dir DATA_DIR    Data directory.
-		--cache-dir CACHE_DIR  A well-formed path to the Cache directory.
-		--state-dir STATE_DIR  A well-formed path to the State directory.
+	  -h, --help     show this help message and exit
+	  -q, --quiet    Be quiet.
+	  -v, --verbose  Be verbose.
 
-Example.  Creating a new Git repository and DVC::
+Example. Creating a new DVC repository::
 
 	$ mkdir tag_classifier
 	$ cd tag_classifier
 	
 	$ git init
-	Initialized empty Git repository in /Users/dmitry/src/tag_classifier__3/.git/
+	Initialized empty Git repository in /Users/dmitry/src/tag_classifier/.git/
 	
 	$ dvc init
-	Directories .dvc/, data/, cache/, state/ were created
-	File .gitignore was created
-	Directory cache was added to .gitignore file
+	$ git status
+	On branch master
+	
+	Initial commit
+	
+	Changes to be committed:
+	
+	  (use "git rm --cached <file>..." to unstage)
+	
+	        new file:   .dvc/.gitignore
+	        new file:   .dvc/config
+	
+	$ git commit -m 'Init DVC'
+	[master (root-commit) 2db4618] Init DVC
+	 2 files changed, 41 insertions(+)
+	 create mode 100644 .dvc/.gitignore
+	 create mode 100644 .dvc/config
 
+
+add
+====
+
+Converts files and directories to DVC data files.
+
+The command doe the convertation from a *regular file* to DVC data file in a few steps:
+
+1. Calculate the file checksum.
+2. Create a cache file in the cache dir *.dvc/cache* with the content of this file.
+3. Create a corresponded DVC file.
+4. Replace the file by a hardlink to the cache file.
+
+Also, to reduce time on recomputing the file checksum in future DVC stores the file last modification time, inode and the checksum into a global state file *.dvc/state*.
+Next time, then the file chacksum will be needed DVC will try to get it from the file if the file was not modified.
+
+Note, this command does NOT copy any file content and run quickly even for a large files.
+Step (2) from the above is also made by hardlinks movement, not file content.
+The only haavy step is (1) which requires checksum calculation.
+
+For directories the command does the same steps for each file recursively.
+To keep information about the directory structure a corresponded directory will be created in the cache *.dvc/cache*.
+
+.. code-block:: shell
+   :linenos:
+
+	usage: dvc add [-h] [-q] [-v] targets [targets ...]
+
+	optional arguments:
+	  -h, --help            show this help message and exit
+	  -q, --quiet           Be quiet.
+	  -v, --verbose         Be verbose.
+
+Examples:
+
+Convert files into data files::
+
+	$ mkdir raw
+	$ cp ~/Downloads/dataset/* raw
+	$ ls raw
+	Badges.xml          PostLinks.xml           Votes.xml
+	$ dvc add raw/Badges.tsv raw/PostLinks.tsv raw/Votes.tsv
+	$ ls raw
+	Badges.xml          PostLinks.xml           Votes.xml
+	Badges.xml.dvc      PostLinks.xml.dvc       Votes.xml.dvc
+
+Note, DVC files were created.
+
+
+checkout
+========
+
+Checkout data files from cache.
+This command has to be called after *git checkout* since Git does not handle DVC data files.
+
+The command restores data files from cache to working tree and removes data files that are not belog to the current working tree anymore.
+
+Note, this command does NOT copy any files - DVC uses hardlinks to perform the data file restoring.
+This is crucial for large files where checking out (copiyng) 50Gb file might take a few minutes.
+For DVC it will take less than a second to restore 50Gb data file.
+
+
+.. code-block:: shell
+	:linenos:
+
+	usage: dvc checkout [-h] [-q] [-v]
+
+	optional arguments:
+		-h, --help            show this help message and exit
+		-q, --quiet           Be quiet.
+		-v, --verbose         Be verbose.
+
+Examples.
+
+Checking out a branch example::
+
+	$ git checkout input_100K
+	$ dvc checkout
+	$ Remove 'data/model.p'
+	$ Remove 'data/matrix-train.p'
+	$ 'data/Posts-train.tsv': cache file not found
+
+DVC does not report in the output which data files were restored.
+However, it reports removed files and files which DVC was unable to restore because of missing cache.
+To restore file with missing cache reproduction command should be called or cache can be pulled from a cloud.
+
+It might be convinient to assign Git hook to *git checkout* comman::
+
+	$ echo 'dvc checkout' > .git/hooks/post-checkout
+	$ chmod +x .git/hooks/post-checkout
+	$ git checkout input_100K  # dvc checkout is not needed anymore
+	$ Remove 'data/model.p'
+	$ Remove 'data/matrix-train.p'
+	$ 'data/Posts-train.tsv': cache file not found
 
 run
 ===
 
-This command executes is used to execute the steps in your ML pipeline, for instance
-* Running a python or R script
-* Running a database SQL script
-* Etc.
+Generate a stage file from a given command and execute the command.
+The command dependencies and outputs should be specified.
+
+By default stage file name is **<file>.dvc** where **<file>** is file name of a first output.
+
+For example, launch Python with a given python script and arguments. Or R script by Rscript command.
 
 .. code-block:: shell
    :linenos:
    
-	usage: dvc run [-h] [-q] [-v] [-G] [--stdout STDOUT] [--stderr STDERR]
-               [-i INPUT] [-o OUTPUT] [-c CODE] [--shell] [-l]
-               command [args]
-
+	usage: dvc run [-h] [-q] [-v] [-d DEPS] [-o OUTS] [-O OUTS_NO_CACHE] [-f FILE]
+	               [-c CWD] [--no-exec]
+	               ...
+	
 	positional arguments:
-		command     Command to execute
-		args        Arguments of a command (optional; it can be a list of the command-line arguments of command separated by spaces)
-
+	  command               Command or command file to execute
+	
 	optional arguments:
-		-h, --help                   show this help message and exit
-		-q, --quiet                  Be quiet.
-		-v, --verbose                Be verbose.
-		-G, --no-git-actions         Skip all git actions including reproducibility check and commits.
-		--stdout STDOUT              Output std output to a file.
-		--stderr STDERR              Output std error to a file.
-		-i INPUT, --input INPUT      Declare input data items for reproducible cmd.
-		-o OUTPUT, --output OUTPUT   Declare output data items for reproducible cmd.
-		-c CODE, --code CODE         Code dependencies which produce the output.
-		--shell                      Shell command
-		-l, --lock                   Lock data item - disable reproduction.
+	  -h, --help            show this help message and exit
+	  -q, --quiet           Be quiet.
+	  -v, --verbose         Be verbose.
+	  -d DEPS, --deps DEPS  Declare dependencies for reproducible cmd.
+	  -o OUTS, --outs OUTS  Declare output data file or data directory.
+	  -O OUTS_NO_CACHE, --outs-no-cache OUTS_NO_CACHE
+	                        Declare output regular file or directory (sync to Git,
+	                        not DVC cache).
+	  -f FILE, --file FILE  Specify name of the state file
+	  -c CWD, --cwd CWD     Directory to run your command and place state file in
+	  --no-exec             Only create stage file without actually running it
 
 Examples:
 
-Execute a Python script as a DVC ML pipeline step::
+Execute a Python script as a DVC ML pipeline step. Stage file was not specified. So, **model.p.dvc** stage file will be created::
 
-	$ # Train ML model out of the training dataset. 20170426 is another seed value.
-	$ dvc run python code/train_model.py data/matrix-train.p 20170426 data/model.p
+	$ # Train ML model out of the training dataset. 20180226 is a seed value.
+	$ dvc run -d matrix-train.p -d train_model.py -o model.p python train_model.py matrix-train.p 20180226 model.p
 
 
 Execute an R script as a DVC ML pipeline step::
 
-	dvc run Rscript code/parsingxml.R data/Posts.xml data/Posts.csv
+	$ dvc run -d parsingxml.R -d Posts.xml -o Posts.csv Rscript parsingxml.R Posts.xml Posts.csv
 
 
 Extract an XML file from an archive to data subfolder::
 
-	dvc run tar zxf data/Posts.xml.tgz -C data/
+	$ mkdir data
+	$ dvc run -d Posts.xml.tgz -o data/Posts.xml tar zxf Posts.xml.tgz -C data/
 
 
 push
 ====
 
-This command pushes data files to the cloud storage you configured for DVC.
+This command pushes all data files caches related to the current Git branch to the cloud storage.
+Cloud storage settings need to be configured.
+See cloud storage configuration.
 
 .. code-block:: shell
    :linenos:
 
-	usage: dvc push [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
-
-	positional arguments:
-		targets               File or directory to sync.
+	usage: dvc push [-h] [-q] [-v] [-j JOBS]
 
 	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-							  and commits.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
+	  -h, --help            show this help message and exit
+	  -q, --quiet           Be quiet.
+	  -v, --verbose         Be verbose.
+	  -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
 Examples:
 
-Push all files from the current DVC snapshot to cloud::
+Push all data files caches from the current Git branch to cloud::
 
-	$ dvc push data/
+	$ dvc push
+	(1/8): [########################################] 100% 72271bebdf053178a5cce48b4
+	(2/8): [########################################] 100% d7208b910d1a40fedc2da5a44
+	(3/8): [########################################] 100% 7f6ed2919af9c9e94c32ea13d
+	(4/8): [########################################] 100% 5988519f8465218abb23ce0e0
+	(5/8): [########################################] 100% 11de13709a78379d253a3d0f5
+	(6/8): [########################################] 100% 3f9c7c3ae51db2eed7ba99e6e
+	(7/8): [########################################] 100% cfdaa4bba57fa07d81ff96685
+	(8/8): [#######################                 ] 57% 1de6178a9dd844e249ba05414
+	
 
 pull
 ====
 
-This command pulls data from the cloud storage you configured for DVC.
+This command pulls all data files caches from the cloud storage.
+Cloud storage settings need to be configured.
 
 .. code-block:: shell
    :linenos:
    
-	usage: dvc pull [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
-
-	positional arguments:
-		targets               File or directory to sync.
-
+	usage: dvc pull [-h] [-q] [-v] [-j JOBS]
+	
 	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
-
+	  -h, --help            show this help message and exit
+	  -q, --quiet           Be quiet.
+	  -v, --verbose         Be verbose.
+	  -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
 Examples:
 
-Pull all files from the current DVC snapshot to cloud::
+Pull all files from the current Git branch::
 
-	$ dvc pull data/
-
+	$ dvc pull
+	(1/8): [########################################] 100% 54a6f1787490ba13fb811a46b
+	(2/8): [########################################] 100% 5806dc797c08fb6ddd5d97d46
+	(3/8): [########################################] 100% 5988519f8465218abb23ce0e0
+	(4/8): [########################################] 100% 7f6ed2919af9c9e94c32ea13d
+	(5/8): [########################################] 100% 11de13709a78379d253a3d0f5
+	(6/8): [########################################] 100% c6f5a256d628e144db4181de8
+	(7/8): [########################################] 100% 3f9c7c3ae51db2eed7ba99e6e
+	(8/8): [########################################] 100% cfdaa4bba57fa07d81ff96685
 
 status
 ======
 
-This command shows status for data files in the DVC repository
+Show mismatches between local cache and cloud cache.
 
 .. code-block:: shell
 	:linenos:
 
-	usage: dvc status [-h] [-q] [-v] [-G] [-j JOBS] targets [targets ...]
-
-	positional arguments:
-		targets               File or directory to sync.
-
+	usage: dvc status [-h] [-q] [-v] [-j JOBS]
+	
 	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-                              and commits.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
+	  -h, --help            show this help message and exit
+	  -q, --quiet           Be quiet.
+	  -v, --verbose         Be verbose.
+	  -j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
 
 Examples:
 
-Get status of data in *training.csv* file::
+Show statuses::
 
-	$ dvc status data/training.csv
+	$ dvc status
+	        new file:   /Users/dmitry/src/myrepo_1/.dvc/cache/62f8c2ba93cfe5a6501136078f0336f9
 
 repro
 =====
 
-This command reproduces the that part of the ML pipeline that is dependent on the data or code file targeted by it.
+Reproduce DVC file and all stages the file depends on (recursively).
+Default file name is **Dvcfile**.
+However, usually DVC files have any name and **.dvc** suffix.
 
 .. code-block:: shell
 	:linenos:
 
-	usage: dvc repro [-h] [-q] [-v] [-G] [-f] [-s] [target [target ...]]
+	usage: dvc repro [-h] [-q] [-v] [-f] [-s] [targets [targets ...]]
 
 	positional arguments:
-		target                Data items to reproduce.
+		target                DVC file to reproduce.
 
 	optional arguments:
 		-h, --help            show this help message and exit
 		-q, --quiet           Be quiet.
 		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
 		-f, --force           Reproduce even if dependencies were not changed.
 		-s, --single-item     Reproduce only single data item without recursive dependencies check.
 
 Examples:
 
-Reproduce the part of the pipeline where *training.csv* data file is involved::
+Reproduce default stage file::
 
-	$ dvc repro data/training.csv
+	$ dvc repro
+	Verifying data sources in 'data/Posts.xml.tgz.dvc'
+	Reproducing 'Posts.xml.dvc':
+	        tar zxf data/Posts.xml.tgz -C data/
+	Reproducing 'Posts.tsv.dvc':
+	        python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
+	Reproducing 'Posts-train.tsv.dvc':
+	        python code/split_train_test.py data/Posts.tsv 0.33 20170426 data/Posts-train.tsv data/Posts-test.tsv
+	Reproducing 'matrix-train.p.dvc':
+	        python code/featurization.py data/Posts-train.tsv data/Posts-test.tsv data/matrix-train.p data/matrix-test.p
+	Reproducing 'model.p.dvc':
+	        python code/train_model.py data/matrix-train.p 20170426 data/model.p
+
+Reproduce the part of the pipeline (from above) where *Posts.tsv.dvc* is target DVC file::
+
+	$ dvc repro Posts.tsv.dvc
+	Reproducing 'Posts.xml.dvc':
+	        tar zxf data/Posts.xml.tgz -C data/
+	Reproducing 'Posts.tsv.dvc':
+	        python code/xml_to_tsv.py data/Posts.xml data/Posts.tsv python
 
 
 remove
 ======
 
-This command removes a data item from the data directory of a DVC repository.
+Remove data file or data directory.
 
 .. code-block:: shell
 	:linenos:
 
-	usage: dvc remove [-h] [-q] [-v] [-G] [-l] [-r] [-c] [target [target ...]]
+	usage: dvc remove [-h] [-q] [-v] targets [targets ...]
 
 	positional arguments:
-		target                Target to remove - file or directory.
+		targets               Target to remove - file or directory.
 
 	optional arguments:
 		-h, --help            show this help message and exit
 		-q, --quiet           Be quiet.
 		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-							  and commits.
-		-l, --keep-in-cloud   Do not remove data from cloud.
-		-r, --recursive       Remove directory recursively.
-		-c, --keep-in-cache   Do not remove data from cache.
 
 Examples:
 
 
-Remove *training.csv* data file from the DVC repository::
+Remove *matrix-train.p* data file::
 
-	$ dvc remove data/training.csv
-
-import
-======
-
-This command imports a new data file to the data directory of the DVC repository.
-
-.. code-block:: shell
-	:linenos:
-
-	usage: dvc import [-h] [-q] [-v] [-G] [-l] [-j JOBS] [-c]
-               input [input ...] output
-
-	positional arguments:
-		input             Input file/files.
-		output            Output file/directory.
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-l, --lock            Lock data item - disable reproduction.
-		-j JOBS, --jobs JOBS  Number of jobs to run simultaneously.
-		-c, --continue        Resume downloading file from url
-
-Examples:
-
-Download a file and put to data/ directory::
-
-	$ dvc import https://s3-us-west-2.amazonaws.com/dvc-share/so/25K/Posts.xml.tgz data/
-
-lock
-====
-
-This command is used to
-
-* Lock the data item in the DVC repository, protecting it from further changes
-* Unlock the data item locked earlier (switch -u is added in this case)
-
-.. code-block:: shell
-	:linenos:
-
-	usage: dvc lock [-h] [-q] [-v] [-G] [-l] [-u] [files [files ...]]
-
-	positional arguments:
-		files                 Data items to lock or unlock.
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-							  and commits.
-		-l, --lock            Lock data item - disable reproduction.
-		-u, --unlock          Unlock data item - enable reproduction.
-
-Examples.
+	$ dvc remove matrix-train.p
 
 
-Lock *data/Posts.xml* file::
-
-	$ dvc lock data/Posts.xml
-
-Unlock a previously locked *data/Posts.xml* file::
-
-	$ dvc lock -u data/Posts.xml
-
-**Notes**
-
-* If you invoke lock command with *-u* switch against a locked target file, it will be unlocked
-* Adding *-l* switch to any other command where *-l* switch is enabled will automatically lock/unlock the target files (much like you do with a separate lock command against that target)
 
 gc
 ===
-This command collects the garbage in DVC environment.
-It is especially important when you work with large data files.
-Under such a condition, keeping previous versions of the large files may slow down performance/drain the disk quota thus swift removing of unnecessary files will be beneficial.
+
+This command collects the garbage - removes unused cache files based on the current Git branch.
+So, if a data file was created in a different branch then it is going to be removed by command.
+If a data file has a few versions (and, correspondingly, caches) - all the chaches except the current one will be removed.
 
 .. code-block:: shell
 	:linenos:
 	
-	usage: dvc gc [-h] [-q] [-v] [-G] [-l] [-r] [-c] [target [target ...]]
-
-	positional arguments:
-		target                Target to remove - file or directory.
+	age: dvc gc [-h] [-q] [-v]
 
 	optional arguments:
 		-h, --help            show this help message and exit
 		-q, --quiet           Be quiet.
 		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-l, --keep-in-cloud   Do not remove data from cloud.
-		-r, --recursive       Remove directory recursively.
-		-c, --keep-in-cache   Do not remove data from cache.
 
-Examples:
+Clean up example::
 
-Remove all cloud not in the current DVC snapshot::
-
-	$ dvc gc data/
-
-Remove all versions of *data/Posts.xml* file (but the latest one) from the local cache directory but keep it in the cloud storage::
-
-	$ dvc gc data/Posts.xml --keep-in-cloud
-
-target
-======
-
-This command sets the default target for the current DVC repository.
-
-.. code-block:: shell
-	:linenos:
-	
-	usage: dvc target [-h] [-q] [-v] [-G] [-u] [target_file]
-
-	positional arguments:
-		target_file           Target data item.
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
-		-u, --unset           Reset target.
-
-Examples:
-
-Set *data/Posts.xml* file as a default target in the current DVC repository::
-
-	$ dvc target data/Posts.xml
-
-ex
-==
-
-This command is designed for risky enthusiasts who would like to try the newest capabilities of DVC which are still under active development. 
-
-**Note:** It is provided for your reference and early try only. DVC development team does not provide any warranty as for this piece of DVC functionality to work in a stable manner, in your environment. We do not recommend you to use the experimental functionality in production mode unless you really clear as for what you are going to do.
-
-.. code-block:: shell
-	:linenos:
-	
-	usage: dvc ex [-h] [-q] [-v] [-G] {cloud} ...
-
-	positional arguments:
-		{cloud}             Use dvc cloud CMD --help for command-specific help
-		cloud               Cloud manipulation
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-                              and commits.
+	$ du -sh .dvc/cache/
+	7.4G    .dvc/cache/
+	$ dvc gc
+	'.dvc/cache/27e30965256ed4d3e71c2bf0c4caad2e' was removed
+	'.dvc/cache/2e006be822767e8ba5d73ebad49ef082' was removed
+	'.dvc/cache/2f412200dc53fb97dcac0353b609d199' was removed
+	'.dvc/cache/541025db4da02fcab715ca2c2c8f4c19' was removed
+	'.dvc/cache/62f8c2ba93cfe5a6501136078f0336f9' was removed
+	'.dvc/cache/7c4521365288d69a03fa22ad3d399f32' was removed
+	'.dvc/cache/9ff7365a8256766be8c363fac47fc0d4' was removed
+	'.dvc/cache/a86ca87250ed8e54a9e2e8d6d34c252e' was removed
+	'.dvc/cache/f64d65d4ccef9ff9d37ea4cf70b18700' was removed
+	$ du -sh .dvc/cache/
+	3.1G    .dvc/cache/
 
 
 config
 ======
 
-This command is designed to overwrite some configuration options for just this session of DVC (as you remember, default configuration values are specified in **dvc.conf** , which is located in root of your DVC installation folder).
+Get or set config options. This command reads and owerwrites DVC config file *.dvc/config*.
+
 
 .. code-block:: shell
 	:linenos:
 	
-	usage: dvc config [-h] [-q] [-v] [-G] [-u] name [value]
+	usage: dvc config [-h] [-q] [-v] [-u] name [value]
 
 	positional arguments:
 		name                  Option name
@@ -705,47 +707,98 @@ This command is designed to overwrite some configuration options for just this s
 		-h, --help            show this help message and exit
 		-q, --quiet           Be quiet.
 		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-                              and commits.
 		-u, --unset           Unset option
 
 Examples:
 
-Overwrite the value of DataDir configuration option with  *etc/data* for a current dvc session only::
+Specify an option name to get the option value from config file::
+	$ dvc config config Global.Cloud
+	AWS
 
-	$ dvc config DataDir etc/data
+Overwrite the value::
+
+	$ dvc config Global.Cloud GCP
+	$ git add .dvc/config
+	$ git commit -m 'Change cloud to GCP'
+	[input_100K a4c985f] Change cloud to GCP
+	 1 file changed, 1 insertion(+), 1 deletion(-)
 
 show
 ====
 
-This command is used to display either pipeline or workflow image for your current ML project managed by DVC
+Generate pipeline image for your current project.
 
 .. code-block:: shell
 	:linenos:
 	
-	usage: dvc show [-h] [-q] [-v] [-G] {pipeline,workflow} ...
+	usage: dvc show [-h] [-q] [-v] {pipeline} ...
 
 	positional arguments:
-		{pipeline,workflow}   Use dvc show CMD --help for command-specific help
+		{pipeline}     Use `dvc show CMD` --help for command-specific help
 		pipeline              Show pipeline image
-		workflow              Show workflow image
 
 	optional arguments:
 		-h, --help            show this help message and exit
 		-q, --quiet           Be quiet.
 		-v, --verbose         Be verbose.
-		-G, --no-git-actions  Skip all git actions including reproducibility check
-                              and commits.
 
 Examples:
 
-Show the workflow image for the ML project in your current DVC repository::
-
-	$ dvc show workflow
-
-Show the pipeline image for the ML project in your current DVC repository::
+Show the pipeline image::
 
 	$ dvc show pipeline
+
+fsck
+====
+
+Data file consistency check.
+By default the commands outputs statuses of all corrupted data files if any.
+Use *--all* option to see statuses of all data files statuses.
+
+The command checks:
+1. Cache file name which equals to the file content checksum on the time when DVC created the file.
+2. Checksum from local state file.
+3. Checksum regarding DVC files.
+4. Actual recomputed checksum. This is computation heavy command for large data file. Enabled only by *--physical* option.
+
+Data file is considered as corrupted if one of the checksum does not match all others.
+
+
+.. code-block:: shell
+	:linenos:
+
+	dvc fsck [-h] [-q] [-v] [-p] [-a] [targets [targets ...]]
+
+	positional arguments:
+		targets               Data files to check
+
+	optional arguments:
+		-h, --help            show this help message and exit
+		-q, --quiet           Be quiet.
+		-v, --verbose         Be verbose.
+		-p, --physical        Compute actual md5
+		-a, --all             Show all data files including correct ones
+
+Examples.
+
+
+Check list of corrupted data files::
+
+	$ dvc fsck --physical
+	File data/matrix-test.p:
+	    Error status:           Checksum missmatch!!!
+	    Actual checksum:        7c4521365288d69a03fa22ad3d399f32
+	    Cache file name:        7c4521365288d69a03fa22ad3d399f32
+	    Local state checksum:   7c4521365288d69a03fa22ad3d399f32
+	    Local state mtime:      1517048086.0
+	    Actual mtime:           1517048086.0
+	    Stage file: eval_auc.txt.dvc
+	        Checksum:           7c4521365288d69a03fa22ad3d399f32
+	        Type:               Dependency
+	    Stage file: matrix-train.p.dvc
+	        Checksum:           7c4521365288d69a03fa22ad3d399f32
+	        Type:               Output
+	        Use cache:          true
 
 Common Arguments
 ===========================================
