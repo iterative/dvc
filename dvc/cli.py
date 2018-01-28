@@ -47,7 +47,8 @@ def parse_args(argv=None):
     parser.add_argument('-V',
                         '--version',
                         action='version',
-                        version='%(prog)s ' + VERSION)
+                        version='%(prog)s ' + VERSION,
+                        help='Show program\'s version')
 
     # Sub commands
     subparsers = parser.add_subparsers(
@@ -63,14 +64,32 @@ def parse_args(argv=None):
     init_parser = subparsers.add_parser(
                         'init',
                         parents=[parent_parser],
-                        help='Initialize dvc over a directory (should already be a git dir).')
+                        help='Initialize dvc over a directory (should already be a git dir)')
     init_parser.set_defaults(func=CmdInit)
+
+    # Add
+    import_parser = subparsers.add_parser(
+                        'add',
+                        parents=[parent_parser],
+                        help='Add files/directories to dvc')
+    import_parser.add_argument(
+                        'targets',
+                        nargs='+',
+                        help='Input files/directories')
+    import_parser.set_defaults(func=CmdAdd)
+
+    # Checkout
+    checkout_parser = subparsers.add_parser(
+                        'checkout',
+                        parents=[parent_parser],
+                        help='Checkout data files from cache')
+    checkout_parser.set_defaults(func=CmdCheckout)
 
     # Run
     run_parser = subparsers.add_parser(
                         'run',
                         parents=[parent_parser],
-                        help='Run command')
+                        help='Generate a stage file from a given command and execute the command')
     run_parser.add_argument('-d',
                         '--deps',
                         action='append',
@@ -80,12 +99,12 @@ def parse_args(argv=None):
                         '--outs',
                         action='append',
                         default=[],
-                        help='Declare output data file (sync to cloud) for reproducible cmd.')
+                        help='Declare output data file or data directory.')
     run_parser.add_argument('-O',
                         '--outs-no-cache',
                         action='append',
                         default=[],
-                        help='Declare output regular file (sync to Git) for reproducible cmd.')
+                        help='Declare output regular file or directory (sync to Git, not DVC cache).')
     run_parser.add_argument('-f',
                         '--file',
                         help='Specify name of the state file')
@@ -132,19 +151,19 @@ def parse_args(argv=None):
     status_parser = subparsers.add_parser(
                         'status',
                         parents=[parent_sync_parser],
-                        help='Show status for data files')
+                        help='Show mismatches between local cache and cloud cache')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
     repro_parser = subparsers.add_parser(
                         'repro',
                         parents=[parent_parser],
-                        help='Reproduce data')
+                        help='Reproduce DVC file. Default file name - \'Dvcfile\'')
     repro_parser.add_argument(
                         'targets',
                         nargs='*',
                         default=[Stage.STAGE_FILE],
-                        help='Data items or stages to reproduce.')
+                        help='DVC file to reproduce.')
     repro_parser.add_argument('-f',
                         '--force',
                         action='store_true',
@@ -161,22 +180,11 @@ def parse_args(argv=None):
     remove_parser = subparsers.add_parser(
                         'remove',
                         parents=[parent_parser],
-                        help='Remove data item from data directory.')
+                        help='Remove data file or data directory')
     remove_parser.add_argument('targets',
                         nargs='+',
                         help='Target to remove - file or directory.')
     remove_parser.set_defaults(func=CmdRemove)
-
-    # Add
-    import_parser = subparsers.add_parser(
-                        'add',
-                        parents=[parent_parser],
-                        help='Add files/directories to dvc')
-    import_parser.add_argument(
-                        'targets',
-                        nargs='+',
-                        help='Input files/directories')
-    import_parser.set_defaults(func=CmdAdd)
 
     # Garbage collector
     gc_parser = subparsers.add_parser(
@@ -189,7 +197,7 @@ def parse_args(argv=None):
     config_parser = subparsers.add_parser(
                         'config',
                         parents=[parent_parser],
-                        help='Get or set repository options')
+                        help='Get or set config options')
     config_parser.add_argument('-u',
                         '--unset',
                         default=False,
@@ -222,13 +230,6 @@ def parse_args(argv=None):
                         help='Target data directory')
     pipeline_parser.set_defaults(func=CmdShowPipeline)
 
-    # Checkout
-    checkout_parser = subparsers.add_parser(
-                        'checkout',
-                        parents=[parent_parser],
-                        help='Checkout')
-    checkout_parser.set_defaults(func=CmdCheckout)
-
     # Fsck
     fsck_parser = subparsers.add_parser(
                         'fsck',
@@ -249,7 +250,7 @@ def parse_args(argv=None):
                         '--all',
                         action='store_true',
                         default=False,
-                        help='Show all tracked files including correct ones')
+                        help='Show all data files including correct ones')
     fsck_parser.set_defaults(func=CmdFsck)
 
     return parser.parse_args(argv)

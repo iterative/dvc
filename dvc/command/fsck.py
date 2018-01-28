@@ -80,7 +80,7 @@ class FsckFile(object):
         print(u'    Actual mtime:           {}'.format(self.mtime_msg()))
 
         for fsck_deps in self.fsck_deps:
-            print(u'    Stage file: {}'.format(fsck_deps.dvc_file_name))
+            print(u'    DVC file: {}'.format(fsck_deps.dvc_file_name))
             print(u'        Checksum:           {}'.format(fsck_deps.md5))
             print(u'        Type:               {}'.format(fsck_deps.type_name))
             if fsck_deps.use_cache:
