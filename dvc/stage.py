@@ -285,7 +285,11 @@ class Output(Dependency):
                 cache = self.project.cache.get(md5)
                 cache_info = os.path.join(self.cache, relpath)
 
-                self.hardlink(path, cache)
+                if os.path.exists(cache):
+                    self._remove(path, None)
+                    self.hardlink(cache, path)
+                else:
+                    self.hardlink(path, cache)
 
                 os.makedirs(os.path.dirname(cache_info))
                 with open(cache_info, 'w') as fd:
