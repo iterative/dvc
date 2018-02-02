@@ -284,6 +284,7 @@ class Output(Dependency):
                 md5 = file_md5(path)[0]
                 cache = self.project.cache.get(md5)
                 cache_info = os.path.join(self.cache, relpath)
+                cache_dir = os.path.dirname(cache_info)
 
                 if os.path.exists(cache):
                     self._remove(path, None)
@@ -291,7 +292,9 @@ class Output(Dependency):
                 else:
                     self.hardlink(path, cache)
 
-                os.makedirs(os.path.dirname(cache_info))
+                if not os.path.exists(cache_dir):
+                    os.makedirs(cache_dir)
+
                 with open(cache_info, 'w') as fd:
                     yaml.safe_dump({self.PARAM_MD5: md5}, fd, default_flow_style=False)
 
