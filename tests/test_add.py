@@ -59,6 +59,17 @@ class TestAddTrackedFile(TestDvc):
             self.dvc.add(fname)
 
 
+class TestAddDirWithExistingCache(TestDvc):
+    def test(self):
+        dname = 'a'
+        fname = os.path.join(dname, 'b')
+        os.mkdir(dname)
+        shutil.copyfile(self.FOO, fname)
+
+        self.dvc.add(self.FOO)
+        self.dvc.add(dname)
+
+
 class TestCmdAdd(TestDvc):
     def test(self):
         ret = main(['add',
