@@ -1,4 +1,5 @@
 import os
+import stat
 import shutil
 import filecmp
 from checksumdir import dirhash
@@ -68,6 +69,14 @@ class TestAddDirWithExistingCache(TestDvc):
 
         self.dvc.add(self.FOO)
         self.dvc.add(dname)
+
+
+class TestAddModifiedDir(TestDvc):
+    def test(self):
+        self.dvc.add(self.DATA_DIR)
+        os.chmod(self.DATA, stat.S_IWRITE)
+        os.unlink(self.DATA)
+        self.dvc.add(self.DATA_DIR)
 
 
 class TestCmdAdd(TestDvc):
