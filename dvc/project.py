@@ -34,37 +34,6 @@ class ReproductionError(DvcException):
         super(ReproductionError, self).__init__(u'Failed to reproduce \'{}\': {}'.format(dvc_file_name, msg))
 
 
-class Pipeline(object):
-
-    def __init__(self, project, G):
-        self.project = project
-        self.G = G
-
-    def graph(self):
-        return self.G
-
-    def stages(self):
-        return nx.get_node_attributes(self.G, 'stage')
-
-    def changed(self, stage):
-        for node in nx.dfs_postorder_nodes(G, stage.path.relative_to(self.project.root_dir)):
-            if self.stages[node].changed():
-                return True
-        return False
-
-    def reproduce(self, stage):
-        if stage not in self.stages():
-            raise StageNotInPipelineError()
-
-        if not self.changed(stage):
-            raise PipelineNotChangedError()
-
-        for node in nx.dfs_postorder_nodes(G, stage.path.relative_to(self.project.root_dir)):
-            self.stages[node].reproduce()
-
-        stage.reproduce()
-
-
 class Project(object):
     DVC_DIR = '.dvc'
 
