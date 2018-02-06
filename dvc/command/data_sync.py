@@ -1,14 +1,27 @@
 import dvc.cloud.base as cloud
+
 from dvc.command.common.base import CmdBase
+from dvc.exceptions import DvcException
+
 
 class CmdDataPull(CmdBase):
     def run(self):
-        self.project.pull(self.args.jobs)
+        try:
+            self.project.pull(self.args.jobs)
+        except DvcException as exc:
+            self.project.logger.error('Failed to pull data from the cloud', exc)
+            return 1
+        return 0
 
 
 class CmdDataPush(CmdBase):
     def run(self):
-        self.project.push(self.args.jobs)
+        try:
+            self.project.push(self.args.jobs)
+        except DvcException as exc:
+            self.project.logger.error('Failed to push data to the cloud', exc)
+            return 1
+        return 0
 
 
 class CmdDataStatus(CmdBase):
@@ -28,6 +41,10 @@ class CmdDataStatus(CmdBase):
             self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], target))
 
     def run(self):
-        status = self.project.status(self.args.jobs)
-        self._show(status)
+        try:
+            status = self.project.status(self.args.jobs)
+            self._show(status)
+        except DvcException as exc:
+            self.project.logger.error('Failed to obtain data status', exc)
+            return 1
         return 0
