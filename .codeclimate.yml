@@ -4,6 +4,8 @@ languages:
 checks:
     argument-count:
         enabled: false
+    method-complexity:
+        enabled: false
 
 exclude_paths:
     - tests/
