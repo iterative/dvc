@@ -1,7 +1,8 @@
 import os
 
 from dvc.main import main
-from dvc.stage import Stage, CmdOutputOutsideOfRepoError
+from dvc.stage import Stage
+from dvc.output import CmdOutputOutsideOfRepoError
 from dvc.project import StageNotFoundError
 from dvc.command.remove import CmdRemove
 

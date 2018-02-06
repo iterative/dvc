@@ -6,9 +6,10 @@ from checksumdir import dirhash
 
 from dvc.main import main
 from dvc.utils import file_md5
-from dvc.stage import Stage, CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
-from dvc.stage import CmdOutputDoesNotExistError, CmdOutputIsNotFileOrDirError
-from dvc.stage import CmdOutputAlreadyTrackedError
+from dvc.stage import Stage
+from dvc.output import CmdOutputNoCacheError, CmdOutputOutsideOfRepoError
+from dvc.output import CmdOutputDoesNotExistError, CmdOutputIsNotFileOrDirError
+from dvc.output import CmdOutputAlreadyTrackedError
 from dvc.project import StageNotFoundError
 from dvc.command.add import CmdAdd
 
