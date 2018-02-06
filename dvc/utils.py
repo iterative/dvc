@@ -83,7 +83,6 @@ def map_progress(func, targets, n_threads):
     try:
         ret = pool.map(func, targets)
     except Exception as exc:
-#        Logger.error('Unexpected exception while processing targets: {}'.format(exc), exc_info=True)
         raise
     finally:
         progress.finish()

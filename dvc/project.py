@@ -28,10 +28,9 @@ class StageNotFoundError(DvcException):
 
 
 class ReproductionError(DvcException):
-    def __init__(self, dvc_file_name, msg):
-        self.dvc_file_name = dvc_file_name
-        self.msg = msg
-        super(ReproductionError, self).__init__(u'Failed to reproduce \'{}\': {}'.format(dvc_file_name, msg))
+    def __init__(self, dvc_file_name, ex):
+        msg = 'Failed to reproduce \'{}\''.format(dvc_file_name)
+        super(ReproductionError, self).__init__(msg, cause=ex)
 
 
 class Project(object):
@@ -161,7 +160,7 @@ class Project(object):
             try:
                 result += self._reproduce_stage(stages, n, force)
             except Exception as ex:
-                raise ReproductionError(n, str(ex))
+                raise ReproductionError(n, ex)
         return result
 
     def checkout(self):

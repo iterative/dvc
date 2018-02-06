@@ -9,13 +9,13 @@ def main(argv=None):
     try:
         cmd = args.func(args)
     except Exception as ex:
-        Logger.error('Initialization error: {}'.format(str(ex)))
+        Logger.error('Initialization error', ex)
         return 255
 
     try:
         ret = cmd.run_cmd()
     except Exception as ex:
-        Logger.error('Unexpected error: {}'.format(str(ex)))
+        Logger.error('Unexpected error', ex)
         return 254
 
     return ret
