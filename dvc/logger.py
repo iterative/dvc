@@ -1,6 +1,7 @@
 import sys
 import logging
 import colorama
+import traceback
 
 from dvc.config import Config
 
@@ -70,18 +71,34 @@ class Logger(object):
         return u'{}{}{}'.format(header, msg, footer)
 
     @staticmethod
-    def error(msg, **kwargs):
-        exc_info = Logger.logger().getEffectiveLevel() == logging.DEBUG
-        return Logger.logger().error(Logger.colorize(msg, 'error'), exc_info=exc_info, **kwargs)
+    def parse_exc(exc, tb=None):
+        str_tb = tb if tb else None
+        str_exc = ': {}'.format(str(exc)) if exc else ""
+
+        if exc and hasattr(exc, 'cause') and exc.cause:
+            cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause, exc.cause_tb)
+
+            str_tb = cause_str_tb
+            str_exc = '{}{}'.format(str_exc, cause_str_exc)
+
+        return (str_exc, str_tb)
 
     @staticmethod
-    def warn(msg, **kwargs):
-        return Logger.logger().warn(Logger.colorize(msg, 'warn'), **kwargs)
+    def error(msg, exc=None):
+        str_exc, str_tb = Logger.parse_exc(exc)
+        if Logger.logger().getEffectiveLevel() == logging.DEBUG and exc:
+            str_tb = str_tb if str_tb else traceback.format_exc()
+            Logger.logger().error(str_tb)
+        return Logger.logger().error(Logger.colorize(msg + str_exc, 'error'))
 
     @staticmethod
-    def debug(msg, **kwargs):
-        return Logger.logger().debug(Logger.colorize(msg, 'debug'), **kwargs)
+    def warn(msg):
+        return Logger.logger().warn(Logger.colorize(msg, 'warn'))
 
     @staticmethod
-    def info(msg, **kwargs):
-        return Logger.logger().info(Logger.colorize(msg, 'info'), **kwargs)
+    def debug(msg):
+        return Logger.logger().debug(Logger.colorize(msg, 'debug'))
+
+    @staticmethod
+    def info(msg):
+        return Logger.logger().info(Logger.colorize(msg, 'info'))

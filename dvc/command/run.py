@@ -19,7 +19,7 @@ class CmdRun(CmdBase):
                              cwd=self.args.cwd,
                              no_exec=self.args.no_exec)
         except DvcException as ex:
-            self.project.logger.error('Failed to run command: {}'.format(str(ex)))
+            self.project.logger.error('Failed to run command', ex)
             return 1
 
         return 0

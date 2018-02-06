@@ -11,10 +11,11 @@ class CmdRepro(CmdBase):
                                        recursive=recursive,
                                        force=self.args.force)
             except ReproductionError as ex:
-                self.project.logger.error(ex)
+                msg = 'Failed to reproduce \'{}\''.format(target)
+                self.project.logger.error(msg, ex)
                 return 1
             except Exception as ex:
-                msg = 'Failed to reproduce \'{}\' - unexpected error: {}'.format(target, ex)
-                self.project.logger.error(msg)
+                msg = 'Failed to reproduce \'{}\' - unexpected error'.format(target)
+                self.project.logger.error(msg, ex)
                 return 1
         return 0
