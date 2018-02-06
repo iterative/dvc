@@ -172,16 +172,24 @@ class Output(Dependency):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
     def changed(self):
-        if not self.use_cache:
-            return super(Output, self).changed()
+        ret = True
 
-        if os.path.exists(self.path) and \
+        if not self.use_cache:
+            ret = super(Output, self).changed()
+        elif os.path.exists(self.path) and \
            os.path.exists(self.cache) and \
            System.samefile(self.path, self.cache) and \
            os.stat(self.cache).st_mode & stat.S_IREAD:
-            return False
+            ret = False
 
-        return True
+        msg = "Data {} with cache {} "
+        if ret:
+            msg += "changed"
+        else:
+            msg += "didn't change"
+        self.project.logger.debug(msg.format(self.path, self.cache))
+
+        return ret
 
     def hardlink(self, src, link):
         self.project.logger.debug("creating hardlink {} -> {}".format(src, link))
@@ -207,7 +215,7 @@ class Output(Dependency):
         self.project.logger.debug("Checking out {} with cache {}".format(self.path, self.cache))
 
         if not self.changed():
-            msg = "Data {} with cache {} didn't change"
+            msg = "Data {} with cache {} didn't change, skipping checkout."
             self.project.logger.debug(msg.format(self.path, self.cache))
             return
 
@@ -246,9 +254,7 @@ class Output(Dependency):
             raise CmdOutputAlreadyTrackedError(self.rel_path)
 
         if not self.changed():
-            msg = "Data {} with cache {} didn't change"
-            self.project.logger.debug(msg.format(self.path, self.cache))
-            return
+             return
 
         if os.path.exists(self.cache):
             # This means that we already have cache for this data.
