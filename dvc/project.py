@@ -13,14 +13,6 @@ from dvc.cache import Cache
 from dvc.cloud.data_cloud import DataCloud
 
 
-class PipelineError(DvcException):
-    pass
-
-
-class StageNotInPipelineError(PipelineError):
-    pass
-
-
 class StageNotFoundError(DvcException):
     def __init__(self, path):
         msg = 'Stage file {} does not exist'.format(path)
