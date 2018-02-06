@@ -1,5 +1,9 @@
 languages:
     Python: true
 
+checks:
+    argument-count:
+        enabled: false
+
 exclude_paths:
     - tests/
