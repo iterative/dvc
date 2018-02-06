@@ -149,10 +149,9 @@ class Stage(object):
 
     def save(self):
         for dep in self.deps:
-            dep.update()
+            dep.save()
 
         for out in self.outs:
-            out.update()
             out.save()
             if out.use_cache:
                 self.project.scm.ignore(out.path)

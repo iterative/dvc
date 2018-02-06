@@ -90,7 +90,7 @@ class Dependency(object):
     def inode(self):
         return os.stat(self.path).st_ino
 
-    def update(self):
+    def save(self):
         if not os.path.exists(self.path):
             raise CmdOutputDoesNotExistError(self.rel_path)
 
@@ -239,16 +239,12 @@ class Output(Dependency):
             self.hardlink(cache, path)
 
     def save(self):
+        super(Output, self).save()
+
         if not self.use_cache:
             return
 
         self.project.logger.debug("Saving {} to {}".format(self.path, self.cache))
-
-        if not os.path.exists(self.path):
-            raise CmdOutputDoesNotExistError(self.rel_path)
-
-        if not os.path.isfile(self.path) and not os.path.isdir(self.path):
-            raise CmdOutputIsNotFileOrDirError(self.rel_path)
 
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.rel_path)
