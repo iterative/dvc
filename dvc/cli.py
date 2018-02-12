@@ -123,34 +123,42 @@ def parse_args(argv=None):
                         help='Command or command file to execute')
     run_parser.set_defaults(func=CmdRun)
 
-    # Parent parser used in sync/pull/push
-    parent_sync_parser = argparse.ArgumentParser(
+    # Parent parser used in pull/push/status
+    parent_cache_parser = argparse.ArgumentParser(
                         add_help=False,
                         parents=[parent_parser])
-    parent_sync_parser.add_argument('-j',
+    parent_cache_parser.add_argument('-j',
                         '--jobs',
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
+    # Cache
+    cache_parser = subparsers.add_parser(
+                        'cache',
+                        parents=[parent_parser],
+                        help='Cache operations')
+    cache_subparsers = cache_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use `dvc cache CMD` --help for command-specific help')
 
     # Pull
-    pull_parser = subparsers.add_parser(
+    pull_parser = cache_subparsers.add_parser(
                         'pull',
-                        parents=[parent_sync_parser],
+                        parents=[parent_cache_parser],
                         help='Pull data files from the cloud')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
-    push_parser = subparsers.add_parser(
+    push_parser = cache_subparsers.add_parser(
                         'push',
-                        parents=[parent_sync_parser],
+                        parents=[parent_cache_parser],
                         help='Push data files to the cloud')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Status
-    status_parser = subparsers.add_parser(
+    status_parser = cache_subparsers.add_parser(
                         'status',
-                        parents=[parent_sync_parser],
+                        parents=[parent_cache_parser],
                         help='Show mismatches between local cache and cloud cache')
     status_parser.set_defaults(func=CmdDataStatus)
 

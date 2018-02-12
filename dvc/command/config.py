@@ -4,9 +4,19 @@ import configobj
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
+from dvc.project import Project
 
 
 class CmdConfig(CmdBase):
+    def __init__(self, args):
+        self.args = args
+        root_dir = self._find_root()
+        self.config_file = os.path.join(root_dir, Project.DVC_DIR, Config.CONFIG)
+        self._set_loglevel(args)
+
+    def run_cmd(self):
+        return self.run()
+
     def _get_key(self, d, name, add=False):
         for k in d.keys():
             if k.lower() == name.lower():
@@ -67,7 +77,7 @@ class CmdConfig(CmdBase):
     def run(self):
         # Using configobj because it doesn't
         # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self.project.config.config_file, write_empty_values=True)
+        self.configobj = configobj.ConfigObj(self.config_file, write_empty_values=True)
 
         if self.check_opt() != 0:
             return 1
