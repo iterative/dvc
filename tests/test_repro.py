@@ -27,14 +27,18 @@ class TestRepro(TestDvc):
 
 class TestReproChangedCode(TestRepro):
     def test(self):
-        repro = 'repro'
-        with open(self.CODE, 'a') as code:
-            code.write("\nshutil.copyfile('{}', sys.argv[2])\n".format(self.BAR))
+        self.swap_code()
 
         stages = self.dvc.reproduce(self.file1_stage)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
         self.assertEqual(len(stages), 1)
+
+    def swap_code(self):
+        os.unlink(self.CODE)
+        new_contents = self.CODE_CONTENTS
+        new_contents += "\nshutil.copyfile('{}', sys.argv[2])\n".format(self.BAR)
+        self.create(self.CODE, new_contents)
 
 
 class TestReproChangedData(TestRepro):
