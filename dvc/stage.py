@@ -9,7 +9,7 @@ from dvc.output import Output, Dependency, OutputError
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = 'Stage {} cmd {} failed'.format(stage.path, stage.cmd)
+        msg = 'Stage {} cmd {} failed'.format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 

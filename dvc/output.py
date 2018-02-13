@@ -51,7 +51,7 @@ class Dependency(object):
         self.path = os.path.abspath(os.path.realpath(path))
 
         if not self.path.startswith(self.project.root_dir):
-            raise CmdOutputOutsideOfRepoError(self.path)
+            raise CmdOutputOutsideOfRepoError(self.rel_path)
 
         self.md5 = md5
 
