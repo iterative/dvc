@@ -235,7 +235,11 @@ class Output(Dependency):
 
         for relpath, cache in self.dir_cache().items():
             path = os.path.join(self.path, relpath)
-            os.makedirs(os.path.dirname(path))
+            dname = os.path.dirname(path)
+
+            if not os.path.exists(dname):
+                os.makedirs(dname)
+
             self.hardlink(cache, path)
 
     def save(self):
