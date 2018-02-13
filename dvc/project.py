@@ -152,7 +152,7 @@ class Project(object):
             try:
                 result += self._reproduce_stage(stages, n, force)
             except Exception as ex:
-                raise ReproductionError(n, ex)
+                raise ReproductionError(stages[n].relpath, ex)
         return result
 
     def checkout(self):
