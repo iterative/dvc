@@ -8,6 +8,7 @@ from dvc.project import Project
 
 
 class TestDir(TestCase):
+    GCP_CREDS_FILE = os.path.abspath(os.path.join('scripts', 'ci', 'gcp-creds.json'))
     DATA_DIR = 'data_dir'
     DATA_SUB_DIR = os.path.join(DATA_DIR, 'data_sub_dir')
     DATA = os.path.join(DATA_DIR, 'data')
