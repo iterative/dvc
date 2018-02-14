@@ -21,3 +21,4 @@ printf "[default]\n" > ~/.aws/credentials
 printf "aws_access_key_id = $AWS_ACCESS_KEY_ID\n" >> ~/.aws/credentials
 printf "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY\n" >> ~/.aws/credentials
 printf "[default]\n" > ~/.aws/config
+python scripts/ci/gcp_setup.py
