@@ -7,9 +7,9 @@ platform: x86
 environment:
   my_variable:
   aws_access_key_id:
-    secure: N3zfVSEvKhLSg/wvtrT1ZIVl9/egvW6xqIoRDrOcvvrkvJM0VejDHb3R3BWUUftY
+    secure: veTfhOrd4wUpG7NlRsvS3tufuaFfST8i7SZa2HVH6Vc=
   aws_secret_access_key:
-    secure: /XGu3uYneji4fwIaFIEzDln9bx7vWZiLb6yie1temPyIRK+NQlvyfGXHcKZ5Vm4teaG68pNvQKoYulUSem4NvQ==
+    secure: nCQcN/Mzce0erwcNOU3yAuWgF6ZuTvPBEqTF3XFp1poGcDbSIg+s67eVxsxWCXQj
 
   matrix:
 
@@ -50,8 +50,8 @@ install:
 build: false
 
 before_test:
-  - aws configure set aws_access_key_id "%AWS_ACCESS_KEY_ID%"
-  - aws configure set aws_secret_access_key "%AWS_SECRET_ACCESS_KEY%"
+  - aws configure set aws_access_key_id "%aws_access_key_id%"
+  - aws configure set aws_secret_access_key "%aws_secret_access_key%"
   - pip install -r test-requirements.txt
 
 test_script:
