@@ -135,9 +135,6 @@ class TestDataCloudGCP(TestDataCloudBase):
         if os.getenv("DVC_TEST_GCP") == "true":
             return True
 
-        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
-            return True
-
         return False
 
     def _setup_cloud(self):
