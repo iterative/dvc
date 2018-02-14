@@ -1,14 +1,63 @@
-========
-Why DVC?
-========
+====================================
+Collaboration issues in data science
+====================================
 
-Why? Really.
+Today with all the successes in machine learning (ML), deep learning specifically and its applications in business the data science community is still lacking good practices of organizing theirs ML projects and effectively collaborating within ML projects.
+This is the biggest challenge for the community and the industry now when ML algorithms and methods are not "tribal knowledge" anymore but it is still not easy to implement, reuse and manage.
+
+To make a progress in this challange many areas of the ML modeling process have to be formalized and many common questions have to be answered in an unified way:
+
+1. Source code and data versioning.
+
+- How to avoid the discrepancy between versions of source code files and versions of data files when the data files do not fit to a code repository?
+
+2. Experiment time log.
+   
+- Which of the model hyperparameters changes contributed the most to the target metric? What was exact contribution value?
+
+3. Navigating through experiments.
+
+- How to get back to a ML model from the previous week without spending time for the model re-training?
+
+- How to quickly switch back and forth between the large data source and a small data subset without modifying source code?
+
+4. Reproducibility.
+
+- How to rerun a model evaluation step without re-trining the model training and preprocessing a raw dataset?
+
+5. Managing and sharing large data files.
+
+- How to share trained on GPU model with collegues who does not have any GPU?
+
+- How to share 147Gb of an entire ML project with all the data sources and the intermediate data files and models?
+
+
+Some of these questions are easy to answer individually.
+Any data scientist, engineer and manager knows or can easily find answers.
+However, the variety of answers makes data science collaboration process a nightmare.
+**A systematic approach is required.**
+
+=========================================
+Experiment management software and issues
+=========================================
+
+There is one common opinion regarding data science tooling.
+Data scientists as engineers are supposed to use the best practices and collaboration software from software engineering area like source version control system (Git), continuous integration services (CI), unit test frameworks and others methods and tools.
+But a comprehensive look at data science processes identifies that the software engineering toolset does not cover data scientists needs (try to answer all the questions from the above using only engineering tools).
+
+A new type of **experiment management software** aims to cover the gap between data scientists needs and the existing toolset.
+This kind of software are usually designed for enterprises with the assumption that all collaborators uses the same cloud and the same technology stack.
+Some of modern ML modeling frameworks and cloud services includes these data scientists collaboration elements.
+
+This software are usually requires external services (usually paid services).
+This might be a good solution for a particular company or a group of data scientists.
+However, a more common tool is needed for a wider audience including open source community.
 
 =============================
 What is DVC?
 =============================
 
-Data Version Control or DVC is a new type of **experiment management software** that has built on top of source code version control system (currently - Git).
+Data Version Control or DVC is **a new type of experiment management software** that has built on top of source code version control system (currently - Git).
 This gives the ability to **use the best engineering practices in data science projects**.
 
 The underlying source control system **eliminates the need of using external services**.
