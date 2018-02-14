@@ -216,11 +216,10 @@ class DataCloudBase(object):
             fname = os.path.join(path, os.path.relpath(k.name, self.cache_file_key(path)))
             res.append(self._status(k, fname))
 
-            tmp = tempfile.NamedTemporaryFile()
-            self._pull_key(k, tmp.name)
-            with open(tmp.name, 'r') as fd:
+            tmp = os.path.join(tempfile.mkdtemp(), k.name)
+            self._pull_key(k, tmp)
+            with open(tmp, 'r') as fd:
                 d = yaml.safe_load(fd)
-            tmp.close()
             md5 = d[Output.PARAM_MD5]
 
             cache = os.path.join(self._cloud_settings.cache_dir, md5)

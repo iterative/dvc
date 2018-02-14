@@ -4,7 +4,6 @@ import tempfile
 from git import Repo
 from unittest import TestCase
 
-from dvc.system import System
 from dvc.project import Project
 
 
@@ -23,7 +22,7 @@ class TestDir(TestCase):
     CODE_CONTENTS = 'import sys\nimport shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])'
 
     def _pushd(self, d):
-        self._saved_dir = System.realpath(os.curdir)
+        self._saved_dir = os.path.realpath(os.curdir)
         os.chdir(d)
 
     def _popd(self):
@@ -35,7 +34,7 @@ class TestDir(TestCase):
             f.write(contents)
 
     def setUp(self):
-        self._root_dir = System.get_long_path(tempfile.mkdtemp())
+        self._root_dir = tempfile.mkdtemp()
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)

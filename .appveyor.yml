@@ -5,6 +5,12 @@ branches:
 platform: x86
 
 environment:
+  my_variable:
+  aws_access_key_id:
+    secure: N3zfVSEvKhLSg/wvtrT1ZIVl9/egvW6xqIoRDrOcvvrkvJM0VejDHb3R3BWUUftY
+  aws_secret_access_key:
+    secure: /XGu3uYneji4fwIaFIEzDln9bx7vWZiLb6yie1temPyIRK+NQlvyfGXHcKZ5Vm4teaG68pNvQKoYulUSem4NvQ==
+
   matrix:
 
     - PYTHON: "C:\\Python27"
