@@ -99,15 +99,12 @@ class TestDataCloudAWS(TestDataCloudBase):
     TEST_REPO_REGION = 'us-east-2'
 
     def _should_test(self):
-        dvc_test_aws = os.getenv("DVC_TEST_AWS")
-        if dvc_test_aws == "true":
-            return True
-        elif dvc_test_aws == "false":
+        if os.name == 'nt':
             return False
 
-        if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
+        if os.getenv("TRAVIS_PULL_REQUEST") == "false" and \
+           os.getenv("TRAVIS_SECURE_ENV_VARS") == "true":
             return True
-
         return False
 
     def _setup_cloud(self):
@@ -132,10 +129,12 @@ class TestDataCloudGCP(TestDataCloudBase):
     TEST_REPO_GCP_PROJECT='dvc-project'
 
     def _should_test(self):
-        if os.getenv("DVC_TEST_GCP") == "true":
-            return True
+        if os.name == 'nt':
+            return False
 
-        return False
+        if os.getenv("TRAVIS") == "true" or os.getenv("APPVEYOR") == "True" or os.getenv("DVC_TEST_GCP") != "true":
+            return False
+        return True
 
     def _setup_cloud(self):
         if not self._should_test():
