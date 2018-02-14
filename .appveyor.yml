@@ -41,6 +41,7 @@ environment:
 install:
   - cinst graphviz
   - cinst wget
+  - cinst awscli
   - wget --no-check-certificate https://github.com/dpinney/omf/raw/master/omf/static/pygraphviz-1.3.1-cp27-none-win32.whl
   - pip install pygraphviz-1.3.1-cp27-none-win32.whl
   - pip install -r requirements.txt
@@ -49,6 +50,8 @@ install:
 build: false
 
 before_test:
+  - aws configure set aws_access_key_id "%AWS_ACCESS_KEY_ID%"
+  - aws configure set aws_secret_access_key "%AWS_SECRET_ACCESS_KEY%"
   - pip install -r test-requirements.txt
 
 test_script:
