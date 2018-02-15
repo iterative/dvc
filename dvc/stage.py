@@ -68,6 +68,8 @@ class Stage(object):
             if entry.changed():
                 self.project.logger.debug("{} changed".format(self.path))
                 return True
+            else:
+                self.project.logger.debug("{} didn't change".format(self.path))
         return False
 
     def remove_outs(self):

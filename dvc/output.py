@@ -68,7 +68,7 @@ class Dependency(object):
             return True
 
         state = self.project.state.get(self.path)
-        if state and state.mtime == self.mtime():
+        if state and state.mtime == self.mtime() and state.inode == self.inode():
             md5 = state.md5
         else:
             md5 = self.compute_md5()
