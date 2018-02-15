@@ -128,11 +128,14 @@ class TestDataCloudAWS(TestDataCloudBase):
 
 
 class TestDataCloudGCP(TestDataCloudBase):
-    TEST_REPO_GCP = 'dvc-test/myrepo'
+    TEST_REPO_GCP_BUCKET = 'dvc-test'
     TEST_REPO_GCP_PROJECT='dvc-project'
 
     def _should_test(self):
         if os.getenv("DVC_TEST_GCP") == "true":
+            return True
+
+        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
             return True
 
         return False
@@ -141,11 +144,13 @@ class TestDataCloudGCP(TestDataCloudBase):
         if not self._should_test():
             return
 
-        # Cleanup
-        os.system("gsutil rm -rf gs://{}/".format(self.TEST_REPO_GCP))
+        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
+            shutil.copyfile(self.GCP_CREDS_FILE, os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+
+        repo = self.TEST_REPO_GCP_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'StoragePath': self.TEST_REPO_GCP,
+        config = {'StoragePath': repo,
                   'Region': self.TEST_REPO_GCP_PROJECT}
         cloud_settings = CloudSettings(self.dvc.cache.cache_dir, None, config)
         self.cloud = DataCloudGCP(cloud_settings)
