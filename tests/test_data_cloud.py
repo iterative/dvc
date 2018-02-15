@@ -1,6 +1,7 @@
 import os
 import stat
 import uuid
+import shutil
 
 from dvc.config import ConfigError
 from dvc.cloud.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudGCP
