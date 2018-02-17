@@ -26,14 +26,3 @@ class TestUtils(TestDvc):
         shutil.rmtree(dest_dir)
         os.remove(src)
         os.remove(dest)
-
-    def test_map_progress(self):
-        def f(target):
-            with open(target, 'w+') as o:
-                o.write(target)
-
-        targets = ['map{}'.format(i) for i in range(1, 10)]
-        n_threads = [1, 10, 20]
-
-        for n in n_threads:
-            utils.map_progress(f, targets, n)
