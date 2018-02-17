@@ -1,3 +1,5 @@
+import os
+
 import dvc.cloud.base as cloud
 
 from dvc.command.common.base import CmdBase
@@ -38,7 +40,9 @@ class CmdDataStatus(CmdBase):
                 cloud.STATUS_NEW      : 'new file:',
             }
 
-            self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], target))
+            path = os.path.relpath(target)
+
+            self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], path))
 
     def run(self):
         try:
