@@ -72,6 +72,24 @@ def copyfile(src, dest):
     fdest.close()
 
 
+def map_progress(func, targets, n_threads):
+    """
+    Process targets in multi-threaded mode with progress bar
+    """
+    progress.set_n_total(len(targets))
+    pool = ThreadPool(processes=n_threads)
+    ret = []
+
+    try:
+        ret = pool.map(func, targets)
+    except Exception as exc:
+        raise
+    finally:
+        progress.finish()
+
+    return list(zip(targets, ret))
+
+
 def parse_target_metric_file(file_name):
     with open(file_name, 'r') as fd:
         try:

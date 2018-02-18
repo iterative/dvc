@@ -195,15 +195,15 @@ class Project(object):
             self._remove_cache(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
-    def push(self):
-        self.cloud.push(self._used_cache())
+    def push(self, jobs=1):
+        self.cloud.push(self._used_cache(), jobs)
 
-    def pull(self):
-        self.cloud.pull(self._used_cache())
+    def pull(self, jobs=1):
+        self.cloud.pull(self._used_cache(), jobs)
         self.checkout()
 
-    def status(self):
-        return self.cloud.status(self._used_cache())
+    def status(self, jobs=1):
+        return self.cloud.status(self._used_cache(), jobs)
 
     def graph(self):
         G = nx.DiGraph()

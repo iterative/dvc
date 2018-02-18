@@ -2,7 +2,7 @@ from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
-from dvc.progress import progress
+from dvc.utils import map_progress
 
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
@@ -79,36 +79,26 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def _process_targets(self, func, targets):
+    def _map_targets(self, func, targets, jobs):
         """
-        Process targets with a progress bar.
+        Process targets as data items in parallel.
         """
-        ret = []
-        progress.set_n_total(len(targets))
-        try:
-            for target in targets:
-                ret += [func(target)]
-        except Exception as exc:
-            raise
-        finally:
-            progress.finish()
+        return map_progress(func, targets, jobs)
 
-        return list(zip(targets, ret))
-
-    def push(self, targets):
+    def push(self, targets, jobs=1):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._process_targets(self._cloud.push, targets)
+        return self._map_targets(self._cloud.push, targets, jobs)
 
-    def pull(self, targets):
+    def pull(self, targets, jobs=1):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._process_targets(self._cloud.pull, targets)
+        return self._map_targets(self._cloud.pull, targets, jobs)
 
-    def status(self, targets):
+    def status(self, targets, jobs=1):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        return self._process_targets(self._cloud.status, targets)
+        return self._map_targets(self._cloud.status, targets, jobs)
