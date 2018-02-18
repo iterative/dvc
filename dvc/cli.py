@@ -123,6 +123,15 @@ def parse_args(argv=None):
                         help='Command or command file to execute')
     run_parser.set_defaults(func=CmdRun)
 
+    # Parent parser used in pull/push/status
+    parent_cache_parser = argparse.ArgumentParser(
+                        add_help=False,
+                        parents=[parent_parser])
+    parent_cache_parser.add_argument('-j',
+                        '--jobs',
+                        type=int,
+                        default=cpu_count(),
+                        help='Number of jobs to run simultaneously.')
     # Cache
     cache_parser = subparsers.add_parser(
                         'cache',
@@ -135,21 +144,21 @@ def parse_args(argv=None):
     # Pull
     pull_parser = cache_subparsers.add_parser(
                         'pull',
-                        parents=[parent_parser],
+                        parents=[parent_cache_parser],
                         help='Pull data files from the cloud')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
     push_parser = cache_subparsers.add_parser(
                         'push',
-                        parents=[parent_parser],
+                        parents=[parent_cache_parser],
                         help='Push data files to the cloud')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Status
     status_parser = cache_subparsers.add_parser(
                         'status',
-                        parents=[parent_parser],
+                        parents=[parent_cache_parser],
                         help='Show mismatches between local cache and cloud cache')
     status_parser.set_defaults(func=CmdDataStatus)
 
