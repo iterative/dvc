@@ -37,31 +37,45 @@ Any data scientist, engineer, or manager knows or could easily find answers to s
 However, the variety of answers and approaches makes data science collaboration a nightmare.
 **A systematic approach is required.**
 
-=========================================
-Experiment management software and its issues
-=========================================
+=========================
+Tools for data scientists
+=========================
+
+Existing engineering tools
+__________________________
 
 There is one common opinion regarding data science tooling.
-Data scientists as engineers are supposed to use the best practices and collaboration software from software engineering. Source version control system (Git), continuous integration services (CI), and unit test frameworks are all expected to be utilized in the data science pipeline.
+Data scientists as engineers are supposed to use the best practices and collaboration software from software engineering. 
+Source code version control system (Git), continuous integration services (CI), and unit test frameworks are all expected to be utilized in the data science pipeline.
+
 But a comprehensive look at data science processes shows that the software engineering toolset does not cover data science needs. Try to answer all the questions from the above using only engineering tools, and you are likely to be left wanting for more.
 
-A new type of **experiment management software** aims to cover the gap between data scientist needs and the existing toolset.
-This kind of software is typically designed for enterprise use, with the assumption that all collaborators uses the same cloud and technology stack.
-Some modern ML modeling frameworks and cloud services address a portion of these much needed data science collaboration elements.
+Experiment management software
+______________________________
 
-This style of software usually require external services, typically accompanied with a monthly bill.
+To solve data scientists collaboration issues a new type of software was created - **experiment management software**.
+This software aims to cover the gap between data scientist needs and the existing toolset.
+
+The experimentation software is usually **user interface (UI) based in contrast to the existing command line engineering tools**.
+The UI is a bridge to a **separate cloud based environment**.
+The cloud environment is usually not so fixible as local data scientists environement.
+And the cloud environment is not fully integrated with the local environment.
+
+The separation of the local data scientist environment and the experimentation cloud environment creates another discrepancy issue and the environment synchronization requires addition work.
+Also, this style of software usually require external services, typically accompanied with a monthly bill.
 This might be a good solution for a particular companies or groups of data scientists.
 However a more accessible, free tool is needed for a wider audience.
 
-=============================
+============
 What is DVC?
-=============================
+============
 
-Data Version Control, or DVC, is **a new type of experiment management software** that has been built to operate on top of source code version control (currently - Git).
-This enables data scientist to **use the best engineering practices in their projects and experiments**.
+Data Version Control, or DVC, is **a new type of experiment management software** that has been built **on top of the existing engineering toolset** and particularly on a source code version control system (currently - Git).
+DVC reduces the gap between the existing tools and the data scientist needs.
+This gives an ability to **use the advantages of the experimentation software while reusing existing skills and intuition**.
 
-The underlying source control system **eliminates the need to use external services**.
-Experiment sharing and data scientist collaboration can be done through regular Git tools (commit messages, merges, pull requests, code comments), the same way it works for software engineers.
+The underlying source code control system **eliminates the need to use external services**.
+Data science experiment sharing and data scientist collaboration can be done through regular Git tools (commit messages, merges, pull requests, code comments), the same way it works for software engineers.
 
 DVC implements a **Git experimentation methodology** where each experiment exists with its code as well as data, and can be represented as a separate Git branch or commit.
 
@@ -170,9 +184,9 @@ DVC combines a number of existing technologies and ideas into a single product w
    - DVC creates hardlinks instead and changes data file permissions to read only. The *dvc checkout* command does not actually copy data files from cache to the working tree, as copying files is a heavy operation for large files (30Gb+).
 
 
-==============
+=================
 How does it work?
-==============
+=================
 
 1. DVC is a command line tool that works on top of Git::
 
