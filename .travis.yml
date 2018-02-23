@@ -7,7 +7,6 @@ python:
   - "3.4"
   - "3.5"
 #  - "3.6" Not supported by pyinstaller yet
-cache: pip
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
