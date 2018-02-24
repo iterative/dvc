@@ -47,6 +47,7 @@ install:
   - cinst gsutil
   - cinst openssl.light
   - wget --no-check-certificate https://github.com/dpinney/omf/raw/master/omf/static/pygraphviz-1.3.1-cp27-none-win32.whl
+  - pip install --upgrade pip setuptools
   - pip install pygraphviz-1.3.1-cp27-none-win32.whl
   - pip install -r requirements.txt
   - python setup.py install
