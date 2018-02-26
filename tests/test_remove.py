@@ -31,6 +31,17 @@ class TestRemoveFileOutsideOfRepo(TestDvc):
             self.dvc.remove(os.path.join(os.path.dirname(self.dvc.root_dir), self.FOO))
 
 
+class TestRemoveDirectory(TestDvc):
+    def test(self):
+        stage_add = self.dvc.add(self.DATA_DIR)
+        stages_removed = self.dvc.remove(self.DATA_DIR)
+        self.assertEqual(len(stages_removed), 1)
+        stage_removed = stages_removed[0]
+        self.assertEqual(stage_add.path, stage_removed.path)
+        self.assertFalse(os.path.exists(self.DATA_DIR))
+        self.assertFalse(os.path.exists(stage_removed.path))
+
+
 class TestCmdRemove(TestDvc):
     def test(self):
         self.dvc.add(self.FOO)
