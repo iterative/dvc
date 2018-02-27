@@ -236,11 +236,3 @@ class Project(object):
         for stage in self.stages():
             outs += stage.outs
         return outs
-
-    def pipelines(self):
-        pipelines = []
-        for G in nx.weakly_connected_component_subgraphs(self.graph()):
-            pipeline = Pipeline(self, G)
-            pipelines.append(pipeline)
-
-        return pipelines
