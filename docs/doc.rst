@@ -196,19 +196,19 @@ How does it work?
 2. DVC helps define pipelines of your commands, and keeps all the commands and dependencies in a Git repository::
 
 	$ dvc run -d input.csv -o results.csv python cnn_train.py --seed 20180227 --epoch 20 input.csv result.csv
-	$ git add result.csv
+	$ git add results.csv.dvc
 	$ git commit -m 'Train CNN. 20 epochs.'
 
 3. DVC is programming language agnostic. R command example::
 
 	$ dvc run -d result.csv -o plots.jpg Rscript plot.R result.csv plots.jpg
-	$ git add plots.jpg
+	$ git add plots.jpg.dvc
 	$ git commit -m 'CNN plots'
 
 4. DVC can reproduce a pipeline with respect to the pipeline's dependencies::
 
 	# The input dataset was changed
-	$ dvc repro plots.jpg
+	$ dvc repro plots.jpg.dvc
 	Reproducing 'output.p':
 	    python cnn_train.py --seed 20180227 --epoch 20 input.csv output.p
 	Reproducing 'plots.jpg':
