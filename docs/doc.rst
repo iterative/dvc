@@ -395,10 +395,10 @@ Once installed, DVC will populate its installation folder (hereafter referred to
 
 * **.dvc/config** - This is a configuration file.
   The config file can be edited directly using command **dvc config NAME VALUE**.
-* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
+* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain hardlinks to the data files in the global cache).
   **Note:** DVC includes the cache directory to **.gitignore** file during the initialization. And no data files (with actual content) will ever be pushed to Git repository,
-  only data file symlinks and commands are needed to reproduce them.
-* **.dvc/state** - this file is created for optimization. The file contains data files checksum and timestamps.
+  only dvc-files are needed to reproduce them.
+* **.dvc/state** - this file is created for optimization. The file contains data files checksum, timestamps, inodes, etc.
 
 
 Working with Cloud Data Storages
