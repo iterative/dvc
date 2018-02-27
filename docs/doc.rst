@@ -1010,11 +1010,9 @@ As you can see, there are four optional arguments that are applicable to any DVC
 	-h, --help            show this help message and exit
 	-q, --quiet           Be quiet.
 	-v, --verbose         Be verbose.
-	-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
 
 Although these optional arguments are pretty self-explanatory, there is a note for DVC and Git commands that are used together.
 
-* If you specify *--no-git-action*, DVC does not modify (add/commit to) the Git repository. However, it can still read it - for example, run *git status* command etc.
 * To see Git commands in DVC, you can set logging level to *Debug* (in **dvc.conf**) or run dvc with option *--verbose*
 
 Number of DVC Jobs
