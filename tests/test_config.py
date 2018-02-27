@@ -170,6 +170,9 @@ class TestConfigCLI(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(self._contains(section, field, value))
 
+        ret = main(['config', section_field])
+        self.assertEqual(ret, 0)
+
         ret = main(['config', section_field, newvalue])
         self.assertEqual(ret, 0)
         self.assertTrue(self._contains(section, field, newvalue))
@@ -178,3 +181,18 @@ class TestConfigCLI(TestDvc):
         ret = main(['config', section_field, '--unset'])
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value))
+
+    def test_non_existing(self):
+        #FIXME check stdout/err
+
+        ret = main(['config', 'non_existing_section.field'])
+        self.assertEqual(ret, 1)
+
+        ret = main(['config', 'global.non_existing_field'])
+        self.assertEqual(ret, 1)
+
+        ret = main(['config', 'non_existing_section.field', '-u'])
+        self.assertEqual(ret, 1)
+
+        ret = main(['config', 'global.non_existing_field', '-u'])
+        self.assertEqual(ret, 1)
