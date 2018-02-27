@@ -1018,6 +1018,6 @@ Although these optional arguments are pretty self-explanatory, there is a note f
 Number of DVC Jobs
 ------------------
 
-DVC can benefit from parallel processing and multiple processors/cores.
+DVC can benefit from parallel processing and multiple processors/cores when performing cache push/pull operations.
 
-The number of DVC jobs is 5 by default. If you would like to change it to any other reasonable value, you use *-j (--jobs)* option in DVC commands where applicable.
+By default, the number of DVC jobs is set to the number of available CPU cores. If you would like to change it to any other reasonable value, you could use *-j (--jobs)* option in DVC commands where applicable.
