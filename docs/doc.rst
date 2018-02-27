@@ -167,7 +167,7 @@ DVC combines a number of existing technologies and ideas into a single product w
 
 6. **Git-annex**. The differences are:
 
-   - DVC uses the idea of storing the content of large files (that you don't what to see in your Git repository) in a local key-value store and use file symlinks instead of the actual files.
+   - DVC uses the idea of storing the content of large files (that you don't want to see in your Git repository) in a local key-value store and use file symlinks instead of the actual files.
 
    - DVC uses hardlinks instead of symlinks to make user experience better.
 
@@ -196,19 +196,19 @@ How does it work?
 2. DVC helps define pipelines of your commands, and keeps all the commands and dependencies in a Git repository::
 
 	$ dvc run -d input.csv -o results.csv python cnn_train.py --seed 20180227 --epoch 20 input.csv result.csv
-	$ git add result.csv
+	$ git add results.csv.dvc
 	$ git commit -m 'Train CNN. 20 epochs.'
 
 3. DVC is programming language agnostic. R command example::
 
 	$ dvc run -d result.csv -o plots.jpg Rscript plot.R result.csv plots.jpg
-	$ git add plots.jpg
+	$ git add plots.jpg.dvc
 	$ git commit -m 'CNN plots'
 
 4. DVC can reproduce a pipeline with respect to the pipeline's dependencies::
 
 	# The input dataset was changed
-	$ dvc repro plots.jpg
+	$ dvc repro plots.jpg.dvc
 	Reproducing 'output.p':
 	    python cnn_train.py --seed 20180227 --epoch 20 input.csv output.p
 	Reproducing 'plots.jpg':
@@ -395,10 +395,10 @@ Once installed, DVC will populate its installation folder (hereafter referred to
 
 * **.dvc/config** - This is a configuration file.
   The config file can be edited directly using command **dvc config NAME VALUE**.
-* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain symlinks to the data files in the global cache).
+* **.dvc/cache** - the cache directory will contain your data files (the data directories of DVC repositories will only contain hardlinks to the data files in the global cache).
   **Note:** DVC includes the cache directory to **.gitignore** file during the initialization. And no data files (with actual content) will ever be pushed to Git repository,
-  only data file symlinks and commands are needed to reproduce them.
-* **.dvc/state** - this file is created for optimization. The file contains data files checksum and timestamps.
+  only dvc-files are needed to reproduce them.
+* **.dvc/state** - this file is created for optimization. The file contains data files checksum, timestamps, inodes, etc.
 
 
 Working with Cloud Data Storages
@@ -415,7 +415,7 @@ With cloud storage, you might use models and data files which were created by yo
 As of this version, DVC supports two types of cloud-based storage providers:
 
 * **AWS** - Amazon Web Services
-* **GCP** - Google Cloud Provider
+* **GCP** - Google Cloud Platform
 
 The subsections below explain how to configure DVC to use each of them.
 
@@ -444,7 +444,7 @@ Instead of manual file modification, we recommend you run the following commands
 Using Google Cloud
 ------------------
 
-For using GCP (Google Cloud Provider) as cloud storage for your DVC repositories, you should update these **.dvc/config** options
+For using GCP (Google Cloud Platform) as cloud storage for your DVC repositories, you should update these **.dvc/config** options
 
 *  **Cloud = GCP** in *Global* section.
 * **StoragePath = /mybucket/dvc/tag_classifier** in GCP section - Run **dvc config GCP.StoragePath /my/path/to/a/bucket**
@@ -547,7 +547,7 @@ add
 
 Converts files and directories to DVC data files.
 
-The command doe the conversion from a *regular file* to *DVC data file* in a few steps:
+The command does the conversion from a *regular file* to *DVC data file* in a few steps:
 
 1. Calculate the file checksum.
 2. Create a cache file in the cache dir *.dvc/cache*.
@@ -1010,16 +1010,14 @@ As you can see, there are four optional arguments that are applicable to any DVC
 	-h, --help            show this help message and exit
 	-q, --quiet           Be quiet.
 	-v, --verbose         Be verbose.
-	-G, --no-git-actions  Skip all git actions including reproducibility check and commits.
 
 Although these optional arguments are pretty self-explanatory, there is a note for DVC and Git commands that are used together.
 
-* If you specify *--no-git-action*, DVC does not modify (add/commit to) the Git repository. However, it can still read it - for example, run *git status* command etc.
 * To see Git commands in DVC, you can set logging level to *Debug* (in **dvc.conf**) or run dvc with option *--verbose*
 
 Number of DVC Jobs
 ------------------
 
-DVC can benefit from parallel processing and multiple processors/cores.
+DVC can benefit from parallel processing and multiple processors/cores when performing cache push/pull operations.
 
-The number of DVC jobs is 5 by default. If you would like to change it to any other reasonable value, you use *-j (--jobs)* option in DVC commands where applicable.
+By default, the number of DVC jobs is set to the number of available CPU cores. If you would like to change it to any other reasonable value, you could use *-j (--jobs)* option in DVC commands where applicable.
