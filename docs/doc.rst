@@ -547,7 +547,7 @@ add
 
 Converts files and directories to DVC data files.
 
-The command doe the conversion from a *regular file* to *DVC data file* in a few steps:
+The command does the conversion from a *regular file* to *DVC data file* in a few steps:
 
 1. Calculate the file checksum.
 2. Create a cache file in the cache dir *.dvc/cache*.
