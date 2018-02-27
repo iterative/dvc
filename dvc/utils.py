@@ -88,27 +88,3 @@ def map_progress(func, targets, n_threads):
         progress.finish()
 
     return list(zip(targets, ret))
-
-
-def parse_target_metric_file(file_name):
-    with open(file_name, 'r') as fd:
-        try:
-            lines = fd.readlines(2)
-        except Exception:
-            return None
-        return parse_target_metric(lines)
-
-
-FLOATS_FROM_STRING = re.compile(r'[-+]?(?:(?:\d*\.\d+)|(?:\d+\.?))(?:[Ee][+-]?\d+)?')
-
-
-def parse_target_metric(lines):
-    if len(lines) != 1:
-        return None
-
-    # Extract float from string. I.e. from 'AUC: 0.596182'
-    nums = FLOATS_FROM_STRING.findall(lines[0])
-    if len(nums) < 1:
-        return None
-
-    return float(nums[0])

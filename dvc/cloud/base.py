@@ -169,26 +169,6 @@ class DataCloudBase(object):
 
         return res
 
-    def remove(self, path):
-        """
-        Generic method for removing data item from the cloud.
-        """
-        key = self._get_key(path)
-        if key:
-            key.delete()
-            return [k.name]
-
-        keys = self._get_keys(path)
-        if not keys:
-            Logger.error("File '{}' does not exist in the cloud".format(path))
-            return []
-
-        res = []
-        for k in keys:
-            k.delete()
-            res.append(k.name)
-        return res
-
     def _status(self, key, path):
         remote_exists = key != None
         local_exists = os.path.exists(path)
