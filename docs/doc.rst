@@ -415,7 +415,7 @@ With cloud storage, you might use models and data files which were created by yo
 As of this version, DVC supports two types of cloud-based storage providers:
 
 * **AWS** - Amazon Web Services
-* **GCP** - Google Cloud Provider
+* **GCP** - Google Cloud Platform
 
 The subsections below explain how to configure DVC to use each of them.
 
@@ -444,7 +444,7 @@ Instead of manual file modification, we recommend you run the following commands
 Using Google Cloud
 ------------------
 
-For using GCP (Google Cloud Provider) as cloud storage for your DVC repositories, you should update these **.dvc/config** options
+For using GCP (Google Cloud Platform) as cloud storage for your DVC repositories, you should update these **.dvc/config** options
 
 *  **Cloud = GCP** in *Global* section.
 * **StoragePath = /mybucket/dvc/tag_classifier** in GCP section - Run **dvc config GCP.StoragePath /my/path/to/a/bucket**
