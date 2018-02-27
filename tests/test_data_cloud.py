@@ -3,6 +3,7 @@ import stat
 import uuid
 import shutil
 
+from dvc.main import main
 from dvc.config import ConfigError
 from dvc.cloud.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudGCP
 from dvc.cloud.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
@@ -178,3 +179,53 @@ class TestDataCloudLOCAL(TestDataCloudBase):
         if self._should_test():
             self._test_cloud()
             self.assertTrue(os.path.isdir(self.dname))
+
+
+class TestDataCloudLocalCli(TestDvc):
+    def main(self, args):
+        ret = main(args)
+        self.assertEqual(ret, 0)
+
+    def test(self):
+        #FIXME enable this test for windows
+        if os.name == 'nt':
+            return
+        
+        dname = 'cloud'
+        os.mkdir(dname)
+
+        self.main(['config', 'global.cloud', 'LOCAL'])
+        self.main(['config', 'LOCAL.StoragePath', dname])
+
+        stage = self.dvc.add(self.FOO)
+        cache = stage.outs[0].cache
+
+        stage_dir = self.dvc.add(self.DATA_DIR)
+        cache_dir = stage_dir.outs[0].cache
+
+        #FIXME check status output
+        self.main(['cache', 'status'])
+
+        self.main(['cache', 'push'])
+        self.assertTrue(os.path.exists(cache))
+        self.assertTrue(os.path.isfile(cache))
+        self.assertTrue(os.path.exists(cache_dir))
+        self.assertTrue(os.path.isdir(cache_dir))
+
+        self.main(['cache', 'status'])
+
+        os.chmod(cache, 0o777)
+        os.unlink(cache)
+        self.dvc._remove_cache(cache_dir)
+
+        self.main(['cache', 'status'])
+
+        self.main(['cache', 'pull'])
+        self.assertTrue(os.path.exists(cache))
+        self.assertTrue(os.path.isfile(cache))
+        with open(cache, 'r') as fd:
+            self.assertEqual(fd.read(), self.FOO_CONTENTS)
+        self.assertTrue(os.path.exists(cache_dir))
+        self.assertTrue(os.path.isdir(cache_dir))
+
+        self.main(['cache', 'status'])
