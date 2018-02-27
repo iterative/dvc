@@ -167,7 +167,7 @@ DVC combines a number of existing technologies and ideas into a single product w
 
 6. **Git-annex**. The differences are:
 
-   - DVC uses the idea of storing the content of large files (that you don't what to see in your Git repository) in a local key-value store and use file symlinks instead of the actual files.
+   - DVC uses the idea of storing the content of large files (that you don't want to see in your Git repository) in a local key-value store and use file symlinks instead of the actual files.
 
    - DVC uses hardlinks instead of symlinks to make user experience better.
 
