@@ -104,6 +104,33 @@ class TestReproDataSource(TestReproChangedData):
         self.assertEqual(stages[0].outs[0].md5, file_md5(self.BAR)[0])
 
 
+class TestReproChangedDir(TestDvc):
+    def test(self):
+        file_name = 'file'
+        shutil.copyfile(self.FOO, file_name)
+
+        stage_name = 'dir.dvc'
+        dir_name = 'dir'
+        dir_code = 'dir.py'
+
+        with open(dir_code, 'w+') as fd:
+            fd.write("import os; import shutil; os.mkdir(\"{}\"); shutil.copyfile(\"{}\", os.path.join(\"{}\", \"{}\"))".format(dir_name, file_name, dir_name, file_name))
+
+        self.dvc.run(fname=stage_name,
+                     outs=[dir_name],
+                     deps=[file_name, dir_code],
+                     cmd="python {}".format(dir_code))
+
+        stages = self.dvc.reproduce(stage_name)
+        self.assertEqual(len(stages), 0)
+
+        os.unlink(file_name)
+        shutil.copyfile(self.BAR, file_name)
+
+        stages = self.dvc.reproduce(stage_name)
+        self.assertEqual(len(stages), 1)
+
+
 class TestCmdRepro(TestRepro):
     def test(self):
         ret = main(['repro',

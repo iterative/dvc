@@ -171,16 +171,48 @@ class Output(Dependency):
     def loads_from(cls, project, s_list, use_cache=False, cwd=os.curdir):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
+    def _changed_file(self, path, cache):
+        if os.path.isfile(path) and \
+           os.path.isfile(cache) and \
+           System.samefile(path, cache) and \
+           os.stat(cache).st_mode & stat.S_IREAD:
+            return False
+
+        return True
+
+    def _changed_dir(self):
+        if not os.path.isdir(self.path) or not os.path.isdir(self.cache):
+            return True
+
+        for root, dirs, files in os.walk(self.path):
+            for fname in files:
+                path = os.path.join(root, fname)
+                mtime = os.path.getmtime(path)
+                inode = os.stat(path).st_ino
+
+                state = self.project.state.get(path)
+                if state and state.mtime == mtime and state.inode == inode:
+                    md5 = state.md5
+                else:
+                    md5 = file_md5(path)[0]
+
+                cache = self.project.cache.get(md5)
+                if self._changed_file(path, cache):
+                    return True
+
+        return False
+
     def changed(self):
         ret = True
 
         if not self.use_cache:
             ret = super(Output, self).changed()
-        elif os.path.exists(self.path) and \
-           os.path.exists(self.cache) and \
-           System.samefile(self.path, self.cache) and \
-           os.stat(self.cache).st_mode & stat.S_IREAD:
-            ret = False
+        elif os.path.isfile(self.path) and \
+             os.path.isfile(self.cache):
+            ret = self._changed_file(self.path, self.cache)
+        elif os.path.isdir(self.path) and \
+             os.path.isdir(self.cache):
+            ret = self._changed_dir()
 
         msg = "Data {} with cache {} "
         if ret:
