@@ -82,8 +82,7 @@ class DataCloudAWS(DataCloudBase):
             paths.append(default)
         return paths
 
-    def _get_bucket_aws(self, bucket_name):
-        """ get a bucket object, aws """
+    def connect(self):
         if all([self._aws_creds.access_key_id,
                 self._aws_creds.secret_access_key,
                 self.aws_region_host]):
@@ -92,10 +91,9 @@ class DataCloudAWS(DataCloudBase):
                                 host=self.aws_region_host)
         else:
             conn = S3Connection()
-        bucket = conn.lookup(bucket_name)
-        if bucket is None:
-            raise DataCloudError('Storage path {} is not setup correctly'.format(bucket_name))
-        return bucket
+        self.bucket = conn.lookup(self.storage_bucket)
+        if self.bucket is None:
+            raise DataCloudError('Storage path {} is not setup correctly'.format(self.storage_bucket))
 
     @staticmethod
     def _cmp_checksum(key, fname):
@@ -166,21 +164,18 @@ class DataCloudAWS(DataCloudBase):
 
     def _get_key(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_aws(self.storage_bucket)
-        return bucket.get_key(key_name)
+        return self.bucket.get_key(key_name)
 
     def _get_keys(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_aws(self.storage_bucket)
-        keys = bucket.list(prefix=key_name)
+        keys = self.bucket.list(prefix=key_name)
         if not keys:
             return None
         return list(keys)
 
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_aws(self.storage_bucket)
-        return bucket.new_key(key_name)
+        return self.bucket.new_key(key_name)
 
     def _write_upload_tracker(self, fname, mp_id):
         """

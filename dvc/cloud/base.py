@@ -207,3 +207,6 @@ class DataCloudBase(object):
             res.append(self._status(cache_key, cache))
 
         return max(res)
+
+    def connect(self):
+        pass
