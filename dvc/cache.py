@@ -24,7 +24,7 @@ class Cache(object):
     @property
     def _cache_subdirs(self):
         dirs = []
-        for x in range(0x00, 0xFF):
+        for x in range(0, 256):
             dirs.append(os.path.join(self.cache_dir, format(x, '02x')))
         return dirs
 
