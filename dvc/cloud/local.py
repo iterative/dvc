@@ -24,7 +24,7 @@ class DataCloudLOCAL(DataCloudBase):
     Driver for local storage.
     """
     def cache_file_key(self, path):
-        return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache_dir)
+        return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.cache_dir)
 
     def _cmp_checksum(self, key, path):
         return filecmp.cmp(path, key.path)

@@ -75,7 +75,7 @@ class DataCloudBase(object):
 
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
-        relpath = os.path.relpath(fname, self._cloud_settings.cache_dir)
+        relpath = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
         relpath.replace('\\', '/')
         return '{}/{}'.format(self.storage_prefix, relpath).strip('/')
 
@@ -107,7 +107,7 @@ class DataCloudBase(object):
                 with open(p, 'r') as fd:
                     d = yaml.safe_load(fd)
                 md5 = d[Output.PARAM_MD5]
-                cache = os.path.join(self._cloud_settings.cache_dir, md5)
+                cache = self._cloud_settings.cache.get(md5)
                 res.append(self._push(cache))
         return res
 
@@ -159,7 +159,7 @@ class DataCloudBase(object):
                 d = yaml.safe_load(fd)
             md5 = d[Output.PARAM_MD5]
 
-            cache = os.path.join(self._cloud_settings.cache_dir, md5)
+            cache = self._cloud_settings.cache.get(md5)
             cache_key = self._get_key(cache)
             if not cache_key:
                 Logger.error("File '{}' does not exist in the cloud".format(path))
@@ -202,7 +202,7 @@ class DataCloudBase(object):
                 d = yaml.safe_load(fd)
             md5 = d[Output.PARAM_MD5]
 
-            cache = os.path.join(self._cloud_settings.cache_dir, md5)
+            cache = self._cloud_settings.cache.get(md5)
             cache_key = self._get_key(cache)
             res.append(self._status(cache_key, cache))
 

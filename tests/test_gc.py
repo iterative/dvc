@@ -21,8 +21,8 @@ class TestGC(TestDvc):
         self.good_cache = self.dvc.cache.all()
 
         self.bad_cache = []
-        for i in ['1', '2', '3']:
-            path = os.path.join(self.dvc.cache.cache_dir, i)
+        for i in ['123', '234', '345']:
+            path = os.path.join(self.dvc.cache.cache_dir, i[0:2], i[2:])
             self.create(path, i)
             self.bad_cache.append(path)
 

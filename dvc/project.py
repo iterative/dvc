@@ -38,7 +38,7 @@ class Project(object):
         self.state = State(self.root_dir, self.dvc_dir)
         self.config = Config(self.dvc_dir)
         self.logger = Logger(self.config._config)
-        self.cloud = DataCloud(self.cache.cache_dir, self.config._config)
+        self.cloud = DataCloud(self.cache, self.config._config)
 
     @staticmethod
     def init(root_dir=os.curdir):
