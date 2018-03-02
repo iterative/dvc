@@ -33,6 +33,8 @@ class TestDataCloudBase(TestDvc):
     def _test_cloud(self):
         self._setup_cloud()
 
+        self.cloud.connect()
+
         stage = self.dvc.add(self.FOO)
         cache = stage.outs[0].cache
 

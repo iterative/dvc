@@ -25,14 +25,12 @@ class DataCloudGCP(DataCloudBase):
             raise ConfigError('can\'t read google cloud project name. '
                               'Please set ProjectName in section GC.')
 
-    def _get_bucket_gc(self, storage_bucket):
-        """ get a bucket object, gc """
+    def connect(self):
         client = gc.Client(project=self.gc_project_name)
-        bucket = client.bucket(storage_bucket)
-        if not bucket.exists():
+        self.bucket = client.bucket(self.storage_bucket)
+        if not self.bucket.exists():
             raise DataCloudError('sync up: google cloud bucket {} '
                                  'doesn\'t exist'.format(self.storage_bucket))
-        return bucket
 
     @staticmethod
     def _cmp_checksum(blob, fname):
@@ -79,21 +77,18 @@ class DataCloudGCP(DataCloudBase):
 
     def _get_key(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_gc(self.storage_bucket)
-        return bucket.get_blob(key_name)
+        return self.bucket.get_blob(key_name)
 
     def _get_keys(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_gc(self.storage_bucket)
-        keys = bucket.list_blobs(prefix=key_name)
+        keys = self.bucket.list_blobs(prefix=key_name)
         if not keys:
             return None
         return list(keys)
 
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
-        bucket = self._get_bucket_gc(self.storage_bucket)
-        return bucket.blob(key_name)
+        return self.bucket.blob(key_name)
 
     def _push_key(self, key, path):
         """ push, gcp version """

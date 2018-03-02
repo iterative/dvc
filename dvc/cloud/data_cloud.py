@@ -83,6 +83,7 @@ class DataCloud(object):
         """
         Process targets as data items in parallel.
         """
+        self._cloud.connect()
         return map_progress(func, targets, jobs)
 
     def push(self, targets, jobs=1):
