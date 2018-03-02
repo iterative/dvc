@@ -18,12 +18,12 @@ class TestDataCloud(TestDvc):
             config = {'Global': {'Cloud': k},
                       k: {'StoragePath': 'a/b',
                           'ProjectName': 'name'}}
-            cloud = DataCloud(self.dvc.cache.cache_dir, config)
+            cloud = DataCloud(self.dvc.cache, config)
             self.assertIsInstance(cloud._cloud, v)
 
         with self.assertRaises(ConfigError) as cx:
             config = {'Global': {'Cloud': 'not_supported_type'}}
-            DataCloud(self.dvc.cache.cache_dir, config)
+            DataCloud(self.dvc.cache, config)
 
 
 class TestDataCloudBase(TestDvc):
@@ -121,7 +121,7 @@ class TestDataCloudAWS(TestDataCloudBase):
         # Setup cloud
         config = {'StoragePath': repo,
                   'Region': self.TEST_REPO_REGION}
-        cloud_settings = CloudSettings(self.dvc.cache.cache_dir, None, config)
+        cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudAWS(cloud_settings)
 
     def test(self):
