@@ -154,7 +154,7 @@ class TestDataCloudGCP(TestDataCloudBase):
         # Setup cloud
         config = {'StoragePath': repo,
                   'Region': self.TEST_REPO_GCP_PROJECT}
-        cloud_settings = CloudSettings(self.dvc.cache.cache_dir, None, config)
+        cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudGCP(cloud_settings)
 
     def test(self):
@@ -172,7 +172,7 @@ class TestDataCloudLOCAL(TestDataCloudBase):
         self.dname = 'cloud'
         os.mkdir(self.dname)
         config = {'StoragePath': self.dname}
-        cloud_settings = CloudSettings(self.dvc.cache.cache_dir, None, config)
+        cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudLOCAL(cloud_settings)
 
     def test(self):

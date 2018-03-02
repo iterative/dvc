@@ -71,7 +71,7 @@ class TestFsck(TestDvc):
             if out.dvc_path == self.FOO:
                 md5 = out.md5
 
-        foo_cache_file = os.path.join(self.dvc.cache.cache_dir, md5)
+        foo_cache_file = os.path.join(self.dvc.cache.cache_dir, md5[0:2], md5[2:])
         self.assertTrue(os.path.exists(foo_cache_file))
 
         os.chmod(foo_cache_file, 0o777)

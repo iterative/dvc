@@ -24,7 +24,7 @@ class DataCloud(object):
         ''      : 'LOCAL',
     }
 
-    def __init__(self, cache_dir, config):
+    def __init__(self, cache, config):
         self._config = config
 
         cloud_type = self._config['Global'].get('Cloud', '').strip().upper()
@@ -34,7 +34,7 @@ class DataCloud(object):
         if cloud_type not in self._config.keys():
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
-        cloud_settings = self.get_cloud_settings(cache_dir,
+        cloud_settings = self.get_cloud_settings(cache,
                                                  self._config,
                                                  cloud_type)
 
@@ -44,7 +44,7 @@ class DataCloud(object):
         self.sanity_check()
 
     @staticmethod
-    def get_cloud_settings(cache_dir, config, cloud_type):
+    def get_cloud_settings(cache, config, cloud_type):
         """
         Obtain cloud settings from config.
         """
@@ -53,7 +53,7 @@ class DataCloud(object):
         else:
             cloud_config = config[cloud_type]
         global_storage_path = config['Global'].get('StoragePath', None)
-        cloud_settings = CloudSettings(cache_dir, global_storage_path, cloud_config)
+        cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
 
     def sanity_check(self):

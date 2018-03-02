@@ -9,8 +9,10 @@ from tests.basic_env import TestDvc
 class TestCache(TestDvc):
     def setUp(self):
         super(TestCache, self).setUp()
-        self.cache1 = os.path.join(self.dvc.cache.cache_dir, '1')
-        self.cache2 = os.path.join(self.dvc.cache.cache_dir, '2')
+        self.cache1_md5 = '123'
+        self.cache2_md5 = '234'
+        self.cache1 = os.path.join(self.dvc.cache.cache_dir, self.cache1_md5[0:2], self.cache1_md5[2:])
+        self.cache2 = os.path.join(self.dvc.cache.cache_dir, self.cache2_md5[0:2], self.cache2_md5[2:])
         self.create(self.cache1, '1')
         self.create(self.cache2, '2')
 
@@ -21,14 +23,14 @@ class TestCache(TestDvc):
         self.assertTrue(self.cache2 in flist)
 
     def test_get(self):
-        cache = Cache(self.dvc.dvc_dir).get(os.path.basename(self.cache1))
+        cache = Cache(self.dvc.dvc_dir).get(self.cache1_md5)
         self.assertEquals(cache, self.cache1)
 
     def test_find_cache(self):
         fname1 = os.path.basename(self.cache1)
-        fname1_md5 = fname1
+        fname1_md5 = self.cache1_md5
         fname2 = os.path.basename(self.cache2)
-        fname2_md5 = fname2
+        fname2_md5 = self.cache2_md5
         fname3 = 'non_existing'
 
         System.hardlink(self.cache1, fname1)
