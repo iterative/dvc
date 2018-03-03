@@ -125,8 +125,11 @@ class DataCloudBase(object):
 
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
-        if not os.path.exists(dname):
+        try:
             os.makedirs(dname)
+        except OSError as e:
+            if e.errno != os.errno.EEXIST:
+                raise
 
     def _pull_key(self, key, path):
         """ Cloud-specific method of pulling keys """

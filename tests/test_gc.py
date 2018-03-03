@@ -17,7 +17,8 @@ class TestGC(TestDvc):
     def setUp(self):
         super(TestGC, self).setUp()
 
-        stage = self.dvc.add(self.FOO)
+        self.dvc.add(self.FOO)
+        self.dvc.add(self.DATA_DIR)
         self.good_cache = self.dvc.cache.all()
 
         self.bad_cache = []
@@ -25,6 +26,11 @@ class TestGC(TestDvc):
             path = os.path.join(self.dvc.cache.cache_dir, i[0:2], i[2:])
             self.create(path, i)
             self.bad_cache.append(path)
+
+        path = os.path.join(self.dvc.cache.cache_dir, '45', '6', 'data')
+        os.mkdir(os.path.dirname(path))
+        self.create(path, 'md5: "123"')
+        self.bad_cache.append(path)
 
     def test_api(self):
         self.dvc.gc()
@@ -41,4 +47,3 @@ class TestGC(TestDvc):
 
         for c in self.good_cache:
             self.assertTrue(os.path.exists(c))
-            self.assertTrue(os.path.isfile(c))
