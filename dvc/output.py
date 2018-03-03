@@ -236,8 +236,13 @@ class Output(Dependency):
                 relpath = os.path.relpath(path, self.cache)
                 with open(path, 'r') as fd:
                     d = yaml.safe_load(fd)
-                md5 = d[Output.PARAM_MD5]
-                res[relpath] = self.project.cache.get(md5)
+
+                    if not isinstance(d, dict):
+                        msg = 'Dir cache file format error \'{}\': skipping the file'
+                        self.project.logger.error(msg.format(relpath))
+                    else:
+                        md5 = d[Output.PARAM_MD5]
+                        res[relpath] = self.project.cache.get(md5)
         return res
 
     def checkout(self):
