@@ -9,7 +9,7 @@ from dvc.output import Output, Dependency, OutputError
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = 'Stage {} cmd {} failed'.format(stage.relpath, stage.cmd)
+        msg = u'Stage \'{}\' cmd {} failed'.format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 
@@ -66,10 +66,10 @@ class Stage(object):
     def changed(self):
         for entry in itertools.chain(self.outs, self.deps):
             if entry.changed():
-                self.project.logger.debug("{} changed".format(self.path))
+                self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.dvc_path))
                 return True
             else:
-                self.project.logger.debug("{} didn't change".format(self.path))
+                self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.dvc_path))
         return False
 
     def remove_outs(self):

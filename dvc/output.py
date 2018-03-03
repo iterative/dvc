@@ -100,8 +100,8 @@ class Dependency(object):
         state = self.project.state.get(self.path)
         if state and state.mtime == self.mtime() and state.inode == self.inode():
             md5 = state.md5
-            msg = '{} using md5 {} from state file'
-            self.project.logger.debug(msg.format(self.path, md5))
+            msg = u'\'{}\' using md5 {} from state file'
+            self.project.logger.debug(msg.format(self.dvc_path, md5))
             self.md5 = md5
         else:
             self.md5 = self.compute_md5()
@@ -149,6 +149,10 @@ class Output(Dependency):
     @property
     def cache(self):
         return self.project.cache.get(self.md5)
+
+    @property
+    def dvc_cache(self):
+        return os.path.relpath(self.cache, self.project.root_dir)
 
     def dumpd(self, cwd):
         ret = super(Output, self).dumpd(cwd)
@@ -214,17 +218,17 @@ class Output(Dependency):
              os.path.isdir(self.cache):
             ret = self._changed_dir()
 
-        msg = "Data {} with cache {} "
+        msg = u'Data file or dir \'{}\' with cache \'{}\' '
         if ret:
-            msg += "changed"
+            msg += 'changed'
         else:
-            msg += "didn't change"
-        self.project.logger.debug(msg.format(self.path, self.cache))
+            msg += 'didn\'t change'
+        self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
 
         return ret
 
     def hardlink(self, src, link):
-        self.project.logger.debug("creating hardlink {} -> {}".format(src, link))
+        self.project.logger.debug(u'creating hardlink {} -> {}'.format(src, link))
         System.hardlink(src, link)
         os.chmod(src, stat.S_IREAD)
 
@@ -236,19 +240,25 @@ class Output(Dependency):
                 relpath = os.path.relpath(path, self.cache)
                 with open(path, 'r') as fd:
                     d = yaml.safe_load(fd)
-                md5 = d[Output.PARAM_MD5]
-                res[relpath] = self.project.cache.get(md5)
+
+                    if not isinstance(d, dict):
+                        msg = u'Dir cache file format error \'{}\': skipping the file'
+                        self.project.logger.error(msg.format(relpath))
+                    else:
+                        md5 = d[Output.PARAM_MD5]
+                        res[relpath] = self.project.cache.get(md5)
         return res
 
     def checkout(self):
         if not self.use_cache:
             return
 
-        self.project.logger.debug("Checking out {} with cache {}".format(self.path, self.cache))
+        msg = u'Checking out \'{}\' with cache \'{}\''
+        self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
 
         if not self.changed():
-            msg = "Data {} with cache {} didn't change, skipping checkout."
-            self.project.logger.debug(msg.format(self.path, self.cache))
+            msg = u'Data file \'{}\' with cache \'{}\' didn\'t change, skipping checkout.'
+            self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
             return
 
         if not os.path.exists(self.cache):
@@ -257,8 +267,8 @@ class Output(Dependency):
             return
 
         if os.path.exists(self.path):
-            msg = "Data {} exists. Removing before checkout"
-            self.project.logger.debug(msg.format(self.path))
+            msg = u'Data file \'{}\' exists. Removing before checkout'
+            self.project.logger.debug(msg.format(self.dvc_path))
             self.remove()
 
         if os.path.isfile(self.cache):
@@ -280,7 +290,7 @@ class Output(Dependency):
         if not self.use_cache:
             return
 
-        self.project.logger.debug("Saving {} to {}".format(self.path, self.cache))
+        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.dvc_path, self.dvc_cache))
 
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.rel_path)
@@ -292,8 +302,8 @@ class Output(Dependency):
             # This means that we already have cache for this data.
             # We remove data and link it to existing cache to save
             # some space.
-            msg = "Cache {} already exists, performing checkout for {}"
-            self.project.logger.debug(msg.format(self.cache, self.path))
+            msg = u'Cache \'{}\' already exists, performing checkout for \'{}\''
+            self.project.logger.debug(msg.format(self.dvc_cache, self.dvc_path))
             self.checkout()
             return
 
@@ -323,10 +333,10 @@ class Output(Dependency):
                     yaml.safe_dump({self.PARAM_MD5: md5}, fd, default_flow_style=False)
 
     def _remove(self, path, cache):
-        self.project.logger.debug("Removing '{}'".format(path))
+        self.project.logger.debug(u'Removing \'{}\''.format(path))
         os.chmod(path, stat.S_IWUSR)
         os.unlink(path)
-        if cache != None and os.path.exists(cache):
+        if cache is not None and os.path.exists(cache):
             os.chmod(cache, stat.S_IREAD)
 
     def remove(self):
