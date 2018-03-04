@@ -54,8 +54,7 @@ class TestDataCloudBase(TestDvc):
         self.assertTrue(os.path.isfile(cache))
 
         self.cloud.push(cache_dir)
-        self.assertTrue(os.path.exists(cache_dir))
-        self.assertTrue(os.path.isdir(cache_dir))
+        self.assertTrue(os.path.isfile(cache_dir))
 
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_OK)
@@ -88,8 +87,7 @@ class TestDataCloudBase(TestDvc):
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
         self.cloud.pull(cache_dir)
-        self.assertTrue(os.path.exists(cache_dir))
-        self.assertTrue(os.path.isdir(cache_dir))
+        self.assertTrue(os.path.isfile(cache_dir))
 
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_OK)
@@ -211,8 +209,7 @@ class TestDataCloudLocalCli(TestDvc):
         self.main(['cache', 'push'])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
-        self.assertTrue(os.path.exists(cache_dir))
-        self.assertTrue(os.path.isdir(cache_dir))
+        self.assertTrue(os.path.isfile(cache_dir))
 
         self.main(['cache', 'status'])
 
@@ -227,7 +224,6 @@ class TestDataCloudLocalCli(TestDvc):
         self.assertTrue(os.path.isfile(cache))
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
-        self.assertTrue(os.path.exists(cache_dir))
-        self.assertTrue(os.path.isdir(cache_dir))
+        self.assertTrue(os.path.isfile(cache_dir))
 
         self.main(['cache', 'status'])

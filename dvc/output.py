@@ -6,6 +6,7 @@ from checksumdir import dirhash
 from dvc.system import System
 from dvc.utils import file_md5
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 
 
 class OutputError(DvcException):
@@ -43,8 +44,10 @@ class CmdOutputAlreadyTrackedError(CmdOutputError):
 
 
 class Dependency(object):
+    PARAM_RELPATH = 'relpath'
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
+    MD5_DIR_SUFFIX = '.dir'
 
     def __init__(self, project, path, md5=None):
         self.project = project
@@ -78,9 +81,13 @@ class Dependency(object):
     def changed(self):
         return self._changed_md5()
 
+    @staticmethod
+    def is_dir_cache(cache):
+        return cache.endswith(Output.MD5_DIR_SUFFIX)
+
     def compute_md5(self):
         if os.path.isdir(self.path):
-            return dirhash(self.path, hashfunc='md5')
+            return dirhash(self.path, hashfunc='md5') + self.MD5_DIR_SUFFIX
         else:
             return file_md5(self.path)[0]
 
@@ -185,24 +192,14 @@ class Output(Dependency):
         return True
 
     def _changed_dir(self):
-        if not os.path.isdir(self.path) or not os.path.isdir(self.cache):
+        if not os.path.isdir(self.path) or not os.path.isfile(self.cache):
             return True
 
-        for root, dirs, files in os.walk(self.path):
-            for fname in files:
-                path = os.path.join(root, fname)
-                mtime = os.path.getmtime(path)
-                inode = os.stat(path).st_ino
+        dir_info = self._collect_dir()
+        dir_info_cached = self.load_dir_cache(self.cache)
 
-                state = self.project.state.get(path)
-                if state and state.mtime == mtime and state.inode == inode:
-                    md5 = state.md5
-                else:
-                    md5 = file_md5(path)[0]
-
-                cache = self.project.cache.get(md5)
-                if self._changed_file(path, cache):
-                    return True
+        if dir_info != dir_info_cached:
+            return True
 
         return False
 
@@ -211,12 +208,10 @@ class Output(Dependency):
 
         if not self.use_cache:
             ret = super(Output, self).changed()
-        elif os.path.isfile(self.path) and \
-             os.path.isfile(self.cache):
-            ret = self._changed_file(self.path, self.cache)
-        elif os.path.isdir(self.path) and \
-             os.path.isdir(self.cache):
+        elif self.is_dir_cache(self.cache):
             ret = self._changed_dir()
+        else:
+            ret = self._changed_file(self.path, self.cache)
 
         msg = u'Data file or dir \'{}\' with cache \'{}\' '
         if ret:
@@ -232,21 +227,35 @@ class Output(Dependency):
         System.hardlink(src, link)
         os.chmod(src, stat.S_IREAD)
 
+    @staticmethod
+    def load_dir_cache(path):
+        with open(path, 'r') as fd:
+            d = yaml.safe_load(fd)
+
+        if not isinstance(d, list):
+            msg = u'Dir cache file format error \'{}\': skipping the file'
+            Logger.error(msg.format(path))
+            return []
+
+        return d
+
+    @staticmethod
+    def get_dir_cache(path):
+        res = {}
+        d = Output.load_dir_cache(path)
+
+        for entry in d:
+            res[entry[Output.PARAM_RELPATH]] = entry[Output.PARAM_MD5]
+
+        return res
+
     def dir_cache(self):
         res = {}
-        for root, dirs, files in os.walk(self.cache):
-            for fname in files:
-                path = os.path.join(root, fname)
-                relpath = os.path.relpath(path, self.cache)
-                with open(path, 'r') as fd:
-                    d = yaml.safe_load(fd)
+        dir_cache = self.get_dir_cache(self.cache)
 
-                    if not isinstance(d, dict):
-                        msg = u'Dir cache file format error \'{}\': skipping the file'
-                        self.project.logger.error(msg.format(relpath))
-                    else:
-                        md5 = d[Output.PARAM_MD5]
-                        res[relpath] = self.project.cache.get(md5)
+        for relpath, md5 in dir_cache.items():
+            res[relpath] = self.project.cache.get(md5)
+
         return res
 
     def checkout(self):
@@ -284,6 +293,42 @@ class Output(Dependency):
 
             self.hardlink(cache, path)
 
+    def _collect_dir(self):
+        dir_info = []
+
+        for root, dirs, files in os.walk(self.path):
+            for fname in files:
+                path = os.path.join(root, fname)
+                relpath = os.path.relpath(path, self.path)
+
+                state = self.project.state.get(path)
+                if state and state.mtime == mtime and state.inode == inode:
+                    md5 = state.md5
+                else:
+                    md5 = file_md5(path)[0]
+
+                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
+
+        return dir_info
+
+    def _save_dir(self):
+        dir_info = self._collect_dir()
+
+        for entry in dir_info:
+            md5 = entry[self.PARAM_MD5]
+            relpath = entry[self.PARAM_RELPATH]
+            path = os.path.join(self.path, relpath)
+            cache = self.project.cache.get(md5)
+
+            if os.path.exists(cache):
+                self._remove(path, None)
+                self.hardlink(cache, path)
+            else:
+                self.hardlink(path, cache)
+
+        with open(self.cache, 'w+') as fd:
+            yaml.safe_dump(dir_info, fd, default_flow_style=False)
+
     def save(self):
         super(Output, self).save()
 
@@ -307,30 +352,10 @@ class Output(Dependency):
             self.checkout()
             return
 
-        if os.path.isfile(self.path):
+        if os.path.isdir(self.path):
+            self._save_dir()
+        else:
             self.hardlink(self.path, self.cache)
-            return
-
-        for root, dirs, files in os.walk(self.path):
-            for fname in files:
-                path = os.path.join(root, fname)
-                relpath = os.path.relpath(path, self.path)
-                md5 = file_md5(path)[0]
-                cache = self.project.cache.get(md5)
-                cache_info = os.path.join(self.cache, relpath)
-                cache_dir = os.path.dirname(cache_info)
-
-                if os.path.exists(cache):
-                    self._remove(path, None)
-                    self.hardlink(cache, path)
-                else:
-                    self.hardlink(path, cache)
-
-                if not os.path.exists(cache_dir):
-                    os.makedirs(cache_dir)
-
-                with open(cache_info, 'w') as fd:
-                    yaml.safe_dump({self.PARAM_MD5: md5}, fd, default_flow_style=False)
 
     def _remove(self, path, cache):
         self.project.logger.debug(u'Removing \'{}\''.format(path))

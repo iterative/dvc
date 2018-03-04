@@ -79,13 +79,6 @@ class DataCloudGCP(DataCloudBase):
         key_name = self.cache_file_key(path)
         return self.bucket.get_blob(key_name)
 
-    def _get_keys(self, path):
-        key_name = self.cache_file_key(path)
-        keys = self.bucket.list_blobs(prefix=key_name)
-        if not keys:
-            return None
-        return list(keys)
-
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
         return self.bucket.blob(key_name)

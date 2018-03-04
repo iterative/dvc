@@ -1,5 +1,4 @@
 import os
-import yaml
 import tempfile
 from checksumdir import dirhash
 
@@ -93,25 +92,33 @@ class DataCloudBase(object):
     def _push_key(self, key, path):
         pass
 
+    def collect(self, arg):
+        path, local = arg
+        ret = [path]
+
+        if not Output.is_dir_cache(path):
+            return ret
+
+        if local:
+            if not os.path.isfile(path):
+                return ret
+            dir_path = path
+        else:
+            key = self._get_key(path)
+            if not key:
+                Logger.debug("File '{}' does not exist in the cloud".format(path))
+                return ret
+            tmp = os.path.join(tempfile.mkdtemp(), os.path.basename(path))
+            self._pull_key(key, tmp)
+            dir_path = tmp
+
+        for relpath, md5 in Output.get_dir_cache(dir_path).items():
+            cache = self._cloud_settings.cache.get(md5)
+            ret.append(cache)
+
+        return ret
+
     def push(self, path):
-        """ Generic method for pushing data """
-        if os.path.isfile(path):
-            return self._push(path)
-
-        res = []
-        for root, dirs, files in os.walk(path):
-            for fname in files:
-                p = os.path.join(root, fname)
-                res.append(self._push(p))
-
-                with open(p, 'r') as fd:
-                    d = yaml.safe_load(fd)
-                md5 = d[Output.PARAM_MD5]
-                cache = self._cloud_settings.cache.get(md5)
-                res.append(self._push(cache))
-        return res
-
-    def _push(self, path):
         key = self._get_key(path)
         if key:
             Logger.debug("File '{}' already uploaded to the cloud. Validating checksum...".format(path))
@@ -121,7 +128,7 @@ class DataCloudBase(object):
             Logger.debug('Checksum mismatch. Reuploading is required.')
 
         key = self._new_key(path)
-        return [self._push_key(key, path)]
+        return self._push_key(key, path)
 
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
@@ -139,38 +146,14 @@ class DataCloudBase(object):
         """ Cloud-specific method of getting keys """
         pass
 
-    def _get_keys(self, path):
-        """ Cloud-specific method of getting keys """
-        pass
-
     def pull(self, path):
         """ Generic method for pulling data from the cloud """
         key = self._get_key(path)
-        if key:
-            return [self._pull_key(key, path)]
-
-        keys = self._get_keys(path)
-        if not keys:
+        if not key:
             Logger.error("File '{}' does not exist in the cloud".format(path))
-            return []
+            return None
 
-        res = []
-        for k in keys:
-            fname = os.path.join(path, os.path.relpath(k.name, self.cache_file_key(path)))
-            res.append(self._pull_key(k, fname))
-            with open(fname, 'r') as fd:
-                d = yaml.safe_load(fd)
-            md5 = d[Output.PARAM_MD5]
-
-            cache = self._cloud_settings.cache.get(md5)
-            cache_key = self._get_key(cache)
-            if not cache_key:
-                Logger.error("File '{}' does not exist in the cloud".format(path))
-                continue
-
-            res.append(self._pull_key(cache_key, cache))
-
-        return res
+        return self._pull_key(key, path)
 
     def _status(self, key, path):
         remote_exists = key != None
@@ -187,29 +170,10 @@ class DataCloudBase(object):
         Generic method for checking data item status.
         """
         key = self._get_key(path)
-        if key:
-            return self._status(key, path)
-
-        keys = self._get_keys(path)
-        if not keys or len(keys) == 0:
+        if not key:
             return STATUS_NEW
 
-        res = []
-        for k in keys:
-            fname = os.path.join(path, os.path.relpath(k.name, self.cache_file_key(path)))
-            res.append(self._status(k, fname))
-
-            tmp = os.path.join(tempfile.mkdtemp(), k.name)
-            self._pull_key(k, tmp)
-            with open(tmp, 'r') as fd:
-                d = yaml.safe_load(fd)
-            md5 = d[Output.PARAM_MD5]
-
-            cache = self._cloud_settings.cache.get(md5)
-            cache_key = self._get_key(cache)
-            res.append(self._status(cache_key, cache))
-
-        return max(res)
+        return self._status(key, path)
 
     def connect(self):
         pass

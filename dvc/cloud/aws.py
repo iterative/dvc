@@ -166,13 +166,6 @@ class DataCloudAWS(DataCloudBase):
         key_name = self.cache_file_key(path)
         return self.bucket.get_key(key_name)
 
-    def _get_keys(self, path):
-        key_name = self.cache_file_key(path)
-        keys = self.bucket.list(prefix=key_name)
-        if not keys:
-            return None
-        return list(keys)
-
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
         return self.bucket.new_key(key_name)
