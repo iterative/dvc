@@ -132,6 +132,12 @@ def parse_args(argv=None):
                         type=int,
                         default=cpu_count(),
                         help='Number of jobs to run simultaneously.')
+    parent_cache_parser.add_argument(
+                        'targets',
+                        nargs='*',
+                        default=None,
+                        help='DVC files.')
+
     # Cache
     cache_parser = subparsers.add_parser(
                         'cache',

@@ -159,19 +159,24 @@ class Project(object):
         for stage in self.stages():
             stage.checkout()
 
-    def _used_cache(self):
-        clist = []
-        for stage in self.stages():
+    def _used_cache(self, target=None):
+        cache_set = set()
+
+        if target:
+            stages = [Stage.load(self, target)]
+        else:
+            stages = self.stages()
+
+        for stage in stages:
             for out in stage.outs:
                 if not out.use_cache:
                     continue
-                if out.cache not in clist:
-                    clist.append(out.cache)
+                cache_set |= set([out.cache])
                 if out.is_dir_cache(out.cache) and os.path.isfile(out.cache):
                     dir_cache = out.dir_cache()
-                    clist.extend(dir_cache.values())
-                    clist.append(out.cache)
-        return clist
+                    cache_set |= set(dir_cache.values())
+
+        return list(cache_set)
 
     def _remove_cache_file(self, cache):
         os.chmod(cache, stat.S_IWRITE)
@@ -199,16 +204,16 @@ class Project(object):
             self._remove_cache(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
-    def push(self, jobs=1):
-        return self.cloud.push(self._used_cache(), jobs)
+    def push(self, target=None, jobs=1):
+        return self.cloud.push(self._used_cache(target), jobs)
 
-    def pull(self, jobs=1):
-        ret = self.cloud.pull(self._used_cache(), jobs)
+    def pull(self, target=None, jobs=1):
+        ret = self.cloud.pull(self._used_cache(target), jobs)
         self.checkout()
         return ret
 
-    def status(self, jobs=1):
-        return self.cloud.status(self._used_cache(), jobs)
+    def status(self, target=None, jobs=1):
+        return self.cloud.status(self._used_cache(target), jobs)
 
     def graph(self):
         G = nx.DiGraph()
