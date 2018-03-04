@@ -55,8 +55,8 @@ class Progress(object):
         Make a progress bar out of info, which looks like:
         (1/2): [########################################] 100% master.zip
         """
-        total_len = 80
-        bar_len = 40
+        total_len = 100
+        bar_len = 30
 
         if total == None:
             progress = 0
