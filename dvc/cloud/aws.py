@@ -130,7 +130,7 @@ class DataCloudAWS(DataCloudBase):
         """
         return fname + '.download'
 
-    def _pull_key(self, key, fname):
+    def _pull_key(self, key, fname, no_progress_bar=False):
         Logger.debug("Pulling key '{}' from bucket '{}' to file '{}'".format(key.name,
                                                                              key.bucket.name,
                                                                              fname))
@@ -147,17 +147,24 @@ class DataCloudAWS(DataCloudBase):
                                                                              key.name,
                                                                              fname))
 
+        if no_progress_bar:
+            cb = None
+        else:
+            cb = create_cb(name)
+
         res_h = ResumableDownloadHandler(tracker_file_name=self._download_tracker(tmp_file),
                                          num_retries=10)
         try:
-            key.get_contents_to_filename(tmp_file, cb=create_cb(name), res_download_handler=res_h)
+            key.get_contents_to_filename(tmp_file, cb=cb, res_download_handler=res_h)
         except Exception as exc:
             Logger.error('Failed to download "{}": {}'.format(key.name, exc))
             return None
 
         os.rename(tmp_file, fname)
 
-        progress.finish_target(name)
+        if not no_progress_bar:
+            progress.finish_target(name)
+
         Logger.debug('Downloading completed')
 
         return fname

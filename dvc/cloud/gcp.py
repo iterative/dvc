@@ -45,7 +45,7 @@ class DataCloudGCP(DataCloudBase):
 
         return False
 
-    def _pull_key(self, key, path):
+    def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
 
         name = os.path.relpath(path, self._cloud_settings.cache.cache_dir)
@@ -57,9 +57,10 @@ class DataCloudGCP(DataCloudBase):
 
         Logger.debug('Downloading cache file from gc "{}/{}"'.format(key.bucket.name, key.name))
 
-        # percent_cb is not available for download_to_filename, so
-        # lets at least update progress at keypoints(start, finish)
-        progress.update_target(name, 0, None)
+        if not no_progress_bar:
+            # percent_cb is not available for download_to_filename, so
+            # lets at least update progress at keypoints(start, finish)
+            progress.update_target(name, 0, None)
 
         try:
             key.download_to_filename(tmp_file)
@@ -69,7 +70,8 @@ class DataCloudGCP(DataCloudBase):
 
         os.rename(tmp_file, path)
 
-        progress.finish_target(name)
+        if not no_progress_bar:
+            progress.finish_target(name)
 
         Logger.debug('Downloading completed')
 

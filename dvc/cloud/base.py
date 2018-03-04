@@ -109,7 +109,7 @@ class DataCloudBase(object):
                 Logger.debug("File '{}' does not exist in the cloud".format(path))
                 return ret
             tmp = os.path.join(tempfile.mkdtemp(), os.path.basename(path))
-            self._pull_key(key, tmp)
+            self._pull_key(key, tmp, no_progress_bar=True)
             dir_path = tmp
 
         for relpath, md5 in Output.get_dir_cache(dir_path).items():
@@ -138,7 +138,7 @@ class DataCloudBase(object):
             if e.errno != os.errno.EEXIST:
                 raise
 
-    def _pull_key(self, key, path):
+    def _pull_key(self, key, path, no_progress_bar=False):
         """ Cloud-specific method of pulling keys """
         pass
 
