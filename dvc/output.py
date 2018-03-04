@@ -280,7 +280,7 @@ class Output(Dependency):
             self.project.logger.debug(msg.format(self.dvc_path))
             self.remove()
 
-        if os.path.isfile(self.cache):
+        if not self.is_dir_cache(self.cache):
             self.hardlink(self.cache, self.path)
             return
 
