@@ -47,7 +47,7 @@ class DataCloudLOCAL(DataCloudBase):
         copyfile(path, key.path)
         return path
 
-    def _pull_key(self, key, path):
+    def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
 
         tmp_file = self.tmp_file(path)
