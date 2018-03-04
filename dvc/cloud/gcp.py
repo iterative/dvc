@@ -48,7 +48,7 @@ class DataCloudGCP(DataCloudBase):
     def _pull_key(self, key, path):
         self._makedirs(path)
 
-        name = os.path.basename(path)
+        name = os.path.relpath(path, self._cloud_settings.cache.cache_dir)
         tmp_file = self.tmp_file(path)
 
         if self._cmp_checksum(key, path):
@@ -79,20 +79,13 @@ class DataCloudGCP(DataCloudBase):
         key_name = self.cache_file_key(path)
         return self.bucket.get_blob(key_name)
 
-    def _get_keys(self, path):
-        key_name = self.cache_file_key(path)
-        keys = self.bucket.list_blobs(prefix=key_name)
-        if not keys:
-            return None
-        return list(keys)
-
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
         return self.bucket.blob(key_name)
 
     def _push_key(self, key, path):
         """ push, gcp version """
-        name = os.path.basename(path)
+        name = os.path.relpath(path, self._cloud_settings.cache.cache_dir)
 
         progress.update_target(name, 0, None)
 

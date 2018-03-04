@@ -1,3 +1,5 @@
+from multiprocessing.pool import ThreadPool
+
 from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
@@ -79,27 +81,45 @@ class DataCloud(object):
 
         self._cloud.sanity_check()
 
-    def _map_targets(self, func, targets, jobs):
+    def _collect(self, targets, jobs, local):
+        collected = set()
+        pool = ThreadPool(processes=jobs)
+        args = zip(targets, [local]*len(targets))
+        ret = pool.map(self._cloud.collect, args)
+
+        for r in ret:
+            collected |= set(r)
+
+        return collected
+
+    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False):
         """
         Process targets as data items in parallel.
         """
         self._cloud.connect()
-        return map_progress(func, targets, jobs)
+
+        collected = set()
+        if collect_local:
+            collected |= self._collect(targets, jobs, True)
+        if collect_cloud:
+            collected |= self._collect(targets, jobs, False)
+
+        return map_progress(func, list(collected), jobs)
 
     def push(self, targets, jobs=1):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.push, targets, jobs)
+        return self._map_targets(self._cloud.push, targets, jobs, collect_local=True)
 
     def pull(self, targets, jobs=1):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.pull, targets, jobs)
+        return self._map_targets(self._cloud.pull, targets, jobs, collect_cloud=True)
 
     def status(self, targets, jobs=1):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.status, targets, jobs)
+        return self._map_targets(self._cloud.status, targets, jobs, True, True)

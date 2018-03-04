@@ -36,21 +36,6 @@ class DataCloudLOCAL(DataCloudBase):
             return key
         return None
 
-    def _get_keys(self, path):
-        key_name = self.cache_file_key(path)
-        key = LocalKey(self.storage_path, key_name)
-
-        if not os.path.isdir(key.path):
-            return None
-
-        res = []
-        for root, dirs, files in os.walk(key.path):
-            for fname in files:
-                p = os.path.join(root, fname)
-                k_name = os.path.relpath(p, self.storage_path)
-                res.append(LocalKey(self.storage_path, k_name))
-        return res
-
     def _new_key(self, path):
         key_name = self.cache_file_key(path)
         key = LocalKey(self.storage_path, key_name)

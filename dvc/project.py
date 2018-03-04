@@ -159,22 +159,18 @@ class Project(object):
         for stage in self.stages():
             stage.checkout()
 
-    def _used_cache(self, collect_dir=False):
+    def _used_cache(self):
         clist = []
         for stage in self.stages():
             for out in stage.outs:
                 if not out.use_cache:
                     continue
-                if not os.path.isdir(out.cache) and \
-                   out.cache not in clist:
+                if out.cache not in clist:
                     clist.append(out.cache)
-                if os.path.isdir(out.cache):
+                if out.is_dir_cache(out.cache) and os.path.isfile(out.cache):
                     dir_cache = out.dir_cache()
                     clist.extend(dir_cache.values())
-                    if collect_dir:
-                        clist.extend([os.path.join(out.cache, f) for f in dir_cache.keys()])
-                    else:
-                        clist.append(out.cache)
+                    clist.append(out.cache)
         return clist
 
     def _remove_cache_file(self, cache):
@@ -196,7 +192,7 @@ class Project(object):
         os.rmdir(cache)
 
     def gc(self):
-        clist = self._used_cache(collect_dir=False)
+        clist = self._used_cache()
         for cache in self.cache.all():
             if cache in clist:
                 continue
@@ -204,14 +200,15 @@ class Project(object):
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
     def push(self, jobs=1):
-        self.cloud.push(self._used_cache(collect_dir=True), jobs)
+        return self.cloud.push(self._used_cache(), jobs)
 
     def pull(self, jobs=1):
-        self.cloud.pull(self._used_cache(collect_dir=False), jobs)
+        ret = self.cloud.pull(self._used_cache(), jobs)
         self.checkout()
+        return ret
 
     def status(self, jobs=1):
-        return self.cloud.status(self._used_cache(collect_dir=True), jobs)
+        return self.cloud.status(self._used_cache(), jobs)
 
     def graph(self):
         G = nx.DiGraph()
