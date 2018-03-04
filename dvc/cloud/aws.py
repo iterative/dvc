@@ -36,7 +36,7 @@ def percent_cb(name, part_complete, part_total, offset=0, multipart_total=None):
     Logger.debug('{}: {} transferred out of {}'.format(name,
                                                        sizeof_fmt(complete),
                                                        sizeof_fmt(total)))
-    progress.update_target(os.path.basename(name), complete, total)
+    progress.update_target(name, complete, total)
 
 
 def create_cb(name, offset=0, multipart_total=None):
@@ -137,7 +137,7 @@ class DataCloudAWS(DataCloudBase):
         self._makedirs(fname)
 
         tmp_file = self.tmp_file(fname)
-        name = os.path.basename(fname)
+        name = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
 
         if self._cmp_checksum(key, fname):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key.name))
@@ -281,6 +281,6 @@ class DataCloudAWS(DataCloudBase):
             Logger.error('Failed to upload "{}": {}'.format(path, exc))
             return None
 
-        progress.finish_target(os.path.basename(path))
+        progress.finish_target(os.path.relpath(path, self._cloud_settings.cache.cache_dir))
 
         return path
