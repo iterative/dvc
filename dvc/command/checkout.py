@@ -14,10 +14,11 @@ class CmdCheckout(CmdBase):
     def remove_untracked_hardlinks(self):
         untracked = self.project.scm.untracked_files()
 
-        for file in self.project.cache.find_cache(untracked).keys():
+        for file, md5 in self.project.cache.find_cache(untracked).items():
             Logger.info(u'Remove \'{}\''.format(file))
             os.chmod(file, stat.S_IWRITE)
             os.remove(file)
+            os.chmod(self.project.cache.get(md5), stat.S_IREAD)
 
             dir = os.path.dirname(file)
             if len(dir) != 0 and not os.listdir(dir):
