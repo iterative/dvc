@@ -54,7 +54,7 @@ class CmdDataStatus(CmdDataBase):
                 cloud.STATUS_NEW      : 'new file:',
             }
 
-            path = os.path.relpath(target)
+            path = os.path.relpath(target, self.project.cache.cache_dir)
 
             self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], path))
 
