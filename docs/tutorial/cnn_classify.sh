@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -x
+
+GIT_REMOTE=https://github.com/dmpetrov/cnn_classify.git
+
 mkdir cnn_classify
 cd cnn_classify
 git init
@@ -9,7 +13,7 @@ git add .
 git commit -m 'Init DVC'
 
 mkdir data
-cp ../deeppy/train.zip data/
+cp ../train.zip data/
 dvc add data/train.zip
 git add data/
 git status
@@ -40,8 +44,8 @@ git add data/.gitignore train.dvc
 git commit -m 'Unzip files'
 
 mkdir code
-vi code/process_files.py
-vi code/conf.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/common/process_files.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/common/conf.py
 dvc run -d code/process_files.py -d data/train -o data/cats_and_dogs_small -f process.dvc python code/process_files.py
 git status
 #On branch master
@@ -64,7 +68,8 @@ echo '*.pyc' >> code/.gitignore
 git add .
 git commit -m 'Process raw data'
 
-vi code/model.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/first-cnn/model.py
+
 dvc run -d code/model.py -d code/conf.py -d data/cats_and_dogs_small -o data/model.h5 -o data/history.p python code/model.py
 git status
 #On branch master
@@ -85,7 +90,7 @@ git status
 git add .
 git commit -m 'First model'
 
-vi code/plot.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/common/plot.py
 dvc run -d code/conf.py -d code/plot.py -d data/history.p -o data/plot_loss.jpeg -o data/plot_acc.jpeg python code/plot.py
 
 dvc run -d data/plot_loss.jpeg
@@ -114,7 +119,8 @@ git tag -a v0.1-first-cnn -m 'First CNN model'
 
 
 ############################################ v2
-vi code/model.py
+rm code/model.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/augm-cnn/model.py
 # Actual changes: augmentation, Dropout=0.5, batch_size=20-->32, epochs=30-->100
 dvc repro
 
@@ -139,7 +145,9 @@ git tag -a v0.2-augm-cnn -m 'CNN model with augmentation'
 
 git checkout v0.1-first-cnn -b pre_trained
 dvc checkout
-vi code/model.py
+rm code/model.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/vgg16_base/model.py
+
 dvc repro
 git status
 #On branch pre_trained
@@ -163,7 +171,9 @@ git tag -a v0.3-vgg16_base -, 'Pretrained VGG16 tag'
 
 git checkout v0.2-augm-cnn -b vgg16_augm
 dvc checkout
-vi code/model.py
+rm code/model.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/vgg16_augm/model.py
+
 dvc repro
 git status
 #On branch vgg16_augm
@@ -184,7 +194,8 @@ git tag -a v0.4-vgg16_augm -m 'VGG16 with augm tag'
 
 ################################################# v5
 
-vi code/model.py
+rm code/model.py
+wget -P code https://s3-us-west-2.amazonaws.com/dvc-share/tutorial_cnn_code/vgg_augm_fine/model.py
 dvc repro
 git status
 #On branch vgg16_augm
@@ -206,7 +217,7 @@ git tag -a v0.5-vgg_augm_fine -m 'VGG, augmentation and fine-tuning tag'
 git checkout master
 git merge vgg16_augm
 
-git remote add origin https://github.com/dmpetrov/cnn_classify.git
+git remote add origin ${GIT_REMOTE}
 git push -u origin master --tags
 
 git push -u origin pre_trained
