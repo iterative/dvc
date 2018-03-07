@@ -26,6 +26,21 @@ class TestCheckout(TestRepro):
         self.assertTrue(filecmp.cmp(self.FOO, self.orig))
 
 
+class TestCheckoutCorruptedCacheFile(TestRepro):
+    def test(self):
+        cache = self.foo_stage.outs[0].cache
+
+        os.chmod(cache, stat.S_IWRITE)
+        with open(cache, 'a') as fd:
+            fd.write('1')
+        os.chmod(cache, stat.S_IREAD)
+
+        self.dvc.checkout()
+
+        self.assertFalse(os.path.isfile(self.FOO))
+        self.assertFalse(os.path.isfile(cache))
+
+
 class TestCmdCheckout(TestCheckout):
     def test(self):
         ret = main(['checkout'])

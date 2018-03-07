@@ -1,35 +1,40 @@
 import os
+import stat
 
+from dvc.system import System
 from dvc.state import State, StateEntry
+from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc
 
 
 class TestState(TestDvc):
     def test_update(self):
-        path = os.path.join(self.dvc.root_dir, '1')
-        md5_1 = '1'
-        md5_2 = '2'
-        mtime_1 = 1
-        mtime_2 = 2
-        inode_1 = 1
-        inode_2 = 2
+        path = os.path.join(self.dvc.root_dir, self.FOO)
+        md5 = file_md5(path)[0]
+        mtime = os.path.getmtime(path)
+        inode = System.inode(path)
 
         state = State(self.dvc.root_dir, self.dvc.dvc_dir)
-        self.assertIsNone(state.get(path))
 
-        state.add(path, md5_1, mtime_1, inode_1)
+        state.update(path)
         entry = state.get(path)
         self.assertIsInstance(entry, StateEntry)
-        self.assertEqual(entry.path, path)
-        self.assertEqual(entry.md5, md5_1)
-        self.assertEqual(entry.mtime, mtime_1)
-        self.assertEqual(entry.inode, inode_1)
+        self.assertEqual(entry.md5, md5)
+        self.assertEqual(entry.mtime, mtime)
+        self.assertEqual(entry.inode, inode)
 
-        state.update(path, md5_2, mtime_2, inode_2)
-        entry = state.get(path)
+        os.chmod(path, stat.S_IWRITE)
+        os.unlink(path)
+        with open(path, 'w+') as fd:
+            fd.write('1')
+
+        md5 = file_md5(path)[0]
+        mtime = os.path.getmtime(path)
+        inode = System.inode(path)
+
+        entry = state.update(path)
         self.assertIsInstance(entry, StateEntry)
-        self.assertEqual(entry.path, path)
-        self.assertEqual(entry.md5, md5_2)
-        self.assertEqual(entry.mtime, mtime_2)
-        self.assertEqual(entry.inode, inode_2)
+        self.assertEqual(entry.md5, md5)
+        self.assertEqual(entry.mtime, mtime)
+        self.assertEqual(entry.inode, inode)

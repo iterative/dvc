@@ -33,6 +33,10 @@ class Cache(object):
     def get(self, md5):
         return os.path.join(self.cache_dir, md5[0:2], md5[2:])
 
+    def path_to_md5(self, path):
+        relpath = os.path.relpath(path, self.cache_dir)
+        return os.path.dirname(relpath) + os.path.basename(relpath)
+
     def find_cache(self, files):
         file_set = set(files)
         cached = {}
