@@ -30,30 +30,10 @@ CredentialSection = default
 
 StoragePath = dvc/tutorial
 
-# Default settings for AWS instances:
-Type = t2.nano
-Image = ami-2d39803a
-
-SpotPrice = 
-SpotTimeout = 300
-
-KeyPairName = dvc-key
-KeyPairDir = ~/.ssh
-SecurityGroup = dvc-sg
-
-Region = us-east-1
-Zone = us-east-1a
-SubnetId = 
-
-Volume = my-100gb-drive-io
-
-Monitoring = false
-EbsOptimized = false
-AllDisksAsRAID0 = false
-
 [GCP]
 StoragePath = 
 ProjectName = 
+
 '''
 
     def __init__(self, dvc_dir):

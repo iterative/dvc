@@ -195,13 +195,21 @@ class Output(Dependency):
         if not os.path.isdir(self.path) or not os.path.isfile(self.cache):
             return True
 
-        dir_info = self._collect_dir()
-        dir_info_cached = self.load_dir_cache(self.cache)
+        dir_info = self._collect_dir() # slow!
+        dir_info_cached = self.load_dir_cache(self.cache) # slow. why?
 
-        if dir_info != dir_info_cached:
+        if not self.are_dir_info_equal(dir_info, dir_info_cached):
             return True
 
         return False
+
+    @staticmethod
+    def are_dir_info_equal(dir_info1, dir_info2):
+        return Output.dir_info_dict(dir_info1) == Output.dir_info_dict(dir_info2)
+
+    @staticmethod
+    def dir_info_dict(dir_info):
+        return {i['relpath']: i['md5'] for i in dir_info}
 
     def changed(self):
         ret = True
