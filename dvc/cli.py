@@ -10,7 +10,7 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus
+from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus, CmdDataFetch
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
@@ -160,6 +160,13 @@ def parse_args(argv=None):
                         parents=[parent_cache_parser],
                         help='Push data files to the cloud')
     push_parser.set_defaults(func=CmdDataPush)
+
+    #Fetch
+    fetch_parser = cache_subparsers.add_parser(
+                        'fetch',
+                        parents=[parent_cache_parser],
+                        help='Fetch data files from the cloud')
+    fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
     status_parser = cache_subparsers.add_parser(

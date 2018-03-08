@@ -201,8 +201,11 @@ class Project(object):
     def push(self, target=None, jobs=1):
         return self.cloud.push(self._used_cache(target), jobs)
 
+    def fetch(self, target=None, jobs=1):
+        return self.cloud.pull(self._used_cache(target), jobs)
+
     def pull(self, target=None, jobs=1):
-        ret = self.cloud.pull(self._used_cache(target), jobs)
+        ret = self.fetch(target, jobs)
         self.checkout()
         return ret
 
