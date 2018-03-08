@@ -40,6 +40,16 @@ class CmdDataPush(CmdDataBase):
         return 0
 
 
+class CmdDataFetch(CmdDataBase):
+    def do_run(self, target=None):
+        try:
+            self.project.fetch(target=target, jobs=self.args.jobs)
+        except DvcException as exc:
+            self.project.logger.error('Failed to fetch data from the cloud', exc)
+            return 1
+        return 0
+
+
 class CmdDataStatus(CmdDataBase):
     def _show(self, status):
         for s in status:

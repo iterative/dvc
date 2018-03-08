@@ -91,21 +91,15 @@ class Project(object):
         stage.dump()
         return stage
 
-    def remove(self, fname):
-        stages = []
-        output = Output.loads(self, fname)
-        for out in self.outs():
-            if out.path == output.path:
-                stage = out.stage()
-                stages.append(stage)
+    def remove(self, target):
+        if not Stage.is_stage_file(target):
+            raise StageNotFoundError(target)
 
-        if len(stages) == 0:
-            raise StageNotFoundError(fname) 
+        stage = Stage.load(self, target)
+        for out in stage.outs:
+            out.remove()
 
-        for stage in stages:
-            stage.remove()
-
-        return stages
+        return stage
 
     def run(self,
             cmd=None,
@@ -207,8 +201,11 @@ class Project(object):
     def push(self, target=None, jobs=1):
         return self.cloud.push(self._used_cache(target), jobs)
 
+    def fetch(self, target=None, jobs=1):
+        return self.cloud.pull(self._used_cache(target), jobs)
+
     def pull(self, target=None, jobs=1):
-        ret = self.cloud.pull(self._used_cache(target), jobs)
+        ret = self.fetch(target, jobs)
         self.checkout()
         return ret
 
