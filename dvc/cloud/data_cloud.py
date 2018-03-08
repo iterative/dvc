@@ -5,6 +5,7 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import ConfigError
 from dvc.utils import map_progress
+from dvc.config import Config
 
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
@@ -29,7 +30,7 @@ class DataCloud(object):
     def __init__(self, cache, config):
         self._config = config
 
-        cloud_type = self._config['Global'].get('Cloud', '').strip().upper()
+        cloud_type = self._config[Config.SECTION_CORE].get('Cloud', '').strip().upper()
         if cloud_type not in self.CLOUD_MAP.keys():
             raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
@@ -54,7 +55,7 @@ class DataCloud(object):
             cloud_config = None
         else:
             cloud_config = config[cloud_type]
-        global_storage_path = config['Global'].get('StoragePath', None)
+        global_storage_path = config[Config.SECTION_CORE].get('StoragePath', None)
         cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
 
@@ -70,8 +71,9 @@ class DataCloud(object):
             (F, issues) if bad
         """
         key = 'Cloud'
-        if key.lower() not in [k.lower() for k in self._config['Global'].keys()] or len(self._config['Global'][key]) < 1:
-            raise ConfigError('Please set %s in section Global in config file' % key)
+        core = self._config[Config.SECTION_CORE]
+        if key.lower() not in [k.lower() for k in core.keys()] or len(core[key]) < 1:
+            raise ConfigError('Please set {} in section {} in config file'.format(key, Config.SECTION_CORE))
 
         # now that a cloud is chosen, can check StoragePath
         storage_path = self._cloud.storage_path

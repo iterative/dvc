@@ -1,6 +1,7 @@
 import colorama
 import logging
 
+from dvc.config import Config
 from dvc.logger import Logger
 
 from tests.basic_env import TestDvc
@@ -8,11 +9,11 @@ from tests.basic_env import TestDvc
 
 class TestLogger(TestDvc):
     def test_config(self):
-        config1 = {'Global': {'LogLevel': 'debug'}}
+        config1 = {Config.SECTION_CORE: {'LogLevel': 'debug'}}
         Logger(config1)
         self.assertEqual(Logger.logger().getEffectiveLevel(), logging.DEBUG)
 
-        config2 = {'Global': {'LogLevel': 'error'}}
+        config2 = {Config.SECTION_CORE: {'LogLevel': 'error'}}
         Logger(config2)
         self.assertEqual(Logger.logger().getEffectiveLevel(), logging.ERROR)
 

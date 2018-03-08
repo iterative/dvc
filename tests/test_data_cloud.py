@@ -4,7 +4,7 @@ import uuid
 import shutil
 
 from dvc.main import main
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.cloud.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudGCP
 from dvc.cloud.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 from dvc.cloud.instance_manager import CloudSettings
@@ -15,14 +15,14 @@ from tests.basic_env import TestDvc
 class TestDataCloud(TestDvc):
     def test(self):
         for k,v in DataCloud.CLOUD_MAP.items():
-            config = {'Global': {'Cloud': k},
+            config = {Config.SECTION_CORE: {'Cloud': k},
                       k: {'StoragePath': 'a/b',
                           'ProjectName': 'name'}}
             cloud = DataCloud(self.dvc.cache, config)
             self.assertIsInstance(cloud._cloud, v)
 
         with self.assertRaises(ConfigError) as cx:
-            config = {'Global': {'Cloud': 'not_supported_type'}}
+            config = {Config.SECTION_CORE: {'Cloud': 'not_supported_type'}}
             DataCloud(self.dvc.cache, config)
 
 
@@ -194,7 +194,7 @@ class TestDataCloudLocalCli(TestDvc):
         dname = 'cloud'
         os.mkdir(dname)
 
-        self.main(['config', 'global.cloud', 'LOCAL'])
+        self.main(['config', 'Core.cloud', 'LOCAL'])
         self.main(['config', 'LOCAL.StoragePath', dname])
 
         stage = self.dvc.add(self.FOO)

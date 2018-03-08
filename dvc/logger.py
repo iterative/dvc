@@ -27,7 +27,7 @@ class Logger(object):
 
     def __init__(self, config=None):
         if config:
-            level = config[Config.SECTION_GLOBAL].get('LogLevel', None)
+            level = config[Config.SECTION_CORE].get('LogLevel', None)
             Logger.set_level(level)
 
     @staticmethod

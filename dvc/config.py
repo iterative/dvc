@@ -15,9 +15,9 @@ class ConfigError(DvcException):
 
 class Config(object):
     CONFIG = 'config'
-    SECTION_GLOBAL = 'Global'
+    SECTION_CORE = 'Core'
     CONFIG_TEMPLATE = '''
-[Global]
+[Core]
 # Supported clouds: AWS, GCP
 Cloud = AWS
 
@@ -47,8 +47,8 @@ ProjectName =
         except configparser.Error as ex:
             raise ConfigError(ex.message)
 
-        if not self._config.has_section(self.SECTION_GLOBAL):
-            raise ConfigError(u'section \'{}\' was not found'.format(self.SECTION_GLOBAL))
+        if not self._config.has_section(self.SECTION_CORE):
+            raise ConfigError(u'section \'{}\' was not found'.format(self.SECTION_CORE))
 
     @staticmethod
     def init(dvc_dir):
