@@ -204,26 +204,26 @@ class TestDataCloudLocalCli(TestDvc):
         cache_dir = stage_dir.outs[0].cache
 
         #FIXME check status output
-        self.main(['cache', 'status'])
+        self.main(['status'])
 
-        self.main(['cache', 'push'])
+        self.main(['push'])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(['cache', 'status'])
+        self.main(['status'])
 
         os.chmod(cache, 0o777)
         os.unlink(cache)
         self.dvc._remove_cache(cache_dir)
 
-        self.main(['cache', 'status'])
+        self.main(['status'])
 
-        self.main(['cache', 'pull'])
+        self.main(['pull'])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(['cache', 'status'])
+        self.main(['status'])
