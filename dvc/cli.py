@@ -138,38 +138,29 @@ def parse_args(argv=None):
                         default=None,
                         help='DVC files.')
 
-    # Cache
-    cache_parser = subparsers.add_parser(
-                        'cache',
-                        parents=[parent_parser],
-                        help='Cache operations')
-    cache_subparsers = cache_parser.add_subparsers(
-                        dest='cmd',
-                        help='Use `dvc cache CMD` --help for command-specific help')
-
     # Pull
-    pull_parser = cache_subparsers.add_parser(
+    pull_parser = subparsers.add_parser(
                         'pull',
                         parents=[parent_cache_parser],
                         help='Pull data files from the cloud')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
-    push_parser = cache_subparsers.add_parser(
+    push_parser = subparsers.add_parser(
                         'push',
                         parents=[parent_cache_parser],
                         help='Push data files to the cloud')
     push_parser.set_defaults(func=CmdDataPush)
 
-    #Fetch
-    fetch_parser = cache_subparsers.add_parser(
+    # Fetch
+    fetch_parser = subparsers.add_parser(
                         'fetch',
                         parents=[parent_cache_parser],
                         help='Fetch data files from the cloud')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    status_parser = cache_subparsers.add_parser(
+    status_parser = subparsers.add_parser(
                         'status',
                         parents=[parent_cache_parser],
                         help='Show mismatches between local cache and cloud cache')

@@ -28,7 +28,6 @@ class TestGC(TestDvc):
             self.bad_cache.append(path)
 
         path = os.path.join(self.dvc.cache.cache_dir, '45', '6', 'data')
-        os.mkdir(os.path.dirname(path))
         self.create(path, 'md5: "123"')
         self.bad_cache.append(path)
 

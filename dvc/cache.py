@@ -11,29 +11,23 @@ class Cache(object):
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
-        for subdir in self._cache_subdirs:
-            if not os.path.exists(subdir):
-                os.mkdir(subdir)
-
     @staticmethod
     def init(dvc_dir):
         cache_dir = os.path.join(dvc_dir, Cache.CACHE_DIR)
         os.mkdir(cache_dir)
         return Cache(dvc_dir)
 
-    @property
-    def _cache_subdirs(self):
-        dirs = []
-        for x in range(0, 256):
-            dirs.append(os.path.join(self.cache_dir, format(x, '02x')))
-        return dirs
-
     def all(self):
         clist = []
-        for subdir in self._cache_subdirs:
+        for entry in os.listdir(self.cache_dir):
+            subdir = os.path.join(self.cache_dir, entry)
+            if not os.path.isdir(subdir):
+                continue
+
             for cache in os.listdir(subdir):
                 path = os.path.join(subdir, cache)
                 clist.append(path)
+
         return clist
 
     def get(self, md5):

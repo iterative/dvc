@@ -62,19 +62,19 @@ class TestRun(TestDvc):
 
 class TestPull(TestDvc):
     def test(self):
-        args = parse_args(['cache', 'pull'])
+        args = parse_args(['pull'])
         self.assertIsInstance(args.func(args), CmdDataPull)
 
 
 class TestPush(TestDvc):
     def test(self):
-        args = parse_args(['cache', 'push'])
+        args = parse_args(['push'])
         self.assertIsInstance(args.func(args), CmdDataPush)
 
 
 class TestStatus(TestDvc):
     def test(self):
-        args = parse_args(['cache', 'status'])
+        args = parse_args(['status'])
         self.assertIsInstance(args.func(args), CmdDataStatus)
 
 
