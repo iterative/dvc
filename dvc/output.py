@@ -237,12 +237,22 @@ class Output(Dependency):
 
     @staticmethod
     def load_dir_cache(path):
-        with open(path, 'r') as fd:
-            d = yaml.safe_load(fd)
+        if os.path.isabs(path):
+            relpath = os.path.relpath(path)
+        else:
+            relpath = path
+
+        try:
+            with open(path, 'r') as fd:
+                d = yaml.safe_load(fd)
+        except Exception as exc:
+            msg = u'Failed to load dir cache \'{}\''
+            Logger.error(msg.format(relpath), exc)
+            return []
 
         if not isinstance(d, list):
             msg = u'Dir cache file format error \'{}\': skipping the file'
-            Logger.error(msg.format(path))
+            Logger.error(msg.format(relpath))
             return []
 
         return d
