@@ -33,7 +33,7 @@ class TestConfigTest(TestCase):
     def storage_path_hierarchy_test(self):
         """ StoragePath should be read first from global and then from cloud section """
 
-        c = ("[Global]",
+        c = ("[Core]",
              "LogLevel =",
              "DataDir = ",
              "CacheDir = ",
@@ -53,7 +53,7 @@ class TestConfigTest(TestCase):
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
 
-        c = ("[Global]",
+        c = ("[Core]",
              "LogLevel =",
              "DataDir = ",
              "CacheDir = ",
@@ -90,7 +90,7 @@ class TestConfigTest(TestCase):
         """ in absence of [AWS] -> CredentialPath, aws creds should be read from ~/.aws/credentials """
 
         default_path = os.path.expanduser('~/.aws/credentials')
-        c = ("[Global]",
+        c = ("[Core]",
              "LogLevel =",
              "DataDir = ",
              "CacheDir = ",
@@ -121,7 +121,7 @@ class TestConfigTest(TestCase):
     def aws_credentials_specified_tes_t_DISABLED(self, isfile_function):
         """ in presence of [AWS] -> CredentialPath, use those credentials """
 
-        c = ("[Global]",
+        c = ("[Core]",
              "LogLevel =",
              "DataDir = ",
              "CacheDir = ",
