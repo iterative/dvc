@@ -232,6 +232,11 @@ class Output(Dependency):
 
     def hardlink(self, src, link):
         self.project.logger.debug(u'creating hardlink {} -> {}'.format(src, link))
+
+        dname = os.path.dirname(link)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
         System.hardlink(src, link)
         os.chmod(src, stat.S_IREAD)
 
@@ -304,11 +309,6 @@ class Output(Dependency):
 
         for relpath, cache in self.dir_cache().items():
             path = os.path.join(self.path, relpath)
-            dname = os.path.dirname(path)
-
-            if not os.path.exists(dname):
-                os.makedirs(dname)
-
             self.hardlink(cache, path)
 
     def _collect_dir(self):
@@ -330,6 +330,7 @@ class Output(Dependency):
         return dir_info
 
     def _save_dir(self):
+        dname = os.path.dirname(self.cache)
         dir_info = self._collect_dir()
 
         for entry in dir_info:
@@ -343,6 +344,9 @@ class Output(Dependency):
                 self.hardlink(cache, path)
             else:
                 self.hardlink(path, cache)
+
+        if not os.path.isdir(dname):
+            os.makedirs(dname)
 
         with open(self.cache, 'w+') as fd:
             yaml.safe_dump(dir_info, fd, default_flow_style=False)

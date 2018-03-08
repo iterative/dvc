@@ -31,6 +31,10 @@ class TestDir(TestCase):
         self._saved_dir = None
 
     def create(self, name, contents):
+        dname = os.path.dirname(name)
+        if len(dname) > 0 and not os.path.isdir(dname):
+            os.makedirs(dname)
+
         with open(name, 'a') as f:
             f.write(contents)
 
