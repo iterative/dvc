@@ -91,21 +91,15 @@ class Project(object):
         stage.dump()
         return stage
 
-    def remove(self, fname):
-        stages = []
-        output = Output.loads(self, fname)
-        for out in self.outs():
-            if out.path == output.path:
-                stage = out.stage()
-                stages.append(stage)
+    def remove(self, target):
+        if not Stage.is_stage_file(target):
+            raise StageNotFoundError(target)
 
-        if len(stages) == 0:
-            raise StageNotFoundError(fname) 
+        stage = Stage.load(self, target)
+        for out in stage.outs:
+            out.remove()
 
-        for stage in stages:
-            stage.remove()
-
-        return stages
+        return stage
 
     def run(self,
             cmd=None,

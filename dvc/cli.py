@@ -194,10 +194,10 @@ def parse_args(argv=None):
     remove_parser = subparsers.add_parser(
                         'remove',
                         parents=[parent_parser],
-                        help='Remove data file or data directory')
+                        help='Remove outputs of DVC file.')
     remove_parser.add_argument('targets',
                         nargs='+',
-                        help='Target to remove - file or directory.')
+                        help='DVC files.')
     remove_parser.set_defaults(func=CmdRemove)
 
     # Garbage collector
