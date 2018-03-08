@@ -267,12 +267,14 @@ class DataCloudAWS(DataCloudBase):
                     continue
 
                 fobj.seek(offset)
+                name = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
+                cb = create_cb(name, offset, source_size)
                 multipart.upload_part_from_file(fp=fobj,
                                                 replace=False,
                                                 size=size,
                                                 num_cb=100,
                                                 part_num=part_num,
-                                                cb=create_cb(fname, offset, source_size))
+                                                cb=cb)
 
         if len(multipart.get_all_parts()) != chunk_count:
             raise Exception("Couldn't upload all file parts")
