@@ -1,6 +1,6 @@
 import os
 import stat
-import yaml
+import json
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -249,7 +249,7 @@ class Output(Dependency):
 
         try:
             with open(path, 'r') as fd:
-                d = yaml.safe_load(fd)
+                d = json.load(fd)
         except Exception as exc:
             msg = u'Failed to load dir cache \'{}\''
             Logger.error(msg.format(relpath), exc)
@@ -349,7 +349,7 @@ class Output(Dependency):
             os.makedirs(dname)
 
         with open(self.cache, 'w+') as fd:
-            yaml.safe_dump(dir_info, fd, default_flow_style=False)
+            json.dump(dir_info, fd)
 
     def save(self):
         super(Output, self).save()
