@@ -5,6 +5,14 @@ set -e
 
 ./unittests.sh
 
+if [[ "$TRAVIS_OS_NAME" == "linux" && \
+      "$(python -c 'import sys; print(sys.version_info[0])')" == "2" && \
+      "$TRAVIS_PULL_REQUEST" == "false" && \
+      "$TRAVIS_BRANCH" == "master" && \
+      "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
+	codeclimate-test-reporter --token $CC_TEST_REPORTER_ID
+fi
+
 if [[ ! -z "$TRAVIS_TAG" ]]; then
 	if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 		./scripts/build_macos.sh
