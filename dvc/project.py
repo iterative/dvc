@@ -11,6 +11,7 @@ from dvc.lock import Lock
 from dvc.scm import SCM
 from dvc.cache import Cache
 from dvc.cloud.data_cloud import DataCloud
+from dvc.system import System
 
 
 class StageNotFoundError(DvcException):
@@ -149,7 +150,26 @@ class Project(object):
                 raise ReproductionError(stages[n].relpath, ex)
         return result
 
+    def _remove_untracked_hardlinks(self):
+        untracked = self.scm.untracked_files()
+        cache = dict((System.inode(c), c) for c in self.cache.all())
+        for file in untracked:
+            inode = System.inode(file)
+            if inode not in cache.keys():
+                continue
+
+            Logger.info(u'Remove \'{}\''.format(file))
+            os.chmod(file, stat.S_IWRITE)
+            os.remove(file)
+            os.chmod(cache[inode], stat.S_IREAD)
+
+            dir = os.path.dirname(file)
+            if len(dir) != 0 and not os.listdir(dir):
+                Logger.info(u'Remove empty directory \'{}\''.format(dir))
+                os.removedirs(dir)
+
     def checkout(self):
+        self._remove_untracked_hardlinks()
         for stage in self.stages():
             stage.checkout()
 
@@ -173,7 +193,7 @@ class Project(object):
         return list(cache_set)
 
     def _remove_cache_file(self, cache):
-        os.chmod(cache, stat.S_IWRITE)
+        os.chmod(cache, stat.S_IWRITE | stat.S_IREAD)
         os.unlink(cache)
 
     def gc(self):
