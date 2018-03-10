@@ -13,6 +13,7 @@ class Progress(object):
 
     def set_n_total(self, total):
         self._n_total = total
+        self._n_finished = 0
 
     def _clearln(self):
         print('\r\x1b[K', end='')

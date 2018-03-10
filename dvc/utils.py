@@ -45,7 +45,7 @@ def cached_property(func):
     return property(get)
 
 
-def copyfile(src, dest):
+def copyfile(src, dest, no_progress_bar=False):
     '''Copy file with progress bar'''
     copied = 0
     name = os.path.basename(src)
@@ -64,9 +64,11 @@ def copyfile(src, dest):
             break
         fdest.write(buf)
         copied += len(buf)
-        progress.update_target(name, copied, total)
+        if not no_progress_bar:
+            progress.update_target(name, copied, total)
 
-    progress.finish_target(name)
+    if not no_progress_bar:
+        progress.finish_target(name)
 
     fsrc.close()
     fdest.close()

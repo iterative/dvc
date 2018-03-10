@@ -15,9 +15,6 @@ class LocalKey(object):
     def path(self):
         return os.path.join(self.bucket, self.name)
 
-    def delete(self):
-        os.unlink(self.path)
-
 
 class DataCloudLOCAL(DataCloudBase):
     """
@@ -52,7 +49,7 @@ class DataCloudLOCAL(DataCloudBase):
 
         tmp_file = self.tmp_file(path)
         try:
-            copyfile(key.path, tmp_file)
+            copyfile(key.path, tmp_file, no_progress_bar=no_progress_bar)
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
             return None
