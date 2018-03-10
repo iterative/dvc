@@ -1,6 +1,7 @@
 import os
 import stat
 
+from dvc.system import System
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 
@@ -13,12 +14,16 @@ class CmdCheckout(CmdBase):
 
     def remove_untracked_hardlinks(self):
         untracked = self.project.scm.untracked_files()
+        cache = dict((System.inode(c), c) for c in self.project.cache.all())
+        for file in untracked:
+            inode = System.inode(file)
+            if inode not in cache.keys():
+                continue
 
-        for file, md5 in self.project.cache.find_cache(untracked).items():
             Logger.info(u'Remove \'{}\''.format(file))
             os.chmod(file, stat.S_IWRITE)
             os.remove(file)
-            os.chmod(self.project.cache.get(md5), stat.S_IREAD)
+            os.chmod(cache[inode], stat.S_IREAD)
 
             dir = os.path.dirname(file)
             if len(dir) != 0 and not os.listdir(dir):
