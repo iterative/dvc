@@ -71,11 +71,14 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(status, STATUS_MODIFIED)
 
         # Remove and check status
-        os.unlink(cache)
+        for root, dirs, files in os.walk(self.dvc.cache.cache_dir):
+            for f in files:
+                path = os.path.join(root, f)
+                self.dvc._remove_cache_file(path)
+
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_DELETED)
 
-        self.dvc._remove_cache(cache_dir)
         status_dir = self.cloud.status(cache_dir)
         self.assertEqual(status_dir, STATUS_DELETED)
 
@@ -164,8 +167,6 @@ class TestDataCloudGCP(TestDataCloudBase):
 
 class TestDataCloudLOCAL(TestDataCloudBase):
     def _should_test(self):
-        if os.name == 'nt':
-            return False
         return True
 
     def _setup_cloud(self):
@@ -187,10 +188,6 @@ class TestDataCloudLocalCli(TestDvc):
         self.assertEqual(ret, 0)
 
     def test(self):
-        #FIXME enable this test for windows
-        if os.name == 'nt':
-            return
-        
         dname = 'cloud'
         os.mkdir(dname)
 
@@ -213,9 +210,10 @@ class TestDataCloudLocalCli(TestDvc):
 
         self.main(['status'])
 
-        os.chmod(cache, 0o777)
-        os.unlink(cache)
-        self.dvc._remove_cache(cache_dir)
+        for root, dirs, files in os.walk(self.dvc.cache.cache_dir):
+            for f in files:
+                path = os.path.join(root, f)
+                self.dvc._remove_cache_file(path)
 
         self.main(['status'])
 
