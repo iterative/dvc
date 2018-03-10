@@ -10,7 +10,8 @@ if [[ "$TRAVIS_OS_NAME" == "linux" && \
       "$TRAVIS_PULL_REQUEST" == "false" && \
       "$TRAVIS_BRANCH" == "master" && \
       "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
-	codeclimate-test-reporter --token $CC_TEST_REPORTER_ID
+        cat .coverage
+	codeclimate-test-reporter --debug --token $CC_TEST_REPORTER_ID
 fi
 
 if [[ ! -z "$TRAVIS_TAG" ]]; then
