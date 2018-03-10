@@ -95,7 +95,7 @@ class Dependency(object):
         return os.path.getmtime(self.path)
 
     def inode(self):
-        return os.stat(self.path).st_ino
+        return System.inode(self.path)
 
     def save(self):
         if not os.path.exists(self.path):
