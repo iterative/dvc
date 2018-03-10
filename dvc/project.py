@@ -176,26 +176,12 @@ class Project(object):
         os.chmod(cache, stat.S_IWRITE)
         os.unlink(cache)
 
-    def _remove_cache(self, cache):
-        if os.path.isfile(cache):
-            self._remove_cache_file(cache)
-            return
-
-        for root, dirs, files in os.walk(cache, topdown=False):
-            for dname in dirs:
-                path = os.path.join(root, dname)
-                os.rmdir(path)
-            for fname in files:
-                path = os.path.join(root, fname)
-                self._remove_cache_file(path)
-        os.rmdir(cache)
-
     def gc(self):
         clist = self._used_cache()
         for cache in self.cache.all():
             if cache in clist:
                 continue
-            self._remove_cache(cache)
+            self._remove_cache_file(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
     def push(self, target=None, jobs=1):
