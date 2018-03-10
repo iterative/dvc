@@ -37,12 +37,8 @@ before_install:
   - bash ./scripts/ci/before_install.sh
 install:
   - bash ./scripts/ci/install.sh
-before_script:
-  - bash ./scripts/ci/before_script.sh
 script:
   - bash ./scripts/ci/script.sh
-after_script:
-  - bash ./scripts/ci/after_script.sh
 deploy:
   condition: "[[ $(python -c 'import sys; print(sys.version_info[0])') == '2' ]]"
   provider: releases
