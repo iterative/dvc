@@ -27,10 +27,6 @@ class TestGC(TestDvc):
             self.create(path, i)
             self.bad_cache.append(path)
 
-        path = os.path.join(self.dvc.cache.cache_dir, '45', '6', 'data')
-        self.create(path, 'md5: "123"')
-        self.bad_cache.append(path)
-
     def test_api(self):
         self.dvc.gc()
         self._test_gc()
