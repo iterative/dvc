@@ -14,7 +14,6 @@ from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus, CmdDa
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
-from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.checkout import CmdCheckout
 from dvc.stage import Stage
 from dvc import VERSION
@@ -222,25 +221,6 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
-
-    # Show
-    show_parser = subparsers.add_parser(
-                        'show',
-                        parents=[parent_parser],
-                        help='Show graphs')
-    show_subparsers = show_parser.add_subparsers(
-                        dest='cmd',
-                        help='Use `dvc show CMD` --help for command-specific help')
-
-    pipeline_parser = show_subparsers.add_parser(
-                        'pipeline',
-                        parents=[parent_parser],
-                        help='Show pipeline image')
-    pipeline_parser.add_argument(
-                        'target',
-                        nargs='*',
-                        help='Target data directory')
-    pipeline_parser.set_defaults(func=CmdShowPipeline)
 
     # Fsck
     fsck_parser = subparsers.add_parser(
