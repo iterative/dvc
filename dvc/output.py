@@ -70,13 +70,7 @@ class Dependency(object):
         if not os.path.exists(self.path):
             return True
 
-        state = self.project.state.get(self.path)
-        if state and state.mtime == self.mtime() and state.inode == self.inode():
-            md5 = state.md5
-        else:
-            md5 = self.compute_md5()
-
-        return self.md5 != md5
+        return self.project.state.changed(self.path, self.md5)
 
     def changed(self):
         return self._changed_md5()
@@ -85,18 +79,6 @@ class Dependency(object):
     def is_dir_cache(cache):
         return cache.endswith(Output.MD5_DIR_SUFFIX)
 
-    def compute_md5(self):
-        if os.path.isdir(self.path):
-            return dirhash(self.path, hashfunc='md5') + self.MD5_DIR_SUFFIX
-        else:
-            return file_md5(self.path)[0]
-
-    def mtime(self):
-        return os.path.getmtime(self.path)
-
-    def inode(self):
-        return System.inode(self.path)
-
     def save(self):
         if not os.path.exists(self.path):
             raise CmdOutputDoesNotExistError(self.rel_path)
@@ -104,15 +86,7 @@ class Dependency(object):
         if not os.path.isfile(self.path) and not os.path.isdir(self.path):
             raise CmdOutputIsNotFileOrDirError(self.rel_path)
 
-        state = self.project.state.get(self.path)
-        if state and state.mtime == self.mtime() and state.inode == self.inode():
-            md5 = state.md5
-            msg = u'\'{}\' using md5 {} from state file'
-            self.project.logger.debug(msg.format(self.dvc_path, md5))
-            self.md5 = md5
-        else:
-            self.md5 = self.compute_md5()
-            self.project.state.update(self.path, self.md5, self.mtime(), self.inode())
+        self.md5 = self.project.state.update(self.path).md5
 
     def dumpd(self, cwd):
         return {
@@ -182,11 +156,21 @@ class Output(Dependency):
     def loads_from(cls, project, s_list, use_cache=False, cwd=os.curdir):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
+    def _changed_cache(self, cache):
+        state = self.project.state.update(cache)
+        if state.md5 != self.project.cache.path_to_md5(cache):
+            self.project.logger.debug('Corrupted cache file {}'.format(cache))
+            self.project._remove_cache_file(cache)
+            return True
+
+        return False
+
     def _changed_file(self, path, cache):
         if os.path.isfile(path) and \
            os.path.isfile(cache) and \
            System.samefile(path, cache) and \
-           os.stat(cache).st_mode & stat.S_IREAD:
+           os.stat(cache).st_mode & stat.S_IREAD and \
+           not self._changed_cache(cache):
             return False
 
         return True
@@ -319,13 +303,8 @@ class Output(Dependency):
                 path = os.path.join(root, fname)
                 relpath = os.path.relpath(path, self.path)
 
-                state = self.project.state.get(path)
-                if state and state.mtime == mtime and state.inode == inode:
-                    md5 = state.md5
-                else:
-                    md5 = file_md5(path)[0]
-
-                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
+                state = self.project.state.update(path)
+                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: state.md5})
 
         return dir_info
 
