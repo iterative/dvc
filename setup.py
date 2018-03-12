@@ -17,7 +17,6 @@ install_requires = [
     "tinydb>=3.7.0",
     "gitpython>=2.1.8",
     "ntfsutils>=0.1.3",
-    "pygraphviz>=1.3.1",
     "checksumdir>=1.1.4",
 ]
 
