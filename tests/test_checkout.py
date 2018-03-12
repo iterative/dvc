@@ -38,7 +38,9 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
         self.dvc.checkout()
 
         #FIXME debug
+        import time
         os.system('cat .dvc/state')
+        print('TIME {}'.format(time.time()))
         self.assertFalse(os.path.isfile(self.FOO))
         self.assertFalse(os.path.isfile(cache))
 
