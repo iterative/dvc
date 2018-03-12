@@ -9,7 +9,6 @@ from dvc.command.add import CmdAdd
 from dvc.command.remove import CmdRemove
 from dvc.command.gc import CmdGC
 from dvc.command.config import CmdConfig
-from dvc.command.show_pipeline import CmdShowPipeline
 from dvc.command.checkout import CmdCheckout
 from dvc.command.fsck import CmdFsck
 
@@ -141,20 +140,6 @@ class TestConfig(TestDvc):
         self.assertEqual(args.unset, True)
         self.assertEqual(args.name, name)
         self.assertEqual(args.value, value)
-
-
-class TestShowPipeline(TestDvc):
-    def test(self):
-        target1 = '1'
-        target2 = '2'
-
-        args = parse_args(['show',
-                           'pipeline',
-                           target1,
-                           target2])
-
-        self.assertIsInstance(args.func(args), CmdShowPipeline)
-        self.assertEqual(args.target, [target1, target2])
 
 
 class TestCheckout(TestDvc):
