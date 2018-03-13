@@ -1,4 +1,5 @@
 import os
+import time
 import stat
 import shutil
 import filecmp
@@ -29,6 +30,8 @@ class TestCheckout(TestRepro):
 class TestCheckoutCorruptedCacheFile(TestRepro):
     def test(self):
         cache = self.foo_stage.outs[0].cache
+
+        time.sleep(1)
 
         os.chmod(cache, stat.S_IWRITE)
         with open(cache, 'a') as fd:
