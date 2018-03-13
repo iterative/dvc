@@ -1,5 +1,5 @@
 import os
-import tinydb
+import json
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -11,30 +11,25 @@ from dvc.exceptions import DvcException
 class StateEntry(object):
     PARAM_MTIME = 'mtime'
     PARAM_MD5 = 'md5'
-    PARAM_INODE = 'inode'
 
-    def __init__(self, md5, mtime, inode):
+    def __init__(self, md5, mtime):
         self.mtime = mtime
         self.md5 = md5
-        self.inode = inode
 
-    def update(self, md5, mtime, inode):
+    def update(self, md5, mtime):
         self.mtime = mtime
         self.md5 = md5
-        self.inode = inode
 
     @staticmethod
     def loadd(d):
         mtime = d[StateEntry.PARAM_MTIME]
         md5 = d[StateEntry.PARAM_MD5]
-        inode = d[StateEntry.PARAM_INODE]
-        return StateEntry(md5, mtime, inode)
+        return StateEntry(md5, mtime)
 
     def dumpd(self):
         return {
             self.PARAM_MD5: self.md5,
             self.PARAM_MTIME: self.mtime,
-            self.PARAM_INODE: self.inode
         }
 
 
@@ -49,8 +44,7 @@ class State(object):
         self.root_dir = root_dir
         self.dvc_dir = dvc_dir
         self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
-        self._db = tinydb.TinyDB(self.state_file)
-        self._q = tinydb.Query()
+        self._db = {}
 
     @staticmethod
     def init(root_dir, dvc_dir):
@@ -63,38 +57,42 @@ class State(object):
             return file_md5(path)[0]
 
     def changed(self, path, md5):
-        state = self.update(path)
-        return state.md5 != md5
+        return self.update(path) != md5
 
-    def update(self, path):
+    def load(self):
+        with open(self.state_file, 'r') as fd:
+            self._db = json.load(fd)
+
+    def dump(self):
+        with open(self.state_file, 'w+') as fd:
+            json.dump(self._db, fd)
+
+    def update(self, path, dump=True):
         mtime = os.path.getmtime(path)
         inode = System.inode(path)
 
-        state = self._get(inode, mtime)
-        if state:
-            return state
+        md5 = self._get(inode, mtime)
+        if md5:
+            return md5
 
         md5 = self.compute_md5(path)
-        state = StateEntry(md5, mtime, inode)
+        state = StateEntry(md5, mtime)
         d = state.dumpd()
-        if self._db.contains(self._q.inode == inode):
-            self._db.update(d, self._q.inode == inode)
-        else:
-            self._db.insert(d)
+        self._db[inode] = d
 
-        return state
+        if dump:
+            self.dump()
+
+        return md5
 
     def _get(self, inode, mtime):
-        d_list = self._db.search(self._q.inode == inode)
-        if not len(d_list):
+        d = self._db.get(inode, None)
+        if not d:
             return None
 
-        if len(d_list) > 1:
-            raise StateDuplicateError()
-
-        state = StateEntry.loadd(d_list[0])
-        if mtime == state.mtime and inode == state.inode:
-            return state
+        state = StateEntry.loadd(d)
+        if mtime == state.mtime:
+            return state.md5
 
         return None
 

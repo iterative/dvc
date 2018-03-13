@@ -86,7 +86,7 @@ class Dependency(object):
         if not os.path.isfile(self.path) and not os.path.isdir(self.path):
             raise CmdOutputIsNotFileOrDirError(self.rel_path)
 
-        self.md5 = self.project.state.update(self.path).md5
+        self.md5 = self.project.state.update(self.path)
 
     def dumpd(self, cwd):
         return {
@@ -157,8 +157,8 @@ class Output(Dependency):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
     def _changed_cache(self, cache):
-        state = self.project.state.update(cache)
-        if state.md5 != self.project.cache.path_to_md5(cache):
+        md5 = self.project.state.update(cache)
+        if md5 != self.project.cache.path_to_md5(cache):
             self.project.logger.debug('Corrupted cache file {}'.format(cache))
             self.project._remove_cache_file(cache)
             return True
@@ -303,8 +303,10 @@ class Output(Dependency):
                 path = os.path.join(root, fname)
                 relpath = os.path.relpath(path, self.path)
 
-                state = self.project.state.update(path)
-                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: state.md5})
+                md5 = self.project.state.update(path, dump=False)
+                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
+
+        self.project.state.dump()
 
         return dir_info
 
