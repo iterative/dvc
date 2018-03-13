@@ -1,5 +1,6 @@
 import os
 import stat
+import time
 
 from dvc.system import System
 from dvc.state import State, StateEntry
@@ -23,6 +24,13 @@ class TestState(TestDvc):
         self.assertEqual(entry.md5, md5)
         self.assertEqual(entry.mtime, mtime)
         self.assertEqual(entry.inode, inode)
+
+        # Sleep some time to simulate realistic behavior.
+        # Some filesystems have a bad date resolution for
+        # mtime(i.e. 1sec for HFS) that cause problems with
+        # our 'state' system not being able to distinguish
+        # files that were modified within that delta.
+        time.sleep(1)        
 
         os.chmod(path, stat.S_IWRITE)
         os.unlink(path)
