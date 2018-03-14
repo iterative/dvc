@@ -28,7 +28,6 @@ class TestState(TestDvc):
         # files that were modified within that delta.
         time.sleep(1)        
 
-        os.chmod(path, stat.S_IWRITE)
         os.unlink(path)
         with open(path, 'w+') as fd:
             fd.write('1')

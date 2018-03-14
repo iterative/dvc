@@ -63,18 +63,13 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(status_dir, STATUS_OK)
 
         # Modify and check status
-        os.chmod(cache, stat.S_IWRITE)
         with open(cache, 'a') as fd:
             fd.write('addon')
-        os.chmod(cache, 0o777)
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_MODIFIED)
 
         # Remove and check status
-        for root, dirs, files in os.walk(self.dvc.cache.cache_dir):
-            for f in files:
-                path = os.path.join(root, f)
-                self.dvc._remove_cache_file(path)
+        shutil.rmtree(self.dvc.cache.cache_dir)
 
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_DELETED)
@@ -210,10 +205,7 @@ class TestDataCloudLocalCli(TestDvc):
 
         self.main(['status'])
 
-        for root, dirs, files in os.walk(self.dvc.cache.cache_dir):
-            for f in files:
-                path = os.path.join(root, f)
-                self.dvc._remove_cache_file(path)
+        shutil.rmtree(self.dvc.cache.cache_dir)
 
         self.main(['status'])
 

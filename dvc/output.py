@@ -160,7 +160,7 @@ class Output(Dependency):
         md5 = self.project.state.update(cache)
         if md5 != self.project.cache.path_to_md5(cache):
             self.project.logger.debug('Corrupted cache file {}'.format(cache))
-            self.project._remove_cache_file(cache)
+            os.unlink(cache)
             return True
 
         return False
@@ -169,7 +169,6 @@ class Output(Dependency):
         if os.path.isfile(path) and \
            os.path.isfile(cache) and \
            System.samefile(path, cache) and \
-           os.stat(cache).st_mode & stat.S_IREAD and \
            not self._changed_cache(cache):
             return False
 
@@ -222,7 +221,6 @@ class Output(Dependency):
             os.makedirs(dname)
 
         System.hardlink(src, link)
-        os.chmod(src, stat.S_IREAD)
 
     @staticmethod
     def load_dir_cache(path):
@@ -321,7 +319,7 @@ class Output(Dependency):
             cache = self.project.cache.get(md5)
 
             if os.path.exists(cache):
-                self._remove(path, None)
+                self._remove(path)
                 self.hardlink(cache, path)
             else:
                 self.hardlink(path, cache)
@@ -360,19 +358,16 @@ class Output(Dependency):
         else:
             self.hardlink(self.path, self.cache)
 
-    def _remove(self, path, cache):
+    def _remove(self, path):
         self.project.logger.debug(u'Removing \'{}\''.format(path))
-        os.chmod(path, stat.S_IWUSR)
         os.unlink(path)
-        if cache is not None and os.path.exists(cache):
-            os.chmod(cache, stat.S_IREAD)
 
     def remove(self):
         if not os.path.exists(self.path):
             return
 
         if os.path.isfile(self.path):
-            self._remove(self.path, self.cache)
+            self._remove(self.path)
             return
 
         caches = self.dir_cache()
@@ -384,5 +379,5 @@ class Output(Dependency):
                 path = os.path.join(root, f)
                 relpath = os.path.relpath(path, self.path)
                 cache = caches.get(relpath, None)
-                self._remove(path, cache)
+                self._remove(path)
         os.rmdir(self.path)
