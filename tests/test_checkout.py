@@ -13,10 +13,15 @@ class TestCheckout(TestRepro):
     def setUp(self):
         super(TestCheckout, self).setUp()
 
+        self.dvc.add(self.DATA_DIR)
+
         self.orig = 'orig'
         shutil.copy(self.FOO, self.orig)
-        os.chmod(self.FOO, stat.S_IWRITE)
         os.unlink(self.FOO)
+
+        self.orig_dir = 'orig_dir'
+        shutil.copytree(self.DATA_DIR, self.orig_dir)
+        shutil.rmtree(self.DATA_DIR)
 
     def test(self):
         self.dvc.checkout()
@@ -33,10 +38,8 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
         time.sleep(1)
 
-        os.chmod(cache, stat.S_IWRITE)
         with open(cache, 'a') as fd:
             fd.write('1')
-        os.chmod(cache, stat.S_IREAD)
 
         self.dvc.checkout()
 

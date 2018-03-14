@@ -51,7 +51,6 @@ class TestReproChangedData(TestRepro):
         self.assertEqual(len(stages), 2)
 
     def swap_foo_with_bar(self):
-        os.chmod(self.FOO, stat.S_IWRITE)
         os.unlink(self.FOO)
         shutil.copyfile(self.BAR, self.FOO)
 
@@ -87,7 +86,6 @@ class TestReproPhony(TestReproChangedData):
 
 class TestNonExistingOutput(TestRepro):
     def test(self):
-        os.chmod(self.FOO, stat.S_IWRITE)
         os.unlink(self.FOO)
 
         with self.assertRaises(ReproductionError) as cx:

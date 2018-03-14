@@ -75,7 +75,6 @@ class TestAddDirWithExistingCache(TestDvc):
 class TestAddModifiedDir(TestDvc):
     def test(self):
         self.dvc.add(self.DATA_DIR)
-        os.chmod(self.DATA, stat.S_IWRITE)
         os.unlink(self.DATA)
         self.dvc.add(self.DATA_DIR)
 

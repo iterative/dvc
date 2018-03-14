@@ -74,7 +74,6 @@ class TestFsck(TestDvc):
         foo_cache_file = os.path.join(self.dvc.cache.cache_dir, md5[0:2], md5[2:])
         self.assertTrue(os.path.exists(foo_cache_file))
 
-        os.chmod(foo_cache_file, 0o777)
         os.remove(foo_cache_file)
         self.assertFalse(os.path.exists(foo_cache_file))
 
@@ -87,7 +86,6 @@ class TestFsck(TestDvc):
         self.dvc.add(self.FOO)
         self.dvc.add(self.BAR)
 
-        os.chmod(self.FOO, 0o777)
         os.remove(self.FOO)
         with open(self.FOO, 'w') as fd:
             fd.write('randome stuff s9dfj')
@@ -101,7 +99,6 @@ class TestFsck(TestDvc):
         self.dvc.add(self.FOO)
         self.dvc.add(self.BAR)
 
-        os.chmod(self.FOO, 0o777)
         os.remove(self.FOO)
         with open(self.FOO, 'w') as fd:
             fd.write('randome stuff 39re2fwecsb nj')
@@ -115,7 +112,6 @@ class TestFsck(TestDvc):
         self.dvc.add(self.FOO)
         self.dvc.add(self.BAR)
 
-        os.chmod(self.FOO, 0o777)
         os.remove(self.FOO)
 
         no_data_file = 'baz'

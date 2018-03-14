@@ -159,9 +159,7 @@ class Project(object):
                 continue
 
             Logger.info(u'Remove \'{}\''.format(file))
-            os.chmod(file, stat.S_IWRITE)
             os.remove(file)
-            os.chmod(cache[inode], stat.S_IREAD)
 
             dir = os.path.dirname(file)
             if len(dir) != 0 and not os.listdir(dir):
@@ -192,16 +190,12 @@ class Project(object):
 
         return list(cache_set)
 
-    def _remove_cache_file(self, cache):
-        os.chmod(cache, stat.S_IWRITE | stat.S_IREAD)
-        os.unlink(cache)
-
     def gc(self):
         clist = self._used_cache()
         for cache in self.cache.all():
             if cache in clist:
                 continue
-            self._remove_cache_file(cache)
+            os.unlink(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
     def push(self, target=None, jobs=1):
