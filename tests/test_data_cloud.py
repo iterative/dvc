@@ -217,3 +217,16 @@ class TestDataCloudLocalCli(TestDvc):
         self.assertTrue(os.path.isfile(cache_dir))
 
         self.main(['status'])
+
+
+class TestDataCloudErrorCLI(TestDvc):
+    def main_fail(self, args):
+        ret = main(args)
+        self.assertNotEqual(ret, 0)
+
+    def test_error(self):
+        f = 'non-existing-file'
+        self.main_fail(['status', f])
+        self.main_fail(['push', f])
+        self.main_fail(['pull', f])
+        self.main_fail(['fetch', f])
