@@ -3,7 +3,8 @@ import os
 from dvc.cli import parse_args
 from dvc.command.init import CmdInit
 from dvc.command.run import CmdRun
-from dvc.command.data_sync import CmdDataPull, CmdDataPush, CmdDataStatus
+from dvc.command.data_sync import CmdDataPull, CmdDataPush
+from dvc.command.status import CmdDataStatus
 from dvc.command.repro import CmdRepro
 from dvc.command.add import CmdAdd
 from dvc.command.remove import CmdRemove

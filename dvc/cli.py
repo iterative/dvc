@@ -10,7 +10,8 @@ from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus, CmdDataFetch
+from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
+from dvc.command.status import CmdDataStatus
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
