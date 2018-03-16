@@ -165,7 +165,7 @@ class Output(Dependency):
     def _changed_cache(self, cache):
         md5 = self.project.state.update(cache)
         if md5 != self.project.cache.path_to_md5(cache):
-            self.project.logger.debug('Corrupted cache file {}'.format(cache))
+            self.project.logger.warn('Corrupted cache file {}'.format(os.path.relpath(cache)))
             os.unlink(cache)
             return True
 
