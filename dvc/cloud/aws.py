@@ -57,7 +57,7 @@ class DataCloudAWS(DataCloudBase):
         See notes http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
         """
 
-        region = self._cloud_settings.cloud_config['Region']
+        region = self._cloud_settings.cloud_config.get('Region', None)
         if region is None or region == '':
             return 's3.amazonaws.com'
         if region == 'us-east-1':

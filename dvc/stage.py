@@ -183,3 +183,24 @@ class Stage(object):
     def checkout(self):
         for out in self.outs:
             out.checkout()
+
+    def _status(self, entries, name):
+        ret = {}
+
+        for entry in entries:
+            ret.update(entry.status())
+
+        if ret:
+            return {name: ret}
+
+        return {}
+
+    def status(self):
+        ret = {}
+        ret.update(self._status(self.deps, 'deps'))
+        ret.update(self._status(self.outs, 'outs'))
+
+        if ret:
+            return {self.relpath: ret}
+
+        return {}

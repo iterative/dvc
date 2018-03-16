@@ -17,6 +17,7 @@ install_requires = [
     "gitpython>=2.1.8",
     "ntfsutils>=0.1.3",
     "checksumdir>=1.1.4",
+    "setuptools>=34.0.0",
 ]
 
 setup(

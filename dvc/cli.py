@@ -5,12 +5,12 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
-from dvc.command.fsck import CmdFsck
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
-from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataStatus, CmdDataFetch
+from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
+from dvc.command.status import CmdDataStatus
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
@@ -162,7 +162,12 @@ def parse_args(argv=None):
     status_parser = subparsers.add_parser(
                         'status',
                         parents=[parent_cache_parser],
-                        help='Show mismatches between local cache and cloud cache')
+                        help='Show the project status')
+    status_parser.add_argument('-c',
+                        '--cloud',
+                        action='store_true',
+                        default=False,
+                        help='Show status of a local cache compared to a cloud')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
@@ -221,28 +226,5 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
-
-    # Fsck
-    fsck_parser = subparsers.add_parser(
-                        'fsck',
-                        parents=[parent_parser],
-                        help='Data file consistency check')
-    fsck_parser.add_argument(
-                        'targets',
-                        nargs='*',
-                        help='Data files to check')
-    fsck_parser.add_argument(
-                        '-p',
-                        '--physical',
-                        action='store_true',
-                        default=False,
-                        help='Compute actual md5')
-    fsck_parser.add_argument(
-                        '-a',
-                        '--all',
-                        action='store_true',
-                        default=False,
-                        help='Show all data files including correct ones')
-    fsck_parser.set_defaults(func=CmdFsck)
 
     return parser.parse_args(argv)

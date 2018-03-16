@@ -3,14 +3,14 @@ import os
 from dvc.cli import parse_args
 from dvc.command.init import CmdInit
 from dvc.command.run import CmdRun
-from dvc.command.data_sync import CmdDataPull, CmdDataPush, CmdDataStatus
+from dvc.command.data_sync import CmdDataPull, CmdDataPush
+from dvc.command.status import CmdDataStatus
 from dvc.command.repro import CmdRepro
 from dvc.command.add import CmdAdd
 from dvc.command.remove import CmdRemove
 from dvc.command.gc import CmdGC
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
-from dvc.command.fsck import CmdFsck
 
 from tests.basic_env import TestDvc
 
@@ -146,18 +146,3 @@ class TestCheckout(TestDvc):
     def test(self):
         args = parse_args(['checkout'])
         self.assertIsInstance(args.func(args), CmdCheckout)
-
-
-class TestFsck(TestDvc):
-    def test(self):
-        target1 = 'target1'
-        target2 = 'target2'
-
-        args = parse_args(['fsck',
-                           '-p', '--physical',
-                           target1,
-                           target2])
-
-        self.assertIsInstance(args.func(args), CmdFsck)
-        self.assertTrue(args.physical)
-        self.assertEqual(args.targets, [target1, target2])
