@@ -26,7 +26,7 @@ LogLevel = Info
 
 [AWS]
 CredentialPath = ~/.aws/credentials
-CredentialSection = default
+Profile = default
 
 StoragePath = dvc/tutorial
 
