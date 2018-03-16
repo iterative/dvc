@@ -5,7 +5,6 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
-from dvc.command.fsck import CmdFsck
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
@@ -227,28 +226,5 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
-
-    # Fsck
-    fsck_parser = subparsers.add_parser(
-                        'fsck',
-                        parents=[parent_parser],
-                        help='Data file consistency check')
-    fsck_parser.add_argument(
-                        'targets',
-                        nargs='*',
-                        help='Data files to check')
-    fsck_parser.add_argument(
-                        '-p',
-                        '--physical',
-                        action='store_true',
-                        default=False,
-                        help='Compute actual md5')
-    fsck_parser.add_argument(
-                        '-a',
-                        '--all',
-                        action='store_true',
-                        default=False,
-                        help='Show all data files including correct ones')
-    fsck_parser.set_defaults(func=CmdFsck)
 
     return parser.parse_args(argv)
