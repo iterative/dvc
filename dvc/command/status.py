@@ -6,27 +6,30 @@ from dvc.command.data_sync import CmdDataBase
 
 
 class CmdDataStatus(CmdDataBase):
-    def _show(self, status):
-        for s in status:
-            target, ret = s
+    STATUS_LEN = 10
+    STATUS_INDENT = '\t'
 
-            if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
-                continue
+    def _normalize(self, s):
+        s+=':'
+        if len(s) >= self.STATUS_LEN:
+            return s
+        return s + (self.STATUS_LEN - len(s))*' '
 
-            prefix_map = {
-                cloud.STATUS_DELETED  : 'deleted: ',
-                cloud.STATUS_MODIFIED : 'modified:',
-                cloud.STATUS_NEW      : 'new file:',
-            }
+    def _show(self, status, indent=0):
+        ind = indent * self.STATUS_INDENT
 
-            path = os.path.relpath(target, self.project.cache.cache_dir)
-
-            self.project.logger.info('\t{}\t{}'.format(prefix_map[ret], path))
+        for key, value in status.items():
+            if isinstance(value, dict):
+                self.project.logger.info('{}{}'.format(ind, key))
+                self._show(value, indent+1)
+            else:
+                self.project.logger.info('{}{}{}'.format(ind, self._normalize(value), key))
 
     def do_run(self, target=None):
+        indent = 1 if self.args.cloud else 0
         try:
-            status = self.project.status(target=target, jobs=self.args.jobs)
-            self._show(status)
+            status = self.project.status(target=target, jobs=self.args.jobs, cloud=self.args.cloud)
+            self._show(status, indent)
         except Exception as exc:
             self.project.logger.error('Failed to obtain data status', exc)
             return 1

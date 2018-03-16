@@ -75,6 +75,12 @@ class Dependency(object):
     def changed(self):
         return self._changed_md5()
 
+    def status(self):
+        if self.changed():
+            #FIXME better msgs
+            return {self.rel_path: 'changed'}
+        return {}
+
     @staticmethod
     def is_dir_cache(cache):
         return cache.endswith(Output.MD5_DIR_SUFFIX)

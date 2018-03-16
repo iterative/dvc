@@ -2,6 +2,8 @@ import os
 import stat
 import networkx as nx
 
+import dvc.cloud.base as cloud
+
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage, Output
@@ -209,8 +211,41 @@ class Project(object):
         self.checkout()
         return ret
 
-    def status(self, target=None, jobs=1):
-        return self.cloud.status(self._used_cache(target), jobs)
+    def _local_status(self, target=None):
+        status = {}
+
+        if target:
+            stages = [Stage.load(self, target)]
+        else:
+            stages = self.stages()
+
+        for stage in self.stages():
+            status.update(stage.status())
+
+        return status
+
+    def _cloud_status(self, target=None, jobs=1):
+        status = {}
+        for target, ret in self.cloud.status(self._used_cache(target), jobs):
+            if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
+                continue
+
+            prefix_map = {
+                cloud.STATUS_DELETED: 'deleted',
+                cloud.STATUS_MODIFIED: 'modified',
+                cloud.STATUS_NEW: 'new',
+            }
+
+            path = os.path.relpath(target, self.cache.cache_dir)
+
+            status[path] = prefix_map[ret]
+
+        return status
+
+    def status(self, target=None, jobs=1, cloud=False):
+        if cloud:
+            return self._cloud_status(target, jobs)
+        return self._local_status(target)
 
     def graph(self):
         G = nx.DiGraph()

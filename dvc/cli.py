@@ -163,7 +163,12 @@ def parse_args(argv=None):
     status_parser = subparsers.add_parser(
                         'status',
                         parents=[parent_cache_parser],
-                        help='Show mismatches between local cache and cloud cache')
+                        help='Show the project status')
+    status_parser.add_argument('-c',
+                        '--cloud',
+                        action='store_true',
+                        default=False,
+                        help='Show status of a local cache compared to a cloud')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
