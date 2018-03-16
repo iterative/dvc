@@ -8,7 +8,7 @@ from dvc.logger import Logger
 class AWSCredentials(object):
     def __init__(self, cloud_config):
         self._conf_credpath = cloud_config.get('CredentialPath', None)
-        self._conf_credsect = cloud_config.get('CredentialSection', 'default')
+        self._conf_credsect = cloud_config.get('Profile', 'default')
 
     @property
     def access_key_id(self):
