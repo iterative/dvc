@@ -1,6 +1,7 @@
 import os
 import stat
 import json
+import shutil
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -363,23 +364,14 @@ class Output(Dependency):
             self.hardlink(self.path, self.cache)
 
     def _remove(self, path):
+        if not os.path.exists(path):
+            return
+
         self.project.logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
-        os.unlink(path)
+        if os.path.isfile(path):
+            os.unlink(path)
+        else:
+            shutil.rmtree(path)
 
     def remove(self):
-        if not os.path.exists(self.path):
-            return
-
-        if os.path.isfile(self.path):
-            self._remove(self.path)
-            return
-
-        caches = self.dir_cache()
-        for root, dirs, files in os.walk(self.path, topdown=False):
-            for d in dirs:
-                path = os.path.join(root, d)
-                os.rmdir(path)
-            for f in files:
-                path = os.path.join(root, f)
-                self._remove(path)
-        os.rmdir(self.path)
+        self._remove(self.path)
