@@ -125,7 +125,7 @@ class Project(object):
         return stage
 
     def _reproduce_stage(self, stages, node, force):
-        if not stages[node].changed():
+        if not stages[node].changed() and not force:
             return []
 
         stages[node].reproduce(force=force)
