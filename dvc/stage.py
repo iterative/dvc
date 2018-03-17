@@ -46,10 +46,6 @@ class Stage(object):
         return os.path.relpath(self.path)
 
     @property
-    def dvc_path(self):
-        return os.path.relpath(self.path, self.project.root_dir)
-
-    @property
     def is_data_source(self):
         return self.cmd is None
 
@@ -66,10 +62,10 @@ class Stage(object):
     def changed(self):
         for entry in itertools.chain(self.outs, self.deps):
             if entry.changed():
-                self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.dvc_path))
+                self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.relpath))
                 return True
             else:
-                self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.dvc_path))
+                self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.relpath))
         return False
 
     def remove_outs(self):

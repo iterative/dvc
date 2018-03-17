@@ -59,12 +59,8 @@ class Dependency(object):
         self.md5 = md5
 
     @property
-    def dvc_path(self):
-        return os.path.relpath(self.path, self.project.root_dir)
-
-    @property
     def rel_path(self):
-        return os.path.relpath(self.path, '.')
+        return os.path.relpath(self.path)
 
     def _changed_md5(self):
         if not os.path.exists(self.path):
@@ -138,8 +134,8 @@ class Output(Dependency):
         return self.project.cache.get(self.md5)
 
     @property
-    def dvc_cache(self):
-        return os.path.relpath(self.cache, self.project.root_dir)
+    def rel_cache(self):
+        return os.path.relpath(self.cache)
 
     def dumpd(self, cwd):
         ret = super(Output, self).dumpd(cwd)
@@ -215,12 +211,14 @@ class Output(Dependency):
             msg += 'changed'
         else:
             msg += 'didn\'t change'
-        self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
+        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
 
         return ret
 
     def hardlink(self, src, link):
-        self.project.logger.debug(u'creating hardlink {} -> {}'.format(src, link))
+        rel_src = os.path.relpath(src)
+        rel_link = os.path.relpath(link)
+        self.project.logger.debug(u'creating hardlink {} -> {}'.format(rel_src, rel_link))
 
         dname = os.path.dirname(link)
         if not os.path.exists(dname):
@@ -274,21 +272,21 @@ class Output(Dependency):
             return
 
         msg = u'Checking out \'{}\' with cache \'{}\''
-        self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
+        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
 
         if not self.changed():
             msg = u'Data file \'{}\' with cache \'{}\' didn\'t change, skipping checkout.'
-            self.project.logger.debug(msg.format(self.dvc_path, self.dvc_cache))
+            self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
             return
 
         if not os.path.exists(self.cache):
-            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.dvc_path))
+            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.rel_path))
             self.remove()
             return
 
         if os.path.exists(self.path):
             msg = u'Data file \'{}\' exists. Removing before checkout'
-            self.project.logger.debug(msg.format(self.dvc_path))
+            self.project.logger.debug(msg.format(self.rel_path))
             self.remove()
 
         if not self.is_dir_cache(self.cache):
@@ -342,7 +340,7 @@ class Output(Dependency):
         if not self.use_cache:
             return
 
-        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.dvc_path, self.dvc_cache))
+        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.rel_path, self.rel_cache))
 
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.rel_path)
@@ -355,7 +353,7 @@ class Output(Dependency):
             # We remove data and link it to existing cache to save
             # some space.
             msg = u'Cache \'{}\' already exists, performing checkout for \'{}\''
-            self.project.logger.debug(msg.format(self.dvc_cache, self.dvc_path))
+            self.project.logger.debug(msg.format(self.rel_cache, self.rel_path))
             self.checkout()
             return
 
@@ -365,7 +363,7 @@ class Output(Dependency):
             self.hardlink(self.path, self.cache)
 
     def _remove(self, path):
-        self.project.logger.debug(u'Removing \'{}\''.format(path))
+        self.project.logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
         os.unlink(path)
 
     def remove(self):
