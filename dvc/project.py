@@ -125,12 +125,11 @@ class Project(object):
         return stage
 
     def _reproduce_stage(self, stages, node, force):
-        if not stages[node].changed() and not force:
+        stage = stages[node].reproduce(force=force)
+        if not stage:
             return []
-
-        stages[node].reproduce(force=force)
-        stages[node].dump()
-        return [stages[node]]
+        stage.dump()
+        return [stage]
 
     def reproduce(self, target, recursive=True, force=False):
         stages = nx.get_node_attributes(self.graph(), 'stage')

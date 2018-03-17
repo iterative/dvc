@@ -80,13 +80,15 @@ class Stage(object):
 
     def reproduce(self, force=False):
         if not self.changed() and not force:
-            return
+            return None
 
         if self.cmd:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs()
 
         self.run()
+
+        return self
 
     @staticmethod
     def loadd(project, d, path):
