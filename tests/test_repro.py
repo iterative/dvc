@@ -25,6 +25,12 @@ class TestRepro(TestDvc):
                      cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
 
 
+class TestReproForce(TestRepro):
+    def test(self):
+        stages = self.dvc.reproduce(self.file1_stage, force=True)
+        self.assertEqual(len(stages), 2)
+
+
 class TestReproChangedCode(TestRepro):
     def test(self):
         self.swap_code()
