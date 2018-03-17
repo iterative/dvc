@@ -60,13 +60,17 @@ class Stage(object):
         return True
 
     def changed(self):
+        ret = False
         for entry in itertools.chain(self.outs, self.deps):
             if entry.changed():
-                self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.relpath))
-                return True
-            else:
-                self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.relpath))
-        return False
+                ret = True
+
+        if ret:
+            self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.relpath))
+        else:
+            self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.relpath))
+
+        return ret
 
     def remove_outs(self):
         for out in self.outs:
