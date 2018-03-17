@@ -381,7 +381,5 @@ class Output(Dependency):
                 os.rmdir(path)
             for f in files:
                 path = os.path.join(root, f)
-                relpath = os.path.relpath(path, self.path)
-                cache = caches.get(relpath, None)
                 self._remove(path)
         os.rmdir(self.path)
