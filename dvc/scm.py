@@ -1,5 +1,4 @@
 import os
-import git
 
 from dvc.exceptions import DvcException
 
@@ -61,6 +60,7 @@ class Git(Base):
     def __init__(self, root_dir=os.curdir):
         super(Git, self).__init__(root_dir)
 
+        import git
         try:
             self.repo = git.Repo(root_dir)
         except InvalidGitRepositoryError:
