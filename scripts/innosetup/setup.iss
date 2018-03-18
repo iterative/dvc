@@ -35,18 +35,14 @@ Source: "{#MyAppDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs c
 [Tasks]
 Name: modifypath; Description: Adds dvc's application directory to environmental path; Flags: checkablealone;
 Name: modifypath\system; Description: Adds dvc's application directory to enviromental path for all users;
-Name: addsymlinkpermissions; Description: Add permission for creating symbolic links; Flags: checkablealone;
-Name: addsymlinkpermissions\system; Description: Add permissions for creating symbolic links for all users;
 
 [Code]
 const
 	ModPathName = 'modifypath';
 	ModPathPath = '{app}';
-	SymLinkName = 'addsymlinkpermissions';
 
 var
 	ModPathType: String;
-	SymLinkType: String;
 
 function GetDefaultDirName(Dummy: string): string;
 begin
@@ -58,7 +54,6 @@ begin
 end;
 
 #include "modpath.iss"
-#include "addsymlink.iss"
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
@@ -69,15 +64,7 @@ begin
 			ModPathType := 'user';
 		end;
 
-		if IsTaskSelected(SymLinkName + '\system') then begin
-			SymLinkType := 'system';
-		end else begin
-			SymLinkType := 'user';
-		end;
-
 		if IsTaskSelected(ModPathName) then
 			ModPath();
-		if IsTaskSelected(SymLinkName) then
-			AddSymLink();
 	end;
 end;
