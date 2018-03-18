@@ -18,6 +18,7 @@ install_requires = [
     "ntfsutils>=0.1.3",
     "checksumdir>=1.1.4",
     "setuptools>=34.0.0",
+    "nanotime>=0.5.2",
 ]
 
 setup(

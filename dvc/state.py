@@ -1,5 +1,6 @@
 import os
 import json
+import nanotime
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -70,9 +71,17 @@ class State(object):
         with open(self.state_file, 'w+') as fd:
             json.dump(self._db, fd)
 
+    @staticmethod
+    def mtime(path):
+        return str(int(nanotime.timestamp(os.path.getmtime(path))))
+
+    @staticmethod
+    def inode(path):
+        return str(System.inode(path))
+
     def update(self, path, dump=True):
-        mtime = os.path.getmtime(path)
-        inode = System.inode(path)
+        mtime = self.mtime(path)
+        inode = self.inode(path)
 
         md5 = self._get(inode, mtime)
         if md5:
@@ -100,7 +109,7 @@ class State(object):
         return None
 
     def get(self, path):
-        mtime = os.path.getmtime(path)
-        inode = System.inode(path)
+        mtime = self.mtime(path)
+        inode = self.inode(path)
 
         return self._get(inode, mtime)
