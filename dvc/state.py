@@ -44,7 +44,7 @@ class State(object):
         self.root_dir = root_dir
         self.dvc_dir = dvc_dir
         self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
-        self._db = {}
+        self._db = self.load()
 
     @staticmethod
     def init(root_dir, dvc_dir):
@@ -60,8 +60,11 @@ class State(object):
         return self.update(path) != md5
 
     def load(self):
+        if not os.path.isfile(self.state_file):
+            return {}
+
         with open(self.state_file, 'r') as fd:
-            self._db = json.load(fd)
+            return json.load(fd)
 
     def dump(self):
         with open(self.state_file, 'w+') as fd:
