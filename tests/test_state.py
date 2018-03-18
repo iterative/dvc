@@ -38,3 +38,9 @@ class TestState(TestDvc):
 
         entry_md5 = state.update(path)
         self.assertEqual(entry_md5, md5)
+
+        # Reload state db to make sure that it stays the same
+        old_db = state._db
+        state = State(self.dvc.root_dir, self.dvc.dvc_dir)
+        new_db = state._db
+        self.assertEqual(old_db, new_db)
