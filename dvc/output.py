@@ -132,16 +132,10 @@ class Output(Dependency):
 
     @property
     def cache(self):
-        if not self.md5:
-            return None
-
         return self.project.cache.get(self.md5)
 
     @property
     def rel_cache(self):
-        if not self.cache:
-            return None
-
         return os.path.relpath(self.cache)
 
     def dumpd(self, cwd):
@@ -204,10 +198,10 @@ class Output(Dependency):
         return {i['relpath']: i['md5'] for i in dir_info}
 
     def changed(self):
+        ret = True
+
         if not self.use_cache:
             ret = super(Output, self).changed()
-        elif not self.cache:
-            ret = True
         elif self.is_dir_cache(self.cache):
             ret = self._changed_dir()
         else:
@@ -286,7 +280,7 @@ class Output(Dependency):
             self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
             return
 
-        if not self.cache or not os.path.exists(self.cache):
+        if not os.path.exists(self.cache):
             self.project.logger.warn(u'\'{}\': cache file not found'.format(self.rel_path))
             self.remove()
             return
