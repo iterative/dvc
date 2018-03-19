@@ -182,7 +182,7 @@ class Project(object):
 
         for stage in stages:
             for out in stage.outs:
-                if not out.use_cache or not out.cache:
+                if not out.use_cache:
                     continue
                 cache_set |= set([out.cache])
                 if out.is_dir_cache(out.cache) and os.path.isfile(out.cache):

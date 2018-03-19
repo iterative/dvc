@@ -1,5 +1,4 @@
 import os
-import yaml
 import stat
 import shutil
 import filecmp
@@ -8,8 +7,6 @@ from dvc.main import main
 from dvc.command.repro import CmdRepro
 from dvc.project import ReproductionError
 from dvc.utils import file_md5
-from dvc.output import Output
-from dvc.stage import Stage
 
 from tests.basic_env import TestDvc
 
@@ -135,21 +132,6 @@ class TestReproChangedDir(TestDvc):
         shutil.copyfile(self.BAR, file_name)
 
         stages = self.dvc.reproduce(stage_name)
-        self.assertEqual(len(stages), 1)
-
-
-class TestReproMissingMd5InStageFile(TestRepro):
-    def test(self):
-        with open(self.file1_stage, 'r') as fd:
-            d = yaml.load(fd)
-
-        del(d[Stage.PARAM_OUTS][0][Output.PARAM_MD5])
-        del(d[Stage.PARAM_DEPS][0][Output.PARAM_MD5])
-
-        with open(self.file1_stage, 'w') as fd:
-            yaml.dump(d, fd)
-
-        stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 1)
 
 
