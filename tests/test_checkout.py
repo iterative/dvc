@@ -1,4 +1,5 @@
 import os
+import yaml
 import time
 import stat
 import shutil
@@ -7,6 +8,8 @@ import filecmp
 from dvc.main import main
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
+from dvc.stage import Stage
+from dvc.output import Output
 
 
 class TestCheckout(TestRepro):
@@ -146,3 +149,17 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         main(['checkout'])
         ignored = self.read_ignored()
         self.assertIn(fname_branch, ignored)
+
+
+class TestCheckoutMissingMd5InStageFile(TestRepro):
+    def test(self):
+        with open(self.file1_stage, 'r') as fd:
+            d = yaml.load(fd)
+
+        del(d[Stage.PARAM_OUTS][0][Output.PARAM_MD5])
+        del(d[Stage.PARAM_DEPS][0][Output.PARAM_MD5])
+
+        with open(self.file1_stage, 'w') as fd:
+            yaml.dump(d, fd)
+
+        self.dvc.checkout()
