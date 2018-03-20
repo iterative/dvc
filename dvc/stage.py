@@ -98,9 +98,9 @@ class Stage(object):
     def loadd(project, d, path):
         path = os.path.abspath(path)
         cwd = os.path.dirname(path)
-        cmd = d[Stage.PARAM_CMD]
-        deps = Dependency.loadd_from(project, d[Stage.PARAM_DEPS], cwd=cwd)
-        outs = Output.loadd_from(project, d[Stage.PARAM_OUTS], cwd=cwd)
+        cmd = d.get(Stage.PARAM_CMD, None)
+        deps = Dependency.loadd_from(project, d.get(Stage.PARAM_DEPS, []), cwd=cwd)
+        outs = Output.loadd_from(project, d.get(Stage.PARAM_OUTS, []), cwd=cwd)
 
         return Stage(project=project,
                      path=path,
