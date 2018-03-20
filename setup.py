@@ -20,6 +20,7 @@ install_requires = [
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
+    "schema>=0.6.7",
 ]
 
 setup(
