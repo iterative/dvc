@@ -287,7 +287,8 @@ class Output(Dependency):
             return
 
         if not self.cache or not os.path.exists(self.cache):
-            self.project.logger.warn(u'\'{}\': cache file not found'.format(self.rel_path))
+            if self.cache:
+                self.project.logger.warn(u'\'{}({})\': cache file not found'.format(self.rel_cache, self.rel_path))
             self.remove()
             return
 
