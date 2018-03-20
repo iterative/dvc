@@ -2,15 +2,22 @@ import os
 import yaml
 import itertools
 import subprocess
+import schema
 
 from dvc.exceptions import DvcException
 from dvc.output import Output, Dependency, OutputError
+from dvc.logger import Logger
 
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
         msg = u'Stage \'{}\' cmd {} failed'.format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
+
+
+class StageFileFormatError(DvcException):
+    def __init__(self):
+        super(StageFileFormatError, self).__init__('Stage file format error')
 
 
 class MissingDataSource(OutputError):
@@ -32,6 +39,12 @@ class Stage(object):
     PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
     PARAM_OUTS = 'outs'
+
+    SCHEMA = {
+        schema.Optional(PARAM_CMD): schema.Or(str, None),
+        schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([Dependency.SCHEMA])), None),
+        schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([Output.SCHEMA])), None),
+    }
 
     def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[]):
         self.project = project
@@ -95,7 +108,17 @@ class Stage(object):
         return self
 
     @staticmethod
+    def validate(d):
+        try:
+            schema.Schema(Stage.SCHEMA).validate(d)
+        except schema.SchemaError as exc:
+            Logger.debug(str(exc))
+            raise StageFileFormatError()
+
+    @staticmethod
     def loadd(project, d, path):
+        Stage.validate(d)
+
         path = os.path.abspath(path)
         cwd = os.path.dirname(path)
         cmd = d.get(Stage.PARAM_CMD, None)

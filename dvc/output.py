@@ -2,6 +2,7 @@ import os
 import stat
 import json
 import shutil
+import schema
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -49,6 +50,11 @@ class Dependency(object):
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
     MD5_DIR_SUFFIX = '.dir'
+
+    SCHEMA = {
+        PARAM_PATH: str,
+        schema.Optional(PARAM_MD5): schema.Or(str, None),
+    }
 
     def __init__(self, project, path, md5=None):
         self.project = project
@@ -125,6 +131,9 @@ class Dependency(object):
 
 class Output(Dependency):
     PARAM_CACHE = 'cache'
+
+    SCHEMA = Dependency.SCHEMA
+    SCHEMA[schema.Optional(PARAM_CACHE)] = bool
 
     def __init__(self, project, path, md5=None, use_cache=True):
         super(Output, self).__init__(project, path, md5=md5)
