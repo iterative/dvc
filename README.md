@@ -47,10 +47,11 @@ Discussion: https://discuss.dataversioncontrol.com/
 
 1. [Git-annex](https://git-annex.branchable.com/) - DVC uses the idea of storing the content of large files (that you don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the copying actual files.
 2. [Git-LFS](https://git-lfs.github.com/).
-3. [Makefile](and it's analogues). DVC tracks dependencies (DAG). 
+3. Makefile (and it's analogues). DVC tracks dependencies (DAG). 
 4. [Workflow Management Systems](https://en.wikipedia.org/wiki/Workflow_management_system). DVC is workflow management system designed specificaly to manage machine learning experiments. DVC was built on top of Git.
 
 DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
+Data files caches can be transferred separately - now data cache transfer throught AWS S3 and GCP storge are supported.
 
 # How DVC works
 
