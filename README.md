@@ -3,7 +3,19 @@
 |-------------|---------------|--------------|------------|
 |[![Build Status](https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master)](https://travis-ci.org/dataversioncontrol/dvc)|[![Build status](https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true)](https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master)|[![Code Climate](https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|[![Test Coverage](https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|
 
+
+
+|Track code and data|`$ git add train.py` <br /> `$ dvc add images.zip` |
+|Connect code and data by commands| `$ dvc run -d images.zip -o images/ unzip -q images.zip` <br /> `$ dvc run -d images/ -d train.py -o model.p python train.py
+` |
+|Make changes and reproduce|`$ vi train.py` <br /> `$ dvc repro` |
+|Share code|`$ git add .` <br /> `$ git commit -m 'The baseline model'` <br />  `$ git push`|
+|Share data and ML models|`$ dvc config AWS.StoragePath mybucket/image_cnn` <br/> `$ dvc push`|
+
+
 ![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
+
+
 
 DVC is an open source tool for data science projects. 
 DVC makes your data science projects reproducible by automatically building data dependency graph (DAG). Your code and the dependencies could be easily shared by Git, and data - through cloud storage (AWS S3, GCP) in a single DVC environment.
