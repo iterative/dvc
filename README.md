@@ -4,9 +4,9 @@
 |[![Build Status](https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master)](https://travis-ci.org/dataversioncontrol/dvc)|[![Build status](https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true)](https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master)|[![Code Climate](https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|[![Test Coverage](https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|
 
 
-
+|Step|Command|
+|----|-------|
 |Track code and data|`$ git add train.py` <br /> `$ dvc add images.zip` |
-|-------------------|---------------------------------------------------|
 |Connect code and data by commands| `$ dvc run -d images.zip -o images/ unzip -q images.zip` <br /> `$ dvc run -d images/ -d train.py -o model.p python train.py` |
 |Make changes and reproduce|`$ vi train.py` <br /> `$ dvc repro` |
 |Share code|`$ git add .` <br /> `$ git commit -m 'The baseline model'` <br />  `$ git push`|
