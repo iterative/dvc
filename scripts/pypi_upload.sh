@@ -8,6 +8,6 @@ if [ ! -d "dvc" ]; then
 fi
 
 rm -rf dist/
-pip install m2r twine
+pip install twine
 python setup.py bdist_wheel --universal
 twine upload dist/*
