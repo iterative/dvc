@@ -26,7 +26,7 @@ install_requires = [
 setup(
     name='dvc',
     version=VERSION,
-    description='Data Version Control makes your data science projects reproducible and shareable.',
+    description='Git for data scientists - manage your code and data together',
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
     url='https://github.com/dataversioncontrol/dvc.git',
