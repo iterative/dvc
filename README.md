@@ -1,14 +1,12 @@
 
-| Linux & Mac | Windows | Code quality | Unit-tests |
+| Linux & Mac OS | Windows | Code quality | Unit-tests |
 |-------------|---------------|--------------|------------|
 |[![Build Status](https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master)](https://travis-ci.org/dataversioncontrol/dvc)|[![Build status](https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true)](https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master)|[![Code Climate](https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|[![Test Coverage](https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg)](https://codeclimate.com/github/dataversioncontrol/dvc)|
 
-
-![DVC icone](https://s3-us-west-2.amazonaws.com/dvc-share/images/favicon_rounded.jpg)
-
-
-DVC is an open source tool for data science projects. 
+Data Version Control or DVC is an open source tool for data science projects. 
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
+
+# Get started
 
 |Step|Command|
 |----|-------|
@@ -18,6 +16,7 @@ It helps data scientists manage their code and data together in a simple form of
 |Share code|`$ git add .` <br /> `$ git commit -m 'The baseline model'` <br />  `$ git push`|
 |Share data and ML models|`$ dvc config AWS.StoragePath mybucket/image_cnn` <br/> `$ dvc push`|
 
+See more in [tutorial](https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46).
 
 # Installation
 
@@ -30,7 +29,6 @@ The latest version of the packages can be found at GitHub releases page: https:/
 
 DVC could be installed via the Python Package Index (PyPI).
 
-To install using pip:
 ```bash
 pip install dvc
 ```
@@ -39,7 +37,7 @@ pip install dvc
 
 Website: https://dataversioncontrol.com
 
-Tutorial: https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46?gi=a3e49be7976c
+Tutorial: https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46
 
 Documentation: http://dataversioncontrol.com/docs/
 
