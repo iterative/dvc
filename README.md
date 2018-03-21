@@ -45,6 +45,9 @@ Documentation: http://dataversioncontrol.com/docs/
 
 Discussion: https://discuss.dataversioncontrol.com/
 
+# How DVC works
+
+![how_dvc_works](https://s3-us-west-2.amazonaws.com/dvc-share/images/0.9/how_dvc_works.png)
 
 # Copyright
 
