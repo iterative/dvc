@@ -27,6 +27,8 @@ setup(
     name='dvc',
     version=VERSION,
     description='Git for data scientists - manage your code and data together',
+    long_description=open('README.md', 'r').read(),
+    long_description_content_type='text/markdown',
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
     url='https://github.com/dataversioncontrol/dvc.git',
