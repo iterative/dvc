@@ -1,7 +1,17 @@
+import os
 import platform
 from setuptools import setup, find_packages
 from distutils.errors import DistutilsPlatformError
 from dvc import VERSION
+
+readme_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'README.md')
+try:
+    from m2r import parse_from_file
+    readme = parse_from_file(readme_file)
+except ImportError:
+    # m2r may not be installed in user environment
+    with open(readme_file) as f:
+        readme = f.read()
 
 install_requires = [
     "boto>=2.46.1",
@@ -27,8 +37,7 @@ setup(
     name='dvc',
     version=VERSION,
     description='Git for data scientists - manage your code and data together',
-    long_description=open('README.md', 'r').read(),
-    long_description_content_type='text/markdown',
+    long_description=readme,
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
     url='https://github.com/dataversioncontrol/dvc.git',
