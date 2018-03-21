@@ -33,6 +33,20 @@ DVC could be installed via the Python Package Index (PyPI).
 pip install dvc
 ```
 
+## Homebrew (Mac OS)
+
+### Formula:
+
+```bash
+brew install dataversioncontrol/homebrew-dvc/dvc
+```
+
+### Cask:
+
+```bash
+brew cask install dataversioncontrol/homebrew-dvc/dvc
+```
+
 # Links
 
 Website: https://dataversioncontrol.com
