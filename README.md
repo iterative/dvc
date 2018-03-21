@@ -7,8 +7,7 @@
 
 |Track code and data|`$ git add train.py` <br /> `$ dvc add images.zip` |
 |-------------------|---------------------------------------------------|
-|Connect code and data by commands| `$ dvc run -d images.zip -o images/ unzip -q images.zip` <br /> `$ dvc run -d images/ -d train.py -o model.p python train.py
-` |
+|Connect code and data by commands| `$ dvc run -d images.zip -o images/ unzip -q images.zip` <br /> `$ dvc run -d images/ -d train.py -o model.p python train.py` |
 |Make changes and reproduce|`$ vi train.py` <br /> `$ dvc repro` |
 |Share code|`$ git add .` <br /> `$ git commit -m 'The baseline model'` <br />  `$ git push`|
 |Share data and ML models|`$ dvc config AWS.StoragePath mybucket/image_cnn` <br/> `$ dvc push`|
