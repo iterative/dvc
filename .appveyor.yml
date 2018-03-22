@@ -1,6 +1,7 @@
 branches:
   only:
     - master
+    - devel
 
 platform: x86
 
@@ -12,6 +13,8 @@ environment:
   GOOGLE_APPLICATION_CREDENTIALS: gcp-creds.json
   GCP_CREDS:
     secure: 96fJ3r2i2GohbXHwnSs5N4EplQ7q8YmLpPWM0AC+f4s=
+  CODECOV_TOKEN:
+    secure: Hp3+vwZzsh1i2qjitm/hujpXA475YNhUSgrdpQ7dliCVQC+1lVcQMiDWQ0K4DEH4
 
   matrix:
 
@@ -61,6 +64,7 @@ test_script:
   - nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
 
 after_test:
+  - codecov
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
 
 artifacts:
