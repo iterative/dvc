@@ -1,41 +1,39 @@
-.. image:: https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master
+.. image:: https://img.shields.io/travis/dataversioncontrol/dvc/master.svg?label=Linux%20%26%20Mac%20OS
   :target: https://travis-ci.org/dataversioncontrol/dvc
-  :alt: Linux & Mac OS
 
-.. image:: https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true
+.. image:: https://img.shields.io/appveyor/ci/dataversioncontrol/dvc/master.svg?label=Windows
   :target: https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master
-  :alt: Windows
 
 .. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg
   :target: https://codeclimate.com/github/dataversioncontrol/dvc
-  :alt: Code quality
 
 .. image:: https://codecov.io/gh/dataversioncontrol/dvc/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/dataversioncontrol/dvc
-  :alt: Test coverage
 
 Data Version Control or DVC is an open source tool for data science projects. 
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
 
 Get started
 ===========
-
-.. list-table::
-   :header-rows: 1
-
-   * - Step
-     - Command
-   * - Track code and data together
-     - ``$ git add train.py`` :raw-html-m2r:`<br />` ``$ dvc add images.zip``
-   * - Connect code and data by commands
-     - ``$ dvc run -d images.zip -o images/ unzip -q images.zip`` :raw-html-m2r:`<br />` ``$ dvc run -d images/ -d train.py -o model.p python train.py``
-   * - Make changes and reproduce
-     - ``$ vi train.py`` :raw-html-m2r:`<br />` ``$ dvc repro model.p.dvc``
-   * - Share code
-     - ``$ git add .`` :raw-html-m2r:`<br />` ``$ git commit -m 'The baseline model'`` :raw-html-m2r:`<br />`  ``$ git push``
-   * - Share data and ML models
-     - ``$ dvc config AWS.StoragePath mybucket/image_cnn`` :raw-html-m2r:`<br/>` ``$ dvc push``
-
++-----------------------------------+-------------------------------------------------------------------+
+| Step                              | Command                                                           |
++===================================+===================================================================+
+| Track code and data together      | | ``$ git add train.py``                                          |
+|                                   | | ``$ dvc add images.zip``                                        |
++-----------------------------------+-------------------------------------------------------------------+
+| Connect code and data by commands | | ``$ dvc run -d images.zip -o images/ unzip -q images.zip``      |
+|                                   | | ``$ dvc run -d images/ -d train.py -o model.p python train.py`` |
++-----------------------------------+-------------------------------------------------------------------+
+| Make changes and reproduce        | | ``$ vi train.py``                                               |
+|                                   | | ``$ dvc repro model.p.dvc``                                     |
++-----------------------------------+-------------------------------------------------------------------+
+| Share code                        | | ``$ git add .``                                                 |
+|                                   | | ``$ git commit -m 'The baseline model'``                        |
+|                                   | | ``$ git push``                                                  |
++-----------------------------------+-------------------------------------------------------------------+
+| Share data and ML models          | | ``$ dvc config AWS.StoragePath mybucket/image_cnn``             |
+|                                   | | ``$ dvc push``                                                  |
++-----------------------------------+-------------------------------------------------------------------+
 
 See more in `tutorial <https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46>`_.
 
