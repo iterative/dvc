@@ -1,0 +1,131 @@
+.. role:: raw-html-m2r(raw)
+   :format: html
+
+
+.. list-table::
+   :header-rows: 1
+
+   * - Linux & Mac OS
+     - Windows
+     - Code quality
+     - Unit-tests
+   * - 
+     .. image:: https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master
+        :target: https://travis-ci.org/dataversioncontrol/dvc
+        :alt: Build Status
+     
+     - 
+     .. image:: https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true
+        :target: https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master
+        :alt: Build status
+     
+     - 
+     .. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg
+        :target: https://codeclimate.com/github/dataversioncontrol/dvc
+        :alt: Code Climate
+     
+     - 
+     .. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg
+        :target: https://codeclimate.com/github/dataversioncontrol/dvc
+        :alt: Test Coverage
+     
+
+
+Data Version Control or DVC is an open source tool for data science projects. 
+It helps data scientists manage their code and data together in a simple form of Git-like commands.
+
+Get started
+===========
+
+.. list-table::
+   :header-rows: 1
+
+   * - Step
+     - Command
+   * - Track code and data together
+     - ``$ git add train.py`` :raw-html-m2r:`<br />` ``$ dvc add images.zip``
+   * - Connect code and data by commands
+     - ``$ dvc run -d images.zip -o images/ unzip -q images.zip`` :raw-html-m2r:`<br />` ``$ dvc run -d images/ -d train.py -o model.p python train.py``
+   * - Make changes and reproduce
+     - ``$ vi train.py`` :raw-html-m2r:`<br />` ``$ dvc repro model.p.dvc``
+   * - Share code
+     - ``$ git add .`` :raw-html-m2r:`<br />` ``$ git commit -m 'The baseline model'`` :raw-html-m2r:`<br />`  ``$ git push``
+   * - Share data and ML models
+     - ``$ dvc config AWS.StoragePath mybucket/image_cnn`` :raw-html-m2r:`<br/>` ``$ dvc push``
+
+
+See more in `tutorial <https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46>`_.
+
+Installation
+============
+
+Packages
+--------
+
+Operating system dependent packages are the recommended way to install DVC.
+The latest version of the packages can be found at GitHub releases page: https://github.com/dataversioncontrol/dvc/releases
+
+Python Pip
+----------
+
+DVC could be installed via the Python Package Index (PyPI).
+
+.. code-block:: bash
+
+   pip install dvc
+
+Homebrew (Mac OS)
+-----------------
+
+Formula:
+^^^^^^^^
+
+.. code-block:: bash
+
+   brew install dataversioncontrol/homebrew-dvc/dvc
+
+Cask:
+^^^^^
+
+.. code-block:: bash
+
+   brew cask install dataversioncontrol/homebrew-dvc/dvc
+
+Links
+=====
+
+Website: https://dataversioncontrol.com
+
+Tutorial: https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46
+
+Documentation: http://dataversioncontrol.com/docs/
+
+Discussion: https://discuss.dataversioncontrol.com/
+
+Related technologies
+====================
+
+
+#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (that you don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the copying actual files.
+#. `Git-LFS <https://git-lfs.github.com/>`_.
+#. Makefile (and it's analogues). DVC tracks dependencies (DAG). 
+#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is workflow management system designed specificaly to manage machine learning experiments. DVC was built on top of Git.
+
+DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
+Data files caches can be transferred separately - now data cache transfer throught AWS S3 and GCP storge are supported.
+
+How DVC works
+=============
+
+
+.. image:: https://s3-us-west-2.amazonaws.com/dvc-share/images/0.9/how_dvc_works.png
+   :target: https://s3-us-west-2.amazonaws.com/dvc-share/images/0.9/how_dvc_works.png
+   :alt: how_dvc_works
+
+
+Copyright
+=========
+
+This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
+
+By submitting a pull request for this project, you agree to license your contribution under the Apache license version 2.0 to this project.
