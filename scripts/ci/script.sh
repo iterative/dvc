@@ -5,7 +5,10 @@ set -e
 
 ./unittests.sh
 
-codecov
+if [[ "$TRAVIS_PULL_REQUEST" == "false" && \
+      "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
+	codecov
+fi
 
 if [[ ! -z "$TRAVIS_TAG" ]]; then
 	if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
