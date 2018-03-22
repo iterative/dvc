@@ -1,35 +1,18 @@
-.. role:: raw-html-m2r(raw)
-   :format: html
+.. image:: https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master
+  :target: https://travis-ci.org/dataversioncontrol/dvc
+  :alt: Linux & Mac OS
 
+.. image:: https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true
+  :target: https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master
+  :alt: Windows
 
-.. list-table::
-   :header-rows: 1
+.. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg
+  :target: https://codeclimate.com/github/dataversioncontrol/dvc
+  :alt: Code quality
 
-   * - Linux & Mac OS
-     - Windows
-     - Code quality
-     - Unit-tests
-   * - 
-     .. image:: https://travis-ci.org/dataversioncontrol/dvc.svg?branch=master
-        :target: https://travis-ci.org/dataversioncontrol/dvc
-        :alt: Build Status
-     
-     - 
-     .. image:: https://ci.appveyor.com/api/projects/status/rnqygb4rp1tsjvhb/branch/master?svg=true
-        :target: https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master
-        :alt: Build status
-     
-     - 
-     .. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg
-        :target: https://codeclimate.com/github/dataversioncontrol/dvc
-        :alt: Code Climate
-     
-     - 
-     .. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/coverage.svg
-        :target: https://codeclimate.com/github/dataversioncontrol/dvc
-        :alt: Test Coverage
-     
-
+.. image:: https://codecov.io/gh/dataversioncontrol/dvc/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/dataversioncontrol/dvc
+  :alt: Test coverage
 
 Data Version Control or DVC is an open source tool for data science projects. 
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
