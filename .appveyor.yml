@@ -64,7 +64,7 @@ test_script:
   - nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
 
 after_test:
-  - codecov
+  - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
 
 artifacts:
