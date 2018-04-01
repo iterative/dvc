@@ -493,7 +493,6 @@ Below is the quick summary of the most important commands
 * **dvc remove** - Remove data file (files or/and folders).
 * **dvc gc** - Collect garbage by cleaning DVC cache.
 * **dvc config** - Get or set configuration settings (as specified in dvc.conf).
-* **dvc show** - Show graphs.
 * **dvc fsck** - Data file consistency check.
 
 =====================
@@ -918,31 +917,6 @@ Overwrite the value::
 	$ git commit -m 'Change cloud to GCP'
 	[input_100K a4c985f] Change cloud to GCP
 	 1 file changed, 1 insertion(+), 1 deletion(-)
-
-show
-====
-
-Generate pipeline image for your current project.
-
-.. code-block:: shell
-	:linenos:
-
-	usage: dvc show [-h] [-q] [-v] {pipeline} ...
-
-	positional arguments:
-		{pipeline}     Use `dvc show CMD` --help for command-specific help
-		pipeline              Show pipeline image
-
-	optional arguments:
-		-h, --help            show this help message and exit
-		-q, --quiet           Be quiet.
-		-v, --verbose         Be verbose.
-
-Examples:
-
-Show the pipeline image::
-
-	$ dvc show pipeline
 
 fsck
 ====
