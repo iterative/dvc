@@ -10,27 +10,34 @@ from dvc.config import Config
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
 from dvc.cloud.local import DataCloudLOCAL
+from dvc.cloud.base import DataCloudBase
 
 
 class DataCloud(object):
     """ Generic class to do initial config parsing and redirect to proper DataCloud methods """
 
     CLOUD_MAP = {
-        'AWS'   : DataCloudAWS,
-        'GCP'   : DataCloudGCP,
-        'LOCAL' : DataCloudLOCAL,
+        'aws'   : DataCloudAWS,
+        'gcp'   : DataCloudGCP,
+        'local' : DataCloudLOCAL,
     }
 
     SCHEME_MAP = {
-        's3'    : 'AWS',
-        'gs'    : 'GCP',
-        ''      : 'LOCAL',
+        's3'    : 'aws',
+        'gs'    : 'gcp',
+        ''      : 'local',
     }
 
     def __init__(self, cache, config):
         self._config = config
 
-        cloud_type = self._config[Config.SECTION_CORE].get('Cloud', '').strip().upper()
+        cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
+
+        if cloud_type == '':
+            self.typ = None
+            self._cloud = None
+            return
+
         if cloud_type not in self.CLOUD_MAP.keys():
             raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
@@ -43,8 +50,7 @@ class DataCloud(object):
 
         self.typ = cloud_type
         self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
-
-        self.sanity_check()
+        self._cloud.sanity_check()
 
     @staticmethod
     def get_cloud_settings(cache, config, cloud_type):
@@ -55,33 +61,9 @@ class DataCloud(object):
             cloud_config = None
         else:
             cloud_config = config[cloud_type]
-        global_storage_path = config[Config.SECTION_CORE].get('StoragePath', None)
+        global_storage_path = config[Config.SECTION_CORE].get(Config.SECTION_CORE_STORAGEPATH, None)
         cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
-
-    def sanity_check(self):
-        """ sanity check a config
-
-        check that we have a cloud and storagePath
-        if aws, check can read credentials
-        if google, check ProjectName
-
-        Returns:
-            (T,) if good
-            (F, issues) if bad
-        """
-        key = 'Cloud'
-        core = self._config[Config.SECTION_CORE]
-        if key.lower() not in [k.lower() for k in core.keys()] or len(core[key]) < 1:
-            raise ConfigError('Please set {} in section {} in config file'.format(key, Config.SECTION_CORE))
-
-        # now that a cloud is chosen, can check StoragePath
-        storage_path = self._cloud.storage_path
-        if storage_path is None or len(storage_path) == 0:
-            raise ConfigError('Please set StoragePath = bucket/{optional path} '
-                              'in config file in a cloud specific section')
-
-        self._cloud.sanity_check()
 
     def _collect(self, targets, jobs, local):
         collected = set()
@@ -98,6 +80,9 @@ class DataCloud(object):
         """
         Process targets as data items in parallel.
         """
+        if not self._cloud:
+            return
+
         self._cloud.connect()
 
         collected = set()

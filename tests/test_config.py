@@ -1,5 +1,4 @@
 import os
-import configparser
 import configobj
 from unittest import TestCase
 import mock
@@ -26,49 +25,42 @@ class TestConfigTest(TestCase):
         pass
 
     def _conf(self, s):
-        c = configparser.SafeConfigParser()
-        c.readfp(s)
+        c = configobj.ConfigObj(s)
         return c
 
     def storage_path_hierarchy_test(self):
         """ StoragePath should be read first from global and then from cloud section """
 
-        c = ("[Core]",
-             "LogLevel =",
-             "DataDir = ",
-             "CacheDir = ",
-             "StateDir = ",
-             "Cloud = aws",
-             "StoragePath = globalsb/global_storage_path",
-             "[AWS]",
-             "StoragePath = awssb/aws_storage_path",
-             "CredentialPath =",
-             "[GCP]",
-             "StoragePath = googlesb/google_storage_path"
+        c = ("[core]",
+             "loglevel =",
+             "cloud = aws",
+             "storagepath = globalsb/global_storage_path",
+             "[aws]",
+             "storagepath = awssb/aws_storage_path",
+             "credentialpath =",
+             "[gcp]",
+             "storagepath = googlesb/google_storage_path"
            )
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
         cloud = DataCloud(None, conf)
-        self.assertEqual(cloud.typ, 'AWS')
+        self.assertEqual(cloud.typ, 'aws')
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
 
-        c = ("[Core]",
-             "LogLevel =",
-             "DataDir = ",
-             "CacheDir = ",
-             "StateDir = ",
-             "Cloud = Aws",
-             "[AWS]",
-             "StoragePath = awssb/aws_storage_path",
-             "CredentialPath =",
-             "[GCP]",
-             "StoragePath = googlesb/google_storage_path"
+        c = ("[core]",
+             "loglevel =",
+             "cloud = Aws",
+             "[aws]",
+             "storagepath = awssb/aws_storage_path",
+             "credentialpath =",
+             "[gcp]",
+             "storagepath = googlesb/google_storage_path"
            )
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
         cloud = DataCloud(None, conf)
-        self.assertEqual(cloud.typ, 'AWS')
+        self.assertEqual(cloud.typ, 'aws')
         self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
         self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
 
@@ -90,15 +82,12 @@ class TestConfigTest(TestCase):
         """ in absence of [AWS] -> CredentialPath, aws creds should be read from ~/.aws/credentials """
 
         default_path = os.path.expanduser('~/.aws/credentials')
-        c = ("[Core]",
-             "LogLevel =",
-             "DataDir = ",
-             "CacheDir = ",
-             "StateDir = ",
-             "Cloud = aws",
-             "[AWS]",
-             "StoragePath = awssb/aws_storage_path",
-             "CredentialPath =",
+        c = ("[core]",
+             "loglevel =",
+             "cloud = aws",
+             "[aws]",
+             "storagepath = awssb/aws_storage_path",
+             "credentialpath =",
            )
         s = StringIO('\n'.join(c))
 
@@ -121,15 +110,12 @@ class TestConfigTest(TestCase):
     def aws_credentials_specified_tes_t_DISABLED(self, isfile_function):
         """ in presence of [AWS] -> CredentialPath, use those credentials """
 
-        c = ("[Core]",
-             "LogLevel =",
-             "DataDir = ",
-             "CacheDir = ",
-             "StateDir = ",
-             "Cloud = aws",
-             "[AWS]",
-             "StoragePath = awssb/aws_storage_path",
-             "CredentialPath = some_credential_path",
+        c = ("[core]",
+             "loglevel =",
+             "cloud = aws",
+             "[aws]",
+             "storagePath = awssb/aws_storage_path",
+             "credentialpath = some_credential_path",
            )
         s = StringIO('\n'.join(c))
 
@@ -160,7 +146,7 @@ class TestConfigCLI(TestDvc):
         return True
 
     def test(self):
-        section = 'SetSection'
+        section = 'setsection'
         field = 'setfield'
         section_field = '{}.{}'.format(section, field)
         value = 'setvalue'

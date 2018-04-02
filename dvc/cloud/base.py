@@ -4,7 +4,7 @@ from checksumdir import dirhash
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.stage import Output
 
 
@@ -45,7 +45,7 @@ class DataCloudBase(object):
         if self._cloud_settings.global_storage_path:
             return self._cloud_settings.global_storage_path
 
-        path = self._cloud_settings.cloud_config.get('StoragePath', None)
+        path = self._cloud_settings.cloud_config.get(Config.SECTION_CORE_STORAGEPATH, None)
         if path is None:
             raise ConfigError('invalid StoragePath: not set for Data or cloud specific')
 

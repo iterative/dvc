@@ -12,6 +12,7 @@ except ImportError:
     sys.modules['httplib'] = httplib
 from boto.s3.resumable_download_handler import ResumableDownloadHandler
 
+from dvc.config import Config
 from dvc.logger import Logger
 from dvc.progress import progress
 from dvc.cloud.credentials_aws import AWSCredentials
@@ -57,7 +58,7 @@ class DataCloudAWS(DataCloudBase):
         See notes http://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region
         """
 
-        region = self._cloud_settings.cloud_config.get('Region', None)
+        region = self._cloud_settings.cloud_config.get(Config.SECTION_AWS_REGION, None)
         if region is None or region == '':
             return 's3.amazonaws.com'
         if region == 'us-east-1':
@@ -69,7 +70,7 @@ class DataCloudAWS(DataCloudBase):
         Try obtaining path to aws credentials from config file.
         """
         paths = []
-        credpath = self._cloud_settings.cloud_config.get('CredentialPath', None)
+        credpath = self._cloud_settings.cloud_config.get(Config.SECTION_AWS_CREDENTIALPATH, None)
         if credpath is not None and len(credpath) > 0:
             credpath = os.path.expanduser(credpath)
             if os.path.isfile(credpath):

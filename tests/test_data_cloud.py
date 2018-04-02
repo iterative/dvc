@@ -15,14 +15,14 @@ from tests.basic_env import TestDvc
 class TestDataCloud(TestDvc):
     def test(self):
         for k,v in DataCloud.CLOUD_MAP.items():
-            config = {Config.SECTION_CORE: {'Cloud': k},
-                      k: {'StoragePath': 'a/b',
-                          'ProjectName': 'name'}}
+            config = {Config.SECTION_CORE: {'cloud': k},
+                      k: {'storagepath': 'a/b',
+                          'projectname': 'name'}}
             cloud = DataCloud(self.dvc.cache, config)
             self.assertIsInstance(cloud._cloud, v)
 
         with self.assertRaises(ConfigError) as cx:
-            config = {Config.SECTION_CORE: {'Cloud': 'not_supported_type'}}
+            config = {Config.SECTION_CORE: {'cloud': 'not_supported_type'}}
             DataCloud(self.dvc.cache, config)
 
 
@@ -117,8 +117,8 @@ class TestDataCloudAWS(TestDataCloudBase):
         repo = self.TEST_REPO_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'StoragePath': repo,
-                  'Region': self.TEST_REPO_REGION}
+        config = {'storagepath': repo,
+                  'region': self.TEST_REPO_REGION}
         cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudAWS(cloud_settings)
 
@@ -150,8 +150,8 @@ class TestDataCloudGCP(TestDataCloudBase):
         repo = self.TEST_REPO_GCP_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'StoragePath': repo,
-                  'Region': self.TEST_REPO_GCP_PROJECT}
+        config = {'storagepath': repo,
+                  'region': self.TEST_REPO_GCP_PROJECT}
         cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudGCP(cloud_settings)
 
@@ -167,7 +167,7 @@ class TestDataCloudLOCAL(TestDataCloudBase):
     def _setup_cloud(self):
         self.dname = 'cloud'
         os.mkdir(self.dname)
-        config = {'StoragePath': self.dname}
+        config = {'storagepath': self.dname}
         cloud_settings = CloudSettings(self.dvc.cache, None, config)
         self.cloud = DataCloudLOCAL(cloud_settings)
 
@@ -186,8 +186,8 @@ class TestDataCloudLocalCli(TestDvc):
         dname = 'cloud'
         os.mkdir(dname)
 
-        self.main(['config', 'Core.cloud', 'LOCAL'])
-        self.main(['config', 'LOCAL.StoragePath', dname])
+        self.main(['config', 'core.cloud', 'local'])
+        self.main(['config', 'local.storagepath', dname])
 
         stage = self.dvc.add(self.FOO)
         cache = stage.outs[0].cache
