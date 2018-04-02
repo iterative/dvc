@@ -2,7 +2,7 @@
 DVC config objects.
 """
 import os
-import configparser
+import configobj
 
 from dvc.exceptions import DvcException
 
@@ -40,14 +40,12 @@ ProjectName =
         self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
 
-        self._config = configparser.SafeConfigParser()
-
         try:
-            self._config.read(self.config_file)
-        except configparser.Error as ex:
+            self._config = configobj.ConfigObj(self.config_file, write_empty_values=True)
+        except Exception as ex:
             raise ConfigError(ex.message)
 
-        if not self._config.has_section(self.SECTION_CORE):
+        if self.SECTION_CORE not in self._config.keys():
             raise ConfigError(u'section \'{}\' was not found'.format(self.SECTION_CORE))
 
     @staticmethod
