@@ -75,7 +75,7 @@ class DataCloudBase(object):
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
         relpath = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
-        relpath.replace('\\', '/')
+        relpath = relpath.replace('\\', '/')
         return '{}/{}'.format(self.storage_prefix, relpath).strip('/')
 
     @staticmethod
