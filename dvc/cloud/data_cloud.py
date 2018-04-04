@@ -1,3 +1,10 @@
+import re
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from multiprocessing.pool import ThreadPool
 
 from dvc.cloud.instance_manager import CloudSettings
@@ -31,37 +38,60 @@ class DataCloud(object):
     def __init__(self, cache, config):
         self._config = config
 
-        cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
-
-        if cloud_type == '':
-            self.typ = None
-            self._cloud = None
+        remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
+        if remote == '':
+            if config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, None):
+                # backward compatibility
+                Logger.warn('Using obsoleted config format. Consider updating.')
+                self.__init__compat(cache)
+            else:
+                self._cloud = None
             return
 
-        if cloud_type not in self.CLOUD_MAP.keys():
+        section = Config.SECTION_REMOTE_FMT.format(remote)
+        cloud_config = self._config.get(section, None)
+        if not cloud_config:
+            raise ConfigError("Can't find remote section '{}' in config".format(section))
+
+        url = cloud_config[Config.SECTION_REMOTE_URL]
+        scheme = urlparse(url).scheme
+        cloud_type = self.SCHEME_MAP.get(scheme, None)
+        if not cloud_type:
+            raise ConfigError("Unsupported scheme '{}' in '{}'".format(scheme, url))
+
+        self._init_cloud(cache, cloud_config, cloud_type)
+
+    def __init__compat(self, cache):
+        cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
+        if cloud_type == '':
+            self._cloud = None
+            return
+        elif cloud_type not in self.CLOUD_MAP.keys():
             raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
-        if cloud_type not in self._config.keys():
+        cloud_config = self._config.get(cloud_type, None)
+        if not cloud_config:
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
+        self._init_cloud(cache, cloud_config, cloud_type)
+
+    def _init_cloud(self, cache, cloud_config, cloud_type):
         cloud_settings = self.get_cloud_settings(cache,
                                                  self._config,
-                                                 cloud_type)
+                                                 cloud_config)
 
-        self.typ = cloud_type
         self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
         self._cloud.sanity_check()
 
     @staticmethod
-    def get_cloud_settings(cache, config, cloud_type):
+    def get_cloud_settings(cache, config, cloud_config):
         """
         Obtain cloud settings from config.
         """
-        if cloud_type not in config.keys():
-            cloud_config = None
-        else:
-            cloud_config = config[cloud_type]
         global_storage_path = config[Config.SECTION_CORE].get(Config.SECTION_CORE_STORAGEPATH, None)
+        if global_storage_path:
+            Logger.warn('Using obsoleted config format. Consider updating.')
+
         cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
 

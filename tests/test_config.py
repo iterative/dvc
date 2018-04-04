@@ -17,8 +17,11 @@ except ImportError:
     builtin_module_name = 'builtins'
 
 from dvc.cloud.data_cloud import DataCloud
+from dvc.cloud.aws import DataCloudAWS
+from dvc.cloud.gcp import DataCloudGCP
 from dvc.main import main
 from tests.basic_env import TestDvc
+
 
 class TestConfigTest(TestCase):
     def setUp(self):
@@ -44,7 +47,7 @@ class TestConfigTest(TestCase):
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
         cloud = DataCloud(None, conf)
-        self.assertEqual(cloud.typ, 'aws')
+        self.assertIsInstance(cloud._cloud, DataCloudAWS)
         self.assertEqual(cloud._cloud.storage_bucket, 'globalsb')
         self.assertEqual(cloud._cloud.storage_prefix, 'global_storage_path')
 
@@ -60,7 +63,7 @@ class TestConfigTest(TestCase):
         s = StringIO('\n'.join(c))
         conf = self._conf(s)
         cloud = DataCloud(None, conf)
-        self.assertEqual(cloud.typ, 'aws')
+        self.assertIsInstance(cloud._cloud, DataCloudAWS)
         self.assertEqual(cloud._cloud.storage_bucket, 'awssb')
         self.assertEqual(cloud._cloud.storage_prefix, 'aws_storage_path')
 

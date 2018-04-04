@@ -20,15 +20,23 @@ class Config(object):
     SECTION_CORE = 'core'
     SECTION_CORE_LOGLEVEL = 'loglevel'
     SECTION_CORE_LOGLEVEL_SCHEMA = schema.And(schema.Use(str.lower), lambda l: l in ('info', 'debug', 'warning', 'error'))
+    SECTION_CORE_REMOTE = 'remote'
+
+    # backward compatibility
     SECTION_CORE_CLOUD = 'cloud'
     SECTION_CORE_CLOUD_SCHEMA = schema.And(schema.Use(str.lower), lambda c: c in ('aws', 'gcp', 'local', ''))
-    SECTION_CORE_STORAGEPATH = 'storagepath' # backward compatibility
+    SECTION_CORE_STORAGEPATH = 'storagepath'
+
     SECTION_CORE_SCHEMA = {
         schema.Optional(SECTION_CORE_LOGLEVEL, default='info'): SECTION_CORE_LOGLEVEL_SCHEMA,
+        schema.Optional(SECTION_CORE_REMOTE, default=''): schema.And(str, schema.Use(str.lower)),
+
+        # backward compatibility
         schema.Optional(SECTION_CORE_CLOUD, default=''): SECTION_CORE_CLOUD_SCHEMA,
         schema.Optional(SECTION_CORE_STORAGEPATH, default=''): str,
     }
 
+    # backward compatibility
     SECTION_AWS = 'aws'
     SECTION_AWS_STORAGEPATH = 'storagepath'
     SECTION_AWS_CREDENTIALPATH = 'credentialpath'
@@ -41,6 +49,7 @@ class Config(object):
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
     }
 
+    # backward compatibility
     SECTION_GCP = 'gcp'
     SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
     SECTION_GCP_PROJECTNAME = 'projectname'
@@ -49,14 +58,31 @@ class Config(object):
         SECTION_GCP_PROJECTNAME: str,
     }
 
+    # backward compatibility
     SECTION_LOCAL = 'local'
     SECTION_LOCAL_STORAGEPATH = SECTION_AWS_STORAGEPATH
     SECTION_LOCAL_SCHEMA = {
         SECTION_LOCAL_STORAGEPATH: str,
     }
 
+
+    SECTION_REMOTE_REGEX = r'^\s*remote\s*"(.*)"\s*$'
+    SECTION_REMOTE_FMT = 'remote "{}"'
+    SECTION_REMOTE_URL = 'url'
+    SECTION_REMOTE_URL_REGEX = r'^\s*(s3://|gs://|/)?(.*)\s*$'
+    SECTION_REMOTE_SCHEMA = {
+        SECTION_REMOTE_URL: schema.Regex(SECTION_REMOTE_URL_REGEX),
+        schema.Optional(SECTION_AWS_REGION): str,
+        schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
+        schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
+        schema.Optional(SECTION_GCP_PROJECTNAME): str,
+    }
+
     SCHEMA = {
         schema.Optional(SECTION_CORE, default={}): SECTION_CORE_SCHEMA,
+        schema.Optional(schema.Regex(SECTION_REMOTE_REGEX)): SECTION_REMOTE_SCHEMA,
+
+        # backward compatibility
         schema.Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,
         schema.Optional(SECTION_GCP, default={}): SECTION_GCP_SCHEMA,
         schema.Optional(SECTION_LOCAL, default={}): SECTION_LOCAL_SCHEMA,
@@ -68,6 +94,8 @@ class Config(object):
 
         try:
             self._config = configobj.ConfigObj(self.config_file, write_empty_values=True)
+            # NOTE: schema doesn't support ConfigObj.Section validation, so we
+            # need to convert our config to dict before passing it to schema.
             self._config = self._lower(self._config)
             self._config = schema.Schema(self.SCHEMA).validate(self._config)
         except Exception as ex:

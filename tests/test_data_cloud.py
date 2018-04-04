@@ -12,17 +12,28 @@ from dvc.cloud.instance_manager import CloudSettings
 from tests.basic_env import TestDvc
 
 
-class TestDataCloud(TestDvc):
-    def test(self):
-        for k,v in DataCloud.CLOUD_MAP.items():
-            config = {Config.SECTION_CORE: {'cloud': k},
-                      k: {'storagepath': 'a/b',
-                          'projectname': 'name'}}
-            cloud = DataCloud(self.dvc.cache, config)
-            self.assertIsInstance(cloud._cloud, v)
+TEST_REMOTE = 'upstream'
+TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
+TEST_CONFIG = {Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
+               TEST_SECTION: {Config.SECTION_REMOTE_URL: ''}}
 
+
+class TestDataCloud(TestDvc):
+    def _test_cloud(self, config, cl):
+        cloud = DataCloud(self.dvc.cache, config)
+        self.assertIsInstance(cloud._cloud, cl)
+
+    def test(self):
+        config = TEST_CONFIG
+
+        for scheme, cl in [('s3://', DataCloudAWS), ('gs://', DataCloudGCP), ('/', DataCloudLOCAL)]:
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + 'a/b'
+            self._test_cloud(config, cl)
+
+    def test_unsupported(self):
         with self.assertRaises(ConfigError) as cx:
-            config = {Config.SECTION_CORE: {'cloud': 'not_supported_type'}}
+            config = TEST_CONFIG
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
             DataCloud(self.dvc.cache, config)
 
 
@@ -114,12 +125,13 @@ class TestDataCloudAWS(TestDataCloudBase):
         if not self._should_test():
             return
 
-        repo = self.TEST_REPO_BUCKET + '/' + str(uuid.uuid4())
+        repo = 's3://' + self.TEST_REPO_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'storagepath': repo,
-                  'region': self.TEST_REPO_REGION}
-        cloud_settings = CloudSettings(self.dvc.cache, None, config)
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][Config.SECTION_AWS_REGION] = self.TEST_REPO_REGION
+        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
         self.cloud = DataCloudAWS(cloud_settings)
 
     def test(self):
@@ -147,12 +159,12 @@ class TestDataCloudGCP(TestDataCloudBase):
         if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
             shutil.copyfile(self.GCP_CREDS_FILE, os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
-        repo = self.TEST_REPO_GCP_BUCKET + '/' + str(uuid.uuid4())
+        repo = 'gs://' + self.TEST_REPO_GCP_BUCKET + '/' + str(uuid.uuid4())
 
         # Setup cloud
-        config = {'storagepath': repo,
-                  'region': self.TEST_REPO_GCP_PROJECT}
-        cloud_settings = CloudSettings(self.dvc.cache, None, config)
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
         self.cloud = DataCloudGCP(cloud_settings)
 
     def test(self):
@@ -167,8 +179,10 @@ class TestDataCloudLOCAL(TestDataCloudBase):
     def _setup_cloud(self):
         self.dname = 'cloud'
         os.mkdir(self.dname)
-        config = {'storagepath': self.dname}
-        cloud_settings = CloudSettings(self.dvc.cache, None, config)
+
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = self.dname
+        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
         self.cloud = DataCloudLOCAL(cloud_settings)
 
     def test(self):
