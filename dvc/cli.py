@@ -5,6 +5,7 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
+from dvc.logger import Logger
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
@@ -227,4 +228,11 @@ def parse_args(argv=None):
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
 
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    if args.quiet and not args.verbose:
+        Logger.be_quiet()
+    elif not args.quiet and args.verbose:
+        Logger.be_verbose()
+
+    return args

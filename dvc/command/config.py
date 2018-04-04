@@ -12,7 +12,6 @@ class CmdConfig(CmdBase):
         self.args = args
         root_dir = self._find_root()
         self.config_file = os.path.join(root_dir, Project.DVC_DIR, Config.CONFIG)
-        self._set_loglevel(args)
 
     def run_cmd(self):
         return self.run()
