@@ -3,6 +3,8 @@ import stat
 import json
 import shutil
 import schema
+import posixpath
+import ntpath
 from checksumdir import dirhash
 
 from dvc.system import System
@@ -97,15 +99,22 @@ class Dependency(object):
 
         self.md5 = self.project.state.update(self.path)
 
+    @staticmethod
+    def unixpath(path):
+        assert not ntpath.isabs(path)
+        assert not posixpath.isabs(path)
+        return path.replace('\\', '/')
+
     def dumpd(self, cwd):
         return {
-            Output.PARAM_PATH: os.path.relpath(self.path, cwd),
+            Output.PARAM_PATH: self.unixpath(os.path.relpath(self.path, cwd)),
             Output.PARAM_MD5: self.md5,
         }
 
     @classmethod
     def loadd(cls, project, d, cwd=os.curdir):
-        path = os.path.join(cwd, d[Output.PARAM_PATH])
+        relpath = os.path.normpath(Output.unixpath(d[Output.PARAM_PATH]))
+        path = os.path.join(cwd, relpath)
         md5 = d.get(Output.PARAM_MD5, None)
         return cls(project, path, md5=md5)
 
