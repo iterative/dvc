@@ -55,7 +55,7 @@ class Config(object):
     SECTION_GCP_PROJECTNAME = 'projectname'
     SECTION_GCP_SCHEMA = {
         SECTION_GCP_STORAGEPATH: str,
-        SECTION_GCP_PROJECTNAME: str,
+        schema.Optional(SECTION_GCP_PROJECTNAME): str,
     }
 
     # backward compatibility

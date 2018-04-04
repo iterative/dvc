@@ -19,12 +19,6 @@ class DataCloudGCP(DataCloudBase):
         """
         return self._cloud_settings.cloud_config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
-    def sanity_check(self):
-        project = self.gc_project_name
-        if project is None or len(project) < 1:
-            raise ConfigError('can\'t read google cloud project name. '
-                              'Please set \'{}\' in section GCP.'.format(Config.SECTION_GCP_PROJECTNAME))
-
     def connect(self):
         client = gc.Client(project=self.gc_project_name)
         self.bucket = client.bucket(self.storage_bucket)

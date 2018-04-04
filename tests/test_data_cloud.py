@@ -141,7 +141,6 @@ class TestDataCloudAWS(TestDataCloudBase):
 
 class TestDataCloudGCP(TestDataCloudBase):
     TEST_REPO_GCP_BUCKET = 'dvc-test'
-    TEST_REPO_GCP_PROJECT='dvc-project'
 
     def _should_test(self):
         if os.getenv("DVC_TEST_GCP") == "true":
