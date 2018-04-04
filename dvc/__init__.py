@@ -5,7 +5,7 @@ Make your data science projects reproducible and shareable.
 """
 import os
 
-VERSION = '0.9.4'
+VERSION = '0.9.5'
 
 if os.getenv('APPVEYOR_REPO_TAG', '').lower() != 'true' and os.getenv('TRAVIS_TAG', '') == '':
     # Dynamically update version
