@@ -10,8 +10,8 @@ from dvc.exceptions import DvcException
 
 class ConfigError(DvcException):
     """ DVC config exception """
-    def __init__(self, msg):
-        DvcException.__init__(self, 'Config file error: {}'.format(msg))
+    def __init__(self, ex=None):
+        DvcException.__init__(self, 'Config file error', ex)
 
 
 class Config(object):
@@ -71,7 +71,7 @@ class Config(object):
             self._config = self._lower(self._config)
             self._config = schema.Schema(self.SCHEMA).validate(self._config)
         except Exception as ex:
-            raise ConfigError(ex.message)
+            raise ConfigError(ex)
 
     @staticmethod
     def _lower(config):
