@@ -12,6 +12,9 @@ class CmdConfig(CmdBase):
         self.args = args
         root_dir = self._find_root()
         self.config_file = os.path.join(root_dir, Project.DVC_DIR, Config.CONFIG)
+        # Using configobj because it doesn't
+        # drop comments like configparser does.
+        self.configobj = configobj.ConfigObj(self.config_file, write_empty_values=True)
 
     def run_cmd(self):
         return self.run()
@@ -27,31 +30,39 @@ class CmdConfig(CmdBase):
 
         return None
 
-    def unset(self):
+    def save(self):
         try:
-            del self.configobj[self.section][self.opt]
             self.configobj.write()
         except Exception as exc:
-            Logger.error('Failed to unset \'{}\': {}'.format(self.args.name, exc))
+            Logger.error("Failed to write config '{}'".format(self.configobj.filename), exc)
+            return 1
+        return 0
+
+    def unset(self, section, opt):
+        if section not in self.configobj.keys():
+            Logger.error("Section '{}' doesn't exist".format(section))
             return 1
 
-        return 0
+        if opt not in self.configobj[section].keys():
+            return 0
+
+        del self.configobj[section][opt]
+        if len(self.configobj[section]) == 0:
+            del self.configobj[section]
+
+        return self.save()
 
     def show(self):
         Logger.info(self.configobj[self.section][self.opt])
         return 0
 
-    def set(self):
-        try:
-            self.configobj[self.section][self.opt] = self.args.value
-            self.configobj.write()
-        except Exception as exc:
-            Logger.error('Failed to set \'{}\' to \'{}\': {}'.format(self.args.name,
-                                                                     self.args.value,
-                                                                     exc))
-            return 1
+    def set(self, section, opt, value):
+        if section not in self.configobj.keys():
+            self.configobj[section] = {}
 
-        return 0
+        self.configobj[section][opt] = value
+
+        return self.save()
 
     def check_opt(self):
         _section, _opt = self.args.name.strip().split('.', 1)
@@ -74,17 +85,13 @@ class CmdConfig(CmdBase):
         return 0
 
     def run(self):
-        # Using configobj because it doesn't
-        # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self.config_file, write_empty_values=True)
-
         if self.check_opt() != 0:
             return 1
 
         if self.args.unset:
-            return self.unset()
+            return self.unset(self.section, self.opt)
 
         if self.args.value is None:
             return self.show()
 
-        return self.set()
+        return self.set(self.section, self.opt, self.args.value)
