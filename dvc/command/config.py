@@ -14,7 +14,7 @@ class CmdConfig(CmdBase):
         self.config_file = os.path.join(root_dir, Project.DVC_DIR, Config.CONFIG)
         # Using configobj because it doesn't
         # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self.config_file, write_empty_values=True)
+        self.configobj = configobj.ConfigObj(self.config_file)
 
     def run_cmd(self):
         return self.run()
