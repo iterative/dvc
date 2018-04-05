@@ -77,8 +77,19 @@ class Dependency(object):
 
         return self.project.state.changed(self.path, self.md5)
 
+    @staticmethod
+    def _changed_msg(changed):
+        if changed:
+            return 'changed'
+        return "didn't change"
+
     def changed(self):
-        return self._changed_md5()
+        ret = self._changed_md5()
+
+        msg = u'Dependency \'{}\' {}'.format(self.rel_path, self._changed_msg(ret))
+        self.project.logger.debug(msg)
+
+        return ret
 
     def status(self):
         if self.changed():
@@ -231,12 +242,8 @@ class Output(Dependency):
         else:
             ret = self._changed_file(self.path, self.cache)
 
-        msg = u'Data file or dir \'{}\' with cache \'{}\' '
-        if ret:
-            msg += 'changed'
-        else:
-            msg += 'didn\'t change'
-        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
+        msg = u'Data file or dir \'{}\' with cache \'{}\' {}'
+        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache, self._changed_msg(ret)))
 
         return ret
 
