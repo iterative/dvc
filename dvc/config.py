@@ -93,11 +93,16 @@ class Config(object):
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
 
         try:
-            self._config = configobj.ConfigObj(self.config_file, write_empty_values=True)
+            self._config = configobj.ConfigObj(self.config_file)
+
             # NOTE: schema doesn't support ConfigObj.Section validation, so we
             # need to convert our config to dict before passing it to schema.
             self._config = self._lower(self._config)
             self._config = schema.Schema(self.SCHEMA).validate(self._config)
+
+            # NOTE: now converting back to ConfigObj
+            self._config = configobj.ConfigObj(self._config, write_empty_values=True)
+            self._config.filename = self.config_file
         except Exception as ex:
             raise ConfigError(ex)
 
