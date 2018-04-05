@@ -162,7 +162,7 @@ class Stage(object):
         outs = [x.dumpd(self.cwd) for x in self.outs]
 
         ret = {}
-        if self.cmd:
+        if self.cmd != None:
             ret[Stage.PARAM_CMD] = self.cmd
 
         if len(deps):
