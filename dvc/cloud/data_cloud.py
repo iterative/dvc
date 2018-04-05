@@ -1,3 +1,10 @@
+import re
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from multiprocessing.pool import ThreadPool
 
 from dvc.cloud.instance_manager import CloudSettings
@@ -10,118 +17,137 @@ from dvc.config import Config
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
 from dvc.cloud.local import DataCloudLOCAL
+from dvc.cloud.base import DataCloudBase
 
 
 class DataCloud(object):
     """ Generic class to do initial config parsing and redirect to proper DataCloud methods """
 
     CLOUD_MAP = {
-        'AWS'   : DataCloudAWS,
-        'GCP'   : DataCloudGCP,
-        'LOCAL' : DataCloudLOCAL,
+        'aws'   : DataCloudAWS,
+        'gcp'   : DataCloudGCP,
+        'local' : DataCloudLOCAL,
     }
 
     SCHEME_MAP = {
-        's3'    : 'AWS',
-        'gs'    : 'GCP',
-        ''      : 'LOCAL',
+        's3'    : 'aws',
+        'gs'    : 'gcp',
+        ''      : 'local',
     }
 
     def __init__(self, cache, config):
+        self._cache = cache
         self._config = config
 
-        cloud_type = self._config[Config.SECTION_CORE].get('Cloud', '').strip().upper()
-        if cloud_type not in self.CLOUD_MAP.keys():
+        remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
+        if remote == '':
+            if config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, None):
+                # backward compatibility
+                Logger.warn('Using obsoleted config format. Consider updating.')
+                self._cloud = self.__init__compat()
+            else:
+                self._cloud = None
+            return
+
+        self._cloud = self._init_remote(remote)
+
+    def _init_remote(self, remote):
+        section = Config.SECTION_REMOTE_FMT.format(remote)
+        cloud_config = self._config.get(section, None)
+        if not cloud_config:
+            raise ConfigError("Can't find remote section '{}' in config".format(section))
+
+        url = cloud_config[Config.SECTION_REMOTE_URL]
+        scheme = urlparse(url).scheme
+        cloud_type = self.SCHEME_MAP.get(scheme, None)
+        if not cloud_type:
+            raise ConfigError("Unsupported scheme '{}' in '{}'".format(scheme, url))
+
+        return self._init_cloud(self._cache, cloud_config, cloud_type)
+
+    def __init__compat(self):
+        cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
+        if cloud_type == '':
+            self._cloud = None
+            return
+        elif cloud_type not in self.CLOUD_MAP.keys():
             raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
-        if cloud_type not in self._config.keys():
+        cloud_config = self._config.get(cloud_type, None)
+        if not cloud_config:
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
+        return self._init_cloud(self._cache, cloud_config, cloud_type)
+
+    def _init_cloud(self, cache, cloud_config, cloud_type):
         cloud_settings = self.get_cloud_settings(cache,
                                                  self._config,
-                                                 cloud_type)
+                                                 cloud_config)
 
-        self.typ = cloud_type
-        self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
-
-        self.sanity_check()
+        cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
+        cloud.sanity_check()
+        return cloud
 
     @staticmethod
-    def get_cloud_settings(cache, config, cloud_type):
+    def get_cloud_settings(cache, config, cloud_config):
         """
         Obtain cloud settings from config.
         """
-        if cloud_type not in config.keys():
-            cloud_config = None
-        else:
-            cloud_config = config[cloud_type]
-        global_storage_path = config[Config.SECTION_CORE].get('StoragePath', None)
+        global_storage_path = config[Config.SECTION_CORE].get(Config.SECTION_CORE_STORAGEPATH, None)
+        if global_storage_path:
+            Logger.warn('Using obsoleted config format. Consider updating.')
+
         cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
 
-    def sanity_check(self):
-        """ sanity check a config
-
-        check that we have a cloud and storagePath
-        if aws, check can read credentials
-        if google, check ProjectName
-
-        Returns:
-            (T,) if good
-            (F, issues) if bad
-        """
-        key = 'Cloud'
-        core = self._config[Config.SECTION_CORE]
-        if key.lower() not in [k.lower() for k in core.keys()] or len(core[key]) < 1:
-            raise ConfigError('Please set {} in section {} in config file'.format(key, Config.SECTION_CORE))
-
-        # now that a cloud is chosen, can check StoragePath
-        storage_path = self._cloud.storage_path
-        if storage_path is None or len(storage_path) == 0:
-            raise ConfigError('Please set StoragePath = bucket/{optional path} '
-                              'in config file in a cloud specific section')
-
-        self._cloud.sanity_check()
-
-    def _collect(self, targets, jobs, local):
+    def _collect(self, cloud, targets, jobs, local):
         collected = set()
         pool = ThreadPool(processes=jobs)
         args = zip(targets, [local]*len(targets))
-        ret = pool.map(self._cloud.collect, args)
+        ret = pool.map(cloud.collect, args)
 
         for r in ret:
             collected |= set(r)
 
         return collected
 
-    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False):
+    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False, remote=None):
         """
         Process targets as data items in parallel.
         """
-        self._cloud.connect()
+
+        if not remote:
+            cloud = self._cloud
+        else:
+            cloud = self._init_remote(remote)
+
+        if not cloud:
+            return
+
+        cloud.connect()
 
         collected = set()
         if collect_local:
-            collected |= self._collect(targets, jobs, True)
+            collected |= self._collect(cloud, targets, jobs, True)
         if collect_cloud:
-            collected |= self._collect(targets, jobs, False)
+            collected |= self._collect(cloud, targets, jobs, False)
 
-        return map_progress(func, list(collected), jobs)
+        return map_progress(getattr(cloud, func), list(collected), jobs)
 
-    def push(self, targets, jobs=1):
+    def push(self, targets, jobs=1, remote=None):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.push, targets, jobs, collect_local=True)
+        return self._map_targets('push', targets, jobs, collect_local=True, remote=remote)
 
-    def pull(self, targets, jobs=1):
+    def pull(self, targets, jobs=1, remote=None):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.pull, targets, jobs, collect_cloud=True)
+        return self._map_targets('pull', targets, jobs, collect_cloud=True, remote=remote)
 
-    def status(self, targets, jobs=1):
+    def status(self, targets, jobs=1, remote=None):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.status, targets, jobs, True, True)
+        return self._map_targets('status', targets, jobs, True, True, remote=remote)

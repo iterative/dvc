@@ -1,7 +1,5 @@
 import os
 
-import dvc.cloud.base as cloud
-
 from dvc.command.data_sync import CmdDataBase
 
 
@@ -28,7 +26,7 @@ class CmdDataStatus(CmdDataBase):
     def do_run(self, target=None):
         indent = 1 if self.args.cloud else 0
         try:
-            status = self.project.status(target=target, jobs=self.args.jobs, cloud=self.args.cloud)
+            status = self.project.status(target=target, jobs=self.args.jobs, cloud=self.args.cloud, remote=self.args.remote)
             self._show(status, indent)
         except Exception as exc:
             self.project.logger.error('Failed to obtain data status', exc)

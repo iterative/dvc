@@ -1,10 +1,11 @@
 import os
+import re
 import tempfile
 from checksumdir import dirhash
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.stage import Output
 
 
@@ -45,9 +46,14 @@ class DataCloudBase(object):
         if self._cloud_settings.global_storage_path:
             return self._cloud_settings.global_storage_path
 
-        path = self._cloud_settings.cloud_config.get('StoragePath', None)
-        if path is None:
-            raise ConfigError('invalid StoragePath: not set for Data or cloud specific')
+        config = self._cloud_settings.cloud_config
+        url = config.get(Config.SECTION_REMOTE_URL, None)
+        if not url:
+            path = config.get(Config.SECTION_CORE_STORAGEPATH, None)
+            if path:
+                Logger.warn('Using obsoleted config format. Consider updating.')
+        else:
+            path = re.match(Config.SECTION_REMOTE_URL_REGEX, url).group(2)
 
         return path
 

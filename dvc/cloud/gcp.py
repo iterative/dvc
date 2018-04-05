@@ -4,7 +4,7 @@ import os
 from google.cloud import storage as gc
 
 from dvc.logger import Logger
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.cloud.base import DataCloudError, DataCloudBase
 from dvc.utils import file_md5
 from dvc.progress import progress
@@ -17,13 +17,7 @@ class DataCloudGCP(DataCloudBase):
         """
         Get project name from config.
         """
-        return self._cloud_settings.cloud_config.get('ProjectName', None)
-
-    def sanity_check(self):
-        project = self.gc_project_name
-        if project is None or len(project) < 1:
-            raise ConfigError('can\'t read google cloud project name. '
-                              'Please set ProjectName in section GC.')
+        return self._cloud_settings.cloud_config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
     def connect(self):
         client = gc.Client(project=self.gc_project_name)

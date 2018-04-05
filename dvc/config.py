@@ -2,56 +2,122 @@
 DVC config objects.
 """
 import os
-import configparser
+import schema
+import configobj
 
 from dvc.exceptions import DvcException
 
 
 class ConfigError(DvcException):
     """ DVC config exception """
-    def __init__(self, msg):
-        DvcException.__init__(self, 'Config file error: {}'.format(msg))
+    def __init__(self, ex=None):
+        super(ConfigError, self).__init__('Config file error', ex)
 
 
 class Config(object):
     CONFIG = 'config'
-    SECTION_CORE = 'Core'
-    CONFIG_TEMPLATE = '''
-[Core]
-# Supported clouds: AWS, GCP
-Cloud = AWS
 
-# Log levels: Debug, Info, Warning and Error
-LogLevel = Info
+    SECTION_CORE = 'core'
+    SECTION_CORE_LOGLEVEL = 'loglevel'
+    SECTION_CORE_LOGLEVEL_SCHEMA = schema.And(schema.Use(str.lower), lambda l: l in ('info', 'debug', 'warning', 'error'))
+    SECTION_CORE_REMOTE = 'remote'
 
-[AWS]
-CredentialPath = ~/.aws/credentials
-Profile = default
+    # backward compatibility
+    SECTION_CORE_CLOUD = 'cloud'
+    SECTION_CORE_CLOUD_SCHEMA = schema.And(schema.Use(str.lower), lambda c: c in ('aws', 'gcp', 'local', ''))
+    SECTION_CORE_STORAGEPATH = 'storagepath'
 
-StoragePath = dvc/tutorial
+    SECTION_CORE_SCHEMA = {
+        schema.Optional(SECTION_CORE_LOGLEVEL, default='info'): SECTION_CORE_LOGLEVEL_SCHEMA,
+        schema.Optional(SECTION_CORE_REMOTE, default=''): schema.And(str, schema.Use(str.lower)),
 
-[GCP]
-StoragePath = 
-ProjectName = 
+        # backward compatibility
+        schema.Optional(SECTION_CORE_CLOUD, default=''): SECTION_CORE_CLOUD_SCHEMA,
+        schema.Optional(SECTION_CORE_STORAGEPATH, default=''): str,
+    }
 
-'''
+    # backward compatibility
+    SECTION_AWS = 'aws'
+    SECTION_AWS_STORAGEPATH = 'storagepath'
+    SECTION_AWS_CREDENTIALPATH = 'credentialpath'
+    SECTION_AWS_REGION = 'region'
+    SECTION_AWS_PROFILE = 'profile'
+    SECTION_AWS_SCHEMA = {
+        SECTION_AWS_STORAGEPATH: str,
+        schema.Optional(SECTION_AWS_REGION): str,
+        schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
+        schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
+    }
+
+    # backward compatibility
+    SECTION_GCP = 'gcp'
+    SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
+    SECTION_GCP_PROJECTNAME = 'projectname'
+    SECTION_GCP_SCHEMA = {
+        SECTION_GCP_STORAGEPATH: str,
+        schema.Optional(SECTION_GCP_PROJECTNAME): str,
+    }
+
+    # backward compatibility
+    SECTION_LOCAL = 'local'
+    SECTION_LOCAL_STORAGEPATH = SECTION_AWS_STORAGEPATH
+    SECTION_LOCAL_SCHEMA = {
+        SECTION_LOCAL_STORAGEPATH: str,
+    }
+
+
+    SECTION_REMOTE_REGEX = r'^\s*remote\s*"(.*)"\s*$'
+    SECTION_REMOTE_FMT = 'remote "{}"'
+    SECTION_REMOTE_URL = 'url'
+    SECTION_REMOTE_URL_REGEX = r'^\s*(s3://|gs://|/)?(.*)\s*$'
+    SECTION_REMOTE_SCHEMA = {
+        SECTION_REMOTE_URL: schema.Regex(SECTION_REMOTE_URL_REGEX),
+        schema.Optional(SECTION_AWS_REGION): str,
+        schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
+        schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
+        schema.Optional(SECTION_GCP_PROJECTNAME): str,
+    }
+
+    SCHEMA = {
+        schema.Optional(SECTION_CORE, default={}): SECTION_CORE_SCHEMA,
+        schema.Optional(schema.Regex(SECTION_REMOTE_REGEX)): SECTION_REMOTE_SCHEMA,
+
+        # backward compatibility
+        schema.Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,
+        schema.Optional(SECTION_GCP, default={}): SECTION_GCP_SCHEMA,
+        schema.Optional(SECTION_LOCAL, default={}): SECTION_LOCAL_SCHEMA,
+    }
 
     def __init__(self, dvc_dir):
         self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
 
-        self._config = configparser.SafeConfigParser()
-
         try:
-            self._config.read(self.config_file)
-        except configparser.Error as ex:
-            raise ConfigError(ex.message)
+            self._config = configobj.ConfigObj(self.config_file)
 
-        if not self._config.has_section(self.SECTION_CORE):
-            raise ConfigError(u'section \'{}\' was not found'.format(self.SECTION_CORE))
+            # NOTE: schema doesn't support ConfigObj.Section validation, so we
+            # need to convert our config to dict before passing it to schema.
+            self._config = self._lower(self._config)
+            self._config = schema.Schema(self.SCHEMA).validate(self._config)
+
+            # NOTE: now converting back to ConfigObj
+            self._config = configobj.ConfigObj(self._config, write_empty_values=True)
+            self._config.filename = self.config_file
+        except Exception as ex:
+            raise ConfigError(ex)
+
+    @staticmethod
+    def _lower(config):
+        new_config = {}
+        for s_key, s_value in config.items():
+            new_s = {}
+            for key, value in s_value.items():
+                new_s[key.lower()] = value
+            new_config[s_key.lower()] = new_s
+        return new_config
 
     @staticmethod
     def init(dvc_dir):
         config_file = os.path.join(dvc_dir, Config.CONFIG)
-        open(config_file, 'w').write(Config.CONFIG_TEMPLATE)
+        open(config_file, 'w+').close()
         return Config(dvc_dir)

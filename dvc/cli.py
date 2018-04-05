@@ -5,6 +5,7 @@ import sys
 import argparse
 from multiprocessing import cpu_count
 
+from dvc.logger import Logger
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
 from dvc.command.run import CmdRun
@@ -15,6 +16,7 @@ from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
+from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -142,6 +144,9 @@ def parse_args(argv=None):
                         'pull',
                         parents=[parent_cache_parser],
                         help='Pull data files from the cloud')
+    pull_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to pull from')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -149,6 +154,9 @@ def parse_args(argv=None):
                         'push',
                         parents=[parent_cache_parser],
                         help='Push data files to the cloud')
+    push_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to push to')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
@@ -156,6 +164,9 @@ def parse_args(argv=None):
                         'fetch',
                         parents=[parent_cache_parser],
                         help='Fetch data files from the cloud')
+    fetch_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to fetch from')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
@@ -167,7 +178,10 @@ def parse_args(argv=None):
                         '--cloud',
                         action='store_true',
                         default=False,
-                        help='Show status of a local cache compared to a cloud')
+                        help='Show status of a local cache compared to a remote repository')
+    status_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to compare local cache to')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
@@ -227,4 +241,45 @@ def parse_args(argv=None):
                         help='Option value')
     config_parser.set_defaults(func=CmdConfig)
 
-    return parser.parse_args(argv)
+
+    # Remote
+    remote_parser = subparsers.add_parser(
+                        'remote',
+                        parents=[parent_parser],
+                        help='Manage set of tracked repositories')
+
+    remote_subparsers = remote_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc remote CMD --help for command-specific help')
+
+    remote_add_parser = remote_subparsers.add_parser(
+                        'add',
+                        parents=[parent_parser],
+                        help='Add remote')
+    remote_add_parser.add_argument(
+                        'name',
+                        help='Name')
+    remote_add_parser.add_argument(
+                        'url',
+                        help='Url')
+    remote_add_parser.set_defaults(func=CmdRemoteAdd)
+
+
+    remote_remove_parser = remote_subparsers.add_parser(
+                        'remove',
+                        parents=[parent_parser],
+                        help='Remove remote')
+    remote_remove_parser.add_argument(
+                        'name',
+                        help='Name')
+    remote_remove_parser.set_defaults(func=CmdRemoteRemove)
+
+
+    args = parser.parse_args(argv)
+
+    if args.quiet and not args.verbose:
+        Logger.be_quiet()
+    elif not args.quiet and args.verbose:
+        Logger.be_verbose()
+
+    return args

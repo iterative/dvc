@@ -76,7 +76,8 @@ class Logger(object):
         str_exc = ': {}'.format(str(exc)) if exc else ""
 
         if exc and hasattr(exc, 'cause') and exc.cause:
-            cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause, exc.cause_tb)
+            cause_tb = exc.cause_tb if hasattr(exc, 'cause_tb') else None
+            cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause, cause_tb)
 
             str_tb = cause_str_tb
             str_exc = '{}{}'.format(str_exc, cause_str_exc)
