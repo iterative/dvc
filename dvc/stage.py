@@ -161,11 +161,17 @@ class Stage(object):
         deps = [x.dumpd(self.cwd) for x in self.deps]
         outs = [x.dumpd(self.cwd) for x in self.outs]
 
-        return {
-            Stage.PARAM_CMD: self.cmd,
-            Stage.PARAM_DEPS: deps,
-            Stage.PARAM_OUTS: outs,
-        }
+        ret = {}
+        if self.cmd:
+            ret[Stage.PARAM_CMD] = self.cmd
+
+        if len(deps):
+            ret[Stage.PARAM_DEPS] = deps
+
+        if len(outs):
+            ret[Stage.PARAM_OUTS] = outs
+
+        return ret
 
     def dump(self, fname=None):
         if not fname:
