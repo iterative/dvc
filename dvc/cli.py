@@ -277,9 +277,4 @@ def parse_args(argv=None):
 
     args = parser.parse_args(argv)
 
-    if args.quiet and not args.verbose:
-        Logger.be_quiet()
-    elif not args.quiet and args.verbose:
-        Logger.be_verbose()
-
     return args
