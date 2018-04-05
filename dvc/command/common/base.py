@@ -10,6 +10,14 @@ class CmdBase(object):
     def __init__(self, args):
         self.project = Project(self._find_root())
         self.args = args
+        self._set_loglevel(args)
+
+    @staticmethod
+    def _set_loglevel(args):
+        if args.quiet and not args.verbose:
+            Logger.be_quiet()
+        elif not args.quiet and args.verbose:
+            Logger.be_verbose()
 
     def _find_root(self):
         root = os.getcwd()
