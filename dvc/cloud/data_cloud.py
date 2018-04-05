@@ -36,6 +36,7 @@ class DataCloud(object):
     }
 
     def __init__(self, cache, config):
+        self._cache = cache
         self._config = config
 
         remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
@@ -43,11 +44,14 @@ class DataCloud(object):
             if config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, None):
                 # backward compatibility
                 Logger.warn('Using obsoleted config format. Consider updating.')
-                self.__init__compat(cache)
+                self._cloud = self.__init__compat()
             else:
                 self._cloud = None
             return
 
+        self._cloud = self._init_remote(remote)
+
+    def _init_remote(self, remote):
         section = Config.SECTION_REMOTE_FMT.format(remote)
         cloud_config = self._config.get(section, None)
         if not cloud_config:
@@ -59,9 +63,9 @@ class DataCloud(object):
         if not cloud_type:
             raise ConfigError("Unsupported scheme '{}' in '{}'".format(scheme, url))
 
-        self._init_cloud(cache, cloud_config, cloud_type)
+        return self._init_cloud(self._cache, cloud_config, cloud_type)
 
-    def __init__compat(self, cache):
+    def __init__compat(self):
         cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
         if cloud_type == '':
             self._cloud = None
@@ -73,15 +77,16 @@ class DataCloud(object):
         if not cloud_config:
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
 
-        self._init_cloud(cache, cloud_config, cloud_type)
+        return self._init_cloud(self._cache, cloud_config, cloud_type)
 
     def _init_cloud(self, cache, cloud_config, cloud_type):
         cloud_settings = self.get_cloud_settings(cache,
                                                  self._config,
                                                  cloud_config)
 
-        self._cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
-        self._cloud.sanity_check()
+        cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
+        cloud.sanity_check()
+        return cloud
 
     @staticmethod
     def get_cloud_settings(cache, config, cloud_config):
@@ -95,48 +100,54 @@ class DataCloud(object):
         cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
         return cloud_settings
 
-    def _collect(self, targets, jobs, local):
+    def _collect(self, cloud, targets, jobs, local):
         collected = set()
         pool = ThreadPool(processes=jobs)
         args = zip(targets, [local]*len(targets))
-        ret = pool.map(self._cloud.collect, args)
+        ret = pool.map(cloud.collect, args)
 
         for r in ret:
             collected |= set(r)
 
         return collected
 
-    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False):
+    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False, remote=None):
         """
         Process targets as data items in parallel.
         """
-        if not self._cloud:
+
+        if not remote:
+            cloud = self._cloud
+        else:
+            cloud = self._init_remote(remote)
+
+        if not cloud:
             return
 
-        self._cloud.connect()
+        cloud.connect()
 
         collected = set()
         if collect_local:
-            collected |= self._collect(targets, jobs, True)
+            collected |= self._collect(cloud, targets, jobs, True)
         if collect_cloud:
-            collected |= self._collect(targets, jobs, False)
+            collected |= self._collect(cloud, targets, jobs, False)
 
-        return map_progress(func, list(collected), jobs)
+        return map_progress(getattr(cloud, func), list(collected), jobs)
 
-    def push(self, targets, jobs=1):
+    def push(self, targets, jobs=1, remote=None):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.push, targets, jobs, collect_local=True)
+        return self._map_targets('push', targets, jobs, collect_local=True, remote=remote)
 
-    def pull(self, targets, jobs=1):
+    def pull(self, targets, jobs=1, remote=None):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.pull, targets, jobs, collect_cloud=True)
+        return self._map_targets('pull', targets, jobs, collect_cloud=True, remote=remote)
 
-    def status(self, targets, jobs=1):
+    def status(self, targets, jobs=1, remote=None):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        return self._map_targets(self._cloud.status, targets, jobs, True, True)
+        return self._map_targets('status', targets, jobs, True, True, remote=remote)

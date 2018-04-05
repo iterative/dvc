@@ -11,7 +11,7 @@ from dvc.exceptions import DvcException
 class ConfigError(DvcException):
     """ DVC config exception """
     def __init__(self, ex=None):
-        DvcException.__init__(self, 'Config file error', ex)
+        super(ConfigError, self).__init__('Config file error', ex)
 
 
 class Config(object):

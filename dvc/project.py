@@ -199,14 +199,14 @@ class Project(object):
             os.unlink(cache)
             self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
-    def push(self, target=None, jobs=1):
-        return self.cloud.push(self._used_cache(target), jobs)
+    def push(self, target=None, jobs=1, remote=None):
+        return self.cloud.push(self._used_cache(target), jobs, remote=remote)
 
-    def fetch(self, target=None, jobs=1):
-        return self.cloud.pull(self._used_cache(target), jobs)
+    def fetch(self, target=None, jobs=1, remote=None):
+        return self.cloud.pull(self._used_cache(target), jobs, remote=remote)
 
-    def pull(self, target=None, jobs=1):
-        ret = self.fetch(target, jobs)
+    def pull(self, target=None, jobs=1, remote=None):
+        ret = self.fetch(target, jobs, remote=remote)
         self.checkout()
         return ret
 
@@ -223,9 +223,9 @@ class Project(object):
 
         return status
 
-    def _cloud_status(self, target=None, jobs=1):
+    def _cloud_status(self, target=None, jobs=1, remote=None):
         status = {}
-        for target, ret in self.cloud.status(self._used_cache(target), jobs):
+        for target, ret in self.cloud.status(self._used_cache(target), jobs, remote=remote):
             if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
                 continue
 
@@ -241,9 +241,9 @@ class Project(object):
 
         return status
 
-    def status(self, target=None, jobs=1, cloud=False):
+    def status(self, target=None, jobs=1, cloud=False, remote=None):
         if cloud:
-            return self._cloud_status(target, jobs)
+            return self._cloud_status(target, jobs, remote=remote)
         return self._local_status(target)
 
     def graph(self):

@@ -144,6 +144,9 @@ def parse_args(argv=None):
                         'pull',
                         parents=[parent_cache_parser],
                         help='Pull data files from the cloud')
+    pull_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to pull from')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -151,6 +154,9 @@ def parse_args(argv=None):
                         'push',
                         parents=[parent_cache_parser],
                         help='Push data files to the cloud')
+    push_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to push to')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
@@ -158,6 +164,9 @@ def parse_args(argv=None):
                         'fetch',
                         parents=[parent_cache_parser],
                         help='Fetch data files from the cloud')
+    fetch_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to fetch from')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
@@ -169,7 +178,10 @@ def parse_args(argv=None):
                         '--cloud',
                         action='store_true',
                         default=False,
-                        help='Show status of a local cache compared to a cloud')
+                        help='Show status of a local cache compared to a remote repository')
+    status_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to compare local cache to')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
