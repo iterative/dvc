@@ -45,7 +45,7 @@ def should_test_gcp():
     if creds and os.getenv("GCP_CREDS"):
         if os.path.exists(creds):
             os.unlink(creds)
-        shutil.copyfile(self.GCP_CREDS_FILE, creds)
+        shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
         return True
 
     return False
