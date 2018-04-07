@@ -41,7 +41,11 @@ def should_test_gcp():
     if os.getenv("DVC_TEST_GCP") == "true":
         return True
 
-    if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
+    creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if creds and os.getenv("GCP_CREDS"):
+        if os.path.exists(creds):
+            os.unlink(creds)
+        shutil.copyfile(self.GCP_CREDS_FILE, creds)
         return True
 
     return False
@@ -181,9 +185,6 @@ class TestDataCloudGCP(TestDataCloudBase):
     def _setup_cloud(self):
         if not should_test_gcp():
             return
-
-        if os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and os.getenv("GCP_CREDS"):
-            shutil.copyfile(self.GCP_CREDS_FILE, os.getenv("GOOGLE_APPLICATION_CREDENTIALS"))
 
         repo = get_gcp_url()
 
