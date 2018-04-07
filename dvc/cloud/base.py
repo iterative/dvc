@@ -53,7 +53,7 @@ class DataCloudBase(object):
             if path:
                 Logger.warn('Using obsoleted config format. Consider updating.')
         else:
-            path = re.match(Config.SECTION_REMOTE_URL_REGEX, url).group(2)
+            path = re.match(Config.SECTION_REMOTE_URL_REGEX, url).group('storagepath')
 
         return path
 

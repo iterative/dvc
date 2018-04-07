@@ -1,10 +1,4 @@
 import re
-
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 from multiprocessing.pool import ThreadPool
 
 from dvc.cloud.instance_manager import CloudSettings
@@ -32,7 +26,7 @@ class DataCloud(object):
     SCHEME_MAP = {
         's3'    : 'aws',
         'gs'    : 'gcp',
-        ''      : 'local',
+        None    : 'local',
     }
 
     def __init__(self, cache, config):
@@ -58,7 +52,11 @@ class DataCloud(object):
             raise ConfigError("Can't find remote section '{}' in config".format(section))
 
         url = cloud_config[Config.SECTION_REMOTE_URL]
-        scheme = urlparse(url).scheme
+        res = re.match(Config.SECTION_REMOTE_URL_REGEX, url)
+        if not res:
+            raise ConfigError("Unknown format of url '{}'".format(url))
+
+        scheme = res.group('scheme')
         cloud_type = self.SCHEME_MAP.get(scheme, None)
         if not cloud_type:
             raise ConfigError("Unsupported scheme '{}' in '{}'".format(scheme, url))

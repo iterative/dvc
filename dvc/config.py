@@ -69,7 +69,7 @@ class Config(object):
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
-    SECTION_REMOTE_URL_REGEX = r'^\s*(s3://|gs://|/)?(.*)\s*$'
+    SECTION_REMOTE_URL_REGEX = r'^\s*(((?P<scheme>s3|gs|..+):/*)|/*|.\\*)?(?P<storagepath>.*)\s*$'
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: schema.Regex(SECTION_REMOTE_URL_REGEX),
         schema.Optional(SECTION_AWS_REGION): str,
