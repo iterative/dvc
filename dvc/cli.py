@@ -16,7 +16,7 @@ from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
-from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove
+from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -273,6 +273,28 @@ def parse_args(argv=None):
                         'name',
                         help='Name')
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
+
+
+    remote_modify_parser = remote_subparsers.add_parser(
+                        'modify',
+                        parents=[parent_parser],
+                        help='Modify remote')
+    remote_modify_parser.add_argument(
+                        'name',
+                        help='Name')
+    remote_modify_parser.add_argument(
+                        'option',
+                        help='Option')
+    remote_modify_parser.add_argument(
+                        'value',
+                        nargs='?',
+                        help='Value')
+    remote_modify_parser.add_argument('-u',
+                        '--unset',
+                        default=False,
+                        action='store_true',
+                        help='Unset option')
+    remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
 
     args = parser.parse_args(argv)

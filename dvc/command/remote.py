@@ -13,3 +13,10 @@ class CmdRemoteRemove(CmdConfig):
     def run(self):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
         return self.unset(section, Config.SECTION_REMOTE_URL)
+
+
+class CmdRemoteModify(CmdConfig):
+    def run(self):
+        section = Config.SECTION_REMOTE_FMT.format(self.args.name)
+        self.args.name = '{}.{}'.format(section, self.args.option)
+        return super(CmdRemoteModify, self).run()
