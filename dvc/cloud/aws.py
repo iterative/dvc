@@ -47,6 +47,8 @@ def create_cb(name, offset=0, multipart_total=None):
 
 class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
+    REGEX = r'^s3://(?P<path>.*)$'
+
     def __init__(self, cloud_settings):
         super(DataCloudAWS, self).__init__(cloud_settings)
         self._aws_creds = AWSCredentials(cloud_settings.cloud_config)

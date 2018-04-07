@@ -12,6 +12,8 @@ from dvc.progress import progress
 
 class DataCloudGCP(DataCloudBase):
     """ DataCloud class for Google Cloud Platform """
+    REGEX = r'^gs://(?P<path>.*)$'
+
     @property
     def gc_project_name(self):
         """

@@ -40,7 +40,7 @@ class Project(object):
         self.cache = Cache(self.dvc_dir)
         self.state = State(self.root_dir, self.dvc_dir)
         self.config = Config(self.dvc_dir)
-        self.logger = Logger(self.config._config)
+        self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cloud = DataCloud(self.cache, self.config._config)
 
     @staticmethod

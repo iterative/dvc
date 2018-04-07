@@ -33,9 +33,33 @@ class DataCloudError(DvcException):
 
 class DataCloudBase(object):
     """ Base class for DataCloud """
+
+    REGEX = r''
+
     def __init__(self, cloud_settings):
         self._cloud_settings = cloud_settings
 
+    @property
+    def url(self):
+        config = self._cloud_settings.cloud_config
+        return config.get(Config.SECTION_REMOTE_URL, None)
+
+    @classmethod
+    def match(cls, url):
+        return re.match(cls.REGEX, url)
+
+    def group(self, group):
+        return self.match(self.url).group(group)
+
+    @property
+    def path(self):
+        return self.group('path')
+
+    @classmethod
+    def supported(cls, url):
+        return cls.match(url) != None
+
+    # backward compatibility
     @property
     def storage_path(self):
         """ get storage path
@@ -46,14 +70,12 @@ class DataCloudBase(object):
         if self._cloud_settings.global_storage_path:
             return self._cloud_settings.global_storage_path
 
-        config = self._cloud_settings.cloud_config
-        url = config.get(Config.SECTION_REMOTE_URL, None)
-        if not url:
-            path = config.get(Config.SECTION_CORE_STORAGEPATH, None)
+        if not self.url:
+            path = self._cloud_settings.cloud_config.get(Config.SECTION_CORE_STORAGEPATH, None)
             if path:
                 Logger.warn('Using obsoleted config format. Consider updating.')
         else:
-            path = re.match(Config.SECTION_REMOTE_URL_REGEX, url).group('storagepath')
+            path = self.path
 
         return path
 

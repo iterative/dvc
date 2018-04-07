@@ -20,6 +20,8 @@ class DataCloudLOCAL(DataCloudBase):
     """
     Driver for local storage.
     """
+    REGEX = r'^(?P<path>(/+|.:\\+).*)$'
+
     def cache_file_key(self, path):
         return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.cache_dir)
 
