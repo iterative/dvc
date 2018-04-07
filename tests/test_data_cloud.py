@@ -219,10 +219,11 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertEqual(ret, 0)
 
     def _test_cloud(self, remote=None):
+        args = ['-j', '2']
         if remote:
-            remote_arg = ['-r', remote]
+            args += ['-r', remote]
         else:
-            remote_arg = []
+            args += []
 
         stage = self.dvc.add(self.FOO)
         cache = stage.outs[0].cache
@@ -231,27 +232,27 @@ class TestDataCloudCLIBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache
 
         #FIXME check status output
-        self.main(['status', '-c'] + remote_arg)
+        self.main(['status', '-c'] + args)
 
-        self.main(['push'] + remote_arg)
+        self.main(['push'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(['status', '-c'] + remote_arg)
+        self.main(['status', '-c'] + args)
 
         shutil.rmtree(self.dvc.cache.cache_dir)
 
-        self.main(['status', '-c'] + remote_arg)
+        self.main(['status', '-c'] + args)
 
-        self.main(['pull'] + remote_arg)
+        self.main(['pull'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(['status', '-c'] + remote_arg)
+        self.main(['status', '-c'] + args)
 
     def should_test(self):
         return True
