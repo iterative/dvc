@@ -25,7 +25,7 @@ TEST_AWS_REPO_REGION = 'us-east-2'
 TEST_GCP_REPO_BUCKET = 'dvc-test'
 
 
-def should_test_aws():
+def _should_test_aws():
     dvc_test_aws = os.getenv("DVC_TEST_AWS")
     if dvc_test_aws == "true":
         return True
@@ -38,7 +38,7 @@ def should_test_aws():
     return False
 
 
-def should_test_gcp():
+def _should_test_gcp():
     if os.getenv("DVC_TEST_GCP") == "true":
         return True
 
@@ -52,7 +52,7 @@ def should_test_gcp():
     return False
 
 
-def should_test_ssh():
+def _should_test_ssh():
     if os.getenv("DVC_TEST_SSH") == "true":
         return True
 
@@ -60,15 +60,7 @@ def should_test_ssh():
     if os.name == 'nt':
         return False
 
-    #FIXME: this is ugly
-    if os.getenv('TRAVIS') == 'true':
-        os.system('ssh-keygen -t dsa -N "" -C "test key" -f mykey')
-        os.system('mkdir -p ~/.ssh')
-        os.system('cp mykey ~/.ssh/id_rsa')
-        os.system('cp mykey.pub ~/.ssh/id_rsa.pub')
-        os.system('cat mykey.pub >> ~/.ssh/authorized_keys')
-        os.system('ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts')
-        assert os.system('ssh 127.0.0.1 ls') == 0
+    assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
 
     return True
 
@@ -190,7 +182,7 @@ class TestDataCloudBase(TestDvc):
 
 class TestDataCloudAWS(TestDataCloudBase):
     def _setup_cloud(self):
-        if not should_test_aws():
+        if not _should_test_aws():
             return
 
         repo = get_aws_url()
@@ -203,13 +195,13 @@ class TestDataCloudAWS(TestDataCloudBase):
         self.cloud = DataCloudAWS(cloud_settings)
 
     def test(self):
-        if should_test_aws():
+        if _should_test_aws():
             self._test_cloud()
 
 
 class TestDataCloudGCP(TestDataCloudBase):
     def _setup_cloud(self):
-        if not should_test_gcp():
+        if not _should_test_gcp():
             return
 
         repo = get_gcp_url()
@@ -221,7 +213,7 @@ class TestDataCloudGCP(TestDataCloudBase):
         self.cloud = DataCloudGCP(cloud_settings)
 
     def test(self):
-        if should_test_gcp():
+        if _should_test_gcp():
             self._test_cloud()
 
 
@@ -280,7 +272,7 @@ class TestDataCloudCLIBase(TestDvc):
 
         self.main(['status', '-c'] + args)
 
-    def should_test(self):
+    def _should_test(self):
         return True
 
     def _test(self):
@@ -290,7 +282,7 @@ class TestDataCloudCLIBase(TestDvc):
         pass
 
     def test(self):
-        if self.should_test():
+        if self._should_test():
             self._test()
             self._test_compat()
 
@@ -312,8 +304,8 @@ class TestDataCloudLOCALCLI(TestDataCloudCLIBase):
 
 
 class TestDataCloudSSHCLI(TestDataCloudCLIBase):
-    def should_test(self):
-        return should_test_ssh()
+    def _should_test(self):
+        return _should_test_ssh()
 
     def _test_compat(self):
         # We do not support ssh in legacy mode
@@ -328,8 +320,8 @@ class TestDataCloudSSHCLI(TestDataCloudCLIBase):
 
 
 class TestDataCloudAWSCLI(TestDataCloudCLIBase):
-    def should_test(self):
-        return should_test_aws()
+    def _should_test(self):
+        return _should_test_aws()
 
     def _test_compat(self):
         storagepath = get_aws_storagepath()
@@ -349,8 +341,8 @@ class TestDataCloudAWSCLI(TestDataCloudCLIBase):
 
 
 class TestDataCloudGCPCLI(TestDataCloudCLIBase):
-    def should_test(self):
-        return should_test_gcp()
+    def _should_test(self):
+        return _should_test_gcp()
 
     def _test_compat(self):
         storagepath = get_gcp_storagepath()
