@@ -22,6 +22,7 @@ install_requires = [
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
     "schema>=0.6.7",
+    "paramiko>=2.4.1",
 ]
 
 setup(

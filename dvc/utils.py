@@ -74,6 +74,14 @@ def copyfile(src, dest, no_progress_bar=False):
     fdest.close()
 
 
+def wrap(func, t):
+    try:
+        return func(t)
+    except Exception as exc:
+        Logger.error('wrap', exc)
+        raise
+
+
 def map_progress(func, targets, n_threads):
     """
     Process targets in multi-threaded mode with progress bar
@@ -82,8 +90,10 @@ def map_progress(func, targets, n_threads):
     pool = ThreadPool(processes=n_threads)
     ret = []
 
+    wrapper = lambda t: wrap(func, t)
+
     try:
-        ret = pool.map(func, targets)
+        ret = pool.map(wrapper, targets)
     except Exception as exc:
         raise
     finally:

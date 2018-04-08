@@ -205,3 +205,6 @@ class DataCloudBase(object):
 
     def connect(self):
         pass
+
+    def disconnect(self):
+        pass
