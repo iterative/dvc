@@ -14,6 +14,11 @@ class ConfigError(DvcException):
         super(ConfigError, self).__init__('Config file error', ex)
 
 
+def supported_url(url):
+    from dvc.cloud.data_cloud import DataCloud
+    return DataCloud.supported(url) != None
+
+
 class Config(object):
     CONFIG = 'config'
 
@@ -28,7 +33,7 @@ class Config(object):
     SECTION_CORE_STORAGEPATH = 'storagepath'
 
     SECTION_CORE_SCHEMA = {
-        schema.Optional(SECTION_CORE_LOGLEVEL, default='info'): SECTION_CORE_LOGLEVEL_SCHEMA,
+        schema.Optional(SECTION_CORE_LOGLEVEL, default='info'): schema.And(str, schema.Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA),
         schema.Optional(SECTION_CORE_REMOTE, default=''): schema.And(str, schema.Use(str.lower)),
 
         # backward compatibility
@@ -69,9 +74,8 @@ class Config(object):
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
-    SECTION_REMOTE_URL_REGEX = r'^\s*(((?P<scheme>s3|gs|..+):/*)|/*|.\\*)?(?P<storagepath>.*)\s*$'
     SECTION_REMOTE_SCHEMA = {
-        SECTION_REMOTE_URL: schema.Regex(SECTION_REMOTE_URL_REGEX),
+        SECTION_REMOTE_URL: supported_url,
         schema.Optional(SECTION_AWS_REGION): str,
         schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,

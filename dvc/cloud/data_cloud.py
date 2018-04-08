@@ -4,9 +4,8 @@ from multiprocessing.pool import ThreadPool
 from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.config import ConfigError
+from dvc.config import Config, ConfigError
 from dvc.utils import map_progress
-from dvc.config import Config
 
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
@@ -21,12 +20,6 @@ class DataCloud(object):
         'aws'   : DataCloudAWS,
         'gcp'   : DataCloudGCP,
         'local' : DataCloudLOCAL,
-    }
-
-    SCHEME_MAP = {
-        's3'    : 'aws',
-        'gs'    : 'gcp',
-        None    : 'local',
     }
 
     def __init__(self, cache, config):
@@ -45,6 +38,13 @@ class DataCloud(object):
 
         self._cloud = self._init_remote(remote)
 
+    @staticmethod
+    def supported(url):
+        for cloud in DataCloud.CLOUD_MAP.values():
+            if cloud.supported(url):
+                return cloud
+        return None
+
     def _init_remote(self, remote):
         section = Config.SECTION_REMOTE_FMT.format(remote)
         cloud_config = self._config.get(section, None)
@@ -52,28 +52,25 @@ class DataCloud(object):
             raise ConfigError("Can't find remote section '{}' in config".format(section))
 
         url = cloud_config[Config.SECTION_REMOTE_URL]
-        res = re.match(Config.SECTION_REMOTE_URL_REGEX, url)
-        if not res:
-            raise ConfigError("Unknown format of url '{}'".format(url))
-
-        scheme = res.group('scheme')
-        cloud_type = self.SCHEME_MAP.get(scheme, None)
+        cloud_type = self.supported(url)
         if not cloud_type:
-            raise ConfigError("Unsupported scheme '{}' in '{}'".format(scheme, url))
+            raise ConfigError("Unsupported url '{}'".format(url))
 
         return self._init_cloud(self._cache, cloud_config, cloud_type)
 
     def __init__compat(self):
-        cloud_type = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
-        if cloud_type == '':
+        cloud_name = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
+        if cloud_name == '':
             self._cloud = None
             return
-        elif cloud_type not in self.CLOUD_MAP.keys():
-            raise ConfigError('Wrong cloud type %s specified' % cloud_type)
 
-        cloud_config = self._config.get(cloud_type, None)
+        cloud_type = self.CLOUD_MAP.get(cloud_name, None)
+        if not cloud_type:
+            raise ConfigError('Wrong cloud type %s specified' % cloud_name)
+
+        cloud_config = self._config.get(cloud_name, None)
         if not cloud_config:
-            raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_type)
+            raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_name)
 
         return self._init_cloud(self._cache, cloud_config, cloud_type)
 
@@ -82,7 +79,7 @@ class DataCloud(object):
                                                  self._config,
                                                  cloud_config)
 
-        cloud = self.CLOUD_MAP[cloud_type](cloud_settings)
+        cloud = cloud_type(cloud_settings)
         cloud.sanity_check()
         return cloud
 

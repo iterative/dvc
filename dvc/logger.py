@@ -3,7 +3,6 @@ import logging
 import colorama
 import traceback
 
-from dvc.config import Config
 
 colorama.init()
 
@@ -25,13 +24,12 @@ class Logger(object):
         'error': colorama.Fore.RED
     }
 
-    def __init__(self, config=None):
-        if config:
-            level = config[Config.SECTION_CORE].get('LogLevel', None)
-            Logger.set_level(level)
+    def __init__(self, loglevel=None):
+        if loglevel:
+            Logger.set_level(loglevel)
 
     @staticmethod
-    def init(config=None):
+    def init():
         sh = logging.StreamHandler(sys.stdout)
         sh.setFormatter(logging.Formatter(Logger.FMT))
         sh.setLevel(logging.DEBUG)

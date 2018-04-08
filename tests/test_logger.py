@@ -9,12 +9,10 @@ from tests.basic_env import TestDvc
 
 class TestLogger(TestDvc):
     def test_config(self):
-        config1 = {Config.SECTION_CORE: {'LogLevel': 'debug'}}
-        Logger(config1)
+        Logger('debug')
         self.assertEqual(Logger.logger().getEffectiveLevel(), logging.DEBUG)
 
-        config2 = {Config.SECTION_CORE: {'LogLevel': 'error'}}
-        Logger(config2)
+        Logger('error')
         self.assertEqual(Logger.logger().getEffectiveLevel(), logging.ERROR)
 
     def test_set_level(self):
