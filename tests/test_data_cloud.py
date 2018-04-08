@@ -70,7 +70,7 @@ def should_test_ssh():
         os.system('ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts')
         assert os.system('ssh 127.0.0.1 ls') == 0
 
-    return False
+    return True
 
 
 def get_local_storagepath():
