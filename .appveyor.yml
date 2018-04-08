@@ -61,7 +61,7 @@ before_test:
   - pip install -r test-requirements.txt
 
 test_script:
-  - nosetests --cover-inclusive --cover-erase --cover-package=dvc --with-coverage
+  - python -mtests
 
 after_test:
   - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov

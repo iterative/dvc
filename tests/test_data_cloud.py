@@ -2,6 +2,7 @@ import os
 import stat
 import uuid
 import shutil
+import getpass
 import tempfile
 
 from dvc.main import main
@@ -51,12 +52,37 @@ def should_test_gcp():
     return False
 
 
+def should_test_ssh():
+    if os.getenv("DVC_TEST_SSH") == "true":
+        return True
+
+    #FIXME: enable on windows
+    if os.name == 'nt':
+        return False
+
+    #FIXME: this is ugly
+    if os.getenv('TRAVIS') == 'true':
+        os.system('ssh-keygen -t dsa -N "" -C "test key" -f mykey')
+        os.system('mkdir -p ~/.ssh')
+        os.system('cp mykey ~/.ssh/id_rsa')
+        os.system('cp mykey.pub ~/.ssh/id_rsa.pub')
+        os.system('cat mykey.pub >> ~/.ssh/authorized_keys')
+        os.system('ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts')
+        assert os.system('ssh 127.0.0.1 ls') == 0
+
+    return False
+
+
 def get_local_storagepath():
     return tempfile.mkdtemp()
 
 
 def get_local_url():
     return get_local_storagepath()
+
+
+def get_ssh_url():
+    return '{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -279,6 +305,22 @@ class TestDataCloudLOCALCLI(TestDataCloudCLIBase):
 
     def _test(self):
         url = get_local_url()
+
+        self.main(['remote', 'add', TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestDataCloudSSHCLI(TestDataCloudCLIBase):
+    def should_test(self):
+        return should_test_ssh()
+
+    def _test_compat(self):
+        # We do not support ssh in legacy mode
+        pass
+
+    def _test(self):
+        url = get_ssh_url()
 
         self.main(['remote', 'add', TEST_REMOTE, url])
 

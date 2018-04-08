@@ -3,7 +3,7 @@
 set -x
 set -e
 
-./unittests.sh
+python -mtests
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" && \
       "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then

@@ -9,6 +9,7 @@ from dvc.utils import map_progress
 
 from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
+from dvc.cloud.ssh import DataCloudSSH
 from dvc.cloud.local import DataCloudLOCAL
 from dvc.cloud.base import DataCloudBase
 
@@ -19,6 +20,7 @@ class DataCloud(object):
     CLOUD_MAP = {
         'aws'   : DataCloudAWS,
         'gcp'   : DataCloudGCP,
+        'ssh'   : DataCloudSSH,
         'local' : DataCloudLOCAL,
     }
 
@@ -127,7 +129,11 @@ class DataCloud(object):
         if collect_cloud:
             collected |= self._collect(cloud, targets, jobs, False)
 
-        return map_progress(getattr(cloud, func), list(collected), jobs)
+        ret = map_progress(getattr(cloud, func), list(collected), jobs)
+
+        cloud.disconnect()
+
+        return ret
 
     def push(self, targets, jobs=1, remote=None):
         """
