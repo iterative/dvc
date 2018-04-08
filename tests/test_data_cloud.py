@@ -60,15 +60,6 @@ def _should_test_ssh():
     if os.name == 'nt':
         return False
 
-    #FIXME: this is ugly
-    if os.getenv('TRAVIS') == 'true':
-        os.system('ssh-keygen -t dsa -N "" -C "test key" -f mykey')
-        os.system('mkdir -p ~/.ssh')
-        os.system('cp mykey ~/.ssh/id_rsa')
-        os.system('cp mykey.pub ~/.ssh/id_rsa.pub')
-        os.system('cat mykey.pub >> ~/.ssh/authorized_keys')
-        os.system('ssh-keyscan 127.0.0.1 >> ~/.ssh/known_hosts')
-
     assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
 
     return True
