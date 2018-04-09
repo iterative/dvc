@@ -104,6 +104,9 @@ class State(object):
         return str(System.inode(path))
 
     def update(self, path, dump=True):
+        if not os.path.exists(path):
+            return None
+
         mtime = self.mtime(path)
         inode = self.inode(path)
 
