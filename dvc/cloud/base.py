@@ -31,6 +31,14 @@ class DataCloudError(DvcException):
         super(DataCloudError, self).__init__('Data sync error: {}'.format(msg))
 
 
+class CloudSettings(object):
+    def __init__(self, cache=None, state=None, global_storage_path=None, cloud_config=None):
+        self.cache = cache
+        self.state = state
+        self.cloud_config = cloud_config
+        self.global_storage_path = global_storage_path
+
+
 class DataCloudBase(object):
     """ Base class for DataCloud """
 
@@ -145,6 +153,13 @@ class DataCloudBase(object):
             ret.append(cache)
 
         return ret
+
+    def _cmp_checksum(self, blob, fname):
+        md5 = self._cloud_settings.cache.path_to_md5(fname)
+        if self._cloud_settings.state.changed(fname, md5=md5):
+            return False
+
+        return True
 
     def push(self, path):
         key = self._get_key(path)

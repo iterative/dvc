@@ -25,9 +25,6 @@ class DataCloudLOCAL(DataCloudBase):
     def cache_file_key(self, path):
         return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.cache_dir)
 
-    def _cmp_checksum(self, key, path):
-        return filecmp.cmp(path, key.path)
-
     def _get_key(self, path):
         key_name = self.cache_file_key(path)
         key = LocalKey(self.storage_path, key_name)

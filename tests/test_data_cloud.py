@@ -8,8 +8,7 @@ import tempfile
 from dvc.main import main
 from dvc.config import Config, ConfigError
 from dvc.cloud.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudGCP
-from dvc.cloud.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
-from dvc.cloud.instance_manager import CloudSettings
+from dvc.cloud.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED, CloudSettings
 
 from tests.basic_env import TestDvc
 
@@ -95,7 +94,7 @@ def get_gcp_url():
 
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
-        cloud = DataCloud(self.dvc.cache, config)
+        cloud = DataCloud(cache=self.dvc.cache, state=self.dvc.state, config=config)
         self.assertIsInstance(cloud._cloud, cl)
 
     def test(self):
@@ -109,7 +108,7 @@ class TestDataCloud(TestDvc):
         with self.assertRaises(ConfigError) as cx:
             config = TEST_CONFIG
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
-            DataCloud(self.dvc.cache, config)
+            DataCloud(cache=self.dvc.cache, state=self.dvc.state, config=config)
 
 
 class TestDataCloudBase(TestDvc):
@@ -191,7 +190,9 @@ class TestDataCloudAWS(TestDataCloudBase):
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][Config.SECTION_AWS_REGION] = TEST_AWS_REPO_REGION
-        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
+        cloud_settings = CloudSettings(cache=self.dvc.cache,
+                                       state=self.dvc.state,
+                                       cloud_config=config[TEST_SECTION])
         self.cloud = DataCloudAWS(cloud_settings)
 
     def test(self):
@@ -209,7 +210,9 @@ class TestDataCloudGCP(TestDataCloudBase):
         # Setup cloud
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
+        cloud_settings = CloudSettings(cache=self.dvc.cache,
+                                       state=self.dvc.state,
+                                       cloud_config=config[TEST_SECTION])
         self.cloud = DataCloudGCP(cloud_settings)
 
     def test(self):
@@ -223,7 +226,9 @@ class TestDataCloudLOCAL(TestDataCloudBase):
 
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = self.dname
-        cloud_settings = CloudSettings(self.dvc.cache, None, config[TEST_SECTION])
+        cloud_settings = CloudSettings(cache=self.dvc.cache,
+                                       state=self.dvc.state,
+                                       cloud_config=config[TEST_SECTION])
         self.cloud = DataCloudLOCAL(cloud_settings)
 
     def test(self):

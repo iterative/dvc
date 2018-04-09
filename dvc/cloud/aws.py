@@ -17,7 +17,6 @@ from dvc.logger import Logger
 from dvc.progress import progress
 from dvc.cloud.credentials_aws import AWSCredentials
 from dvc.cloud.base import DataCloudError, DataCloudBase
-from dvc.utils import file_md5
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -97,27 +96,6 @@ class DataCloudAWS(DataCloudBase):
         self.bucket = conn.lookup(self.storage_bucket)
         if self.bucket is None:
             raise DataCloudError('Storage path {} is not setup correctly'.format(self.storage_bucket))
-
-    @staticmethod
-    def _cmp_checksum(key, fname):
-        """
-        Verify local and remote checksums. Used 'dvc-md5' metadata if supported
-        or falls back to etag.
-        """
-
-        # Calling get_key() once more to avoid empty metadata.
-        # See http://blog.bidiuk.com/2014/02/get-amazon-s3-metadata-in-python-using-boto/
-        key = key.bucket.get_key(key.name)
-        md5_cloud = key.metadata.get('dvc-md5', None)
-        md5_local = file_md5(fname)[0]
-
-        if md5_cloud == None:
-            md5_cloud = key.etag[1:-1]
-
-        if md5_cloud == md5_local:
-            return True
-
-        return False
 
     @staticmethod
     def _upload_tracker(fname):
@@ -221,10 +199,7 @@ class DataCloudAWS(DataCloudBase):
         """
         Create multipart upload and save info to tracker file.
         """
-        # AWS doesn't provide easilly accessible md5 for multipart
-        # objects, so we have to store our own md5 sum to use later.
-        metadata = {'dvc-md5' : str(file_md5(fname)[0])}
-        multipart = key.bucket.initiate_multipart_upload(key.name, metadata=metadata)
+        multipart = key.bucket.initiate_multipart_upload(key.name)
         self._write_upload_tracker(fname, multipart.id)
         return multipart
 
