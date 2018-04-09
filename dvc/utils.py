@@ -28,6 +28,12 @@ def file_md5(fname):
         return (None, None)
 
 
+def bytes_md5(byts):
+    hasher = hashlib.md5()
+    hasher.update(byts)
+    return hasher.hexdigest()
+
+
 def cached_property(func):
     '''A decorator for caching properties in classes.'''
     def get(self):

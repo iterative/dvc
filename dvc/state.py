@@ -1,11 +1,11 @@
 import os
 import json
 import nanotime
-from checksumdir import dirhash
+import threading
 
 from dvc.system import System
 from dvc.output import Output
-from dvc.utils import file_md5
+from dvc.utils import file_md5, bytes_md5
 from dvc.exceptions import DvcException
 
 
@@ -46,19 +46,43 @@ class State(object):
         self.dvc_dir = dvc_dir
         self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
         self._db = self.load()
+        self._lock = threading.Lock()
 
     @staticmethod
     def init(root_dir, dvc_dir):
         return State(root_dir, dvc_dir)
 
+    def collect_dir(self, dname):
+        dir_info = []
+
+        for root, dirs, files in os.walk(dname):
+            for fname in files:
+                path = os.path.join(root, fname)
+                relpath = os.path.relpath(path, dname)
+
+                md5 = self.update(path, dump=False)
+                dir_info.append({Output.PARAM_RELPATH: relpath, Output.PARAM_MD5: md5})
+
+        self.dump()
+
+        return dir_info
+
     def compute_md5(self, path):
         if os.path.isdir(path):
-            return dirhash(path, hashfunc='md5') + Output.MD5_DIR_SUFFIX
+            dir_info = self.collect_dir(path)
+            byts = json.dumps(dir_info, sort_keys=True).encode('utf-8')
+            md5 = bytes_md5(byts)
+            return md5 + Output.MD5_DIR_SUFFIX
         else:
             return file_md5(path)[0]
 
     def changed(self, path, md5):
-        return self.update(path) != md5
+        actual = self.update(path)
+
+        if not md5 or not actual:
+            return True
+
+        return actual.split('.')[0] != md5.split('.')[0]
 
     def load(self):
         if not os.path.isfile(self.state_file):
@@ -90,15 +114,18 @@ class State(object):
         md5 = self.compute_md5(path)
         state = StateEntry(md5, mtime)
         d = state.dumpd()
-        self._db[inode] = d
 
-        if dump:
-            self.dump()
+        with self._lock:
+            self._db[inode] = d
+
+            if dump:
+                self.dump()
 
         return md5
 
     def _get(self, inode, mtime):
-        d = self._db.get(inode, None)
+        with self._lock:
+            d = self._db.get(inode, None)
         if not d:
             return None
 

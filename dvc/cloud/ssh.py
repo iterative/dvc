@@ -64,16 +64,6 @@ class DataCloudSSH(DataCloudBase):
                 raise
         return False
 
-    def _cmp_checksum(self, key, path):
-        #FIXME actually compare md5
-        path_exists = os.path.exists(path)
-        key_exists = self._isfile_remote(key.path)
-
-        if path_exists and key_exists:
-            return True
-
-        return False
-
     def _get_key(self, path):
         key_name = self.cache_file_key(path)
         key = SSHKey(self.path, key_name)

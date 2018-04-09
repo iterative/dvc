@@ -1,7 +1,6 @@
 import re
 from multiprocessing.pool import ThreadPool
 
-from dvc.cloud.instance_manager import CloudSettings
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import Config, ConfigError
@@ -11,7 +10,7 @@ from dvc.cloud.aws import DataCloudAWS
 from dvc.cloud.gcp import DataCloudGCP
 from dvc.cloud.ssh import DataCloudSSH
 from dvc.cloud.local import DataCloudLOCAL
-from dvc.cloud.base import DataCloudBase
+from dvc.cloud.base import DataCloudBase, CloudSettings
 
 
 class DataCloud(object):
@@ -24,9 +23,10 @@ class DataCloud(object):
         'local' : DataCloudLOCAL,
     }
 
-    def __init__(self, cache, config):
+    def __init__(self, cache=None, config=None, state=None):
         self._cache = cache
         self._config = config
+        self._state = state
 
         remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
         if remote == '':
@@ -58,7 +58,7 @@ class DataCloud(object):
         if not cloud_type:
             raise ConfigError("Unsupported url '{}'".format(url))
 
-        return self._init_cloud(self._cache, cloud_config, cloud_type)
+        return self._init_cloud(cloud_config, cloud_type)
 
     def __init__compat(self):
         cloud_name = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_CLOUD, '').strip().lower()
@@ -74,28 +74,21 @@ class DataCloud(object):
         if not cloud_config:
             raise ConfigError('Can\'t find cloud section \'[%s]\' in config' % cloud_name)
 
-        return self._init_cloud(self._cache, cloud_config, cloud_type)
+        return self._init_cloud(cloud_config, cloud_type)
 
-    def _init_cloud(self, cache, cloud_config, cloud_type):
-        cloud_settings = self.get_cloud_settings(cache,
-                                                 self._config,
-                                                 cloud_config)
+    def _init_cloud(self, cloud_config, cloud_type):
+        global_storage_path = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_STORAGEPATH, None)
+        if global_storage_path:
+            Logger.warn('Using obsoleted config format. Consider updating.')
+
+        cloud_settings = CloudSettings(cache=self._cache,
+                                       state=self._state,
+                                       global_storage_path=global_storage_path,
+                                       cloud_config=cloud_config)
 
         cloud = cloud_type(cloud_settings)
         cloud.sanity_check()
         return cloud
-
-    @staticmethod
-    def get_cloud_settings(cache, config, cloud_config):
-        """
-        Obtain cloud settings from config.
-        """
-        global_storage_path = config[Config.SECTION_CORE].get(Config.SECTION_CORE_STORAGEPATH, None)
-        if global_storage_path:
-            Logger.warn('Using obsoleted config format. Consider updating.')
-
-        cloud_settings = CloudSettings(cache, global_storage_path, cloud_config)
-        return cloud_settings
 
     def _collect(self, cloud, targets, jobs, local):
         collected = set()

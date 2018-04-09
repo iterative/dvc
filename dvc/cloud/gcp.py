@@ -6,7 +6,6 @@ from google.cloud import storage as gc
 from dvc.logger import Logger
 from dvc.config import Config, ConfigError
 from dvc.cloud.base import DataCloudError, DataCloudBase
-from dvc.utils import file_md5
 from dvc.progress import progress
 
 
@@ -27,19 +26,6 @@ class DataCloudGCP(DataCloudBase):
         if not self.bucket.exists():
             raise DataCloudError('sync up: google cloud bucket {} '
                                  'doesn\'t exist'.format(self.storage_bucket))
-
-    @staticmethod
-    def _cmp_checksum(blob, fname):
-        """
-        Verify local and remote checksums.
-        """
-        md5 = file_md5(fname)[1]
-        b64_encoded_md5 = base64.b64encode(md5).decode() if md5 else None
-
-        if blob.md5_hash == b64_encoded_md5:
-            return True
-
-        return False
 
     def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
