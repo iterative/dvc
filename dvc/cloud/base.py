@@ -1,7 +1,6 @@
 import os
 import re
 import tempfile
-from checksumdir import dirhash
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException

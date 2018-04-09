@@ -5,7 +5,6 @@ import shutil
 import schema
 import posixpath
 import ntpath
-from checksumdir import dirhash
 
 from dvc.system import System
 from dvc.utils import file_md5
@@ -195,8 +194,8 @@ class Output(Dependency):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
     def _changed_cache(self, cache):
-        md5 = self.project.state.update(cache)
-        if md5 != self.project.cache.path_to_md5(cache):
+        md5 = self.project.cache.path_to_md5(cache)
+        if self.project.state.changed(cache, md5=md5):
             self.project.logger.warn('Corrupted cache file {}'.format(os.path.relpath(cache)))
             os.unlink(cache)
             return True
@@ -213,24 +212,12 @@ class Output(Dependency):
         return True
 
     def _changed_dir(self):
-        if not os.path.isdir(self.path) or not os.path.isfile(self.cache):
-            return True
+        if os.path.isdir(self.path) and \
+           os.path.isfile(self.cache) and \
+           not self._changed_cache(self.cache):
+            return False
 
-        dir_info = self._collect_dir() # slow!
-        dir_info_cached = self.load_dir_cache(self.cache) # slow. why?
-
-        if not self.are_dir_info_equal(dir_info, dir_info_cached):
-            return True
-
-        return False
-
-    @staticmethod
-    def are_dir_info_equal(dir_info1, dir_info2):
-        return Output.dir_info_dict(dir_info1) == Output.dir_info_dict(dir_info2)
-
-    @staticmethod
-    def dir_info_dict(dir_info):
-        return {i['relpath']: i['md5'] for i in dir_info}
+        return True
 
     def changed(self):
         if not self.use_cache:
@@ -330,24 +317,9 @@ class Output(Dependency):
             path = os.path.join(self.path, relpath)
             self.hardlink(cache, path)
 
-    def _collect_dir(self):
-        dir_info = []
-
-        for root, dirs, files in os.walk(self.path):
-            for fname in files:
-                path = os.path.join(root, fname)
-                relpath = os.path.relpath(path, self.path)
-
-                md5 = self.project.state.update(path, dump=False)
-                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
-
-        self.project.state.dump()
-
-        return dir_info
-
     def _save_dir(self):
         dname = os.path.dirname(self.cache)
-        dir_info = self._collect_dir()
+        dir_info = self.project.state.collect_dir(self.path)
 
         for entry in dir_info:
             md5 = entry[self.PARAM_MD5]
@@ -365,7 +337,7 @@ class Output(Dependency):
             os.makedirs(dname)
 
         with open(self.cache, 'w+') as fd:
-            json.dump(dir_info, fd)
+            json.dump(dir_info, fd, sort_keys=True)
 
     def save(self):
         super(Output, self).save()
