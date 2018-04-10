@@ -1,4 +1,5 @@
 import os
+import time
 import stat
 import uuid
 import shutil
@@ -92,6 +93,15 @@ def get_gcp_url():
     return 'gs://' + get_gcp_storagepath()
 
 
+def sleep():
+    # Sleep some time to simulate realistic behavior.
+    # Some filesystems have a bad date resolution for
+    # mtime(i.e. 1sec for HFS) that cause problems with
+    # our 'state' system not being able to distinguish
+    # files that were modified within that delta.
+    time.sleep(1)
+
+
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
         cloud = DataCloud(cache=self.dvc.cache, state=self.dvc.state, config=config)
@@ -127,6 +137,7 @@ class TestDataCloudBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache
 
         # Check status
+        sleep()
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_NEW)
 
@@ -141,6 +152,7 @@ class TestDataCloudBase(TestDvc):
         self.cloud.push(cache_dir)
         self.assertTrue(os.path.isfile(cache_dir))
 
+        sleep()
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_OK)
 
@@ -148,12 +160,14 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(status_dir, STATUS_OK)
 
         # Modify and check status
+        sleep()
         with open(cache, 'a') as fd:
             fd.write('addon')
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_MODIFIED)
 
         # Remove and check status
+        sleep()
         shutil.rmtree(self.dvc.cache.cache_dir)
 
         status = self.cloud.status(cache)
@@ -172,6 +186,7 @@ class TestDataCloudBase(TestDvc):
         self.cloud.pull(cache_dir)
         self.assertTrue(os.path.isfile(cache_dir))
 
+        sleep()
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_OK)
 
@@ -255,6 +270,7 @@ class TestDataCloudCLIBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache
 
         #FIXME check status output
+        sleep()
         self.main(['status', '-c'] + args)
 
         self.main(['push'] + args)
@@ -262,15 +278,19 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
+        sleep()
         self.main(['status', '-c'] + args)
 
         shutil.rmtree(self.dvc.cache.cache_dir)
 
+        sleep()
         self.main(['status', '-c'] + args)
 
         self.main(['pull'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
+
+        sleep()
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
