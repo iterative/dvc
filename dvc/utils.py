@@ -84,7 +84,7 @@ def wrap(func, t):
     try:
         return func(t)
     except Exception as exc:
-        Logger.error('wrap', exc)
+        Logger.error('Error', exc)
         raise
 
 

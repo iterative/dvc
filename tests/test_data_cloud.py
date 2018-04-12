@@ -20,8 +20,6 @@ TEST_CONFIG = {Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
                TEST_SECTION: {Config.SECTION_REMOTE_URL: ''}}
 
 TEST_AWS_REPO_BUCKET = 'dvc-test'
-TEST_AWS_REPO_REGION = 'us-east-2'
-
 TEST_GCP_REPO_BUCKET = 'dvc-test'
 
 
@@ -122,8 +120,28 @@ class TestDataCloud(TestDvc):
 
 
 class TestDataCloudBase(TestDvc):
+    def _should_test(self):
+        return False
+
+    def _get_url(self):
+        return None
+
+    @property
+    def cloud_class(self):
+        return None
+
     def _setup_cloud(self):
-        self.cloud = None
+        if not self._should_test():
+            return
+
+        repo = self._get_url()
+
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        cloud_settings = CloudSettings(cache=self.dvc.cache,
+                                       state=self.dvc.state,
+                                       cloud_config=config[TEST_SECTION])
+        self.cloud = self._get_cloud_class()(cloud_settings)
 
     def _test_cloud(self):
         self._setup_cloud()
@@ -193,61 +211,46 @@ class TestDataCloudBase(TestDvc):
         status_dir = self.cloud.status(cache_dir)
         self.assertEqual(status_dir, STATUS_OK)
 
+    def test(self):
+        if self._should_test():
+            self._test_cloud()
+
 
 class TestDataCloudAWS(TestDataCloudBase):
-    def _setup_cloud(self):
-        if not _should_test_aws():
-            return
+    def _should_test(self):
+            return _should_test_aws()
 
-        repo = get_aws_url()
+    def _get_url(self):
+        return get_aws_url()
 
-        # Setup cloud
-        config = TEST_CONFIG
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][Config.SECTION_AWS_REGION] = TEST_AWS_REPO_REGION
-        cloud_settings = CloudSettings(cache=self.dvc.cache,
-                                       state=self.dvc.state,
-                                       cloud_config=config[TEST_SECTION])
-        self.cloud = DataCloudAWS(cloud_settings)
-
-    def test(self):
-        if _should_test_aws():
-            self._test_cloud()
+    def _get_cloud_class(self):
+        return DataCloudAWS
 
 
 class TestDataCloudGCP(TestDataCloudBase):
-    def _setup_cloud(self):
-        if not _should_test_gcp():
-            return
+    def _should_test(self):
+        return _should_test_gcp()
 
-        repo = get_gcp_url()
+    def _get_url(self):
+        return get_gcp_url()
 
-        # Setup cloud
-        config = TEST_CONFIG
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        cloud_settings = CloudSettings(cache=self.dvc.cache,
-                                       state=self.dvc.state,
-                                       cloud_config=config[TEST_SECTION])
-        self.cloud = DataCloudGCP(cloud_settings)
-
-    def test(self):
-        if _should_test_gcp():
-            self._test_cloud()
+    def _get_cloud_class(self):
+        return DataCloudGCP
 
 
 class TestDataCloudLOCAL(TestDataCloudBase):
-    def _setup_cloud(self):
-        self.dname = get_local_url()
+    def _should_test(self):
+        return True
 
-        config = TEST_CONFIG
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = self.dname
-        cloud_settings = CloudSettings(cache=self.dvc.cache,
-                                       state=self.dvc.state,
-                                       cloud_config=config[TEST_SECTION])
-        self.cloud = DataCloudLOCAL(cloud_settings)
+    def _get_url(self):
+        self.dname = get_local_url()
+        return self.dname
+
+    def _get_cloud_class(self):
+        return DataCloudLOCAL
 
     def test(self):
-        self._test_cloud()
+        super(TestDataCloudLOCAL, self).test()
         self.assertTrue(os.path.isdir(self.dname))
 
 
@@ -352,7 +355,6 @@ class TestDataCloudAWSCLI(TestDataCloudCLIBase):
         storagepath = get_aws_storagepath()
         self.main(['config', 'core.cloud', 'aws'])
         self.main(['config', 'aws.storagepath', storagepath])
-        self.main(['config', 'aws.region', TEST_AWS_REPO_REGION])
 
         self._test_cloud()
 
@@ -360,7 +362,6 @@ class TestDataCloudAWSCLI(TestDataCloudCLIBase):
         url = get_aws_url()
 
         self.main(['remote', 'add', TEST_REMOTE, url])
-        self.main(['remote', 'modify', TEST_REMOTE, Config.SECTION_AWS_REGION, TEST_AWS_REPO_REGION])
 
         self._test_cloud(TEST_REMOTE)
 
