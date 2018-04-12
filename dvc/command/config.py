@@ -11,7 +11,11 @@ class CmdConfig(CmdBase):
     def __init__(self, args):
         self.args = args
         root_dir = self._find_root()
-        self.config_file = os.path.join(root_dir, Project.DVC_DIR, Config.CONFIG)
+        if args.local:
+            config = Config.CONFIG_LOCAL
+        else:
+            config = Config.CONFIG
+        self.config_file = os.path.join(root_dir, Project.DVC_DIR, config)
         # Using configobj because it doesn't
         # drop comments like configparser does.
         self.configobj = configobj.ConfigObj(self.config_file)

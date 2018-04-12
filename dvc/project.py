@@ -69,7 +69,8 @@ class Project(object):
         scm = SCM(root_dir)
         scm.ignore_list([cache.cache_dir,
                          state.state_file,
-                         lock.lock_file])
+                         lock.lock_file,
+                         config.config_local_file])
 
         ignore_file = os.path.join(dvc_dir, scm.ignore_file())
         scm.add([config.config_file, ignore_file])

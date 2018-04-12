@@ -239,6 +239,11 @@ def parse_args(argv=None):
                         nargs='?',
                         default=None,
                         help='Option value')
+    config_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config')
     config_parser.set_defaults(func=CmdConfig)
 
 
@@ -262,6 +267,11 @@ def parse_args(argv=None):
     remote_add_parser.add_argument(
                         'url',
                         help='Url')
+    remote_add_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config')
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
 
 
@@ -272,6 +282,11 @@ def parse_args(argv=None):
     remote_remove_parser.add_argument(
                         'name',
                         help='Name')
+    remote_remove_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config')
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
 
 
@@ -294,6 +309,11 @@ def parse_args(argv=None):
                         default=False,
                         action='store_true',
                         help='Unset option')
+    remote_modify_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config')
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
 
