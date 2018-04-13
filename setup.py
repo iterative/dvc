@@ -5,7 +5,7 @@ from dvc import VERSION
 
 
 install_requires = [
-    "boto>=2.46.1",
+    "boto3==1.7.4",
     "google-compute-engine>=2.4.1", #required by boto
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",

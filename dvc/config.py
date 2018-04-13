@@ -21,6 +21,7 @@ def supported_url(url):
 
 class Config(object):
     CONFIG = 'config'
+    CONFIG_LOCAL = 'config.local'
 
     SECTION_CORE = 'core'
     SECTION_CORE_LOGLEVEL = 'loglevel'
@@ -95,13 +96,18 @@ class Config(object):
     def __init__(self, dvc_dir):
         self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
         self.config_file = os.path.join(dvc_dir, self.CONFIG)
+        self.config_local_file = os.path.join(dvc_dir, self.CONFIG_LOCAL)
 
         try:
             self._config = configobj.ConfigObj(self.config_file)
+            local = configobj.ConfigObj(self.config_local_file)
 
             # NOTE: schema doesn't support ConfigObj.Section validation, so we
             # need to convert our config to dict before passing it to schema.
             self._config = self._lower(self._config)
+            local = self._lower(local)
+            self._config.update(local)
+
             self._config = schema.Schema(self.SCHEMA).validate(self._config)
 
             # NOTE: now converting back to ConfigObj
