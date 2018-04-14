@@ -7,6 +7,7 @@ import schema
 from dvc.exceptions import DvcException
 from dvc.output import Output, Dependency, OutputError
 from dvc.logger import Logger
+from dvc.utils import dict_md5
 
 
 class StageCmdFailedError(DvcException):
@@ -36,23 +37,26 @@ class Stage(object):
     STAGE_FILE = 'Dvcfile'
     STAGE_FILE_SUFFIX = '.dvc'
 
+    PARAM_MD5 = 'md5'
     PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
     PARAM_OUTS = 'outs'
 
     SCHEMA = {
+        schema.Optional(PARAM_MD5): schema.Or(str, None),
         schema.Optional(PARAM_CMD): schema.Or(str, None),
         schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([Dependency.SCHEMA])), None),
         schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([Output.SCHEMA])), None),
     }
 
-    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[]):
+    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], md5=None):
         self.project = project
         self.path = path
         self.cmd = cmd
         self.cwd = cwd
         self.outs = outs
         self.deps = deps
+        self.md5 = md5
 
     @property
     def relpath(self):
@@ -72,11 +76,28 @@ class Stage(object):
 
         return True
 
+    def changed_md5(self):
+        md5 = self.dumpd().get(self.PARAM_MD5, None)
+
+        # backward compatibility
+        if self.md5 == None:
+            return False
+
+        if self.md5 and md5 and self.md5 == md5:
+            return False
+
+        msg = "Dvc file '{}' md5 changed(expected '{}', actual '{}')"
+        self.project.logger.debug(msg.format(self.relpath, self.md5, md5))
+        return True
+
     def changed(self):
         ret = False
         for entry in itertools.chain(self.outs, self.deps):
             if entry.changed():
                 ret = True
+
+        if self.changed_md5():
+            ret = True
 
         if ret:
             self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.relpath))
@@ -124,13 +145,16 @@ class Stage(object):
         cmd = d.get(Stage.PARAM_CMD, None)
         deps = Dependency.loadd_from(project, d.get(Stage.PARAM_DEPS, []), cwd=cwd)
         outs = Output.loadd_from(project, d.get(Stage.PARAM_OUTS, []), cwd=cwd)
+        md5 = d.get(Stage.PARAM_MD5, None)
 
         return Stage(project=project,
                      path=path,
                      cmd=cmd,
                      cwd=cwd,
                      deps=deps,
-                     outs=outs)
+                     outs=outs,
+                     md5=md5)
+
     @staticmethod
     def loads(project=None,
               cmd=None,
@@ -170,6 +194,8 @@ class Stage(object):
 
         if len(outs):
             ret[Stage.PARAM_OUTS] = outs
+
+        ret[Stage.PARAM_MD5] = dict_md5(ret)
 
         return ret
 
@@ -231,7 +257,7 @@ class Stage(object):
         ret.update(self._status(self.deps, 'deps'))
         ret.update(self._status(self.outs, 'outs'))
 
-        if ret:
+        if ret or self.changed_md5():
             return {self.relpath: ret}
 
         return {}
