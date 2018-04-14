@@ -5,7 +5,7 @@ import threading
 
 from dvc.system import System
 from dvc.output import Output
-from dvc.utils import file_md5, bytes_md5
+from dvc.utils import file_md5, dict_md5
 from dvc.exceptions import DvcException
 
 
@@ -70,9 +70,7 @@ class State(object):
     def compute_md5(self, path):
         if os.path.isdir(path):
             dir_info = self.collect_dir(path)
-            byts = json.dumps(dir_info, sort_keys=True).encode('utf-8')
-            md5 = bytes_md5(byts)
-            return md5 + Output.MD5_DIR_SUFFIX
+            return dict_md5(dir_info) + Output.MD5_DIR_SUFFIX
         else:
             return file_md5(path)[0]
 
