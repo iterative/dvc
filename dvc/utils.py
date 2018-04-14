@@ -7,7 +7,7 @@ import json
 import stat
 import shutil
 import hashlib
-
+from binaryornot.check import is_binary
 from multiprocessing.pool import ThreadPool
 
 from dvc.progress import progress
@@ -17,13 +17,34 @@ from dvc.logger import Logger
 LOCAL_CHUNK_SIZE = 1024*1024
 
 
+def dos2unix(data):
+    return '\n'.join(data.split('\r\n'))
+
+
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
-        with open(fname, "rb") as fobj:
-            for chunk in iter(lambda: fobj.read(1024*1000), b""):
+        binary = is_binary(fname)
+
+        if binary:
+            mode = "rb"
+        else:
+            mode = "r"
+
+        with open(fname, mode) as fobj:
+            while True:
+                data = fobj.read(LOCAL_CHUNK_SIZE)
+                if not data:
+                    break
+
+                if binary:
+                    chunk = data
+                else:
+                    chunk = dos2unix(data).encode('utf-8')
+
                 hash_md5.update(chunk)
+
         return (hash_md5.hexdigest(), hash_md5.digest())
     else:
         return (None, None)
