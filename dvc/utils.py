@@ -3,6 +3,7 @@ Helpers for other modules.
 """
 import os
 import re
+import json
 import stat
 import shutil
 import hashlib
@@ -32,6 +33,11 @@ def bytes_md5(byts):
     hasher = hashlib.md5()
     hasher.update(byts)
     return hasher.hexdigest()
+
+
+def dict_md5(d):
+    byts = json.dumps(d, sort_keys=True).encode('utf-8')
+    return bytes_md5(byts)
 
 
 def cached_property(func):
