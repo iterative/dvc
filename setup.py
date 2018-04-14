@@ -32,7 +32,7 @@ setup(
     long_description=open('README.rst', 'r').read(),
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
-    url='https://github.com/dataversioncontrol/dvc',
+    download_url='https://github.com/dataversioncontrol/dvc',
     license='Apache License 2.0',
     install_requires=install_requires,
     keywords='data science, data version control, machine learning',
@@ -43,7 +43,7 @@ setup(
     ],
     packages=find_packages(exclude=['bin', 'tests', 'functests']),
     include_package_data=True,
-    download_url='http://dataversioncontrol.com',
+    url='http://dataversioncontrol.com',
     entry_points={
         'console_scripts': ['dvc = dvc.main:main']
     },
