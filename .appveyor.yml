@@ -48,7 +48,7 @@ install:
   - cinst awscli
   - cinst gsutil
   - cinst openssl.light
-  - pip install --user --upgrade pip
+  - python -m pip install -U pip setuptools wheel
   - pip install -r requirements.txt
   - python setup.py install
 
