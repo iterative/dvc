@@ -65,8 +65,13 @@ class DataCloudAWS(DataCloudBase):
     """ DataCloud class for Amazon Web Services """
     REGEX = r'^s3://(?P<path>.*)$'
 
+    @property
+    def profile(self):
+        return self._cloud_settings.cloud_config.get(Config.SECTION_AWS_PROFILE, None)
+
     def connect(self):
-        self.s3 = boto3.resource('s3')
+        session = boto3.Session(profile_name=self.profile)
+        self.s3 = session.resource('s3')
         bucket = self.s3.Bucket(self.storage_bucket)
         if bucket is None:
             raise DataCloudError('Storage path {} is not setup correctly'.format(self.storage_bucket))
