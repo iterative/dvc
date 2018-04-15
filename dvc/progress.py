@@ -47,10 +47,6 @@ class Progress(object):
 
             self._n_finished += 1
 
-    def finish(self):
-        if sys.stdout.isatty():
-            print()
-
     def _bar(self, target_name, current, total):
         """
         Make a progress bar out of info, which looks like:

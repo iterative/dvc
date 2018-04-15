@@ -129,7 +129,5 @@ def map_progress(func, targets, n_threads):
         ret = pool.map(wrapper, targets)
     except Exception as exc:
         raise
-    finally:
-        progress.finish()
 
     return list(zip(targets, ret))
