@@ -81,7 +81,7 @@ class Project(object):
         return os.path.relpath(path, self.root_dir)
 
     def add(self, fname):
-        out = os.path.basename(fname)
+        out = os.path.basename(os.path.normpath(fname))
         stage_fname = out + Stage.STAGE_FILE_SUFFIX
         cwd = os.path.dirname(os.path.abspath(fname))
         stage = Stage.loads(project=self,

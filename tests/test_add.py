@@ -48,6 +48,13 @@ class TestAddDirectory(TestDvc):
         self.create(os.path.join(dname, 'file'), 'file')
         self.dvc.add(dname)
 
+class TestAddDirectoryWithForwardSlash(TestDvc):
+    def test(self):
+        dname = 'directory/'
+        os.mkdir(dname)
+        self.create(os.path.join(dname, 'file'), 'file')
+        stage = self.dvc.add(dname)
+        self.assertEquals(os.path.abspath('directory.dvc'), stage.path)
 
 class TestAddTrackedFile(TestDvc):
     def test(self):
