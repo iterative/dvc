@@ -66,6 +66,11 @@ def parse_args(argv=None):
                         'init',
                         parents=[parent_parser],
                         help='Initialize dvc over a directory (should already be a git dir)')
+    init_parser.add_argument(
+                        '--no-scm',
+                        action='store_true',
+                        default=False,
+                        help="Initiate dvc in directory that is not tracked by any scm tool(e.g. git)")
     init_parser.set_defaults(func=CmdInit)
 
     # Add

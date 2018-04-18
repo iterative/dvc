@@ -10,10 +10,15 @@ from dvc.stage import Stage, Output
 from dvc.config import Config
 from dvc.state import State
 from dvc.lock import Lock
-from dvc.scm import SCM
+from dvc.scm import SCM, Base
 from dvc.cache import Cache
 from dvc.cloud.data_cloud import DataCloud
 from dvc.system import System
+
+
+class InitError(DvcException):
+    def __init__(self, msg):
+        super(InitError, self).__init__(msg)
 
 
 class StageNotFoundError(DvcException):
@@ -44,7 +49,7 @@ class Project(object):
         self.cloud = DataCloud(cache=self.cache, state=self.state, config=self.config._config)
 
     @staticmethod
-    def init(root_dir=os.curdir):
+    def init(root_dir=os.curdir, no_scm=False):
         """
         Initiate dvc project in directory.
 
@@ -59,6 +64,12 @@ class Project(object):
         """
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
+
+        scm = SCM(root_dir)
+        if type(scm) == Base and not no_scm:
+            msg = "{} is not tracked by any supported scm tool(e.g. git).".format(root_dir)
+            raise InitError(msg)
+
         os.mkdir(dvc_dir)
 
         config = Config.init(dvc_dir)
@@ -66,14 +77,14 @@ class Project(object):
         state = State.init(root_dir, dvc_dir)
         lock = Lock(dvc_dir)
 
-        scm = SCM(root_dir)
         scm.ignore_list([cache.cache_dir,
                          state.state_file,
                          lock.lock_file,
                          config.config_local_file])
 
-        ignore_file = os.path.join(dvc_dir, scm.ignore_file())
-        scm.add([config.config_file, ignore_file])
+        scm.add([config.config_file])
+        if scm.ignore_file():
+            scm.add([os.path.join(dvc_dir, scm.ignore_file())])
 
         return Project(root_dir)
 
