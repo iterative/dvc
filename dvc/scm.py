@@ -31,9 +31,6 @@ class Base(object):
     def ignore_list(self, p_list):
         return [self.ignore(path) for path in p_list]
 
-    def ignore_file(self):
-        return self.GITIGNORE
-
     def add(self, paths):
         pass
 
@@ -70,6 +67,9 @@ class Git(Base):
     def is_repo(root_dir):
         git_dir = os.path.join(root_dir, Git.GIT_DIR)
         return os.path.isdir(git_dir)
+
+    def ignore_file(self):
+        return self.GITIGNORE
 
     def _get_gitignore(self, path):
         entry = os.path.basename(path)
@@ -134,7 +134,7 @@ class Git(Base):
         return len(self.repo.git.ls_files(path)) != 0
 
 
-def SCM(root_dir=os.curdir):
+def SCM(root_dir=os.curdir, no_scm=False):
     if Git.is_repo(root_dir):
         return Git(root_dir)
 
