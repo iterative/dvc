@@ -17,6 +17,7 @@ from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify
+from dvc.command.metrics import CmdMetrics
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -321,6 +322,24 @@ def parse_args(argv=None):
                         help='Use local config')
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
+    # Metrics
+    metrics_parser = subparsers.add_parser(
+                        'metrics',
+                        parents=[parent_parser],
+                        help='Get metrics from all branches')
+    metrics_parser.add_argument(
+                        'path',
+                        help='Path to metrics file')
+    metrics_parser.add_argument(
+                        '--json-path',
+                        help='JSON path')
+    metrics_parser.add_argument(
+                        '--tsv-path',
+                        help='TSV path \'row,column\'(e.g. \'1,2\')')
+    metrics_parser.add_argument(
+                        '--htsv-path',
+                        help='Headed TSV path \'row,column\'(e.g. \'Name,3\'')
+    metrics_parser.set_defaults(func=CmdMetrics)
 
     args = parser.parse_args(argv)
 

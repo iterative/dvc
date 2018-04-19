@@ -23,6 +23,7 @@ install_requires = [
     "schema>=0.6.7",
     "paramiko>=2.4.1",
     "binaryornot==0.4.4",
+    "jsonpath-rw==1.4.0",
 ]
 
 setup(
