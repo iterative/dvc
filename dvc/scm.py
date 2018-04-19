@@ -49,6 +49,12 @@ class Base(object):
     def is_tracked(self, path):
         pass
 
+    def active_branch(self):
+        pass
+
+    def list_branches(self):
+        pass
+
 
 class Git(Base):
     GITIGNORE = '.gitignore'
@@ -132,6 +138,12 @@ class Git(Base):
 
     def is_tracked(self, path):
         return len(self.repo.git.ls_files(path)) != 0
+
+    def active_branch(self):
+        return self.repo.active_branch.name
+
+    def list_branches(self):
+        return [h.name for h in self.repo.heads]
 
 
 def SCM(root_dir=os.curdir, no_scm=False):

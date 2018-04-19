@@ -6,6 +6,7 @@ from dvc import VERSION
 
 install_requires = [
     "boto3==1.7.4",
+    "ply==3.8", #required by google-gax
     "google-compute-engine>=2.4.1", #required by boto
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",
@@ -23,6 +24,7 @@ install_requires = [
     "schema>=0.6.7",
     "paramiko>=2.4.1",
     "binaryornot==0.4.4",
+    "jsonpath-rw==1.4.0",
 ]
 
 setup(

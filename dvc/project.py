@@ -1,6 +1,9 @@
 import os
+import csv
 import stat
+import json
 import networkx as nx
+from jsonpath_rw import parse
 
 import dvc.cloud.base as cloud
 
@@ -257,6 +260,61 @@ class Project(object):
         if cloud:
             return self._cloud_status(target, jobs, remote=remote)
         return self._local_status(target)
+
+    def _read_metric_json(self, fd, json_path):
+        parser = parse(json_path)
+        return [x.value for x in parser.find(json.load(fd))]
+
+    def _do_read_metric_tsv(self, reader, row, col):
+        if col != None and row != None:
+            return [reader[row][col]]
+        elif col != None:
+            return [r[col] for r in reader]
+        elif row != None:
+            return reader[row]
+        return None
+
+    def _read_metric_htsv(self, fd, htsv_path):
+        col, row = htsv_path.split(',')
+        row = int(row)
+        reader = list(csv.DictReader(fd, delimiter='\t'))
+        return self._do_read_metric_tsv(reader, row, col)
+
+    def _read_metric_tsv(self, fd, tsv_path):
+        col, row = tsv_path.split(',')
+        row = int(row)
+        col = int(col)
+        reader = list(csv.reader(fd, delimiter='\t'))
+        return self._do_read_metric_tsv(reader, row, col)
+
+    def _read_metric(self, path, json_path=None, tsv_path=None, htsv_path=None):
+        ret = None
+        try: 
+            with open(path, 'r') as fd:
+                if json_path:
+                    ret = self._read_metric_json(fd, json_path)
+                elif tsv_path:
+                    ret = self._read_metric_tsv(fd, tsv_path)
+                elif htsv_path:
+                    ret = self._read_metric_htsv(fd, htsv_path)
+                else:
+                    ret = fd.read()
+        except Exception as exc:
+            self.logger.error('Unable to read metric in \'{}\''.format(path), exc)
+
+        return ret
+
+    def metrics(self, path, json_path=None, tsv_path=None, htsv_path=None):
+        res = {}
+        saved = self.scm.active_branch()
+        for branch in self.scm.list_branches():
+            self.scm.checkout(branch)
+            res[branch] = self._read_metric(path,
+                                            json_path=json_path,
+                                            tsv_path=tsv_path,
+                                            htsv_path=htsv_path)
+        self.scm.checkout(saved)
+        return res
 
     def graph(self):
         G = nx.DiGraph()
