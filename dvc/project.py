@@ -309,11 +309,13 @@ class Project(object):
         saved = self.scm.active_branch()
         for branch in self.scm.list_branches():
             self.scm.checkout(branch)
+            self.checkout()
             res[branch] = self._read_metric(path,
                                             json_path=json_path,
                                             tsv_path=tsv_path,
                                             htsv_path=htsv_path)
         self.scm.checkout(saved)
+        self.checkout()
         return res
 
     def graph(self):

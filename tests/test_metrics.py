@@ -4,6 +4,7 @@ import json
 from dvc.main import main
 from tests.basic_env import TestDvc
 
+
 class TestMetrics(TestDvc):
     def setUp(self):
         super(TestMetrics, self).setUp()
@@ -57,9 +58,14 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret['bar'] == ['bar'])
         self.assertTrue(ret['baz'] == ['baz'])
 
-    def test_cli(self):
+
+class TestMetricsCLI(TestMetrics):
+    def test(self):
+        #FIXME enable on windows
+        if os.name == 'nt':
+            return
         #FIXME check output
-        ret = main(['metrics', 'metric'])
+        ret = main(['metrics', 'metric', '-v'])
         self.assertEqual(ret, 0)
 
         ret = main(['metrics', 'metric_json', '--json-path', 'branch'])
