@@ -18,6 +18,7 @@ from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify
 from dvc.command.metrics import CmdMetrics
+from dvc.command.install import CmdInstall
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -340,6 +341,13 @@ def parse_args(argv=None):
                         '--htsv-path',
                         help='Headed TSV path \'row,column\'(e.g. \'Name,3\'')
     metrics_parser.set_defaults(func=CmdMetrics)
+
+    # Install
+    install_parser = subparsers.add_parser(
+                        'install',
+                        parents=[parent_parser],
+                        help='Install dvc hooks into the repository')
+    install_parser.set_defaults(func=CmdInstall)
 
     args = parser.parse_args(argv)
 

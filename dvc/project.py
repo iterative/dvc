@@ -91,6 +91,9 @@ class Project(object):
 
         return Project(root_dir)
 
+    def install(self):
+        self.scm.install()
+
     def to_dvc_path(self, path):
         return os.path.relpath(path, self.root_dir)
 

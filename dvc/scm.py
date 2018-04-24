@@ -55,6 +55,9 @@ class Base(object):
     def list_branches(self):
         pass
 
+    def install(self):
+        pass
+
 
 class Git(Base):
     GITIGNORE = '.gitignore'
@@ -144,6 +147,14 @@ class Git(Base):
 
     def list_branches(self):
         return [h.name for h in self.repo.heads]
+
+    def install(self):
+        hook = os.path.join(self.root_dir, self.GIT_DIR, 'hooks', 'post-checkout')
+        if os.path.isfile(hook):
+            raise SCMError('Git hook \'{}\' already exists.'.format(os.path.relpath(hook)))
+        with open(hook, 'w+') as fd:
+            fd.write('#!/bin/sh\nexec dvc checkout\n')
+        os.chmod(hook, 0o777)
 
 
 def SCM(root_dir=os.curdir, no_scm=False):
