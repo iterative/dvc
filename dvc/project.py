@@ -185,9 +185,17 @@ class Project(object):
                 Logger.info(u'Remove empty directory \'{}\''.format(dir))
                 os.removedirs(dir)
 
-    def checkout(self):
+    def checkout(self, target=None):
         self._remove_untracked_hardlinks()
-        for stage in self.stages():
+
+        if target:
+            if not Stage.is_stage_file(target):
+                raise StageNotFoundError(target)
+            stages = [Stage.load(self, target)]
+        else:
+            stages = self.stages()
+
+        for stage in stages:
             stage.checkout()
 
     def _used_cache(self, target=None):

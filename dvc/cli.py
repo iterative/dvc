@@ -91,6 +91,10 @@ def parse_args(argv=None):
                         'checkout',
                         parents=[parent_parser],
                         help='Checkout data files from cache')
+    checkout_parser.add_argument(
+                        'targets',
+                        nargs='*',
+                        help='DVC files')
     checkout_parser.set_defaults(func=CmdCheckout)
 
     # Run
