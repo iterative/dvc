@@ -16,7 +16,7 @@ class TestCheckout(TestRepro):
     def setUp(self):
         super(TestCheckout, self).setUp()
 
-        self.dvc.add(self.DATA_DIR)
+        self.data_dir_stage = self.dvc.add(self.DATA_DIR)
 
         self.orig = 'orig'
         shutil.copy(self.FOO, self.orig)
@@ -33,6 +33,13 @@ class TestCheckout(TestRepro):
     def _test_checkout(self):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(filecmp.cmp(self.FOO, self.orig))
+
+
+class TestCheckoutSingleStage(TestCheckout):
+    def test(self):
+        self.dvc.checkout(self.foo_stage.path)
+        self.dvc.checkout(self.data_dir_stage.path)
+        self._test_checkout()
 
 
 class TestCheckoutCorruptedCacheFile(TestRepro):
