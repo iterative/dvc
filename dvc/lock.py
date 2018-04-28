@@ -13,8 +13,8 @@ class Lock(object):
     LOCK_FILE = 'lock'
     TIMEOUT = 5
 
-    def __init__(self, dvc_dir):
-        self.lock_file = os.path.join(dvc_dir, self.LOCK_FILE)
+    def __init__(self, dvc_dir, name=LOCK_FILE):
+        self.lock_file = os.path.join(dvc_dir, name)
         self._lock = None
 
     @staticmethod

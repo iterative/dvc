@@ -25,6 +25,7 @@ install_requires = [
     "paramiko>=2.4.1",
     "binaryornot==0.4.4",
     "jsonpath-rw==1.4.0",
+    "reflink==0.2.0",
 ]
 
 setup(

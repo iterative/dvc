@@ -102,7 +102,7 @@ def sleep():
 
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
-        cloud = DataCloud(cache=self.dvc.cache, state=self.dvc.state, config=config)
+        cloud = DataCloud(cache=self.dvc.cache, config=config)
         self.assertIsInstance(cloud._cloud, cl)
 
     def test(self):
@@ -116,7 +116,7 @@ class TestDataCloud(TestDvc):
         with self.assertRaises(ConfigError) as cx:
             config = TEST_CONFIG
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
-            DataCloud(cache=self.dvc.cache, state=self.dvc.state, config=config)
+            DataCloud(cache=self.dvc.cache, config=config)
 
 
 class TestDataCloudBase(TestDvc):
@@ -139,7 +139,6 @@ class TestDataCloudBase(TestDvc):
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         cloud_settings = CloudSettings(cache=self.dvc.cache,
-                                       state=self.dvc.state,
                                        cloud_config=config[TEST_SECTION])
         self.cloud = self._get_cloud_class()(cloud_settings)
 

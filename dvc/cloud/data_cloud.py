@@ -23,10 +23,9 @@ class DataCloud(object):
         'local' : DataCloudLOCAL,
     }
 
-    def __init__(self, cache=None, config=None, state=None):
+    def __init__(self, cache=None, config=None):
         self._cache = cache
         self._config = config
-        self._state = state
 
         remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
         if remote == '':
@@ -82,7 +81,6 @@ class DataCloud(object):
             Logger.warn('Using obsoleted config format. Consider updating.')
 
         cloud_settings = CloudSettings(cache=self._cache,
-                                       state=self._state,
                                        global_storage_path=global_storage_path,
                                        cloud_config=cloud_config)
 

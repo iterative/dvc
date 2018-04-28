@@ -1,15 +1,11 @@
 import os
-import stat
-import json
-import shutil
 import schema
 import posixpath
 import ntpath
 
-from dvc.system import System
-from dvc.utils import file_md5
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
+from dvc.utils import remove
 
 
 class OutputError(DvcException):
@@ -47,7 +43,6 @@ class CmdOutputAlreadyTrackedError(CmdOutputError):
 
 
 class Dependency(object):
-    PARAM_RELPATH = 'relpath'
     PARAM_PATH = 'path'
     PARAM_MD5 = 'md5'
     MD5_DIR_SUFFIX = '.dir'
@@ -59,7 +54,7 @@ class Dependency(object):
 
     def __init__(self, project, path, md5=None):
         self.project = project
-        self.path = os.path.abspath(os.path.realpath(path))
+        self.path = os.path.abspath(os.path.normpath(path))
 
         if not self.path.startswith(self.project.root_dir):
             raise CmdOutputOutsideOfRepoError(self.rel_path)
@@ -95,10 +90,6 @@ class Dependency(object):
             #FIXME better msgs
             return {self.rel_path: 'changed'}
         return {}
-
-    @staticmethod
-    def is_dir_cache(cache):
-        return cache.endswith(Output.MD5_DIR_SUFFIX)
 
     def save(self):
         if not os.path.exists(self.path):
@@ -160,17 +151,10 @@ class Output(Dependency):
 
     @property
     def cache(self):
-        if not self.md5:
+        if not self.use_cache:
             return None
 
         return self.project.cache.get(self.md5)
-
-    @property
-    def rel_cache(self):
-        if not self.cache:
-            return None
-
-        return os.path.relpath(self.cache)
 
     def dumpd(self, cwd):
         ret = super(Output, self).dumpd(cwd)
@@ -193,151 +177,28 @@ class Output(Dependency):
     def loads_from(cls, project, s_list, use_cache=False, cwd=os.curdir):
         return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
 
-    def _changed_cache(self, cache):
-        md5 = self.project.cache.path_to_md5(cache)
-        if self.project.state.changed(cache, md5=md5):
-            self.project.logger.warn('Corrupted cache file {}'.format(os.path.relpath(cache)))
-            os.unlink(cache)
+    def changed(self):
+        if super(Output, self).changed():
+            return True
+
+        if self.use_cache and self.project.cache.changed(self.md5):
             return True
 
         return False
-
-    def _changed_file(self, path, cache):
-        if os.path.isfile(path) and \
-           os.path.isfile(cache) and \
-           System.samefile(path, cache) and \
-           not self._changed_cache(cache):
-            return False
-
-        return True
-
-    def _changed_dir(self):
-        if os.path.isdir(self.path) and \
-           os.path.isfile(self.cache) and \
-           not self._changed_cache(self.cache):
-            return False
-
-        return True
-
-    def changed(self):
-        if not self.use_cache:
-            ret = super(Output, self).changed()
-        elif not self.cache:
-            ret = True
-        elif self.is_dir_cache(self.cache):
-            ret = self._changed_dir()
-        else:
-            ret = self._changed_file(self.path, self.cache)
-
-        msg = u'Data file or dir \'{}\' with cache \'{}\' {}'
-        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache, self._changed_msg(ret)))
-
-        return ret
-
-    def hardlink(self, src, link):
-        rel_src = os.path.relpath(src)
-        rel_link = os.path.relpath(link)
-        self.project.logger.debug(u'creating hardlink {} -> {}'.format(rel_src, rel_link))
-
-        dname = os.path.dirname(link)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
-
-        System.hardlink(src, link)
-
-    @staticmethod
-    def load_dir_cache(path):
-        if os.path.isabs(path):
-            relpath = os.path.relpath(path)
-        else:
-            relpath = path
-
-        try:
-            with open(path, 'r') as fd:
-                d = json.load(fd)
-        except Exception as exc:
-            msg = u'Failed to load dir cache \'{}\''
-            Logger.error(msg.format(relpath), exc)
-            return []
-
-        if not isinstance(d, list):
-            msg = u'Dir cache file format error \'{}\': skipping the file'
-            Logger.error(msg.format(relpath))
-            return []
-
-        return d
-
-    @staticmethod
-    def get_dir_cache(path):
-        res = {}
-        d = Output.load_dir_cache(path)
-
-        for entry in d:
-            res[entry[Output.PARAM_RELPATH]] = entry[Output.PARAM_MD5]
-
-        return res
-
-    def dir_cache(self):
-        res = {}
-        dir_cache = self.get_dir_cache(self.cache)
-
-        for relpath, md5 in dir_cache.items():
-            res[relpath] = self.project.cache.get(md5)
-
-        return res
 
     def checkout(self):
         if not self.use_cache:
             return
 
         msg = u'Checking out \'{}\' with cache \'{}\''
-        self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
+        self.project.logger.debug(msg.format(self.rel_path, self.md5))
 
         if not self.changed():
             msg = u'Data file \'{}\' with cache \'{}\' didn\'t change, skipping checkout.'
-            self.project.logger.debug(msg.format(self.rel_path, self.rel_cache))
+            self.project.logger.debug(msg.format(self.rel_path, self.md5))
             return
 
-        if not self.cache or not os.path.exists(self.cache):
-            if self.cache:
-                self.project.logger.warn(u'\'{}({})\': cache file not found'.format(self.rel_cache, self.rel_path))
-            self.remove()
-            return
-
-        if os.path.exists(self.path):
-            msg = u'Data file \'{}\' exists. Removing before checkout'
-            self.project.logger.debug(msg.format(self.rel_path))
-            self.remove()
-
-        if not self.is_dir_cache(self.cache):
-            self.hardlink(self.cache, self.path)
-            return
-
-        for relpath, cache in self.dir_cache().items():
-            path = os.path.join(self.path, relpath)
-            self.hardlink(cache, path)
-
-    def _save_dir(self):
-        dname = os.path.dirname(self.cache)
-        dir_info = self.project.state.collect_dir(self.path)
-
-        for entry in dir_info:
-            md5 = entry[self.PARAM_MD5]
-            relpath = entry[self.PARAM_RELPATH]
-            path = os.path.join(self.path, relpath)
-            cache = self.project.cache.get(md5)
-
-            if os.path.exists(cache):
-                self._remove(path)
-                self.hardlink(cache, path)
-            else:
-                self.hardlink(path, cache)
-
-        if not os.path.isdir(dname):
-            os.makedirs(dname)
-
-        with open(self.cache, 'w+') as fd:
-            json.dump(dir_info, fd, sort_keys=True)
+        self.project.cache.checkout(self.path, self.md5)
 
     def save(self):
         super(Output, self).save()
@@ -345,7 +206,7 @@ class Output(Dependency):
         if not self.use_cache:
             return
 
-        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.rel_path, self.rel_cache))
+        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.rel_path, self.md5))
 
         if self.project.scm.is_tracked(self.path):
             raise CmdOutputAlreadyTrackedError(self.rel_path)
@@ -353,29 +214,7 @@ class Output(Dependency):
         if not self.changed():
              return
 
-        if os.path.exists(self.cache):
-            # This means that we already have cache for this data.
-            # We remove data and link it to existing cache to save
-            # some space.
-            msg = u'Cache \'{}\' already exists, performing checkout for \'{}\''
-            self.project.logger.debug(msg.format(self.rel_cache, self.rel_path))
-            self.checkout()
-            return
-
-        if os.path.isdir(self.path):
-            self._save_dir()
-        else:
-            self.hardlink(self.path, self.cache)
-
-    def _remove(self, path):
-        if not os.path.exists(path):
-            return
-
-        self.project.logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
-        if os.path.isfile(path):
-            os.unlink(path)
-        else:
-            shutil.rmtree(path)
+        self.project.cache.save(self.path)
 
     def remove(self):
-        self._remove(self.path)
+        remove(self.path)

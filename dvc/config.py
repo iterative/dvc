@@ -5,6 +5,7 @@ import os
 import schema
 import configobj
 
+from dvc.cache import Cache
 from dvc.exceptions import DvcException
 
 
@@ -27,6 +28,15 @@ class Config(object):
     SECTION_CORE_LOGLEVEL = 'loglevel'
     SECTION_CORE_LOGLEVEL_SCHEMA = schema.And(schema.Use(str.lower), lambda l: l in ('info', 'debug', 'warning', 'error'))
     SECTION_CORE_REMOTE = 'remote'
+
+    SECTION_CACHE = 'cache'
+    SECTION_CACHE_DIR = 'dir'
+    SECTION_CACHE_TYPE = 'type'
+    SECTION_CACHE_TYPE_SCHEMA = schema.And(schema.Use(str.lower), lambda t: t in Cache.CACHE_TYPE_MAP.keys())
+    SECTION_CACHE_SCHEMA = {
+        schema.Optional(SECTION_CACHE_DIR, default=Cache.CACHE_DIR): str,
+        schema.Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
+    }
 
     # backward compatibility
     SECTION_CORE_CLOUD = 'cloud'
@@ -86,6 +96,7 @@ class Config(object):
     SCHEMA = {
         schema.Optional(SECTION_CORE, default={}): SECTION_CORE_SCHEMA,
         schema.Optional(schema.Regex(SECTION_REMOTE_REGEX)): SECTION_REMOTE_SCHEMA,
+        schema.Optional(SECTION_CACHE, default={}): SECTION_CACHE_SCHEMA,
 
         # backward compatibility
         schema.Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,

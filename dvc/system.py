@@ -1,8 +1,6 @@
-import ctypes
 import os
-import re
-import subprocess
-from builtins import str
+import ctypes
+import reflink
 
 if os.name == 'nt':
     import ntfsutils.hardlink as winlink
@@ -10,9 +8,6 @@ if os.name == 'nt':
 
 
 class System(object):
-    SYMLINK_OUTPUT = '<SYMLINK>'
-    LONG_PATH_BUFFER_SIZE = 1024
-
     @staticmethod
     def is_unix():
         return os.name != 'nt'
@@ -25,6 +20,26 @@ class System(object):
         return winlink.create(source, link_name)
 
     @staticmethod
+    def symlink(source, link_name):
+        if System.is_unix():
+            return os.symlink(source, link_name)
+
+        flags = 0
+        if source is not None and os.path.isdir(source):
+            flags = 1
+
+        func = ctypes.windll.kernel32.CreateSymbolicLinkW
+        func.argtypes = (ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_uint32)
+        func.restype = ctypes.c_ubyte
+
+        if func(link_name, source, flags) == 0:
+            raise ctypes.WinError()
+
+    @staticmethod
+    def reflink(source, link_name):
+        return reflink.reflink(source, link_name)
+
+    @staticmethod
     def inode(path):
         if System.is_unix():
             return os.stat(path).st_ino
@@ -32,13 +47,3 @@ class System(object):
         # getdirinfo from ntfsutils works on both files and dirs
         info = getdirinfo(path)
         return hash((info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow))
-
-    @staticmethod
-    def samefile(path1, path2):
-        if not os.path.exists(path1) or not os.path.exists(path2):
-            return False
-
-        if System.is_unix():
-            return os.path.samefile(path1, path2)
-
-        return winlink.samefile(path1, path2)

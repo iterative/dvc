@@ -2,7 +2,6 @@ import os
 
 from dvc.cache import Cache
 from dvc.system import System
-from dvc.output import Output
 
 from tests.basic_env import TestDvc
 
@@ -53,8 +52,8 @@ class TestCacheLoadBadDirCache(TestDvc):
     def test(self):
         fname = 'not-json'
         self.create(fname, '<clearly>not,json')
-        self._do_test(Output.load_dir_cache(fname))
+        self._do_test(Cache.load_dir_cache(fname))
 
         fname = 'not-list'
         self.create(fname, '{"a": "b"}')
-        self._do_test(Output.load_dir_cache(fname))
+        self._do_test(Cache.load_dir_cache(fname))

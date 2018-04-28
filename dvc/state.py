@@ -3,8 +3,8 @@ import json
 import nanotime
 import threading
 
+from dvc.lock import Lock
 from dvc.system import System
-from dvc.output import Output
 from dvc.utils import file_md5, dict_md5
 from dvc.exceptions import DvcException
 
@@ -40,17 +40,22 @@ class StateDuplicateError(DvcException):
 
 class State(object):
     STATE_FILE = 'state'
+    STATE_LOCK_FILE = 'state.lock'
 
-    def __init__(self, root_dir, dvc_dir):
-        self.root_dir = root_dir
+    PARAM_RELPATH = 'relpath'
+    PARAM_MD5 = 'md5'
+    MD5_DIR_SUFFIX = '.dir'
+
+    def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
         self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
         self._db = self.load()
         self._lock = threading.Lock()
+        self._lock_file = Lock(dvc_dir, self.STATE_LOCK_FILE)
 
     @staticmethod
-    def init(root_dir, dvc_dir):
-        return State(root_dir, dvc_dir)
+    def init(dvc_dir):
+        return State(dvc_dir)
 
     def collect_dir(self, dname):
         dir_info = []
@@ -61,7 +66,7 @@ class State(object):
                 relpath = os.path.relpath(path, dname)
 
                 md5 = self.update(path, dump=False)
-                dir_info.append({Output.PARAM_RELPATH: relpath, Output.PARAM_MD5: md5})
+                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
 
         self.dump()
 
@@ -70,7 +75,7 @@ class State(object):
     def compute_md5(self, path):
         if os.path.isdir(path):
             dir_info = self.collect_dir(path)
-            return dict_md5(dir_info) + Output.MD5_DIR_SUFFIX
+            return dict_md5(dir_info) + self.MD5_DIR_SUFFIX
         else:
             return file_md5(path)[0]
 
@@ -117,16 +122,19 @@ class State(object):
         d = state.dumpd()
 
         with self._lock:
-            self._db[inode] = d
+            with self._lock_file:
+                self._db[inode] = d
 
-            if dump:
-                self.dump()
+                if dump:
+                    self.dump()
 
         return md5
 
     def _get(self, inode, mtime):
         with self._lock:
-            d = self._db.get(inode, None)
+            with self._lock_file:
+                d = self._db.get(inode, None)
+
         if not d:
             return None
 

@@ -9,7 +9,7 @@ import dvc.cloud.base as cloud
 
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.stage import Stage, Output
+from dvc.stage import Stage
 from dvc.config import Config
 from dvc.state import State
 from dvc.lock import Lock
@@ -43,13 +43,14 @@ class Project(object):
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
+        self.config = Config(self.dvc_dir)
         self.scm = SCM(self.root_dir)
         self.lock = Lock(self.dvc_dir)
-        self.cache = Cache(self.dvc_dir)
-        self.state = State(self.root_dir, self.dvc_dir)
-        self.config = Config(self.dvc_dir)
+        self.cache = Cache(self.dvc_dir, cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
+                                         cache_type=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_TYPE, None))
+        self.state = State(self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
-        self.cloud = DataCloud(cache=self.cache, state=self.state, config=self.config._config)
+        self.cloud = DataCloud(cache=self.cache, config=self.config._config)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False):
@@ -77,7 +78,7 @@ class Project(object):
 
         config = Config.init(dvc_dir)
         cache = Cache.init(dvc_dir)
-        state = State.init(root_dir, dvc_dir)
+        state = State.init(dvc_dir)
         lock = Lock(dvc_dir)
 
         scm.ignore_list([cache.cache_dir,
@@ -211,8 +212,8 @@ class Project(object):
                 if not out.use_cache or not out.cache:
                     continue
                 cache_set |= set([out.cache])
-                if out.is_dir_cache(out.cache) and os.path.isfile(out.cache):
-                    dir_cache = out.dir_cache()
+                if self.cache.is_dir_cache(out.cache) and os.path.isfile(out.cache):
+                    dir_cache = self.cache.dir_cache(out.cache)
                     cache_set |= set(dir_cache.values())
 
         return list(cache_set)
