@@ -131,3 +131,22 @@ def map_progress(func, targets, n_threads):
         raise
 
     return list(zip(targets, ret))
+
+
+def move(src, dst):
+    dname = os.path.dirname(dst)
+    if not os.path.exists(dname):
+        os.makedirs(dname)
+
+    shutil.move(src, dst)
+
+
+def remove(path):
+    if not os.path.exists(path):
+        return
+
+    Logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
+    if os.path.isfile(path):
+        os.unlink(path)
+    else:
+        shutil.rmtree(path)

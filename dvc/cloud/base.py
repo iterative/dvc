@@ -5,7 +5,7 @@ import tempfile
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import Config, ConfigError
-from dvc.stage import Output
+from dvc.cache import Cache
 
 
 STATUS_UNKNOWN = 0
@@ -31,9 +31,8 @@ class DataCloudError(DvcException):
 
 
 class CloudSettings(object):
-    def __init__(self, cache=None, state=None, global_storage_path=None, cloud_config=None):
+    def __init__(self, cache=None, global_storage_path=None, cloud_config=None):
         self.cache = cache
-        self.state = state
         self.cloud_config = cloud_config
         self.global_storage_path = global_storage_path
 
@@ -131,7 +130,7 @@ class DataCloudBase(object):
         path, local = arg
         ret = [path]
 
-        if not Output.is_dir_cache(path):
+        if not Cache.is_dir_cache(path):
             return ret
 
         if local:
@@ -147,7 +146,7 @@ class DataCloudBase(object):
             self._pull_key(key, tmp, no_progress_bar=True)
             dir_path = tmp
 
-        for relpath, md5 in Output.get_dir_cache(dir_path).items():
+        for relpath, md5 in Cache.get_dir_cache(dir_path).items():
             cache = self._cloud_settings.cache.get(md5)
             ret.append(cache)
 
@@ -155,7 +154,7 @@ class DataCloudBase(object):
 
     def _cmp_checksum(self, blob, fname):
         md5 = self._cloud_settings.cache.path_to_md5(fname)
-        if self._cloud_settings.state.changed(fname, md5=md5):
+        if self._cloud_settings.cache.state.changed(fname, md5=md5):
             return False
 
         return True
