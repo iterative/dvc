@@ -21,6 +21,9 @@ call pip install pyinstaller || goto :error
 echo ====== Building dvc binary... ======
 call pyinstaller --onefile --additional-hooks-dir scripts\hooks dvc/__main__.py --name dvc --specpath build
 
+echo ====== Copying additional files... ======
+copy scripts\innosetup\addSymLinkPermissions.ps1 dist\ || goto :error
+
 echo ====== Building dvc installer... ======
 set PYTHONPATH=%cd%
 call python scripts\innosetup\config_gen.py || goto :error
