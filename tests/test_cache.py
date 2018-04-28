@@ -26,23 +26,6 @@ class TestCache(TestDvc):
         cache = Cache(self.dvc.dvc_dir).get(self.cache1_md5)
         self.assertEquals(cache, self.cache1)
 
-    def test_find_cache(self):
-        fname1 = os.path.basename(self.cache1)
-        fname1_md5 = self.cache1_md5
-        fname2 = os.path.basename(self.cache2)
-        fname2_md5 = self.cache2_md5
-        fname3 = 'non_existing'
-
-        System.hardlink(self.cache1, fname1)
-        System.hardlink(self.cache2, fname2)
-
-        cache = Cache(self.dvc.dvc_dir).find_cache([fname1, fname2, fname3])
-
-        expected = {fname1: fname1_md5, fname2: fname2_md5}
-
-        self.assertEqual(len(cache), 2)
-        self.assertEqual(cache, expected)
-
 
 class TestCacheLoadBadDirCache(TestDvc):
     def _do_test(self, ret):

@@ -64,15 +64,6 @@ class Cache(object):
         relpath = os.path.relpath(path, self.cache_dir)
         return os.path.dirname(relpath) + os.path.basename(relpath)
 
-    def find_cache(self, files):
-        file_set = set(files)
-        cached = {}
-        for cache_file in self.all():
-            cached_files = list(filter(lambda f: System.samefile(cache_file, f), file_set))
-            cached.update(dict((f, os.path.basename(os.path.dirname(cache_file)) + os.path.basename(cache_file)) for f in cached_files))
-            file_set = file_set - set(cached_files)
-        return cached
-
     def _changed(self, md5):
         cache = self.get(md5)
         if self.state.changed(cache, md5=md5):
