@@ -20,25 +20,38 @@ matrix:
     osx_image: xcode9.3
     language: ruby
     rvm: 2.4.0
-    env: PYTHON_VER=2.7.10
+    env:
+    - PYTHON_VER=2.7.10
+    - PYENV_ROOT="$HOME/.pyenv"
+    - PATH="$PYENV_ROOT/bin:$PATH"
   - if: type = cron OR tag is present
     os: osx
     osx_image: xcode9.3
     language: ruby
     rvm: 2.4.0
-    env: PYTHON_VER=3.4.3
+    env:
+    - PYTHON_VER=3.4.3
+    - PYENV_ROOT="$HOME/.pyenv"
+    - PATH="$PYENV_ROOT/bin:$PATH"
   - if: type = cron OR tag is present
     os: osx
     osx_image: xcode9.3
     language: ruby
     rvm: 2.4.0
-    env: PYTHON_VER=3.5.0
+    env:
+    - PYTHON_VER=3.5.0
+    - PYENV_ROOT="$HOME/.pyenv"
+    - PATH="$PYENV_ROOT/bin:$PATH"
 before_install:
   - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      pyenv install $PYTHON_VER;
-      pyenv global $PYTHON_VER;
+      eval "$(pyenv init -)";
+      eval "$(pyenv virtualenv-init -)";
+      pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
+      pyenv shell "$PYTHON_VER";
+      which python;
+      which pip;
+      python --version;
     fi
-  - which python
 install:
   - bash ./scripts/ci/install.sh
 script:
