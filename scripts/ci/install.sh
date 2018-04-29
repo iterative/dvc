@@ -3,7 +3,7 @@
 set -x
 set -e
 
-pip install --upgrade pip
+python -m pip install -U pip setuptools wheel
 pip install -r requirements.txt
 pip install -r test-requirements.txt
 git config --global user.email "dvctester@example.com"
