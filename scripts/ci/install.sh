@@ -3,7 +3,11 @@
 set -x
 set -e
 
-python -m pip install -U pip setuptools wheel
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+	pyenv global $PYTHON_VER
+fi
+
+pip install --upgrade pip
 pip install -r requirements.txt
 pip install -r test-requirements.txt
 git config --global user.email "dvctester@example.com"
