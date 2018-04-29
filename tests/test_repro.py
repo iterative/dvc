@@ -28,6 +28,22 @@ class TestRepro(TestDvc):
                      cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
 
 
+class TestReproNoDeps(TestRepro):
+    def test(self):
+        out = 'out'
+        code_file = 'out.py'
+        stage_file = 'out.dvc'
+        code = 'import uuid\nwith open("{}", "w+") as fd:\n\tfd.write(str(uuid.uuid4()))\n'.format(out)
+        with open(code_file, 'w+') as fd:
+            fd.write(code)
+        self.dvc.run(fname=stage_file,
+                     outs=[out],
+                     cmd='python {}'.format(code_file))
+
+        stages = self.dvc.reproduce(stage_file)
+        self.assertEqual(len(stages), 1)
+
+
 class TestReproForce(TestRepro):
     def test(self):
         stages = self.dvc.reproduce(self.file1_stage, force=True)
