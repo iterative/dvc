@@ -45,13 +45,12 @@ matrix:
 before_install:
   - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       eval "$(pyenv init -)";
-      eval "$(pyenv virtualenv-init -)";
       pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
       pyenv shell "$PYTHON_VER";
-      which python;
-      which pip;
-      python --version;
     fi
+  - which python
+  - which pip
+  - python --version
 install:
   - bash ./scripts/ci/install.sh
 script:

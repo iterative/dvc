@@ -3,10 +3,6 @@
 set -x
 set -e
 
-if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-	pyenv global $PYTHON_VER
-fi
-
 pip install --upgrade pip
 pip install -r requirements.txt
 pip install -r test-requirements.txt
