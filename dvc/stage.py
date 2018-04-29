@@ -92,6 +92,10 @@ class Stage(object):
 
     def changed(self):
         ret = False
+
+        if not self.is_data_source and len(self.deps) == 0:
+            ret = True
+
         for entry in itertools.chain(self.outs, self.deps):
             if entry.changed():
                 ret = True
