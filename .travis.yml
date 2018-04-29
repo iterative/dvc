@@ -34,7 +34,11 @@ matrix:
     rvm: 2.4.0
     env: PYTHON_VER=3.5.0
 before_install:
-  - bash ./scripts/ci/before_install.sh
+  - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      pyenv install $PYTHON_VER
+      pyenv global $PYTHON_VER
+    fi
+  - which python
 install:
   - bash ./scripts/ci/install.sh
 script:
