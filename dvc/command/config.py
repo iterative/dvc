@@ -42,16 +42,15 @@ class CmdConfig(CmdBase):
             return 1
         return 0
 
-    def unset(self, section, opt):
+    def unset(self, section, opt=None):
         if section not in self.configobj.keys():
             Logger.error("Section '{}' doesn't exist".format(section))
             return 1
 
-        if opt not in self.configobj[section].keys():
-            return 0
+        if opt in self.configobj[section].keys():
+            del self.configobj[section][opt]
 
-        del self.configobj[section][opt]
-        if len(self.configobj[section]) == 0:
+        if len(self.configobj[section]) == 0 or opt == None:
             del self.configobj[section]
 
         return self.save()

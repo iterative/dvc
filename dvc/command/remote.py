@@ -1,6 +1,8 @@
-from dvc.command.common.base import CmdBase
+import re
+
 from dvc.config import Config
 from dvc.command.config import CmdConfig
+from dvc.logger import Logger
 
 
 class CmdRemoteAdd(CmdConfig):
@@ -20,3 +22,14 @@ class CmdRemoteModify(CmdConfig):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
         self.args.name = '{}.{}'.format(section, self.args.option)
         return super(CmdRemoteModify, self).run()
+
+
+class CmdRemoteList(CmdConfig):
+    def run(self):
+        for section in self.configobj.keys():
+            r = re.match(Config.SECTION_REMOTE_REGEX, section)
+            if r:
+                name = r.group('name')
+                url = self.configobj[section].get(Config.SECTION_REMOTE_URL, '')
+                Logger.info('{}\t{}'.format(name, url))
+        return 0

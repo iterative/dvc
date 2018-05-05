@@ -82,7 +82,7 @@ class Config(object):
     }
 
 
-    SECTION_REMOTE_REGEX = r'^\s*remote\s*"(.*)"\s*$'
+    SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
     SECTION_REMOTE_SCHEMA = {
