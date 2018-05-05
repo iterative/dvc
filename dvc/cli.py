@@ -16,7 +16,7 @@ from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
-from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify
+from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, CmdRemoteList
 from dvc.command.metrics import CmdMetrics
 from dvc.command.install import CmdInstall
 from dvc.stage import Stage
@@ -326,6 +326,18 @@ def parse_args(argv=None):
                         default=False,
                         help='Use local config')
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
+
+
+    remote_list_parser = remote_subparsers.add_parser(
+                        'list',
+                        parents=[parent_parser],
+                        help='List remotes')
+    remote_list_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config')
+    remote_list_parser.set_defaults(func=CmdRemoteList)
 
     # Metrics
     metrics_parser = subparsers.add_parser(
