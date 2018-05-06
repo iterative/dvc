@@ -17,6 +17,7 @@ from dvc.scm import SCM, Base
 from dvc.cache import Cache
 from dvc.cloud.data_cloud import DataCloud
 from dvc.system import System
+from dvc.check_updates import check_updates
 
 
 class InitError(DvcException):
@@ -51,6 +52,8 @@ class Project(object):
         self.state = State(self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cloud = DataCloud(cache=self.cache, config=self.config._config)
+
+        check_updates()
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False):
