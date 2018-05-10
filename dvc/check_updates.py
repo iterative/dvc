@@ -1,19 +1,18 @@
-from github import Github
+import json
+import requests
 
 from dvc import VERSION_BASE
 from dvc.logger import Logger
 
-GITHUB_USER = 'dataversioncontrol'
-GITHUB_REPO = 'dvc'
+DVCAPI_URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/prod/latest-version'
 
 def check_updates():
     current = VERSION_BASE
 
     try:
-        gh = Github()
-        user = gh.get_user(GITHUB_USER)
-        repo = user.get_repo(GITHUB_REPO)
-        latest = repo.get_latest_release().title
+        r = requests.get(DVCAPI_URL)
+        j = json.loads(r.content)
+        latest = j['version']
     except Exception as exc:
         Logger.debug('Failed to obtain latest version: {}'.format(str(exc)))
         return
