@@ -86,6 +86,7 @@ class Project(object):
 
         scm.ignore_list([cache.cache_dir,
                          state.state_file,
+                         state._lock_file.lock_file,
                          lock.lock_file,
                          config.config_local_file])
 
