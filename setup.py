@@ -26,7 +26,7 @@ install_requires = [
     "binaryornot==0.4.4",
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
-    "PyGithub>=1.39",
+    "requests>=2.18.4",
 ]
 
 setup(
