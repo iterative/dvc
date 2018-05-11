@@ -221,3 +221,9 @@ class DataCloudBase(object):
 
     def disconnect(self):
         pass
+
+    def __enter__(self):
+        self.connect()
+
+    def __exit__(self, type, value, tb):
+        self.disconnect()
