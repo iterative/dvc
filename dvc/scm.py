@@ -137,7 +137,8 @@ class Git(Base):
         self.repo.git.branch(branch)
 
     def untracked_files(self):
-        return self.repo.untracked_files
+        files = self.repo.untracked_files
+        return [os.path.join(self.repo.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
         return len(self.repo.git.ls_files(path)) != 0
