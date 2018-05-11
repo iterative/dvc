@@ -11,6 +11,7 @@ from dvc.cloud.gcp import DataCloudGCP
 from dvc.cloud.ssh import DataCloudSSH
 from dvc.cloud.local import DataCloudLOCAL
 from dvc.cloud.base import DataCloudBase, CloudSettings
+from dvc.cloud.base import STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 
 class DataCloud(object):
@@ -99,47 +100,54 @@ class DataCloud(object):
 
         return collected
 
-    def _map_targets(self, func, targets, jobs, collect_local=False, collect_cloud=False, remote=None):
-        """
-        Process targets as data items in parallel.
-        """
+    def _get_cloud(self, remote):
+        if remote:
+            return self._init_remote(remote)
 
-        if not remote:
-            cloud = self._cloud
-        else:
-            cloud = self._init_remote(remote)
+        return self._cloud
 
+    def _filter(self, func, status, targets, jobs, remote):
+        cloud = self._get_cloud(remote)
         if not cloud:
-            return
+            return []
 
-        cloud.connect()
+        with cloud:
+            filtered = []
+            for t, s in self._status(cloud, targets, jobs):
+                if s == STATUS_MODIFIED or s == status:
+                    filtered.append(t)
 
-        collected = set()
-        if collect_local:
-            collected |= self._collect(cloud, targets, jobs, True)
-        if collect_cloud:
-            collected |= self._collect(cloud, targets, jobs, False)
-
-        ret = map_progress(getattr(cloud, func), list(collected), jobs)
-
-        cloud.disconnect()
-
-        return ret
+            return map_progress(getattr(cloud, func), filtered, jobs)
 
     def push(self, targets, jobs=1, remote=None):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._map_targets('push', targets, jobs, collect_local=True, remote=remote)
+        return self._filter('push', STATUS_NEW, targets, jobs, remote)
 
     def pull(self, targets, jobs=1, remote=None):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._map_targets('pull', targets, jobs, collect_cloud=True, remote=remote)
+        return self._filter('pull', STATUS_DELETED, targets, jobs, remote)
+
+    def _collect_targets(self, cloud, targets, jobs=1):
+        collected = set()
+        collected |= self._collect(cloud, targets, jobs, True)
+        collected |= self._collect(cloud, targets, jobs, False)
+        return list(collected)
+
+    def _status(self, cloud, targets, jobs=1):
+        collected = self._collect_targets(cloud, targets, jobs)
+        return map_progress(cloud.status, collected, jobs)
 
     def status(self, targets, jobs=1, remote=None):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        return self._map_targets('status', targets, jobs, True, True, remote=remote)
+        cloud = self._get_cloud(remote)
+        if not cloud:
+            return []
+
+        with cloud:
+            return self._status(cloud, targets, jobs)
