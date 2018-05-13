@@ -47,7 +47,7 @@ class Project(object):
         self.config = Config(self.dvc_dir)
         self.scm = SCM(self.root_dir)
         self.lock = Lock(self.dvc_dir)
-        self.cache = Cache(self.dvc_dir, cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
+        self.cache = Cache(self.root_dir, self.dvc_dir, cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
                                          cache_type=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_TYPE, None))
         self.state = State(self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
@@ -81,12 +81,14 @@ class Project(object):
         os.mkdir(dvc_dir)
 
         config = Config.init(dvc_dir)
-        cache = Cache.init(dvc_dir)
+        cache = Cache.init(root_dir, dvc_dir)
         state = State.init(dvc_dir)
         lock = Lock(dvc_dir)
         updater = Updater(dvc_dir)
 
         scm.ignore_list([cache.cache_dir,
+                         cache.link_state.state_file,
+                         cache.link_state._lock_file.lock_file,
                          state.state_file,
                          state._lock_file.lock_file,
                          lock.lock_file,
@@ -177,30 +179,13 @@ class Project(object):
                 raise ReproductionError(stages[n].relpath, ex)
         return result
 
-    def _remove_untracked_hardlinks(self):
-        untracked = self.scm.untracked_files()
-        cache = dict((System.inode(c), c) for c in self.cache.all())
-        for file in untracked:
-            inode = System.inode(file)
-            if inode not in cache.keys():
-                continue
-
-            Logger.info(u'Remove \'{}\''.format(file))
-            os.remove(file)
-
-            dir = os.path.dirname(file)
-            if len(dir) != 0 and not os.listdir(dir):
-                Logger.info(u'Remove empty directory \'{}\''.format(dir))
-                os.removedirs(dir)
-
     def checkout(self, target=None):
-        self._remove_untracked_hardlinks()
-
         if target:
             if not Stage.is_stage_file(target):
                 raise StageNotFoundError(target)
             stages = [Stage.load(self, target)]
         else:
+            self.cache.link_state.remove_all()
             stages = self.stages()
 
         for stage in stages:
