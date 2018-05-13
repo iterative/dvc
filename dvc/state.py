@@ -5,7 +5,7 @@ import threading
 
 from dvc.lock import Lock
 from dvc.system import System
-from dvc.utils import file_md5, dict_md5
+from dvc.utils import file_md5, dict_md5, remove
 from dvc.exceptions import DvcException
 
 
@@ -149,3 +149,69 @@ class State(object):
         inode = self.inode(path)
 
         return self._get(inode, mtime)
+
+
+class LinkStateEntry(object):
+    PARAM_MTIME = 'mtime'
+    PARAM_INODE = 'inode'
+
+    def __init__(self, inode, mtime):
+        self.mtime = mtime
+        self.inode = inode
+
+    @staticmethod
+    def loadd(d):
+        mtime = d[LinkStateEntry.PARAM_MTIME]
+        inode = d[LinkStateEntry.PARAM_INODE]
+        return LinkStateEntry(inode, mtime)
+
+    def dumpd(self):
+        return {
+            self.PARAM_INODE: self.inode,
+            self.PARAM_MTIME: self.mtime,
+        }
+
+
+class LinkState(State):
+    STATE_FILE = 'link.state'
+    STATE_LOCK_FILE = STATE_FILE + '.lock'
+
+    def __init__(self, root_dir, dvc_dir):
+        super(LinkState, self).__init__(dvc_dir)
+        self.root_dir = root_dir
+
+    def update(self, path):
+        if not os.path.exists(path):
+            return
+
+        mtime = self.mtime(path)
+        inode = self.inode(path)
+
+        with self._lock:
+            with self._lock_file:
+                state = LinkStateEntry(inode, mtime)
+                d = state.dumpd()
+                self._db[os.path.relpath(path, self.root_dir)] = d
+                self.dump()
+
+    def _do_remove_all(self):
+        for p, s in self._db.items():
+            path = os.path.join(self.root_dir, p)
+            state = LinkStateEntry.loadd(s)
+
+            if not os.path.exists(path):
+                continue
+
+            inode = self.inode(path)
+            mtime = self.mtime(path)
+
+            if inode == state.inode and mtime == state.mtime:
+                remove(path)
+
+        self._db = {}
+
+    def remove_all(self):
+        with self._lock:
+            with self._lock_file:
+                self._do_remove_all()
+                self.dump()

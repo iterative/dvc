@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 
-from dvc.state import State
+from dvc.state import State, LinkState
 from dvc.system import System
 from dvc.logger import Logger
 from dvc.utils import move, remove
@@ -21,7 +21,7 @@ class Cache(object):
         'reflink': System.reflink,
     }
 
-    def __init__(self, dvc_dir, cache_dir=None, cache_type=None):
+    def __init__(self, root_dir, dvc_dir, cache_dir=None, cache_type=None):
         self.cache_type = cache_type
 
         cache_dir = cache_dir if cache_dir else self.CACHE_DIR
@@ -34,11 +34,12 @@ class Cache(object):
             os.mkdir(self.cache_dir)
 
         self.state = State(self.cache_dir)
+        self.link_state = LinkState(root_dir, dvc_dir)
         self.lock = Lock(self.cache_dir, name=self.CACHE_DIR_LOCK)
 
     @staticmethod
-    def init(dvc_dir, cache_dir=None):
-        return Cache(dvc_dir, cache_dir=None)
+    def init(root_dir, dvc_dir, cache_dir=None):
+        return Cache(root_dir, dvc_dir, cache_dir=None)
 
     def all(self):
         with self.lock:
@@ -91,6 +92,7 @@ class Cache(object):
         for typ in types:
             try:
                 self.CACHE_TYPE_MAP[typ](src, link)
+                self.link_state.update(link)
                 return
             except Exception as exc:
                 msg = 'Cache type \'{}\' is not supported'.format(typ)
