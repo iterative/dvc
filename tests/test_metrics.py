@@ -8,6 +8,8 @@ from tests.basic_env import TestDvc
 class TestMetrics(TestDvc):
     def setUp(self):
         super(TestMetrics, self).setUp()
+        self.dvc.scm.commit('init')
+
         for branch in ['foo', 'bar', 'baz']:
             self.dvc.scm.checkout(branch, create_new=True)
 
