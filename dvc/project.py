@@ -54,6 +54,8 @@ class Project(object):
         self.cloud = DataCloud(cache=self.cache, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
 
+        self._ignore()
+
         self.updater.check()
 
     @staticmethod
@@ -81,25 +83,25 @@ class Project(object):
         os.mkdir(dvc_dir)
 
         config = Config.init(dvc_dir)
-        cache = Cache.init(root_dir, dvc_dir)
-        state = State.init(dvc_dir)
-        lock = Lock(dvc_dir)
-        updater = Updater(dvc_dir)
-
-        scm.ignore_list([cache.cache_dir,
-                         cache.link_state.state_file,
-                         cache.link_state._lock_file.lock_file,
-                         state.state_file,
-                         state._lock_file.lock_file,
-                         lock.lock_file,
-                         config.config_local_file,
-                         updater.updater_file])
+        Cache.init(root_dir, dvc_dir)
+        State.init(dvc_dir)
+        proj = Project(root_dir)
 
         scm.add([config.config_file])
         if scm.ignore_file():
             scm.add([os.path.join(dvc_dir, scm.ignore_file())])
 
-        return Project(root_dir)
+        return proj
+
+    def _ignore(self):
+        self.scm.ignore_list([self.cache.cache_dir,
+                              self.cache.link_state.state_file,
+                              self.cache.link_state._lock_file.lock_file,
+                              self.state.state_file,
+                              self.state._lock_file.lock_file,
+                              self.lock.lock_file,
+                              self.config.config_local_file,
+                              self.updater.updater_file])
 
     def install(self):
         self.scm.install()
