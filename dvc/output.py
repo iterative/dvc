@@ -98,6 +98,10 @@ class Dependency(object):
         if not os.path.isfile(self.path) and not os.path.isdir(self.path):
             raise CmdOutputIsNotFileOrDirError(self.rel_path)
 
+        if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
+           (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
+            self.project.logger.warn("File/directory '{}' is empty.".format(self.rel_path))
+
         self.md5 = self.project.state.update(self.path)
 
     @staticmethod
