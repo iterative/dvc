@@ -87,7 +87,7 @@ class Git(Base):
         gitignore = os.path.abspath(os.path.realpath(gitignore))
 
         if not gitignore.startswith(self.root_dir):
-            raise FileNotInRepoError()
+            raise FileNotInRepoError(path)
 
         return entry, gitignore
 
