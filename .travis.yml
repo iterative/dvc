@@ -45,7 +45,7 @@ matrix:
 before_install:
   - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       eval "$(pyenv init -)";
-      pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
+      PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
       pyenv shell "$PYTHON_VER";
     fi
   - which python
