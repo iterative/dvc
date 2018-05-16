@@ -3,6 +3,7 @@ Helpers for other modules.
 """
 import os
 import re
+import sys
 import json
 import stat
 import shutil
@@ -41,6 +42,8 @@ def file_md5(fname):
                 if binary:
                     chunk = data
                 else:
+                    if sys.version_info[0] == 2:
+                        data = data.decode('utf-8')
                     chunk = dos2unix(data).encode('utf-8')
 
                 hash_md5.update(chunk)
