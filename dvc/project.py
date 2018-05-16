@@ -239,7 +239,7 @@ class Project(object):
         else:
             stages = self.stages()
 
-        for stage in self.stages():
+        for stage in stages:
             status.update(stage.status())
 
         return status
@@ -326,12 +326,18 @@ class Project(object):
 
     def graph(self):
         G = nx.DiGraph()
+        stages = self.stages()
 
-        for stage in self.stages():
+        outs_map = {}
+        for stage in stages:
+            for o in stage.outs:
+                outs_map[o.path] = stage
+
+        for stage in stages:
             node = os.path.relpath(stage.path, self.root_dir)
             G.add_node(node, stage=stage)
             for dep in stage.deps:
-                dep_stage = dep.stage()
+                dep_stage = outs_map.get(dep.path, None)
                 if not dep_stage:
                     continue
                 dep_node = os.path.relpath(dep_stage.path, self.root_dir)

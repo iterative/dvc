@@ -135,13 +135,6 @@ class Dependency(object):
     def loads_from(cls, project, s_list, cwd=os.curdir):
         return [cls.loads(project, x, cwd=cwd) for x in s_list]
 
-    def stage(self):
-        for stage in self.project.stages():
-            for out in stage.outs:
-                if self.path == out.path:
-                    return stage
-        return None
-
 
 class Output(Dependency):
     PARAM_CACHE = 'cache'
