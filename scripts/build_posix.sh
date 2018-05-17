@@ -3,9 +3,6 @@
 set -e
 set -x
 
-BUILD_DIR=build
-BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
-
 if [[ "$(uname)" == 'Linux' ]]; then
 	INSTALL_DIR=usr
 	FPM_FLAGS=
@@ -13,6 +10,9 @@ else
 	INSTALL_DIR=usr/local
 	FPM_FLAGS='--osxpkg-identifier-prefix com.dataversioncontrol'
 fi
+
+BUILD_DIR=build
+BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 
 print_error()
 {
