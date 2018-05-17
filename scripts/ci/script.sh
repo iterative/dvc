@@ -22,11 +22,6 @@ if [[ "$TRAVIS_PULL_REQUEST" == "false" && \
 fi
 
 if [[ ! -z "$TRAVIS_TAG" ]]; then
-	if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-		./scripts/build_macos.sh
-	else
-		./scripts/build_linux.sh
-	fi
-
 	./scripts/build_package.sh
+	./scripts/build_posix.sh
 fi
