@@ -3,7 +3,6 @@ import math
 import threading
 
 import boto3
-import botocore
 
 from dvc.config import Config
 from dvc.logger import Logger
@@ -118,7 +117,7 @@ class DataCloudAWS(DataCloudBase):
         try:
             self.s3.Object(self.storage_bucket, key_name).get()
             return AWSKey(self.storage_bucket, key_name)
-        except botocore.errorfactory.ClientError:
+        except Exception:
             return None
 
     def _new_key(self, path):
