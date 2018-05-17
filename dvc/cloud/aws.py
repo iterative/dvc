@@ -4,15 +4,6 @@ import threading
 
 import boto3
 import botocore
-try:        
-    import httplib        
-except ImportError:       
-    # Python3 workaround for ResumableDownloadHandler.        
-    # See https://github.com/boto/boto/pull/3755.     
-    import sys        
-    import http.client as httplib     
-    sys.modules['httplib'] = httplib
-from boto.s3.resumable_download_handler import ResumableDownloadHandler
 
 from dvc.config import Config
 from dvc.logger import Logger
