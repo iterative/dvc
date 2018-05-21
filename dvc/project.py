@@ -94,14 +94,18 @@ class Project(object):
         return proj
 
     def _ignore(self):
-        self.scm.ignore_list([self.cache.cache_dir,
-                              self.cache.link_state.state_file,
-                              self.cache.link_state._lock_file.lock_file,
-                              self.state.state_file,
-                              self.state._lock_file.lock_file,
-                              self.lock.lock_file,
-                              self.config.config_local_file,
-                              self.updater.updater_file])
+        l = [self.cache.link_state.state_file,
+             self.cache.link_state._lock_file.lock_file,
+             self.state.state_file,
+             self.state._lock_file.lock_file,
+             self.lock.lock_file,
+             self.config.config_local_file,
+             self.updater.updater_file]
+
+        if self.cache.cache_dir.startswith(self.root_dir):
+            l += [self.cache.cache_dir]
+
+        self.scm.ignore_list(l)
 
     def install(self):
         self.scm.install()
