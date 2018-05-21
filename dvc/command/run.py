@@ -43,6 +43,6 @@ class CmdRun(CmdBase):
     def _stage_file_basename(fname):
         result = os.path.basename(fname)
         if len(result) == 0:
-            result = os.path.dirname(fname)
+            result = os.path.basename(os.path.dirname(fname))
         result += Stage.STAGE_FILE_SUFFIX
         return result
