@@ -1,7 +1,10 @@
 import os
+import shutil
+import tempfile
 
 from dvc.cache import Cache
 from dvc.system import System
+from dvc.main import main
 
 from tests.basic_env import TestDvc
 
@@ -40,3 +43,22 @@ class TestCacheLoadBadDirCache(TestDvc):
         fname = 'not-list'
         self.create(fname, '{"a": "b"}')
         self._do_test(Cache.load_dir_cache(fname))
+
+
+class TestExternalCacheDir(TestDvc):
+    def test(self):
+        cache_dir = tempfile.mkdtemp()
+
+        ret = main(['config', 'cache.dir', cache_dir])
+        self.assertEqual(ret, 0)
+
+        shutil.rmtree('.dvc/cache')
+
+        main(['add', self.FOO])
+        self.assertEqual(ret, 0)
+
+        main(['add', self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists('.dvc/cache'))
+        self.assertNotEquals(len(os.listdir(cache_dir)), 0)
