@@ -10,7 +10,7 @@ install_requires = [
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",
     "future>=0.16.0",
-    "google-cloud>=0.24.0",
+    "google-cloud==0.32.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "networkx>=1.11",
