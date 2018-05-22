@@ -5,7 +5,8 @@ import subprocess
 import schema
 
 from dvc.exceptions import DvcException
-from dvc.output import Output, Dependency, OutputError
+from dvc.output import Output
+from dvc.dependency import Dependency
 from dvc.logger import Logger
 from dvc.utils import dict_md5
 
@@ -21,7 +22,7 @@ class StageFileFormatError(DvcException):
         super(StageFileFormatError, self).__init__('Stage file format error')
 
 
-class MissingDataSource(OutputError):
+class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
 
@@ -147,17 +148,18 @@ class Stage(object):
         path = os.path.abspath(path)
         cwd = os.path.dirname(path)
         cmd = d.get(Stage.PARAM_CMD, None)
-        deps = Dependency.loadd_from(project, d.get(Stage.PARAM_DEPS, []), cwd=cwd)
-        outs = Output.loadd_from(project, d.get(Stage.PARAM_OUTS, []), cwd=cwd)
         md5 = d.get(Stage.PARAM_MD5, None)
 
-        return Stage(project=project,
-                     path=path,
-                     cmd=cmd,
-                     cwd=cwd,
-                     deps=deps,
-                     outs=outs,
-                     md5=md5)
+        stage = Stage(project=project,
+                      path=path,
+                      cmd=cmd,
+                      cwd=cwd,
+                      md5=md5)
+
+        stage.deps = Dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
+        stage.outs = Output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
+
+        return stage
 
     @staticmethod
     def loads(project=None,
@@ -169,16 +171,17 @@ class Stage(object):
               cwd=os.curdir):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
-        outputs = Output.loads_from(project, outs, use_cache=True, cwd=cwd)
-        outputs += Output.loads_from(project, outs_no_cache, use_cache=False, cwd=cwd)
-        dependencies = Dependency.loads_from(project, deps, cwd=cwd)
 
-        return Stage(project=project,
-                     path=path,
-                     cmd=cmd,
-                     cwd=cwd,
-                     outs=outputs,
-                     deps=dependencies)
+        stage = Stage(project=project,
+                      path=path,
+                      cmd=cmd,
+                      cwd=cwd)
+
+        stage.outs = Output.loads_from(stage, outs, use_cache=True)
+        stage.outs += Output.loads_from(stage, outs_no_cache, use_cache=False)
+        stage.deps = Dependency.loads_from(stage, deps)
+
+        return stage
 
     @staticmethod
     def load(project, fname):
@@ -186,8 +189,8 @@ class Stage(object):
             return Stage.loadd(project, yaml.safe_load(fd), fname)
 
     def dumpd(self):
-        deps = [x.dumpd(self.cwd) for x in self.deps]
-        outs = [x.dumpd(self.cwd) for x in self.outs]
+        deps = [x.dumpd() for x in self.deps]
+        outs = [x.dumpd() for x in self.outs]
 
         ret = {}
         if self.cmd != None:
