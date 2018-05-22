@@ -5,7 +5,8 @@ import subprocess
 import schema
 
 from dvc.exceptions import DvcException
-from dvc.output import Output, Dependency, OutputError
+from dvc.output import Output
+from dvc.dependency import Dependency
 from dvc.logger import Logger
 from dvc.utils import dict_md5
 
@@ -21,7 +22,7 @@ class StageFileFormatError(DvcException):
         super(StageFileFormatError, self).__init__('Stage file format error')
 
 
-class MissingDataSource(OutputError):
+class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
 
