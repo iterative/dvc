@@ -42,8 +42,9 @@ class Dependency(object):
         schema.Optional(PARAM_MD5): schema.Or(str, None),
     }
 
-    def __init__(self, project, path, md5=None):
-        self.project = project
+    def __init__(self, stage, path, md5=None):
+        self.stage = stage
+        self.project = stage.project
         self.path = os.path.abspath(os.path.normpath(path))
 
         if not self.path.startswith(self.project.root_dir):
@@ -100,27 +101,27 @@ class Dependency(object):
         assert not posixpath.isabs(path)
         return path.replace('\\', '/')
 
-    def dumpd(self, cwd):
+    def dumpd(self):
         return {
-            self.PARAM_PATH: self.unixpath(os.path.relpath(self.path, cwd)),
+            self.PARAM_PATH: self.unixpath(os.path.relpath(self.path, self.stage.cwd)),
             self.PARAM_MD5: self.md5,
         }
 
     @classmethod
-    def loadd(cls, project, d, cwd=os.curdir):
+    def loadd(cls, stage, d):
         relpath = os.path.normpath(Dependency.unixpath(d[Dependency.PARAM_PATH]))
-        path = os.path.join(cwd, relpath)
+        path = os.path.join(stage.cwd, relpath)
         md5 = d.get(Dependency.PARAM_MD5, None)
-        return cls(project, path, md5=md5)
+        return cls(stage, path, md5=md5)
 
     @classmethod
-    def loadd_from(cls, project, d_list, cwd=os.curdir):
-        return [cls.loadd(project, x, cwd=cwd) for x in d_list]
+    def loadd_from(cls, stage, d_list):
+        return [cls.loadd(stage, x) for x in d_list]
 
     @classmethod
-    def loads(cls, project, s, cwd=os.curdir):
-        return cls(project, os.path.join(cwd, s), md5=None)
+    def loads(cls, stage, s):
+        return cls(stage, os.path.join(stage.cwd, s), md5=None)
 
     @classmethod
-    def loads_from(cls, project, s_list, cwd=os.curdir):
-        return [cls.loads(project, x, cwd=cwd) for x in s_list]
+    def loads_from(cls, stage, s_list):
+        return [cls.loads(stage, x) for x in s_list]

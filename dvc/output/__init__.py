@@ -44,8 +44,8 @@ class Output(Dependency):
     SCHEMA = Dependency.SCHEMA
     SCHEMA[schema.Optional(PARAM_CACHE)] = bool
 
-    def __init__(self, project, path, md5=None, use_cache=True):
-        super(Output, self).__init__(project, path, md5=md5)
+    def __init__(self, stage, path, md5=None, use_cache=True):
+        super(Output, self).__init__(stage, path, md5=md5)
         self.use_cache = use_cache
 
     @property
@@ -55,26 +55,26 @@ class Output(Dependency):
 
         return self.project.cache.get(self.md5)
 
-    def dumpd(self, cwd):
-        ret = super(Output, self).dumpd(cwd)
+    def dumpd(self):
+        ret = super(Output, self).dumpd()
         ret[Output.PARAM_CACHE] = self.use_cache
         return ret
 
     @classmethod
-    def loadd(cls, project, d, cwd=os.curdir):
-        ret = super(Output, cls).loadd(project, d, cwd=cwd)
+    def loadd(cls, stage, d):
+        ret = super(Output, cls).loadd(stage, d)
         ret.use_cache = d.get(Output.PARAM_CACHE, True)
         return ret
 
     @classmethod
-    def loads(cls, project, s, use_cache=True, cwd=os.curdir):
-        ret = super(Output, cls).loads(project, s, cwd=cwd)
+    def loads(cls, stage, s, use_cache=True):
+        ret = super(Output, cls).loads(stage, s)
         ret.use_cache = use_cache
         return ret
 
     @classmethod
-    def loads_from(cls, project, s_list, use_cache=False, cwd=os.curdir):
-        return [cls.loads(project, x, use_cache=use_cache, cwd=cwd) for x in s_list]
+    def loads_from(cls, stage, s_list, use_cache=False):
+        return [cls.loads(stage, x, use_cache=use_cache) for x in s_list]
 
     def changed(self):
         if super(Output, self).changed():
