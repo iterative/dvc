@@ -1,4 +1,4 @@
-from dvc.output import Output
+from dvc.output.local import OutputLOCAL
 from dvc.stage import Stage, StageFileFormatError
 
 from tests.basic_env import TestDvc
@@ -51,13 +51,13 @@ class TestSchemaDepsOuts(TestSchema):
         Stage.validate(d)
 
     def test_list(self):
-        l = [{Output.PARAM_PATH: 'foo', Output.PARAM_MD5: '123'},
-             {Output.PARAM_PATH: 'bar', Output.PARAM_MD5: None},
-             {Output.PARAM_PATH: 'baz'}]
+        l = [{OutputLOCAL.PARAM_PATH: 'foo', OutputLOCAL.PARAM_MD5: '123'},
+             {OutputLOCAL.PARAM_PATH: 'bar', OutputLOCAL.PARAM_MD5: None},
+             {OutputLOCAL.PARAM_PATH: 'baz'}]
         d = {Stage.PARAM_DEPS: l}
         Stage.validate(d)
 
-        l[0][Output.PARAM_CACHE] = True
-        l[1][Output.PARAM_CACHE] = False
+        l[0][OutputLOCAL.PARAM_CACHE] = True
+        l[1][OutputLOCAL.PARAM_CACHE] = False
         d = {Stage.PARAM_OUTS: l}
         Stage.validate(d)
