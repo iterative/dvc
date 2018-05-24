@@ -1,6 +1,5 @@
 import os
 import time
-import json
 import requests
 
 from dvc import VERSION_BASE
@@ -36,7 +35,7 @@ class Updater(object):
 
         try:
             r = requests.get(self.URL)
-            j = json.loads(r.content)
+            j = r.json()
             latest = j['version']
             open(self.updater_file, 'w+').close()
         except Exception as exc:
