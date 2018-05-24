@@ -4,9 +4,9 @@ import itertools
 import subprocess
 import schema
 
+import dvc.dependency as dependency
+import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.output import Output
-from dvc.dependency import Dependency
 from dvc.logger import Logger
 from dvc.utils import dict_md5
 
@@ -46,8 +46,8 @@ class Stage(object):
     SCHEMA = {
         schema.Optional(PARAM_MD5): schema.Or(str, None),
         schema.Optional(PARAM_CMD): schema.Or(str, None),
-        schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([Dependency.SCHEMA])), None),
-        schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([Output.SCHEMA])), None),
+        schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([dependency.SCHEMA])), None),
+        schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([output.SCHEMA])), None),
     }
 
     def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], md5=None):
@@ -156,8 +156,8 @@ class Stage(object):
                       cwd=cwd,
                       md5=md5)
 
-        stage.deps = Dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
-        stage.outs = Output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
+        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
+        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
 
         return stage
 
@@ -177,9 +177,9 @@ class Stage(object):
                       cmd=cmd,
                       cwd=cwd)
 
-        stage.outs = Output.loads_from(stage, outs, use_cache=True)
-        stage.outs += Output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.deps = Dependency.loads_from(stage, deps)
+        stage.outs = output.loads_from(stage, outs, use_cache=True)
+        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
+        stage.deps = dependency.loads_from(stage, deps)
 
         return stage
 

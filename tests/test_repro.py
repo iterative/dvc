@@ -4,14 +4,20 @@ import stat
 import shutil
 import filecmp
 
+import boto3
+import uuid
+from google.cloud import storage as gc
+
 from dvc.main import main
 from dvc.command.repro import CmdRepro
 from dvc.project import ReproductionError
 from dvc.utils import file_md5
-from dvc.output import Output
+from dvc.output.local import OutputLOCAL
 from dvc.stage import Stage
 
 from tests.basic_env import TestDvc
+from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
+from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 
 
 class TestRepro(TestDvc):
@@ -159,8 +165,8 @@ class TestReproMissingMd5InStageFile(TestRepro):
         with open(self.file1_stage, 'r') as fd:
             d = yaml.load(fd)
 
-        del(d[Stage.PARAM_OUTS][0][Output.PARAM_MD5])
-        del(d[Stage.PARAM_DEPS][0][Output.PARAM_MD5])
+        del(d[Stage.PARAM_OUTS][0][OutputLOCAL.PARAM_MD5])
+        del(d[Stage.PARAM_DEPS][0][OutputLOCAL.PARAM_MD5])
 
         with open(self.file1_stage, 'w') as fd:
             yaml.dump(d, fd)
@@ -178,3 +184,54 @@ class TestCmdRepro(TestRepro):
         ret = main(['repro',
                     'non-existing-file'])
         self.assertNotEqual(ret, 0)
+
+
+class TestReproDependencyS3(TestDvc):
+    def test(self):
+        if not _should_test_aws():
+            return
+
+        key = str(uuid.uuid4()) + '/' + self.FOO
+        path = 's3://' + TEST_AWS_REPO_BUCKET + '/' + key
+
+        s3 = boto3.resource('s3')
+
+        with open(self.FOO, 'rb') as fd:
+            s3.Bucket(TEST_AWS_REPO_BUCKET).put_object(Key=key, Body=fd.read())
+
+        stage = self.dvc.run(outs=[self.FOO],
+                             deps=[path],
+                             cmd='aws s3 cp {} {}'.format(path, self.FOO))
+
+        with open(self.BAR, 'rb') as fd:
+            s3.Bucket(TEST_AWS_REPO_BUCKET).put_object(Key=key, Body=fd.read())
+
+        stages = self.dvc.reproduce(stage.path)
+
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(filecmp.cmp(self.FOO, self.BAR))
+
+
+class TestReproDependencyGS(TestDvc):
+    def test(self):
+        if not _should_test_gcp():
+            return
+
+        key = str(uuid.uuid4()) + '/' + self.FOO
+        path = 'gs://' + TEST_GCP_REPO_BUCKET + '/' + key
+
+        client = gc.Client()
+        bucket = client.bucket(TEST_GCP_REPO_BUCKET)
+
+        bucket.blob(key).upload_from_filename(self.FOO)
+
+        stage = self.dvc.run(outs=[self.FOO],
+                             deps=[path],
+                             cmd='gsutil cp {} {}'.format(path, self.FOO))
+
+        bucket.blob(key).upload_from_filename(self.BAR)
+
+        stages = self.dvc.reproduce(stage.path)
+
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(filecmp.cmp(self.FOO, self.BAR))

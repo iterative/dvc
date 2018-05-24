@@ -6,8 +6,8 @@ import filecmp
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage
-from dvc.output import OutputOutsideOfRepoError, OutputAlreadyTrackedError
-from dvc.output import OutputDoesNotExistError, OutputIsNotFileOrDirError
+from dvc.output.base import OutputAlreadyTrackedError
+from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
 from dvc.project import StageNotFoundError
 from dvc.command.add import CmdAdd
 
@@ -32,12 +32,6 @@ class TestAddNonExistentFile(TestDvc):
     def test(self):
         with self.assertRaises(OutputDoesNotExistError) as cx:
             self.dvc.add('non_existent_file')
-
-
-class TestAddFileOutsideOfRepo(TestDvc):
-    def test(self):
-        with self.assertRaises(OutputOutsideOfRepoError) as cx:
-            self.dvc.add(os.path.join(os.path.dirname(self.dvc.root_dir), self.FOO))
 
 
 class TestAddDirectory(TestDvc):
