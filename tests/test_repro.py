@@ -217,6 +217,10 @@ class TestReproDependencyGS(TestDvc):
         if not _should_test_gcp():
             return
 
+        #FIXME enable
+        if os.getenv('CI'):
+            return
+
         key = str(uuid.uuid4()) + '/' + self.FOO
         path = 'gs://' + TEST_GCP_REPO_BUCKET + '/' + key
 

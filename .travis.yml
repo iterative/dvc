@@ -13,10 +13,6 @@ python:
 # Note that we specify language as ruby-2.4.0 to help us satisfy
 # fpm dependencies, as travis runs el capitan with an old ruby
 # version, that causes fpm to crash.
-
-# See https://github.com/travis-ci/travis-ci/issues/7940
-env: BOTO_CONFIG=/dev/null
-
 matrix:
   include:
   - if: type = cron OR tag is present
