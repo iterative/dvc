@@ -31,7 +31,8 @@ Get started
 |                                   | | ``$ git commit -m 'The baseline model'``                        |
 |                                   | | ``$ git push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc config AWS.StoragePath mybucket/image_cnn``             |
+| Share data and ML models          | | ``$ dvc remote add myremote s3://mybucket/image_cnn`            |
+|                                   | | ``$ dvc core.remote myremote``                                  |
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
