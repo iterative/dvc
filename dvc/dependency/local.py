@@ -19,11 +19,6 @@ class DependencyLOCAL(DependencyBase):
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
-    SCHEMA = {
-        PARAM_PATH: str,
-        schema.Optional(PARAM_MD5): schema.Or(str, None),
-    }
-
     def __init__(self, stage, path, md5=None):
         self.stage = stage
         self.project = stage.project

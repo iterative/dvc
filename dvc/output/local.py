@@ -16,9 +16,6 @@ class OutputLOCAL(DependencyLOCAL):
     DoesNotExistError = OutputDoesNotExistError                                          
     IsNotFileOrDirError = OutputIsNotFileOrDirError                                      
 
-    SCHEMA = DependencyLOCAL.SCHEMA
-    SCHEMA[schema.Optional(PARAM_CACHE)] = bool
-
     def __init__(self, stage, path, md5=None, use_cache=True):
         super(OutputLOCAL, self).__init__(stage, path, md5=md5)
         self.use_cache = use_cache
