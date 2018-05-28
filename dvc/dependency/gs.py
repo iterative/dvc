@@ -12,12 +12,14 @@ from dvc.cloud.gcp import DataCloudGCP
 class DependencyGS(DependencyS3):
     REGEX = DataCloudGCP.REGEX
 
-    def get_etag(self):
-        o = urlparse(self.path)
-        bucket_name = o.netloc
-        key = o.path.lstrip('/')
+    @property
+    def client(self):
+        return gc.Client()
 
-        client = gc.Client()
-        bucket = client.bucket(bucket_name)
-        blob = bucket.get_blob(key)
+    def get_etag(self):
+        bucket = self.client.bucket(self.bucket)
+        blob = bucket.get_blob(self.key)
+        if not blob:
+            return None
+
         return blob.etag

@@ -18,14 +18,25 @@ class DependencyS3(DependencyBase):
         super(DependencyS3, self).__init__(stage, path)
         self.etag = etag
 
-    def get_etag(self):
-        o = urlparse(self.path)
-        bucket = o.netloc
-        key = o.path.lstrip('/')
+    @property
+    def bucket(self):
+        return urlparse(self.path).netloc
 
+    @property
+    def key(self):
+        return urlparse(self.path).path.lstrip('/')
+
+    @property
+    def s3(self):
         session = boto3.Session()
-        s3 = session.resource('s3')
-        obj = s3.Object(bucket, key).get()
+        return session.resource('s3')
+
+    def get_etag(self):
+        try:
+            obj = self.s3.Object(self.bucket, self.key).get()
+        except Exception:
+            return None
+
         return obj['ETag'].strip('"')
 
     def changed(self):
