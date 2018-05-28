@@ -28,12 +28,6 @@ class OutputS3(DependencyS3):
         ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
-    @classmethod
-    def loads(cls, stage, s, use_cache=True):
-        ret = super(OutputS3, cls).loads(stage, s)
-        ret.use_cache = use_cache
-        return ret
-
     def changed(self):
         if super(OutputS3, self).changed():
             return True

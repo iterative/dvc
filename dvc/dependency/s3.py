@@ -54,7 +54,3 @@ class DependencyS3(DependencyBase):
         path = d[cls.PARAM_PATH]
         etag = d.get(cls.PARAM_ETAG, None)
         return cls(stage, path, etag=etag)
-
-    @classmethod
-    def loads(cls, stage, s):
-        return cls(stage, s, etag=None)

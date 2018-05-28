@@ -38,12 +38,6 @@ class OutputLOCAL(DependencyLOCAL):
         ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
-    @classmethod
-    def loads(cls, stage, s, use_cache=True):
-        ret = super(OutputLOCAL, cls).loads(stage, s)
-        ret.use_cache = use_cache
-        return ret
-
     def changed(self):
         if super(OutputLOCAL, self).changed():
             return True

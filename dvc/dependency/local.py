@@ -86,7 +86,3 @@ class DependencyLOCAL(DependencyBase):
         path = os.path.normpath(path)
         md5 = d.get(cls.PARAM_MD5, None)
         return cls(stage, path, md5=md5)
-
-    @classmethod
-    def loads(cls, stage, s):
-        return cls(stage, os.path.join(stage.cwd, s), md5=None)

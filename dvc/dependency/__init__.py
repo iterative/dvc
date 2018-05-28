@@ -35,5 +35,5 @@ def loadd_from(stage, d_list):
 def loads_from(stage, s_list):
     ret = []
     for s in s_list:
-        ret.append(_get(s).loads(stage, s))
+        ret.append(_get(s)(stage, s))
     return ret

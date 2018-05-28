@@ -61,7 +61,3 @@ class DependencyBase(object):
     def loadd(cls, stage, d):
         path = d[cls.PARAM_PATH]
         return cls(stage, path)
-
-    @classmethod
-    def loads(cls, stage, s):
-        return cls(stage, s)

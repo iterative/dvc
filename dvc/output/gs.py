@@ -28,12 +28,6 @@ class OutputGS(DependencyGS):
         ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
-    @classmethod
-    def loads(cls, stage, s, use_cache=True):
-        ret = super(OutputGS, cls).loads(stage, s)
-        ret.use_cache = use_cache
-        return ret
-
     def changed(self):
         if super(OutputGS, self).changed():
             return True
