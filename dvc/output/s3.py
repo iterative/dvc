@@ -34,10 +34,6 @@ class OutputS3(DependencyS3):
         ret.use_cache = use_cache
         return ret
 
-    @classmethod
-    def loads_from(cls, stage, s_list, use_cache=True):
-        return [cls.loads(stage, x, use_cache=use_cache) for x in s_list]
-
     def changed(self):
         if super(OutputS3, self).changed():
             return True

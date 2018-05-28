@@ -93,13 +93,5 @@ class DependencyLOCAL(DependencyBase):
         return cls(stage, path, md5=md5)
 
     @classmethod
-    def loadd_from(cls, stage, d_list):
-        return [cls.loadd(stage, x) for x in d_list]
-
-    @classmethod
     def loads(cls, stage, s):
         return cls(stage, os.path.join(stage.cwd, s), md5=None)
-
-    @classmethod
-    def loads_from(cls, stage, s_list):
-        return [cls.loads(stage, x) for x in s_list]

@@ -65,7 +65,3 @@ class DependencyBase(object):
     @classmethod
     def loads(cls, stage, s):
         return cls(stage, s)
-
-    @classmethod
-    def loads_from(cls, stage, s_list):
-        return [cls.loads(stage, x) for x in s_list]

@@ -58,7 +58,3 @@ class DependencyS3(DependencyBase):
     @classmethod
     def loads(cls, stage, s):
         return cls(stage, s, etag=None)
-
-    @classmethod
-    def loads_from(cls, stage, s_list):
-        return [cls.loads(stage, x) for x in s_list]
