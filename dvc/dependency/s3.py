@@ -48,9 +48,3 @@ class DependencyS3(DependencyBase):
     def dumpd(self):
         return {self.PARAM_PATH: self.path,
                 self.PARAM_ETAG: self.etag}
-
-    @classmethod
-    def loadd(cls, stage, d):
-        path = d[cls.PARAM_PATH]
-        etag = d.get(cls.PARAM_ETAG, None)
-        return cls(stage, path, etag=etag)

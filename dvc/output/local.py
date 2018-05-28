@@ -16,9 +16,9 @@ class OutputLOCAL(DependencyLOCAL):
     DoesNotExistError = OutputDoesNotExistError                                          
     IsNotFileOrDirError = OutputIsNotFileOrDirError                                      
 
-    def __init__(self, stage, path, md5=None, use_cache=True):
+    def __init__(self, stage, path, md5=None, cache=True):
         super(OutputLOCAL, self).__init__(stage, path, md5=md5)
-        self.use_cache = use_cache
+        self.use_cache = cache
 
     @property
     def cache(self):
@@ -30,12 +30,6 @@ class OutputLOCAL(DependencyLOCAL):
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
-        return ret
-
-    @classmethod
-    def loadd(cls, stage, d):
-        ret = super(OutputLOCAL, cls).loadd(stage, d)
-        ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
     def changed(self):

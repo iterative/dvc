@@ -4,9 +4,9 @@ from dvc.dependency.s3 import DependencyS3
 class OutputS3(DependencyS3):
     PARAM_CACHE = 'cache'
 
-    def __init__(self, stage, path, etag=None, use_cache=True):
+    def __init__(self, stage, path, etag=None, cache=True):
         super(OutputS3, self).__init__(stage, path, etag=etag)
-        self.use_cache = use_cache
+        self.use_cache = cache
 
     @property
     def cache(self):
@@ -20,12 +20,6 @@ class OutputS3(DependencyS3):
     def dumpd(self):
         ret = super(OutputS3, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
-        return ret
-
-    @classmethod
-    def loadd(cls, stage, d):
-        ret = super(OutputS3, cls).loadd(stage, d)
-        ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
     def changed(self):

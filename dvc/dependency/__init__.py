@@ -28,7 +28,7 @@ def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
         p = d[DependencyBase.PARAM_PATH]
-        ret.append(_get(p).loadd(stage, d))
+        ret.append(_get(p)(stage, **d))
     return ret
 
 

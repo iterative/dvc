@@ -56,8 +56,3 @@ class DependencyBase(object):
 
     def dumpd(self):
         return {self.PARAM_PATH: self.path}
-
-    @classmethod
-    def loadd(cls, stage, d):
-        path = d[cls.PARAM_PATH]
-        return cls(stage, path)

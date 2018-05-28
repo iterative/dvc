@@ -4,9 +4,9 @@ from dvc.dependency.gs import DependencyGS
 class OutputGS(DependencyGS):
     PARAM_CACHE = 'cache'
 
-    def __init__(self, stage, path, etag=None, use_cache=True):
+    def __init__(self, stage, path, etag=None, cache=True):
         super(OutputGS, self).__init__(stage, path, etag=etag)
-        self.use_cache = use_cache
+        self.use_cache = cache
 
     @property
     def cache(self):
@@ -20,12 +20,6 @@ class OutputGS(DependencyGS):
     def dumpd(self):
         ret = super(OutputGS, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
-        return ret
-
-    @classmethod
-    def loadd(cls, stage, d):
-        ret = super(OutputGS, cls).loadd(stage, d)
-        ret.use_cache = d.get(cls.PARAM_CACHE, True)
         return ret
 
     def changed(self):

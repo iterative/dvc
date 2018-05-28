@@ -22,7 +22,10 @@ class DependencyLOCAL(DependencyBase):
     def __init__(self, stage, path, md5=None):
         self.stage = stage
         self.project = stage.project
-        self.path = os.path.abspath(os.path.normpath(path))
+        if not os.path.isabs(path):
+            path = self.unixpath(path)
+            path = os.path.join(stage.cwd, path)
+        self.path = os.path.normpath(path)
         self.md5 = md5
 
     @property
@@ -76,13 +79,3 @@ class DependencyLOCAL(DependencyBase):
 
         return {self.PARAM_PATH: path,
                 self.PARAM_MD5:self.md5}
-
-    @classmethod
-    def loadd(cls, stage, d):
-        path = d[cls.PARAM_PATH]
-        if not os.path.isabs(path):
-            path = cls.unixpath(path)
-            path = os.path.join(stage.cwd, path)
-        path = os.path.normpath(path)
-        md5 = d.get(cls.PARAM_MD5, None)
-        return cls(stage, path, md5=md5)
