@@ -36,7 +36,7 @@ setup(
     long_description=open('README.rst', 'r').read(),
     author='Dmitry Petrov',
     author_email='dmitry@dataversioncontrol.com',
-    download_url='https://github.com/dataversioncontrol/dvc',
+    download_url='https://github.com/iterative/dvc',
     license='Apache License 2.0',
     install_requires=install_requires,
     keywords='data science, data version control, machine learning',

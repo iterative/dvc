@@ -1,14 +1,14 @@
-.. image:: https://img.shields.io/travis/dataversioncontrol/dvc/master.svg?label=Linux%20%26%20Mac%20OS
-  :target: https://travis-ci.org/dataversioncontrol/dvc
+.. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
+  :target: https://travis-ci.org/iterative/dvc
 
-.. image:: https://img.shields.io/appveyor/ci/dataversioncontrol/dvc/master.svg?label=Windows
-  :target: https://ci.appveyor.com/project/dataversioncontrol/dvc/branch/master
+.. image:: https://img.shields.io/appveyor/ci/iterative/dvc/master.svg?label=Windows
+  :target: https://ci.appveyor.com/project/iterative/dvc/branch/master
 
-.. image:: https://codeclimate.com/github/dataversioncontrol/dvc/badges/gpa.svg
-  :target: https://codeclimate.com/github/dataversioncontrol/dvc
+.. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
+  :target: https://codeclimate.com/github/iterative/dvc
 
-.. image:: https://codecov.io/gh/dataversioncontrol/dvc/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/dataversioncontrol/dvc
+.. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/iterative/dvc
 
 Data Version Control or DVC is an open source tool for data science projects. 
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
@@ -45,7 +45,7 @@ Packages
 --------
 
 Operating system dependent packages are the recommended way to install DVC.
-The latest version of the packages can be found at GitHub releases page: https://github.com/dataversioncontrol/dvc/releases
+The latest version of the packages can be found at GitHub releases page: https://github.com/iterative/dvc/releases
 
 Python Pip
 ----------
@@ -64,14 +64,14 @@ Formula:
 
 .. code-block:: bash
 
-   brew install dataversioncontrol/homebrew-dvc/dvc
+   brew install iterative/homebrew-dvc/dvc
 
 Cask:
 ^^^^^
 
 .. code-block:: bash
 
-   brew cask install dataversioncontrol/homebrew-dvc/dvc
+   brew cask install iterative/homebrew-dvc/dvc
 
 Links
 =====

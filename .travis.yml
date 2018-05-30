@@ -68,4 +68,4 @@ deploy:
   skip_cleanup: true
   on:
     tags: true
-    repo: dataversioncontrol/dvc
+    repo: iterative/dvc
