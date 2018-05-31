@@ -11,7 +11,7 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
 from dvc.config import Config
-from dvc.state import State
+from dvc.state import State, LinkState
 from dvc.lock import Lock
 from dvc.scm import SCM, Base
 from dvc.cache import Cache
@@ -47,8 +47,10 @@ class Project(object):
         self.config = Config(self.dvc_dir)
         self.scm = SCM(self.root_dir)
         self.lock = Lock(self.dvc_dir)
-        self.cache = Cache(self.root_dir, self.dvc_dir, cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
-                                         cache_type=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_TYPE, None))
+        self.link_state = LinkState(self.root_dir, self.dvc_dir)
+        self.cache = Cache(self.root_dir, self.dvc_dir, link_state=self.link_state,
+                           cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
+                           cache_type=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_TYPE, None))
         self.state = State(self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cloud = DataCloud(cache=self.cache, config=self.config._config)
@@ -94,7 +96,7 @@ class Project(object):
         return proj
 
     def _ignore(self):
-        l = [self.cache.link_state.state_file,
+        l = [self.link_state.state_file,
              self.cache.link_state._lock_file.lock_file,
              self.state.state_file,
              self.state._lock_file.lock_file,
@@ -191,7 +193,7 @@ class Project(object):
                 raise StageNotFoundError(target)
             stages = [Stage.load(self, target)]
         else:
-            self.cache.link_state.remove_all()
+            self.link_state.remove_all()
             stages = self.stages()
 
         for stage in stages:

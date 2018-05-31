@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 
-from dvc.state import State, LinkState
+from dvc.state import State
 from dvc.system import System
 from dvc.logger import Logger
 from dvc.utils import move, remove
@@ -21,7 +21,7 @@ class Cache(object):
         'reflink': System.reflink,
     }
 
-    def __init__(self, root_dir, dvc_dir, cache_dir=None, cache_type=None):
+    def __init__(self, root_dir, dvc_dir, link_state=None, cache_dir=None, cache_type=None):
         self.cache_type = cache_type
 
         cache_dir = cache_dir if cache_dir else self.CACHE_DIR
@@ -34,7 +34,7 @@ class Cache(object):
             os.mkdir(self.cache_dir)
 
         self.state = State(self.cache_dir)
-        self.link_state = LinkState(root_dir, dvc_dir)
+        self.link_state = link_state
         self.lock = Lock(self.cache_dir, name=self.CACHE_DIR_LOCK)
 
     @staticmethod
