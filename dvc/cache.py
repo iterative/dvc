@@ -1,18 +1,17 @@
 import os
 import json
+import uuid
 import shutil
 
 from dvc.state import State
 from dvc.system import System
 from dvc.logger import Logger
 from dvc.utils import move, remove
-from dvc.lock import Lock
 from dvc.exceptions import DvcException
 
 
 class Cache(object):
     CACHE_DIR = 'cache'
-    CACHE_DIR_LOCK = 'cache.lock'
     CACHE_TYPES = ['reflink', 'hardlink', 'symlink', 'copy']
     CACHE_TYPE_MAP = {
         'copy': shutil.copyfile,
@@ -35,25 +34,23 @@ class Cache(object):
 
         self.state = State(self.cache_dir)
         self.link_state = link_state
-        self.lock = Lock(self.cache_dir, name=self.CACHE_DIR_LOCK)
 
     @staticmethod
     def init(root_dir, dvc_dir, cache_dir=None):
         return Cache(root_dir, dvc_dir, cache_dir=None)
 
     def all(self):
-        with self.lock:
-            clist = []
-            for entry in os.listdir(self.cache_dir):
-                subdir = os.path.join(self.cache_dir, entry)
-                if not os.path.isdir(subdir):
-                    continue
+        clist = []
+        for entry in os.listdir(self.cache_dir):
+            subdir = os.path.join(self.cache_dir, entry)
+            if not os.path.isdir(subdir):
+                continue
 
-                for cache in os.listdir(subdir):
-                    path = os.path.join(subdir, cache)
-                    clist.append(path)
+            for cache in os.listdir(subdir):
+                path = os.path.join(subdir, cache)
+                clist.append(path)
 
-            return clist
+        return clist
 
     def get(self, md5):
         if not md5:
@@ -65,7 +62,7 @@ class Cache(object):
         relpath = os.path.relpath(path, self.cache_dir)
         return os.path.dirname(relpath) + os.path.basename(relpath)
 
-    def _changed(self, md5):
+    def changed(self, md5):
         cache = self.get(md5)
         if self.state.changed(cache, md5=md5):
             if os.path.exists(cache):
@@ -74,10 +71,6 @@ class Cache(object):
             return True
 
         return False
-
-    def changed(self, md5):
-        with self.lock:
-            return self._changed(md5)
 
     def link(self, src, link):
         dname = os.path.dirname(link)
@@ -145,10 +138,10 @@ class Cache(object):
     def is_dir_cache(cache):
         return cache.endswith(State.MD5_DIR_SUFFIX)
 
-    def _checkout(self, path, md5):
+    def checkout(self, path, md5):
         cache = self.get(md5)
 
-        if not cache or not os.path.exists(cache) or self._changed(md5):
+        if not cache or not os.path.exists(cache) or self.changed(md5):
             if cache:
                 Logger.warn(u'\'{}({})\': cache file not found'.format(os.path.relpath(cache),
                                                                        os.path.relpath(path)))
@@ -172,17 +165,20 @@ class Cache(object):
             p = os.path.join(path, relpath)
             self.link(c, p)
 
-    def checkout(self, path, md5):
-        with self.lock:
-            return self._checkout(path, md5)
+    def _move(self, inp, outp):
+        # moving in two stages to make last the move atomic in
+        # case inp and outp are in different filesystems
+        tmp = '{}.{}'.format(outp, str(uuid.uuid4()))
+        move(inp, tmp)
+        move(tmp, outp)
 
     def _save_file(self, path):
         md5 = self.state.update(path)
         cache = self.get(md5)
-        if self._changed(md5):
-            move(path, cache)
+        if self.changed(md5):
+            self._move(path, cache)
             self.state.update(cache)
-        self._checkout(path, md5)
+        self.checkout(path, md5)
 
     def _save_dir(self, path):
         md5 = self.state.update(path)
@@ -203,8 +199,7 @@ class Cache(object):
             json.dump(dir_info, fd, sort_keys=True)
 
     def save(self, path):
-        with self.lock:
-            if os.path.isdir(path):
-                self._save_dir(path)
-            else:
-                self._save_file(path)
+        if os.path.isdir(path):
+            self._save_dir(path)
+        else:
+            self._save_file(path)
