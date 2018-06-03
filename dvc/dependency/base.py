@@ -32,6 +32,8 @@ class DependencyBase(object):
     PARAM_PATH = 'path'
 
     def __init__(self, stage, path):
+        self.stage = stage
+        self.project = stage.project
         self.path = path
 
     @classmethod
@@ -43,7 +45,7 @@ class DependencyBase(object):
         return cls.match(url) != None
 
     def changed(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def status(self):
         if self.changed():
@@ -52,7 +54,7 @@ class DependencyBase(object):
         return {}
 
     def save(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def dumpd(self):
         return {self.PARAM_PATH: self.path}

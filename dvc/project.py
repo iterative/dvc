@@ -11,7 +11,7 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
 from dvc.config import Config
-from dvc.state import State, LinkState
+from dvc.state import LinkState
 from dvc.lock import Lock
 from dvc.scm import SCM, Base
 from dvc.cache import Cache
@@ -48,11 +48,8 @@ class Project(object):
         self.scm = SCM(self.root_dir)
         self.lock = Lock(self.dvc_dir)
         self.link_state = LinkState(self.root_dir, self.dvc_dir)
-        self.cache = Cache(self.root_dir, self.dvc_dir, link_state=self.link_state,
-                           cache_dir=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_DIR, None),
-                           cache_type=self.config._config[Config.SECTION_CACHE].get(Config.SECTION_CACHE_TYPE, None))
-        self.state = State(self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
+        self.cache = Cache(self)
         self.cloud = DataCloud(cache=self.cache, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
 
@@ -85,8 +82,6 @@ class Project(object):
         os.mkdir(dvc_dir)
 
         config = Config.init(dvc_dir)
-        Cache.init(root_dir, dvc_dir)
-        State.init(dvc_dir)
         proj = Project(root_dir)
 
         scm.add([config.config_file])
@@ -97,15 +92,13 @@ class Project(object):
 
     def _ignore(self):
         l = [self.link_state.state_file,
-             self.cache.link_state._lock_file.lock_file,
-             self.state.state_file,
-             self.state._lock_file.lock_file,
+             self.link_state._lock_file.lock_file,
              self.lock.lock_file,
              self.config.config_local_file,
              self.updater.updater_file]
 
-        if self.cache.cache_dir.startswith(self.root_dir):
-            l += [self.cache.cache_dir]
+        if self.cache.local.cache_dir.startswith(self.root_dir):
+            l += [self.cache.local.cache_dir]
 
         self.scm.ignore_list(l)
 
@@ -212,15 +205,15 @@ class Project(object):
                 if not out.use_cache or not out.cache:
                     continue
                 cache_set |= set([out.cache])
-                if self.cache.is_dir_cache(out.cache) and os.path.isfile(out.cache):
-                    dir_cache = self.cache.dir_cache(out.cache)
+                if self.cache.local.is_dir_cache(out.cache) and os.path.isfile(out.cache):
+                    dir_cache = self.cache.local.dir_cache(out.cache)
                     cache_set |= set(dir_cache.values())
 
         return list(cache_set)
 
     def gc(self):
         clist = self._used_cache()
-        for cache in self.cache.all():
+        for cache in self.cache.local.all():
             if cache in clist:
                 continue
             os.unlink(cache)
@@ -262,7 +255,7 @@ class Project(object):
                 cloud.STATUS_NEW: 'new',
             }
 
-            path = os.path.relpath(target, self.cache.cache_dir)
+            path = os.path.relpath(target, self.cache.local.cache_dir)
 
             status[path] = prefix_map[ret]
 

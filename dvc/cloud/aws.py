@@ -4,10 +4,9 @@ import threading
 
 import boto3
 
-from dvc.config import Config
 from dvc.logger import Logger
 from dvc.progress import progress
-from dvc.cloud.base import DataCloudError, DataCloudBase
+from dvc.cloud.base import DataCloudBase
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -57,9 +56,13 @@ class DataCloudAWS(DataCloudBase):
 
     @property
     def profile(self):
+        #FIXME
+        from dvc.config import Config
         return self._cloud_settings.cloud_config.get(Config.SECTION_AWS_PROFILE, None)
 
     def connect(self):
+        #FIXME
+        from dvc.cloud.base import DataCloudError
         session = boto3.Session(profile_name=self.profile)
         self.s3 = session.resource('s3')
         bucket = self.s3.Bucket(self.storage_bucket)

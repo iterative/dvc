@@ -185,7 +185,7 @@ class TestDataCloudBase(TestDvc):
 
         # Remove and check status
         sleep()
-        shutil.rmtree(self.dvc.cache.cache_dir)
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
 
         status = self.cloud.status(cache)
         self.assertEqual(status, STATUS_DELETED)
@@ -283,7 +283,7 @@ class TestDataCloudCLIBase(TestDvc):
         sleep()
         self.main(['status', '-c'] + args)
 
-        shutil.rmtree(self.dvc.cache.cache_dir)
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
 
         sleep()
         self.main(['status', '-c'] + args)

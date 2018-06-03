@@ -25,13 +25,14 @@ def _get(path):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d[DependencyBase.PARAM_PATH]
-        ret.append(_get(p)(stage, **d))
+        p = d.pop(DependencyBase.PARAM_PATH)
+        cache = d.pop(OutputLOCAL.PARAM_CACHE, True)
+        ret.append(_get(p)(stage, p, info=d, cache=cache))
     return ret
 
 
-def loads_from(stage, s_list, use_cache=False):
+def loads_from(stage, s_list, use_cache=True):
     ret = []
     for s in s_list:
-        ret.append(_get(s)(stage, s, cache=use_cache))
+        ret.append(_get(s)(stage, s, info={}, cache=use_cache))
     return ret

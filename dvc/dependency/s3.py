@@ -1,5 +1,3 @@
-import boto3
-
 try:
     from urlparse import urlparse
 except ImportError:
@@ -7,44 +5,28 @@ except ImportError:
 
 from dvc.dependency.base import DependencyBase
 from dvc.cloud.aws import DataCloudAWS
+from dvc.remote.s3 import RemoteS3
+from dvc.config import Config
 
 
 class DependencyS3(DependencyBase):
     REGEX = DataCloudAWS.REGEX
 
-    PARAM_ETAG = 'etag'
-
-    def __init__(self, stage, path, etag=None):
+    def __init__(self, stage, path, info=None):
         super(DependencyS3, self).__init__(stage, path)
-        self.etag = etag
-
-    @property
-    def bucket(self):
-        return urlparse(self.path).netloc
-
-    @property
-    def key(self):
-        return urlparse(self.path).path.lstrip('/')
-
-    @property
-    def s3(self):
-        session = boto3.Session()
-        return session.resource('s3')
-
-    def get_etag(self):
-        try:
-            obj = self.s3.Object(self.bucket, self.key).get()
-        except Exception:
-            return None
-
-        return obj['ETag'].strip('"')
+        self.info = info
+        self.remote = RemoteS3(stage.project, {Config.SECTION_REMOTE_URL: '/'})
+        self.path_info = {'scheme': 's3',
+                          'bucket': urlparse(path).netloc,
+                          'key': urlparse(path).path.lstrip('/')}
 
     def changed(self):
-        return self.etag != self.get_etag()
+        return self.info != self.remote.save_info(self.path_info)
 
     def save(self):
-        self.etag = self.get_etag()
+        self.info = self.remote.save_info(self.path_info)
 
     def dumpd(self):
-        return {self.PARAM_PATH: self.path,
-                self.PARAM_ETAG: self.etag}
+        ret = self.info
+        ret[self.PARAM_PATH] = self.path
+        return ret

@@ -219,7 +219,7 @@ class Stage(object):
 
         for out in self.outs:
             out.save()
-            if out.use_cache:
+            if out.use_cache and out.path_info['scheme'] == 'local':
                 self.project.scm.ignore(out.path)
 
     def run(self):

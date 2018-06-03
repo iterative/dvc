@@ -1,4 +1,5 @@
 from dvc.output.local import OutputLOCAL
+from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileFormatError
 
 from tests.basic_env import TestDvc
@@ -51,8 +52,8 @@ class TestSchemaDepsOuts(TestSchema):
         Stage.validate(d)
 
     def test_list(self):
-        l = [{OutputLOCAL.PARAM_PATH: 'foo', OutputLOCAL.PARAM_MD5: '123'},
-             {OutputLOCAL.PARAM_PATH: 'bar', OutputLOCAL.PARAM_MD5: None},
+        l = [{OutputLOCAL.PARAM_PATH: 'foo', RemoteLOCAL.PARAM_MD5: '123'},
+             {OutputLOCAL.PARAM_PATH: 'bar', RemoteLOCAL.PARAM_MD5: None},
              {OutputLOCAL.PARAM_PATH: 'baz'}]
         d = {Stage.PARAM_DEPS: l}
         Stage.validate(d)

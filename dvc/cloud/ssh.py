@@ -52,7 +52,7 @@ class DataCloudSSH(DataCloudBase):
         return self.ssh.open_sftp()
 
     def cache_file_key(self, path):
-        relpath = os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.cache_dir)
+        relpath = os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.local.cache_dir)
         return relpath.replace('\\', '/')
 
     def _isfile_remote(self, path):
