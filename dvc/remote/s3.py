@@ -10,6 +10,7 @@ from dvc.remote.base import RemoteBase
 
 
 class RemoteS3(RemoteBase):
+    REGEX = r'^s3://(?P<path>.*)$'
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):

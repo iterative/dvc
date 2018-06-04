@@ -10,6 +10,7 @@ from dvc.remote.base import RemoteBase
 
 
 class RemoteGS(RemoteBase):
+    REGEX = r'^gs://(?P<path>.*)$'
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):

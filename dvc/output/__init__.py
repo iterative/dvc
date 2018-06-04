@@ -2,7 +2,7 @@ import schema
 
 from dvc.exceptions import DvcException
 
-import dvc.dependency as dependency
+from dvc.dependency import SCHEMA as DEP_SCHEMA
 from dvc.dependency.base import DependencyBase
 from dvc.output.s3 import OutputS3
 from dvc.output.gs import OutputGS
@@ -11,7 +11,7 @@ from dvc.output.local import OutputLOCAL
 
 OUTS = [OutputS3, OutputGS, OutputLOCAL]
 
-SCHEMA = dependency.SCHEMA
+SCHEMA = DEP_SCHEMA
 SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
 
 

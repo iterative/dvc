@@ -8,13 +8,12 @@ from dvc.remote.base import RemoteBase
 from dvc.state import State
 from dvc.logger import Logger
 from dvc.utils import remove, move
-from dvc.output.base import OutputAlreadyTrackedError
 
 
 class RemoteLOCAL(RemoteBase):
+    REGEX = r'^(?P<path>(/+|.:\\+).*)$'
     PARAM_MD5 = State.PARAM_MD5
 
-    CACHE_DIR = 'cache'
     CACHE_TYPES = ['reflink', 'hardlink', 'symlink', 'copy']
     CACHE_TYPE_MAP = {
         'copy': shutil.copyfile,
@@ -28,23 +27,14 @@ class RemoteLOCAL(RemoteBase):
         from dvc.config import Config
 
         self.project = project
-        link_state = project.link_state
-        cache_dir = config.get(Config.SECTION_REMOTE_URL, self.CACHE_DIR)
-        cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
-
-        self.cache_type = cache_type
-
-        cache_dir = cache_dir if cache_dir else self.CACHE_DIR
-        if os.path.isabs(cache_dir):
-            self.cache_dir = cache_dir
-        else:
-            self.cache_dir = os.path.abspath(os.path.realpath(os.path.join(project.dvc_dir, cache_dir)))
+        self.link_state = project.link_state
+        self.cache_dir = config[Config.SECTION_REMOTE_URL]
+        self.cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
 
         if not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
         self.state = State(self.cache_dir)
-        self.link_state = link_state
 
     def all(self):
         clist = []
@@ -222,6 +212,9 @@ class RemoteLOCAL(RemoteBase):
         return {self.PARAM_MD5: md5}
 
     def save(self, path_info):
+        #FIXME
+        from dvc.output.base import OutputAlreadyTrackedError
+
         if path_info['scheme'] != 'local':
             raise NotImplementedError
 

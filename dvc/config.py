@@ -35,6 +35,7 @@ class Config(object):
     SECTION_CACHE_LOCAL = 'local'
     SECTION_CACHE_S3 = 's3'
     SECTION_CACHE_GS = 'gs'
+    SECTION_CACHE_SSH = 'ssh'
     SECTION_CACHE_SCHEMA = {
         schema.Optional(SECTION_CACHE_LOCAL): str,
         schema.Optional(SECTION_CACHE_S3): str,

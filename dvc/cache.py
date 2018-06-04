@@ -1,10 +1,11 @@
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.gs import RemoteGS
-from dvc.remote.ssh import RemoteSSH
+import os
+
+from dvc.remote import Remote
 
 
 class Cache(object):
+    CACHE_DIR = 'cache'
+
     def __init__(self, project):
         #FIXME
         from dvc.config import Config
@@ -16,29 +17,22 @@ class Cache(object):
             sect = project.config._config[Config.SECTION_REMOTE_FMT.format(local)]
         else:
             sect = {}
-            d = config.get(Config.SECTION_CACHE_DIR, None)
-            if d:
-                sect[Config.SECTION_REMOTE_URL] = d
+            cache_dir = os.path.abspath(os.path.realpath(os.path.join(project.dvc_dir, self.CACHE_DIR)))
+            sect[Config.SECTION_REMOTE_URL] = config.get(Config.SECTION_CACHE_DIR, cache_dir)
             t = config.get(Config.SECTION_CACHE_TYPE, None)
             if t:
                 sect[Config.SECTION_CACHE_TYPE] = t
 
-        self.local = RemoteLOCAL(project, sect)
+        self.local = Remote(project, sect)
 
-        self.s3 = None
-        s3 = config.get(Config.SECTION_CACHE_S3, None)
-        if s3:
-            sect = project.config._config[Config.SECTION_REMOTE_FMT.format(s3)]
-            self.s3 = RemoteS3(project, sect)
+        self.s3 = self._get_remote(project, config, Config.SECTION_CACHE_S3)
+        self.gs = self._get_remote(project, config, Config.SECTION_CACHE_GS)
+        self.ssh = self._get_remote(project, config, Config.SECTION_CACHE_SSH)
 
-        self.gs = None
-        gs = config.get(Config.SECTION_CACHE_GS, None)
-        if gs:
-            sect = project.config._config[Config.SECTION_REMOTE_FMT.format(gs)]
-            self.gs = RemoteGS(project, sect)
+    def _get_remote(self, project, config, name):
+        remote = config.get(name, None)
+        if not remote:
+            return None
 
-#        self.ssh = None
-#        ssh = config.get(Config.SECTION_CACHE_SSH, None)
-#        if ssh:
-#            sect = project.config._config[Config.SECTION_REMOTE_FMT.format(ssh)]
-#            self.ssh = RemoteSSH(project, sect)
+        sect = project.config._config[Config.SECTION_REMOTE_FMT.format(remote)]
+        return Remote(project, sect)
