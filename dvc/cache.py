@@ -15,8 +15,10 @@ class Cache(object):
             sect = project.config._config[Config.SECTION_REMOTE_FMT.format(local)]
         else:
             sect = {}
-            cache_dir = os.path.abspath(os.path.realpath(os.path.join(project.dvc_dir, self.CACHE_DIR)))
-            sect[Config.SECTION_REMOTE_URL] = config.get(Config.SECTION_CACHE_DIR, cache_dir)
+            cache_dir = config.get(Config.SECTION_CACHE_DIR, self.CACHE_DIR)
+            if not os.path.isabs(cache_dir):
+                cache_dir = os.path.abspath(os.path.realpath(os.path.join(project.dvc_dir, cache_dir)))
+            sect[Config.SECTION_REMOTE_URL] = cache_dir
             t = config.get(Config.SECTION_CACHE_TYPE, None)
             if t:
                 sect[Config.SECTION_CACHE_TYPE] = t
