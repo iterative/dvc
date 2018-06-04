@@ -9,7 +9,7 @@ from dvc.main import main
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
-from dvc.output.local import OutputLOCAL
+from dvc.remote.local import RemoteLOCAL
 
 
 class TestCheckout(TestRepro):
@@ -163,8 +163,8 @@ class TestCheckoutMissingMd5InStageFile(TestRepro):
         with open(self.file1_stage, 'r') as fd:
             d = yaml.load(fd)
 
-        del(d[Stage.PARAM_OUTS][0][OutputLOCAL.PARAM_MD5])
-        del(d[Stage.PARAM_DEPS][0][OutputLOCAL.PARAM_MD5])
+        del(d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_MD5])
+        del(d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_MD5])
 
         with open(self.file1_stage, 'w') as fd:
             yaml.dump(d, fd)

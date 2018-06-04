@@ -23,7 +23,7 @@ class DataCloudLOCAL(DataCloudBase):
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
 
     def cache_file_key(self, path):
-        return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.cache_dir)
+        return os.path.relpath(os.path.abspath(path), self._cloud_settings.cache.local.cache_dir)
 
     def _get_key(self, path):
         key_name = self.cache_file_key(path)

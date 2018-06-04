@@ -2,10 +2,10 @@ import os
 import re
 import tempfile
 
+from dvc.config import Config
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
-from dvc.config import Config, ConfigError
-from dvc.cache import Cache
+from dvc.remote.local import RemoteLOCAL
 
 
 STATUS_UNKNOWN = 0
@@ -72,7 +72,6 @@ class DataCloudBase(object):
 
         Precedence: Storage, then cloud specific
         """
-
         if self._cloud_settings.global_storage_path:
             return self._cloud_settings.global_storage_path
 
@@ -108,7 +107,7 @@ class DataCloudBase(object):
 
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
-        relpath = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
+        relpath = os.path.relpath(fname, self._cloud_settings.cache.local.cache_dir)
         relpath = relpath.replace('\\', '/')
         return '{}/{}'.format(self.storage_prefix, relpath).strip('/')
 
@@ -130,7 +129,7 @@ class DataCloudBase(object):
         path, local = arg
         ret = [path]
 
-        if not Cache.is_dir_cache(path):
+        if not RemoteLOCAL.is_dir_cache(path):
             return ret
 
         if local:
@@ -146,15 +145,15 @@ class DataCloudBase(object):
             self._pull_key(key, tmp, no_progress_bar=True)
             dir_path = tmp
 
-        for relpath, md5 in Cache.get_dir_cache(dir_path).items():
-            cache = self._cloud_settings.cache.get(md5)
+        for relpath, md5 in RemoteLOCAL.get_dir_cache(dir_path).items():
+            cache = self._cloud_settings.cache.local.get(md5)
             ret.append(cache)
 
         return ret
 
     def _cmp_checksum(self, blob, fname):
-        md5 = self._cloud_settings.cache.path_to_md5(fname)
-        if self._cloud_settings.cache.state.changed(fname, md5=md5):
+        md5 = self._cloud_settings.cache.local.path_to_md5(fname)
+        if self._cloud_settings.cache.local.state.changed(fname, md5=md5):
             return False
 
         return True

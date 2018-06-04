@@ -2,7 +2,7 @@ import schema
 
 from dvc.exceptions import DvcException
 
-import dvc.dependency as dependency
+from dvc.dependency import SCHEMA as DEP_SCHEMA
 from dvc.dependency.base import DependencyBase
 from dvc.output.s3 import OutputS3
 from dvc.output.gs import OutputGS
@@ -11,7 +11,7 @@ from dvc.output.local import OutputLOCAL
 
 OUTS = [OutputS3, OutputGS, OutputLOCAL]
 
-SCHEMA = dependency.SCHEMA
+SCHEMA = DEP_SCHEMA
 SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
 
 
@@ -25,13 +25,14 @@ def _get(path):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d[DependencyBase.PARAM_PATH]
-        ret.append(_get(p).loadd(stage, d))
+        p = d.pop(DependencyBase.PARAM_PATH)
+        cache = d.pop(OutputLOCAL.PARAM_CACHE, True)
+        ret.append(_get(p)(stage, p, info=d, cache=cache))
     return ret
 
 
-def loads_from(stage, s_list, use_cache=False):
+def loads_from(stage, s_list, use_cache=True):
     ret = []
     for s in s_list:
-        ret.append(_get(s).loads(stage, s, use_cache=use_cache))
+        ret.append(_get(s)(stage, s, info={}, cache=use_cache))
     return ret

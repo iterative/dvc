@@ -5,7 +5,6 @@ import os
 import schema
 import configobj
 
-from dvc.cache import Cache
 from dvc.exceptions import DvcException
 
 
@@ -32,9 +31,18 @@ class Config(object):
     SECTION_CACHE = 'cache'
     SECTION_CACHE_DIR = 'dir'
     SECTION_CACHE_TYPE = 'type'
-    SECTION_CACHE_TYPE_SCHEMA = schema.And(schema.Use(str.lower), lambda t: t in Cache.CACHE_TYPE_MAP.keys())
+    SECTION_CACHE_TYPE_SCHEMA = schema.And(schema.Use(str.lower), lambda t: t in ('reflink', 'hardlink', 'symlink', 'copy'))
+    SECTION_CACHE_LOCAL = 'local'
+    SECTION_CACHE_S3 = 's3'
+    SECTION_CACHE_GS = 'gs'
+    SECTION_CACHE_SSH = 'ssh'
     SECTION_CACHE_SCHEMA = {
-        schema.Optional(SECTION_CACHE_DIR, default=Cache.CACHE_DIR): str,
+        schema.Optional(SECTION_CACHE_LOCAL): str,
+        schema.Optional(SECTION_CACHE_S3): str,
+        schema.Optional(SECTION_CACHE_GS): str,
+
+        # backward compatibility
+        schema.Optional(SECTION_CACHE_DIR, default='cache'): str,
         schema.Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
     }
 
@@ -91,6 +99,7 @@ class Config(object):
         schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
         schema.Optional(SECTION_GCP_PROJECTNAME): str,
+        schema.Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
     }
 
     SCHEMA = {

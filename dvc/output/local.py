@@ -13,49 +13,31 @@ from dvc.utils import remove
 class OutputLOCAL(DependencyLOCAL):
     PARAM_CACHE = 'cache'
 
-    DoesNotExistError = OutputDoesNotExistError                                          
-    IsNotFileOrDirError = OutputIsNotFileOrDirError                                      
+    DoesNotExistError = OutputDoesNotExistError
+    IsNotFileOrDirError = OutputIsNotFileOrDirError
 
-    SCHEMA = DependencyLOCAL.SCHEMA
-    SCHEMA[schema.Optional(PARAM_CACHE)] = bool
+    def __init__(self, stage, path, info=None, cache=True):
+        super(OutputLOCAL, self).__init__(stage, path, info)
+        self.use_cache = cache
 
-    def __init__(self, stage, path, md5=None, use_cache=True):
-        super(OutputLOCAL, self).__init__(stage, path, md5=md5)
-        self.use_cache = use_cache
+    @property
+    def md5(self):
+        return self.info.get(self.project.cache.local.PARAM_MD5, None)
 
     @property
     def cache(self):
-        if not self.use_cache:
-            return None
-
-        return self.project.cache.get(self.md5)
+        return self.project.cache.local.get(self.md5)
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
         return ret
 
-    @classmethod
-    def loadd(cls, stage, d):
-        ret = super(OutputLOCAL, cls).loadd(stage, d)
-        ret.use_cache = d.get(cls.PARAM_CACHE, True)
-        return ret
-
-    @classmethod
-    def loads(cls, stage, s, use_cache=True):
-        ret = super(OutputLOCAL, cls).loads(stage, s)
-        ret.use_cache = use_cache
-        return ret
-
-    @classmethod
-    def loads_from(cls, stage, s_list, use_cache=False):
-        return [cls.loads(stage, x, use_cache=use_cache) for x in s_list]
-
     def changed(self):
         if super(OutputLOCAL, self).changed():
             return True
 
-        if self.use_cache and self.project.cache.changed(self.md5):
+        if self.use_cache and self.info != self.project.cache.local.save_info(self.path_info):
             return True
 
         return False
@@ -64,31 +46,30 @@ class OutputLOCAL(DependencyLOCAL):
         if not self.use_cache:
             return
 
-        msg = u'Checking out \'{}\' with cache \'{}\''
-        self.project.logger.debug(msg.format(self.rel_path, self.md5))
-
         if not self.changed():
-            msg = u'Data file \'{}\' with cache \'{}\' didn\'t change, skipping checkout.'
-            self.project.logger.debug(msg.format(self.rel_path, self.md5))
+            msg = u'Data file \'{}\' didn\'t change, skipping checkout.'
+            self.project.logger.debug(msg.format(self.rel_path))
             return
 
-        self.project.cache.checkout(self.path, self.md5)
+        self.project.cache.local.checkout(self.path_info, self.info)
 
     def save(self):
+        if not self.changed():
+            msg = 'Output \'{}\' didn\'t change. Skipping saving.'
+            self.project.logger.debug(msg.format(self.rel_path))
+            return
+
         super(OutputLOCAL, self).save()
 
         if not self.use_cache:
+            msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
+            self.project.logger.debug(msg.format(self.rel_path))
             return
-
-        self.project.logger.debug(u'Saving \'{}\' to \'{}\''.format(self.rel_path, self.md5))
 
         if self.project.scm.is_tracked(self.path):
             raise OutputAlreadyTrackedError(self.rel_path)
 
-        if not self.changed():
-             return
-
-        self.project.cache.save(self.path)
+        self.info = self.project.cache.local.save(self.path_info)
 
     def remove(self):
-        remove(self.path)
+        self.remote.remove(self.path_info)

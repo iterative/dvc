@@ -4,10 +4,10 @@ import threading
 
 import boto3
 
-from dvc.config import Config
 from dvc.logger import Logger
 from dvc.progress import progress
-from dvc.cloud.base import DataCloudError, DataCloudBase
+from dvc.cloud.base import DataCloudBase, DataCloudError
+from dvc.config import Config
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -81,7 +81,7 @@ class DataCloudAWS(DataCloudBase):
         self._makedirs(fname)
 
         tmp_file = self.tmp_file(fname)
-        name = os.path.relpath(fname, self._cloud_settings.cache.cache_dir)
+        name = os.path.relpath(fname, self._cloud_settings.cache.local.cache_dir)
 
         if self._cmp_checksum(key, fname):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key.name))
@@ -126,7 +126,7 @@ class DataCloudAWS(DataCloudBase):
 
     def _push_key(self, key, path):
         """ push, aws version """
-        name = os.path.relpath(path, self._cloud_settings.cache.cache_dir)
+        name = os.path.relpath(path, self._cloud_settings.cache.local.cache_dir)
         cb = self.create_cb_push(name, path)
         try:
             self.s3.Object(key.bucket, key.name).upload_file(path, Callback=cb)

@@ -25,7 +25,7 @@ class TestAdd(TestDvc):
         self.assertEqual(len(stage.outs), 1)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(stage.cmd, None)
-        self.assertEqual(stage.outs[0].md5, md5)
+        self.assertEqual(stage.outs[0].info['md5'], md5)
 
 
 class TestAddNonExistentFile(TestDvc):

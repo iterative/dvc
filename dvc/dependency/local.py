@@ -7,52 +7,40 @@ from dvc.dependency.base import *
 from dvc.logger import Logger
 from dvc.utils import remove
 from dvc.cloud.local import DataCloudLOCAL
+from dvc.config import Config
+from dvc.remote.local import RemoteLOCAL
 
 
 class DependencyLOCAL(DependencyBase):
     REGEX = r'^(?P<path>(/+|.:\\+)?.*)$'
 
-    PARAM_PATH = 'path'
-    PARAM_MD5 = 'md5'
-    MD5_DIR_SUFFIX = '.dir'
-
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
-    SCHEMA = {
-        PARAM_PATH: str,
-        schema.Optional(PARAM_MD5): schema.Or(str, None),
-    }
-
-    def __init__(self, stage, path, md5=None):
+    def __init__(self, stage, path, info=None):
         self.stage = stage
         self.project = stage.project
-        self.path = os.path.abspath(os.path.normpath(path))
-        self.md5 = md5
+        if not os.path.isabs(path):
+            path = self.unixpath(path)
+            path = os.path.join(stage.cwd, path)
+        self.path = os.path.normpath(path)
+        self.info = info
+        self.remote = RemoteLOCAL(stage.project,
+                        {Config.SECTION_REMOTE_URL: self.project.dvc_dir})
+        self.path_info = {'scheme': 'local',
+                          'path': self.path}
 
     @property
     def rel_path(self):
         return os.path.relpath(self.path)
 
-    def _changed_md5(self):
+    def changed(self):
         if not os.path.exists(self.path):
             return True
 
-        return self.project.state.changed(self.path, self.md5)
+        info = self.remote.save_info(self.path_info)
 
-    @staticmethod
-    def _changed_msg(changed):
-        if changed:
-            return 'changed'
-        return "didn't change"
-
-    def changed(self):
-        ret = self._changed_md5()
-
-        msg = u'Dependency \'{}\' {}'.format(self.rel_path, self._changed_msg(ret))
-        self.project.logger.debug(msg)
-
-        return ret
+        return self.info != info
 
     def save(self):
         if not os.path.exists(self.path):
@@ -65,7 +53,7 @@ class DependencyLOCAL(DependencyBase):
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
             self.project.logger.warn("File/directory '{}' is empty.".format(self.rel_path))
 
-        self.md5 = self.project.state.update(self.path)
+        self.info = self.remote.save_info(self.path_info)
 
     @staticmethod
     def unixpath(path):
@@ -79,27 +67,6 @@ class DependencyLOCAL(DependencyBase):
         else:
             path = self.path
 
-        return {self.PARAM_PATH: path,
-                self.PARAM_MD5:self.md5}
-
-    @classmethod
-    def loadd(cls, stage, d):
-        path = d[cls.PARAM_PATH]
-        if not os.path.isabs(path):
-            path = cls.unixpath(path)
-            path = os.path.join(stage.cwd, path)
-        path = os.path.normpath(path)
-        md5 = d.get(cls.PARAM_MD5, None)
-        return cls(stage, path, md5=md5)
-
-    @classmethod
-    def loadd_from(cls, stage, d_list):
-        return [cls.loadd(stage, x) for x in d_list]
-
-    @classmethod
-    def loads(cls, stage, s):
-        return cls(stage, os.path.join(stage.cwd, s), md5=None)
-
-    @classmethod
-    def loads_from(cls, stage, s_list):
-        return [cls.loads(stage, x) for x in s_list]
+        info = self.info
+        info[self.PARAM_PATH] = path
+        return info
