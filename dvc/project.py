@@ -202,8 +202,12 @@ class Project(object):
 
         for stage in stages:
             for out in stage.outs:
+                if out.path_info['scheme'] != 'local':
+                    continue
+
                 if not out.use_cache or not out.cache:
                     continue
+
                 cache_set |= set([out.cache])
                 if self.cache.local.is_dir_cache(out.cache) and os.path.isfile(out.cache):
                     dir_cache = self.cache.local.dir_cache(out.cache)
