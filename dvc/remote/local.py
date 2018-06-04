@@ -4,14 +4,14 @@ import json
 import shutil
 
 from dvc.system import System
-from dvc.remote.base import Remote
+from dvc.remote.base import RemoteBase
 from dvc.state import State
 from dvc.logger import Logger
 from dvc.utils import remove, move
 from dvc.output.base import OutputAlreadyTrackedError
 
 
-class RemoteLOCAL(Remote):
+class RemoteLOCAL(RemoteBase):
     PARAM_MD5 = State.PARAM_MD5
 
     CACHE_DIR = 'cache'

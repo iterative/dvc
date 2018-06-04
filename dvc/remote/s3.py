@@ -6,10 +6,10 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.remote.base import Remote
+from dvc.remote.base import RemoteBase
 
 
-class RemoteS3(Remote):
+class RemoteS3(RemoteBase):
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):

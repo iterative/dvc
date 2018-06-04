@@ -1,4 +1,4 @@
-class Remote(object):
+class RemoteBase(object):
     def __init__(self, project, config):
         pass
 

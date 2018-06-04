@@ -1,5 +1,5 @@
-from dvc.remote.base import Remote
+from dvc.remote.base import RemoteBase
 
 
-class RemoteSSH(Remote):
+class RemoteSSH(RemoteBase):
     pass
