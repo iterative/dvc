@@ -7,6 +7,7 @@ except ImportError:
     from urllib.parse import urlparse
 
 from dvc.remote.base import RemoteBase
+from dvc.config import Config
 
 
 class RemoteGS(RemoteBase):
@@ -14,9 +15,6 @@ class RemoteGS(RemoteBase):
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
-        #FIXME
-        from dvc.config import Config
-
         self.project = project
         self.url = config.get[Config.SECTION_REMOTE_URL]
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)

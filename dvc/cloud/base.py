@@ -2,8 +2,10 @@ import os
 import re
 import tempfile
 
+from dvc.config import Config
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
+from dvc.remote.local import RemoteLOCAL
 
 
 STATUS_UNKNOWN = 0
@@ -45,8 +47,6 @@ class DataCloudBase(object):
 
     @property
     def url(self):
-        #FIXME
-        from dvc.config import Config
         config = self._cloud_settings.cloud_config
         return config.get(Config.SECTION_REMOTE_URL, None)
 
@@ -72,9 +72,6 @@ class DataCloudBase(object):
 
         Precedence: Storage, then cloud specific
         """
-        #FIXME
-        from dvc.config import Config
-
         if self._cloud_settings.global_storage_path:
             return self._cloud_settings.global_storage_path
 
@@ -131,9 +128,6 @@ class DataCloudBase(object):
     def collect(self, arg):
         path, local = arg
         ret = [path]
-
-        #FIXME
-        from dvc.remote.local import RemoteLOCAL
 
         if not RemoteLOCAL.is_dir_cache(path):
             return ret

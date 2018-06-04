@@ -7,17 +7,16 @@ from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
 
-#FIXME PARAM_MD5, PARAM_ETAG
-#from dvc.remote.local import RemoteLOCAL
-#from dvc.remote.s3 import RemoteS3
+from dvc.remote.local import RemoteLOCAL
+from dvc.remote.s3 import RemoteS3
 
 
 DEPS = [DependencyS3, DependencyGS, DependencyLOCAL]
 
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
-    schema.Optional('md5'): schema.Or(str, None),
-    schema.Optional('etag'): schema.Or(str, None),
+    schema.Optional(RemoteLOCAL.PARAM_MD5): schema.Or(str, None),
+    schema.Optional(RemoteS3.PARAM_ETAG): schema.Or(str, None),
 }
 
 

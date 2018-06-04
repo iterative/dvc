@@ -6,6 +6,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+from dvc.config import Config
 from dvc.remote.base import RemoteBase
 
 
@@ -14,10 +15,6 @@ class RemoteS3(RemoteBase):
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
-        #FIXME
-        from dvc.config import Config
-
-
         self.project = project
         self.url = config[Config.SECTION_REMOTE_URL]
         self.region = config.get(Config.SECTION_AWS_REGION, None)

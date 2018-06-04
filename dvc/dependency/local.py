@@ -7,6 +7,8 @@ from dvc.dependency.base import *
 from dvc.logger import Logger
 from dvc.utils import remove
 from dvc.cloud.local import DataCloudLOCAL
+from dvc.config import Config
+from dvc.remote.local import RemoteLOCAL
 
 
 class DependencyLOCAL(DependencyBase):
@@ -16,10 +18,6 @@ class DependencyLOCAL(DependencyBase):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
     def __init__(self, stage, path, info=None):
-        #FIXME
-        from dvc.config import Config
-        from dvc.remote.local import RemoteLOCAL
-
         self.stage = stage
         self.project = stage.project
         if not os.path.isabs(path):

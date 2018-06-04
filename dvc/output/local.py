@@ -22,7 +22,6 @@ class OutputLOCAL(DependencyLOCAL):
 
     @property
     def md5(self):
-        #FIXME
         return self.info.get(self.project.cache.local.PARAM_MD5, None)
 
     @property
@@ -66,6 +65,9 @@ class OutputLOCAL(DependencyLOCAL):
             msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
             self.project.logger.debug(msg.format(self.rel_path))
             return
+
+        if self.project.scm.is_tracked(self.path):
+            raise OutputAlreadyTrackedError(self.rel_path)
 
         self.info = self.project.cache.local.save(self.path_info)
 

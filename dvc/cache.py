@@ -1,5 +1,6 @@
 import os
 
+from dvc.config import Config
 from dvc.remote import Remote
 
 
@@ -7,9 +8,6 @@ class Cache(object):
     CACHE_DIR = 'cache'
 
     def __init__(self, project):
-        #FIXME
-        from dvc.config import Config
-
         config = project.config._config[Config.SECTION_CACHE]
 
         local = config.get(Config.SECTION_CACHE_LOCAL, None)

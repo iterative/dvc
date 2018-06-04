@@ -1,5 +1,7 @@
 import re
 
+from dvc.config import Config
+
 
 class RemoteBase(object):
     REGEX = None
@@ -9,8 +11,6 @@ class RemoteBase(object):
 
     @classmethod
     def supported(cls, config):
-        #FIXME
-        from dvc.config import Config
         url = config[Config.SECTION_REMOTE_URL]
         return cls.match(url) != None
 

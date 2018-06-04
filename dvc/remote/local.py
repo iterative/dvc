@@ -8,6 +8,7 @@ from dvc.remote.base import RemoteBase
 from dvc.state import State
 from dvc.logger import Logger
 from dvc.utils import remove, move
+from dvc.config import Config
 
 
 class RemoteLOCAL(RemoteBase):
@@ -23,9 +24,6 @@ class RemoteLOCAL(RemoteBase):
     }
 
     def __init__(self, project, config):
-        #FIXME
-        from dvc.config import Config
-
         self.project = project
         self.link_state = project.link_state
         self.cache_dir = config[Config.SECTION_REMOTE_URL]
@@ -212,16 +210,10 @@ class RemoteLOCAL(RemoteBase):
         return {self.PARAM_MD5: md5}
 
     def save(self, path_info):
-        #FIXME
-        from dvc.output.base import OutputAlreadyTrackedError
-
         if path_info['scheme'] != 'local':
             raise NotImplementedError
 
         path = path_info['path']
-
-        if self.project.scm.is_tracked(path):
-            raise OutputAlreadyTrackedError(os.path.relpath(path))
 
         if os.path.isdir(path):
             return self._save_dir(path_info)
