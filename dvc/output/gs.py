@@ -1,4 +1,5 @@
 from dvc.dependency.gs import DependencyGS
+from dvc.exceptions import DvcException
 
 
 class OutputGS(DependencyGS):
@@ -7,6 +8,8 @@ class OutputGS(DependencyGS):
     def __init__(self, stage, path, info=None, cache=True):
         super(OutputGS, self).__init__(stage, path, info)
         self.use_cache = cache
+        if cache and self.project.cache.gs == None:
+            raise DvcException("No cache location setup for \'gs\' outputs.")
 
     def dumpd(self):
         ret = super(OutputGS, self).dumpd()

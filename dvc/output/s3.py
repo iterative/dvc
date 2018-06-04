@@ -1,4 +1,5 @@
 from dvc.dependency.s3 import DependencyS3
+from dvc.exceptions import DvcException
 
 
 class OutputS3(DependencyS3):
@@ -7,6 +8,8 @@ class OutputS3(DependencyS3):
     def __init__(self, stage, path, info=None, cache=True):
         super(OutputS3, self).__init__(stage, path, info)
         self.use_cache = cache
+        if cache and self.project.cache.s3 == None:
+            raise DvcException("No cache location setup for \'s3\' outputs.")
 
     def dumpd(self):
         ret = super(OutputS3, self).dumpd()
