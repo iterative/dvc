@@ -40,4 +40,4 @@ class OutputS3(DependencyS3):
         self.info = self.project.cache.s3.save(self.path_info)
 
     def remove(self):
-        self.s3.Object(self.bucket, self.key).delete()
+        self.remote.remove(self.path_info)

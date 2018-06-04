@@ -73,3 +73,13 @@ class RemoteS3(RemoteBase):
                   'Key': key}
 
         self.s3.Bucket(path_info['bucket']).copy(source, path_info['key'])
+
+    def remove(self, path_info):
+        if path_info['scheme'] != 's3':
+            raise NotImplementedError
+
+        try:
+            obj = self.s3.Object(path_info['bucket'], path_info['key']).get()
+            obj.delete()
+        except Exception:
+            pass

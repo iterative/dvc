@@ -225,3 +225,9 @@ class RemoteLOCAL(RemoteBase):
             raise NotImplementedError
 
         return {self.PARAM_MD5: self.state.update(path_info['path'])}
+
+    def remove(self, path_info):
+        if path_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        remove(path_info['path'])

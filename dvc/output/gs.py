@@ -41,8 +41,4 @@ class OutputGS(DependencyGS):
         self.info = self.project.cache.gs.save(self.path_info)
 
     def remove(self):
-        blob = self.client.bucket(self.bucket).get_blob(self.key)
-        if not blob:
-            return
-
-        blob.delete()
+        self.remote.remove(self.path_info)

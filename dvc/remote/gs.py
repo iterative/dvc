@@ -16,7 +16,7 @@ class RemoteGS(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        self.url = config.get[Config.SECTION_REMOTE_URL]
+        self.url = config[Config.SECTION_REMOTE_URL]
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
     @property
@@ -55,15 +55,15 @@ class RemoteGS(RemoteBase):
         if not blob:
             raise DvcException('{} doesn\'t exist in the cloud'.format(path_info['key']))
 
-        self.gs.bucket(self.bucket).copy_blob(blob, self.bucket, name=dest_key)
+        self.gs.bucket(self.bucket).copy_blob(blob, self.gs.bucket(path_info['bucket']), new_name=dest_key)
 
-        return {PARAM_ETAG: etag}
+        return {self.PARAM_ETAG: etag}
 
     def checkout(self, path_info, checksum_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        etag = checksum_info.get(PARAM_ETAG, None)
+        etag = checksum_info.get(self.PARAM_ETAG, None)
         if not etag:
             return
 
@@ -72,4 +72,14 @@ class RemoteGS(RemoteBase):
         if not blob:
             raise DvcException('{} doesn\'t exist in the cloud'.format(key))
 
-        self.gs.bucket(path_info['bucket']).copy_blob(blob, path_info['bucket'], name=path_info['key'])
+        self.gs.bucket(path_info['bucket']).copy_blob(blob, self.gs.bucket(self.bucket), new_name=path_info['key'])
+
+    def remove(self, path_info):
+        if path_info['scheme'] != 'gs':
+            raise NotImplementedError
+
+        blob = self.gs.bucket(path_info['key']).get_blob(path_info['key'])
+        if not blob:
+            return
+
+        blob.delete()

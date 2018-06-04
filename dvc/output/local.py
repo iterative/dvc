@@ -72,4 +72,4 @@ class OutputLOCAL(DependencyLOCAL):
         self.info = self.project.cache.local.save(self.path_info)
 
     def remove(self):
-        remove(self.path)
+        self.remote.remove(self.path_info)
