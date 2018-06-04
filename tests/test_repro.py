@@ -10,7 +10,7 @@ from google.cloud import storage as gc
 
 from dvc.main import main
 from dvc.command.repro import CmdRepro
-from dvc.project import ReproductionError
+from dvc.project import Project, ReproductionError
 from dvc.utils import file_md5
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage
@@ -194,15 +194,24 @@ class TestReproExternalBase(TestDvc):
         if not self.should_test():
             return
 
+        cache = self.scheme + '://' + self.bucket + '/' + str(uuid.uuid4())
+
+        ret = main(['config', 'cache.' + self.scheme, 'myrepo'])
+        self.assertEqual(ret, 0)
+        ret = main(['remote', 'add', 'myrepo', cache])
+        self.assertEqual(ret, 0)
+
+        self.dvc = Project('.')
+
         foo_key = str(uuid.uuid4()) + '/' + self.FOO
         bar_key = str(uuid.uuid4()) + '/' + self.BAR
 
-        foo_path = self.schema + self.bucket + '/' + foo_key
-        bar_path = self.schema + self.bucket + '/' + bar_key
+        foo_path = self.scheme + '://' + self.bucket + '/' + foo_key
+        bar_path = self.scheme + '://' + self.bucket + '/' + bar_key
 
         self.write(self.bucket, foo_key, 'foo')
 
-        stage = self.dvc.run(outs_no_cache=[bar_path],
+        stage = self.dvc.run(outs=[bar_path],
                              deps=[foo_path],
                              cmd='{} {} {}'.format(self.cmd, foo_path, bar_path))
 
@@ -218,8 +227,8 @@ class TestReproExternalS3(TestReproExternalBase):
         return _should_test_aws()
 
     @property
-    def schema(self):
-        return 's3://'
+    def scheme(self):
+        return 's3'
 
     @property
     def bucket(self):
@@ -242,8 +251,8 @@ class TestReproExternalGS(TestReproExternalBase):
         return _should_test_gcp()
 
     @property
-    def schema(self):
-        return 'gs://'
+    def scheme(self):
+        return 'gs'
 
     @property
     def bucket(self):
