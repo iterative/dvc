@@ -215,6 +215,10 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Reproduce only single data item without recursive dependencies check.')
+    repro_parser.add_argument('-c',
+                        '--cwd',
+                        default=os.path.curdir,
+                        help='Directory to reproduce from.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove

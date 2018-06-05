@@ -24,3 +24,5 @@ innosetup/config.ini
 .coverage
 
 dvc/version.py
+
+*.swp
