@@ -170,3 +170,20 @@ class TestCheckoutMissingMd5InStageFile(TestRepro):
             yaml.dump(d, fd)
 
         self.dvc.checkout()
+
+
+class TestCheckoutEmptyDir(TestDvc):
+    def test(self):
+        dname = 'empty_dir'
+        os.mkdir(dname)
+
+        stage = self.dvc.add(dname)
+        self.assertEqual(len(stage.outs), 1)
+
+        stage.outs[0].remove()
+        self.assertFalse(os.path.exists(dname))
+
+        self.dvc.checkout()
+
+        self.assertTrue(os.path.isdir(dname))
+        self.assertEqual(len(os.listdir(dname)), 0)

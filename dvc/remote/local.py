@@ -160,6 +160,11 @@ class RemoteLOCAL(RemoteBase):
         msg = u'Checking out directory \'{}\' with cache \'{}\''
         Logger.debug(msg.format(os.path.relpath(path), os.path.relpath(cache)))
 
+        # Create dir separately so that dir is created
+        # even if there are no files in it
+        if not os.path.exists(path):
+            os.makedirs(path)
+
         dir_cache = self.dir_cache(cache)
         for relpath, c in dir_cache.items():
             p = os.path.join(path, relpath)
