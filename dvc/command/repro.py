@@ -8,6 +8,11 @@ from dvc.stage import Stage
 class CmdRepro(CmdBase):
     def run(self):
         recursive = not self.args.single_item
+        saved_dir = os.path.realpath(os.curdir)
+        if self.args.cwd:
+            os.chdir(self.args.cwd)
+
+        ret = 0
         for target in self.args.targets:
             try:
                 self.project.reproduce(target,
@@ -16,7 +21,8 @@ class CmdRepro(CmdBase):
             except ReproductionError as ex:
                 msg = 'Failed to reproduce \'{}\''.format(target)
                 self.project.logger.error(msg, ex)
-                return 1
+                ret = 1
+                break
             except StageNotFoundError as ex:
                 if os.path.exists(target):
                     msg = '\'{}\' is not a dvc file.'.format(target)
@@ -26,9 +32,13 @@ class CmdRepro(CmdBase):
                 else:
                     msg = '\'{}\' does not exist.'.format(target)
                 self.project.logger.error(msg)
-                return 1
+                ret = 1
+                break
             except Exception as ex:
                 msg = 'Failed to reproduce \'{}\' - unexpected error'.format(target)
                 self.project.logger.error(msg, ex)
-                return 1
-        return 0
+                ret = 1
+                break
+
+        os.chdir(saved_dir)
+        return ret
