@@ -53,11 +53,13 @@ before_install:
   - which python
   - which pip
   - python --version
-  - docker pull harisekhon/hadoop
-  - export HADOOP_CONTAINER_ID=$(docker run -dt harisekhon/hadoop)
-  - echo $HADOOP_CONTAINER_ID
-  - export HADOOP_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $HADOOP_CONTAINER_ID)
-  - echo $HADOOP_CONTAINER_IP
+  - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      docker pull harisekhon/hadoop;
+      export HADOOP_CONTAINER_ID=$(docker run -dt harisekhon/hadoop);
+      echo $HADOOP_CONTAINER_ID;
+      export HADOOP_CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $HADOOP_CONTAINER_ID);
+      echo $HADOOP_CONTAINER_IP;
+      fi
 install:
   - bash ./scripts/ci/install.sh
 script:
