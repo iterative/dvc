@@ -297,3 +297,26 @@ class TestReproExternalGS(TestReproExternalBase):
         client = gc.Client()
         bucket = client.bucket(bucket)
         bucket.blob(key).upload_from_string(body)
+
+
+class TestReproShell(TestDvc):
+    def test(self):
+        if os.name == 'nt':
+            return
+
+        fname = 'shell.txt'
+        stage = fname + '.dvc'
+
+        self.dvc.run(fname=stage,
+                     outs=[fname],
+                     cmd='echo $SHELL > {}'.format(fname))
+
+        with open(fname, 'r') as fd:
+            self.assertEqual(os.getenv('SHELL'), fd.read().strip())
+
+        os.unlink(fname)
+
+        self.dvc.reproduce(stage)
+
+        with open(fname, 'r') as fd:
+            self.assertEqual(os.getenv('SHELL'), fd.read().strip())
