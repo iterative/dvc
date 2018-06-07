@@ -226,7 +226,11 @@ class Stage(object):
         if not self.is_data_source:
             self.project.logger.info(u'Reproducing \'{}\':\n\t{}'.format(self.relpath, self.cmd))
 
-            p = subprocess.Popen(self.cmd, cwd=self.cwd, shell=True)
+            p = subprocess.Popen(self.cmd,
+                                 cwd=self.cwd,
+                                 shell=True,
+                                 env=os.environ,
+                                 executable=os.getenv('SHELL'))
             p.communicate()
             if p.returncode != 0:
                raise StageCmdFailedError(self)
