@@ -76,13 +76,13 @@ Cask:
 Links
 =====
 
-Website: https://dataversioncontrol.com
+Website: https://dvc.org
 
 Tutorial: https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46
 
-Documentation: http://dataversioncontrol.com/docs/
+Documentation: http://dvc.org/documentation
 
-Discussion: https://discuss.dataversioncontrol.com/
+Discussion: https://discuss.dvc.org/
 
 Related technologies
 ====================
