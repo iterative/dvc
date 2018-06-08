@@ -5,8 +5,8 @@ from dvc.exceptions import DvcException
 class OutputS3(DependencyS3):
     PARAM_CACHE = 'cache'
 
-    def __init__(self, stage, path, info=None, cache=True):
-        super(OutputS3, self).__init__(stage, path, info)
+    def __init__(self, stage, path, info=None, remote=None, cache=True):
+        super(OutputS3, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         if cache and self.project.cache.s3 == None:
             raise DvcException("No cache location setup for \'s3\' outputs.")

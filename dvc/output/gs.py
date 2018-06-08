@@ -5,8 +5,8 @@ from dvc.exceptions import DvcException
 class OutputGS(DependencyGS):
     PARAM_CACHE = 'cache'
 
-    def __init__(self, stage, path, info=None, cache=True):
-        super(OutputGS, self).__init__(stage, path, info)
+    def __init__(self, stage, path, info=None, remote=None, cache=True):
+        super(OutputGS, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         if cache and self.project.cache.gs == None:
             raise DvcException("No cache location setup for \'gs\' outputs.")

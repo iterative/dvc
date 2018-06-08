@@ -1,3 +1,5 @@
+import posixpath
+
 try:
     from urlparse import urlparse
 except ImportError:
@@ -12,13 +14,18 @@ from dvc.config import Config
 class DependencyS3(DependencyBase):
     REGEX = DataCloudAWS.REGEX
 
-    def __init__(self, stage, path, info=None):
+    def __init__(self, stage, path, info=None, remote=None):
         super(DependencyS3, self).__init__(stage, path)
         self.info = info
-        self.remote = RemoteS3(stage.project, {Config.SECTION_REMOTE_URL: '/'})
+        self.remote = remote if remote else RemoteS3(stage.project, {})
+
+        bucket = remote.bucket if remote else urlparse(path).netloc
+        key = urlparse(path).path.lstrip('/')
+        if remote:
+            key = posixpath.join(remote.prefix, key)
         self.path_info = {'scheme': 's3',
-                          'bucket': urlparse(path).netloc,
-                          'key': urlparse(path).path.lstrip('/')}
+                          'bucket': bucket,
+                          'key': key}
 
     def changed(self):
         return self.info != self.remote.save_info(self.path_info)

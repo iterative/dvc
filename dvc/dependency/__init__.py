@@ -1,17 +1,29 @@
 import schema
 
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from dvc.exceptions import DvcException
+from dvc.config import Config
 
 from dvc.dependency.base import DependencyBase
 from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
 
+from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
-
+from dvc.remote.gs import RemoteGS
+from dvc.remote.ssh import RemoteSSH
 
 DEPS = [DependencyS3, DependencyGS, DependencyLOCAL]
+
+DEP_MAP = {'': DependencyLOCAL,
+           's3': DependencyS3,
+           'gs': DependencyGS}
 
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
@@ -20,23 +32,29 @@ SCHEMA = {
 }
 
 
-def _get(path):
+def _get(stage, p, info):
+    parsed = urlparse(p)
+    if parsed.scheme == 'remote':
+        sect = stage.project.config._config[Config.SECTION_REMOTE_FMT.format(parsed.netloc)]
+        remote = Remote(stage.project, sect)
+        return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
+
     for d in DEPS:
-        if d.supported(path):
-            return d
-    raise DvcException('Dependency \'{}\' is not supported'.format(path))
+        if d.supported(p):
+            return d(stage, p, info)
+    raise DvcException('Dependency \'{}\' is not supported'.format(p))
 
 
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
         p = d.pop(DependencyBase.PARAM_PATH)
-        ret.append(_get(p)(stage, p, d))
+        ret.append(_get(stage, p, d))
     return ret
 
 
 def loads_from(stage, s_list):
     ret = []
     for s in s_list:
-        ret.append(_get(s)(stage, s, {}))
+        ret.append(_get(stage, s, {}))
     return ret

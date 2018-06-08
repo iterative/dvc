@@ -232,18 +232,29 @@ class TestReproExternalBase(TestDvc):
         ret = main(['remote', 'add', 'myrepo', cache])
         self.assertEqual(ret, 0)
 
+        remote_name = 'myremote'
+        remote_key = str(uuid.uuid4())
+        remote = self.scheme + '://' + self.bucket + '/' + remote_key
+
+        ret = main(['remote', 'add', remote_name, remote])
+        self.assertEqual(ret, 0)
+
         self.dvc = Project('.')
 
-        foo_key = str(uuid.uuid4()) + '/' + self.FOO
-        bar_key = str(uuid.uuid4()) + '/' + self.BAR
+        foo_key = remote_key + '/' + self.FOO
+        bar_key = remote_key + '/' + self.BAR
 
         foo_path = self.scheme + '://' + self.bucket + '/' + foo_key
         bar_path = self.scheme + '://' + self.bucket + '/' + bar_key
 
+        # Using both plain and remote notation
+        out_foo_path = 'remote://' + remote_name + '/' + self.FOO
+        out_bar_path = bar_path
+
         self.write(self.bucket, foo_key, 'foo')
 
-        stage = self.dvc.run(outs=[bar_path],
-                             deps=[foo_path],
+        stage = self.dvc.run(outs=[out_bar_path],
+                             deps=[out_foo_path],
                              cmd='{} {} {}'.format(self.cmd, foo_path, bar_path))
 
         self.write(self.bucket, foo_key, 'bar')

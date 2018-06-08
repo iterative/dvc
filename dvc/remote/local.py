@@ -12,6 +12,7 @@ from dvc.config import Config
 
 
 class RemoteLOCAL(RemoteBase):
+    scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
     PARAM_MD5 = State.PARAM_MD5
 
@@ -26,10 +27,10 @@ class RemoteLOCAL(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.link_state = project.link_state
-        self.cache_dir = config[Config.SECTION_REMOTE_URL]
+        self.cache_dir = config.get(Config.SECTION_REMOTE_URL, None)
         self.cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
 
-        if not os.path.exists(self.cache_dir):
+        if self.cache_dir != None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
         self.state = State(self.cache_dir)
