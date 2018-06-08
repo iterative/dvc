@@ -25,8 +25,7 @@ class DependencyLOCAL(DependencyBase):
             path = os.path.join(stage.cwd, path)
         self.path = os.path.normpath(path)
         self.info = info
-        self.remote = RemoteLOCAL(stage.project,
-                        {Config.SECTION_REMOTE_URL: self.project.dvc_dir})
+        self.remote = RemoteLOCAL(stage.project, {})
         self.path_info = {'scheme': 'local',
                           'path': self.path}
 

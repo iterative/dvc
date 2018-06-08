@@ -15,7 +15,7 @@ class DependencyS3(DependencyBase):
     def __init__(self, stage, path, info=None):
         super(DependencyS3, self).__init__(stage, path)
         self.info = info
-        self.remote = RemoteS3(stage.project, {Config.SECTION_REMOTE_URL: '/'})
+        self.remote = RemoteS3(stage.project, {})
         self.path_info = {'scheme': 's3',
                           'bucket': urlparse(path).netloc,
                           'key': urlparse(path).path.lstrip('/')}

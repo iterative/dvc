@@ -15,7 +15,7 @@ class DependencyGS(DependencyS3):
     def __init__(self, stage, path, info=None):
         super(DependencyGS, self).__init__(stage, path)
         self.info = info
-        self.remote = RemoteGS(stage.project, {Config.SECTION_REMOTE_URL: '/'})
+        self.remote = RemoteGS(stage.project, {})
         self.path_info = {'scheme': 'gs',
                           'bucket': urlparse(path).netloc,
                           'key': urlparse(path).path.lstrip('/')}

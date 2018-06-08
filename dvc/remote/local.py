@@ -26,7 +26,7 @@ class RemoteLOCAL(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.link_state = project.link_state
-        self.cache_dir = config[Config.SECTION_REMOTE_URL]
+        self.cache_dir = config.get(Config.SECTION_REMOTE_URL, os.path.abspath(os.sep))
         self.cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
 
         if not os.path.exists(self.cache_dir):

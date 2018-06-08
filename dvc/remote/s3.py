@@ -16,7 +16,7 @@ class RemoteS3(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        self.url = config[Config.SECTION_REMOTE_URL]
+        self.url = config.get(Config.SECTION_REMOTE_URL, '/')
         self.region = config.get(Config.SECTION_AWS_REGION, None)
         self.profile = config.get(Config.SECTION_AWS_PROFILE, None)
         self.credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH, None)

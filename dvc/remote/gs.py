@@ -16,7 +16,7 @@ class RemoteGS(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        self.url = config[Config.SECTION_REMOTE_URL]
+        self.url = config.get(Config.SECTION_REMOTE_URL, '/')
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
     @property
