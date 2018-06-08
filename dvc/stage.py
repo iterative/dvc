@@ -91,10 +91,14 @@ class Stage(object):
         self.project.logger.debug(msg.format(self.relpath, self.md5, md5))
         return True
 
+    @property
+    def is_callback(self):
+        return not self.is_data_source and len(self.deps) == 0
+
     def changed(self):
         ret = False
 
-        if not self.is_data_source and len(self.deps) == 0:
+        if self.is_callback:
             ret = True
 
         for entry in itertools.chain(self.outs, self.deps):
@@ -268,7 +272,7 @@ class Stage(object):
         ret.update(self._status(self.deps, 'deps'))
         ret.update(self._status(self.outs, 'outs'))
 
-        if ret or self.changed_md5():
+        if ret or self.changed_md5() or self.is_callback:
             return {self.relpath: ret}
 
         return {}
