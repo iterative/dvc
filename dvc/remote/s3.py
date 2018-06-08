@@ -11,6 +11,7 @@ from dvc.remote.base import RemoteBase
 
 
 class RemoteS3(RemoteBase):
+    scheme = 's3'
     REGEX = r'^s3://(?P<path>.*)$'
     PARAM_ETAG = 'etag'
 

@@ -11,6 +11,7 @@ from dvc.config import Config
 
 
 class RemoteGS(RemoteBase):
+    scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
     PARAM_ETAG = 'etag'
 

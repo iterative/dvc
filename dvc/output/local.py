@@ -16,8 +16,8 @@ class OutputLOCAL(DependencyLOCAL):
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
-    def __init__(self, stage, path, info=None, cache=True):
-        super(OutputLOCAL, self).__init__(stage, path, info)
+    def __init__(self, stage, path, info=None, remote=None, cache=True):
+        super(OutputLOCAL, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
 
     @property

@@ -1,3 +1,5 @@
+import posixpath
+
 try:
     from urlparse import urlparse
 except ImportError:
@@ -12,10 +14,14 @@ from dvc.config import Config
 class DependencyGS(DependencyS3):
     REGEX = DataCloudGCP.REGEX
 
-    def __init__(self, stage, path, info=None):
+    def __init__(self, stage, path, info=None, remote=None):
         super(DependencyGS, self).__init__(stage, path)
         self.info = info
-        self.remote = RemoteGS(stage.project, {})
+        self.remote = remote if remote else RemoteGS(stage.project, {})
+        bucket = remote.bucket if remote else urlparse(path).netloc
+        key = urlparse(path).path.lstrip('/')
+        if remote:
+            key = posixpath.join(remote.prefix, key)
         self.path_info = {'scheme': 'gs',
-                          'bucket': urlparse(path).netloc,
-                          'key': urlparse(path).path.lstrip('/')}
+                          'bucket': bucket,
+                          'key': key}

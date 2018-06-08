@@ -48,10 +48,14 @@ class State(object):
 
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
-        self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
-        self._db = self.load()
         self._lock = threading.Lock()
-        self._lock_file = Lock(dvc_dir, self.STATE_LOCK_FILE)
+        if dvc_dir:
+            self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
+            self._lock_file = Lock(dvc_dir, self.STATE_LOCK_FILE)
+        else:
+            self.state_file = None
+            self._lock_file = threading.Lock()
+        self._db = self.load()
 
     @staticmethod
     def init(dvc_dir):
@@ -88,13 +92,16 @@ class State(object):
         return actual.split('.')[0] != md5.split('.')[0]
 
     def load(self):
-        if not os.path.isfile(self.state_file):
+        if not self.state_file or not os.path.isfile(self.state_file):
             return {}
 
         with open(self.state_file, 'r') as fd:
             return json.load(fd)
 
     def dump(self):
+        if not self.state_file:
+            return
+
         with open(self.state_file, 'w+') as fd:
             json.dump(self._db, fd)
 

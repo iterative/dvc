@@ -17,7 +17,7 @@ class DependencyLOCAL(DependencyBase):
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
-    def __init__(self, stage, path, info=None):
+    def __init__(self, stage, path, info=None, remote=None):
         self.stage = stage
         self.project = stage.project
         if not os.path.isabs(path):
@@ -25,7 +25,7 @@ class DependencyLOCAL(DependencyBase):
             path = os.path.join(stage.cwd, path)
         self.path = os.path.normpath(path)
         self.info = info
-        self.remote = RemoteLOCAL(stage.project, {})
+        self.remote = remote if remote != None else RemoteLOCAL(stage.project, {})
         self.path_info = {'scheme': 'local',
                           'path': self.path}
 
