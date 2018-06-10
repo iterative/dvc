@@ -28,6 +28,7 @@ class Cache(object):
         self.s3 = self._get_remote(project, config, Config.SECTION_CACHE_S3)
         self.gs = self._get_remote(project, config, Config.SECTION_CACHE_GS)
         self.ssh = self._get_remote(project, config, Config.SECTION_CACHE_SSH)
+        self.hdfs = self._get_remote(project, config, Config.SECTION_CACHE_HDFS)
 
     def _get_remote(self, project, config, name):
         remote = config.get(name, None)

@@ -15,8 +15,8 @@ class ConfigError(DvcException):
 
 
 def supported_url(url):
-    from dvc.cloud.data_cloud import DataCloud
-    return DataCloud.supported(url) != None
+    from dvc.remote import supported_url as supported
+    return supported(url)
 
 
 class Config(object):
@@ -36,10 +36,12 @@ class Config(object):
     SECTION_CACHE_S3 = 's3'
     SECTION_CACHE_GS = 'gs'
     SECTION_CACHE_SSH = 'ssh'
+    SECTION_CACHE_HDFS = 'hdfs'
     SECTION_CACHE_SCHEMA = {
         schema.Optional(SECTION_CACHE_LOCAL): str,
         schema.Optional(SECTION_CACHE_S3): str,
         schema.Optional(SECTION_CACHE_GS): str,
+        schema.Optional(SECTION_CACHE_HDFS): str,
 
         # backward compatibility
         schema.Optional(SECTION_CACHE_DIR, default='cache'): str,
@@ -93,6 +95,7 @@ class Config(object):
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
+    SECTION_REMOTE_USER = 'user'
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: supported_url,
         schema.Optional(SECTION_AWS_REGION): str,
@@ -100,6 +103,7 @@ class Config(object):
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
         schema.Optional(SECTION_GCP_PROJECTNAME): str,
         schema.Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
+        schema.Optional(SECTION_REMOTE_USER): str,
     }
 
     SCHEMA = {
