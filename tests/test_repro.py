@@ -3,6 +3,7 @@ import yaml
 import stat
 import shutil
 import filecmp
+from subprocess import Popen, PIPE
 
 import boto3
 import uuid
@@ -310,6 +311,46 @@ class TestReproExternalGS(TestReproExternalBase):
         bucket.blob(key).upload_from_string(body)
 
 
+class TestReproExternalHDFS(TestReproExternalBase):
+    def should_test(self):
+        if os.name == 'nt':
+            return False
+        if os.getenv('HADOOP_CONTAINER_IP'):
+            return True
+        return False
+
+    @property
+    def scheme(self):
+        return 'hdfs'
+
+    @property
+    def bucket(self):
+        return os.getenv('HADOOP_CONTAINER_IP')
+
+    @property
+    def cmd(self):
+        return 'HADOOP_USER_NAME=root hadoop fs -cp'
+
+    def write(self, bucket, key, body):
+        url = self.scheme + '://' + bucket + '/' + key
+        p = Popen('hadoop fs -rm -f {}'.format(url),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        p.communicate()
+
+        p = Popen('echo "{}" | hadoop fs -put - {}'.format(body, url),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        p.communicate()
+        self.assertEqual(p.returncode, 0)
+
+ 
 class TestReproShell(TestDvc):
     def test(self):
         if os.name == 'nt':

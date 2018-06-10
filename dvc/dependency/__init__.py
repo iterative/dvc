@@ -12,23 +12,27 @@ from dvc.dependency.base import DependencyBase
 from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
+from dvc.dependency.hdfs import DependencyHDFS
 
 from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
 from dvc.remote.ssh import RemoteSSH
+from dvc.remote.hdfs import RemoteHDFS
 
-DEPS = [DependencyS3, DependencyGS, DependencyLOCAL]
+DEPS = [DependencyHDFS, DependencyS3, DependencyGS, DependencyLOCAL]
 
 DEP_MAP = {'': DependencyLOCAL,
            's3': DependencyS3,
-           'gs': DependencyGS}
+           'gs': DependencyGS,
+           'hdfs': DependencyHDFS,}
 
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
     schema.Optional(RemoteLOCAL.PARAM_MD5): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_ETAG): schema.Or(str, None),
+    schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
 }
 
 
