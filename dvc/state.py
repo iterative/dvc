@@ -187,7 +187,7 @@ class LinkState(State):
         super(LinkState, self).__init__(dvc_dir)
         self.root_dir = root_dir
 
-    def update(self, path):
+    def update(self, path, dump=True):
         if not os.path.exists(path):
             return
 
@@ -195,11 +195,12 @@ class LinkState(State):
         inode = self.inode(path)
 
         with self._lock:
-            with self._lock_file:
-                state = LinkStateEntry(inode, mtime)
-                d = state.dumpd()
-                self._db[os.path.relpath(path, self.root_dir)] = d
-                self.dump()
+            state = LinkStateEntry(inode, mtime)
+            d = state.dumpd()
+            self._db[os.path.relpath(path, self.root_dir)] = d
+            if dump:
+                with self._lock_file:
+                    self.dump()
 
     def _do_remove_all(self):
         for p, s in self._db.items():
