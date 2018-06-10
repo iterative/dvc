@@ -68,7 +68,7 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, src, link):
+    def link(self, src, link, dump=True):
         dname = os.path.dirname(link)
         if not os.path.exists(dname):
             os.makedirs(dname)
@@ -83,12 +83,13 @@ class RemoteLOCAL(RemoteBase):
                 msg = u'Checking out \'{}\' with cache \'{}\''
                 Logger.debug(msg.format(os.path.relpath(src), os.path.relpath(link)))
                 self.CACHE_TYPE_MAP[typ](src, link)
-                self.link_state.update(link)
+                self.link_state.update(link, dump=dump)
                 return
             except Exception as exc:
                 msg = 'Cache type \'{}\' is not supported'.format(typ)
                 Logger.debug(msg)
                 if typ == types[-1]:
+                    raise
                     raise DvcException(msg, cause=exc)
 
     @staticmethod
@@ -137,7 +138,7 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cache):
         return cache.endswith(State.MD5_DIR_SUFFIX)
 
-    def checkout(self, path_info, checksum_info):
+    def checkout(self, path_info, checksum_info, dump=True):
         path = path_info['path']
         md5 = checksum_info.get(self.PARAM_MD5, None)
         cache = self.get(md5)
@@ -155,7 +156,7 @@ class RemoteLOCAL(RemoteBase):
             remove(path)
 
         if not self.is_dir_cache(cache):
-            self.link(cache, path)
+            self.link(cache, path, dump=dump)
             return
 
         msg = u'Checking out directory \'{}\' with cache \'{}\''
@@ -169,7 +170,7 @@ class RemoteLOCAL(RemoteBase):
         dir_cache = self.dir_cache(cache)
         for relpath, c in dir_cache.items():
             p = os.path.join(path, relpath)
-            self.link(c, p)
+            self.link(c, p, dump=dump)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
@@ -178,7 +179,7 @@ class RemoteLOCAL(RemoteBase):
         move(inp, tmp)
         move(tmp, outp)
 
-    def _save_file(self, path_info):
+    def _save_file(self, path_info, dump=True):
         path = path_info['path']
         md5 = self.state.update(path)
         cache = self.get(md5)
@@ -187,7 +188,7 @@ class RemoteLOCAL(RemoteBase):
                                                            os.path.relpath(cache)))
             self._move(path, cache)
             self.state.update(cache)
-        self.checkout(path_info, {self.PARAM_MD5: md5})
+        self.checkout(path_info, {self.PARAM_MD5: md5}, dump=dump)
 
         return {self.PARAM_MD5: md5}
 
@@ -202,7 +203,8 @@ class RemoteLOCAL(RemoteBase):
             relpath = entry[State.PARAM_RELPATH]
             p = os.path.join(path, relpath)
 
-            self._save_file({'scheme': 'local', 'path': p})
+            self._save_file({'scheme': 'local', 'path': p}, dump=False)
+        self.link_state.dump()
 
         if not os.path.isdir(dname):
             os.makedirs(dname)
