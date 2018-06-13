@@ -123,13 +123,15 @@ class Project(object):
         stage.dump()
         return stage
 
-    def remove(self, target):
+    def remove(self, target, outs_only=False):
         if not Stage.is_stage_file(target):
             raise StageNotFoundError(target)
 
         stage = Stage.load(self, target)
-        for out in stage.outs:
-            out.remove()
+        if outs_only:
+            stage.remove_outs()
+        else:
+            stage.remove()
 
         return stage
 

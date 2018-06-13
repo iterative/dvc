@@ -11,11 +11,17 @@ from tests.basic_env import TestDvc
 class TestRemove(TestDvc):
     def test(self):
         stage = self.dvc.add(self.FOO)
-        stage_removed = self.dvc.remove(stage.path)
+        stage_removed = self.dvc.remove(stage.path, outs_only=True)
 
         self.assertIsInstance(stage_removed, Stage)
         self.assertEqual(stage.path, stage_removed.path)
         self.assertFalse(os.path.isfile(self.FOO))
+
+        stage_removed = self.dvc.remove(stage.path)
+        self.assertIsInstance(stage_removed, Stage)
+        self.assertEqual(stage.path, stage_removed.path)
+        self.assertFalse(os.path.isfile(self.FOO))
+        self.assertFalse(os.path.exists(stage.path))
 
 
 class TestRemoveNonExistentFile(TestDvc):
@@ -30,7 +36,7 @@ class TestRemoveDirectory(TestDvc):
         stage_removed = self.dvc.remove(stage_add.path)
         self.assertEqual(stage_add.path, stage_removed.path)
         self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertTrue(os.path.exists(stage_removed.path))
+        self.assertFalse(os.path.exists(stage_removed.path))
 
 
 class TestCmdRemove(TestDvc):
