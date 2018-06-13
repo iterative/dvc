@@ -23,6 +23,16 @@ from dvc.stage import Stage
 from dvc import VERSION
 
 
+def _fix_subparsers(subparsers):
+    # NOTE: Workaround for bug in Python 3
+    # More info at:
+    #  https://bugs.python.org/issue16308
+    #  https://github.com/iterative/dvc/issues/769
+    if sys.version_info[0] == 3:
+        subparsers.required = True
+        subparsers.dest = 'cmd'
+
+
 def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -58,10 +68,7 @@ def parse_args(argv=None):
                         dest='cmd',
                         help='Use dvc CMD --help for command-specific help')
 
-    # NOTE: Workaround for bug in Python 3
-    if sys.version_info[0] == 3:
-        subparsers.required = True
-        subparsers.dest = 'cmd'
+    _fix_subparsers(subparsers)
 
     # Init
     init_parser = subparsers.add_parser(
@@ -282,6 +289,8 @@ def parse_args(argv=None):
     remote_subparsers = remote_parser.add_subparsers(
                         dest='cmd',
                         help='Use dvc remote CMD --help for command-specific help')
+
+    _fix_subparsers(remote_subparsers)
 
     remote_add_parser = remote_subparsers.add_parser(
                         'add',
