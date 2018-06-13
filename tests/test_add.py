@@ -8,7 +8,6 @@ from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
-from dvc.project import StageNotFoundError
 from dvc.command.add import CmdAdd
 
 from tests.basic_env import TestDvc

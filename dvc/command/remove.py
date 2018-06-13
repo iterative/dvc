@@ -9,6 +9,6 @@ class CmdRemove(CmdBase):
             try:
                 self.project.remove(target, outs_only=outs_only)
             except DvcException as ex:
-                self.project.logger.error('Failed to remove {}', ex)
+                self.project.logger.error('Failed to remove {}'.format(target), ex)
                 return 1
         return 0

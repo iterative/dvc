@@ -5,7 +5,6 @@ import filecmp
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage
-from dvc.project import StageNotFoundError
 from dvc.command.gc import CmdGC
 
 from tests.basic_env import TestDvc

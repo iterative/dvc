@@ -25,14 +25,18 @@ class InitError(DvcException):
         super(InitError, self).__init__(msg)
 
 
-class StageNotFoundError(DvcException):
+class NotDvcFileError(DvcException):
     def __init__(self, path):
-        msg = 'Stage file {} does not exist'.format(path)
-        super(StageNotFoundError, self).__init__(msg)
+        msg = '\'{}\' is not a DVC file'.format(path)
+        p = path + Stage.STAGE_FILE_SUFFIX
+        if Stage.is_stage_file(p):
+            msg += '. Maybe you meant \'{}\'?'.format(p)
+        super(NotDvcFileError, self).__init__(msg)
 
 
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name, ex):
+        self.path = dvc_file_name
         msg = 'Failed to reproduce \'{}\''.format(dvc_file_name)
         super(ReproductionError, self).__init__(msg, cause=ex)
 
@@ -125,7 +129,7 @@ class Project(object):
 
     def remove(self, target, outs_only=False):
         if not Stage.is_stage_file(target):
-            raise StageNotFoundError(target)
+            raise NotDvcFileError(target)
 
         stage = Stage.load(self, target)
         if outs_only:
@@ -166,7 +170,7 @@ class Project(object):
         stages = nx.get_node_attributes(self.graph(), 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
         if node not in stages:
-            raise StageNotFoundError(target)
+            raise NotDvcFileError(target)
 
         if recursive:
             return self._reproduce_stages(stages, node, force)
@@ -185,7 +189,7 @@ class Project(object):
     def checkout(self, target=None):
         if target:
             if not Stage.is_stage_file(target):
-                raise StageNotFoundError(target)
+                raise NotDvcFileError(target)
             stages = [Stage.load(self, target)]
         else:
             self.link_state.remove_all()
