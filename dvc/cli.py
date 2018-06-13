@@ -226,6 +226,17 @@ def parse_args(argv=None):
                         'remove',
                         parents=[parent_parser],
                         help='Remove outputs of DVC file.')
+    remove_parser_group = remove_parser.add_mutually_exclusive_group()
+    remove_parser_group.add_argument('-o',
+                        '--outs',
+                        action='store_true',
+                        default=True,
+                        help='Only remove DVC file outputs.')
+    remove_parser_group.add_argument('-p',
+                        '--purge',
+                        action='store_true',
+                        default=False,
+                        help='Remove DVC file and all its outputs')
     remove_parser.add_argument('targets',
                         nargs='+',
                         help='DVC files.')
