@@ -115,14 +115,12 @@ class Stage(object):
 
         return ret
 
-    def remove_outs(self):
+    def remove_outs(self, ignore_remove=False):
         for out in self.outs:
-            out.remove()
-            if out.use_cache:
-                self.project.scm.ignore_remove(out.path)
+            out.remove(ignore_remove=ignore_remove)
 
     def remove(self):
-        self.remove_outs()
+        self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
 
     def reproduce(self, force=False):
@@ -131,7 +129,7 @@ class Stage(object):
 
         if self.cmd:
             # Removing outputs only if we actually have command to reproduce
-            self.remove_outs()
+            self.remove_outs(ignore_remove=False)
 
         self.run()
 
@@ -223,8 +221,6 @@ class Stage(object):
 
         for out in self.outs:
             out.save()
-            if out.use_cache and out.path_info['scheme'] == 'local':
-                self.project.scm.ignore(out.path)
 
     def run(self):
         if not self.is_data_source:
