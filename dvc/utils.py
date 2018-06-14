@@ -20,7 +20,7 @@ LOCAL_CHUNK_SIZE = 1024*1024
 
 
 def dos2unix(data):
-    return '\n'.join(data.split('\r\n'))
+    return data.replace(b'\r\n', b'\n')
 
 
 def file_md5(fname):
@@ -35,12 +35,7 @@ def file_md5(fname):
         else:
             binary = is_binary(fname)
 
-        if binary:
-            mode = "rb"
-        else:
-            mode = "r"
-
-        with open(fname, mode) as fobj:
+        with open(fname, 'rb') as fobj:
             while True:
                 data = fobj.read(LOCAL_CHUNK_SIZE)
                 if not data:
@@ -49,9 +44,7 @@ def file_md5(fname):
                 if binary:
                     chunk = data
                 else:
-                    if sys.version_info[0] == 2:
-                        data = data.decode('utf-8')
-                    chunk = dos2unix(data).encode('utf-8')
+                    chunk = dos2unix(data)
 
                 hash_md5.update(chunk)
 

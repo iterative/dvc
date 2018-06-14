@@ -37,3 +37,11 @@ class TestUtils(TestDvc):
 
         for n in n_threads:
             utils.map_progress(f, targets, n)
+
+    def test_file_md5_crlf(self):
+        with open('cr', 'wb+') as fd:
+            fd.write(b'a\nb\nc')
+        with open('crlf', 'wb+') as fd:
+            fd.write(b'a\r\nb\r\nc')
+
+        self.assertEqual(utils.file_md5('cr')[0], utils.file_md5('crlf')[0])
