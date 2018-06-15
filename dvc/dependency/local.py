@@ -3,6 +3,11 @@ import schema
 import posixpath
 import ntpath
 
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from dvc.dependency.base import *
 from dvc.logger import Logger
 from dvc.utils import remove
@@ -20,12 +25,17 @@ class DependencyLOCAL(DependencyBase):
     def __init__(self, stage, path, info=None, remote=None):
         self.stage = stage
         self.project = stage.project
-        if not os.path.isabs(path):
-            path = self.unixpath(path)
-            path = os.path.join(stage.cwd, path)
-        self.path = os.path.normpath(path)
         self.info = info
         self.remote = remote if remote != None else RemoteLOCAL(stage.project, {})
+
+        if remote:
+            path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
+
+        if not os.path.isabs(path):
+            path = self.ospath(path)
+            path = os.path.join(stage.cwd, path)
+        self.path = os.path.normpath(path)
+
         self.path_info = {'scheme': 'local',
                           'path': self.path}
 
@@ -54,11 +64,22 @@ class DependencyLOCAL(DependencyBase):
 
         self.info = self.remote.save_info(self.path_info)
 
+    def ospath(self, path):
+        if os.name == 'nt':
+            return self.ntpath(path)
+        return self.unixpath(path)
+
     @staticmethod
     def unixpath(path):
         assert not ntpath.isabs(path)
         assert not posixpath.isabs(path)
         return path.replace('\\', '/')
+
+    @staticmethod
+    def ntpath(path):
+        assert not ntpath.isabs(path)
+        assert not posixpath.isabs(path)
+        return path.replace('/', '\\')
 
     def dumpd(self):
         if self.path.startswith(self.stage.project.root_dir):

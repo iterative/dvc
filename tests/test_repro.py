@@ -3,6 +3,7 @@ import yaml
 import stat
 import shutil
 import filecmp
+import tempfile
 from subprocess import Popen, PIPE
 
 import boto3
@@ -222,31 +223,47 @@ class TestReproExternalBase(TestDvc):
     def should_test(self):
         return False
 
+    @property
+    def cache_scheme(self):
+        return self.scheme
+
+    @property
+    def scheme(self):
+        return None
+
+    @property
+    def scheme_sep(self):
+        return '://'
+
+    @property
+    def sep(self):
+        return '/'
+
     def test(self):
         if not self.should_test():
             return
 
-        cache = self.scheme + '://' + self.bucket + '/' + str(uuid.uuid4())
+        cache = self.scheme + self.scheme_sep + self.bucket + self.sep + str(uuid.uuid4())
 
-        ret = main(['config', 'cache.' + self.scheme, 'myrepo'])
+        ret = main(['config', 'cache.' + self.cache_scheme, 'myrepo'])
         self.assertEqual(ret, 0)
         ret = main(['remote', 'add', 'myrepo', cache])
         self.assertEqual(ret, 0)
 
         remote_name = 'myremote'
         remote_key = str(uuid.uuid4())
-        remote = self.scheme + '://' + self.bucket + '/' + remote_key
+        remote = self.scheme + self.scheme_sep + self.bucket + self.sep + remote_key
 
         ret = main(['remote', 'add', remote_name, remote])
         self.assertEqual(ret, 0)
 
         self.dvc = Project('.')
 
-        foo_key = remote_key + '/' + self.FOO
-        bar_key = remote_key + '/' + self.BAR
+        foo_key = remote_key + self.sep + self.FOO
+        bar_key = remote_key + self.sep + self.BAR
 
-        foo_path = self.scheme + '://' + self.bucket + '/' + foo_key
-        bar_path = self.scheme + '://' + self.bucket + '/' + bar_key
+        foo_path = self.scheme + self.scheme_sep + self.bucket + self.sep + foo_key
+        bar_path = self.scheme + self.scheme_sep + self.bucket + self.sep + bar_key
 
         # Using both plain and remote notation
         out_foo_path = 'remote://' + remote_name + '/' + self.FOO
@@ -351,6 +368,51 @@ class TestReproExternalHDFS(TestReproExternalBase):
         self.assertEqual(p.returncode, 0)
 
  
+class TestReproExternalLOCAL(TestReproExternalBase):
+    def setUp(self):
+        super(TestReproExternalLOCAL, self).setUp()
+        self.tmpdir = tempfile.mkdtemp()
+
+    def should_test(self):
+        return True
+
+    @property
+    def cache_scheme(self):
+        return 'local'
+
+    @property
+    def scheme(self):
+        return ''
+
+    @property
+    def scheme_sep(self):
+        return ''
+
+    @property
+    def sep(self):
+        return os.sep
+
+    @property
+    def bucket(self):
+        return self.tmpdir
+
+    @property
+    def cmd(self):
+        if os.name == 'nt':
+            return 'copy'
+        return 'cp'
+
+    def write(self, bucket, key, body):
+        path = os.path.join(bucket, key)
+        dname = os.path.dirname(path)
+
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        with open(path, 'w+') as fd:
+            fd.write(body)
+
+
 class TestReproShell(TestDvc):
     def test(self):
         if os.name == 'nt':

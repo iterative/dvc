@@ -66,10 +66,16 @@ class OutputLOCAL(DependencyLOCAL):
             self.project.logger.debug(msg.format(self.rel_path))
             return
 
-        if self.project.scm.is_tracked(self.path):
-            raise OutputAlreadyTrackedError(self.rel_path)
+        if self.path.startswith(self.project.root_dir):
+            if self.project.scm.is_tracked(self.path):
+                raise OutputAlreadyTrackedError(self.rel_path)
+
+            if self.use_cache:
+                self.project.scm.ignore(self.path)
 
         self.info = self.project.cache.local.save(self.path_info)
 
-    def remove(self):
+    def remove(self, ignore_remove=False):
         self.remote.remove(self.path_info)
+        if ignore_remove and self.use_cache:
+            self.project.scm.ignore_remove(self.path)

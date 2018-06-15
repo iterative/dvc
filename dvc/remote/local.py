@@ -35,6 +35,10 @@ class RemoteLOCAL(RemoteBase):
 
         self.state = State(self.cache_dir)
 
+    @property
+    def prefix(self):
+        return self.cache_dir
+
     def all(self):
         clist = []
         for entry in os.listdir(self.cache_dir):

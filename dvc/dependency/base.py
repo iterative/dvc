@@ -11,11 +11,6 @@ class DependencyError(DvcException):
         super(DependencyError, self).__init__('Dependency \'{}\' error: {}'.format(path, msg))
 
 
-class DependencyOutsideOfRepoError(DependencyError):
-    def __init__(self, path):
-        super(DependencyOutsideOfRepoError, self).__init__(path, 'outside of repository')
-
-
 class DependencyDoesNotExistError(DependencyError):
     def __init__(self, path):
         super(DependencyDoesNotExistError, self).__init__(path, 'does not exist')
