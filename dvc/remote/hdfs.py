@@ -101,3 +101,20 @@ class RemoteHDFS(RemoteBase):
         assert path_info.get('url')
 
         self.rm(path_info['url'])
+
+    def upload(self, path, path_info):
+        if path_info['scheme'] != 'hdfs':
+            raise NotImplementedError
+
+        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])))
+        self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']))
+
+    def download(self, path_info, path):
+        if path_info['scheme'] != 'hdfs':
+            raise NotImplementedError
+
+        dname = os.path.dirname(path)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path))

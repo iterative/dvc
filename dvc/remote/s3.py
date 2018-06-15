@@ -84,3 +84,16 @@ class RemoteS3(RemoteBase):
             obj.delete()
         except Exception:
             pass
+
+    def upload(self, path, path_info):
+        if path_info['scheme'] != 's3':
+            raise NotImplementedError
+
+        self.s3.Object(path_info['bucket'], path_info['key']).upload_file(path)
+
+
+    def download(self, path_info, path):
+        if path_info['scheme'] != 's3':
+            raise NotImplementedError
+
+        self.s3.Object(path_info['bucket'], path_info['key']).download_file(path)

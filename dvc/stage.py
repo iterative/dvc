@@ -95,6 +95,13 @@ class Stage(object):
     def is_callback(self):
         return not self.is_data_source and len(self.deps) == 0
 
+    @property
+    def is_import(self):
+        return not self.cmd and \
+               len(self.deps) == 1 and \
+               len(self.outs) == 1 and \
+               self.outs[0].path_info['scheme'] == 'local'
+
     def changed(self):
         ret = False
 
@@ -127,11 +134,15 @@ class Stage(object):
         if not self.changed() and not force:
             return None
 
-        if self.cmd:
+        if self.cmd or self.is_import:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
+        self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
+
         self.run()
+
+        self.project.logger.debug(u'\'{}\' was reproduced'.format(self.relpath))
 
         return self
 
@@ -223,8 +234,16 @@ class Stage(object):
             out.save()
 
     def run(self):
-        if not self.is_data_source:
-            self.project.logger.info(u'Reproducing \'{}\':\n\t{}'.format(self.relpath, self.cmd))
+        if self.is_import:
+            msg = u'Importing \'{}\' -> \'{}\''
+            self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].rel_path))
+
+            self.deps[0].download(self.outs[0].path)
+        elif self.is_data_source:
+            self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
+            self.check_missing_outputs()
+        else:
+            self.project.logger.info(u'Running command:\n\t{}'.format(self.cmd))
 
             p = subprocess.Popen(self.cmd,
                                  cwd=self.cwd,
@@ -234,14 +253,8 @@ class Stage(object):
             p.communicate()
             if p.returncode != 0:
                raise StageCmdFailedError(self)
- 
-            self.save()
 
-            self.project.logger.debug(u'\'{}\' was reproduced'.format(self.relpath))
-        else:
-            self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
-            self.check_missing_outputs()
-            self.save()
+        self.save()
 
     def check_missing_outputs(self):
         missing_outs = [out.rel_path for out in self.outs if not os.path.exists(out.rel_path)]

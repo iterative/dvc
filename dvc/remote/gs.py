@@ -79,8 +79,22 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        blob = self.gs.bucket(path_info['key']).get_blob(path_info['key'])
+        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
         if not blob:
             return
 
         blob.delete()
+
+    def upload(self, path, path_info):
+        if path_info['scheme'] != 'gs':
+            raise NotImplementedError
+
+        blob = self.gs.bucket(path_info['bucket']).blob(path_info['key'])
+        blob.upload_from_filename(path)
+
+    def download(self, path_info, path):
+        if path_info['scheme'] != 'gs':
+            raise NotImplementedError
+
+        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
+        blob.download_to_filename(path)

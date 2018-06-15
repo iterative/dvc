@@ -243,3 +243,22 @@ class RemoteLOCAL(RemoteBase):
             raise NotImplementedError
 
         remove(path_info['path'])
+
+    def _copy(self, from_path, to_path):
+        dname = os.path.dirname(to_path)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        shutil.copyfile(from_path, to_path)
+
+    def upload(self, path, path_info):
+        if path_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        self._copy(path, path_info['path'])
+
+    def download(self, path_info, path):
+        if path_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        self._copy(path_info['path'], path)
