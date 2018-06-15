@@ -39,5 +39,5 @@ class OutputHDFS(DependencyHDFS):
 
         self.info = self.project.cache.hdfs.save(self.path_info)
 
-    def remove(self):
+    def remove(self, ignore_remove=False):
         self.remote.remove(self.path_info)

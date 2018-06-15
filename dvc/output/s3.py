@@ -39,5 +39,5 @@ class OutputS3(DependencyS3):
 
         self.info = self.project.cache.s3.save(self.path_info)
 
-    def remove(self):
+    def remove(self, ignore_remove=False):
         self.remote.remove(self.path_info)
