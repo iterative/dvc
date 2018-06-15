@@ -40,5 +40,5 @@ class OutputGS(DependencyGS):
 
         self.info = self.project.cache.gs.save(self.path_info)
 
-    def remove(self):
+    def remove(self, ignore_remove=False):
         self.remote.remove(self.path_info)
