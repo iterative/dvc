@@ -14,6 +14,7 @@ from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
 from dvc.command.status import CmdDataStatus
 from dvc.command.gc import CmdGC
 from dvc.command.add import CmdAdd
+from dvc.command.imp import CmdImport
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, CmdRemoteList
@@ -83,15 +84,28 @@ def parse_args(argv=None):
     init_parser.set_defaults(func=CmdInit)
 
     # Add
-    import_parser = subparsers.add_parser(
+    add_parser = subparsers.add_parser(
                         'add',
                         parents=[parent_parser],
                         help='Add files/directories to dvc')
-    import_parser.add_argument(
+    add_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='Input files/directories')
-    import_parser.set_defaults(func=CmdAdd)
+    add_parser.set_defaults(func=CmdAdd)
+
+    # Import
+    import_parser = subparsers.add_parser(
+                        'import',
+                        parents=[parent_parser],
+                        help='Import files from URL')
+    import_parser.add_argument(
+                        'url',
+                        help='URL')
+    import_parser.add_argument(
+                        'out',
+                        help='Output')
+    import_parser.set_defaults(func=CmdImport)
 
     # Checkout
     checkout_parser = subparsers.add_parser(

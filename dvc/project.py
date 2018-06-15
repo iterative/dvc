@@ -159,6 +159,21 @@ class Project(object):
         stage.dump()
         return stage
 
+    def imp(self, url, out):
+        stage_fname = out + Stage.STAGE_FILE_SUFFIX
+        cwd = os.path.dirname(os.path.abspath(out))
+        stage = Stage.loads(project=self,
+                            cmd=None,
+                            deps=[url],
+                            outs=[out],
+                            fname=stage_fname,
+                            cwd=cwd)
+
+        stage.run()
+        stage.dump()
+        return stage
+
+
     def _reproduce_stage(self, stages, node, force):
         stage = stages[node].reproduce(force=force)
         if not stage:

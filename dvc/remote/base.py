@@ -26,3 +26,9 @@ class RemoteBase(object):
 
     def checkout(self, path_info, checksum_info):
         pass
+
+    def download(self, path_info, path):
+        pass
+
+    def upload(self, path, path_info):
+        pass

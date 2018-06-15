@@ -271,14 +271,22 @@ class TestReproExternalBase(TestDvc):
 
         self.write(self.bucket, foo_key, 'foo')
 
-        stage = self.dvc.run(outs=[out_bar_path],
+        import_stage = self.dvc.imp(out_foo_path, 'import')
+        self.assertTrue(os.path.exists('import'))
+        self.assertTrue(filecmp.cmp('import', self.FOO))
+
+        cmd_stage = self.dvc.run(outs=[out_bar_path],
                              deps=[out_foo_path],
                              cmd='{} {} {}'.format(self.cmd, foo_path, bar_path))
 
         self.write(self.bucket, foo_key, 'bar')
 
-        stages = self.dvc.reproduce(stage.path)
+        stages = self.dvc.reproduce(import_stage.path)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(os.path.exists('import'))
+        self.assertTrue(filecmp.cmp('import', self.BAR))
 
+        stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)
 
 
