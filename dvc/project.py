@@ -359,6 +359,12 @@ class Project(object):
 
         self.scm.checkout(saved)
         self.checkout()
+
+        for branch, val in res.items():
+            self.logger.info('{}:'.format(branch))
+            for fname, metric in val.items():
+                self.logger.info('\t{}: {}'.format(fname, metric))
+
         return res
 
     def _metrics_modify(self, path, val):

@@ -245,6 +245,11 @@ def parse_args(argv=None):
                         '--cwd',
                         default=os.path.curdir,
                         help='Directory to reproduce from.')
+    repro_parser.add_argument('-m',
+                        '--metrics',
+                        action='store_true',
+                        default=False,
+                        help='Show metrics after reproduction')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
