@@ -20,6 +20,7 @@ from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, CmdRemoteList
 from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd, CmdMetricsRemove
 from dvc.command.install import CmdInstall
+from dvc.command.root import CmdRoot
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -450,6 +451,13 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Install dvc hooks into the repository')
     install_parser.set_defaults(func=CmdInstall)
+
+    # Root
+    root_parser = subparsers.add_parser(
+                        'root',
+                        parents=[parent_parser],
+                        help='Relative path to project\'s directory')
+    root_parser.set_defaults(func=CmdRoot)
 
     args = parser.parse_args(argv)
 
