@@ -321,6 +321,10 @@ class Project(object):
 
     def _read_metric(self, path, json_path=None, tsv_path=None, htsv_path=None):
         ret = None
+
+        if not os.path.exists(path):
+            return ret
+
         try: 
             with open(path, 'r') as fd:
                 if json_path:
@@ -332,7 +336,7 @@ class Project(object):
                 else:
                     ret = fd.read()
         except Exception as exc:
-            self.logger.error('Unable to read metric in \'{}\''.format(path), exc)
+            self.logger.debug('Unable to read metric in \'{}\''.format(path), exc)
 
         return ret
 
