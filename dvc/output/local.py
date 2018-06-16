@@ -12,13 +12,15 @@ from dvc.utils import remove
 
 class OutputLOCAL(DependencyLOCAL):
     PARAM_CACHE = 'cache'
+    PARAM_METRIC = 'metric'
 
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True):
+    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
         super(OutputLOCAL, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
+        self.metric = metric
 
     @property
     def md5(self):
@@ -31,6 +33,7 @@ class OutputLOCAL(DependencyLOCAL):
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
+        ret[self.PARAM_METRIC] = self.metric
         return ret
 
     def changed(self):

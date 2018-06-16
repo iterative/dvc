@@ -21,18 +21,19 @@ OUTS_MAP = {'hdfs': OutputHDFS,
             '': OutputLOCAL}
 
 SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
+SCHEMA[schema.Optional(OutputLOCAL.PARAM_METRIC)] = bool
 
 
-def _get(stage, p, info, cache):
+def _get(stage, p, info, cache, metric):
     parsed = urlparse(p)
     if parsed.scheme == 'remote':
         sect = stage.project.config._config[Config.SECTION_REMOTE_FMT.format(parsed.netloc)]
         remote = Remote(stage.project, sect)
-        return OUTS_MAP[remote.scheme](stage, p, info, cache=cache, remote=remote)
+        return OUTS_MAP[remote.scheme](stage, p, info, cache=cache, remote=remote, metric=metric)
 
     for o in OUTS:
         if o.supported(p):
-            return o(stage, p, info, cache=cache, remote=None)
+            return o(stage, p, info, cache=cache, remote=None, metric=metric)
     raise DvcException('Output \'{}\' is not supported'.format(p))
 
 
@@ -41,12 +42,13 @@ def loadd_from(stage, d_list):
     for d in d_list:
         p = d.pop(DependencyBase.PARAM_PATH)
         cache = d.pop(OutputLOCAL.PARAM_CACHE, True)
-        ret.append(_get(stage, p, info=d, cache=cache))
+        metric = d.pop(OutputLOCAL.PARAM_METRIC, False)
+        ret.append(_get(stage, p, info=d, cache=cache, metric=metric))
     return ret
 
 
-def loads_from(stage, s_list, use_cache=True):
+def loads_from(stage, s_list, use_cache=True, metric=False):
     ret = []
     for s in s_list:
-        ret.append(_get(stage, s, info={}, cache=use_cache))
+        ret.append(_get(stage, s, info={}, cache=use_cache, metric=metric))
     return ret

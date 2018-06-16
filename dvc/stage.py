@@ -180,6 +180,7 @@ class Stage(object):
               deps=[],
               outs=[],
               outs_no_cache=[],
+              metrics_no_cache=[],
               fname=None,
               cwd=os.curdir):
         cwd = os.path.abspath(cwd)
@@ -192,6 +193,7 @@ class Stage(object):
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
+        stage.outs += output.loads_from(stage, metrics_no_cache, use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
 
         return stage
