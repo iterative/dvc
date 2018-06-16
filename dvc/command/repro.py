@@ -18,6 +18,8 @@ class CmdRepro(CmdBase):
                 self.project.reproduce(target,
                                        recursive=recursive,
                                        force=self.args.force)
+                if self.args.metrics:
+                    self.project.metrics_show()
             except ReproductionError as ex:
                 msg = 'Failed to reproduce \'{}\''.format(target)
                 self.project.logger.error(msg, ex)

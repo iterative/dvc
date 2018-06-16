@@ -32,33 +32,29 @@ class TestMetrics(TestDvc):
         self.dvc.scm.checkout('master')
 
     def test(self):
-        ret = self.dvc.metrics('metric')
-        self.assertEqual(len(ret), 4)
-        self.assertTrue(ret['master'] == None)
-        self.assertTrue(ret['foo'] == 'foo')
-        self.assertTrue(ret['bar'] == 'bar')
-        self.assertTrue(ret['baz'] == 'baz')
+        ret = self.dvc.metrics_show('metric', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric'] == 'foo')
+        self.assertTrue(ret['bar']['metric'] == 'bar')
+        self.assertTrue(ret['baz']['metric'] == 'baz')
 
-        ret = self.dvc.metrics('metric_json', json_path='branch')
-        self.assertEqual(len(ret), 4)
-        self.assertTrue(ret['master'] == None)
-        self.assertTrue(ret['foo'] == ['foo'])
-        self.assertTrue(ret['bar'] == ['bar'])
-        self.assertTrue(ret['baz'] == ['baz'])
+        ret = self.dvc.metrics_show('metric_json', json_path='branch', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric_json'] == ['foo'])
+        self.assertTrue(ret['bar']['metric_json'] == ['bar'])
+        self.assertTrue(ret['baz']['metric_json'] == ['baz'])
 
-        ret = self.dvc.metrics('metric_tsv', tsv_path='0,0')
-        self.assertEqual(len(ret), 4)
-        self.assertTrue(ret['master'] == None)
-        self.assertTrue(ret['foo'] == ['foo'])
-        self.assertTrue(ret['bar'] == ['bar'])
-        self.assertTrue(ret['baz'] == ['baz'])
+        ret = self.dvc.metrics_show('metric_tsv', tsv_path='0,0', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric_tsv'] == ['foo'])
+        self.assertTrue(ret['bar']['metric_tsv'] == ['bar'])
+        self.assertTrue(ret['baz']['metric_tsv'] == ['baz'])
 
-        ret = self.dvc.metrics('metric_htsv', htsv_path='branch,0')
-        self.assertEqual(len(ret), 4)
-        self.assertTrue(ret['master'] == None)
-        self.assertTrue(ret['foo'] == ['foo'])
-        self.assertTrue(ret['bar'] == ['bar'])
-        self.assertTrue(ret['baz'] == ['baz'])
+        ret = self.dvc.metrics_show('metric_htsv', htsv_path='branch,0', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric_htsv'] == ['foo'])
+        self.assertTrue(ret['bar']['metric_htsv'] == ['bar'])
+        self.assertTrue(ret['baz']['metric_htsv'] == ['baz'])
 
 
 class TestMetricsCLI(TestMetrics):
@@ -67,14 +63,14 @@ class TestMetricsCLI(TestMetrics):
         if os.name == 'nt':
             return
         #FIXME check output
-        ret = main(['metrics', 'metric', '-v'])
+        ret = main(['metrics', 'show', '--all-branches', 'metric', '-v'])
         self.assertEqual(ret, 0)
 
-        ret = main(['metrics', 'metric_json', '--json-path', 'branch'])
+        ret = main(['metrics', 'show', '--all-branches', 'metric_json', '--json-path', 'branch'])
         self.assertEqual(ret, 0)
 
-        ret = main(['metrics', 'metric_tsv', '--tsv-path', '0,0'])
+        ret = main(['metrics', 'show', '--all-branches', 'metric_tsv', '--tsv-path', '0,0'])
         self.assertEqual(ret, 0)
 
-        ret = main(['metrics', 'metric_htsv', '--htsv-path', 'branch,0'])
+        ret = main(['metrics', 'show', '--all-branches', 'metric_htsv', '--htsv-path', 'branch,0'])
         self.assertEqual(ret, 0)

@@ -144,6 +144,7 @@ class Project(object):
             deps=[],
             outs=[],
             outs_no_cache=[],
+            metrics_no_cache=[],
             fname=Stage.STAGE_FILE,
             cwd=os.curdir,
             no_exec=False):
@@ -153,6 +154,7 @@ class Project(object):
                             cwd=cwd,
                             outs=outs,
                             outs_no_cache=outs_no_cache,
+                            metrics_no_cache=metrics_no_cache,
                             deps=deps)
         if not no_exec:
             stage.run()
@@ -319,6 +321,10 @@ class Project(object):
 
     def _read_metric(self, path, json_path=None, tsv_path=None, htsv_path=None):
         ret = None
+
+        if not os.path.exists(path):
+            return ret
+
         try: 
             with open(path, 'r') as fd:
                 if json_path:
@@ -330,23 +336,65 @@ class Project(object):
                 else:
                     ret = fd.read()
         except Exception as exc:
-            self.logger.error('Unable to read metric in \'{}\''.format(path), exc)
+            self.logger.debug('Unable to read metric in \'{}\''.format(path), exc)
 
         return ret
 
-    def metrics(self, path, json_path=None, tsv_path=None, htsv_path=None):
+    def metrics_show(self, path=None, json_path=None, tsv_path=None, htsv_path=None, all_branches=False):
         res = {}
         saved = self.scm.active_branch()
-        for branch in self.scm.list_branches():
+        branches = self.scm.list_branches() if all_branches else [saved]
+        for branch in branches:
             self.scm.checkout(branch)
             self.checkout()
-            res[branch] = self._read_metric(path,
-                                            json_path=json_path,
-                                            tsv_path=tsv_path,
-                                            htsv_path=htsv_path)
+
+            metrics = filter(lambda o: o.metric, self.outs())
+            fnames = [path] if path else map(lambda o: o.path, metrics)
+            for fname in fnames:
+                rel = os.path.relpath(fname)
+                metric = self._read_metric(fname,
+                                           json_path=json_path,
+                                           tsv_path=tsv_path,
+                                           htsv_path=htsv_path)
+                if not metric:
+                    continue
+                res[branch] = {}
+                res[branch][rel] = metric
+
         self.scm.checkout(saved)
         self.checkout()
+
+        for branch, val in res.items():
+            self.logger.info('{}:'.format(branch))
+            for fname, metric in val.items():
+                self.logger.info('\t{}: {}'.format(fname, metric))
+
         return res
+
+    def _metrics_modify(self, path, val):
+        apath = os.path.abspath(path)
+        for stage in self.stages():
+            for out in stage.outs:
+                if apath != out.path:
+                    continue
+
+                if out.path_info['scheme'] != 'local':
+                    msg = 'Output \'{}\' scheme \'{}\' is not supported for metrics'
+                    raise DvcException(msg.format(out.path, out.path_info['scheme']))
+
+                if out.use_cache:
+                    msg = 'Cached output \'{}\' is not supported for metrics'
+                    raise DvcException(msg.format(out.rel_path))
+
+                out.metric = val
+
+            stage.dump()
+
+    def metrics_add(self, path):
+        self._metrics_modify(path, True)
+
+    def metrics_remove(self, path):
+        self._metrics_modify(path, False)
 
     def graph(self):
         G = nx.DiGraph()

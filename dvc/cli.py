@@ -18,7 +18,7 @@ from dvc.command.imp import CmdImport
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, CmdRemoteList
-from dvc.command.metrics import CmdMetrics
+from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd, CmdMetricsRemove
 from dvc.command.install import CmdInstall
 from dvc.stage import Stage
 from dvc import VERSION
@@ -138,6 +138,11 @@ def parse_args(argv=None):
                         action='append',
                         default=[],
                         help='Declare output regular file or directory (sync to Git, not DVC cache).')
+    run_parser.add_argument('-M',
+                        '--metrics-no-cache',
+                        action='append',
+                        default=[],
+                        help='Declare output metric file or directory (not cached by DVC).')
     run_parser.add_argument('-f',
                         '--file',
                         help='Specify name of the state file')
@@ -240,6 +245,11 @@ def parse_args(argv=None):
                         '--cwd',
                         default=os.path.curdir,
                         help='Directory to reproduce from.')
+    repro_parser.add_argument('-m',
+                        '--metrics',
+                        action='store_true',
+                        default=False,
+                        help='Show metrics after reproduction')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
@@ -382,19 +392,57 @@ def parse_args(argv=None):
                         'metrics',
                         parents=[parent_parser],
                         help='Get metrics from all branches')
-    metrics_parser.add_argument(
+
+    metrics_subparsers = metrics_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc metrics CMD --help for command-specific help')
+
+    _fix_subparsers(metrics_subparsers)
+
+
+    metrics_show_parser = metrics_subparsers.add_parser(
+                        'show',
+                        parents=[parent_parser],
+                        help='Show metrics')
+    metrics_show_parser.add_argument(
                         'path',
+                        nargs='?',
                         help='Path to metrics file')
-    metrics_parser.add_argument(
+    metrics_show_parser.add_argument(
                         '--json-path',
                         help='JSON path')
-    metrics_parser.add_argument(
+    metrics_show_parser.add_argument(
                         '--tsv-path',
                         help='TSV path \'row,column\'(e.g. \'1,2\')')
-    metrics_parser.add_argument(
+    metrics_show_parser.add_argument(
                         '--htsv-path',
                         help='Headed TSV path \'row,column\'(e.g. \'Name,3\'')
-    metrics_parser.set_defaults(func=CmdMetrics)
+    metrics_show_parser.add_argument(
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Show metrics for all branches')
+    metrics_show_parser.set_defaults(func=CmdMetricsShow)
+
+
+    metrics_add_parser = metrics_subparsers.add_parser(
+                        'add',
+                        parents=[parent_parser],
+                        help='Add metrics')
+    metrics_add_parser.add_argument(
+                        'path',
+                        help='Path to metrics file')
+    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
+
+
+    metrics_remove_parser = metrics_subparsers.add_parser(
+                        'remove',
+                        parents=[parent_parser],
+                        help='Remove metrics')
+    metrics_remove_parser.add_argument(
+                        'path',
+                        help='Path to metrics file')
+    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
 
     # Install
     install_parser = subparsers.add_parser(

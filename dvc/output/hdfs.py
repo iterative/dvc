@@ -4,16 +4,19 @@ from dvc.exceptions import DvcException
 
 class OutputHDFS(DependencyHDFS):
     PARAM_CACHE = 'cache'
+    PARAM_METRIC = 'metric'
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True):
+    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
         super(OutputHDFS, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
+        self.metric = metric
         if cache and self.project.cache.hdfs == None:
             raise DvcException("No cache location setup for \'hdfs\' outputs.")
 
     def dumpd(self):
         ret = super(OutputHDFS, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
+        ret[self.PARAM_METRIC] = self.metric
         return ret
 
     def changed(self):
