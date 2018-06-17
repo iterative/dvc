@@ -11,7 +11,7 @@ class TestRemote(TestDvc):
         self.assertNotEqual(main(['remote', 'remove', remotes[0]]), 0)
 
         for r in remotes:
-            self.assertEqual(main(['remote', 'add', r, 's3://bucket/name']), 0)
+            self.assertEqual(main(['remote', 'add', '--default', r, 's3://bucket/name']), 0)
 
         self.assertEqual(main(['remote', 'list']), 0)
 

@@ -8,8 +8,15 @@ from dvc.logger import Logger
 class CmdRemoteAdd(CmdConfig):
     def run(self):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        return self.set(section, Config.SECTION_REMOTE_URL, self.args.url)
+        ret = self.set(section, Config.SECTION_REMOTE_URL, self.args.url)
+        if ret != 0:
+            return ret
 
+        if self.args.default:
+            Logger.info('Setting \'{}\' as a default remote.'.format(self.args.name))
+            ret = self.set(Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, self.args.name)
+
+        return ret
 
 class CmdRemoteRemove(CmdConfig):
     def run(self):

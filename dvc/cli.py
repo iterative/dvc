@@ -332,6 +332,11 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Use local config')
+    remote_add_parser.add_argument('-d',
+                        '--default',
+                        action='store_true',
+                        default=False,
+                        help='Set as default remote')
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
 
 
