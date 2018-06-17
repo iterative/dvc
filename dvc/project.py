@@ -399,22 +399,20 @@ class Project(object):
     def graph(self):
         G = nx.DiGraph()
         stages = self.stages()
-
-        outs_map = {}
-        for stage in stages:
-            for o in stage.outs:
-                outs_map[o.path] = stage
+        outs = self.outs()
 
         for stage in stages:
             node = os.path.relpath(stage.path, self.root_dir)
             G.add_node(node, stage=stage)
             for dep in stage.deps:
-                dep_stage = outs_map.get(dep.path, None)
-                if not dep_stage:
-                    continue
-                dep_node = os.path.relpath(dep_stage.path, self.root_dir)
-                G.add_node(dep_node, stage=dep_stage)
-                G.add_edge(node, dep_node)
+                for out in outs:
+                    if out.path != dep.path and not dep.path.startswith(out.path + out.sep):
+                        continue
+
+                    dep_stage = out.stage
+                    dep_node = os.path.relpath(dep_stage.path, self.root_dir)
+                    G.add_node(dep_node, stage=dep_stage)
+                    G.add_edge(node, dep_node)
 
         return G
 

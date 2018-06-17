@@ -40,6 +40,10 @@ class DependencyLOCAL(DependencyBase):
                           'path': self.path}
 
     @property
+    def sep(self):
+        return os.sep
+
+    @property
     def rel_path(self):
         return os.path.relpath(self.path)
 
