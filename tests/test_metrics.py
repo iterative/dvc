@@ -59,9 +59,6 @@ class TestMetrics(TestDvc):
 
 class TestMetricsCLI(TestMetrics):
     def test(self):
-        #FIXME enable on windows
-        if os.name == 'nt':
-            return
         #FIXME check output
         ret = main(['metrics', 'show', '--all-branches', 'metric', '-v'])
         self.assertEqual(ret, 0)
