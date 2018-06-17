@@ -14,7 +14,7 @@ environment:
   GCP_CREDS:
     secure: 96fJ3r2i2GohbXHwnSs5N4EplQ7q8YmLpPWM0AC+f4s=
   CODECOV_TOKEN:
-    secure: Hp3+vwZzsh1i2qjitm/hujpXA475YNhUSgrdpQ7dliCVQC+1lVcQMiDWQ0K4DEH4
+    secure: XN4jRtmGE5Bqg8pPZkwNs7kn3UEI73Rkldqc0MGsQISZBm5TNJZOPofDMc1QnUsf
 
   matrix:
 
