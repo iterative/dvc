@@ -39,11 +39,30 @@ class System(object):
     def reflink(source, link_name):
         return reflink.reflink(source, link_name)
 
+    # FIXME
+    # Temporary fix while waiting for the PR to be merged and released:
+    # https://github.com/sunshowers/ntfs/pull/11
+    @staticmethod
+    def getdirinfo(path):
+        from ntfsutils.fs import FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_READ, OPEN_EXISTING
+        from ntfsutils.fs import CreateFile, WinError, BY_HANDLE_FILE_INFORMATION
+        from ntfsutils.fs import GetFileInformationByHandle, CloseHandle
+        flags = FILE_FLAG_BACKUP_SEMANTICS
+        hfile = CreateFile(path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None)
+        if hfile is None:
+            raise WinError()
+        info = BY_HANDLE_FILE_INFORMATION()
+        rv = GetFileInformationByHandle(hfile, info)
+        CloseHandle(hfile)
+        if rv == 0:
+            raise WinError()
+        return info
+
     @staticmethod
     def inode(path):
         if System.is_unix():
             return os.stat(path).st_ino
 
         # getdirinfo from ntfsutils works on both files and dirs
-        info = getdirinfo(path)
+        info = System.getdirinfo(path)
         return hash((info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow))
