@@ -36,6 +36,27 @@ class TestRepro(TestDvc):
                      cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
 
 
+class TestReproDepUnderDir(TestDvc):
+    def test(self):
+        self.dir_stage = self.dvc.add(self.DATA_DIR)
+
+        self.file1 = 'file1'
+        self.file1_stage = self.file1 + '.dvc'
+        self.dvc.run(fname=self.file1_stage,
+                     outs=[self.file1],
+                     deps=[self.DATA, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.DATA, self.file1))
+
+        self.assertTrue(filecmp.cmp(self.file1, self.DATA))
+
+        os.unlink(self.DATA)
+        shutil.copyfile(self.FOO, self.DATA)
+
+        stages = self.dvc.reproduce(self.file1_stage)
+        self.assertEqual(len(stages), 2)
+        self.assertTrue(filecmp.cmp(self.file1, self.FOO))
+
+
 class TestReproNoDeps(TestRepro):
     def test(self):
         out = 'out'

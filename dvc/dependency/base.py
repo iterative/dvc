@@ -39,6 +39,10 @@ class DependencyBase(object):
     def supported(cls, url):
         return cls.match(url) != None
 
+    @property
+    def sep(self):
+        return '/'
+
     def changed(self):
         raise NotImplementedError
 
