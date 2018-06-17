@@ -35,6 +35,15 @@ class TestCheckout(TestRepro):
         self.assertTrue(filecmp.cmp(self.FOO, self.orig))
 
 
+class TestCheckoutSymlink(TestCheckout):
+    def test(self):
+        self.dvc.cache.local.cache_type = 'symlink'
+        self.dvc.checkout()
+        self._test_checkout()
+        self.assertTrue(os.path.islink(self.FOO))
+        self.assertTrue(filecmp.cmp(self.FOO, self.orig))
+
+
 class TestCheckoutSingleStage(TestCheckout):
     def test(self):
         self.dvc.checkout(self.foo_stage.path)
