@@ -358,7 +358,10 @@ class Project(object):
                                            htsv_path=htsv_path)
                 if not metric:
                     continue
-                res[branch] = {}
+
+                if branch not in res:
+                    res[branch] = {}
+
                 res[branch][rel] = metric
 
         self.scm.checkout(saved)
