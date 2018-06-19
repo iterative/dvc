@@ -5,8 +5,6 @@ import json
 import networkx as nx
 from jsonpath_rw import parse
 
-import dvc.cloud.base as cloud
-
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
@@ -54,7 +52,7 @@ class Project(object):
         self.link_state = LinkState(self.root_dir, self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cache = Cache(self)
-        self.cloud = DataCloud(cache=self.cache, config=self.config._config)
+        self.cloud = DataCloud(self, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
 
         self._ignore()
@@ -271,6 +269,8 @@ class Project(object):
         return status
 
     def _cloud_status(self, target=None, jobs=1, remote=None):
+        import dvc.remote.base as cloud
+
         status = {}
         for target, ret in self.cloud.status(self._used_cache(target), jobs, remote=remote):
             if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:

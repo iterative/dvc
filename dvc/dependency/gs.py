@@ -5,14 +5,13 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.cloud.gcp import DataCloudGCP
 from dvc.dependency.s3 import DependencyS3
 from dvc.remote.gs import RemoteGS
 from dvc.config import Config
 
 
 class DependencyGS(DependencyS3):
-    REGEX = DataCloudGCP.REGEX
+    REGEX = RemoteGS.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
         super(DependencyGS, self).__init__(stage, path)

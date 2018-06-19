@@ -6,26 +6,26 @@ from dvc.exceptions import DvcException
 from dvc.config import Config, ConfigError
 from dvc.utils import map_progress
 
-from dvc.cloud.aws import DataCloudAWS
-from dvc.cloud.gcp import DataCloudGCP
-from dvc.cloud.ssh import DataCloudSSH
-from dvc.cloud.local import DataCloudLOCAL
-from dvc.cloud.base import DataCloudBase, CloudSettings
-from dvc.cloud.base import STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
+from dvc.remote.s3 import RemoteS3
+from dvc.remote.gs import RemoteGS
+from dvc.remote.ssh import RemoteSSH
+from dvc.remote.local import RemoteLOCAL
+from dvc.remote.base import RemoteBase
+from dvc.remote.base import STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 
 class DataCloud(object):
     """ Generic class to do initial config parsing and redirect to proper DataCloud methods """
 
     CLOUD_MAP = {
-        'aws'   : DataCloudAWS,
-        'gcp'   : DataCloudGCP,
-        'ssh'   : DataCloudSSH,
-        'local' : DataCloudLOCAL,
+        'aws'   : RemoteS3,
+        'gcp'   : RemoteGS,
+        'ssh'   : RemoteSSH,
+        'local' : RemoteLOCAL,
     }
 
-    def __init__(self, cache=None, config=None):
-        self._cache = cache
+    def __init__(self, project, config=None):
+        self.project = project
         self._config = config
 
         remote = self._config[Config.SECTION_CORE].get(Config.SECTION_CORE_REMOTE, '')
@@ -41,9 +41,9 @@ class DataCloud(object):
         self._cloud = self._init_remote(remote)
 
     @staticmethod
-    def supported(url):
+    def supported(config):
         for cloud in DataCloud.CLOUD_MAP.values():
-            if cloud.supported(url):
+            if cloud.supported(config):
                 return cloud
         return None
 
@@ -53,10 +53,9 @@ class DataCloud(object):
         if not cloud_config:
             raise ConfigError("Can't find remote section '{}' in config".format(section))
 
-        url = cloud_config[Config.SECTION_REMOTE_URL]
-        cloud_type = self.supported(url)
+        cloud_type = self.supported(cloud_config)
         if not cloud_type:
-            raise ConfigError("Unsupported url '{}'".format(url))
+            raise ConfigError("Unsupported cloud '{}'".format(cloud_config))
 
         return self._init_cloud(cloud_config, cloud_type)
 
@@ -81,12 +80,7 @@ class DataCloud(object):
         if global_storage_path:
             Logger.warn('Using obsoleted config format. Consider updating.')
 
-        cloud_settings = CloudSettings(cache=self._cache,
-                                       global_storage_path=global_storage_path,
-                                       cloud_config=cloud_config)
-
-        cloud = cloud_type(cloud_settings)
-        cloud.sanity_check()
+        cloud = cloud_type(self.project, cloud_config)
         return cloud
 
     def _collect(self, cloud, targets, jobs, local):

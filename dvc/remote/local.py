@@ -2,13 +2,24 @@ import os
 import uuid
 import json
 import shutil
+import filecmp
 
 from dvc.system import System
 from dvc.remote.base import RemoteBase
 from dvc.state import State
 from dvc.logger import Logger
-from dvc.utils import remove, move
+from dvc.utils import remove, move, copyfile, file_md5
 from dvc.config import Config
+
+
+class LocalKey(object):
+    def __init__(self, bucket, name):
+        self.name = name
+        self.bucket = bucket
+
+    @property
+    def path(self):
+        return os.path.join(self.bucket, self.name)
 
 
 class RemoteLOCAL(RemoteBase):
@@ -27,7 +38,8 @@ class RemoteLOCAL(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.link_state = project.link_state
-        self.cache_dir = config.get(Config.SECTION_REMOTE_URL, None)
+        storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
+        self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
 
         if self.cache_dir != None and not os.path.exists(self.cache_dir):
@@ -262,3 +274,39 @@ class RemoteLOCAL(RemoteBase):
             raise NotImplementedError
 
         self._copy(path_info['path'], path)
+
+    # old code starting from here
+    def cache_file_key(self, path):
+        return os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
+
+    def _get_key(self, path):
+        key_name = self.cache_file_key(path)
+        key = LocalKey(self.prefix, key_name)
+        if os.path.exists(key.path) and os.path.isfile(key.path):
+            return key
+        return None
+
+    def _new_key(self, path):
+        key_name = self.cache_file_key(path)
+        key = LocalKey(self.prefix, key_name)
+        self._makedirs(key.path)
+        return key
+
+    def _push_key(self, key, path):
+        self._makedirs(key.path)
+        copyfile(path, key.path)
+        return path
+
+    def _pull_key(self, key, path, no_progress_bar=False):
+        self._makedirs(path)
+
+        tmp_file = self.tmp_file(path)
+        try:
+            copyfile(key.path, tmp_file, no_progress_bar=no_progress_bar)
+        except Exception as exc:
+            Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
+            return None
+
+        os.rename(tmp_file, path)
+
+        return path
