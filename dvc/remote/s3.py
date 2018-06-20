@@ -139,7 +139,7 @@ class RemoteS3(RemoteBase):
         self._makedirs(fname)
 
         tmp_file = self.tmp_file(fname)
-        name = os.path.relpath(fname, self.project.cache.local.cache_dir)
+        name = self.cache_key_name(fname)
 
         if self._cmp_checksum(key, fname):
             Logger.debug('File "{}" matches with "{}".'.format(fname, key.name))
@@ -184,7 +184,7 @@ class RemoteS3(RemoteBase):
 
     def _push_key(self, key, path):
         """ push, aws version """
-        name = os.path.relpath(path, self.project.cache.local.cache_dir)
+        name = self.cache_key_name(path)
         cb = self.create_cb_push(name, path)
         try:
             self.s3.Object(key.bucket, key.name).upload_file(path, Callback=cb)

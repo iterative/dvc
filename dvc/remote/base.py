@@ -68,6 +68,10 @@ class RemoteBase(object):
         relpath = relpath.replace('\\', '/')
         return '{}/{}'.format(self.prefix, relpath).strip('/')
 
+    def cache_key_name(self, path):
+        relpath = os.path.relpath(path, self.project.cache.local.cache_dir)
+        return relpath.replace('\\', '').replace('/', '')
+
     @staticmethod
     def tmp_file(fname):
         """ Temporary name for a partial download """

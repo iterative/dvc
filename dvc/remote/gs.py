@@ -107,7 +107,7 @@ class RemoteGS(RemoteBase):
     def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
 
-        name = os.path.relpath(path, self.project.cache.local.cache_dir)
+        name = self.cache_key_name(path)
         tmp_file = self.tmp_file(path)
 
         if self._cmp_checksum(key, path):
@@ -146,7 +146,7 @@ class RemoteGS(RemoteBase):
 
     def _push_key(self, key, path):
         """ push, gcp version """
-        name = os.path.relpath(path, self.project.cache.local.cache_dir)
+        name = self.cache_key_name(path)
 
         progress.update_target(name, 0, None)
 

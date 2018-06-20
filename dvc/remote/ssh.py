@@ -127,16 +127,19 @@ class RemoteSSH(RemoteBase):
         return key
 
     def _push_key(self, key, path):
-        self.get_sftp().put(path, key.path, callback=create_cb(key.name))
+        name = self.cache_key_name(path)
+        self.get_sftp().put(path, key.path, callback=create_cb(name))
         progress.finish_target(key.name)
         return path
 
     def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
 
+        name = self.cache_key_name(path)
+
         tmp_file = self.tmp_file(path)
         try:
-            self.get_sftp().get(key.path, tmp_file, callback=create_cb(key.name))
+            self.get_sftp().get(key.path, tmp_file, callback=create_cb(name))
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
             return None

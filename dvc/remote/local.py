@@ -294,15 +294,18 @@ class RemoteLOCAL(RemoteBase):
 
     def _push_key(self, key, path):
         self._makedirs(key.path)
-        copyfile(path, key.path)
+        name = self.cache_key_name(path)
+        copyfile(path, key.path, name=name)
         return path
 
     def _pull_key(self, key, path, no_progress_bar=False):
         self._makedirs(path)
 
+        name = self.cache_key_name(path)
+
         tmp_file = self.tmp_file(path)
         try:
-            copyfile(key.path, tmp_file, no_progress_bar=no_progress_bar)
+            copyfile(key.path, tmp_file, no_progress_bar=no_progress_bar, name=name)
         except Exception as exc:
             Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
             return None
