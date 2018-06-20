@@ -236,24 +236,26 @@ class Project(object):
 
         return list(cache_set)
 
-    def gc(self):
-        clist = self._used_cache()
-        for cache in self.cache.local.all():
-            if cache in clist:
-                continue
-            os.unlink(cache)
-            self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
+    def gc(self, all_branches=False):
+        for branch in self.scm.brancher(all_branches=all_branches):
+            clist = self._used_cache()
+            for cache in self.cache.local.all():
+                if cache in clist:
+                    continue
+                os.unlink(cache)
+                self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
 
-    def push(self, target=None, jobs=1, remote=None):
-        return self.cloud.push(self._used_cache(target), jobs, remote=remote)
+    def push(self, target=None, jobs=1, remote=None, all_branches=False):
+        for branch in self.scm.brancher(all_branches=all_branches):
+            self.cloud.push(self._used_cache(target), jobs, remote=remote)
 
-    def fetch(self, target=None, jobs=1, remote=None):
-        return self.cloud.pull(self._used_cache(target), jobs, remote=remote)
+    def fetch(self, target=None, jobs=1, remote=None, all_branches=False):
+        for branch in self.scm.brancher(all_branches=all_branches):
+            self.cloud.pull(self._used_cache(target), jobs, remote=remote)
 
-    def pull(self, target=None, jobs=1, remote=None):
-        ret = self.fetch(target, jobs, remote=remote)
+    def pull(self, target=None, jobs=1, remote=None, all_branches=False):
+        self.fetch(target, jobs, remote=remote, all_branches=all_branches)
         self.checkout()
-        return ret
 
     def _local_status(self, target=None):
         status = {}
@@ -342,12 +344,7 @@ class Project(object):
 
     def metrics_show(self, path=None, json_path=None, tsv_path=None, htsv_path=None, all_branches=False):
         res = {}
-        saved = self.scm.active_branch()
-        branches = self.scm.list_branches() if all_branches else [saved]
-        for branch in branches:
-            self.scm.checkout(branch)
-            self.checkout()
-
+        for branch in self.scm.brancher(all_branches=all_branches):
             metrics = filter(lambda o: o.metric, self.outs())
             fnames = [path] if path else map(lambda o: o.path, metrics)
             for fname in fnames:
@@ -363,9 +360,6 @@ class Project(object):
                     res[branch] = {}
 
                 res[branch][rel] = metric
-
-        self.scm.checkout(saved)
-        self.checkout()
 
         for branch, val in res.items():
             self.logger.info('{}:'.format(branch))
