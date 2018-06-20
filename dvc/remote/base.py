@@ -46,19 +46,19 @@ class RemoteBase(object):
         return re.match(cls.REGEX, url)
 
     def save_info(self, path_info):
-        pass
+        raise NotImplementedError
 
     def save(self, path_info):
-        pass
+        raise NotImplementedError
 
     def checkout(self, path_info, checksum_info):
-        pass
+        raise NotImplementedError
 
     def download(self, path_info, path):
-        pass
+        raise NotImplementedError
 
     def upload(self, path, path_info):
-        pass
+        raise NotImplementedError
 
     # Old code starting from here
 
