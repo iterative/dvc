@@ -81,16 +81,16 @@ def cached_property(func):
     return property(get)
 
 
-def copyfile(src, dest, no_progress_bar=False):
+def copyfile(src, dest, no_progress_bar=False, name=None):
     '''Copy file with progress bar'''
     copied = 0
-    name = os.path.basename(src)
+    name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
     fsrc = open(src, 'rb')
 
     if os.path.isdir(dest):
-        fdest = open(dest + '/' + name, 'wb+')
+        fdest = open(dest + '/' + os.path.basename(src), 'wb+')
     else:
         fdest = open(dest, 'wb+')
 

@@ -11,7 +11,6 @@ except ImportError:
 from dvc.dependency.base import *
 from dvc.logger import Logger
 from dvc.utils import remove
-from dvc.cloud.local import DataCloudLOCAL
 from dvc.config import Config
 from dvc.remote.local import RemoteLOCAL
 

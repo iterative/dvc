@@ -8,8 +8,8 @@ import tempfile
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.cloud.data_cloud import DataCloud, DataCloudAWS, DataCloudLOCAL, DataCloudGCP
-from dvc.cloud.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED, CloudSettings
+from dvc.cloud.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL
+from dvc.remote.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
 
@@ -102,21 +102,21 @@ def sleep():
 
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
-        cloud = DataCloud(cache=self.dvc.cache, config=config)
+        cloud = DataCloud(self.dvc, config=config)
         self.assertIsInstance(cloud._cloud, cl)
 
     def test(self):
         config = TEST_CONFIG
 
-        for scheme, cl in [('s3://', DataCloudAWS), ('gs://', DataCloudGCP), ('/', DataCloudLOCAL)]:
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + 'a/b'
+        for scheme, cl in [('s3://', RemoteS3), ('gs://', RemoteGS), (tempfile.mkdtemp(), RemoteLOCAL)]:
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + str(uuid.uuid4())
             self._test_cloud(config, cl)
 
     def test_unsupported(self):
         with self.assertRaises(ConfigError) as cx:
             config = TEST_CONFIG
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
-            DataCloud(cache=self.dvc.cache, config=config)
+            DataCloud(self.dvc, config=config)
 
 
 class TestDataCloudBase(TestDvc):
@@ -138,9 +138,7 @@ class TestDataCloudBase(TestDvc):
 
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        cloud_settings = CloudSettings(cache=self.dvc.cache,
-                                       cloud_config=config[TEST_SECTION])
-        self.cloud = self._get_cloud_class()(cloud_settings)
+        self.cloud = self._get_cloud_class()(self.dvc, config[TEST_SECTION])
 
     def _test_cloud(self):
         self._setup_cloud()
@@ -215,7 +213,7 @@ class TestDataCloudBase(TestDvc):
             self._test_cloud()
 
 
-class TestDataCloudAWS(TestDataCloudBase):
+class TestRemoteS3(TestDataCloudBase):
     def _should_test(self):
             return _should_test_aws()
 
@@ -223,10 +221,10 @@ class TestDataCloudAWS(TestDataCloudBase):
         return get_aws_url()
 
     def _get_cloud_class(self):
-        return DataCloudAWS
+        return RemoteS3
 
 
-class TestDataCloudGCP(TestDataCloudBase):
+class TestRemoteGS(TestDataCloudBase):
     def _should_test(self):
         return _should_test_gcp()
 
@@ -234,10 +232,10 @@ class TestDataCloudGCP(TestDataCloudBase):
         return get_gcp_url()
 
     def _get_cloud_class(self):
-        return DataCloudGCP
+        return RemoteGS
 
 
-class TestDataCloudLOCAL(TestDataCloudBase):
+class TestRemoteLOCAL(TestDataCloudBase):
     def _should_test(self):
         return True
 
@@ -246,10 +244,10 @@ class TestDataCloudLOCAL(TestDataCloudBase):
         return self.dname
 
     def _get_cloud_class(self):
-        return DataCloudLOCAL
+        return RemoteLOCAL
 
     def test(self):
-        super(TestDataCloudLOCAL, self).test()
+        super(TestRemoteLOCAL, self).test()
         self.assertTrue(os.path.isdir(self.dname))
 
 
@@ -314,7 +312,7 @@ class TestDataCloudCLIBase(TestDvc):
             self._test_compat()
 
 
-class TestDataCloudLOCALCLI(TestDataCloudCLIBase):
+class TestRemoteLOCALCLI(TestDataCloudCLIBase):
     def _test_compat(self):
         storagepath = get_local_storagepath()
         self.main(['config', 'core.cloud', 'local'])
@@ -330,7 +328,7 @@ class TestDataCloudLOCALCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestDataCloudSSHCLI(TestDataCloudCLIBase):
+class TestRemoteSSHCLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_ssh()
 
@@ -346,7 +344,7 @@ class TestDataCloudSSHCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestDataCloudAWSCLI(TestDataCloudCLIBase):
+class TestRemoteS3CLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_aws()
 
@@ -365,7 +363,7 @@ class TestDataCloudAWSCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestDataCloudGCPCLI(TestDataCloudCLIBase):
+class TestRemoteGSCLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_gcp()
 

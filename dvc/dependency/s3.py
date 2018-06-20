@@ -6,13 +6,12 @@ except ImportError:
     from urllib.parse import urlparse
 
 from dvc.dependency.base import DependencyBase
-from dvc.cloud.aws import DataCloudAWS
 from dvc.remote.s3 import RemoteS3
 from dvc.config import Config
 
 
 class DependencyS3(DependencyBase):
-    REGEX = DataCloudAWS.REGEX
+    REGEX = RemoteS3.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
         super(DependencyS3, self).__init__(stage, path)

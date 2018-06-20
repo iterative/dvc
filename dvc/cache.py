@@ -1,13 +1,14 @@
 import os
 
 from dvc.config import Config
-from dvc.remote import Remote
 
 
 class Cache(object):
     CACHE_DIR = 'cache'
 
     def __init__(self, project):
+        from dvc.remote import Remote
+
         config = project.config._config[Config.SECTION_CACHE]
 
         local = config.get(Config.SECTION_CACHE_LOCAL, None)
@@ -31,6 +32,8 @@ class Cache(object):
         self.hdfs = self._get_remote(project, config, Config.SECTION_CACHE_HDFS)
 
     def _get_remote(self, project, config, name):
+        from dvc.remote import Remote
+
         remote = config.get(name, None)
         if not remote:
             return None

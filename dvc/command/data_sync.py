@@ -1,7 +1,3 @@
-import os
-
-import dvc.cloud.base as cloud
-
 from dvc.command.common.base import CmdBase
 
 
