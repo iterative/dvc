@@ -1,0 +1,6 @@
+md5: 6aca53591ed9e89ca96488faf1975e67
+outs:
+- cache: true
+  md5: a45154e9e73fef9fcd97674e678e1015
+  metric: false
+  path: dvc_left.bmp
