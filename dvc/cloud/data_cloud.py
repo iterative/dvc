@@ -98,12 +98,14 @@ class DataCloud(object):
         if remote:
             return self._init_remote(remote)
 
-        return self._cloud
+        if self._cloud:
+            return self._cloud
+
+        raise ConfigError("No remote repository specified. Setup default repository " \
+                          "with 'dvc config core.remote <name>' or use '-r <name>'.")
 
     def _filter(self, func, status, targets, jobs, remote):
         cloud = self._get_cloud(remote)
-        if not cloud:
-            return []
 
         with cloud:
             filtered = []
@@ -140,8 +142,6 @@ class DataCloud(object):
         Check status of data items in a cloud-agnostic way.
         """
         cloud = self._get_cloud(remote)
-        if not cloud:
-            return []
 
         with cloud:
             return self._status(cloud, targets, jobs)
