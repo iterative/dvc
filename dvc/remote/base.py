@@ -1,6 +1,7 @@
 import os
 import re
 import tempfile
+import posixpath
 
 from dvc.config import Config
 from dvc.logger import Logger
@@ -66,7 +67,7 @@ class RemoteBase(object):
         """ Key of a file within the bucket """
         relpath = os.path.relpath(fname, self.project.cache.local.cache_dir)
         relpath = relpath.replace('\\', '/')
-        return '{}/{}'.format(self.prefix, relpath).strip('/')
+        return posixpath.join(self.prefix, relpath).strip('/')
 
     def cache_key_name(self, path):
         relpath = os.path.relpath(path, self.project.cache.local.cache_dir)
