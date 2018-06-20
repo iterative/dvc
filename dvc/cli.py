@@ -185,6 +185,11 @@ def parse_args(argv=None):
     pull_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to pull from')
+    pull_parser.add_argument(
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all branches.')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -195,6 +200,11 @@ def parse_args(argv=None):
     push_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to push to')
+    push_parser.add_argument(
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Push cache for all branches.')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
@@ -205,6 +215,11 @@ def parse_args(argv=None):
     fetch_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to fetch from')
+    fetch_parser.add_argument(
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all branches.')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
@@ -279,6 +294,11 @@ def parse_args(argv=None):
                         'gc',
                         parents=[parent_parser],
                         help='Collect garbage')
+    gc_parser.add_argument(
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Collect garbage for all branches.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config

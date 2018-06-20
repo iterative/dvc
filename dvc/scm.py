@@ -43,6 +43,15 @@ class Base(object):
     def branch(self, branch):
         pass
 
+    def brancher(self, branches=None, all_branches=False):
+        saved = self.active_branch()
+        if not branches:
+            branches = self.list_branches() if all_branches else [saved]
+        for branch in branches:
+            self.checkout(branch)
+            yield branch
+        self.checkout(saved)
+
     def untracked_files(self):
         pass
 
