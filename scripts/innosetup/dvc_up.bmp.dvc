@@ -1,0 +1,6 @@
+md5: c6bffc0f3d525b7b25541268717983be
+outs:
+- cache: true
+  md5: 0b7c1735595def3a95e25645f66260d2
+  metric: false
+  path: dvc_up.bmp
