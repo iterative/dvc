@@ -8,7 +8,7 @@ import tempfile
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.cloud.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL
+from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL
 from dvc.remote.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc

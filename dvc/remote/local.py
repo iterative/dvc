@@ -12,16 +12,6 @@ from dvc.utils import remove, move, copyfile, file_md5
 from dvc.config import Config
 
 
-class LocalKey(object):
-    def __init__(self, bucket, name):
-        self.name = name
-        self.bucket = bucket
-
-    @property
-    def path(self):
-        return os.path.join(self.bucket, self.name)
-
-
 class RemoteLOCAL(RemoteBase):
     scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'

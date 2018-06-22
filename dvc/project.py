@@ -13,7 +13,7 @@ from dvc.state import LinkState
 from dvc.lock import Lock
 from dvc.scm import SCM, Base
 from dvc.cache import Cache
-from dvc.cloud.data_cloud import DataCloud
+from dvc.data_cloud import DataCloud
 from dvc.system import System
 from dvc.updater import Updater
 

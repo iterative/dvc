@@ -33,16 +33,6 @@ def create_cb(name):
     return (lambda cur, tot: percent_cb(name, cur, tot))
 
 
-class SSHKey(object):
-    def __init__(self, bucket, name):
-        self.name = name
-        self.bucket = bucket
-
-    @property
-    def path(self):
-        return os.path.join(self.bucket, self.name)
-
-
 class RemoteSSH(RemoteBase):
     scheme = 'ssh'
 
