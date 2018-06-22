@@ -28,12 +28,6 @@ class Callback(object):
             progress.update_target(self.name, self.current, self.total)
 
 
-class AWSKey(object):
-    def __init__(self, bucket, name):
-        self.name = name
-        self.bucket = bucket
-
-
 class RemoteS3(RemoteBase):
     scheme = 's3'
     REGEX = r'^s3://(?P<path>.*)$'
