@@ -46,6 +46,12 @@ class RemoteBase(object):
     def match(cls, url):
         return re.match(cls.REGEX, url)
 
+    @staticmethod
+    def tmp_file(fname):
+        """ Temporary name for a partial download """
+        #FIXME probably better use uuid()
+        return fname + '.part'
+
     def save_info(self, path_info):
         raise NotImplementedError
 
@@ -55,31 +61,23 @@ class RemoteBase(object):
     def checkout(self, path_info, checksum_info):
         raise NotImplementedError
 
-    def download(self, path_info, path):
+    def _get_path_info(self, path):
         raise NotImplementedError
 
-    def upload(self, path, path_info):
+    def _new_path_info(self, path):
         raise NotImplementedError
 
-    # Old code starting from here
+    def download(self, path_info, path, no_progress_bar=False, name=None):
+        raise NotImplementedError
+
+    def upload(self, path, path_info, name=None):
+        raise NotImplementedError
 
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
         relpath = os.path.relpath(fname, self.project.cache.local.cache_dir)
         relpath = relpath.replace('\\', '/')
         return posixpath.join(self.prefix, relpath).strip('/')
-
-    def cache_key_name(self, path):
-        relpath = os.path.relpath(path, self.project.cache.local.cache_dir)
-        return relpath.replace('\\', '').replace('/', '')
-
-    @staticmethod
-    def tmp_file(fname):
-        """ Temporary name for a partial download """
-        return fname + '.part'
-
-    def _push_key(self, key, path):
-        pass
 
     def collect(self, arg):
         from dvc.remote.local import RemoteLOCAL
@@ -95,12 +93,12 @@ class RemoteBase(object):
                 return ret
             dir_path = path
         else:
-            key = self._get_key(path)
-            if not key:
+            path_info = self._get_path_info(path)
+            if not path_info:
                 Logger.debug("File '{}' does not exist in the cloud".format(path))
                 return ret
             tmp = os.path.join(tempfile.mkdtemp(), os.path.basename(path))
-            self._pull_key(key, tmp, no_progress_bar=True)
+            self.download(path_info, tmp, no_progress_bar=True)
             dir_path = tmp
 
         for relpath, md5 in RemoteLOCAL.get_dir_cache(dir_path).items():
@@ -109,24 +107,19 @@ class RemoteBase(object):
 
         return ret
 
-    def _cmp_checksum(self, blob, fname):
-        md5 = self.project.cache.local.path_to_md5(fname)
-        if self.project.cache.local.state.changed(fname, md5=md5):
-            return False
-
-        return True
-
     def push(self, path):
-        key = self._get_key(path)
-        if key:
-            Logger.debug("File '{}' already uploaded to the cloud. Validating checksum...".format(path))
-            if self._cmp_checksum(key, path):
-                Logger.debug('File checksum matches. No uploading is needed.')
-                return []
-            Logger.debug('Checksum mismatch. Reuploading is required.')
+        path_info = self._get_path_info(path)
+        if path_info:
+            Logger.debug("File '{}' already uploaded to the cloud.".format(path))
+            return None
 
-        key = self._new_key(path)
-        return self._push_key(key, path)
+        path_info = self._new_path_info(path)
+        md5 = self.project.cache.local.path_to_md5(path)
+
+        if self.project.cache.local.changed(md5):
+            return None
+
+        self.upload(path, path_info, name=md5)
 
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
@@ -136,51 +129,32 @@ class RemoteBase(object):
             if e.errno != os.errno.EEXIST:
                 raise
 
-    def _pull_key(self, key, path, no_progress_bar=False):
-        """ Cloud-specific method of pulling keys """
-        pass
-
-    def _get_key(self, path):
-        """ Cloud-specific method of getting keys """
-        pass
-
     def pull(self, path):
         """ Generic method for pulling data from the cloud """
-        key = self._get_key(path)
-        if not key:
+        path_info = self._get_path_info(path)
+        if not path_info:
             Logger.error("File '{}' does not exist in the cloud".format(path))
             return None
 
-        return self._pull_key(key, path)
+        md5 = self.project.cache.local.path_to_md5(path)
 
-    def _status(self, key, path):
-        remote_exists = key != None
-        local_exists = os.path.exists(path)
+        self.download(path_info, path, name=md5)
 
-        diff = None
-        if remote_exists and local_exists:
-            diff = self._cmp_checksum(key, path)
-
-        return STATUS_MAP.get((local_exists, remote_exists, diff), STATUS_UNKNOWN)
+        if self.project.cache.local.changed(md5):
+            return None
 
     def status(self, path):
         """
         Generic method for checking data item status.
         """
-        key = self._get_key(path)
-        if not key:
-            return STATUS_NEW
+        md5 = self.project.cache.local.path_to_md5(path)
+        path_info = self._get_path_info(path)
+        remote_exists = path_info != None
+        local_exists = os.path.exists(path) and not self.project.cache.local.changed(md5)
 
-        return self._status(key, path)
+        diff = None
+        if remote_exists and local_exists:
+            md5 = self.project.cache.local.path_to_md5(path)
+            diff = not self.project.cache.local.changed(md5)
 
-    def connect(self):
-        pass
-
-    def disconnect(self):
-        pass
-
-    def __enter__(self):
-        self.connect()
-
-    def __exit__(self, type, value, tb):
-        self.disconnect()
+        return STATUS_MAP.get((local_exists, remote_exists, diff), STATUS_UNKNOWN)

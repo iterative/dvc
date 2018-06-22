@@ -49,102 +49,131 @@ class RemoteSSH(RemoteBase):
     #NOTE: ~/ paths are temporarily forbidden
     REGEX = r'^(?P<user>.*)@(?P<host>.*):(?P<path>/+.*)$'
 
-
     def __init__(self, project, config):
         self.project = project
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, '/')
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        self.host = self.group('host')
+        self.user = self.group('user')
+        self.prefix = self.group('path')
 
     def group(self, group):
         return self.match(self.url).group(group)
 
-    @property
-    def path(self):
-        return self.group('path')
+    def cache_file_key(self, path):
+        relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
+        return posixpath.join(self.prefix, relpath.replace('\\', '/'))
 
-    @property
-    def hostname(self):
-        return self.group('host')
+    def ssh(self, host=None, user=None):
+        Logger.debug("Establishing ssh connection with '{}' as user '{}'".format(host, user))
 
-    @property
-    def username(self):
-        return self.group('user')
-
-    @property
-    def ssh(self):
         ssh = paramiko.SSHClient()
 
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        ssh.connect(self.hostname, username=self.username)
+        ssh.connect(host, username=user)
 
         return ssh
 
-    def disconnect(self):
-        self.ssh.close()
-
-    def get_sftp(self):
-        #NOTE: SFTP doesn't seem to be thread safe
-        return self.ssh.open_sftp()
-
-    def cache_file_key(self, path):
-        relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
-        return relpath.replace('\\', '/')
-
-    def _isfile_remote(self, path):
+    def _isfile_remote(self, path_info):
         try:
-            self.get_sftp().open(path, 'r')
+            ssh = self.ssh(path_info['host'], path_info['user'])
+            ssh.open_sftp().open(path_info['path'], 'r')
+            ssh.close()
             return True
         except IOError as exc:
             if exc.errno != errno.ENOENT:
                 raise
         return False
 
-    def _get_key(self, path):
-        key_name = self.cache_file_key(path)
-        key = SSHKey(self.path, key_name)
-        if self._isfile_remote(key.path):
-            return key
+    def _get_path_info(self, path):
+        key = self.cache_file_key(path)
+        ret = {'scheme': 'ssh',
+               'host': self.host,
+               'user': self.user,
+               'path': key}
+        if self._isfile_remote(ret):
+            return ret
         return None
 
-    def _makedirs_remote(self, dname):
+    def _do_makedirs_remote(self, sftp, dname):
         try:
-            self.get_sftp().chdir(dname)
+            sftp.chdir(dname)
         except IOError as exc:
             if exc.errno != errno.ENOENT:
                 raise
 
             parent = posixpath.dirname(dname)
             if len(parent):
-                self._makedirs_remote(parent)
-            self.get_sftp().mkdir(dname)
+                self._do_makedirs_remote(sftp, parent)
 
-    def _new_key(self, path):
-        key_name = self.cache_file_key(path)
-        key = SSHKey(self.path, key_name)
-        self._makedirs_remote(posixpath.dirname(key.path))
-        return key
+            sftp.mkdir(dname)
 
-    def _push_key(self, key, path):
-        name = self.cache_key_name(path)
-        self.get_sftp().put(path, key.path, callback=create_cb(name))
-        progress.finish_target(key.name)
-        return path
+    def _makedirs_remote(self, path_info):
+        dname = posixpath.dirname(path_info['path'])
+        ssh = self.ssh(path_info['host'], path_info['user'])
+        sftp = ssh.open_sftp()
+        self._do_makedirs_remote(sftp, dname)
+        ssh.close()
 
-    def _pull_key(self, key, path, no_progress_bar=False):
+    def _new_path_info(self, path):
+        key = self.cache_file_key(path)
+        ret = {'scheme': 'ssh',
+               'host': self.host,
+               'user': self.user,
+               'path': key}
+        self._makedirs_remote(ret)
+        return ret
+
+    def download(self, path_info, path, no_progress_bar=False, name=None):
+        if path_info['scheme'] != 'ssh':
+            raise NotImplementedError
+
+        Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['host'],
+                                                          path_info['path'],
+                                                          path))
+        if not name:
+            name = os.path.basename(path)
+
         self._makedirs(path)
-
-        name = self.cache_key_name(path)
-
         tmp_file = self.tmp_file(path)
         try:
-            self.get_sftp().get(key.path, tmp_file, callback=create_cb(name))
+            ssh = self.ssh(host=path_info['host'], user=path_info['user'])
+            ssh.open_sftp().get(path_info['path'], tmp_file, callback=create_cb(name))
+            ssh.close()
         except Exception as exc:
-            Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
+            Logger.error("Failed to download '{}/{}' to '{}'".format(path_info['host'],
+                                                                     path_info['path'],
+                                                                     path), exc)
             return None
 
         os.rename(tmp_file, path)
-        progress.finish_target(key.name)
+        progress.finish_target(name)
+
+        return path
+
+    def upload(self, path, path_info, name=None):
+        if path_info['scheme'] != 'ssh':
+            raise NotImplementedError
+
+        Logger.debug("Uploading '{}' to '{}/{}'".format(path,
+                                                        path_info['host'],
+                                                        path_info['path']))
+
+        if not name:
+            name = os.path.basename(path)
+
+        try:
+            ssh = self.ssh(host=path_info['host'], user=path_info['user'])
+            ssh.open_sftp().put(path, path_info['path'], callback=create_cb(name))
+            ssh.close()
+        except Exception as exc:
+            Logger.error("Failed to upload '{}' to '{}/{}'".format(path,
+                                                                   path_info['host'],
+                                                                   path_info['path']), exc)
+            return None
+
+        progress.finish_target(name)
 
         return path

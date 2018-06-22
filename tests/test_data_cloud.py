@@ -143,8 +143,6 @@ class TestDataCloudBase(TestDvc):
     def _test_cloud(self):
         self._setup_cloud()
 
-        self.cloud.connect()
-
         stage = self.dvc.add(self.FOO)
         cache = stage.outs[0].cache
 
@@ -179,7 +177,10 @@ class TestDataCloudBase(TestDvc):
         with open(cache, 'a') as fd:
             fd.write('addon')
         status = self.cloud.status(cache)
-        self.assertEqual(status, STATUS_MODIFIED)
+        # NOTE: this is what corrupted cache looks like and it should
+        # be removed automatically, thus causing STATUS_DELETED instead
+        # of STATUS_MODIFIED.
+        self.assertEqual(status, STATUS_DELETED)
 
         # Remove and check status
         sleep()
