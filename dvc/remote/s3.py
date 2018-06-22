@@ -110,55 +110,72 @@ class RemoteS3(RemoteBase):
         except Exception:
             pass
 
-    def upload(self, path, path_info):
+    def _get_path_info(self, path):
+        key = self.cache_file_key(path)
+        try:
+            self.s3.Object(self.bucket, key).get()
+            return {'scheme': self.scheme,
+                    'bucket': self.bucket,
+                    'key': key}
+        except Exception:
+            return None
+
+    def _new_path_info(self, path):
+        key = self.cache_file_key(path)
+        return {'scheme': self.scheme,
+                'bucket': self.bucket,
+                'key': key}
+
+    def upload(self, path, path_info, name=None):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        self.s3.Object(path_info['bucket'], path_info['key']).upload_file(path)
+        Logger.debug("Uploading '{}' to '{}/{}'".format(path,
+                                                        path_info['bucket'],
+                                                        path_info['key']))
 
+        if not name:
+            name = os.path.basename(path)
 
-    def download(self, path_info, path):
+        total = os.path.getsize(path)
+        cb = Callback(name, total)
+
+        try:
+            self.s3.Object(path_info['bucket'], path_info['key']).upload_file(path, Callback=cb)
+        except Exception as exc:
+            Logger.error("Failed to upload '{}'".format(path), exc)
+            return None
+
+        progress.finish_target(name)
+
+        return path
+
+    def download(self, path_info, fname, no_progress_bar=False, name=None):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        self.s3.Object(path_info['bucket'], path_info['key']).download_file(path)
-
-    # Old code starting from here
-    def create_cb_pull(self, name, key):
-        total = self.s3.Object(bucket_name=key.bucket, key=key.name).content_length
-        return Callback(name, total)
-
-    def create_cb_push(self, name, fname):
-        total = os.path.getsize(fname)
-        return Callback(name, total)
-
-    def _pull_key(self, key, fname, no_progress_bar=False):
-        Logger.debug("Pulling key '{}' from bucket '{}' to file '{}'".format(key.name,
-                                                                             key.bucket,
-                                                                             fname))
-        self._makedirs(fname)
+        Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
+                                                          path_info['key'],
+                                                          fname))
 
         tmp_file = self.tmp_file(fname)
-        name = self.cache_key_name(fname)
-
-        if self._cmp_checksum(key, fname):
-            Logger.debug('File "{}" matches with "{}".'.format(fname, key.name))
-            return fname
-
-        Logger.debug('Downloading cache file from S3 "{}/{}" to "{}"'.format(key.bucket,
-                                                                             key.name,
-                                                                             fname))
+        if not name:
+            name = os.path.basename(fname)
 
         if no_progress_bar:
             cb = None
         else:
-            cb = self.create_cb_pull(name, key)
+            total = self.s3.Object(bucket_name=path_info['bucket'],
+                                   key=path_info['key']).content_length
+            cb = Callback(name, total)
 
+        self._makedirs(fname)
 
         try:
-            self.s3.Object(key.bucket, key.name).download_file(tmp_file, Callback=cb)
+            self.s3.Object(path_info['bucket'], path_info['key']).download_file(tmp_file, Callback=cb)
         except Exception as exc:
-            Logger.error('Failed to download "{}": {}'.format(key.name, exc))
+            Logger.error("Failed to download '{}/{}'".format(path_info['bucket'],
+                                                             path_info['key']), exc)
             return None
 
         os.rename(tmp_file, fname)
@@ -166,32 +183,4 @@ class RemoteS3(RemoteBase):
         if not no_progress_bar:
             progress.finish_target(name)
 
-        Logger.debug('Downloading completed')
-
         return fname
-
-    def _get_key(self, path):
-        key_name = self.cache_file_key(path)
-        try:
-            self.s3.Object(self.bucket, key_name).get()
-            return AWSKey(self.bucket, key_name)
-        except Exception:
-            return None
-
-    def _new_key(self, path):
-        key_name = self.cache_file_key(path)
-        return AWSKey(self.bucket, key_name)
-
-    def _push_key(self, key, path):
-        """ push, aws version """
-        name = self.cache_key_name(path)
-        cb = self.create_cb_push(name, path)
-        try:
-            self.s3.Object(key.bucket, key.name).upload_file(path, Callback=cb)
-        except Exception as exc:
-            Logger.error('Failed to upload "{}": {}'.format(path, exc))
-            return None
-
-        progress.finish_target(name)
-
-        return path

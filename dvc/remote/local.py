@@ -256,58 +256,56 @@ class RemoteLOCAL(RemoteBase):
 
         remove(path_info['path'])
 
-    def _copy(self, from_path, to_path):
-        dname = os.path.dirname(to_path)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
-
-        shutil.copyfile(from_path, to_path)
-
-    def upload(self, path, path_info):
-        if path_info['scheme'] != 'local':
-            raise NotImplementedError
-
-        self._copy(path, path_info['path'])
-
-    def download(self, path_info, path):
-        if path_info['scheme'] != 'local':
-            raise NotImplementedError
-
-        self._copy(path_info['path'], path)
-
-    # old code starting from here
     def cache_file_key(self, path):
-        return os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
+        relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
+        return os.path.join(self.prefix, relpath)
 
-    def _get_key(self, path):
-        key_name = self.cache_file_key(path)
-        key = LocalKey(self.prefix, key_name)
-        if os.path.exists(key.path) and os.path.isfile(key.path):
-            return key
-        return None
+    def _get_path_info(self, path):
+        key = self.cache_file_key(path)
+        if not os.path.exists(key) or not os.path.isfile(key):
+            return None
+        return {'scheme': 'local',
+                'path': key}
 
-    def _new_key(self, path):
-        key_name = self.cache_file_key(path)
-        key = LocalKey(self.prefix, key_name)
-        self._makedirs(key.path)
-        return key
+    def _new_path_info(self, path):
+        key = self.cache_file_key(path)
+        return {'scheme': 'local',
+                'path': key}
 
-    def _push_key(self, key, path):
-        self._makedirs(key.path)
-        name = self.cache_key_name(path)
-        copyfile(path, key.path, name=name)
+    def upload(self, path, path_info, name=None):
+        if path_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        Logger.debug("Uploading '{}' to '{}'".format(path, path_info['path']))
+
+        if not name:
+            name = os.path.basename(path)
+
+        self._makedirs(path_info['path'])
+
+        try:
+            copyfile(path, path_info['path'], name=name)
+        except Exception as exc:
+            Logger.error("Failed to upload '{}' tp '{}'".format(path, path_info['path']))
+            return None
+
         return path
 
-    def _pull_key(self, key, path, no_progress_bar=False):
+    def download(self, path_info, path, no_progress_bar=False, name=None):
+        if path_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        Logger.debug("Downloading '{}' to '{}'".format(path_info['path'], path))
+
+        if not name:
+            name = os.path.basename(path)
+
         self._makedirs(path)
-
-        name = self.cache_key_name(path)
-
         tmp_file = self.tmp_file(path)
         try:
-            copyfile(key.path, tmp_file, no_progress_bar=no_progress_bar, name=name)
+            copyfile(path_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
         except Exception as exc:
-            Logger.error('Failed to copy "{}": {}'.format(key.path, exc))
+            Logger.error("Failed to download '{}' to '{}'".format(path_info['path'], path), exc)
             return None
 
         os.rename(tmp_file, path)

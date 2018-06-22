@@ -107,13 +107,12 @@ class DataCloud(object):
     def _filter(self, func, status, targets, jobs, remote):
         cloud = self._get_cloud(remote)
 
-        with cloud:
-            filtered = []
-            for t, s in self._status(cloud, targets, jobs):
-                if s == STATUS_MODIFIED or s == status:
-                    filtered.append(t)
+        filtered = []
+        for t, s in self._status(cloud, targets, jobs):
+            if s == STATUS_MODIFIED or s == status:
+                filtered.append(t)
 
-            return map_progress(getattr(cloud, func), filtered, jobs)
+        return map_progress(getattr(cloud, func), filtered, jobs)
 
     def push(self, targets, jobs=1, remote=None):
         """
@@ -143,5 +142,4 @@ class DataCloud(object):
         """
         cloud = self._get_cloud(remote)
 
-        with cloud:
-            return self._status(cloud, targets, jobs)
+        return self._status(cloud, targets, jobs)

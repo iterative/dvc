@@ -89,70 +89,75 @@ class RemoteGS(RemoteBase):
 
         blob.delete()
 
-    def upload(self, path, path_info):
+    def _get_path_info(self, path):
+        key = self.cache_file_key(path)
+        if not self.gs.bucket(self.bucket).get_blob(key):
+            return None
+        return {'scheme': 'gs',
+                'bucket': self.bucket,
+                'key': key}
+
+    def _new_path_info(self, path):
+        key = self.cache_file_key(path)
+        return {'scheme': 'gs',
+                'bucket': self.bucket,
+                'key': key}
+
+    def upload(self, path, path_info, name=None):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        blob = self.gs.bucket(path_info['bucket']).blob(path_info['key'])
-        blob.upload_from_filename(path)
+        Logger.debug("Uploading '{}' to '{}/{}'".format(path,
+                                                        path_info['bucket'],
+                                                        path_info['key']))
 
-    def download(self, path_info, path):
+        if not name:
+            name = os.path.basename(path)
+
+        progress.update_target(name, 0, None)
+
+        try:
+            self.gs.bucket(path_info['bucket']).blob(path_info['key']).upload_from_filename(path)
+        except Exception as exc:
+            Logger.error("Failed to upload '{}' to '{}/{}'".format(path,
+                                                                   path_info['bucket'],
+                                                                   path_info['key']), exc)
+            return None
+
+        progress.finish_target(name)
+
+        return path
+
+    def download(self, path_info, path, no_progress_bar=False, name=None):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
-        blob.download_to_filename(path)
+        Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
+                                                          path_info['key'],
+                                                          path))
 
-    # old code from here
-    def _pull_key(self, key, path, no_progress_bar=False):
-        self._makedirs(path)
-
-        name = self.cache_key_name(path)
         tmp_file = self.tmp_file(path)
-
-        if self._cmp_checksum(key, path):
-            Logger.debug('File "{}" matches with "{}".'.format(path, key.name))
-            return path
-
-        Logger.debug('Downloading cache file from gc "{}/{}"'.format(key.bucket.name, key.name))
+        if not name:
+            name = os.path.basename(path)
 
         if not no_progress_bar:
             # percent_cb is not available for download_to_filename, so
             # lets at least update progress at keypoints(start, finish)
             progress.update_target(name, 0, None)
 
+        self._makedirs(path)
+
         try:
-            key.download_to_filename(tmp_file)
+            self.gs.bucket(path_info['bucket']).get_blob(path_info['key']).download_to_filename(tmp_file)
         except Exception as exc:
-            Logger.error('Failed to download "{}": {}'.format(key.name, exc))
+            Logger.error("Failed to download '{}/{}' to '{}'".format(path_info['bucket'],
+                                                                     path_info['key'],
+                                                                     path), exc)
             return None
 
         os.rename(tmp_file, path)
 
         if not no_progress_bar:
             progress.finish_target(name)
-
-        Logger.debug('Downloading completed')
-
-        return path
-
-    def _get_key(self, path):
-        key_name = self.cache_file_key(path)
-        return self.gs.bucket(self.bucket).get_blob(key_name)
-
-    def _new_key(self, path):
-        key_name = self.cache_file_key(path)
-        return self.gs.bucket(self.bucket).blob(key_name)
-
-    def _push_key(self, key, path):
-        """ push, gcp version """
-        name = self.cache_key_name(path)
-
-        progress.update_target(name, 0, None)
-
-        key.upload_from_filename(path)
-
-        progress.finish_target(name)
-        Logger.debug('uploading %s completed' % path)
 
         return path
