@@ -13,6 +13,7 @@ from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.hdfs import DependencyHDFS
+from dvc.dependency.ssh import DependencySSH
 
 from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
@@ -21,9 +22,10 @@ from dvc.remote.gs import RemoteGS
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 
-DEPS = [DependencyHDFS, DependencyS3, DependencyGS, DependencyLOCAL]
+DEPS = [DependencyHDFS, DependencyS3, DependencyGS, DependencySSH, DependencyLOCAL]
 
 DEP_MAP = {'': DependencyLOCAL,
+           'ssh': DependencySSH,
            's3': DependencyS3,
            'gs': DependencyGS,
            'hdfs': DependencyHDFS,}

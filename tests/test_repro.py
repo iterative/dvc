@@ -3,7 +3,9 @@ import yaml
 import stat
 import shutil
 import filecmp
+import getpass
 import tempfile
+import posixpath
 from subprocess import Popen, PIPE
 
 import boto3
@@ -20,6 +22,7 @@ from dvc.stage import Stage
 from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
+from tests.test_data_cloud import _should_test_ssh
 
 
 class TestRepro(TestDvc):
@@ -298,7 +301,7 @@ class TestReproExternalBase(TestDvc):
 
         cmd_stage = self.dvc.run(outs=[out_bar_path],
                              deps=[out_foo_path],
-                             cmd='{} {} {}'.format(self.cmd, foo_path, bar_path))
+                             cmd=self.cmd(foo_path, bar_path))
 
         self.write(self.bucket, foo_key, 'bar')
 
@@ -323,9 +326,8 @@ class TestReproExternalS3(TestReproExternalBase):
     def bucket(self):
         return TEST_AWS_REPO_BUCKET
 
-    @property
-    def cmd(self):
-        return 'aws s3 cp'
+    def cmd(self, i, o):
+        return 'aws s3 cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         s3 = boto3.resource('s3')
@@ -347,9 +349,8 @@ class TestReproExternalGS(TestReproExternalBase):
     def bucket(self):
         return TEST_GCP_REPO_BUCKET
 
-    @property
-    def cmd(self):
-        return 'gsutil cp'
+    def cmd(self, i, o):
+        return 'gsutil cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         client = gc.Client()
@@ -373,9 +374,8 @@ class TestReproExternalHDFS(TestReproExternalBase):
     def bucket(self):
         return os.getenv('HADOOP_CONTAINER_IP')
 
-    @property
-    def cmd(self):
-        return 'HADOOP_USER_NAME=root hadoop fs -cp'
+    def cmd(self, i, o):
+        return 'HADOOP_USER_NAME=root hadoop fs -cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         url = self.scheme + '://' + bucket + '/' + key
@@ -388,6 +388,57 @@ class TestReproExternalHDFS(TestReproExternalBase):
         p.communicate()
 
         p = Popen('echo "{}" | hadoop fs -put - {}'.format(body, url),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        p.communicate()
+        self.assertEqual(p.returncode, 0)
+
+
+class TestReproExternalSSH(TestReproExternalBase):
+    _dir = None
+
+    def should_test(self):
+        return _should_test_ssh()
+
+    @property
+    def scheme(self):
+        return 'ssh'
+
+    @property
+    def bucket(self):
+        if not self._dir:
+            self._dir = tempfile.mkdtemp()
+        return '{}@127.0.0.1:{}'.format(getpass.getuser(), self._dir)
+
+    def cmd(self, i, o):
+        i = i.strip('ssh://')
+        o = o.strip('ssh://')
+        return 'scp {} {}'.format(i, o)
+
+    def write(self, bucket, key, body):
+        dest = '{}@127.0.0.1'.format(getpass.getuser())
+        path = posixpath.join(self._dir, key)
+        p = Popen('ssh {} rm {}'.format(dest, path),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        p.communicate()
+
+        p = Popen('ssh {} "mkdir -p $(dirname {})"'.format(dest, path),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        p.communicate()
+        self.assertEqual(p.returncode, 0)
+
+        p = Popen('echo "{}" | ssh {} "tr -d \'\\n\' > {}"'.format(body, dest, path),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
@@ -425,11 +476,10 @@ class TestReproExternalLOCAL(TestReproExternalBase):
     def bucket(self):
         return self.tmpdir
 
-    @property
-    def cmd(self):
+    def cmd(self, i, o):
         if os.name == 'nt':
-            return 'copy'
-        return 'cp'
+            return 'copy {} {}'.format(i, o)
+        return 'cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         path = os.path.join(bucket, key)
