@@ -1,5 +1,6 @@
 import os
 import re
+import getpass
 import posixpath
 from subprocess import Popen, PIPE
 
@@ -15,23 +16,23 @@ from dvc.exceptions import DvcException
 
 class RemoteHDFS(RemoteBase):
     scheme='hdfs'
-    REGEX = r'^hdfs://(?P<path>.*)$'
+    REGEX = r'^hdfs://((?P<user>.*)@)?.*$'
     PARAM_CHECKSUM = 'checksum'
 
     def __init__(self, project, config):
         self.project = project
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
-        self.user = config.get(Config.SECTION_REMOTE_USER, None)
+        self.user = self.group('user')
+        if not self.user:
+            self.user = config.get(Config.SECTION_REMOTE_USER, getpass.getuser())
 
-    def hadoop_fs(self, cmd):
+    def hadoop_fs(self, cmd, user=None):
         cmd = 'hadoop fs -' + cmd
-        env = os.environ.copy()
-        if self.user:
-            env['HADOOP_USER_NAME'] = self.user
+        if user:
+            cmd = 'HADOOP_USER_NAME={} '.format(user) + cmd
         p = Popen(cmd,
                   shell=True,
                   close_fds=True,
-                  env=env,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
                   stdout=PIPE,
@@ -39,25 +40,25 @@ class RemoteHDFS(RemoteBase):
         out, err = p.communicate()
         if p.returncode != 0:
             raise DvcException('HDFS command failed: {}: {}'.format(cmd, err))
-        return out
+        return out.decode('utf-8')
 
     @staticmethod
-    def group(regex, s, gname):
+    def _group(regex, s, gname):
         match = re.match(regex, s)
         assert match != None
         return match.group(gname)
 
-    def checksum(self, url):
+    def checksum(self, path_info):
         regex = r'.*\t.*\t(?P<checksum>.*)'
-        stdout = self.hadoop_fs('checksum {}'.format(url))
-        return self.group(regex, stdout, 'checksum')
+        stdout = self.hadoop_fs('checksum {}'.format(path_info['url']), user=path_info['user'])
+        return self._group(regex, stdout, 'checksum')
 
-    def cp(self, from_url, to_url):
-        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_url)))
-        self.hadoop_fs('cp {} {}'.format(from_url, to_url))
+    def cp(self, from_info, to_info):
+        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])), user=to_info['user'])
+        self.hadoop_fs('cp {} {}'.format(from_info['url'], to_info['url']), user=to_info['user'])
 
-    def rm(self, url):
-        self.hadoop_fs('rm {}'.format(url))
+    def rm(self, path_info):
+        self.hadoop_fs('rm {}'.format(path_info['url']), user=path_info['user'])
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
@@ -65,7 +66,7 @@ class RemoteHDFS(RemoteBase):
 
         assert path_info.get('url')
 
-        return {self.PARAM_CHECKSUM: self.checksum(path_info['url'])}
+        return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
     def save(self, path_info):
         if path_info['scheme'] != 'hdfs':
@@ -73,10 +74,11 @@ class RemoteHDFS(RemoteBase):
 
         assert path_info.get('url')
 
-        checksum = self.checksum(path_info['url'])
-        dest_url = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        checksum = self.checksum(path_info)
+        dest = path_info.copy()
+        dest['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
 
-        self.cp(path_info['url'], dest_url)
+        self.cp(path_info, dest)
 
         return {self.PARAM_CHECKSUM: checksum}
 
@@ -90,9 +92,10 @@ class RemoteHDFS(RemoteBase):
         if not checksum:
             return
 
-        url = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        src = path_info.copy()
+        src['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
 
-        self.cp(url, path_info['url'])
+        self.cp(src, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'hdfs':
@@ -100,14 +103,14 @@ class RemoteHDFS(RemoteBase):
 
         assert path_info.get('url')
 
-        self.rm(path_info['url'])
+        self.rm(path_info)
 
     def upload(self, path, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])))
-        self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']))
+        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])), user=path_info['user'])
+        self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
 
     def download(self, path_info, path):
         if path_info['scheme'] != 'hdfs':
@@ -117,4 +120,4 @@ class RemoteHDFS(RemoteBase):
         if not os.path.exists(dname):
             os.makedirs(dname)
 
-        self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path))
+        self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path), user=path_info['user'])

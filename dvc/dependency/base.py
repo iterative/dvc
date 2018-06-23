@@ -35,6 +35,12 @@ class DependencyBase(object):
     def match(cls, url):
         return re.match(cls.REGEX, url)
 
+    def group(self, name):
+        match = self.match(self.path)
+        if not match:
+            return None
+        return match.group(name)
+
     @classmethod
     def supported(cls, url):
         return cls.match(url) != None

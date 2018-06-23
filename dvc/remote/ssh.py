@@ -52,12 +52,6 @@ class RemoteSSH(RemoteBase):
             self.user = config.get(Config.SECTION_REMOTE_USER, getpass.getuser())
         self.prefix = self.group('path')
 
-    def group(self, group):
-        m = self.match(self.url)
-        if not m:
-            return None
-        return m.group(group)
-
     def cache_file_key(self, path):
         relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
         return posixpath.join(self.prefix, relpath.replace('\\', '/'))

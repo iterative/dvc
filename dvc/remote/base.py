@@ -46,6 +46,12 @@ class RemoteBase(object):
     def match(cls, url):
         return re.match(cls.REGEX, url)
 
+    def group(self, name):
+        m = self.match(self.url)
+        if not m:
+            return None
+        return m.group(name)
+
     @staticmethod
     def tmp_file(fname):
         """ Temporary name for a partial download """

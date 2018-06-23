@@ -293,7 +293,7 @@ class TestReproExternalBase(TestDvc):
         out_foo_path = 'remote://' + remote_name + '/' + self.FOO
         out_bar_path = bar_path
 
-        self.write(self.bucket, foo_key, 'foo')
+        self.write(self.bucket, foo_key, self.FOO_CONTENTS)
 
         import_stage = self.dvc.imp(out_foo_path, 'import')
         self.assertTrue(os.path.exists('import'))
@@ -303,7 +303,7 @@ class TestReproExternalBase(TestDvc):
                              deps=[out_foo_path],
                              cmd=self.cmd(foo_path, bar_path))
 
-        self.write(self.bucket, foo_key, 'bar')
+        self.write(self.bucket, foo_key, self.BAR_CONTENTS)
 
         stages = self.dvc.reproduce(import_stage.path)
         self.assertEqual(len(stages), 1)
@@ -372,14 +372,14 @@ class TestReproExternalHDFS(TestReproExternalBase):
 
     @property
     def bucket(self):
-        return os.getenv('HADOOP_CONTAINER_IP')
+        return 'root@' + os.getenv('HADOOP_CONTAINER_IP')
 
     def cmd(self, i, o):
         return 'HADOOP_USER_NAME=root hadoop fs -cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         url = self.scheme + '://' + bucket + '/' + key
-        p = Popen('hadoop fs -rm -f {}'.format(url),
+        p = Popen('HADOOP_USER_NAME=root hadoop fs -rm -f {}'.format(url),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
@@ -387,13 +387,16 @@ class TestReproExternalHDFS(TestReproExternalBase):
                   stderr=PIPE)
         p.communicate()
 
-        p = Popen('echo "{}" | hadoop fs -put - {}'.format(body, url),
+        p = Popen('echo "{}" | HADOOP_USER_NAME=root hadoop fs -put - {}'.format(body.strip(), url),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
                   stdout=PIPE,
                   stderr=PIPE)
-        p.communicate()
+        out, err = p.communicate()
+        if p.returncode != 0:
+            print(out)
+            print(err)
         self.assertEqual(p.returncode, 0)
 
 
@@ -438,7 +441,7 @@ class TestReproExternalSSH(TestReproExternalBase):
         p.communicate()
         self.assertEqual(p.returncode, 0)
 
-        p = Popen('echo "{}" | ssh {} "tr -d \'\\n\' > {}"'.format(body, dest, path),
+        p = Popen('echo "{}" | ssh {} "cat > {}"'.format(body.strip(), dest, path),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
