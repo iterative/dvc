@@ -5,10 +5,11 @@ import uuid
 import shutil
 import getpass
 import tempfile
+import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL
+from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL, RemoteSSH
 from dvc.remote.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -54,8 +55,8 @@ def _should_test_ssh():
     if os.getenv("DVC_TEST_SSH") == "true":
         return True
 
-    #FIXME: enable on windows
-    if os.name == 'nt':
+    #FIXME: enable on windows and osx
+    if platform.system() != 'Linux':
         return False
 
     assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
@@ -72,7 +73,7 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return '{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
+    return 'ssh://{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -108,7 +109,10 @@ class TestDataCloud(TestDvc):
     def test(self):
         config = TEST_CONFIG
 
-        for scheme, cl in [('s3://', RemoteS3), ('gs://', RemoteGS), (tempfile.mkdtemp(), RemoteLOCAL)]:
+        for scheme, cl in [('s3://', RemoteS3),
+                           ('gs://', RemoteGS),
+                           ('ssh://user@localhost:/', RemoteSSH),
+                           (tempfile.mkdtemp(), RemoteLOCAL)]:
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + str(uuid.uuid4())
             self._test_cloud(config, cl)
 
@@ -250,6 +254,20 @@ class TestRemoteLOCAL(TestDataCloudBase):
     def test(self):
         super(TestRemoteLOCAL, self).test()
         self.assertTrue(os.path.isdir(self.dname))
+
+
+class TestRemoteSSH(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_ssh()
+
+    def _get_url(self):
+        return get_ssh_url()
+
+    def _get_cloud_class(self):
+        return RemoteSSH
+
+    def test(self):
+        super(TestRemoteSSH, self).test()
 
 
 class TestDataCloudCLIBase(TestDvc):

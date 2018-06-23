@@ -42,6 +42,7 @@ class Config(object):
         schema.Optional(SECTION_CACHE_S3): str,
         schema.Optional(SECTION_CACHE_GS): str,
         schema.Optional(SECTION_CACHE_HDFS): str,
+        schema.Optional(SECTION_CACHE_SSH): str,
 
         # backward compatibility
         schema.Optional(SECTION_CACHE_DIR, default='cache'): str,

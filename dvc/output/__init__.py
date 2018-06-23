@@ -9,15 +9,17 @@ from dvc.output.s3 import OutputS3
 from dvc.output.gs import OutputGS
 from dvc.output.local import OutputLOCAL
 from dvc.output.hdfs import OutputHDFS
+from dvc.output.ssh import OutputSSH
 
 from dvc.remote import Remote
 
 
-OUTS = [OutputHDFS, OutputS3, OutputGS, OutputLOCAL]
+OUTS = [OutputHDFS, OutputS3, OutputGS, OutputSSH, OutputLOCAL]
 
 OUTS_MAP = {'hdfs': OutputHDFS,
             's3': OutputS3,
             'gs': OutputGS,
+            'ssh': OutputSSH,
             '': OutputLOCAL}
 
 SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
