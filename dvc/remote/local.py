@@ -246,6 +246,12 @@ class RemoteLOCAL(RemoteBase):
 
         remove(path_info['path'])
 
+    def move(self, from_info, to_info):
+        if from_info['scheme'] != 'local' or to_info['scheme'] != 'local':
+            raise NotImplementedError
+
+        move(from_info['path'], to_info['path'])
+
     def cache_file_key(self, path):
         relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
         return os.path.join(self.prefix, relpath)

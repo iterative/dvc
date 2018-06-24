@@ -79,6 +79,12 @@ class RemoteBase(object):
     def upload(self, path, path_info, name=None):
         raise NotImplementedError
 
+    def remove(self, path_info):
+        raise NotImplementedError
+
+    def move(self, path_info):
+        raise NotImplementedError
+
     def cache_file_key(self, fname):
         """ Key of a file within the bucket """
         relpath = os.path.relpath(fname, self.project.cache.local.cache_dir)
