@@ -10,7 +10,7 @@ from dvc.remote.hdfs import RemoteHDFS
 
 
 class DependencyHDFS(DependencyBase):
-    REGEX = r'^hdfs://.*$'
+    REGEX = RemoteHDFS.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
         super(DependencyHDFS, self).__init__(stage, path)
@@ -18,7 +18,9 @@ class DependencyHDFS(DependencyBase):
         self.remote = remote if remote else RemoteHDFS(stage.project, {})
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip('/'))
+        user = remote.user if remote else self.group('user')
         self.path_info = {'scheme': 'hdfs',
+                          'user': user,
                           'url': path}
 
     def changed(self):

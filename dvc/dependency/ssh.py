@@ -29,12 +29,6 @@ class DependencySSH(DependencyBase):
                           'user': user,
                           'path': path}
 
-    def group(self, name):
-        match = self.match(self.path)
-        if not match:
-            return None
-        return match.group(name)
-
     def changed(self):
         return self.info != self.remote.save_info(self.path_info)
 
