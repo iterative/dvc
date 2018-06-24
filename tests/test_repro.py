@@ -387,7 +387,22 @@ class TestReproExternalHDFS(TestReproExternalBase):
                   stderr=PIPE)
         p.communicate()
 
-        p = Popen('echo "{}" | HADOOP_USER_NAME=root hadoop fs -put - {}'.format(body.strip(), url),
+        p = Popen('HADOOP_USER_NAME=root hadoop fs -mkdir -p {}'.format(posixpath.dirname(url)),
+                  shell=True,
+                  executable=os.getenv('SHELL'),
+                  stdin=PIPE,
+                  stdout=PIPE,
+                  stderr=PIPE)
+        out, err = p.communicate()
+        if p.returncode != 0:
+            print(out)
+            print(err)
+        self.assertEqual(p.returncode, 0)
+
+        with open('tmp', 'w+') as fd:
+            fd.write(body)
+
+        p = Popen('HADOOP_USER_NAME=root hadoop fs -copyFromLocal {} {}'.format('tmp', url),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
@@ -438,16 +453,22 @@ class TestReproExternalSSH(TestReproExternalBase):
                   stdin=PIPE,
                   stdout=PIPE,
                   stderr=PIPE)
-        p.communicate()
+        out, err = p.communicate()
+        if p.returncode != 0:
+            print(out)
+            print(err)
         self.assertEqual(p.returncode, 0)
 
-        p = Popen('echo "{}" | ssh {} "cat > {}"'.format(body.strip(), dest, path),
+        p = Popen('echo "{}" | ssh {} "tr -d \'\n\' > {}"'.format(body, dest, path),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
                   stdout=PIPE,
                   stderr=PIPE)
-        p.communicate()
+        out, err = p.communicate()
+        if p.returncode != 0:
+            print(out)
+            print(err)
         self.assertEqual(p.returncode, 0)
 
  

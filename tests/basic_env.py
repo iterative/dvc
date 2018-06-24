@@ -16,9 +16,9 @@ class TestDir(TestCase):
     DATA_CONTENTS = DATA
     DATA_SUB_CONTENTS = DATA_SUB
     FOO = 'foo'
-    FOO_CONTENTS = FOO + '\n'
+    FOO_CONTENTS = FOO
     BAR = 'bar'
-    BAR_CONTENTS = BAR + '\n'
+    BAR_CONTENTS = BAR
     CODE = 'code.py'
     CODE_CONTENTS = 'import sys\nimport shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])'
 
