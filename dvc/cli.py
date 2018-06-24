@@ -8,6 +8,7 @@ from multiprocessing import cpu_count
 from dvc.logger import Logger
 from dvc.command.init import CmdInit
 from dvc.command.remove import CmdRemove
+from dvc.command.move import CmdMove
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
@@ -288,6 +289,19 @@ def parse_args(argv=None):
                         nargs='+',
                         help='DVC files.')
     remove_parser.set_defaults(func=CmdRemove)
+
+    # Move
+    move_parser = subparsers.add_parser(
+                        'move',
+                        parents=[parent_parser],
+                        help='Move output of DVC file.')
+    move_parser.add_argument(
+                        'src',
+                        help='Source')
+    move_parser.add_argument(
+                        'dst',
+                        help='Destination')
+    move_parser.set_defaults(func=CmdMove)
 
     # Garbage collector
     gc_parser = subparsers.add_parser(

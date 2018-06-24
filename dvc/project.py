@@ -5,6 +5,7 @@ import json
 import networkx as nx
 from jsonpath_rw import parse
 
+import dvc.output as Output
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
@@ -136,6 +137,35 @@ class Project(object):
             stage.remove()
 
         return stage
+
+    def move(self, from_path, to_path):
+        from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
+
+        found = False
+        for stage in self.stages():
+            for out in stage.outs:
+                if out.path != from_out.path:
+                    continue
+
+                if not stage.is_data_source:
+                    raise DvcException('Dvcfile \'{}\' is not a data source.'.format(stage.rel_path))
+
+                found = True
+                to_out = Output.loads_from(out.stage, [to_path], out.cache, out.metric)[0]
+                out.move(to_out)
+
+                stage_base = os.path.basename(stage.path).rstrip(Stage.STAGE_FILE_SUFFIX)
+                stage_dir = os.path.dirname(stage.path)
+                from_base = os.path.basename(from_path)
+                to_base = os.path.basename(to_path)
+                if stage_base == from_base:
+                    os.unlink(stage.path)
+                    stage.path = os.path.join(stage_dir, to_base + Stage.STAGE_FILE_SUFFIX)
+
+            stage.dump()
+
+        if not found:
+            raise DvcException('Unable to find dvcfile with output \'{}\''.format(from_path))
 
     def run(self,
             cmd=None,

@@ -82,3 +82,15 @@ class OutputLOCAL(DependencyLOCAL):
         self.remote.remove(self.path_info)
         if ignore_remove and self.use_cache:
             self.project.scm.ignore_remove(self.path)
+
+    def move(self, out):
+        if self.use_cache:
+            self.project.scm.ignore_remove(self.path)
+
+        self.remote.move(self.path_info, out.path_info)
+        self.path = out.path
+        self.path_info = out.path_info
+        self.save()
+
+        if self.use_cache:
+            self.project.scm.ignore(self.path)

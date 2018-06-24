@@ -33,7 +33,7 @@ class DependencyLOCAL(DependencyBase):
         if not os.path.isabs(path):
             path = self.ospath(path)
             path = os.path.join(stage.cwd, path)
-        self.path = os.path.normpath(path)
+        self.path = os.path.abspath(os.path.normpath(path))
 
         self.path_info = {'scheme': 'local',
                           'path': self.path}
