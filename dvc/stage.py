@@ -42,15 +42,17 @@ class Stage(object):
     PARAM_CMD = 'cmd'
     PARAM_DEPS = 'deps'
     PARAM_OUTS = 'outs'
+    PARAM_LOCKED = 'locked'
 
     SCHEMA = {
         schema.Optional(PARAM_MD5): schema.Or(str, None),
         schema.Optional(PARAM_CMD): schema.Or(str, None),
         schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([dependency.SCHEMA])), None),
         schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([output.SCHEMA])), None),
+        schema.Optional(PARAM_LOCKED): bool,
     }
 
-    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], md5=None):
+    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], md5=None, locked=False):
         self.project = project
         self.path = path
         self.cmd = cmd
@@ -58,6 +60,7 @@ class Stage(object):
         self.outs = outs
         self.deps = deps
         self.md5 = md5
+        self.locked = locked
 
     @property
     def relpath(self):
@@ -108,7 +111,12 @@ class Stage(object):
         if self.is_callback:
             ret = True
 
-        for entry in itertools.chain(self.outs, self.deps):
+        if self.locked:
+            entries = self.outs
+        else:
+            entries = itertools.chain(self.outs, self.deps)
+
+        for entry in entries:
             if entry.changed():
                 ret = True
 
@@ -134,7 +142,7 @@ class Stage(object):
         if not self.changed() and not force:
             return None
 
-        if self.cmd or self.is_import:
+        if (self.cmd or self.is_import) and not self.locked:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
@@ -162,12 +170,14 @@ class Stage(object):
         cwd = os.path.dirname(path)
         cmd = d.get(Stage.PARAM_CMD, None)
         md5 = d.get(Stage.PARAM_MD5, None)
+        locked = d.get(Stage.PARAM_LOCKED, False)
 
         stage = Stage(project=project,
                       path=path,
                       cmd=cmd,
                       cwd=cwd,
-                      md5=md5)
+                      md5=md5,
+                      locked=locked)
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
         stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
@@ -182,14 +192,16 @@ class Stage(object):
               outs_no_cache=[],
               metrics_no_cache=[],
               fname=None,
-              cwd=os.curdir):
+              cwd=os.curdir,
+              locked=False):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
 
         stage = Stage(project=project,
                       path=path,
                       cmd=cmd,
-                      cwd=cwd)
+                      cwd=cwd,
+                      locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
@@ -217,6 +229,9 @@ class Stage(object):
         if len(outs):
             ret[Stage.PARAM_OUTS] = outs
 
+        if self.locked:
+            ret[Stage.PARAM_LOCKED] = self.locked
+
         ret[Stage.PARAM_MD5] = dict_md5(ret)
 
         return ret
@@ -236,7 +251,10 @@ class Stage(object):
             out.save()
 
     def run(self):
-        if self.is_import:
+        if self.locked:
+            self.project.logger.info(u'Verifying outputs in locked stage \'{}\''.format(self.relpath))
+            self.check_missing_outputs()
+        elif self.is_import:
             msg = u'Importing \'{}\' -> \'{}\''
             self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].rel_path))
 
@@ -280,7 +298,10 @@ class Stage(object):
 
     def status(self):
         ret = {}
-        ret.update(self._status(self.deps, 'deps'))
+
+        if not self.locked:
+            ret.update(self._status(self.deps, 'deps'))
+
         ret.update(self._status(self.outs, 'outs'))
 
         if ret or self.changed_md5() or self.is_callback:

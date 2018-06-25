@@ -138,6 +138,16 @@ class Project(object):
 
         return stage
 
+    def lock_stage(self, target, unlock=False):
+        if not Stage.is_stage_file(target):
+            raise NotDvcFileError(target)
+
+        stage = Stage.load(self, target)
+        stage.locked = False if unlock else True
+        stage.dump()
+
+        return stage
+
     def move(self, from_path, to_path):
         from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
 
@@ -431,6 +441,8 @@ class Project(object):
         for stage in stages:
             node = os.path.relpath(stage.path, self.root_dir)
             G.add_node(node, stage=stage)
+            if stage.locked:
+                continue
             for dep in stage.deps:
                 for out in outs:
                     if out.path != dep.path and not dep.path.startswith(out.path + out.sep):

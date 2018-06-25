@@ -22,6 +22,7 @@ from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, C
 from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd, CmdMetricsRemove
 from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
+from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -497,6 +498,27 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         help='Relative path to project\'s directory')
     root_parser.set_defaults(func=CmdRoot)
+
+    # Lock
+    lock_parser = subparsers.add_parser(
+                        'lock',
+                        parents=[parent_parser],
+                        help='Lock DVC file')
+    lock_parser.add_argument('targets',
+                        nargs='+',
+                        help='DVC files.')
+    lock_parser.set_defaults(func=CmdLock)
+
+    # Unlock
+    unlock_parser = subparsers.add_parser(
+                        'unlock',
+                        parents=[parent_parser],
+                        help='Unlock DVC file')
+    unlock_parser.add_argument('targets',
+                        nargs='+',
+                        help='DVC files.')
+    unlock_parser.set_defaults(func=CmdUnlock)
+
 
     args = parser.parse_args(argv)
 

@@ -14,7 +14,7 @@ from google.cloud import storage as gc
 
 from dvc.main import main
 from dvc.command.repro import CmdRepro
-from dvc.project import Project, ReproductionError
+from dvc.project import Project, ReproductionError, NotDvcFileError
 from dvc.utils import file_md5
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage
@@ -128,6 +128,37 @@ class TestReproChangedDeepData(TestReproChangedData):
         self.assertTrue(filecmp.cmp(self.file1, self.BAR))
         self.assertTrue(filecmp.cmp(file2, self.BAR))
         self.assertEqual(len(stages), 3)
+
+
+class TestReproLocked(TestReproChangedData):
+    def test(self):
+        file2 = 'file2'
+        file2_stage = file2 + '.dvc'
+        self.dvc.run(fname=file2_stage,
+                     outs=[file2],
+                     deps=[self.file1, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.file1, file2))
+
+        self.swap_foo_with_bar()
+
+        ret = main(['lock', file2_stage])
+        self.assertEqual(ret, 0)
+        stages = self.dvc.reproduce(file2_stage)
+        self.assertEqual(len(stages), 0)
+
+        ret = main(['unlock', file2_stage])
+        self.assertEqual(ret, 0)
+        stages = self.dvc.reproduce(file2_stage)
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertTrue(filecmp.cmp(file2, self.BAR))
+        self.assertEqual(len(stages), 3)
+
+    def test_non_existing(self):
+        with self.assertRaises(NotDvcFileError):
+            self.dvc.lock_stage('non-existing-stage')
+
+        ret = main(['lock', 'non-existing-stage'])
+        self.assertNotEqual(ret, 0)
 
 
 class TestReproPhony(TestReproChangedData):
