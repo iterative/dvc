@@ -3,8 +3,12 @@ import re
 import errno
 import getpass
 import filecmp
-import paramiko
 import posixpath
+
+try:
+    import paramiko
+except ImportError:
+    paramiko = None
 
 from dvc.logger import Logger
 from dvc.utils import copyfile, file_md5
@@ -41,6 +45,7 @@ class RemoteSSH(RemoteBase):
     #NOTE: temporarily only absolute paths are allowed
     REGEX = r'^ssh://((?P<user>.*)@)?(?P<host>[^/]*):(?P<path>/.*)$'
 
+    REQUIRES = RemoteBase.REQUIRES + [paramiko]
     PARAM_MD5 = 'md5'
 
     def __init__(self, project, config):

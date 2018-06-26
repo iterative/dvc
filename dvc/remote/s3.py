@@ -1,8 +1,12 @@
 import os
 import math
-import boto3
 import threading
 import posixpath
+
+try:
+    import boto3
+except ImportError:
+    boto3 = None
 
 try:
     from urlparse import urlparse
@@ -31,6 +35,7 @@ class Callback(object):
 class RemoteS3(RemoteBase):
     scheme = 's3'
     REGEX = r'^s3://(?P<path>.*)$'
+    REQUIRES = RemoteBase.REQUIRES + [boto3]
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):

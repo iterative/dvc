@@ -33,14 +33,16 @@ class DataCloudError(DvcException):
 
 class RemoteBase(object):
     REGEX = None
+    REQUIRES = []
 
     def __init__(self, project, config):
         pass
 
     @classmethod
-    def supported(cls, config):
+    def supported(cls, config, check_dependencies=False):
         url = config[Config.SECTION_REMOTE_URL]
-        return cls.match(url) != None
+        deps_ok = not check_dependencies or all(cls.REQUIRES)
+        return cls.match(url) != None and deps_ok
 
     @classmethod
     def match(cls, url):

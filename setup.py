@@ -5,6 +5,7 @@ from dvc import VERSION
 
 
 install_requires = [
+    "ply==3.8", # required by google-gax
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",
     "future>=0.16.0",
@@ -27,7 +28,6 @@ install_requires = [
 
 # Extra dependencies for remote integrations
 gs = [
-    "ply==3.8",
     "google-cloud==0.32.0",
 ]
 s3 = [
