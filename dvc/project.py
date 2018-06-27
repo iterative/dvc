@@ -295,7 +295,7 @@ class Project(object):
 
     def pull(self, target=None, jobs=1, remote=None, all_branches=False):
         self.fetch(target, jobs, remote=remote, all_branches=all_branches)
-        self.checkout()
+        self.checkout(target=target)
 
     def _local_status(self, target=None):
         status = {}
