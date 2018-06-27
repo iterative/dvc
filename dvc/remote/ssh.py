@@ -45,7 +45,7 @@ class RemoteSSH(RemoteBase):
     #NOTE: temporarily only absolute paths are allowed
     REGEX = r'^ssh://((?P<user>.*)@)?(?P<host>[^/]*):(?P<path>/.*)$'
 
-    REQUIRES = RemoteBase.REQUIRES + [paramiko]
+    REQUIRES = {'paramiko': paramiko}
     PARAM_MD5 = 'md5'
 
     def __init__(self, project, config):
