@@ -96,24 +96,22 @@ class RemoteBase(object):
 
         path, local = arg
         ret = [path]
+        md5 = self.project.cache.local.path_to_md5(path)
 
         if not RemoteLOCAL.is_dir_cache(path):
             return ret
 
-        if local:
-            if not os.path.isfile(path):
-                return ret
-            dir_path = path
-        else:
+        if not local and self.project.cache.local.changed(md5):
             path_info = self._get_path_info(path)
             if not path_info:
                 Logger.debug("File '{}' does not exist in the cloud".format(path))
                 return ret
-            tmp = os.path.join(tempfile.mkdtemp(), os.path.basename(path))
-            self.download(path_info, tmp, no_progress_bar=True)
-            dir_path = tmp
+            self.download(path_info, path, no_progress_bar=True)
 
-        for relpath, md5 in RemoteLOCAL.get_dir_cache(dir_path).items():
+        if self.project.cache.local.changed(md5):
+            return ret
+
+        for relpath, md5 in RemoteLOCAL.get_dir_cache(path).items():
             cache = self.project.cache.local.get(md5)
             ret.append(cache)
 
