@@ -144,7 +144,7 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cache):
         return cache.endswith(State.MD5_DIR_SUFFIX)
 
-    def checkout(self, path_info, checksum_info, dump=True):
+    def checkout(self, path_info, checksum_info):
         path = path_info['path']
         md5 = checksum_info.get(self.PARAM_MD5, None)
         cache = self.get(md5)
@@ -162,7 +162,7 @@ class RemoteLOCAL(RemoteBase):
             remove(path)
 
         if not self.is_dir_cache(cache):
-            self.link(cache, path, dump=dump)
+            self.link(cache, path, dump=True)
             return
 
         msg = u'Checking out directory \'{}\' with cache \'{}\''
@@ -176,7 +176,8 @@ class RemoteLOCAL(RemoteBase):
         dir_cache = self.dir_cache(cache)
         for relpath, c in dir_cache.items():
             p = os.path.join(path, relpath)
-            self.link(c, p, dump=dump)
+            self.link(c, p, dump=False)
+        self.link_state.dump()
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
@@ -185,7 +186,7 @@ class RemoteLOCAL(RemoteBase):
         move(inp, tmp)
         move(tmp, outp)
 
-    def _save_file(self, path_info, dump=True):
+    def _save_file(self, path_info):
         path = path_info['path']
         md5 = self.state.update(path)
         cache = self.get(md5)
@@ -194,7 +195,6 @@ class RemoteLOCAL(RemoteBase):
                                                            os.path.relpath(cache)))
             self._move(path, cache)
             self.state.update(cache)
-        self.checkout(path_info, {self.PARAM_MD5: md5}, dump=dump)
 
         return {self.PARAM_MD5: md5}
 
@@ -209,8 +209,7 @@ class RemoteLOCAL(RemoteBase):
             relpath = entry[State.PARAM_RELPATH]
             p = os.path.join(path, relpath)
 
-            self._save_file({'scheme': 'local', 'path': p}, dump=False)
-        self.link_state.dump()
+            self._save_file({'scheme': 'local', 'path': p})
 
         if not os.path.isdir(dname):
             os.makedirs(dname)
@@ -230,9 +229,13 @@ class RemoteLOCAL(RemoteBase):
         path = path_info['path']
 
         if os.path.isdir(path):
-            return self._save_dir(path_info)
+            checksum_info = self._save_dir(path_info)
         else:
-            return self._save_file(path_info)
+            checksum_info = self._save_file(path_info)
+
+        self.checkout(path_info, checksum_info)
+
+        return checksum_info
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'local':
