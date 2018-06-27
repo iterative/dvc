@@ -19,6 +19,15 @@ def supported_url(url):
     return supported(url)
 
 
+def supported_cache_type(types):
+    if isinstance(types, str):
+        types = [t.strip() for t in types.split(',')]
+    for t in types:
+        if t not in ['reflink', 'hardlink', 'symlink', 'copy']:
+            return False
+    return True
+
+
 class Config(object):
     CONFIG = 'config'
     CONFIG_LOCAL = 'config.local'
@@ -31,7 +40,7 @@ class Config(object):
     SECTION_CACHE = 'cache'
     SECTION_CACHE_DIR = 'dir'
     SECTION_CACHE_TYPE = 'type'
-    SECTION_CACHE_TYPE_SCHEMA = schema.And(schema.Use(str.lower), lambda t: t in ('reflink', 'hardlink', 'symlink', 'copy'))
+    SECTION_CACHE_TYPE_SCHEMA = supported_cache_type
     SECTION_CACHE_LOCAL = 'local'
     SECTION_CACHE_S3 = 's3'
     SECTION_CACHE_GS = 'gs'
