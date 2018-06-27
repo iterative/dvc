@@ -5,12 +5,10 @@ from dvc import VERSION
 
 
 install_requires = [
-    "boto3==1.7.4",
     "ply==3.8", # required by google-gax
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",
     "future>=0.16.0",
-    "google-cloud==0.32.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "networkx>=1.11",
@@ -22,12 +20,23 @@ install_requires = [
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
     "schema>=0.6.7",
-    "paramiko>=2.4.1",
     "binaryornot==0.4.4",
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
     "requests>=2.18.4",
 ]
+
+# Extra dependencies for remote integrations
+gs = [
+    "google-cloud==0.32.0",
+]
+s3 = [
+    "boto3==1.7.4",
+]
+ssh = [
+    "paramiko>=2.4.1",
+]
+all_remotes = gs + s3 + ssh
 
 setup(
     name='dvc',
@@ -39,6 +48,12 @@ setup(
     download_url='https://github.com/iterative/dvc',
     license='Apache License 2.0',
     install_requires=install_requires,
+    extras_require={
+        'all': all_remotes,
+        'gs': gs,
+        's3': s3,
+        'ssh': ssh,
+    },
     keywords='data science, data version control, machine learning',
     classifiers=[
         'Development Status :: 4 - Beta',

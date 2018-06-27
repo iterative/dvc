@@ -1,6 +1,10 @@
 import os
 import posixpath
-from google.cloud import storage
+
+try:
+    from google.cloud import storage
+except ImportError:
+    storage = None
 
 try:
     from urlparse import urlparse
@@ -16,6 +20,7 @@ from dvc.progress import progress
 class RemoteGS(RemoteBase):
     scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
+    REQUIRES = RemoteBase.REQUIRES + [storage]
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
