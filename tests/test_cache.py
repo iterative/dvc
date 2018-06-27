@@ -7,7 +7,7 @@ from dvc.system import System
 from dvc.main import main
 from dvc.remote.local import RemoteLOCAL
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvc, TestDir
 
 
 class TestCache(TestDvc):
@@ -59,11 +59,47 @@ class TestExternalCacheDir(TestDvc):
 
         shutil.rmtree('.dvc/cache')
 
-        main(['add', self.FOO])
+        ret = main(['add', self.FOO])
         self.assertEqual(ret, 0)
 
-        main(['add', self.DATA_DIR])
+        ret = main(['add', self.DATA_DIR])
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.path.exists('.dvc/cache'))
         self.assertNotEquals(len(os.listdir(cache_dir)), 0)
+
+
+class TestSharedCacheDir(TestDir):
+    def test(self):
+        cache_dir = os.path.abspath(os.path.join(os.curdir, 'cache'))
+        for d in ['dir1', 'dir2']:
+            os.mkdir(d)
+            os.chdir(d)
+
+            ret = main(['init', '--no-scm'])
+            self.assertEqual(ret, 0)
+
+            ret = main(['config', 'cache.dir', cache_dir])
+            self.assertEqual(ret, 0)
+
+            shutil.rmtree(os.path.join('.dvc', 'cache'))
+
+            with open('common', 'w+') as fd:
+                fd.write('common')
+
+            with open('unique', 'w+') as fd:
+                fd.write(d)
+
+            ret = main(['add', 'common', 'unique'])
+            self.assertEqual(ret, 0)
+
+            os.chdir('..')
+
+        self.assertFalse(os.path.exists(os.path.join('dir1', '.dvc', 'cache')))
+        self.assertFalse(os.path.exists(os.path.join('dir2', '.dvc', 'cache')))
+
+        subdirs = list(filter(lambda x: os.path.isdir(os.path.join(cache_dir, x)), os.listdir(cache_dir)))
+        self.assertEqual(len(subdirs), 3)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[0]))), 1)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[1]))), 1)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[2]))), 1)
