@@ -21,6 +21,6 @@ def supported_url(url):
 
 def Remote(project, config):
     for r in REMOTES:
-        if r.supported(config, check_dependencies=True):
+        if r.supported(config):
             return r(project, config)
     raise DvcException('Remote \'{}\' is not supported.'.format(config))
