@@ -20,7 +20,7 @@ from dvc.progress import progress
 class RemoteGS(RemoteBase):
     scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
-    REQUIRES = RemoteBase.REQUIRES + [storage]
+    REQUIRES = {'google.cloud.storage': storage}
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
