@@ -10,6 +10,7 @@ from dvc.state import State
 from dvc.logger import Logger
 from dvc.utils import remove, move, copyfile, file_md5
 from dvc.config import Config
+from dvc.exceptions import DvcException
 
 
 class RemoteLOCAL(RemoteBase):
@@ -30,7 +31,14 @@ class RemoteLOCAL(RemoteBase):
         self.link_state = project.link_state
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
-        self.cache_type = config.get(Config.SECTION_CACHE_TYPE, None)
+
+        types = config.get(Config.SECTION_CACHE_TYPE, None)
+        if types:
+            if isinstance(types, str):
+                types = [t.strip() for t in types.split(',')]
+            self.cache_types = types
+        else:
+            self.cache_types = self.CACHE_TYPES
 
         if self.cache_dir != None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
@@ -79,8 +87,8 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(dname):
             os.makedirs(dname)
 
-        if self.cache_type != None:
-            types = [self.cache_type]
+        if self.cache_types != None:
+            types = self.cache_types
         else:
             types = self.CACHE_TYPES
 
@@ -95,7 +103,6 @@ class RemoteLOCAL(RemoteBase):
                 msg = 'Cache type \'{}\' is not supported'.format(typ)
                 Logger.debug(msg)
                 if typ == types[-1]:
-                    raise
                     raise DvcException(msg, cause=exc)
 
     @staticmethod
