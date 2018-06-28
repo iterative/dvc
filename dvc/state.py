@@ -7,6 +7,8 @@ from dvc.lock import Lock
 from dvc.system import System
 from dvc.utils import file_md5, dict_md5, remove
 from dvc.exceptions import DvcException
+from dvc.signal_handler import SignalHandler
+from dvc.logger import Logger
 
 
 class StateEntry(object):
@@ -96,14 +98,19 @@ class State(object):
             return {}
 
         with open(self.state_file, 'r') as fd:
-            return json.load(fd)
+            try:
+                return json.load(fd)
+            except ValueError as exc:
+                Logger.error('Failed to load \'{}\''.format(self.state_file), exc)
+                return {}
 
     def dump(self):
         if not self.state_file:
             return
 
-        with open(self.state_file, 'w+') as fd:
-            json.dump(self._db, fd)
+        with SignalHandler():
+            with open(self.state_file, 'w+') as fd:
+                json.dump(self._db, fd)
 
     @staticmethod
     def mtime(path):
