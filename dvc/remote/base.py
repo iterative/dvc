@@ -99,13 +99,11 @@ class RemoteBase(object):
         return posixpath.join(self.prefix, relpath).strip('/')
 
     def collect(self, arg):
-        from dvc.remote.local import RemoteLOCAL
-
         path, local = arg
         ret = [path]
         md5 = self.project.cache.local.path_to_md5(path)
 
-        if not RemoteLOCAL.is_dir_cache(path):
+        if not self.project.cache.local.is_dir_cache(path):
             return ret
 
         if not local and self.project.cache.local.changed(md5):
@@ -118,7 +116,9 @@ class RemoteBase(object):
         if self.project.cache.local.changed(md5):
             return ret
 
-        for relpath, md5 in RemoteLOCAL.get_dir_cache(path).items():
+        for entry in self.project.cache.local.load_dir_cache(path):
+            md5 = entry[self.project.cache.local.PARAM_MD5]
+            relpath = entry[self.project.cache.local.PARAM_RELPATH]
             cache = self.project.cache.local.get(md5)
             ret.append(cache)
 

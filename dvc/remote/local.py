@@ -17,6 +17,7 @@ class RemoteLOCAL(RemoteBase):
     scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
     PARAM_MD5 = State.PARAM_MD5
+    PARAM_RELPATH = State.PARAM_RELPATH
 
     CACHE_TYPES = ['reflink', 'hardlink', 'symlink', 'copy']
     CACHE_TYPE_MAP = {
@@ -94,8 +95,6 @@ class RemoteLOCAL(RemoteBase):
 
         for typ in types:
             try:
-                msg = u'Checking out \'{}\' with cache \'{}\''
-                Logger.debug(msg.format(os.path.relpath(src), os.path.relpath(link)))
                 self.CACHE_TYPE_MAP[typ](src, link)
                 self.link_state.update(link, dump=dump)
                 return
@@ -107,45 +106,20 @@ class RemoteLOCAL(RemoteBase):
 
     @staticmethod
     def load_dir_cache(path):
-        if os.path.isabs(path):
-            relpath = os.path.relpath(path)
-        else:
-            relpath = path
-
         try:
             with open(path, 'r') as fd:
                 d = json.load(fd)
         except Exception as exc:
             msg = u'Failed to load dir cache \'{}\''
-            Logger.error(msg.format(relpath), exc)
+            Logger.error(msg.format(os.path.relpath(path)), exc)
             return []
 
         if not isinstance(d, list):
             msg = u'Dir cache file format error \'{}\': skipping the file'
-            Logger.error(msg.format(relpath))
+            Logger.error(msg.format(os.path.relpath(path)))
             return []
 
         return d
-
-    @classmethod
-    def get_dir_cache(cls, path):
-        res = {}
-
-        d = cls.load_dir_cache(path)
-
-        for entry in d:
-            res[entry[State.PARAM_RELPATH]] = entry[State.PARAM_MD5]
-
-        return res
-
-    def dir_cache(self, cache):
-        res = {}
-        dir_cache = self.get_dir_cache(cache)
-
-        for relpath, md5 in dir_cache.items():
-            res[relpath] = self.get(md5)
-
-        return res
 
     @staticmethod
     def is_dir_cache(cache):
@@ -168,20 +142,22 @@ class RemoteLOCAL(RemoteBase):
             Logger.debug(msg.format(os.path.relpath(path)))
             remove(path)
 
+        msg = u'Checking out \'{}\' with cache \'{}\''
+        Logger.debug(msg.format(os.path.relpath(path), os.path.relpath(cache)))
+
         if not self.is_dir_cache(cache):
             self.link(cache, path, dump=True)
             return
-
-        msg = u'Checking out directory \'{}\' with cache \'{}\''
-        Logger.debug(msg.format(os.path.relpath(path), os.path.relpath(cache)))
 
         # Create dir separately so that dir is created
         # even if there are no files in it
         if not os.path.exists(path):
             os.makedirs(path)
 
-        dir_cache = self.dir_cache(cache)
-        for relpath, c in dir_cache.items():
+        for entry in self.load_dir_cache(cache):
+            md5 = entry[self.PARAM_MD5]
+            relpath = entry[self.PARAM_RELPATH]
+            c = self.get(md5)
             p = os.path.join(path, relpath)
             self.link(c, p, dump=False)
         self.link_state.dump()
