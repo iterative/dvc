@@ -158,8 +158,8 @@ class RemoteLOCAL(RemoteBase):
 
         if not cache or not os.path.exists(cache) or self.changed(md5):
             if cache:
-                Logger.warn(u'\'{}({})\': cache file not found'.format(os.path.relpath(cache),
-                                                                       os.path.relpath(path)))
+                msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
+                Logger.warn(msg.format(md5, os.path.relpath(path)))
             remove(path)
             return
 
