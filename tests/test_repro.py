@@ -344,6 +344,8 @@ class TestReproExternalBase(TestDvc):
         stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)
 
+        self.dvc.gc()
+
 
 class TestReproExternalS3(TestReproExternalBase):
     def should_test(self):

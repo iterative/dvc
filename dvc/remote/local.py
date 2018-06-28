@@ -58,7 +58,7 @@ class RemoteLOCAL(RemoteBase):
 
             for cache in os.listdir(subdir):
                 path = os.path.join(subdir, cache)
-                clist.append(path)
+                clist.append(self.path_to_md5(path))
 
         return clist
 
@@ -317,3 +317,11 @@ class RemoteLOCAL(RemoteBase):
         os.rename(tmp_file, path)
 
         return path
+
+    def gc(self, checksum_infos):
+        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+
+        for md5 in self.all():
+            if md5 in used_md5s:
+                continue
+            remove(self.get(md5))

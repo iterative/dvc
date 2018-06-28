@@ -123,13 +123,19 @@ class RemoteSSH(RemoteBase):
         self._makedirs_remote(ret)
         return ret
 
+    def _exec(self, ssh, cmd):
+        stdin, stdout, stderr = ssh.exec_command(cmd)
+        if stdout.channel.recv_exit_status() != 0:
+            DvcException('SSH command \'{}\' failed: {}'.format(cmd, stderr.read()))
+        return stdout.read().decode('utf-8')
+
     def md5(self, path_info):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError
 
         ssh = self.ssh(host=path_info['host'], user=path_info['user'])
-        stdin, stdout, stderr = ssh.exec_command('md5sum {}'.format(path_info['path']))
-        md5 = re.match(r'^(?P<md5>.*)  .*$', stdout.read().decode('utf-8')).group('md5')
+        stdout = self._exec(ssh, 'md5sum {}'.format(path_info['path']))
+        md5 = re.match(r'^(?P<md5>.*)  .*$', stdout).group('md5')
         ssh.close()
 
         return md5
@@ -142,7 +148,11 @@ class RemoteSSH(RemoteBase):
         assert from_info['user'] == to_info['user']
 
         ssh = self.ssh(host=from_info['host'], user=from_info['user'])
-        ssh.exec_command('cp {} {}'.format(from_info['path'], to_info['path']))
+
+        dname = posixpath.dirname(to_info['path'])
+        self._exec(ssh, 'mkdir -p {}'.format(dname))
+        self._exec(ssh, 'cp {} {}'.format(from_info['path'], to_info['path']))
+
         ssh.close()
 
     def save_info(self, path_info):
@@ -179,6 +189,10 @@ class RemoteSSH(RemoteBase):
     def remove(self, path_info):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError
+
+        Logger.debug('Removing ssh://{}@{}/{}'.format(path_info['user'],
+                                                      path_info['host'],
+                                                      path_info['path']))
 
         ssh = self.ssh(host=path_info['host'], user=path_info['user'])
         ssh.open_sftp().remove(path_info['path'])
@@ -235,3 +249,27 @@ class RemoteSSH(RemoteBase):
         progress.finish_target(name)
 
         return path
+
+    def _path_to_md5(self, path):
+        relpath = posixpath.relpath(path, self.prefix)
+        return posixpath.dirname(relpath) + posixpath.basename(relpath)
+
+    def _all_md5s(self):
+        ssh = self.ssh(host=self.host, user=self.user)
+        stdout = self._exec(ssh, 'find {} -type f -follow -print'.format(self.prefix))
+        flist = stdout.split()
+        ssh.close()
+
+        return [self._path_to_md5(path) for path in flist]
+
+    def gc(self, checksum_infos):
+        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+
+        for md5 in self._all_md5s():
+            if md5 in used_md5s:
+                continue
+            path_info = {'scheme': 'ssh',
+                         'user': self.user,
+                         'host': self.host,
+                         'path': posixpath.join(self.prefix, md5[0:2], md5[2:])}
+            self.remove(path_info)
