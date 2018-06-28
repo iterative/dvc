@@ -16,7 +16,7 @@ class TestGC(TestDvc):
 
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
-        self.good_cache = self.dvc.cache.local.all()
+        self.good_cache = [self.dvc.cache.local.get(md5) for md5 in self.dvc.cache.local.all()]
 
         self.bad_cache = []
         for i in ['123', '234', '345']:

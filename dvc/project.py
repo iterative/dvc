@@ -253,45 +253,44 @@ class Project(object):
         for stage in stages:
             stage.checkout()
 
-    def _used_cache(self, target=None):
-        cache_set = set()
+    def _used_cache(self, target=None, all_branches=False):
+        cache = []
 
-        if target:
-            stages = [Stage.load(self, target)]
-        else:
-            stages = self.stages()
+        for branch in self.scm.brancher(all_branches=all_branches):
+            if target:
+                stages = [Stage.load(self, target)]
+            else:
+                stages = self.stages()
 
-        for stage in stages:
-            for out in stage.outs:
-                if out.path_info['scheme'] != 'local':
-                    continue
+            for stage in stages:
+                for out in stage.outs:
+                    if out.path_info['scheme'] != 'local':
+                        continue
 
-                if not out.use_cache or not out.cache:
-                    continue
+                    if not out.use_cache or not out.info:
+                        continue
 
-                cache_set |= set([out.cache])
-                if self.cache.local.is_dir_cache(out.cache) and os.path.isfile(out.cache):
-                    dir_cache = self.cache.local.dir_cache(out.cache)
-                    cache_set |= set(dir_cache.values())
+                    cache.append(out.info)
 
-        return list(cache_set)
+                    if self.cache.local.is_dir_cache(out.cache) and os.path.isfile(out.cache):
+                        dir_cache = self.cache.local.load_dir_cache(out.cache)
+                        cache += dir_cache
+
+        return cache
+
+    def _used_cache_files(self, target=None, all_branches=False):
+        infos = self._used_cache(target=target, all_branches=all_branches)
+        return [self.cache.local.get(info[self.cache.local.PARAM_MD5]) for info in infos]
 
     def gc(self, all_branches=False):
-        for branch in self.scm.brancher(all_branches=all_branches):
-            clist = self._used_cache()
-            for cache in self.cache.local.all():
-                if cache in clist:
-                    continue
-                os.unlink(cache)
-                self.logger.info(u'\'{}\' was removed'.format(self.to_dvc_path(cache)))
+        clist = self._used_cache(target=None, all_branches=all_branches)
+        self.cache.local.gc(clist)
 
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
-        for branch in self.scm.brancher(all_branches=all_branches):
-            self.cloud.push(self._used_cache(target), jobs, remote=remote)
+        self.cloud.push(self._used_cache_files(target, all_branches), jobs, remote=remote)
 
     def fetch(self, target=None, jobs=1, remote=None, all_branches=False):
-        for branch in self.scm.brancher(all_branches=all_branches):
-            self.cloud.pull(self._used_cache(target), jobs, remote=remote)
+        self.cloud.pull(self._used_cache_files(target, all_branches), jobs, remote=remote)
 
     def pull(self, target=None, jobs=1, remote=None, all_branches=False):
         self.fetch(target, jobs, remote=remote, all_branches=all_branches)
@@ -314,7 +313,7 @@ class Project(object):
         import dvc.remote.base as cloud
 
         status = {}
-        for target, ret in self.cloud.status(self._used_cache(target), jobs, remote=remote):
+        for target, ret in self.cloud.status(self._used_cache_files(target), jobs, remote=remote):
             if ret == cloud.STATUS_UNKNOWN or ret == cloud.STATUS_OK:
                 continue
 
