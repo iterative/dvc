@@ -1,6 +1,7 @@
 import os
 
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 
 
 class SCMError(DvcException):
@@ -131,7 +132,14 @@ class Git(Base):
             fd.writelines(filtered)
 
     def add(self, paths):
-        self.repo.index.add(paths)
+        # NOTE: GitPython is not currently able to handle index version >= 3.
+        # See https://github.com/iterative/dvc/issues/610 for more details.
+        try:
+            self.repo.index.add(paths)
+        except AssertionError as exc:
+            msg = 'Failed to add \'{}\' to git. You can add those files manually using \'git add\'. '
+            msg += 'See \'https://github.com/iterative/dvc/issues/610\' for more details.'
+            Logger.error(msg.format(str(paths)), exc)
 
     def commit(self, msg):
         self.repo.index.commit(msg)
