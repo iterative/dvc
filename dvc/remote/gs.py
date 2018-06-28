@@ -88,6 +88,9 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
+        Logger.debug("Removing gs://{}/{}".format(path_info['bucket'],
+                                                  path_info['key']))
+
         blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
         if not blob:
             return
@@ -166,3 +169,22 @@ class RemoteGS(RemoteBase):
             progress.finish_target(name)
 
         return path
+
+    def _path_to_etag(self, path):
+        relpath = posixpath.relpath(path, self.prefix)
+        return posixpath.dirname(relpath) + posixpath.basename(relpath)
+
+    def _all_etags(self):
+        blobs = list(self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix))
+        return [self._path_to_etag(blob.name) for blob in blobs]
+
+    def gc(self, checksum_infos):
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+
+        for etag in self._all_etags():
+            if etag in used_etags:
+                continue
+            path_info = {'scheme': 'gs',
+                         'bucket': self.bucket,
+                         'key': posixpath.join(self.prefix, etag[0:2], etag[2:])}
+            self.remove(path_info)

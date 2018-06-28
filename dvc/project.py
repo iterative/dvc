@@ -254,7 +254,12 @@ class Project(object):
             stage.checkout()
 
     def _used_cache(self, target=None, all_branches=False):
-        cache = []
+        cache = {}
+        cache['local'] = []
+        cache['s3'] = []
+        cache['gs'] = []
+        cache['hdfs'] = []
+        cache['ssh'] = []
 
         for branch in self.scm.brancher(all_branches=all_branches):
             if target:
@@ -264,27 +269,41 @@ class Project(object):
 
             for stage in stages:
                 for out in stage.outs:
-                    if out.path_info['scheme'] != 'local':
-                        continue
+                    scheme = out.path_info['scheme']
 
                     if not out.use_cache or not out.info:
                         continue
 
-                    cache.append(out.info)
+                    cache[scheme] += [out.info]
+
+                    if scheme != 'local':
+                        continue
 
                     if self.cache.local.is_dir_cache(out.cache) and os.path.isfile(out.cache):
                         dir_cache = self.cache.local.load_dir_cache(out.cache)
-                        cache += dir_cache
+                        cache[scheme] += dir_cache
 
         return cache
 
     def _used_cache_files(self, target=None, all_branches=False):
-        infos = self._used_cache(target=target, all_branches=all_branches)
+        infos = self._used_cache(target=target, all_branches=all_branches)['local']
         return [self.cache.local.get(info[self.cache.local.PARAM_MD5]) for info in infos]
 
     def gc(self, all_branches=False):
         clist = self._used_cache(target=None, all_branches=all_branches)
-        self.cache.local.gc(clist)
+        self.cache.local.gc(clist['local'])
+
+        if self.cache.s3:
+            self.cache.s3.gc(clist['s3'])
+
+        if self.cache.gs:
+            self.cache.gs.gc(clist['gs'])
+
+        if self.cache.ssh:
+            self.cache.ssh.gc(clist['ssh'])
+
+        if self.cache.hdfs:
+            self.cache.hdfs.gc(clist['hdfs'])
 
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
         self.cloud.push(self._used_cache_files(target, all_branches), jobs, remote=remote)

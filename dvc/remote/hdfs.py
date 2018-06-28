@@ -12,6 +12,7 @@ except ImportError:
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.exceptions import DvcException
+from dvc.logger import Logger
 
 
 class RemoteHDFS(RemoteBase):
@@ -103,6 +104,8 @@ class RemoteHDFS(RemoteBase):
 
         assert path_info.get('url')
 
+        Logger.debug('Removing {}'.format(path_info['url']))
+
         self.rm(path_info)
 
     def upload(self, path, path_info):
@@ -121,3 +124,28 @@ class RemoteHDFS(RemoteBase):
             os.makedirs(dname)
 
         self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path), user=path_info['user'])
+
+    def _path_to_checksum(self, path):
+        relpath = posixpath.relpath(path, self.url)
+        return posixpath.dirname(relpath) + posixpath.basename(relpath)
+
+    def _all_checksums(self):
+        stdout = self.hadoop_fs('ls -R {}'.format(self.url))
+        lines = stdout.split('\n')
+        flist = []
+        for line in lines:
+            if not line.startswith('-'):
+                continue
+            flist.append(line.split()[-1])
+        return [self._path_to_checksum(path) for path in flist]
+
+    def gc(self, checksum_infos):
+        used_checksums = [info[self.PARAM_CHECKSUM] for info in checksum_infos]
+
+        for checksum in self._all_checksums():
+            if checksum in used_checksums:
+                continue
+            path_info = {'scheme': 'hdfs',
+                         'user': self.user,
+                         'url': posixpath.join(self.url, checksum[0:2], checksum[2:])}
+            self.remove(path_info)

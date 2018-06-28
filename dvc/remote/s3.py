@@ -103,6 +103,9 @@ class RemoteS3(RemoteBase):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
+        Logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
+                                                  path_info['key']))
+
         try:
             obj = self.s3.Object(path_info['bucket'], path_info['key']).get()
             obj.delete()
@@ -183,3 +186,22 @@ class RemoteS3(RemoteBase):
             progress.finish_target(name)
 
         return fname
+
+    def _path_to_etag(self, path):
+        relpath = posixpath.relpath(path, self.prefix)
+        return posixpath.dirname(relpath) + posixpath.basename(relpath)
+
+    def _all(self):
+        objects = self.s3.Bucket(self.bucket).objects.filter(Prefix=self.prefix)
+        return [self._path_to_etag(obj.key) for obj in objects]
+
+    def gc(self, checksum_infos):
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+
+        for etag in self._all():
+            if etag in used_etags:
+                continue
+            path_info = {'scheme': 's3',
+                         'key': posixpath.join(self.prefix, etag[0:2], etag[2:]),
+                         'bucket': self.bucket}
+            self.remove(path_info)
