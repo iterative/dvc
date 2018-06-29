@@ -4,6 +4,7 @@ Helpers for other modules.
 import os
 import re
 import sys
+import math
 import json
 import stat
 import shutil
@@ -110,32 +111,6 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     fdest.close()
 
 
-def wrap(func, t):
-    try:
-        return func(t)
-    except Exception as exc:
-        Logger.error('Error', exc)
-        raise
-
-
-def map_progress(func, targets, n_threads):
-    """
-    Process targets in multi-threaded mode with progress bar
-    """
-    progress.set_n_total(len(targets))
-    pool = ThreadPool(processes=n_threads)
-    ret = []
-
-    wrapper = lambda t: wrap(func, t)
-
-    try:
-        ret = pool.map(wrapper, targets)
-    except Exception as exc:
-        raise
-
-    return list(zip(targets, ret))
-
-
 def move(src, dst):
     dname = os.path.dirname(dst)
     if not os.path.exists(dname):
@@ -153,3 +128,15 @@ def remove(path):
         os.unlink(path)
     else:
         shutil.rmtree(path)
+
+
+def to_chunks(l, jobs):
+    n = int(math.ceil(len(l) / jobs))
+
+    if len(l) == 1:
+        return [l]
+
+    if n == 0:
+        n = 1
+
+    return [l[x:x+n] for x in range(0, len(l), n)]

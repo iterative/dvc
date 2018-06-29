@@ -65,4 +65,4 @@ class DependencyBase(object):
         return {self.PARAM_PATH: self.path}
 
     def download(self, path):
-        self.remote.download(self.path_info, path)
+        self.remote.download([self.path_info], [path])

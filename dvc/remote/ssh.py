@@ -57,9 +57,11 @@ class RemoteSSH(RemoteBase):
             self.user = config.get(Config.SECTION_REMOTE_USER, getpass.getuser())
         self.prefix = self.group('path')
 
-    def cache_file_key(self, path):
-        relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
-        return posixpath.join(self.prefix, relpath.replace('\\', '/'))
+    def md5s_to_path_infos(self, md5s):
+        return [{'scheme': 'ssh',
+                 'host': self.host,
+                 'user': self.user,
+                 'path': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
     def ssh(self, host=None, user=None):
         Logger.debug("Establishing ssh connection with '{}' as user '{}'".format(host, user))
@@ -73,54 +75,21 @@ class RemoteSSH(RemoteBase):
 
         return ssh
 
-    def _isfile_remote(self, path_info):
+    def _exists(self, ssh, path_info):
         try:
-            ssh = self.ssh(path_info['host'], path_info['user'])
             ssh.open_sftp().open(path_info['path'], 'r')
-            ssh.close()
             return True
         except IOError as exc:
             if exc.errno != errno.ENOENT:
                 raise
         return False
 
-    def _get_path_info(self, path):
-        key = self.cache_file_key(path)
-        ret = {'scheme': 'ssh',
-               'host': self.host,
-               'user': self.user,
-               'path': key}
-        if self._isfile_remote(ret):
-            return ret
-        return None
-
-    def _do_makedirs_remote(self, sftp, dname):
-        try:
-            sftp.chdir(dname)
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
-
-            parent = posixpath.dirname(dname)
-            if len(parent):
-                self._do_makedirs_remote(sftp, parent)
-
-            sftp.mkdir(dname)
-
-    def _makedirs_remote(self, path_info):
-        dname = posixpath.dirname(path_info['path'])
-        ssh = self.ssh(path_info['host'], path_info['user'])
-        sftp = ssh.open_sftp()
-        self._do_makedirs_remote(sftp, dname)
+    def exists(self, path_infos):
+        ret = []
+        ssh = self.ssh(path_infos[0]['host'], path_infos[0]['user'])
+        for path_info in path_infos:
+            ret.append(self._exists(ssh, path_info))
         ssh.close()
-
-    def _new_path_info(self, path):
-        key = self.cache_file_key(path)
-        ret = {'scheme': 'ssh',
-               'host': self.host,
-               'user': self.user,
-               'path': key}
-        self._makedirs_remote(ret)
         return ret
 
     def _exec(self, ssh, cmd):
@@ -198,57 +167,88 @@ class RemoteSSH(RemoteBase):
         ssh.open_sftp().remove(path_info['path'])
         ssh.close()
 
-    def download(self, path_info, path, no_progress_bar=False, name=None):
-        if path_info['scheme'] != 'ssh':
-            raise NotImplementedError
+    def download(self, path_infos, paths, no_progress_bar=False, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
 
-        Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['host'],
-                                                          path_info['path'],
-                                                          path))
-        if not name:
-            name = os.path.basename(path)
+        ssh = self.ssh(host=path_infos[0]['host'], user=path_infos[0]['user'])
 
-        self._makedirs(path)
-        tmp_file = self.tmp_file(path)
-        try:
-            ssh = self.ssh(host=path_info['host'], user=path_info['user'])
-            ssh.open_sftp().get(path_info['path'], tmp_file, callback=create_cb(name))
-            ssh.close()
-        except Exception as exc:
-            Logger.error("Failed to download '{}/{}' to '{}'".format(path_info['host'],
-                                                                     path_info['path'],
-                                                                     path), exc)
-            return None
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'ssh':
+                raise NotImplementedError
 
-        os.rename(tmp_file, path)
-        progress.finish_target(name)
+            if os.path.exists(path) or not self._exists(ssh, path_info):
+                continue
 
-        return path
+            Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['host'],
+                                                              path_info['path'],
+                                                              path))
+            if not name:
+                name = os.path.basename(path)
 
-    def upload(self, path, path_info, name=None):
-        if path_info['scheme'] != 'ssh':
-            raise NotImplementedError
+            self._makedirs(path)
+            tmp_file = self.tmp_file(path)
+            try:
+                ssh.open_sftp().get(path_info['path'], tmp_file, callback=create_cb(name))
+            except Exception as exc:
+                Logger.error("Failed to download '{}/{}' to '{}'".format(path_info['host'],
+                                                                         path_info['path'],
+                                                                         path), exc)
+                continue
 
-        Logger.debug("Uploading '{}' to '{}/{}'".format(path,
-                                                        path_info['host'],
-                                                        path_info['path']))
+            os.rename(tmp_file, path)
+            progress.finish_target(name)
 
-        if not name:
-            name = os.path.basename(path)
+        ssh.close()
 
-        try:
-            ssh = self.ssh(host=path_info['host'], user=path_info['user'])
-            ssh.open_sftp().put(path, path_info['path'], callback=create_cb(name))
-            ssh.close()
-        except Exception as exc:
-            Logger.error("Failed to upload '{}' to '{}/{}'".format(path,
-                                                                   path_info['host'],
-                                                                   path_info['path']), exc)
-            return None
+    def upload(self, paths, path_infos, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
 
-        progress.finish_target(name)
+        ssh = self.ssh(host=path_infos[0]['host'], user=path_infos[0]['user'])
+        sftp = ssh.open_sftp()
 
-        return path
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'ssh':
+                raise NotImplementedError
+
+            if not os.path.exists(path) or self._exists(ssh, path_info):
+                continue
+
+            Logger.debug("Uploading '{}' to '{}/{}'".format(path,
+                                                            path_info['host'],
+                                                            path_info['path']))
+
+            if not name:
+                name = os.path.basename(path)
+
+            dname = posixpath.dirname(path_info['path'])
+            self._exec(ssh, 'mkdir -p {}'.format(dname))
+
+            try:
+                sftp.put(path, path_info['path'], callback=create_cb(name))
+            except Exception as exc:
+                Logger.error("Failed to upload '{}' to '{}/{}'".format(path,
+                                                                       path_info['host'],
+                                                                       path_info['path']), exc)
+                continue
+
+            progress.finish_target(name)
+
+        sftp.close()
+        ssh.close()
 
     def _path_to_md5(self, path):
         relpath = posixpath.relpath(path, self.prefix)

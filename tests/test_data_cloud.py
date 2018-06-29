@@ -10,7 +10,7 @@ import platform
 from dvc.main import main
 from dvc.config import Config, ConfigError
 from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL, RemoteSSH
-from dvc.remote.base import STATUS_UNKNOWN, STATUS_OK, STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
+from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
 
@@ -130,10 +130,6 @@ class TestDataCloudBase(TestDvc):
     def _get_url(self):
         return None
 
-    @property
-    def cloud_class(self):
-        return None
-
     def _setup_cloud(self):
         if not self._should_test():
             return
@@ -142,76 +138,72 @@ class TestDataCloudBase(TestDvc):
 
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        self.cloud = self._get_cloud_class()(self.dvc, config[TEST_SECTION])
+        self.cloud = DataCloud(self.dvc, config)
+
+        self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
 
     def _test_cloud(self):
         self._setup_cloud()
 
         stage = self.dvc.add(self.FOO)
         cache = stage.outs[0].cache
+        info = stage.outs[0].info
+        md5 = info['md5']
 
         stage_dir = self.dvc.add(self.DATA_DIR)
         cache_dir = stage_dir.outs[0].cache
+        info_dir = stage_dir.outs[0].info
+        md5_dir = info_dir['md5']
 
         # Check status
         sleep()
-        status = self.cloud.status(cache)
-        self.assertEqual(status, STATUS_NEW)
+        status = self.cloud.status([info])
+        self.assertEqual([(md5, STATUS_NEW)], status)
 
-        status_dir = self.cloud.status(cache_dir)
-        self.assertEqual(status_dir, STATUS_NEW)
+        status_dir = self.cloud.status([info_dir])
+        self.assertTrue((md5_dir, STATUS_NEW) in status_dir)
 
         # Push and check status
-        self.cloud.push(cache)
+        self.cloud.push([info])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
 
-        self.cloud.push(cache_dir)
+        self.cloud.push([info_dir])
         self.assertTrue(os.path.isfile(cache_dir))
 
         sleep()
-        status = self.cloud.status(cache)
-        self.assertEqual(status, STATUS_OK)
+        status = self.cloud.status([info])
+        self.assertEqual([(md5, STATUS_OK)], status)
 
-        status_dir = self.cloud.status(cache_dir)
-        self.assertEqual(status_dir, STATUS_OK)
-
-        # Modify and check status
-        sleep()
-        with open(cache, 'a') as fd:
-            fd.write('addon')
-        status = self.cloud.status(cache)
-        # NOTE: this is what corrupted cache looks like and it should
-        # be removed automatically, thus causing STATUS_DELETED instead
-        # of STATUS_MODIFIED.
-        self.assertEqual(status, STATUS_DELETED)
+        status_dir = self.cloud.status([info_dir])
+        self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
         # Remove and check status
         sleep()
         shutil.rmtree(self.dvc.cache.local.cache_dir)
 
-        status = self.cloud.status(cache)
-        self.assertEqual(status, STATUS_DELETED)
+        status = self.cloud.status([info])
+        self.assertEqual([(md5, STATUS_DELETED)], status)
 
-        status_dir = self.cloud.status(cache_dir)
-        self.assertEqual(status_dir, STATUS_DELETED)
+        status_dir = self.cloud.status([info_dir])
+        self.assertEqual([(md5_dir, STATUS_DELETED)], status_dir)
 
         # Pull and check status
-        self.cloud.pull(cache)
+        self.cloud.pull([info])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
-        self.cloud.pull(cache_dir)
+        self.cloud.pull([info_dir])
         self.assertTrue(os.path.isfile(cache_dir))
 
         sleep()
-        status = self.cloud.status(cache)
-        self.assertEqual(status, STATUS_OK)
+        status = self.cloud.status([info])
+        self.assertEqual([(md5, STATUS_OK)], status)
 
-        status_dir = self.cloud.status(cache_dir)
-        self.assertEqual(status_dir, STATUS_OK)
+        status_dir = self.cloud.status([info_dir])
+        self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
     def test(self):
         if self._should_test():
@@ -322,23 +314,21 @@ class TestDataCloudCLIBase(TestDvc):
     def _test(self):
         pass
 
-    def _test_compat(self):
-        pass
-
     def test(self):
         if self._should_test():
             self._test()
-            self._test_compat()
 
 
-class TestRemoteLOCALCLI(TestDataCloudCLIBase):
-    def _test_compat(self):
+class TestCompatRemoteLOCALCLI(TestDataCloudCLIBase):
+    def _test(self):
         storagepath = get_local_storagepath()
         self.main(['config', 'core.cloud', 'local'])
         self.main(['config', 'local.storagepath', storagepath])
 
         self._test_cloud()
 
+
+class TestRemoteLOCALCLI(TestDataCloudCLIBase):
     def _test(self):
         url = get_local_url()
 
@@ -351,10 +341,6 @@ class TestRemoteSSHCLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_ssh()
 
-    def _test_compat(self):
-        # We do not support ssh in legacy mode
-        pass
-
     def _test(self):
         url = get_ssh_url()
 
@@ -363,16 +349,21 @@ class TestRemoteSSHCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteS3CLI(TestDataCloudCLIBase):
+class TestCompatRemoteS3CLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_aws()
 
-    def _test_compat(self):
+    def _test(self):
         storagepath = get_aws_storagepath()
         self.main(['config', 'core.cloud', 'aws'])
         self.main(['config', 'aws.storagepath', storagepath])
 
         self._test_cloud()
+
+
+class TestRemoteS3CLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_aws()
 
     def _test(self):
         url = get_aws_url()
@@ -382,16 +373,21 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteGSCLI(TestDataCloudCLIBase):
+class TestCompatRemoteGSCLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_gcp()
 
-    def _test_compat(self):
+    def _test(self):
         storagepath = get_gcp_storagepath()
         self.main(['config', 'core.cloud', 'gcp'])
         self.main(['config', 'gcp.storagepath', storagepath])
 
         self._test_cloud()
+
+
+class TestRemoteGSCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_gcp()
 
     def _test(self):
         url = get_gcp_url()
@@ -408,7 +404,7 @@ class TestDataCloudErrorCLI(TestDvc):
 
     def test_error(self):
         f = 'non-existing-file'
-        self.main_fail(['status', f])
+        self.main_fail(['status', '-c', f])
         self.main_fail(['push', f])
         self.main_fail(['pull', f])
         self.main_fail(['fetch', f])

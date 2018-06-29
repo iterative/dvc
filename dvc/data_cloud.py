@@ -4,14 +4,12 @@ from multiprocessing.pool import ThreadPool
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.config import Config, ConfigError
-from dvc.utils import map_progress
 
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.base import RemoteBase
-from dvc.remote.base import STATUS_MODIFIED, STATUS_NEW, STATUS_DELETED
 
 
 class DataCloud(object):
@@ -83,17 +81,6 @@ class DataCloud(object):
         cloud = cloud_type(self.project, cloud_config)
         return cloud
 
-    def _collect(self, cloud, targets, jobs, local):
-        collected = set()
-        pool = ThreadPool(processes=jobs)
-        args = zip(targets, [local]*len(targets))
-        ret = pool.map(cloud.collect, args)
-
-        for r in ret:
-            collected |= set(r)
-
-        return collected
-
     def _get_cloud(self, remote):
         if remote:
             return self._init_remote(remote)
@@ -104,42 +91,20 @@ class DataCloud(object):
         raise ConfigError("No remote repository specified. Setup default repository " \
                           "with 'dvc config core.remote <name>' or use '-r <name>'.")
 
-    def _filter(self, func, status, targets, jobs, remote):
-        cloud = self._get_cloud(remote)
-
-        filtered = []
-        for t, s in self._status(cloud, targets, jobs):
-            if s == STATUS_MODIFIED or s == status:
-                filtered.append(t)
-
-        return map_progress(getattr(cloud, func), filtered, jobs)
-
     def push(self, targets, jobs=1, remote=None):
         """
         Push data items in a cloud-agnostic way.
         """
-        return self._filter('push', STATUS_NEW, targets, jobs, remote)
+        return self.project.cache.local.push(targets, jobs=jobs, remote=self._get_cloud(remote))
 
     def pull(self, targets, jobs=1, remote=None):
         """
         Pull data items in a cloud-agnostic way.
         """
-        return self._filter('pull', STATUS_DELETED, targets, jobs, remote)
-
-    def _collect_targets(self, cloud, targets, jobs=1):
-        collected = set()
-        collected |= self._collect(cloud, targets, jobs, True)
-        collected |= self._collect(cloud, targets, jobs, False)
-        return list(collected)
-
-    def _status(self, cloud, targets, jobs=1):
-        collected = self._collect_targets(cloud, targets, jobs)
-        return map_progress(cloud.status, collected, jobs)
+        return self.project.cache.local.pull(targets, jobs=jobs, remote=self._get_cloud(remote))
 
     def status(self, targets, jobs=1, remote=None):
         """
         Check status of data items in a cloud-agnostic way.
         """
-        cloud = self._get_cloud(remote)
-
-        return self._status(cloud, targets, jobs)
+        return self.project.cache.local.status(targets, jobs=jobs, remote=self._get_cloud(remote))

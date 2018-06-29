@@ -8,19 +8,17 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 
 
-STATUS_UNKNOWN = 0
 STATUS_OK = 1
-STATUS_MODIFIED = 2
 STATUS_NEW = 3
 STATUS_DELETED = 4
 
 
 STATUS_MAP = {
-    # (local_exists, remote_exists, cmp)
-    (True, True, True)  : STATUS_OK,
-    (True, True, False) : STATUS_MODIFIED,
-    (True, False, None) : STATUS_NEW,
-    (False, True, None) : STATUS_DELETED,
+    # (local_exists, remote_exists)
+    (True, True)  : STATUS_OK,
+    (False, False) : STATUS_OK,
+    (True, False) : STATUS_NEW,
+    (False, True) : STATUS_DELETED,
 }
 
 
@@ -74,12 +72,6 @@ class RemoteBase(object):
     def checkout(self, path_info, checksum_info):
         raise NotImplementedError
 
-    def _get_path_info(self, path):
-        raise NotImplementedError
-
-    def _new_path_info(self, path):
-        raise NotImplementedError
-
     def download(self, path_info, path, no_progress_bar=False, name=None):
         raise NotImplementedError
 
@@ -92,52 +84,6 @@ class RemoteBase(object):
     def move(self, path_info):
         raise NotImplementedError
 
-    def cache_file_key(self, fname):
-        """ Key of a file within the bucket """
-        relpath = os.path.relpath(fname, self.project.cache.local.cache_dir)
-        relpath = relpath.replace('\\', '/')
-        return posixpath.join(self.prefix, relpath).strip('/')
-
-    def collect(self, arg):
-        path, local = arg
-        ret = [path]
-        md5 = self.project.cache.local.path_to_md5(path)
-
-        if not self.project.cache.local.is_dir_cache(path):
-            return ret
-
-        if not local and self.project.cache.local.changed(md5):
-            path_info = self._get_path_info(path)
-            if not path_info:
-                Logger.debug("File '{}' does not exist in the cloud".format(path))
-                return ret
-            self.download(path_info, path, no_progress_bar=True)
-
-        if self.project.cache.local.changed(md5):
-            return ret
-
-        for entry in self.project.cache.local.load_dir_cache(path):
-            md5 = entry[self.project.cache.local.PARAM_MD5]
-            relpath = entry[self.project.cache.local.PARAM_RELPATH]
-            cache = self.project.cache.local.get(md5)
-            ret.append(cache)
-
-        return ret
-
-    def push(self, path):
-        path_info = self._get_path_info(path)
-        if path_info:
-            Logger.debug("File '{}' already uploaded to the cloud.".format(path))
-            return None
-
-        path_info = self._new_path_info(path)
-        md5 = self.project.cache.local.path_to_md5(path)
-
-        if self.project.cache.local.changed(md5):
-            return None
-
-        self.upload(path, path_info, name=md5)
-
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
         try:
@@ -146,32 +92,8 @@ class RemoteBase(object):
             if e.errno != os.errno.EEXIST:
                 raise
 
-    def pull(self, path):
-        """ Generic method for pulling data from the cloud """
-        path_info = self._get_path_info(path)
-        if not path_info:
-            Logger.error("File '{}' does not exist in the cloud".format(path))
-            return None
+    def md5s_to_path_infos(self, md5s):
+        raise NotImplementedError
 
-        md5 = self.project.cache.local.path_to_md5(path)
-
-        self.download(path_info, path, name=md5)
-
-        if self.project.cache.local.changed(md5):
-            return None
-
-    def status(self, path):
-        """
-        Generic method for checking data item status.
-        """
-        md5 = self.project.cache.local.path_to_md5(path)
-        path_info = self._get_path_info(path)
-        remote_exists = path_info != None
-        local_exists = os.path.exists(path) and not self.project.cache.local.changed(md5)
-
-        diff = None
-        if remote_exists and local_exists:
-            md5 = self.project.cache.local.path_to_md5(path)
-            diff = not self.project.cache.local.changed(md5)
-
-        return STATUS_MAP.get((local_exists, remote_exists, diff), STATUS_UNKNOWN)
+    def exists(self, path_infos):
+        raise NotImplementedError
