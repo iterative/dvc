@@ -65,23 +65,6 @@ def dict_md5(d):
     return bytes_md5(byts)
 
 
-def cached_property(func):
-    '''A decorator for caching properties in classes.'''
-    def get(self):
-        '''Try obtaining cache'''
-        try:
-            return self._property_cache[func]
-        except AttributeError:
-            self._property_cache = {}
-            ret = self._property_cache[func] = func(self)
-            return ret
-        except KeyError:
-            ret = self._property_cache[func] = func(self)
-            return ret
-
-    return property(get)
-
-
 def copyfile(src, dest, no_progress_bar=False, name=None):
     '''Copy file with progress bar'''
     copied = 0
