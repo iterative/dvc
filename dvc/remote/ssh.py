@@ -15,6 +15,7 @@ from dvc.utils import copyfile, file_md5
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
+from dvc.exceptions import DvcException
 
 
 def sizeof_fmt(num, suffix='B'):
