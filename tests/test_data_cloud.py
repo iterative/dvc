@@ -8,7 +8,7 @@ import tempfile
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL, RemoteSSH
+from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL, RemoteSSH, RemoteHDFS
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -63,6 +63,14 @@ def _should_test_ssh():
     return True
 
 
+def _should_test_hdfs():
+    if os.name == 'nt':
+        return False
+    if os.getenv('HADOOP_CONTAINER_IP'):
+        return True
+    return False
+
+
 def get_local_storagepath():
     return tempfile.mkdtemp()
 
@@ -73,6 +81,10 @@ def get_local_url():
 
 def get_ssh_url():
     return 'ssh://{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
+
+
+def get_hdfs_url():
+    return 'hdfs://root@{}{}'.format(os.getenv('HADOOP_CONTAINER_IP'), get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -261,6 +273,20 @@ class TestRemoteSSH(TestDataCloudBase):
         super(TestRemoteSSH, self).test()
 
 
+class TestRemoteHDFS(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_hdfs()
+
+    def _get_url(self):
+        return get_hdfs_url()
+
+    def _get_cloud_class(self):
+        return RemoteHDFS
+
+    def test(self):
+        super(TestRemoteHDFS, self).test()
+
+
 class TestDataCloudCLIBase(TestDvc):
     def main(self, args):
         ret = main(args)
@@ -342,6 +368,18 @@ class TestRemoteSSHCLI(TestDataCloudCLIBase):
 
     def _test(self):
         url = get_ssh_url()
+
+        self.main(['remote', 'add', TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestRemoteHDFSCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_hdfs()
+
+    def _test(self):
+        url = get_hdfs_url()
 
         self.main(['remote', 'add', TEST_REMOTE, url])
 

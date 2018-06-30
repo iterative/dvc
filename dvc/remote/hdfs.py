@@ -110,7 +110,30 @@ class RemoteHDFS(RemoteBase):
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'hdfs',
+                 'user': self.user,
                  'url': posixpath.join(self.url, md5[0:2], md5[2:])} for md5 in md5s]
+
+    def exists(self, path_infos):
+        try:
+            stdout = self.hadoop_fs('ls -R {}'.format(self.url))
+        except DvcException:
+            return len(path_infos) * [False]
+
+        lines = stdout.split('\n')
+        lurl = []
+        for line in lines:
+            if not line.startswith('-'):
+                continue
+            lurl.append(line.split()[-1])
+
+        ret = []
+        for path_info in path_infos:
+            exists = False
+            if path_info['url'] in lurl:
+                exists = True
+            ret.append(exists)
+
+        return ret
 
     def upload(self, paths, path_infos, names=None):
         assert isinstance(paths, list)

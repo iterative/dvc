@@ -8,6 +8,7 @@ from dvc.config import Config, ConfigError
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
 from dvc.remote.ssh import RemoteSSH
+from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.base import RemoteBase
 
@@ -19,6 +20,7 @@ class DataCloud(object):
         'aws'   : RemoteS3,
         'gcp'   : RemoteGS,
         'ssh'   : RemoteSSH,
+        'hdfs'  : RemoteHDFS,
         'local' : RemoteLOCAL,
     }
 
