@@ -61,13 +61,6 @@ class RemoteHDFS(RemoteBase):
     def rm(self, path_info):
         self.hadoop_fs('rm {}'.format(path_info['url']), user=path_info['user'])
 
-    def exists(self, path_info):
-        try:
-            self.hadoop_fs('test -e {}'.format(path_info['url']), user=path_info['user'])
-            return True
-        except DvcException:
-            return False
-
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
@@ -117,7 +110,30 @@ class RemoteHDFS(RemoteBase):
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'hdfs',
+                 'user': self.user,
                  'url': posixpath.join(self.url, md5[0:2], md5[2:])} for md5 in md5s]
+
+    def exists(self, path_infos):
+        try:
+            stdout = self.hadoop_fs('ls -R {}'.format(self.url))
+        except DvcException:
+            return len(path_infos) * [False]
+
+        lines = stdout.split('\n')
+        lurl = []
+        for line in lines:
+            if not line.startswith('-'):
+                continue
+            lurl.append(line.split()[-1])
+
+        ret = []
+        for path_info in path_infos:
+            exists = False
+            if path_info['url'] in lurl:
+                exists = True
+            ret.append(exists)
+
+        return ret
 
     def upload(self, paths, path_infos, names=None):
         assert isinstance(paths, list)
@@ -132,9 +148,6 @@ class RemoteHDFS(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'hdfs':
                 raise NotImplementedError
-
-            if not os.path.exists(path) or self.exists(path_info):
-                continue
 
             self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])), user=path_info['user'])
             self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
@@ -152,9 +165,6 @@ class RemoteHDFS(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'hdfs':
                 raise NotImplementedError
-
-            if os.path.exists(path) or not self.exists(path_info):
-                continue
 
             dname = os.path.dirname(path)
             if not os.path.exists(dname):

@@ -86,10 +86,17 @@ class RemoteSSH(RemoteBase):
 
     def exists(self, path_infos):
         ret = []
-        ssh = self.ssh(path_infos[0]['host'], path_infos[0]['user'])
-        for path_info in path_infos:
-            ret.append(self._exists(ssh, path_info))
+        ssh = self.ssh(host=self.host, user=self.user)
+        stdout = self._exec(ssh, 'find {} -type f -follow -print'.format(self.prefix))
+        plist = stdout.split()
         ssh.close()
+
+        for path_info in path_infos:
+            exists = False
+            if path_info['path'] in plist:
+                exists = True
+            ret.append(exists)
+
         return ret
 
     def _exec(self, ssh, cmd):
@@ -197,9 +204,6 @@ class RemoteSSH(RemoteBase):
             if path_info['scheme'] != 'ssh':
                 raise NotImplementedError
 
-            if os.path.exists(path) or not self._exists(ssh, path_info):
-                continue
-
             Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['host'],
                                                               path_info['path'],
                                                               path))
@@ -237,9 +241,6 @@ class RemoteSSH(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'ssh':
                 raise NotImplementedError
-
-            if not os.path.exists(path) or self._exists(ssh, path_info):
-                continue
 
             Logger.debug("Uploading '{}' to '{}/{}'".format(path,
                                                             path_info['host'],

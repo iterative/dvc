@@ -117,19 +117,35 @@ class RemoteS3(RemoteBase):
                  'bucket': self.bucket,
                  'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _exists(self, s3, path_info):
-        try:
-            s3.Object(path_info['bucket'], path_info['key']).get()
-            return True
-        except Exception:
-            return False
-
     def exists(self, path_infos):
         ret = []
         session = boto3.session.Session()
-        s3 = session.resource('s3')
+        s3 = session.client('s3')
+
+        keys = []
+        kwargs = {'Bucket': self.bucket,
+                  'Prefix': self.prefix}
+        while True:
+            resp = s3.list_objects_v2(**kwargs)
+            contents = resp.get('Contents', None)
+            if not contents:
+                break
+
+            for obj in contents:
+                keys.append(obj['Key'])
+
+            token = resp.get('NextContinuationToken', None)
+            if not token:
+                break
+
+            kwargs['ContinuationToken'] = token
+
         for path_info in path_infos:
-            ret.append(self._exists(s3, path_info))
+            exists = False
+            if path_info['key'] in keys:
+                exists = True
+            ret.append(exists)
+
         return ret
 
     def upload(self, paths, path_infos, names=None):
@@ -143,14 +159,11 @@ class RemoteS3(RemoteBase):
             assert len(names) == len(paths)
 
         session = boto3.session.Session()
-        s3 = session.resource('s3')
+        s3 = session.client('s3')
 
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 's3':
                 raise NotImplementedError
-
-            if not os.path.exists(path) or self._exists(s3, path_info):
-                continue
 
             Logger.debug("Uploading '{}' to '{}/{}'".format(path,
                                                             path_info['bucket'],
@@ -163,7 +176,7 @@ class RemoteS3(RemoteBase):
             cb = Callback(name, total)
 
             try:
-                s3.Object(path_info['bucket'], path_info['key']).upload_file(path, Callback=cb)
+                s3.upload_file(path, path_info['bucket'], path_info['key'], Callback=cb)
             except Exception as exc:
                 Logger.error("Failed to upload '{}'".format(path), exc)
                 continue
@@ -181,14 +194,11 @@ class RemoteS3(RemoteBase):
             assert len(names) == len(fnames)
 
         session = boto3.session.Session()
-        s3 = session.resource('s3')
+        s3 = session.client('s3')
 
         for fname, path_info, name in zip(fnames, path_infos, names):
             if path_info['scheme'] != 's3':
                 raise NotImplementedError
-
-            if os.path.exists(fname) or not self._exists(s3, path_info):
-                continue
 
             Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
                                                               path_info['key'],
@@ -201,14 +211,14 @@ class RemoteS3(RemoteBase):
             if no_progress_bar:
                 cb = None
             else:
-                total = s3.Object(bucket_name=path_info['bucket'],
-                                  key=path_info['key']).content_length
+                total = s3.head_object(Bucket=path_info['bucket'],
+                                       Key=path_info['key'])['ContentLength']
                 cb = Callback(name, total)
 
             self._makedirs(fname)
 
             try:
-                s3.Object(path_info['bucket'], path_info['key']).download_file(tmp_file, Callback=cb)
+                s3.download_file(path_info['bucket'], path_info['key'], tmp_file, Callback=cb)
             except Exception as exc:
                 Logger.error("Failed to download '{}/{}'".format(path_info['bucket'],
                                                                  path_info['key']), exc)
