@@ -102,14 +102,17 @@ class RemoteGS(RemoteBase):
                  'bucket': self.bucket,
                  'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _exists(self, gs, path_info):
-        return gs.bucket(path_info['bucket']).get_blob(path_info['key']) != None
-
     def exists(self, path_infos):
         ret = []
         gs = self.gs
+
+        keys = [blob.name for blob in gs.bucket(self.bucket).list_blobs(prefix=self.prefix)]
+
         for path_info in path_infos:
-            ret.append(self._exists(gs, path_info))
+            exists = False
+            if path_info['key'] in keys:
+                exists = True
+            ret.append(exists)
         return ret
 
     def upload(self, paths, path_infos, names=None):
@@ -127,9 +130,6 @@ class RemoteGS(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'gs':
                 raise NotImplementedError
-
-            if not os.path.exists(path) or self._exists(gs, path_info):
-                continue
 
             Logger.debug("Uploading '{}' to '{}/{}'".format(path,
                                                             path_info['bucket'],
@@ -165,9 +165,6 @@ class RemoteGS(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'gs':
                 raise NotImplementedError
-
-            if os.path.exists(path) or not self._exists(gs, path_info):
-                continue
 
             Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
                                                               path_info['key'],

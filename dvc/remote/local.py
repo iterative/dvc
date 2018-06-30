@@ -267,9 +267,6 @@ class RemoteLOCAL(RemoteBase):
             if path_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            if not os.path.exists(path) or os.path.exists(path_info['path']):
-                continue
-
             Logger.debug("Uploading '{}' to '{}'".format(path, path_info['path']))
 
             if not name:
@@ -295,9 +292,6 @@ class RemoteLOCAL(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'local':
                 raise NotImplementedError
-
-            if os.path.exists(path) or not os.path.exists(path_info['path']):
-                continue
 
             Logger.debug("Downloading '{}' to '{}'".format(path_info['path'], path))
 
@@ -339,28 +333,18 @@ class RemoteLOCAL(RemoteBase):
     def status(self, checksum_infos, remote, jobs=1):
         checksum_infos = self._collect(checksum_infos)[0]
         md5s = [info[self.PARAM_MD5] for info in checksum_infos]
-        chunks = to_chunks(md5s, jobs)
+        path_infos = remote.md5s_to_path_infos(md5s)
+        remote_exists = remote.exists(path_infos)
+        local_exists = [not self.changed(md5) for md5 in md5s]
 
-        def worker(chunk):
-            local_exists = [os.path.exists(self.get(md5)) for md5 in chunk]
-            path_infos = remote.md5s_to_path_infos(chunk)
-            remote_exists = remote.exists(path_infos)
-            return [(md5, STATUS_MAP[(l,r)]) for md5, l,r in zip(chunk, local_exists, remote_exists)]
-
-        futures = []
-        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for chunk in chunks:
-                resp = executor.submit(worker, chunk)
-                futures.append(resp)
-
-        status = []
-        for future in futures:
-            status.extend(future.result())
-
-        return status
+        return [(md5, STATUS_MAP[l,r]) for md5, l, r in zip(md5s, local_exists, remote_exists)]
 
     def _do_pull(self, checksum_infos, remote, jobs=1, no_progress_bar=False):
         md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+
+        # NOTE: filter files that are not corrupted
+        md5s = list(filter(lambda md5: self.changed(md5), md5s))
+
         cache = [self.get(md5) for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 
@@ -393,8 +377,15 @@ class RemoteLOCAL(RemoteBase):
 
     def push(self, checksum_infos, remote, jobs=1):
         md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos)[0]]
+
         # NOTE: verifying that our cache is not corrupted
         md5s = list(filter(lambda md5: not self.changed(md5), md5s))
+
+        # NOTE: filter files that are already uploaded
+        path_infos = remote.md5s_to_path_infos(md5s)
+        md5s_exist = filter(lambda x: not x[1], list(zip(md5s, remote.exists(path_infos))))
+        md5s = [md5 for md5, exists in md5s_exist]
+
         cache = [self.get(md5) for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 

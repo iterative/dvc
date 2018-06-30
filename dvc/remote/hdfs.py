@@ -61,13 +61,6 @@ class RemoteHDFS(RemoteBase):
     def rm(self, path_info):
         self.hadoop_fs('rm {}'.format(path_info['url']), user=path_info['user'])
 
-    def exists(self, path_info):
-        try:
-            self.hadoop_fs('test -e {}'.format(path_info['url']), user=path_info['user'])
-            return True
-        except DvcException:
-            return False
-
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
@@ -133,9 +126,6 @@ class RemoteHDFS(RemoteBase):
             if path_info['scheme'] != 'hdfs':
                 raise NotImplementedError
 
-            if not os.path.exists(path) or self.exists(path_info):
-                continue
-
             self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])), user=path_info['user'])
             self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
 
@@ -152,9 +142,6 @@ class RemoteHDFS(RemoteBase):
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'hdfs':
                 raise NotImplementedError
-
-            if os.path.exists(path) or not self.exists(path_info):
-                continue
 
             dname = os.path.dirname(path)
             if not os.path.exists(dname):
