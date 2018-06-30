@@ -380,7 +380,7 @@ class TestReproExternalGS(TestReproExternalBase):
         return TEST_GCP_REPO_BUCKET
 
     def cmd(self, i, o):
-        return 'gsutil cp {} {}'.format(i, o)
+        return 'GOOGLE_APPLICATION_CREDENTIALS={} gsutil cp {} {}'.format(os.getenv(GOOGLE_APPLICATION_CREDENTIALS,''), i, o)
 
     def write(self, bucket, key, body):
         client = gc.Client()
