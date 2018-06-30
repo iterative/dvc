@@ -5,7 +5,6 @@ import uuid
 import shutil
 import getpass
 import tempfile
-import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
@@ -55,8 +54,8 @@ def _should_test_ssh():
     if os.getenv("DVC_TEST_SSH") == "true":
         return True
 
-    #FIXME: enable on windows and osx
-    if platform.system() != 'Linux':
+    #FIXME: enable on windows
+    if os.name == 'nt':
         return False
 
     assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
