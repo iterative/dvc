@@ -1,5 +1,4 @@
 import os
-import re
 import errno
 import getpass
 import filecmp
@@ -104,9 +103,23 @@ class RemoteSSH(RemoteBase):
             raise NotImplementedError
 
         ssh = self.ssh(host=path_info['host'], user=path_info['user'])
-        stdout = self._exec(ssh, 'md5sum {}'.format(path_info['path']))
-        md5 = re.match(r'^(?P<md5>.*)  .*$', stdout).group('md5')
+
+        # Use different md5 commands depending on os
+        stdout = self._exec(ssh, 'uname').strip()
+        if stdout == 'Darwin':
+            md5cmd = 'md5'
+            index = -1
+        elif stdout == 'Linux':
+            md5cmd = 'md5sum'
+            index = 0
+        else:
+            raise DvcException('\'{}\' is not supported as a remote'.format(stdout))
+
+        stdout = self._exec(ssh, '{} {}'.format(md5cmd, path_info['path']))
+        md5 = stdout.split()[index]
         ssh.close()
+
+        assert len(md5) == 32
 
         return md5
 
