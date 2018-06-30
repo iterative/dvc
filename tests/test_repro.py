@@ -369,9 +369,6 @@ class TestReproExternalS3(TestReproExternalBase):
 
 class TestReproExternalGS(TestReproExternalBase):
     def should_test(self):
-        #FIXME enable
-        if os.getenv('CI'):
-            return False
         return _should_test_gcp()
 
     @property
