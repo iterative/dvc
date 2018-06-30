@@ -5,12 +5,14 @@ import shutil
 import filecmp
 
 from dvc.system import System
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBase, STATUS_MAP
 from dvc.state import State
 from dvc.logger import Logger
-from dvc.utils import remove, move, copyfile, file_md5
+from dvc.utils import remove, move, copyfile, file_md5, to_chunks
 from dvc.config import Config
 from dvc.exceptions import DvcException
+from dvc.progress import progress
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 
 class RemoteLOCAL(RemoteBase):
@@ -83,8 +85,15 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, src, link, dump=True):
-        dname = os.path.dirname(link)
+    def link(self, md5, path, dump=True):
+        cache = self.get(md5)
+        if not cache or not os.path.exists(cache) or self.changed(md5):
+            if cache:
+                msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
+                Logger.warn(msg.format(md5, os.path.relpath(path)))
+            return
+
+        dname = os.path.dirname(path)
         if not os.path.exists(dname):
             os.makedirs(dname)
 
@@ -95,8 +104,8 @@ class RemoteLOCAL(RemoteBase):
 
         for typ in types:
             try:
-                self.CACHE_TYPE_MAP[typ](src, link)
-                self.link_state.update(link, dump=dump)
+                self.CACHE_TYPE_MAP[typ](cache, path)
+                self.link_state.update(path, dump=dump)
                 return
             except Exception as exc:
                 msg = 'Cache type \'{}\' is not supported'.format(typ)
@@ -130,11 +139,8 @@ class RemoteLOCAL(RemoteBase):
         md5 = checksum_info.get(self.PARAM_MD5, None)
         cache = self.get(md5)
 
-        if not cache or not os.path.exists(cache) or self.changed(md5):
-            if cache:
-                msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
-                Logger.warn(msg.format(md5, os.path.relpath(path)))
-            remove(path)
+        if not cache:
+            Logger.warn('No cache info for \'{}\'. Skipping checkout.'.format(os.path.relpath(path)))
             return
 
         if os.path.exists(path):
@@ -143,10 +149,10 @@ class RemoteLOCAL(RemoteBase):
             remove(path)
 
         msg = u'Checking out \'{}\' with cache \'{}\''
-        Logger.debug(msg.format(os.path.relpath(path), os.path.relpath(cache)))
+        Logger.debug(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-            self.link(cache, path, dump=True)
+            self.link(md5, path, dump=True)
             return
 
         # Create dir separately so that dir is created
@@ -157,9 +163,8 @@ class RemoteLOCAL(RemoteBase):
         for entry in self.load_dir_cache(cache):
             md5 = entry[self.PARAM_MD5]
             relpath = entry[self.PARAM_RELPATH]
-            c = self.get(md5)
             p = os.path.join(path, relpath)
-            self.link(c, p, dump=False)
+            self.link(md5, p, dump=False)
         self.link_state.dump()
 
     def _move(self, inp, outp):
@@ -238,66 +243,172 @@ class RemoteLOCAL(RemoteBase):
 
         move(from_info['path'], to_info['path'])
 
-    def cache_file_key(self, path):
-        relpath = os.path.relpath(os.path.abspath(path), self.project.cache.local.cache_dir)
-        return os.path.join(self.prefix, relpath)
+    def md5s_to_path_infos(self, md5s):
+        return [{'scheme': 'local',
+                 'path': os.path.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _get_path_info(self, path):
-        key = self.cache_file_key(path)
-        if not os.path.exists(key) or not os.path.isfile(key):
-            return None
-        return {'scheme': 'local',
-                'path': key}
+    def exists(self, path_infos):
+        ret = []
+        for path_info in path_infos:
+            ret.append(os.path.exists(path_info['path']))
+        return ret
 
-    def _new_path_info(self, path):
-        key = self.cache_file_key(path)
-        return {'scheme': 'local',
-                'path': key}
+    def upload(self, paths, path_infos, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
 
-    def upload(self, path, path_info, name=None):
-        if path_info['scheme'] != 'local':
-            raise NotImplementedError
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'local':
+                raise NotImplementedError
 
-        Logger.debug("Uploading '{}' to '{}'".format(path, path_info['path']))
+            if not os.path.exists(path) or os.path.exists(path_info['path']):
+                continue
 
-        if not name:
-            name = os.path.basename(path)
+            Logger.debug("Uploading '{}' to '{}'".format(path, path_info['path']))
 
-        self._makedirs(path_info['path'])
+            if not name:
+                name = os.path.basename(path)
 
-        try:
-            copyfile(path, path_info['path'], name=name)
-        except Exception as exc:
-            Logger.error("Failed to upload '{}' tp '{}'".format(path, path_info['path']))
-            return None
+            self._makedirs(path_info['path'])
 
-        return path
+            try:
+                copyfile(path, path_info['path'], name=name)
+            except Exception as exc:
+                Logger.error("Failed to upload '{}' tp '{}'".format(path, path_info['path']))
 
-    def download(self, path_info, path, no_progress_bar=False, name=None):
-        if path_info['scheme'] != 'local':
-            raise NotImplementedError
+    def download(self, path_infos, paths, no_progress_bar=False, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
 
-        Logger.debug("Downloading '{}' to '{}'".format(path_info['path'], path))
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'local':
+                raise NotImplementedError
 
-        if not name:
-            name = os.path.basename(path)
+            if os.path.exists(path) or not os.path.exists(path_info['path']):
+                continue
 
-        self._makedirs(path)
-        tmp_file = self.tmp_file(path)
-        try:
-            copyfile(path_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
-        except Exception as exc:
-            Logger.error("Failed to download '{}' to '{}'".format(path_info['path'], path), exc)
-            return None
+            Logger.debug("Downloading '{}' to '{}'".format(path_info['path'], path))
 
-        os.rename(tmp_file, path)
+            if not name:
+                name = os.path.basename(path)
 
-        return path
+            self._makedirs(path)
+            tmp_file = self.tmp_file(path)
+            try:
+                copyfile(path_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
+            except Exception as exc:
+                Logger.error("Failed to download '{}' to '{}'".format(path_info['path'], path), exc)
+                return
+
+            os.rename(tmp_file, path)
+
+    def _collect(self, checksum_infos):
+        missing = []
+        collected = []
+        for info in checksum_infos:
+            md5 = info[self.PARAM_MD5]
+            cache = self.get(md5)
+            if not self.is_dir_cache(info[self.PARAM_MD5]):
+                continue
+            if not os.path.exists(cache):
+                missing.append(info)
+            collected.extend(self.load_dir_cache(cache))
+        collected.extend(checksum_infos)
+        return collected, missing
 
     def gc(self, checksum_infos):
-        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+        used_md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos)[0]]
 
         for md5 in self.all():
             if md5 in used_md5s:
                 continue
             remove(self.get(md5))
+
+    def status(self, checksum_infos, remote, jobs=1):
+        checksum_infos = self._collect(checksum_infos)[0]
+        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+        chunks = to_chunks(md5s, jobs)
+
+        def worker(chunk):
+            local_exists = [os.path.exists(self.get(md5)) for md5 in chunk]
+            path_infos = remote.md5s_to_path_infos(chunk)
+            remote_exists = remote.exists(path_infos)
+            return [(md5, STATUS_MAP[(l,r)]) for md5, l,r in zip(chunk, local_exists, remote_exists)]
+
+        futures = []
+        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+            for chunk in chunks:
+                resp = executor.submit(worker, chunk)
+                futures.append(resp)
+
+        status = []
+        for future in futures:
+            status.extend(future.result())
+
+        return status
+
+    def _do_pull(self, checksum_infos, remote, jobs=1, no_progress_bar=False):
+        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+        cache = [self.get(md5) for md5 in md5s]
+        path_infos = remote.md5s_to_path_infos(md5s)
+
+        assert len(path_infos) == len(cache) == len(md5s)
+
+        chunks = list(zip(to_chunks(path_infos, jobs),
+                          to_chunks(cache, jobs),
+                          to_chunks(md5s, jobs)))
+
+        progress.set_n_total(len(md5s))
+
+        if len(chunks) == 0:
+            return
+
+        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+            for path_infos, paths, md5s in chunks:
+                executor.submit(remote.download, path_infos,
+                                                 paths,
+                                                 names=md5s,
+                                                 no_progress_bar=no_progress_bar)
+
+    def pull(self, checksum_infos, remote, jobs=1):
+        # NOTE: try fetching missing dir info
+        checksum_infos, missing = self._collect(checksum_infos)
+        if len(missing) > 0:
+            self._do_pull(missing, remote, jobs, no_progress_bar=True)
+            checksum_infos += self._collect(missing)[0]
+
+        self._do_pull(checksum_infos, remote, jobs)
+
+    def push(self, checksum_infos, remote, jobs=1):
+        md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos)[0]]
+        # NOTE: verifying that our cache is not corrupted
+        md5s = list(filter(lambda md5: not self.changed(md5), md5s))
+        cache = [self.get(md5) for md5 in md5s]
+        path_infos = remote.md5s_to_path_infos(md5s)
+
+        assert len(path_infos) == len(cache) == len(md5s)
+
+        chunks = list(zip(to_chunks(path_infos, jobs),
+                          to_chunks(cache, jobs),
+                          to_chunks(md5s, jobs)))
+
+        progress.set_n_total(len(md5s))
+
+        if len(chunks) == 0:
+            return
+
+        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
+            for path_infos, paths, md5s in chunks:
+                executor.submit(remote.upload, paths, path_infos, names=md5s)

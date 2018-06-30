@@ -112,80 +112,112 @@ class RemoteS3(RemoteBase):
         except Exception:
             pass
 
-    def _get_path_info(self, path):
-        key = self.cache_file_key(path)
+    def md5s_to_path_infos(self, md5s):
+        return [{'scheme': self.scheme,
+                 'bucket': self.bucket,
+                 'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
+
+    def _exists(self, s3, path_info):
         try:
-            self.s3.Object(self.bucket, key).get()
-            return {'scheme': self.scheme,
-                    'bucket': self.bucket,
-                    'key': key}
+            s3.Object(path_info['bucket'], path_info['key']).get()
+            return True
         except Exception:
-            return None
+            return False
 
-    def _new_path_info(self, path):
-        key = self.cache_file_key(path)
-        return {'scheme': self.scheme,
-                'bucket': self.bucket,
-                'key': key}
+    def exists(self, path_infos):
+        ret = []
+        session = boto3.session.Session()
+        s3 = session.resource('s3')
+        for path_info in path_infos:
+            ret.append(self._exists(s3, path_info))
+        return ret
 
-    def upload(self, path, path_info, name=None):
-        if path_info['scheme'] != 's3':
-            raise NotImplementedError
-
-        Logger.debug("Uploading '{}' to '{}/{}'".format(path,
-                                                        path_info['bucket'],
-                                                        path_info['key']))
-
-        if not name:
-            name = os.path.basename(path)
-
-        total = os.path.getsize(path)
-        cb = Callback(name, total)
-
-        try:
-            self.s3.Object(path_info['bucket'], path_info['key']).upload_file(path, Callback=cb)
-        except Exception as exc:
-            Logger.error("Failed to upload '{}'".format(path), exc)
-            return None
-
-        progress.finish_target(name)
-
-        return path
-
-    def download(self, path_info, fname, no_progress_bar=False, name=None):
-        if path_info['scheme'] != 's3':
-            raise NotImplementedError
-
-        Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
-                                                          path_info['key'],
-                                                          fname))
-
-        tmp_file = self.tmp_file(fname)
-        if not name:
-            name = os.path.basename(fname)
-
-        if no_progress_bar:
-            cb = None
+    def upload(self, paths, path_infos, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
         else:
-            total = self.s3.Object(bucket_name=path_info['bucket'],
-                                   key=path_info['key']).content_length
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
+
+        session = boto3.session.Session()
+        s3 = session.resource('s3')
+
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 's3':
+                raise NotImplementedError
+
+            if not os.path.exists(path) or self._exists(s3, path_info):
+                continue
+
+            Logger.debug("Uploading '{}' to '{}/{}'".format(path,
+                                                            path_info['bucket'],
+                                                            path_info['key']))
+
+            if not name:
+                name = os.path.basename(path)
+
+            total = os.path.getsize(path)
             cb = Callback(name, total)
 
-        self._makedirs(fname)
+            try:
+                s3.Object(path_info['bucket'], path_info['key']).upload_file(path, Callback=cb)
+            except Exception as exc:
+                Logger.error("Failed to upload '{}'".format(path), exc)
+                continue
 
-        try:
-            self.s3.Object(path_info['bucket'], path_info['key']).download_file(tmp_file, Callback=cb)
-        except Exception as exc:
-            Logger.error("Failed to download '{}/{}'".format(path_info['bucket'],
-                                                             path_info['key']), exc)
-            return None
-
-        os.rename(tmp_file, fname)
-
-        if not no_progress_bar:
             progress.finish_target(name)
 
-        return fname
+    def download(self, path_infos, fnames, no_progress_bar=False, names=None):
+        assert isinstance(fnames, list)
+        assert isinstance(path_infos, list)
+        assert len(fnames) == len(path_infos)
+        if not names:
+            names = len(fnames) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(fnames)
+
+        session = boto3.session.Session()
+        s3 = session.resource('s3')
+
+        for fname, path_info, name in zip(fnames, path_infos, names):
+            if path_info['scheme'] != 's3':
+                raise NotImplementedError
+
+            if os.path.exists(fname) or not self._exists(s3, path_info):
+                continue
+
+            Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
+                                                              path_info['key'],
+                                                              fname))
+
+            tmp_file = self.tmp_file(fname)
+            if not name:
+                name = os.path.basename(fname)
+
+            if no_progress_bar:
+                cb = None
+            else:
+                total = s3.Object(bucket_name=path_info['bucket'],
+                                  key=path_info['key']).content_length
+                cb = Callback(name, total)
+
+            self._makedirs(fname)
+
+            try:
+                s3.Object(path_info['bucket'], path_info['key']).download_file(tmp_file, Callback=cb)
+            except Exception as exc:
+                Logger.error("Failed to download '{}/{}'".format(path_info['bucket'],
+                                                                 path_info['key']), exc)
+                return
+
+            os.rename(tmp_file, fname)
+
+            if not no_progress_bar:
+                progress.finish_target(name)
 
     def _path_to_etag(self, path):
         relpath = posixpath.relpath(path, self.prefix)

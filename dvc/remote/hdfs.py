@@ -61,6 +61,13 @@ class RemoteHDFS(RemoteBase):
     def rm(self, path_info):
         self.hadoop_fs('rm {}'.format(path_info['url']), user=path_info['user'])
 
+    def exists(self, path_info):
+        try:
+            self.hadoop_fs('test -e {}'.format(path_info['url']), user=path_info['user'])
+            return True
+        except DvcException:
+            return False
+
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
@@ -108,22 +115,52 @@ class RemoteHDFS(RemoteBase):
 
         self.rm(path_info)
 
-    def upload(self, path, path_info):
-        if path_info['scheme'] != 'hdfs':
-            raise NotImplementedError
+    def md5s_to_path_infos(self, md5s):
+        return [{'scheme': 'hdfs',
+                 'url': posixpath.join(self.url, md5[0:2], md5[2:])} for md5 in md5s]
 
-        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])), user=path_info['user'])
-        self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
+    def upload(self, paths, path_infos, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
 
-    def download(self, path_info, path):
-        if path_info['scheme'] != 'hdfs':
-            raise NotImplementedError
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'hdfs':
+                raise NotImplementedError
 
-        dname = os.path.dirname(path)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
+            if not os.path.exists(path) or self.exists(path_info):
+                continue
 
-        self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path), user=path_info['user'])
+            self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(path_info['url'])), user=path_info['user'])
+            self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
+
+    def download(self, path_infos, paths, no_progress_bar=False, names=None):
+        assert isinstance(paths, list)
+        assert isinstance(path_infos, list)
+        assert len(paths) == len(path_infos)
+        if not names:
+            names = len(paths) * [None]
+        else:
+            assert isinstance(names, list)
+            assert len(names) == len(paths)
+
+        for path, path_info, name in zip(paths, path_infos, names):
+            if path_info['scheme'] != 'hdfs':
+                raise NotImplementedError
+
+            if os.path.exists(path) or not self.exists(path_info):
+                continue
+
+            dname = os.path.dirname(path)
+            if not os.path.exists(dname):
+                os.makedirs(dname)
+
+            self.hadoop_fs('copyToLocal {} {}'.format(path_info['url'], path), user=path_info['user'])
 
     def _path_to_checksum(self, path):
         relpath = posixpath.relpath(path, self.url)
