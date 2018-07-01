@@ -5,10 +5,13 @@ from dvc.main import main
 from tests.basic_env import TestDvc
 
 
-class TestInit(TestDvc):
+class TestInstall(TestDvc):
     def test(self):
         ret = main(['install'])
         self.assertEqual(ret, 0)
+
+        ret = main(['install'])
+        self.assertNotEqual(ret, 0)
 
         self.assertTrue(os.path.isfile('.git/hooks/post-checkout'))
 

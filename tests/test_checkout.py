@@ -37,8 +37,12 @@ class TestCheckout(TestRepro):
 
 class TestCheckoutSingleStage(TestCheckout):
     def test(self):
-        self.dvc.checkout(self.foo_stage.path)
-        self.dvc.checkout(self.data_dir_stage.path)
+        ret = main(['checkout', self.foo_stage.path])
+        self.assertEqual(ret, 0)
+
+        ret = main(['checkout', self.data_dir_stage.path])
+        self.assertEqual(ret, 0)
+
         self._test_checkout()
 
 
