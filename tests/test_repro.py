@@ -398,14 +398,14 @@ class TestReproExternalHDFS(TestReproExternalBase):
 
     @property
     def bucket(self):
-        return 'root@' + os.getenv('HADOOP_CONTAINER_IP')
+        return getpass.getuser() + '@' + os.getenv('HADOOP_CONTAINER_IP')
 
     def cmd(self, i, o):
-        return 'HADOOP_USER_NAME=root hadoop fs -cp {} {}'.format(i, o)
+        return 'hadoop fs -cp {} {}'.format(i, o)
 
     def write(self, bucket, key, body):
         url = self.scheme + '://' + bucket + '/' + key
-        p = Popen('HADOOP_USER_NAME=root hadoop fs -rm -f {}'.format(url),
+        p = Popen('hadoop fs -rm -f {}'.format(url),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
@@ -413,7 +413,7 @@ class TestReproExternalHDFS(TestReproExternalBase):
                   stderr=PIPE)
         p.communicate()
 
-        p = Popen('HADOOP_USER_NAME=root hadoop fs -mkdir -p {}'.format(posixpath.dirname(url)),
+        p = Popen('hadoop fs -mkdir -p {}'.format(posixpath.dirname(url)),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
@@ -428,7 +428,7 @@ class TestReproExternalHDFS(TestReproExternalBase):
         with open('tmp', 'w+') as fd:
             fd.write(body)
 
-        p = Popen('HADOOP_USER_NAME=root hadoop fs -copyFromLocal {} {}'.format('tmp', url),
+        p = Popen('hadoop fs -copyFromLocal {} {}'.format('tmp', url),
                   shell=True,
                   executable=os.getenv('SHELL'),
                   stdin=PIPE,
