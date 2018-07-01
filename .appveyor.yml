@@ -47,6 +47,7 @@ install:
   - cinst wget
   - cinst awscli
   - cinst gcloudsdk
+  - refreshenv
   - cinst gsutil
   - cinst openssl.light
   - python -m pip install -U pip setuptools wheel
