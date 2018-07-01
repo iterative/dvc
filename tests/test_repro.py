@@ -346,6 +346,9 @@ class TestReproExternalBase(TestDvc):
 
         self.dvc.gc()
 
+        self.dvc.remove(cmd_stage.path, outs_only=True)
+        self.dvc.checkout(cmd_stage.path)
+
 
 class TestReproExternalS3(TestReproExternalBase):
     def should_test(self):
