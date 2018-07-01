@@ -86,7 +86,7 @@ def get_ssh_url():
 
 
 def get_hdfs_url():
-    return 'hdfs://root@{}{}'.format(os.getenv('HADOOP_CONTAINER_IP'), get_local_storagepath())
+    return 'hdfs://{}@{}{}'.format(getpass.getuser(), os.getenv('HADOOP_CONTAINER_IP'), get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -295,7 +295,7 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertEqual(ret, 0)
 
     def _test_cloud(self, remote=None):
-        args = ['-j', '2']
+        args = ['-v', '-j', '2']
         if remote:
             args += ['-r', remote]
         else:
