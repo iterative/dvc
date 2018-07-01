@@ -304,7 +304,7 @@ class RemoteLOCAL(RemoteBase):
                 copyfile(path_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
             except Exception as exc:
                 Logger.error("Failed to download '{}' to '{}'".format(path_info['path'], path), exc)
-                return
+                continue
 
             os.rename(tmp_file, path)
 
