@@ -30,6 +30,10 @@ class OutputLOCAL(DependencyLOCAL):
     def cache(self):
         return self.project.cache.local.get(self.md5)
 
+    @property
+    def is_local(self):
+        return self.path.startswith(self.project.root_dir)
+
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
@@ -69,7 +73,7 @@ class OutputLOCAL(DependencyLOCAL):
             self.project.logger.debug(msg.format(self.rel_path))
             return
 
-        if self.path.startswith(self.project.root_dir):
+        if self.is_local:
             if self.project.scm.is_tracked(self.path):
                 raise OutputAlreadyTrackedError(self.rel_path)
 
@@ -80,11 +84,11 @@ class OutputLOCAL(DependencyLOCAL):
 
     def remove(self, ignore_remove=False):
         self.remote.remove(self.path_info)
-        if ignore_remove and self.use_cache:
+        if ignore_remove and self.use_cache and self.is_local:
             self.project.scm.ignore_remove(self.path)
 
     def move(self, out):
-        if self.use_cache:
+        if self.use_cache and self.is_local:
             self.project.scm.ignore_remove(self.path)
 
         self.remote.move(self.path_info, out.path_info)
@@ -92,5 +96,5 @@ class OutputLOCAL(DependencyLOCAL):
         self.path_info = out.path_info
         self.save()
 
-        if self.use_cache:
+        if self.use_cache and self.is_local:
             self.project.scm.ignore(self.path)
