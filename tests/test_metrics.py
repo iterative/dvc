@@ -57,6 +57,25 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret['baz']['metric_htsv'] == ['baz'])
 
 
+class TestMetricsReproCLI(TestDvc):
+    def test(self):
+
+        stage = self.dvc.run(outs_no_cache=['metrics'],
+                             cmd='python {} {} {}'.format(self.CODE, self.FOO, 'metrics'))
+
+        ret = main(['metrics', 'add', 'metrics'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['repro', '-m', stage.path])
+        self.assertEqual(ret, 0)
+
+        ret = main(['metrics', 'remove', 'metrics'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['repro', '-f', '-m', stage.path])
+        self.assertEqual(ret, 0)
+
+
 class TestMetricsCLI(TestMetrics):
     def test(self):
         #FIXME check output
