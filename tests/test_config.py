@@ -18,6 +18,10 @@ class TestConfigCLI(TestDvc):
 
         return True
 
+    def test_root(self):
+        ret = main(['root'])
+        self.assertEqual(ret, 0)
+
     def test(self):
         section = 'setsection'
         field = 'setfield'
