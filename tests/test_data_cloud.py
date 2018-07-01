@@ -45,6 +45,8 @@ def _should_test_gcp():
         if os.path.exists(creds):
             os.unlink(creds)
         shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
+        ret = os.system('gcloud auth activate-service-account --key-file={}'.format(creds))
+        assert ret == 0
         return True
 
     return False
