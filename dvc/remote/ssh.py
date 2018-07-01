@@ -75,15 +75,6 @@ class RemoteSSH(RemoteBase):
 
         return ssh
 
-    def _exists(self, ssh, path_info):
-        try:
-            ssh.open_sftp().open(path_info['path'], 'r')
-            return True
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
-        return False
-
     def exists(self, path_infos):
         ret = []
         ssh = self.ssh(host=self.host, user=self.user)
