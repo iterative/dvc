@@ -9,7 +9,7 @@ class TestDvcUpdater(TestDvc):
     def test(self):
         # NOTE: need to temporarily unset CI env to allow updater to work
         env = os.environ.copy()
-        os.environ['CI'] = 'False'
+        del os.environ['CI']
 
         self.dvc.updater.check()
         self.dvc.updater.check()
