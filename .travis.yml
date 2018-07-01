@@ -52,21 +52,22 @@ before_install:
   - which python
   - which pip
   - python --version
-  - bash ./scripts/ci/install_hadoop.sh
-  - source ~/.bashrc
-  - hadoop fs -help
-  - pushd ~
-  - sudo mkdir -p /home/hadoop/hadoopinfra/hdfs/namenode/
-  - sudo chmod 777 /home/hadoop/hadoopinfra/hdfs/namenode/
-  - sudo chmod 777 -R /usr/local/hadoop
-  - hdfs namenode -format
-  - start-dfs.sh
-  - jps
-  - hadoop fs -ls /
-  - hadoop fs -ls hdfs://127.0.0.1/
-  - hadoop fs -mkdir hdfs://127.0.0.1/ololo
-  - popd
-  - export HADOOP_CONTAINER_IP=127.0.0.1
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
+      bash ./scripts/ci/install_hadoop.sh;
+      source ~/.bashrc;
+      hadoop fs -help;
+      pushd ~;
+      sudo mkdir -p /home/hadoop/hadoopinfra/hdfs/namenode/;
+      sudo chmod 777 /home/hadoop/hadoopinfra/hdfs/namenode/;
+      sudo chmod 777 -R /usr/local/hadoop;
+      hdfs namenode -format;
+      start-dfs.sh;
+      jps;
+      hadoop fs -ls /;
+      hadoop fs -ls hdfs://127.0.0.1/;
+      hadoop fs -mkdir hdfs://127.0.0.1/ololo;
+      popd;
+    fi
 install:
   - bash ./scripts/ci/install.sh
 script:

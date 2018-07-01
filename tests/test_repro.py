@@ -398,7 +398,7 @@ class TestReproExternalHDFS(TestReproExternalBase):
 
     @property
     def bucket(self):
-        return getpass.getuser() + '@' + os.getenv('HADOOP_CONTAINER_IP')
+        return '{}@127.0.0.1'.format(getpass.getuser())
 
     def cmd(self, i, o):
         return 'hadoop fs -cp {} {}'.format(i, o)

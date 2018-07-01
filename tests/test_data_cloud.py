@@ -5,6 +5,7 @@ import uuid
 import shutil
 import getpass
 import tempfile
+import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
@@ -66,11 +67,7 @@ def _should_test_ssh():
 
 
 def _should_test_hdfs():
-    if os.name == 'nt':
-        return False
-    if os.getenv('HADOOP_CONTAINER_IP'):
-        return True
-    return False
+    return platform.system() == 'Linux'
 
 
 def get_local_storagepath():
@@ -86,7 +83,7 @@ def get_ssh_url():
 
 
 def get_hdfs_url():
-    return 'hdfs://{}@{}{}'.format(getpass.getuser(), os.getenv('HADOOP_CONTAINER_IP'), get_local_storagepath())
+    return 'hdfs://{}@127.0.0.1{}'.format(getpass.getuser(), get_local_storagepath())
 
 
 def get_aws_storagepath():
