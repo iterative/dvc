@@ -23,6 +23,7 @@ from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.test_data_cloud import sleep
 
 
 class TestRepro(TestDvc):
@@ -54,6 +55,8 @@ class TestReproDepUnderDir(TestDvc):
 
         os.unlink(self.DATA)
         shutil.copyfile(self.FOO, self.DATA)
+
+        sleep()
 
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 2)
@@ -335,6 +338,8 @@ class TestReproExternalBase(TestDvc):
                              cmd=self.cmd(foo_path, bar_path))
 
         self.write(self.bucket, foo_key, self.BAR_CONTENTS)
+
+        sleep()
 
         stages = self.dvc.reproduce(import_stage.path)
         self.assertEqual(len(stages), 1)
