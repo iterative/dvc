@@ -31,6 +31,7 @@ class RemoteLOCAL(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
+        self.state = self.project.state
         self.link_state = project.link_state
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
@@ -45,8 +46,6 @@ class RemoteLOCAL(RemoteBase):
 
         if self.cache_dir != None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
-
-        self.state = State(self.cache_dir)
 
     @property
     def prefix(self):

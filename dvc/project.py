@@ -10,7 +10,7 @@ from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
 from dvc.config import Config
-from dvc.state import LinkState
+from dvc.state import LinkState, State
 from dvc.lock import Lock
 from dvc.scm import SCM, Base
 from dvc.cache import Cache
@@ -50,6 +50,9 @@ class Project(object):
         self.config = Config(self.dvc_dir)
         self.scm = SCM(self.root_dir)
         self.lock = Lock(self.dvc_dir)
+        # NOTE: storing state and link_state in the repository itself to avoid
+        # any possible state corruption in 'shared cache dir' scenario.
+        self.state = State(self.dvc_dir)
         self.link_state = LinkState(self.root_dir, self.dvc_dir)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cache = Cache(self)
