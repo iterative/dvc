@@ -63,7 +63,7 @@ class State(object):
     def init(dvc_dir):
         return State(dvc_dir)
 
-    def collect_dir(self, dname):
+    def _collect_dir(self, dname):
         dir_info = []
 
         for root, dirs, files in os.walk(dname):
@@ -74,16 +74,15 @@ class State(object):
                 md5 = self.update(path, dump=False)
                 dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
 
-        self.dump()
+        md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
 
-        return dir_info
+        return (md5, dir_info)
 
-    def compute_md5(self, path):
+    def _collect(self, path):
         if os.path.isdir(path):
-            dir_info = self.collect_dir(path)
-            return dict_md5(dir_info) + self.MD5_DIR_SUFFIX
+            return collect_dir
         else:
-            return file_md5(path)[0]
+            return (file_md5(path)[0], None)
 
     def changed(self, path, md5):
         actual = self.update(path)
@@ -120,19 +119,19 @@ class State(object):
     def inode(path):
         return str(System.inode(path))
 
-    def update(self, path, dump=True):
+    def _do_update(self, path, dump=True):
         if not os.path.exists(path):
             return None
 
         mtime = self.mtime(path)
         inode = self.inode(path)
 
-        md5 = self._get(inode, mtime)
-        if md5:
-            return md5
+        entry = self._get(inode, mtime)
+        if entry:
+            return entry
 
-        md5 = self.compute_md5(path)
-        state = StateEntry(md5, mtime)
+        md5, info = self._collect(path)
+        state = StateEntry(md5, mtime, info)
         d = state.dumpd()
 
         with self._lock:
@@ -142,7 +141,13 @@ class State(object):
                 if dump:
                     self.dump()
 
-        return md5
+        return (md5, info)
+
+    def update(self, path, dump=True):
+        return self._do_update(self, path, dump=True)[0]
+
+    def update_info(self, path, dump=True):
+        return self._do_update(self, path, dump=True)
 
     def _get(self, inode, mtime):
         with self._lock:
@@ -154,7 +159,7 @@ class State(object):
 
         state = StateEntry.loadd(d)
         if mtime == state.mtime:
-            return state.md5
+            return (state.md5, state.info)
 
         return None
 

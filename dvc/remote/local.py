@@ -187,10 +187,9 @@ class RemoteLOCAL(RemoteBase):
 
     def _save_dir(self, path_info):
         path = path_info['path']
-        md5 = self.state.update(path)
+        md5, dir_info = self.state.update_info(path)
         cache = self.get(md5)
         dname = os.path.dirname(cache)
-        dir_info = self.state.collect_dir(path)
 
         for entry in dir_info:
             relpath = entry[State.PARAM_RELPATH]
