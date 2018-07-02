@@ -44,6 +44,8 @@ class TestReproDepUnderDir(TestDvc):
     def test(self):
         self.dir_stage = self.dvc.add(self.DATA_DIR)
 
+        sleep()
+        
         self.file1 = 'file1'
         self.file1_stage = self.file1 + '.dvc'
         self.dvc.run(fname=self.file1_stage,
@@ -328,6 +330,8 @@ class TestReproExternalBase(TestDvc):
         out_bar_path = bar_path
 
         self.write(self.bucket, foo_key, self.FOO_CONTENTS)
+
+        sleep()
 
         import_stage = self.dvc.imp(out_foo_path, 'import')
         self.assertTrue(os.path.exists('import'))
