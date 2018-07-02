@@ -241,14 +241,24 @@ class Project(object):
                 raise ReproductionError(stages[n].relpath, ex)
         return result
 
+    def _cleanup_unused_links(self, all_stages):
+        used = []
+        for stage in all_stages:
+            for out in stage.outs:
+                used.append(out.path)
+        self.link_state.remove_unused(used)
+
     def checkout(self, target=None):
+        all_stages = self.stages()
+
         if target:
             if not Stage.is_stage_file(target):
                 raise NotDvcFileError(target)
             stages = [Stage.load(self, target)]
         else:
-            self.link_state.remove_all()
-            stages = self.stages()
+            stages = all_stages
+
+        self._cleanup_unused_links(all_stages)
 
         for stage in stages:
             stage.checkout()

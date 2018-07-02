@@ -209,10 +209,14 @@ class LinkState(State):
                 with self._lock_file:
                     self.dump()
 
-    def _do_remove_all(self):
-        for p, s in self._db.items():
+    def _do_remove_unused(self, used):
+        items = self._db.copy().items()
+        for p, s in items:
             path = os.path.join(self.root_dir, p)
             state = LinkStateEntry.loadd(s)
+
+            if path in used:
+                continue
 
             if not os.path.exists(path):
                 continue
@@ -221,12 +225,12 @@ class LinkState(State):
             mtime = self.mtime(path)
 
             if inode == state.inode and mtime == state.mtime:
+                Logger.debug('Removing \'{}\' as unused link.'.format(path))
                 remove(path)
+                del self._db[p]
 
-        self._db = {}
-
-    def remove_all(self):
+    def remove_unused(self, used):
         with self._lock:
             with self._lock_file:
-                self._do_remove_all()
+                self._do_remove_unused(used)
                 self.dump()

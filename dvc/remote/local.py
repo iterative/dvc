@@ -85,7 +85,7 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, md5, path, dump=True):
+    def link(self, md5, path):
         cache = self.get(md5)
         if not cache or not os.path.exists(cache) or self.changed(md5):
             if cache:
@@ -105,7 +105,6 @@ class RemoteLOCAL(RemoteBase):
         for typ in types:
             try:
                 self.CACHE_TYPE_MAP[typ](cache, path)
-                self.link_state.update(path, dump=dump)
                 return
             except Exception as exc:
                 msg = 'Cache type \'{}\' is not supported'.format(typ)
@@ -152,7 +151,8 @@ class RemoteLOCAL(RemoteBase):
         Logger.debug(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-            self.link(md5, path, dump=True)
+            self.link(md5, path)
+            self.link_state.update(path)
             return
 
         # Create dir separately so that dir is created
@@ -164,8 +164,8 @@ class RemoteLOCAL(RemoteBase):
             md5 = entry[self.PARAM_MD5]
             relpath = entry[self.PARAM_RELPATH]
             p = os.path.join(path, relpath)
-            self.link(md5, p, dump=False)
-        self.link_state.dump()
+            self.link(md5, p)
+        self.link_state.update(path)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
