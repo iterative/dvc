@@ -31,6 +31,7 @@ class RemoteLOCAL(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
+        self.state = self.project.state
         self.link_state = project.link_state
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
@@ -45,8 +46,6 @@ class RemoteLOCAL(RemoteBase):
 
         if self.cache_dir != None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
-
-        self.state = State(self.cache_dir)
 
     @property
     def prefix(self):
@@ -85,36 +84,32 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, md5, path, dump=True):
-        cache = self.get(md5)
-        if not cache or not os.path.exists(cache) or self.changed(md5):
-            if cache:
-                msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
-                Logger.warn(msg.format(md5, os.path.relpath(path)))
-            return
+    def link(self, cache, path):
+        assert os.path.isfile(cache)
 
         dname = os.path.dirname(path)
         if not os.path.exists(dname):
             os.makedirs(dname)
 
-        if self.cache_types != None:
-            types = self.cache_types
-        else:
-            types = self.CACHE_TYPES
-
-        for typ in types:
+        i = 0
+        N = len(self.cache_types)
+        while i < N:
             try:
-                self.CACHE_TYPE_MAP[typ](cache, path)
-                self.link_state.update(path, dump=dump)
+                self.CACHE_TYPE_MAP[self.cache_types[i]](cache, path)
                 return
             except Exception as exc:
-                msg = 'Cache type \'{}\' is not supported'.format(typ)
+                msg = 'Cache type \'{}\' is not supported'.format(self.cache_types[i])
                 Logger.debug(msg)
-                if typ == types[-1]:
-                    raise DvcException(msg, cause=exc)
+                del self.cache_types[i]
+                i += 1
 
-    @staticmethod
-    def load_dir_cache(path):
+        raise DvcException('No possible cache types left to try out.')
+
+    def load_dir_cache(self, md5):
+        path = self.get(md5)
+
+        assert self.is_dir_cache(path)
+
         try:
             with open(path, 'r') as fd:
                 d = json.load(fd)
@@ -130,6 +125,23 @@ class RemoteLOCAL(RemoteBase):
 
         return d
 
+    def dump_dir_cache(self, md5, dir_info):
+        path = self.get(md5)
+        dname = os.path.dirname(path)
+
+        assert self.is_dir_cache(path)
+        assert isinstance(dir_info, list)
+
+        if not os.path.isdir(dname):
+            os.makedirs(dname)
+
+        # NOTE: Writing first and renaming after that
+        # to make sure that the operation is atomic.
+        tmp = '{}.{}'.format(path, str(uuid.uuid4()))
+        with open(tmp, 'w+') as fd:
+            json.dump(dir_info, fd, sort_keys=True)
+        move(tmp, path)
+
     @staticmethod
     def is_dir_cache(cache):
         return cache.endswith(State.MD5_DIR_SUFFIX)
@@ -143,6 +155,12 @@ class RemoteLOCAL(RemoteBase):
             Logger.warn('No cache info for \'{}\'. Skipping checkout.'.format(os.path.relpath(path)))
             return
 
+        if self.changed(md5):
+            msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
+            Logger.warn(msg.format(md5, os.path.relpath(path)))
+            remove(path)
+            return
+
         if os.path.exists(path):
             msg = u'Data \'{}\' exists. Removing before checkout'
             Logger.debug(msg.format(os.path.relpath(path)))
@@ -152,7 +170,8 @@ class RemoteLOCAL(RemoteBase):
         Logger.debug(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-            self.link(md5, path, dump=True)
+            self.link(cache, path)
+            self.link_state.update(path)
             return
 
         # Create dir separately so that dir is created
@@ -160,12 +179,13 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        for entry in self.load_dir_cache(cache):
+        for entry in self.load_dir_cache(md5):
             md5 = entry[self.PARAM_MD5]
+            c = self.get(md5)
             relpath = entry[self.PARAM_RELPATH]
             p = os.path.join(path, relpath)
-            self.link(md5, p, dump=False)
-        self.link_state.dump()
+            self.link(c, p)
+        self.link_state.update(path)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
@@ -177,36 +197,38 @@ class RemoteLOCAL(RemoteBase):
     def _save_file(self, path_info):
         path = path_info['path']
         md5 = self.state.update(path)
+        assert md5 != None
+
         cache = self.get(md5)
+
         if self.changed(md5):
-            Logger.debug(u'Saving \'{}\' to \'{}\''.format(os.path.relpath(path),
-                                                           os.path.relpath(cache)))
             self._move(path, cache)
-            self.state.update(cache)
+        else:
+            remove(path)
+
+        self.link(cache, path)
+        self.link_state.update(path)
 
         return {self.PARAM_MD5: md5}
 
     def _save_dir(self, path_info):
         path = path_info['path']
-        md5 = self.state.update(path)
-        cache = self.get(md5)
-        dname = os.path.dirname(cache)
-        dir_info = self.state.collect_dir(path)
+        md5, dir_info = self.state.update_info(path)
 
         for entry in dir_info:
             relpath = entry[State.PARAM_RELPATH]
+            m = entry[State.PARAM_MD5]
             p = os.path.join(path, relpath)
+            c = self.get(m)
 
-            self._save_file({'scheme': 'local', 'path': p})
+            if self.changed(m):
+                self._move(p, c)
+            else:
+                remove(p)
 
-        if not os.path.isdir(dname):
-            os.makedirs(dname)
+            self.link(c, p)
 
-        Logger.debug(u'Saving directory \'{}\' to \'{}\''.format(os.path.relpath(path),
-                                                                 os.path.relpath(cache)))
-
-        with open(cache, 'w+') as fd:
-            json.dump(dir_info, fd, sort_keys=True)
+        self.link_state.update(path)
 
         return {self.PARAM_MD5: md5}
 
@@ -217,13 +239,9 @@ class RemoteLOCAL(RemoteBase):
         path = path_info['path']
 
         if os.path.isdir(path):
-            checksum_info = self._save_dir(path_info)
+            return self._save_dir(path_info)
         else:
-            checksum_info = self._save_file(path_info)
-
-        self.checkout(path_info, checksum_info)
-
-        return checksum_info
+            return self._save_file(path_info)
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'local':
@@ -318,7 +336,7 @@ class RemoteLOCAL(RemoteBase):
                 continue
             if not os.path.exists(cache):
                 missing.append(info)
-            collected.extend(self.load_dir_cache(cache))
+            collected.extend(self.load_dir_cache(md5))
         collected.extend(checksum_infos)
         return collected, missing
 

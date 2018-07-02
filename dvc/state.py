@@ -48,22 +48,23 @@ class State(object):
     PARAM_MD5 = 'md5'
     MD5_DIR_SUFFIX = '.dir'
 
-    def __init__(self, dvc_dir):
-        self.dvc_dir = dvc_dir
+    def __init__(self, project):
+        self.project = project
+        self.dvc_dir = project.dvc_dir
         self._lock = threading.Lock()
-        if dvc_dir:
-            self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
-            self._lock_file = Lock(dvc_dir, self.STATE_LOCK_FILE)
+        if self.dvc_dir:
+            self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
+            self._lock_file = Lock(self.dvc_dir, self.STATE_LOCK_FILE)
         else:
             self.state_file = None
             self._lock_file = threading.Lock()
         self._db = self.load()
 
     @staticmethod
-    def init(dvc_dir):
-        return State(dvc_dir)
+    def init(project):
+        return State(project)
 
-    def collect_dir(self, dname):
+    def _collect_dir(self, dname):
         dir_info = []
 
         for root, dirs, files in os.walk(dname):
@@ -71,19 +72,25 @@ class State(object):
                 path = os.path.join(root, fname)
                 relpath = os.path.relpath(path, dname)
 
-                md5 = self.update(path, dump=False)
+                # FIXME: we could've used `md5 = self.update(path, dump=False)` here,
+                # but it is around twice as slow(on ssd, don't know about hdd) for a
+                # directory with small files. What we could do here is introduce some
+                # kind of a limit for file size, after which we would actually register
+                # it in our state file.
+                md5 = file_md5(path)[0]
                 dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
 
-        self.dump()
+        md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
+        if self.project.cache.local.changed(md5):
+            self.project.cache.local.dump_dir_cache(md5, dir_info)
 
-        return dir_info
+        return (md5, dir_info)
 
-    def compute_md5(self, path):
+    def _collect(self, path):
         if os.path.isdir(path):
-            dir_info = self.collect_dir(path)
-            return dict_md5(dir_info) + self.MD5_DIR_SUFFIX
+            return self._collect_dir(path)
         else:
-            return file_md5(path)[0]
+            return (file_md5(path)[0], None)
 
     def changed(self, path, md5):
         actual = self.update(path)
@@ -120,18 +127,18 @@ class State(object):
     def inode(path):
         return str(System.inode(path))
 
-    def update(self, path, dump=True):
+    def _do_update(self, path, dump=True):
         if not os.path.exists(path):
-            return None
+            return (None, None)
 
         mtime = self.mtime(path)
         inode = self.inode(path)
 
         md5 = self._get(inode, mtime)
         if md5:
-            return md5
+            return (md5, None)
 
-        md5 = self.compute_md5(path)
+        md5, info = self._collect(path)
         state = StateEntry(md5, mtime)
         d = state.dumpd()
 
@@ -142,7 +149,16 @@ class State(object):
                 if dump:
                     self.dump()
 
-        return md5
+        return (md5, info)
+
+    def update(self, path, dump=True):
+        return self._do_update(path, dump=dump)[0]
+
+    def update_info(self, path, dump=True):
+        md5, info = self._do_update(path, dump=dump)
+        if not info:
+            info = self.project.cache.local.load_dir_cache(md5)
+        return (md5, info)
 
     def _get(self, inode, mtime):
         with self._lock:
@@ -190,9 +206,9 @@ class LinkState(State):
     STATE_FILE = 'link.state'
     STATE_LOCK_FILE = STATE_FILE + '.lock'
 
-    def __init__(self, root_dir, dvc_dir):
-        super(LinkState, self).__init__(dvc_dir)
-        self.root_dir = root_dir
+    def __init__(self, project):
+        super(LinkState, self).__init__(project)
+        self.root_dir = project.root_dir
 
     def update(self, path, dump=True):
         if not os.path.exists(path):
@@ -209,10 +225,14 @@ class LinkState(State):
                 with self._lock_file:
                     self.dump()
 
-    def _do_remove_all(self):
-        for p, s in self._db.items():
+    def _do_remove_unused(self, used):
+        items = self._db.copy().items()
+        for p, s in items:
             path = os.path.join(self.root_dir, p)
             state = LinkStateEntry.loadd(s)
+
+            if path in used:
+                continue
 
             if not os.path.exists(path):
                 continue
@@ -221,12 +241,12 @@ class LinkState(State):
             mtime = self.mtime(path)
 
             if inode == state.inode and mtime == state.mtime:
+                Logger.debug('Removing \'{}\' as unused link.'.format(path))
                 remove(path)
+                del self._db[p]
 
-        self._db = {}
-
-    def remove_all(self):
+    def remove_unused(self, used):
         with self._lock:
             with self._lock_file:
-                self._do_remove_all()
+                self._do_remove_unused(used)
                 self.dump()

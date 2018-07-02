@@ -41,13 +41,10 @@ class OutputLOCAL(DependencyLOCAL):
         return ret
 
     def changed(self):
-        if super(OutputLOCAL, self).changed():
-            return True
+        if not self.use_cache:
+            return super(OutputLOCAL, self).changed()
 
-        if self.use_cache and self.info != self.project.cache.local.save_info(self.path_info):
-            return True
-
-        return False
+        return self.info != self.project.cache.local.save_info(self.path_info)
 
     def checkout(self):
         if not self.use_cache:
@@ -61,15 +58,24 @@ class OutputLOCAL(DependencyLOCAL):
         self.project.cache.local.checkout(self.path_info, self.info)
 
     def save(self):
-        if not self.changed():
-            msg = 'Output \'{}\' didn\'t change. Skipping saving.'
+        if not self.use_cache:
+            super(OutputLOCAL, self).save()
+            msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
             self.project.logger.debug(msg.format(self.rel_path))
             return
 
-        super(OutputLOCAL, self).save()
+        if not os.path.exists(self.path):
+            raise self.DoesNotExistError(self.rel_path)
 
-        if not self.use_cache:
-            msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
+        if not os.path.isfile(self.path) and not os.path.isdir(self.path):
+            raise self.NotFileOrDirError(self.rel_path)
+
+        if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
+           (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
+            self.project.logger.warn("File/directory '{}' is empty.".format(self.rel_path))
+
+        if not self.changed():
+            msg = 'Output \'{}\' didn\'t change. Skipping saving.'
             self.project.logger.debug(msg.format(self.rel_path))
             return
 
