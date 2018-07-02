@@ -41,13 +41,13 @@ class TestCacheLoadBadDirCache(TestDvc):
         self.assertEqual(len(ret), 0)
 
     def test(self):
-        fname = self.dvc.cache.local.get('123')
+        fname = self.dvc.cache.local.get('123.dir')
         self.create(fname, '<clearly>not,json')
-        self._do_test(RemoteLOCAL.load_dir_cache(fname))
+        self._do_test(self.dvc.cache.local.load_dir_cache(fname))
 
-        fname = self.dvc.cache.local.get('234')
+        fname = self.dvc.cache.local.get('234.dir')
         self.create(fname, '{"a": "b"}')
-        self._do_test(RemoteLOCAL.load_dir_cache(fname))
+        self._do_test(self.dvc.cache.local.load_dir_cache(fname))
 
 
 class TestExternalCacheDir(TestDvc):

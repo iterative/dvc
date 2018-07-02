@@ -72,7 +72,12 @@ class State(object):
                 path = os.path.join(root, fname)
                 relpath = os.path.relpath(path, dname)
 
-                md5 = self.update(path, dump=False)
+                # FIXME: we could've used `md5 = self.update(path, dump=False)` here,
+                # but it is around twice as slow(on ssd, don't know about hdd) for a
+                # directory with small files. What we could do here is introduce some
+                # kind of a limit for file size, after which we would actually register
+                # it in our state file.
+                md5 = file_md5(path)[0]
                 dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
 
         md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX

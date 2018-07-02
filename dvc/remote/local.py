@@ -84,13 +84,8 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, md5, path):
-        cache = self.get(md5)
-        if not cache or not os.path.exists(cache) or self.changed(md5):
-            if cache:
-                msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
-                Logger.warn(msg.format(md5, os.path.relpath(path)))
-            return
+    def link(self, cache, path):
+        assert os.path.isfile(cache)
 
         dname = os.path.dirname(path)
         if not os.path.exists(dname):
@@ -141,8 +136,12 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.isdir(dname):
             os.makedirs(dname)
 
-        with open(path, 'w+') as fd:
+        # NOTE: Writing first and renaming after that
+        # to make sure that the operation is atomic.
+        tmp = '{}.{}'.format(path, str(uuid.uuid4()))
+        with open(tmp, 'w+') as fd:
             json.dump(dir_info, fd, sort_keys=True)
+        move(tmp, path)
 
     @staticmethod
     def is_dir_cache(cache):
@@ -157,6 +156,12 @@ class RemoteLOCAL(RemoteBase):
             Logger.warn('No cache info for \'{}\'. Skipping checkout.'.format(os.path.relpath(path)))
             return
 
+        if self.changed(md5):
+            msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
+            Logger.warn(msg.format(md5, os.path.relpath(path)))
+            remove(path)
+            return
+
         if os.path.exists(path):
             msg = u'Data \'{}\' exists. Removing before checkout'
             Logger.debug(msg.format(os.path.relpath(path)))
@@ -166,7 +171,7 @@ class RemoteLOCAL(RemoteBase):
         Logger.debug(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-            self.link(md5, path)
+            self.link(cache, path)
             self.link_state.update(path)
             return
 
@@ -177,9 +182,10 @@ class RemoteLOCAL(RemoteBase):
 
         for entry in self.load_dir_cache(md5):
             md5 = entry[self.PARAM_MD5]
+            c = self.get(md5)
             relpath = entry[self.PARAM_RELPATH]
             p = os.path.join(path, relpath)
-            self.link(md5, p)
+            self.link(c, p)
         self.link_state.update(path)
 
     def _move(self, inp, outp):
@@ -192,12 +198,17 @@ class RemoteLOCAL(RemoteBase):
     def _save_file(self, path_info):
         path = path_info['path']
         md5 = self.state.update(path)
+        assert md5 != None
+
         cache = self.get(md5)
+
         if self.changed(md5):
-            Logger.debug(u'Saving \'{}\' to \'{}\''.format(os.path.relpath(path),
-                                                           os.path.relpath(cache)))
             self._move(path, cache)
-            self.state.update(cache)
+        else:
+            remove(path)
+
+        self.link(cache, path)
+        self.link_state.update(path)
 
         return {self.PARAM_MD5: md5}
 
@@ -207,9 +218,18 @@ class RemoteLOCAL(RemoteBase):
 
         for entry in dir_info:
             relpath = entry[State.PARAM_RELPATH]
+            m = entry[State.PARAM_MD5]
             p = os.path.join(path, relpath)
+            c = self.get(m)
 
-            self._save_file({'scheme': 'local', 'path': p})
+            if self.changed(m):
+                self._move(p, c)
+            else:
+                remove(p)
+
+            self.link(c, p)
+
+        self.link_state.update(path)
 
         return {self.PARAM_MD5: md5}
 
@@ -220,13 +240,9 @@ class RemoteLOCAL(RemoteBase):
         path = path_info['path']
 
         if os.path.isdir(path):
-            checksum_info = self._save_dir(path_info)
+            return self._save_dir(path_info)
         else:
-            checksum_info = self._save_file(path_info)
-
-        self.checkout(path_info, checksum_info)
-
-        return checksum_info
+            return self._save_file(path_info)
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'local':
