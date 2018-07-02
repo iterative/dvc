@@ -111,8 +111,11 @@ class RemoteLOCAL(RemoteBase):
                 if typ == types[-1]:
                     raise DvcException(msg, cause=exc)
 
-    @staticmethod
-    def load_dir_cache(path):
+    def load_dir_cache(self, md5):
+        path = self.get(md5)
+
+        assert self.is_dir_cache(path)
+
         try:
             with open(path, 'r') as fd:
                 d = json.load(fd)
@@ -127,6 +130,19 @@ class RemoteLOCAL(RemoteBase):
             return []
 
         return d
+
+    def dump_dir_cache(self, md5, dir_info):
+        path = self.get(md5)
+        dname = os.path.dirname(path)
+
+        assert self.is_dir_cache(path)
+        assert isinstance(dir_info, list)
+
+        if not os.path.isdir(dname):
+            os.makedirs(dname)
+
+        with open(path, 'w+') as fd:
+            json.dump(dir_info, fd, sort_keys=True)
 
     @staticmethod
     def is_dir_cache(cache):
@@ -159,7 +175,7 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        for entry in self.load_dir_cache(cache):
+        for entry in self.load_dir_cache(md5):
             md5 = entry[self.PARAM_MD5]
             relpath = entry[self.PARAM_RELPATH]
             p = os.path.join(path, relpath)
@@ -188,23 +204,12 @@ class RemoteLOCAL(RemoteBase):
     def _save_dir(self, path_info):
         path = path_info['path']
         md5, dir_info = self.state.update_info(path)
-        cache = self.get(md5)
-        dname = os.path.dirname(cache)
 
         for entry in dir_info:
             relpath = entry[State.PARAM_RELPATH]
             p = os.path.join(path, relpath)
 
             self._save_file({'scheme': 'local', 'path': p})
-
-        if not os.path.isdir(dname):
-            os.makedirs(dname)
-
-        Logger.debug(u'Saving directory \'{}\' to \'{}\''.format(os.path.relpath(path),
-                                                                 os.path.relpath(cache)))
-
-        with open(cache, 'w+') as fd:
-            json.dump(dir_info, fd, sort_keys=True)
 
         return {self.PARAM_MD5: md5}
 
@@ -316,7 +321,7 @@ class RemoteLOCAL(RemoteBase):
                 continue
             if not os.path.exists(cache):
                 missing.append(info)
-            collected.extend(self.load_dir_cache(cache))
+            collected.extend(self.load_dir_cache(md5))
         collected.extend(checksum_infos)
         return collected, missing
 

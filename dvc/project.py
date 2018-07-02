@@ -52,8 +52,8 @@ class Project(object):
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self.dvc_dir)
-        self.link_state = LinkState(self.root_dir, self.dvc_dir)
+        self.state = State(self)
+        self.link_state = LinkState(self)
         self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)

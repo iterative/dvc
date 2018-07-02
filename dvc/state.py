@@ -48,20 +48,21 @@ class State(object):
     PARAM_MD5 = 'md5'
     MD5_DIR_SUFFIX = '.dir'
 
-    def __init__(self, dvc_dir):
-        self.dvc_dir = dvc_dir
+    def __init__(self, project):
+        self.project = project
+        self.dvc_dir = project.dvc_dir
         self._lock = threading.Lock()
-        if dvc_dir:
-            self.state_file = os.path.join(dvc_dir, self.STATE_FILE)
-            self._lock_file = Lock(dvc_dir, self.STATE_LOCK_FILE)
+        if self.dvc_dir:
+            self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
+            self._lock_file = Lock(self.dvc_dir, self.STATE_LOCK_FILE)
         else:
             self.state_file = None
             self._lock_file = threading.Lock()
         self._db = self.load()
 
     @staticmethod
-    def init(dvc_dir):
-        return State(dvc_dir)
+    def init(project):
+        return State(project)
 
     def _collect_dir(self, dname):
         dir_info = []
@@ -75,12 +76,14 @@ class State(object):
                 dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
 
         md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
+        if self.project.cache.local.changed(md5):
+            self.project.cache.local.dump_dir_cache(md5, dir_info)
 
         return (md5, dir_info)
 
     def _collect(self, path):
         if os.path.isdir(path):
-            return collect_dir
+            return self._collect_dir(path)
         else:
             return (file_md5(path)[0], None)
 
@@ -121,17 +124,17 @@ class State(object):
 
     def _do_update(self, path, dump=True):
         if not os.path.exists(path):
-            return None
+            return (None, None)
 
         mtime = self.mtime(path)
         inode = self.inode(path)
 
-        entry = self._get(inode, mtime)
-        if entry:
-            return entry
+        md5 = self._get(inode, mtime)
+        if md5:
+            return (md5, None)
 
         md5, info = self._collect(path)
-        state = StateEntry(md5, mtime, info)
+        state = StateEntry(md5, mtime)
         d = state.dumpd()
 
         with self._lock:
@@ -144,10 +147,13 @@ class State(object):
         return (md5, info)
 
     def update(self, path, dump=True):
-        return self._do_update(self, path, dump=True)[0]
+        return self._do_update(path, dump=dump)[0]
 
     def update_info(self, path, dump=True):
-        return self._do_update(self, path, dump=True)
+        md5, info = self._do_update(path, dump=dump)
+        if not info:
+            info = self.project.cache.local.load_dir_cache(md5)
+        return (md5, info)
 
     def _get(self, inode, mtime):
         with self._lock:
@@ -159,7 +165,7 @@ class State(object):
 
         state = StateEntry.loadd(d)
         if mtime == state.mtime:
-            return (state.md5, state.info)
+            return state.md5
 
         return None
 
@@ -195,9 +201,9 @@ class LinkState(State):
     STATE_FILE = 'link.state'
     STATE_LOCK_FILE = STATE_FILE + '.lock'
 
-    def __init__(self, root_dir, dvc_dir):
-        super(LinkState, self).__init__(dvc_dir)
-        self.root_dir = root_dir
+    def __init__(self, project):
+        super(LinkState, self).__init__(project)
+        self.root_dir = project.root_dir
 
     def update(self, path, dump=True):
         if not os.path.exists(path):
