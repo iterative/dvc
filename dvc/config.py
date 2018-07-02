@@ -76,6 +76,7 @@ class Config(object):
     SECTION_AWS = 'aws'
     SECTION_AWS_STORAGEPATH = 'storagepath'
     SECTION_AWS_CREDENTIALPATH = 'credentialpath'
+    SECTION_AWS_ENDPOINT_URL = 'endpointurl'
     SECTION_AWS_REGION = 'region'
     SECTION_AWS_PROFILE = 'profile'
     SECTION_AWS_SCHEMA = {
@@ -83,6 +84,7 @@ class Config(object):
         schema.Optional(SECTION_AWS_REGION): str,
         schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
+        schema.Optional(SECTION_AWS_ENDPOINT_URL, default=None): str,
     }
 
     # backward compatibility
@@ -111,6 +113,7 @@ class Config(object):
         schema.Optional(SECTION_AWS_REGION): str,
         schema.Optional(SECTION_AWS_PROFILE, default='default'): str,
         schema.Optional(SECTION_AWS_CREDENTIALPATH, default = ''): str,
+        schema.Optional(SECTION_AWS_ENDPOINT_URL, default=None): str,
         schema.Optional(SECTION_GCP_PROJECTNAME): str,
         schema.Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         schema.Optional(SECTION_REMOTE_USER): str,

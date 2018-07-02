@@ -45,6 +45,7 @@ class RemoteS3(RemoteBase):
         self.region = config.get(Config.SECTION_AWS_REGION, None)
         self.profile = config.get(Config.SECTION_AWS_PROFILE, None)
         self.credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH, None)
+        self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL, None)
 
     @property
     def bucket(self):
@@ -56,7 +57,7 @@ class RemoteS3(RemoteBase):
 
     @property
     def s3(self):
-        return boto3.resource('s3')
+        return boto3.resource('s3', endpoint_url=self.endpoint_url)
 
     def get_etag(self, bucket, key):
         try:
