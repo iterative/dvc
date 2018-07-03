@@ -91,17 +91,16 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(dname):
             os.makedirs(dname)
 
-        i = 0
-        N = len(self.cache_types)
-        while i < N:
+        i = len(self.cache_types)
+        while i > 0:
             try:
-                self.CACHE_TYPE_MAP[self.cache_types[i]](cache, path)
+                self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
                 return
             except Exception as exc:
-                msg = 'Cache type \'{}\' is not supported'.format(self.cache_types[i])
+                msg = 'Cache type \'{}\' is not supported'.format(self.cache_types[0])
                 Logger.debug(msg)
-                del self.cache_types[i]
-                i += 1
+                del self.cache_types[0]
+                i -= 1
 
         raise DvcException('No possible cache types left to try out.')
 
