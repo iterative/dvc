@@ -97,7 +97,9 @@ class Project(object):
         return proj
 
     def _ignore(self):
-        l = [self.link_state.state_file,
+        l = [self.state.state_file,
+             self.state._lock_file.lock_file,
+             self.link_state.state_file,
              self.link_state._lock_file.lock_file,
              self.lock.lock_file,
              self.config.config_local_file,
