@@ -9,12 +9,11 @@ import json
 import stat
 import shutil
 import hashlib
-from binaryornot.check import is_binary
 from multiprocessing.pool import ThreadPool
 
+from dvc.istextfile import istextfile
 from dvc.progress import progress
 from dvc.logger import Logger
-from dvc.binary_file_extensions import BINARY_FILE_EXTENSIONS
 
 
 LOCAL_CHUNK_SIZE = 1024*1024
@@ -28,13 +27,7 @@ def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
-        # when dealing with large collections of binary files, the is_binary
-        # call becomes a bottleneck, here we first check the extension to
-        # avoid this bottleneck when possible:
-        if fname.split('.')[-1] in BINARY_FILE_EXTENSIONS:
-            binary = True
-        else:
-            binary = is_binary(fname)
+        binary = not istextfile(fname)
 
         with open(fname, 'rb') as fobj:
             while True:
