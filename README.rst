@@ -78,9 +78,9 @@ Links
 
 Website: https://dvc.org
 
-Tutorial: https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46
+Tutorial: https://dvc.org/doc/tutorial
 
-Documentation: http://dvc.org/documentation
+Documentation: http://dvc.org/doc
 
 Discussion: https://discuss.dvc.org/
 
@@ -100,8 +100,8 @@ How DVC works
 =============
 
 
-.. image:: https://s3-us-west-2.amazonaws.com/dvc-share/images/0.9/how_dvc_works.png
-   :target: https://s3-us-west-2.amazonaws.com/dvc-share/images/0.9/how_dvc_works.png
+.. image:: https://dvc.org/static/img/flow.png
+   :target: https://dvc.org/static/img/flow.png
    :alt: how_dvc_works
 
 
