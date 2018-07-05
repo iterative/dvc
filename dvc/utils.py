@@ -99,6 +99,11 @@ def move(src, dst):
     if not os.path.exists(dname):
         os.makedirs(dname)
 
+    if os.path.islink(src):
+        shutil.copy(os.readlink(src), dst)
+        os.unlink(src)
+        return
+
     shutil.move(src, dst)
 
 
