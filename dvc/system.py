@@ -61,7 +61,7 @@ class System(object):
     @staticmethod
     def inode(path):
         if System.is_unix():
-            return os.stat(path).st_ino
+            return os.lstat(path).st_ino
 
         # getdirinfo from ntfsutils works on both files and dirs
         info = System.getdirinfo(path)
