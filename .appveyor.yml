@@ -68,6 +68,7 @@ test_script:
 
 after_test:
   - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov
+  - if "%APPVEYOR_REPO_TAG%"=="true" python -m dvc pull
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
 
 artifacts:
