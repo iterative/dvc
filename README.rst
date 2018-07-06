@@ -36,7 +36,7 @@ Get started
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
-See more in `tutorial <https://blog.dataversioncontrol.com/data-version-control-tutorial-9146715eda46>`_.
+See more in `tutorial <https://dvc.org/doc/tutorial>`_.
 
 Installation
 ============
