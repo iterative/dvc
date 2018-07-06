@@ -45,6 +45,10 @@ class Base(object):
         pass
 
     def brancher(self, branches=None, all_branches=False):
+        if not branches and not all_branches:
+            yield ''
+            return
+
         saved = self.active_branch()
         if not branches:
             branches = self.list_branches() if all_branches else [saved]
