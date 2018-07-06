@@ -42,8 +42,8 @@ class Updater(object):
             Logger.debug('Failed to obtain latest version: {}'.format(str(exc)))
             return
 
-        l_major, l_minor, l_patch = latest.split('.')
-        c_major, c_minor, c_patch = current.split('.')
+        l_major, l_minor, l_patch = [int(x) for x in latest.split('.')]
+        c_major, c_minor, c_patch = [int(x) for x in current.split('.')]
 
         if l_major <= c_major and \
            l_minor <= c_minor and \

@@ -4,3 +4,5 @@ lock
 config.local
 updater
 cache
+state
+state.lock
