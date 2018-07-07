@@ -419,7 +419,8 @@ class Project(object):
                 res[branch][rel] = metric
 
         for branch, val in res.items():
-            self.logger.info('{}:'.format(branch))
+            if all_branches:
+                self.logger.info('{}:'.format(branch))
             for fname, metric in val.items():
                 self.logger.info('\t{}: {}'.format(fname, metric))
 
