@@ -395,7 +395,7 @@ class Project(object):
                 else:
                     ret = fd.read()
         except Exception as exc:
-            self.logger.debug('Unable to read metric in \'{}\''.format(path), exc)
+            self.logger.error('Unable to read metric in \'{}\''.format(path), exc)
 
         return ret
 

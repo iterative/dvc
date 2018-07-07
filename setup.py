@@ -5,7 +5,7 @@ from dvc import VERSION
 
 
 install_requires = [
-    "ply==3.8", # required by google-gax
+    "ply>=3.9", # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
     "zc.lockfile>=1.2.1",
     "future>=0.16.0",
