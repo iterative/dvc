@@ -150,14 +150,7 @@ class RemoteS3(RemoteBase):
         return ret
 
     def upload(self, paths, path_infos, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         session = boto3.session.Session()
         s3 = session.client('s3')
@@ -185,14 +178,7 @@ class RemoteS3(RemoteBase):
             progress.finish_target(name)
 
     def download(self, path_infos, fnames, no_progress_bar=False, names=None):
-        assert isinstance(fnames, list)
-        assert isinstance(path_infos, list)
-        assert len(fnames) == len(path_infos)
-        if not names:
-            names = len(fnames) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(fnames)
+        names = self._verify_path_args(path_infos, fnames, names)
 
         session = boto3.session.Session()
         s3 = session.client('s3')

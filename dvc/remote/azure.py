@@ -153,14 +153,7 @@ class RemoteAzure(RemoteBase):
         return ret
 
     def upload(self, paths, path_infos, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != self.scheme:
@@ -186,14 +179,7 @@ class RemoteAzure(RemoteBase):
                 progress.finish_target(name)
 
     def download(self, path_infos, fnames, no_progress_bar=False, names=None):
-        assert isinstance(fnames, list)
-        assert isinstance(path_infos, list)
-        assert len(fnames) == len(path_infos)
-        if not names:
-            names = len(fnames) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(fnames)
+        names = self._verify_path_args(path_infos, fnames, names)
 
         for fname, path_info, name in zip(fnames, path_infos, names):
             if path_info['scheme'] != self.scheme:
@@ -218,13 +204,12 @@ class RemoteAzure(RemoteBase):
                     bucket, key, tmp_file, progress_callback=cb)
             except Exception as exc:
                 Logger.error("Failed to download '{}/{}'".format(
-                    path_info['bucket'], path_info['key']), exc)
-                return
+                    bucket, key), exc)
+            else:
+                os.rename(tmp_file, fname)
 
-            os.rename(tmp_file, fname)
-
-            if not no_progress_bar:
-                progress.finish_target(name)
+                if not no_progress_bar:
+                    progress.finish_target(name)
 
     def gc(self, checksum_infos):
         used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
