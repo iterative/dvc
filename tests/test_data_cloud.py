@@ -9,7 +9,7 @@ import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteLOCAL, RemoteSSH, RemoteHDFS
+from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL, RemoteSSH, RemoteHDFS
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -51,6 +51,15 @@ def _should_test_gcp():
         return True
 
     return False
+
+
+def _should_test_azure():
+    if os.getenv("DVC_TEST_AZURE") == "true":
+        return True
+    elif os.getenv("DVC_TEST_AZURE") == "false":
+        return False
+
+    return os.getenv("AZURE_STORAGE_CONTAINER") and os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 
 
 def _should_test_ssh():
@@ -100,6 +109,10 @@ def get_gcp_storagepath():
 
 def get_gcp_url():
     return 'gs://' + get_gcp_storagepath()
+
+
+def get_azure_url():
+    return 'azure://'
 
 
 def sleep():
@@ -240,6 +253,17 @@ class TestRemoteGS(TestDataCloudBase):
 
     def _get_cloud_class(self):
         return RemoteGS
+
+
+class TestRemoteAzure(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_azure()
+
+    def _get_url(self):
+        return get_azure_url()
+
+    def _get_cloud_class(self):
+        return RemoteAzure
 
 
 class TestRemoteLOCAL(TestDataCloudBase):
@@ -427,6 +451,18 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
 
     def _test(self):
         url = get_gcp_url()
+
+        self.main(['remote', 'add', TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestRemoteAzureCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_azure()
+
+    def _test(self):
+        url = get_azure_url()
 
         self.main(['remote', 'add', TEST_REMOTE, url])
 

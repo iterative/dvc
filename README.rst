@@ -94,7 +94,7 @@ Related technologies
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is workflow management system designed specificaly to manage machine learning experiments. DVC was built on top of Git.
 
 DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
-Data files caches can be transferred separately - now data cache transfer throught AWS S3 and GCP storge are supported.
+Data files caches can be transferred separately - now data cache transfer throught AWS S3, Azure Blob Storage and GCP storge are supported.
 
 How DVC works
 =============

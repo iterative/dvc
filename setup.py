@@ -32,10 +32,13 @@ gs = [
 s3 = [
     "boto3==1.7.4",
 ]
+azure = [
+    "azure-storage-blob==1.3.0"
+]
 ssh = [
     "paramiko>=2.4.1",
 ]
-all_remotes = gs + s3 + ssh
+all_remotes = gs + s3 + azure + ssh
 
 setup(
     name='dvc',
@@ -51,6 +54,7 @@ setup(
         'all': all_remotes,
         'gs': gs,
         's3': s3,
+        'azure': azure,
         'ssh': ssh,
     },
     keywords='data science, data version control, machine learning',
