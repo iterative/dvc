@@ -7,6 +7,7 @@ from dvc.config import Config, ConfigError
 
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
+from dvc.remote.azure import RemoteAzure
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
@@ -19,6 +20,7 @@ class DataCloud(object):
     CLOUD_MAP = {
         'aws'   : RemoteS3,
         'gcp'   : RemoteGS,
+        'azure' : RemoteAzure,
         'ssh'   : RemoteSSH,
         'hdfs'  : RemoteHDFS,
         'local' : RemoteLOCAL,
