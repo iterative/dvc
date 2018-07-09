@@ -137,7 +137,8 @@ class RemoteAzure(RemoteBase):
         } for md5 in md5s]
 
     def exists(self, path_infos):
-        # TODO: why does S3 fetch all blobs first?
+        # TODO: check whether per-key exists() is faster than listing all
+        # objects altogether.
         ret = []
 
         for path_info in path_infos:

@@ -119,6 +119,10 @@ class RemoteS3(RemoteBase):
                  'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
     def exists(self, path_infos):
+        # NOTE: We mostly use exists() method when filtering a bulk of cache
+        # files to decide if we need to download/upload them and in s3
+        # list_objects_v2() is much-much faster than trying to check keys
+        # one-by-one.
         ret = []
         session = boto3.session.Session()
         s3 = session.client('s3')
