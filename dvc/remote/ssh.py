@@ -180,14 +180,7 @@ class RemoteSSH(RemoteBase):
         ssh.close()
 
     def download(self, path_infos, paths, no_progress_bar=False, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         ssh = self.ssh(host=path_infos[0]['host'], user=path_infos[0]['user'])
 
@@ -217,14 +210,7 @@ class RemoteSSH(RemoteBase):
         ssh.close()
 
     def upload(self, paths, path_infos, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         ssh = self.ssh(host=path_infos[0]['host'], user=path_infos[0]['user'])
         sftp = ssh.open_sftp()

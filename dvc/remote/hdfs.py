@@ -136,14 +136,7 @@ class RemoteHDFS(RemoteBase):
         return ret
 
     def upload(self, paths, path_infos, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'hdfs':
@@ -153,14 +146,7 @@ class RemoteHDFS(RemoteBase):
             self.hadoop_fs('copyFromLocal {} {}'.format(path, path_info['url']), user=path_info['user'])
 
     def download(self, path_infos, paths, no_progress_bar=False, names=None):
-        assert isinstance(paths, list)
-        assert isinstance(path_infos, list)
-        assert len(paths) == len(path_infos)
-        if not names:
-            names = len(paths) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(paths)
+        names = self._verify_path_args(path_infos, paths, names)
 
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 'hdfs':
