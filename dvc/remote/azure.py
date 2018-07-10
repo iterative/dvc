@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import re
 import time
@@ -36,7 +37,7 @@ class RemoteAzure(RemoteBase):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, project, config):
-        super().__init__(project, config)
+        super(RemoteAzure, self).__init__(project, config)
         self.project = project
 
         url = config.get(Config.SECTION_REMOTE_URL)
