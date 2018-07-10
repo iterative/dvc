@@ -1,6 +1,7 @@
+from subprocess import CalledProcessError
+from subprocess import check_output
 import os
 import time
-import stat
 import uuid
 import shutil
 import getpass
@@ -46,8 +47,11 @@ def _should_test_gcp():
         if os.path.exists(creds):
             os.unlink(creds)
         shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
-        ret = os.system('gcloud auth activate-service-account --key-file={}'.format(creds))
-        assert ret == 0
+        try:
+            check_output(['gcloud', 'auth', 'activate-service-account',
+                          '--key-file', creds])
+        except CalledProcessError:
+            return False
         return True
 
     return False
@@ -67,17 +71,28 @@ def _should_test_ssh():
     if os.getenv("DVC_TEST_SSH") == "true":
         return True
 
-    #FIXME: enable on windows
+    # FIXME: enable on windows
     if os.name == 'nt':
         return False
 
-    assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
+    try:
+        check_output(['ssh', '127.0.0.1', 'ls'])
+    except (CalledProcessError, FileNotFoundError):
+        return False
 
     return True
 
 
 def _should_test_hdfs():
-    return platform.system() == 'Linux'
+    if platform.system() != 'Linux':
+        return False
+
+    try:
+        check_output(['hadoop', 'version'])
+    except (CalledProcessError, FileNotFoundError):
+        return False
+
+    return True
 
 
 def get_local_storagepath():
