@@ -59,7 +59,8 @@ def _should_test_azure():
     elif os.getenv("DVC_TEST_AZURE") == "false":
         return False
 
-    return os.getenv("AZURE_STORAGE_CONTAINER") and os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    return (os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            and os.getenv("AZURE_STORAGE_CONNECTION_STRING"))
 
 
 def _should_test_ssh():
