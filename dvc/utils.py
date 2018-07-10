@@ -67,7 +67,7 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     fsrc = open(src, 'rb')
 
     if os.path.isdir(dest):
-        fdest = open(dest + '/' + os.path.basename(src), 'wb+')
+        fdest = open(os.path.join(dest, os.path.basename(src)), 'wb+')
     else:
         fdest = open(dest, 'wb+')
 
