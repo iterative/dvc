@@ -137,19 +137,16 @@ class RemoteAzure(RemoteBase):
         } for md5 in md5s]
 
     def exists(self, path_infos):
-        # TODO: check whether per-key exists() is faster than listing all
-        # objects altogether.
-        ret = []
+        keys = {blob.name
+                for blob in self.blob_service.list_blobs(self.bucket)}
 
+        ret = []
         for path_info in path_infos:
             if path_info['scheme'] != self.scheme:
                 raise NotImplementedError
 
-            bucket = path_info['bucket']
             key = path_info['key']
-
-            exists = self.blob_service.exists(bucket, key)
-            ret.append(exists)
+            ret.append(key in keys)
 
         return ret
 
