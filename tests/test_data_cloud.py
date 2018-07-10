@@ -10,7 +10,8 @@ import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL, RemoteSSH, RemoteHDFS
+from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
+                            RemoteLOCAL, RemoteSSH, RemoteHDFS)
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -104,11 +105,15 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return 'ssh://{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
+    return 'ssh://{}@127.0.0.1:{}'.format(
+        getpass.getuser(),
+        get_local_storagepath())
 
 
 def get_hdfs_url():
-    return 'hdfs://{}@127.0.0.1{}'.format(getpass.getuser(), get_local_storagepath())
+    return 'hdfs://{}@127.0.0.1{}'.format(
+        getpass.getuser(),
+        get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -152,13 +157,16 @@ class TestDataCloud(TestDvc):
                            ('gs://', RemoteGS),
                            ('ssh://user@localhost:/', RemoteSSH),
                            (tempfile.mkdtemp(), RemoteLOCAL)]:
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + str(uuid.uuid4())
+
+            remote_url = scheme + str(uuid.uuid4())
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             self._test_cloud(config, cl)
 
     def test_unsupported(self):
-        with self.assertRaises(ConfigError) as cx:
+        with self.assertRaises(ConfigError):
+            remote_url = 'notsupportedscheme://a/b'
             config = TEST_CONFIG
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             DataCloud(self.dvc, config=config)
 
 
@@ -344,7 +352,7 @@ class TestDataCloudCLIBase(TestDvc):
         stage_dir = self.dvc.add(self.DATA_DIR)
         cache_dir = stage_dir.outs[0].cache
 
-        #FIXME check status output
+        # FIXME check status output
         sleep()
         self.main(['status', '-c'] + args)
 
