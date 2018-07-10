@@ -1,5 +1,6 @@
 from subprocess import CalledProcessError
 from subprocess import check_output
+from unittest import SkipTest
 import os
 import time
 import uuid
@@ -172,15 +173,22 @@ class TestDataCloud(TestDvc):
 
 
 class TestDataCloudBase(TestDvc):
+    def _get_cloud_class(self):
+        return None
+
     def _should_test(self):
         return False
 
     def _get_url(self):
-        return None
+        return ''
+
+    def _ensure_should_run(self):
+        if not self._should_test():
+            raise SkipTest('Test {} is disabled'
+                           .format(self.__class__.__name__))
 
     def _setup_cloud(self):
-        if not self._should_test():
-            return
+        self._ensure_should_run()
 
         repo = self._get_url()
 
@@ -254,8 +262,8 @@ class TestDataCloudBase(TestDvc):
         self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
     def test(self):
-        if self._should_test():
-            self._test_cloud()
+        self._ensure_should_run()
+        self._test_cloud()
 
 
 class TestRemoteS3(TestDataCloudBase):
