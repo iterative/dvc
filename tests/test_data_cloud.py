@@ -155,6 +155,7 @@ class TestDataCloud(TestDvc):
 
         for scheme, cl in [('s3://', RemoteS3),
                            ('gs://', RemoteGS),
+                           ('azure://ContainerName=', RemoteAzure),
                            ('ssh://user@localhost:/', RemoteSSH),
                            (tempfile.mkdtemp(), RemoteLOCAL)]:
 

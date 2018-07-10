@@ -29,7 +29,7 @@ class Callback(object):
 class RemoteAzure(RemoteBase):
     scheme = 'azure'
     REGEX = (r'^azure://'
-             r'(ContainerName=(?P<container_name>[^;]+);)?'
+             r'(ContainerName=(?P<container_name>[^;]+);?)?'
              r'(?P<connection_string>.+)?$')
     REQUIRES = {'azure-storage-blob': BlockBlobService}
     PARAM_ETAG = 'etag'
