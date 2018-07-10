@@ -321,6 +321,7 @@ class RemoteLOCAL(RemoteBase):
                 continue
             if not os.path.exists(cache):
                 missing.append(info)
+                continue
             collected.extend(self.load_dir_cache(md5))
         collected.extend(checksum_infos)
         return collected, missing
