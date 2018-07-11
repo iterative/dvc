@@ -291,7 +291,7 @@ class Project(object):
 
         return cache
 
-    def gc(self, all_branches=False):
+    def gc(self, all_branches=False, cloud=False, remote=None):
         clist = self._used_cache(target=None, all_branches=all_branches)
         self.cache.local.gc(clist)
 
@@ -309,6 +309,9 @@ class Project(object):
 
         if self.cache.azure:
             self.cache.azure.gc(clist)
+
+        if cloud:
+            self.cloud._get_cloud(remote).gc(clist)
 
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
         self.cloud.push(self._used_cache(target, all_branches)['local'], jobs, remote=remote)
