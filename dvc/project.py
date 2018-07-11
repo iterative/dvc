@@ -307,6 +307,9 @@ class Project(object):
         if self.cache.hdfs:
             self.cache.hdfs.gc(clist)
 
+        if self.cache.azure:
+            self.cache.azure.gc(clist)
+
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
         self.cloud.push(self._used_cache(target, all_branches)['local'], jobs, remote=remote)
 

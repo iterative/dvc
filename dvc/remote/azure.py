@@ -211,7 +211,7 @@ class RemoteAzure(RemoteBase):
                     progress.finish_target(name)
 
     def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['azure']]
 
         all_blobs = self.blob_service.list_blobs(self.bucket)
 

@@ -46,12 +46,14 @@ class Config(object):
     SECTION_CACHE_GS = 'gs'
     SECTION_CACHE_SSH = 'ssh'
     SECTION_CACHE_HDFS = 'hdfs'
+    SECTION_CACHE_AZURE = 'azure'
     SECTION_CACHE_SCHEMA = {
         schema.Optional(SECTION_CACHE_LOCAL): str,
         schema.Optional(SECTION_CACHE_S3): str,
         schema.Optional(SECTION_CACHE_GS): str,
         schema.Optional(SECTION_CACHE_HDFS): str,
         schema.Optional(SECTION_CACHE_SSH): str,
+        schema.Optional(SECTION_CACHE_AZURE): str,
 
         # backward compatibility
         schema.Optional(SECTION_CACHE_DIR, default='cache'): str,
