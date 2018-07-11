@@ -255,7 +255,7 @@ class RemoteSSH(RemoteBase):
         return [self._path_to_md5(path) for path in flist]
 
     def gc(self, checksum_infos):
-        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos['ssh']]
 
         for md5 in self._all_md5s():
             if md5 in used_md5s:

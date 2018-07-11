@@ -189,7 +189,7 @@ class RemoteGS(RemoteBase):
         return [self._path_to_etag(blob.name) for blob in blobs]
 
     def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['gs']]
 
         for etag in self._all_etags():
             if etag in used_etags:

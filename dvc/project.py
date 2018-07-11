@@ -293,19 +293,19 @@ class Project(object):
 
     def gc(self, all_branches=False):
         clist = self._used_cache(target=None, all_branches=all_branches)
-        self.cache.local.gc(clist['local'])
+        self.cache.local.gc(clist)
 
         if self.cache.s3:
-            self.cache.s3.gc(clist['s3'])
+            self.cache.s3.gc(clist)
 
         if self.cache.gs:
-            self.cache.gs.gc(clist['gs'])
+            self.cache.gs.gc(clist)
 
         if self.cache.ssh:
-            self.cache.ssh.gc(clist['ssh'])
+            self.cache.ssh.gc(clist)
 
         if self.cache.hdfs:
-            self.cache.hdfs.gc(clist['hdfs'])
+            self.cache.hdfs.gc(clist)
 
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
         self.cloud.push(self._used_cache(target, all_branches)['local'], jobs, remote=remote)

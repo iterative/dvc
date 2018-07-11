@@ -229,7 +229,7 @@ class RemoteS3(RemoteBase):
         return [self._path_to_etag(obj.key) for obj in objects]
 
     def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['s3']]
 
         for etag in self._all():
             if etag in used_etags:

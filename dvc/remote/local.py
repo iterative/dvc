@@ -327,7 +327,7 @@ class RemoteLOCAL(RemoteBase):
         return collected, missing
 
     def gc(self, checksum_infos):
-        used_md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos)[0]]
+        used_md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos['local'])[0]]
 
         for md5 in self.all():
             if md5 in used_md5s:

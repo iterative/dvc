@@ -173,7 +173,7 @@ class RemoteHDFS(RemoteBase):
         return [self._path_to_checksum(path) for path in flist]
 
     def gc(self, checksum_infos):
-        used_checksums = [info[self.PARAM_CHECKSUM] for info in checksum_infos]
+        used_checksums = [info[self.PARAM_CHECKSUM] for info in checksum_infos['hdfs']]
 
         for checksum in self._all_checksums():
             if checksum in used_checksums:
