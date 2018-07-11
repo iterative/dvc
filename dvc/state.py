@@ -2,6 +2,7 @@ import os
 import json
 import nanotime
 import threading
+from operator import itemgetter
 
 from dvc.lock import Lock
 from dvc.system import System
@@ -79,6 +80,9 @@ class State(object):
                 # it in our state file.
                 md5 = file_md5(path)[0]
                 dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
+
+        # NOTE: sorting the list by path to ensure reproducibility
+        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
 
         md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
         if self.project.cache.local.changed(md5):
