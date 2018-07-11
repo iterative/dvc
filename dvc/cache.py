@@ -30,6 +30,7 @@ class Cache(object):
         self.gs = self._get_remote(project, config, Config.SECTION_CACHE_GS)
         self.ssh = self._get_remote(project, config, Config.SECTION_CACHE_SSH)
         self.hdfs = self._get_remote(project, config, Config.SECTION_CACHE_HDFS)
+        self.azure = self._get_remote(project, config, Config.SECTION_CACHE_AZURE)
 
     def _get_remote(self, project, config, name):
         from dvc.remote import Remote

@@ -13,6 +13,7 @@ except ImportError:
 
 from dvc.logger import Logger
 from dvc.remote.base import RemoteBase
+from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.progress import progress
 
@@ -189,7 +190,8 @@ class RemoteGS(RemoteBase):
         return [self._path_to_etag(blob.name) for blob in blobs]
 
     def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos]
+        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['gs']]
+        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
 
         for etag in self._all_etags():
             if etag in used_etags:

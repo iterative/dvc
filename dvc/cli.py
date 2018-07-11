@@ -314,6 +314,14 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Collect garbage for all branches.')
+    gc_parser.add_argument('-c',
+                        '--cloud',
+                        action='store_true',
+                        default=False,
+                        help='Collect garbage in remote repository')
+    gc_parser.add_argument('-r',
+                        '--remote',
+                        help='Remote repository to collect garbage in')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config
