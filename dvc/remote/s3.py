@@ -108,11 +108,13 @@ class RemoteS3(RemoteBase):
         Logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
                                                   path_info['key']))
 
+        obj = self.s3.Object(path_info['bucket'], path_info['key'])
         try:
-            obj = self.s3.Object(path_info['bucket'], path_info['key']).get()
-            obj.delete()
+            obj.get()
         except Exception:
-            pass
+            return
+
+        obj.delete()
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': self.scheme,
