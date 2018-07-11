@@ -17,3 +17,10 @@ ssh-keyscan 0.0.0.0 >> ~/.ssh/known_hosts
 ssh 0.0.0.0 ls &> /dev/null
 ssh 127.0.0.1 ls &> /dev/null
 ssh localhost ls &> /dev/null
+
+scriptdir="$(dirname $0)"
+
+if [ -n "$TRAVIS_OS_NAME" ] && [ "$TRAVIS_OS_NAME" != "osx" ]; then
+  bash "$scriptdir/install_azurite.sh"
+  source ~/.bashrc
+fi

@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 import os
 import re
 import time
@@ -29,14 +30,14 @@ class Callback(object):
 class RemoteAzure(RemoteBase):
     scheme = 'azure'
     REGEX = (r'^azure://'
-             r'(ContainerName=(?P<container_name>[^;]+);)?'
+             r'(ContainerName=(?P<container_name>[^;]+);?)?'
              r'(?P<connection_string>.+)?$')
     REQUIRES = {'azure-storage-blob': BlockBlobService}
     PARAM_ETAG = 'etag'
     COPY_POLL_SECONDS = 5
 
     def __init__(self, project, config):
-        super().__init__(project, config)
+        super(RemoteAzure, self).__init__(project, config)
         self.project = project
 
         url = config.get(Config.SECTION_REMOTE_URL)
@@ -137,19 +138,16 @@ class RemoteAzure(RemoteBase):
         } for md5 in md5s]
 
     def exists(self, path_infos):
-        # TODO: check whether per-key exists() is faster than listing all
-        # objects altogether.
-        ret = []
+        keys = {blob.name
+                for blob in self.blob_service.list_blobs(self.bucket)}
 
+        ret = []
         for path_info in path_infos:
             if path_info['scheme'] != self.scheme:
                 raise NotImplementedError
 
-            bucket = path_info['bucket']
             key = path_info['key']
-
-            exists = self.blob_service.exists(bucket, key)
-            ret.append(exists)
+            ret.append(key in keys)
 
         return ret
 

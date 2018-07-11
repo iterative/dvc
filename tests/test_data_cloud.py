@@ -1,6 +1,8 @@
+from subprocess import CalledProcessError
+from subprocess import check_output
+from unittest import SkipTest
 import os
 import time
-import stat
 import uuid
 import shutil
 import getpass
@@ -9,7 +11,8 @@ import platform
 
 from dvc.main import main
 from dvc.config import Config, ConfigError
-from dvc.data_cloud import DataCloud, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL, RemoteSSH, RemoteHDFS
+from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
+                            RemoteLOCAL, RemoteSSH, RemoteHDFS)
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -46,8 +49,11 @@ def _should_test_gcp():
         if os.path.exists(creds):
             os.unlink(creds)
         shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
-        ret = os.system('gcloud auth activate-service-account --key-file={}'.format(creds))
-        assert ret == 0
+        try:
+            check_output(['gcloud', 'auth', 'activate-service-account',
+                          '--key-file', creds])
+        except CalledProcessError:
+            return False
         return True
 
     return False
@@ -59,24 +65,36 @@ def _should_test_azure():
     elif os.getenv("DVC_TEST_AZURE") == "false":
         return False
 
-    return os.getenv("AZURE_STORAGE_CONTAINER") and os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    return (os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+            and os.getenv("AZURE_STORAGE_CONNECTION_STRING"))
 
 
 def _should_test_ssh():
     if os.getenv("DVC_TEST_SSH") == "true":
         return True
 
-    #FIXME: enable on windows
+    # FIXME: enable on windows
     if os.name == 'nt':
         return False
 
-    assert os.system('ssh 127.0.0.1 ls &> /dev/null') == 0
+    try:
+        check_output(['ssh', '127.0.0.1', 'ls'])
+    except (CalledProcessError, FileNotFoundError):
+        return False
 
     return True
 
 
 def _should_test_hdfs():
-    return platform.system() == 'Linux'
+    if platform.system() != 'Linux':
+        return False
+
+    try:
+        check_output(['hadoop', 'version'])
+    except (CalledProcessError, FileNotFoundError):
+        return False
+
+    return True
 
 
 def get_local_storagepath():
@@ -88,11 +106,15 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return 'ssh://{}@127.0.0.1:{}'.format(getpass.getuser(), get_local_storagepath())
+    return 'ssh://{}@127.0.0.1:{}'.format(
+        getpass.getuser(),
+        get_local_storagepath())
 
 
 def get_hdfs_url():
-    return 'hdfs://{}@127.0.0.1{}'.format(getpass.getuser(), get_local_storagepath())
+    return 'hdfs://{}@127.0.0.1{}'.format(
+        getpass.getuser(),
+        get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -134,28 +156,39 @@ class TestDataCloud(TestDvc):
 
         for scheme, cl in [('s3://', RemoteS3),
                            ('gs://', RemoteGS),
+                           ('azure://ContainerName=', RemoteAzure),
                            ('ssh://user@localhost:/', RemoteSSH),
                            (tempfile.mkdtemp(), RemoteLOCAL)]:
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = scheme + str(uuid.uuid4())
+
+            remote_url = scheme + str(uuid.uuid4())
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             self._test_cloud(config, cl)
 
     def test_unsupported(self):
-        with self.assertRaises(ConfigError) as cx:
+        with self.assertRaises(ConfigError):
+            remote_url = 'notsupportedscheme://a/b'
             config = TEST_CONFIG
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = 'notsupportedscheme://a/b'
+            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             DataCloud(self.dvc, config=config)
 
 
 class TestDataCloudBase(TestDvc):
+    def _get_cloud_class(self):
+        return None
+
     def _should_test(self):
         return False
 
     def _get_url(self):
-        return None
+        return ''
+
+    def _ensure_should_run(self):
+        if not self._should_test():
+            raise SkipTest('Test {} is disabled'
+                           .format(self.__class__.__name__))
 
     def _setup_cloud(self):
-        if not self._should_test():
-            return
+        self._ensure_should_run()
 
         repo = self._get_url()
 
@@ -229,8 +262,8 @@ class TestDataCloudBase(TestDvc):
         self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
     def test(self):
-        if self._should_test():
-            self._test_cloud()
+        self._ensure_should_run()
+        self._test_cloud()
 
 
 class TestRemoteS3(TestDataCloudBase):
@@ -328,7 +361,7 @@ class TestDataCloudCLIBase(TestDvc):
         stage_dir = self.dvc.add(self.DATA_DIR)
         cache_dir = stage_dir.outs[0].cache
 
-        #FIXME check status output
+        # FIXME check status output
         sleep()
         self.main(['status', '-c'] + args)
 
