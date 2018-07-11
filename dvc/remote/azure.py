@@ -17,6 +17,7 @@ from dvc.logger import Logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
+from dvc.remote.local import RemoteLOCAL
 
 
 class Callback(object):
@@ -212,6 +213,7 @@ class RemoteAzure(RemoteBase):
 
     def gc(self, checksum_infos):
         used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['azure']]
+        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
 
         all_blobs = self.blob_service.list_blobs(self.bucket)
 

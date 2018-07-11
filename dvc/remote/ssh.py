@@ -13,6 +13,7 @@ from dvc.logger import Logger
 from dvc.utils import copyfile, file_md5
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase
+from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.exceptions import DvcException
 
@@ -256,6 +257,7 @@ class RemoteSSH(RemoteBase):
 
     def gc(self, checksum_infos):
         used_md5s = [info[self.PARAM_MD5] for info in checksum_infos['ssh']]
+        used_md5s += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
 
         for md5 in self._all_md5s():
             if md5 in used_md5s:
