@@ -15,6 +15,8 @@ environment:
     secure: 96fJ3r2i2GohbXHwnSs5N4EplQ7q8YmLpPWM0AC+f4s=
   CODECOV_TOKEN:
     secure: XN4jRtmGE5Bqg8pPZkwNs7kn3UEI73Rkldqc0MGsQISZBm5TNJZOPofDMc1QnUsf
+  AZURE_STORAGE_CONTAINER_NAME: appveyor-tests
+  AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
 
   matrix:
 
@@ -44,6 +46,9 @@ environment:
 #      PYTHON_ARCH: "64"
 
 install:
+  - ps: Install-Product node
+  - npm install -g azurite
+  - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
   - cinst wget
   - cinst awscli
   - cinst gcloudsdk
@@ -70,6 +75,9 @@ after_test:
   - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov
   - if "%APPVEYOR_REPO_TAG%"=="true" python -m dvc pull
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
+
+on_finish:
+  - ps: Stop-Process $AzuriteProcess
 
 artifacts:
   - path: dvc*.exe
