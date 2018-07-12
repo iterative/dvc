@@ -154,12 +154,15 @@ class TestDataCloud(TestDvc):
     def test(self):
         config = TEST_CONFIG
 
-        for scheme, cl in [('s3://', RemoteS3),
-                           ('gs://', RemoteGS),
-                           ('azure://ContainerName=', RemoteAzure),
-                           ('ssh://user@localhost:/', RemoteSSH),
-                           (tempfile.mkdtemp(), RemoteLOCAL)]:
+        clist = [('s3://', RemoteS3),
+                 ('gs://', RemoteGS),
+                 ('ssh://user@localhost:/', RemoteSSH),
+                 (tempfile.mkdtemp(), RemoteLOCAL)]
 
+        if _should_test_azure():
+            clist.append(('azure://ContainerName=', RemoteAzure))
+
+        for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             self._test_cloud(config, cl)
