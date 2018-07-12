@@ -52,7 +52,7 @@ def _should_test_gcp():
         try:
             check_output(['gcloud', 'auth', 'activate-service-account',
                           '--key-file', creds])
-        except CalledProcessError:
+        except (CalledProcessError, FileNotFoundError):
             return False
         return True
 
