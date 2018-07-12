@@ -52,7 +52,7 @@ def _should_test_gcp():
         try:
             check_output(['gcloud', 'auth', 'activate-service-account',
                           '--key-file', creds])
-        except (CalledProcessError, FileNotFoundError):
+        except (CalledProcessError, IOError):
             return False
         return True
 
@@ -79,7 +79,7 @@ def _should_test_ssh():
 
     try:
         check_output(['ssh', '127.0.0.1', 'ls'])
-    except (CalledProcessError, FileNotFoundError):
+    except (CalledProcessError, IOError):
         return False
 
     return True
@@ -91,7 +91,7 @@ def _should_test_hdfs():
 
     try:
         check_output(['hadoop', 'version'])
-    except (CalledProcessError, FileNotFoundError):
+    except (CalledProcessError, IOError):
         return False
 
     return True
