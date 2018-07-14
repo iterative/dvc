@@ -1,0 +1,31 @@
+import os
+import networkx
+
+from dvc.exceptions import DvcException
+from dvc.command.common.base import CmdBase
+from dvc.project import NotDvcFileError
+
+
+class CmdPipelineShow(CmdBase):
+    def _show(self, target, commands):
+        G = self.project.graph()
+        stages = networkx.get_node_attributes(G, 'stage')
+        node = os.path.relpath(os.path.abspath(target), self.project.root_dir)
+        if node not in stages:
+            raise NotDvcFileError(node)
+
+        for n in networkx.dfs_postorder_nodes(G, node):
+            line = n
+            if commands:
+                line = stages[n].cmd
+            self.project.logger.info(line)
+
+    def run(self, unlock=False):
+        for target in self.args.targets:
+            try:
+                self._show(target, self.args.commands)
+            except DvcException as ex:
+                msg = 'Failed to show pipeline for \'{}\''.format(target)
+                self.project.logger.error(msg, ex)
+                return 1
+        return 0

@@ -23,6 +23,7 @@ from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd, CmdMetricsRemove
 from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
+from dvc.command.pipeline import CmdPipelineShow
 from dvc.stage import Stage
 from dvc import VERSION
 
@@ -527,6 +528,33 @@ def parse_args(argv=None):
                         help='DVC files.')
     unlock_parser.set_defaults(func=CmdUnlock)
 
+    # Pipeline
+    pipeline_parser = subparsers.add_parser(
+                        'pipeline',
+                        parents=[parent_parser],
+                        help='Pipeline')
+
+    pipeline_subparsers = pipeline_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc pipeline CMD --help for command-specific help')
+
+    _fix_subparsers(pipeline_subparsers)
+
+    pipeline_show_parser = pipeline_subparsers.add_parser(
+                        'show',
+                        parents=[parent_parser],
+                        help='Show pipeline')
+    pipeline_show_parser.add_argument('-c',
+                        '--commands',
+                        action='store_true',
+                        default=False,
+                        help='Print commands instead of paths to DVC files.')
+    pipeline_show_parser.add_argument(
+                        'targets',
+                        nargs='+',
+                        help='DVC files.')
+    pipeline_show_parser.set_defaults(func=CmdPipelineShow)
+                        
 
     args = parser.parse_args(argv)
 
