@@ -227,19 +227,20 @@ class Project(object):
         return [stage]
 
     def reproduce(self, target, recursive=True, force=False):
-        stages = nx.get_node_attributes(self.graph(), 'stage')
+        G = self.graph()
+        stages = nx.get_node_attributes(G, 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
         if node not in stages:
             raise NotDvcFileError(target)
 
         if recursive:
-            return self._reproduce_stages(stages, node, force)
+            return self._reproduce_stages(G, stages, node, force)
 
         return self._reproduce_stage(stages, node, force)
 
-    def _reproduce_stages(self, stages, node, force):
+    def _reproduce_stages(self, G, stages, node, force):
         result = []
-        for n in nx.dfs_postorder_nodes(self.graph(), node):
+        for n in nx.dfs_postorder_nodes(G, node):
             try:
                 result += self._reproduce_stage(stages, n, force)
             except Exception as ex:
