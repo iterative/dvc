@@ -2,6 +2,7 @@ import os
 import csv
 import stat
 import json
+import shutil
 import networkx as nx
 from jsonpath_rw import parse
 
@@ -95,6 +96,12 @@ class Project(object):
             scm.add([os.path.join(dvc_dir, scm.ignore_file())])
 
         return proj
+
+    def destroy(self):
+        for stage in self.stages():
+            stage.remove()
+
+        shutil.rmtree(self.dvc_dir)
 
     def _ignore(self):
         l = [self.state.state_file,
