@@ -94,6 +94,11 @@ def parse_args(argv=None):
                         'destroy',
                         parents=[parent_parser],
                         help='Destroy dvc')
+    destroy_parser.add_argument('-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Force destruction')
     destroy_parser.set_defaults(func=CmdDestroy)
 
 
