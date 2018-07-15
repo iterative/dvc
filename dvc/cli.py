@@ -7,6 +7,7 @@ from multiprocessing import cpu_count
 
 from dvc.logger import Logger
 from dvc.command.init import CmdInit
+from dvc.command.destroy import CmdDestroy
 from dvc.command.remove import CmdRemove
 from dvc.command.move import CmdMove
 from dvc.command.run import CmdRun
@@ -86,6 +87,15 @@ def parse_args(argv=None):
                         default=False,
                         help="Initiate dvc in directory that is not tracked by any scm tool(e.g. git)")
     init_parser.set_defaults(func=CmdInit)
+
+
+    # Destroy
+    destroy_parser = subparsers.add_parser(
+                        'destroy',
+                        parents=[parent_parser],
+                        help='Destroy dvc')
+    destroy_parser.set_defaults(func=CmdDestroy)
+
 
     # Add
     add_parser = subparsers.add_parser(
