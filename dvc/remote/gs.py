@@ -116,67 +116,73 @@ class RemoteGS(RemoteBase):
             ret.append(exists)
         return ret
 
-    def upload(self, paths, path_infos, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
+    def upload(self, from_infos, to_infos, names=None):
+        names = self._verify_path_args(to_infos, from_infos, names)
 
         gs = self.gs
 
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != 'gs':
+        for from_info, to_info, name in zip(from_infos, to_infos, names):
+            if to_info['scheme'] != 'gs':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(path,
-                                                            path_info['bucket'],
-                                                            path_info['key']))
+            if from_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            Logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
+                                                            to_info['bucket'],
+                                                            to_info['key']))
 
             if not name:
-                name = os.path.basename(path)
+                name = os.path.basename(from_info['path'])
 
             progress.update_target(name, 0, None)
 
             try:
-                gs.bucket(path_info['bucket']).blob(path_info['key']).upload_from_filename(path)
+                gs.bucket(to_info['bucket']).blob(to_info['key']).upload_from_filename(from_info['path'])
             except Exception as exc:
-                Logger.error("Failed to upload '{}' to '{}/{}'".format(path,
-                                                                       path_info['bucket'],
-                                                                       path_info['key']), exc)
+                Logger.error("Failed to upload '{}' to '{}/{}'".format(from_info['path'],
+                                                                       to_info['bucket'],
+                                                                       to_info['key']), exc)
                 continue
 
             progress.finish_target(name)
 
-    def download(self, path_infos, paths, no_progress_bar=False, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
+    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+        names = self._verify_path_args(from_infos, to_infos, names)
 
         gs = self.gs
 
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != 'gs':
+        for to_info, from_info, name in zip(to_infos, from_infos, names):
+            if from_info['scheme'] != 'gs':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
-                                                              path_info['key'],
-                                                              path))
+            if to_info['scheme'] != 'local':
+                raise NotImplementedError
 
-            tmp_file = self.tmp_file(path)
+            Logger.debug("Downloading '{}/{}' to '{}'".format(from_info['bucket'],
+                                                              from_info['key'],
+                                                              to_info['path']))
+
+            tmp_file = self.tmp_file(to_info['path'])
             if not name:
-                name = os.path.basename(path)
+                name = os.path.basename(to_info['path'])
 
             if not no_progress_bar:
                 # percent_cb is not available for download_to_filename, so
                 # lets at least update progress at keypoints(start, finish)
                 progress.update_target(name, 0, None)
 
-            self._makedirs(path)
+            self._makedirs(to_info['path'])
 
             try:
-                gs.bucket(path_info['bucket']).get_blob(path_info['key']).download_to_filename(tmp_file)
+                gs.bucket(from_info['bucket']).get_blob(from_info['key']).download_to_filename(tmp_file)
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}' to '{}'".format(path_info['bucket'],
-                                                                         path_info['key'],
-                                                                         path), exc)
+                Logger.error("Failed to download '{}/{}' to '{}'".format(from_info['bucket'],
+                                                                         from_info['key'],
+                                                                         to_info['path']), exc)
                 continue
 
-            os.rename(tmp_file, path)
+            os.rename(tmp_file, to_info['path'])
 
             if not no_progress_bar:
                 progress.finish_target(name)

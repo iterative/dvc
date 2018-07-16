@@ -282,7 +282,7 @@ class Stage(object):
             msg = u'Importing \'{}\' -> \'{}\''
             self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].rel_path))
 
-            self.deps[0].download(self.outs[0].path)
+            self.deps[0].download(self.outs[0].path_info)
         elif self.is_data_source:
             self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
             self.check_missing_outputs()

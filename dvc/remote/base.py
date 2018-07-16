@@ -72,10 +72,10 @@ class RemoteBase(object):
     def checkout(self, path_info, checksum_info):
         raise NotImplementedError
 
-    def download(self, path_info, path, no_progress_bar=False, name=None):
+    def download(self, from_infos, to_infos, no_progress_bar=False, name=None):
         raise NotImplementedError
 
-    def upload(self, path, path_info, name=None):
+    def upload(self, from_infos, to_infos, path_info, name=None):
         raise NotImplementedError
 
     def remove(self, path_info):
@@ -99,15 +99,15 @@ class RemoteBase(object):
         raise NotImplementedError
 
     @classmethod
-    def _verify_path_args(cls, path_infos, fnames, names=None):
-        assert isinstance(fnames, list)
-        assert isinstance(path_infos, list)
-        assert len(fnames) == len(path_infos)
+    def _verify_path_args(cls, from_infos, to_infos, names=None):
+        assert isinstance(from_infos, list)
+        assert isinstance(to_infos, list)
+        assert len(from_infos) == len(to_infos)
 
         if not names:
-            names = len(fnames) * [None]
+            names = len(to_infos) * [None]
         else:
             assert isinstance(names, list)
-            assert len(names) == len(fnames)
+            assert len(names) == len(to_infos)
 
         return names

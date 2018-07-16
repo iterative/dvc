@@ -156,69 +156,75 @@ class RemoteS3(RemoteBase):
 
         return ret
 
-    def upload(self, paths, path_infos, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
+    def upload(self, from_infos, path_infos, names=None):
+        names = self._verify_path_args(to_infos, from_infos, names)
 
         session = boto3.session.Session()
         s3 = session.client('s3')
 
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != 's3':
+        for from_info, to_info, name in zip(from_infos, to_infos, names):
+            if to_info['scheme'] != 's3':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(path,
-                                                            path_info['bucket'],
-                                                            path_info['key']))
+            if from_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            Logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
+                                                            to_info['bucket'],
+                                                            to_info['key']))
 
             if not name:
-                name = os.path.basename(path)
+                name = os.path.basename(from_info['path'])
 
-            total = os.path.getsize(path)
+            total = os.path.getsize(from_info['path'])
             cb = Callback(name, total)
 
             try:
-                s3.upload_file(path, path_info['bucket'], path_info['key'], Callback=cb)
+                s3.upload_file(from_info['path'], to_info['bucket'], to_info['key'], Callback=cb)
             except Exception as exc:
-                Logger.error("Failed to upload '{}'".format(path), exc)
+                Logger.error("Failed to upload '{}'".format(from_info['path']), exc)
                 continue
 
             progress.finish_target(name)
 
-    def download(self, path_infos, fnames, no_progress_bar=False, names=None):
-        names = self._verify_path_args(path_infos, fnames, names)
+    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+        names = self._verify_path_args(from_infos, to_infos, names)
 
         session = boto3.session.Session()
         s3 = session.client('s3')
 
-        for fname, path_info, name in zip(fnames, path_infos, names):
-            if path_info['scheme'] != 's3':
+        for to_info, from_info, name in zip(to_infos, from_infos, names):
+            if from_info['scheme'] != 's3':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(path_info['bucket'],
-                                                              path_info['key'],
-                                                              fname))
+            if to_info['scheme'] != 'local':
+                raise NotImplementedError
 
-            tmp_file = self.tmp_file(fname)
+            Logger.debug("Downloading '{}/{}' to '{}'".format(from_info['bucket'],
+                                                              from_info['key'],
+                                                              to_info['path']))
+
+            tmp_file = self.tmp_file(to_info['path'])
             if not name:
-                name = os.path.basename(fname)
+                name = os.path.basename(to_info['path'])
 
             if no_progress_bar:
                 cb = None
             else:
-                total = s3.head_object(Bucket=path_info['bucket'],
-                                       Key=path_info['key'])['ContentLength']
+                total = s3.head_object(Bucket=from_info['bucket'],
+                                       Key=from_info['key'])['ContentLength']
                 cb = Callback(name, total)
 
-            self._makedirs(fname)
+            self._makedirs(to_info['path'])
 
             try:
-                s3.download_file(path_info['bucket'], path_info['key'], tmp_file, Callback=cb)
+                s3.download_file(from_info['bucket'], from_info['key'], tmp_file, Callback=cb)
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}'".format(path_info['bucket'],
-                                                                 path_info['key']), exc)
+                Logger.error("Failed to download '{}/{}'".format(from_info['bucket'],
+                                                                 from_info['key']), exc)
                 return
 
-            os.rename(tmp_file, fname)
+            os.rename(tmp_file, to_info['path'])
 
             if not no_progress_bar:
                 progress.finish_target(name)
