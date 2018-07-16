@@ -8,7 +8,7 @@ from dvc.project import NotDvcFileError
 
 class CmdPipelineShow(CmdBase):
     def _show(self, target, commands):
-        G = self.project.graph()
+        G = self.project.graph()[0]
         stages = networkx.get_node_attributes(G, 'stage')
         node = os.path.relpath(os.path.abspath(target), self.project.root_dir)
         if node not in stages:

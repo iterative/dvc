@@ -227,14 +227,21 @@ class Project(object):
 
 
     def _reproduce_stage(self, stages, node, force):
-        stage = stages[node].reproduce(force=force)
+        stage = stages[node]
+
+        if stage.locked:
+            msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
+                  'going to be reproduced.'
+            self.logger.warn(msg.format(stage.relpath))
+
+        stage = stage.reproduce(force=force)
         if not stage:
             return []
         stage.dump()
         return [stage]
 
     def reproduce(self, target, recursive=True, force=False):
-        G = self.graph()
+        G = self.graph()[1]
         stages = nx.get_node_attributes(G, 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
         if node not in stages:
@@ -262,7 +269,7 @@ class Project(object):
         self.link_state.remove_unused(used)
 
     def checkout(self, target=None):
-        all_stages = self.stages()
+        all_stages = self.active_stages()
 
         if target:
             if not Stage.is_stage_file(target):
@@ -274,9 +281,14 @@ class Project(object):
         self._cleanup_unused_links(all_stages)
 
         for stage in stages:
+            if stage.locked:
+                msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
+                      'going to be checked out.'
+                self.logger.warn(msg.format(stage.relpath))
+
             stage.checkout()
 
-    def _used_cache(self, target=None, all_branches=False):
+    def _used_cache(self, target=None, all_branches=False, active=True):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
@@ -287,10 +299,17 @@ class Project(object):
         for branch in self.scm.brancher(all_branches=all_branches):
             if target:
                 stages = [Stage.load(self, target)]
+            elif active:
+                stages = self.active_stages()
             else:
                 stages = self.stages()
 
             for stage in stages:
+                if active and not target and stage.locked:
+                    msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
+                          'going to be pushed/pulled/fetched.'
+                    self.logger.warn(msg.format(stage.relpath))
+
                 for out in stage.outs:
                     if not out.use_cache or not out.info:
                         continue
@@ -300,7 +319,9 @@ class Project(object):
         return cache
 
     def gc(self, all_branches=False, cloud=False, remote=None):
-        clist = self._used_cache(target=None, all_branches=all_branches)
+        clist = self._used_cache(target=None,
+                                 all_branches=all_branches,
+                                 active=False)
         self.cache.local.gc(clist)
 
         if self.cache.s3:
@@ -337,7 +358,7 @@ class Project(object):
         if target:
             stages = [Stage.load(self, target)]
         else:
-            stages = self.stages()
+            stages = self.active_stages()
 
         for stage in stages:
             status.update(stage.status())
@@ -416,7 +437,8 @@ class Project(object):
     def metrics_show(self, path=None, json_path=None, tsv_path=None, htsv_path=None, all_branches=False):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches):
-            metrics = filter(lambda o: o.metric, self.outs())
+            outs = [out for stage in self.active_stages() for out in stage.outs]
+            metrics = filter(lambda o: o.metric, outs)
             fnames = [path] if path else map(lambda o: o.path, metrics)
             for fname in fnames:
                 rel = os.path.relpath(fname)
@@ -467,14 +489,20 @@ class Project(object):
 
     def graph(self):
         G = nx.DiGraph()
+        G_active = nx.DiGraph()
         stages = self.stages()
-        outs = self.outs()
 
+        outs = []
+        for stage in stages:
+            outs += stage.outs
+
+        # collect the whole DAG
         for stage in stages:
             node = os.path.relpath(stage.path, self.root_dir)
+
             G.add_node(node, stage=stage)
-            if stage.locked:
-                continue
+            G_active.add_node(node, stage=stage)
+
             for dep in stage.deps:
                 for out in outs:
                     if out.path != dep.path and not dep.path.startswith(out.path + out.sep):
@@ -484,8 +512,31 @@ class Project(object):
                     dep_node = os.path.relpath(dep_stage.path, self.root_dir)
                     G.add_node(dep_node, stage=dep_stage)
                     G.add_edge(node, dep_node)
+                    if not stage.locked:
+                        G_active.add_node(dep_node, stage=dep_stage)
+                        G_active.add_edge(node, dep_node)
 
-        return G
+        return G, G_active
+
+    def pipelines(self):
+        G, G_active = self.graph()
+
+        # find pipeline ends aka "output stages"
+        ends = [node for node, in_degree in G.in_degree if in_degree == 0]
+
+        # filter out subgraphs that didn't exist in original G
+        pipelines = []
+        for c in nx.weakly_connected_components(G_active):
+            H = G_active.subgraph(c)
+            found = False
+            for node in ends:
+                if node in H:
+                    found = True
+                    break
+            if found:
+                pipelines.append(H)
+
+        return pipelines
 
     def stages(self):
         stages = []
@@ -497,8 +548,8 @@ class Project(object):
                 stages.append(Stage.load(self, path))
         return stages
 
-    def outs(self):
-        outs = []
-        for stage in self.stages():
-            outs += stage.outs
-        return outs
+    def active_stages(self):
+        stages = []
+        for G in self.pipelines():
+            stages.extend(list(nx.get_node_attributes(G, 'stage').values()))
+        return stages
