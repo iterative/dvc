@@ -122,20 +122,21 @@ class RemoteSSH(RemoteBase):
 
         return md5
 
-    def cp(self, from_info, to_info):
+    def cp(self, from_info, to_info, ssh=None):
         if from_info['scheme'] != 'ssh' or to_info['scheme'] != 'ssh':
             raise NotImplementedError
 
         assert from_info['host'] == to_info['host']
         assert from_info['user'] == to_info['user']
 
-        ssh = self.ssh(host=from_info['host'], user=from_info['user'])
+        s = ssh if ssh else self.ssh(host=from_info['host'], user=from_info['user'])
 
         dname = posixpath.dirname(to_info['path'])
-        self._exec(ssh, 'mkdir -p {}'.format(dname))
-        self._exec(ssh, 'cp {} {}'.format(from_info['path'], to_info['path']))
+        self._exec(s, 'mkdir -p {}'.format(dname))
+        self._exec(s, 'cp {} {}'.format(from_info['path'], to_info['path']))
 
-        ssh.close()
+        if not ssh:
+            s.close()
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'ssh':
@@ -188,6 +189,12 @@ class RemoteSSH(RemoteBase):
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 'ssh':
                 raise NotImplementedError
+
+            if to_info['scheme'] == 'ssh':
+                assert from_info['host'] == to_info['host']
+                assert from_info['user'] == to_info['user']
+                self.cp(from_info, to_info, ssh=ssh)
+                continue
 
             if to_info['scheme'] != 'local':
                 raise NotImplementedError

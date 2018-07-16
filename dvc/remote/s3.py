@@ -18,6 +18,7 @@ from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
+from dvc.exceptions import DvcException
 
 
 class Callback(object):
@@ -64,7 +65,7 @@ class RemoteS3(RemoteBase):
         try:
             obj = self.s3.Object(bucket, key).get()
         except Exception:
-            return None
+            raise DvcException('s3://{}/{} does not exist'.format(bucket, key))
 
         return obj['ETag'].strip('"')
 
@@ -74,16 +75,22 @@ class RemoteS3(RemoteBase):
 
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'], path_info['key'])}
 
+    def _copy(self, from_info, to_info, s3=None):
+        s3 = s3 if s3 else self.s3
+
+        source = {'Bucket': from_info['bucket'],
+                  'Key': from_info['key']}
+        self.s3.Bucket(to_info['bucket']).copy(source, to_info['key'])
+
     def save(self, path_info):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
         etag = self.get_etag(path_info['bucket'], path_info['key'])
-        dest_key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        to_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
 
-        source = {'Bucket': path_info['bucket'],
-                  'Key': path_info['key']}
-        self.s3.Bucket(self.bucket).copy(source, dest_key)
+        self._copy(path_info, to_info)
 
         return {self.PARAM_ETAG: etag}
 
@@ -96,10 +103,9 @@ class RemoteS3(RemoteBase):
             return
 
         key = posixpath.join(self.prefix, etag[0:2], etag[2:])
-        source = {'Bucket': self.bucket,
-                  'Key': key}
+        from_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
 
-        self.s3.Bucket(path_info['bucket']).copy(source, path_info['key'])
+        self._copy(from_info, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 's3':
@@ -196,6 +202,10 @@ class RemoteS3(RemoteBase):
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 's3':
                 raise NotImplementedError
+
+            if to_info['scheme'] == 's3':
+                self._copy(from_info, to_info, s3=s3)
+                continue
 
             if to_info['scheme'] != 'local':
                 raise NotImplementedError

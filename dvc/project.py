@@ -211,14 +211,10 @@ class Project(object):
         return stage
 
     def imp(self, url, out):
-        stage_fname = out + Stage.STAGE_FILE_SUFFIX
-        cwd = os.path.dirname(os.path.abspath(out))
         stage = Stage.loads(project=self,
                             cmd=None,
                             deps=[url],
-                            outs=[out],
-                            fname=stage_fname,
-                            cwd=cwd)
+                            outs=[out])
 
         stage.run()
         stage.dump()

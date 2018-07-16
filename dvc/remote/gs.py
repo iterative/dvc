@@ -55,18 +55,24 @@ class RemoteGS(RemoteBase):
 
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'], path_info['key'])}
 
+    def _copy(from_info, to_info, gs=None):
+        gs = gs if gs else self.gs
+ 
+        blob = gs.bucket(from_info['bucket']).get_blob(from_info['key'])
+        if not blob:
+            raise DvcException('{} doesn\'t exist in the cloud'.format(from_info['key']))
+
+        self.gs.bucket(to_info['bucket']).copy_blob(blob, self.gs.bucket(to_info['bucket']), new_name=to_info['key'])
+
     def save(self, path_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
         etag = self.get_etag(path_info['bucket'], path_info['key'])
-        dest_key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        to_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
-        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
-        if not blob:
-            raise DvcException('{} doesn\'t exist in the cloud'.format(path_info['key']))
-
-        self.gs.bucket(self.bucket).copy_blob(blob, self.gs.bucket(path_info['bucket']), new_name=dest_key)
+        self._copy(path_info, to_info)
 
         return {self.PARAM_ETAG: etag}
 
@@ -79,11 +85,9 @@ class RemoteGS(RemoteBase):
             return
 
         key = posixpath.join(self.prefix, etag[0:2], etag[2:])
-        blob = self.gs.bucket(self.bucket).get_blob(key)
-        if not blob:
-            raise DvcException('{} doesn\'t exist in the cloud'.format(key))
+        from_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
-        self.gs.bucket(path_info['bucket']).copy_blob(blob, self.gs.bucket(self.bucket), new_name=path_info['key'])
+        self._copy(from_info, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'gs':
@@ -155,6 +159,10 @@ class RemoteGS(RemoteBase):
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 'gs':
                 raise NotImplementedError
+
+            if from_info['scheme'] == 'gs':
+                self._copy(from_info, to_info, gs=gs)
+                continue
 
             if to_info['scheme'] != 'local':
                 raise NotImplementedError

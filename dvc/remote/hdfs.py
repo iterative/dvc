@@ -57,7 +57,7 @@ class RemoteHDFS(RemoteBase):
 
     def cp(self, from_info, to_info):
         self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])), user=to_info['user'])
-        self.hadoop_fs('cp {} {}'.format(from_info['url'], to_info['url']), user=to_info['user'])
+        self.hadoop_fs('cp -f {} {}'.format(from_info['url'], to_info['url']), user=to_info['user'])
 
     def rm(self, path_info):
         self.hadoop_fs('rm {}'.format(path_info['url']), user=path_info['user'])
@@ -155,6 +155,10 @@ class RemoteHDFS(RemoteBase):
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 'hdfs':
                 raise NotImplementedError
+
+            if to_info['scheme'] == 'hdfs':
+                self.cp(from_info, to_info)
+                continue
 
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
