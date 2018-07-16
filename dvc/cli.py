@@ -564,11 +564,17 @@ def parse_args(argv=None):
                         'show',
                         parents=[parent_parser],
                         help='Show pipeline')
-    pipeline_show_parser.add_argument('-c',
+    pipeline_show_parser_group = pipeline_show_parser.add_mutually_exclusive_group()
+    pipeline_show_parser_group.add_argument('-c',
                         '--commands',
                         action='store_true',
                         default=False,
                         help='Print commands instead of paths to DVC files.')
+    pipeline_show_parser_group.add_argument('-o',
+                        '--outs',
+                        action='store_true',
+                        default=False,
+                        help='Print output files instead of paths to DVC files.')
     pipeline_show_parser.add_argument(
                         'targets',
                         nargs='+',
