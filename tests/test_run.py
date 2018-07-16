@@ -70,23 +70,3 @@ class TestCmdRun(TestDvc):
         ret = main(['run',
                     'non-existing-command'])
         self.assertNotEqual(ret, 0)
-
-    def test_stage_file_name(self):
-        fname = 'path/to/file'
-        outs = [fname, 'dummy']
-        dvcfile = os.path.basename(fname) + Stage.STAGE_FILE_SUFFIX
-
-        ret = CmdRun.stage_file_name(None, [], [], [])
-        self.assertEqual(ret, Stage.STAGE_FILE)
-
-        ret = CmdRun.stage_file_name(None, [], outs, [])
-        self.assertEqual(ret, dvcfile)
-
-        ret = CmdRun.stage_file_name(None, outs, [], [])
-        self.assertEqual(ret, dvcfile)
-
-        ret = CmdRun.stage_file_name(None, [], [], outs)
-        self.assertEqual(ret, dvcfile)
-
-        ret = CmdRun.stage_file_name(fname, [], [], [])
-        self.assertEqual(ret, fname)
