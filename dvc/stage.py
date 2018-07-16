@@ -3,6 +3,7 @@ import yaml
 import itertools
 import subprocess
 import schema
+import posixpath
 
 import dvc.dependency as dependency
 import dvc.output as output
@@ -52,7 +53,7 @@ class Stage(object):
         schema.Optional(PARAM_LOCKED): bool,
     }
 
-    def __init__(self, project, path=None, cmd=None, cwd=None, deps=[], outs=[], md5=None, locked=False):
+    def __init__(self, project, path=None, cmd=None, cwd=os.curdir, deps=[], outs=[], md5=None, locked=False):
         self.project = project
         self.path = path
         self.cmd = cmd
@@ -184,6 +185,25 @@ class Stage(object):
 
         return stage
 
+    @classmethod
+    def _stage_fname_cwd(cls, fname, cwd, outs):
+        if fname and cwd:
+            return (fname, cwd)
+
+        if not outs:
+            return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
+
+        out = outs[0]
+        if out.path_info['scheme'] == 'local':
+            path = os.path
+        else:
+            path = posixpath
+
+        fname = fname if fname else path.basename(out.path) + cls.STAGE_FILE_SUFFIX
+        cwd = cwd if cwd else path.dirname(out.path)
+
+        return (fname, cwd)
+
     @staticmethod
     def loads(project=None,
               cmd=None,
@@ -194,19 +214,23 @@ class Stage(object):
               fname=None,
               cwd=os.curdir,
               locked=False):
-        cwd = os.path.abspath(cwd)
-        path = os.path.join(cwd, fname)
-
         stage = Stage(project=project,
-                      path=path,
-                      cmd=cmd,
                       cwd=cwd,
+                      cmd=cmd,
                       locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
         stage.outs += output.loads_from(stage, metrics_no_cache, use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
+
+        fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs)
+
+        cwd = os.path.abspath(cwd)
+        path = os.path.join(cwd, fname)
+
+        stage.cwd = cwd
+        stage.path = path
 
         return stage
 

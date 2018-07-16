@@ -130,15 +130,8 @@ class Project(object):
         return os.path.relpath(path, self.root_dir)
 
     def add(self, fname):
-        out = os.path.basename(os.path.normpath(fname))
-        stage_fname = out + Stage.STAGE_FILE_SUFFIX
-        cwd = os.path.dirname(os.path.abspath(fname))
         stage = Stage.loads(project=self,
-                            cmd=None,
-                            deps=[],
-                            outs=[out],
-                            fname=stage_fname,
-                            cwd=cwd)
+                            outs=[fname])
 
         stage.save()
         stage.dump()
@@ -527,8 +520,11 @@ class Project(object):
     def pipelines(self):
         G, G_active = self.graph()
 
+        if len(G.nodes()) == 0:
+            return []
+
         # find pipeline ends aka "output stages"
-        ends = [node for node, in_degree in G.in_degree if in_degree == 0]
+        ends = [node for node, in_degree in G.in_degree() if in_degree == 0]
 
         # filter out subgraphs that didn't exist in original G
         pipelines = []

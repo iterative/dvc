@@ -11,7 +11,7 @@ install_requires = [
     "future>=0.16.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
-    "networkx>=1.11",
+    "networkx==2.1",
     "pyyaml>=3.12",
     "gitpython>=2.1.8",
     "ntfsutils>=0.1.4",
