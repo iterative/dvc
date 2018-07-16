@@ -86,6 +86,11 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help="Initiate dvc in directory that is not tracked by any scm tool(e.g. git)")
+    init_parser.add_argument('-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Force initialization even if \'.dvc\' exists')
     init_parser.set_defaults(func=CmdInit)
 
 

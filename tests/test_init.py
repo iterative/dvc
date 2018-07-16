@@ -24,6 +24,21 @@ class TestInit(TestGit):
         self._test_init()
 
 
+class TestDoubleInit(TestInit):
+    def test(self):
+        ret = main(['init'])
+        self.assertEqual(ret, 0)
+        self._test_init()
+
+        ret = main(['init'])
+        self.assertNotEqual(ret, 0)
+        self._test_init()
+
+        ret = main(['init', '--force'])
+        self.assertEqual(ret, 0)
+        self._test_init()
+
+
 class TestInitNoSCMFail(TestDir):
     def test_api(self):
         with self.assertRaises(InitError):

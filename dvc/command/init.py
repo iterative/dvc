@@ -8,7 +8,7 @@ class CmdInit(object):
 
     def run_cmd(self):
         try:
-            Project.init('.', no_scm=self.args.no_scm)
+            Project.init('.', no_scm=self.args.no_scm, force=self.args.force)
         except InitError as e:
             Logger.error('Failed to initiate dvc', e)
             return 1
