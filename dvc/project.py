@@ -65,7 +65,7 @@ class Project(object):
         self.updater.check()
 
     @staticmethod
-    def init(root_dir=os.curdir, no_scm=False):
+    def init(root_dir=os.curdir, no_scm=False, force=False):
         """
         Initiate dvc project in directory.
 
@@ -85,6 +85,12 @@ class Project(object):
         if type(scm) == Base and not no_scm:
             msg = "{} is not tracked by any supported scm tool(e.g. git).".format(root_dir)
             raise InitError(msg)
+
+        if os.path.isdir(dvc_dir):
+            if not force:
+                msg = "'{}' exists. Use '-f' to force."
+                raise InitError(msg.format(os.path.relpath(dvc_dir)))
+            shutil.rmtree(dvc_dir)
 
         os.mkdir(dvc_dir)
 
