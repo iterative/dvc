@@ -60,6 +60,12 @@ class RemoteS3(RemoteBase):
     def s3(self):
         return boto3.resource('s3', endpoint_url=self.endpoint_url)
 
+    @property
+    def s3_session_client(self):
+        session = boto3.session.Session()
+        s3 = session.client('s3', endpoint_url=self.endpoint_url)
+        return s3
+
     def get_etag(self, bucket, key):
         try:
             obj = self.s3.Object(bucket, key).get()
@@ -127,8 +133,7 @@ class RemoteS3(RemoteBase):
         # list_objects_v2() is much-much faster than trying to check keys
         # one-by-one.
         ret = []
-        session = boto3.session.Session()
-        s3 = session.client('s3')
+        s3 = self.s3_session_client
 
         keys = []
         kwargs = {'Bucket': self.bucket,
@@ -159,8 +164,7 @@ class RemoteS3(RemoteBase):
     def upload(self, paths, path_infos, names=None):
         names = self._verify_path_args(path_infos, paths, names)
 
-        session = boto3.session.Session()
-        s3 = session.client('s3')
+        s3 = self.s3_session_client
 
         for path, path_info, name in zip(paths, path_infos, names):
             if path_info['scheme'] != 's3':
@@ -187,8 +191,7 @@ class RemoteS3(RemoteBase):
     def download(self, path_infos, fnames, no_progress_bar=False, names=None):
         names = self._verify_path_args(path_infos, fnames, names)
 
-        session = boto3.session.Session()
-        s3 = session.client('s3')
+        s3 = self.s3_session_client
 
         for fname, path_info, name in zip(fnames, path_infos, names):
             if path_info['scheme'] != 's3':
