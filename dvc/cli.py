@@ -552,7 +552,7 @@ def parse_args(argv=None):
     pipeline_parser = subparsers.add_parser(
                         'pipeline',
                         parents=[parent_parser],
-                        help='Pipeline')
+                        help='Manage pipeline')
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
                         dest='cmd',
