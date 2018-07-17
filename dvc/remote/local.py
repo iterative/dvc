@@ -369,12 +369,18 @@ class RemoteLOCAL(RemoteBase):
         if len(chunks) == 0:
             return
 
+        futures = []
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
             for from_infos, to_infos, md5s in chunks:
-                executor.submit(remote.download, from_infos,
-                                                 to_infos,
-                                                 names=md5s,
-                                                 no_progress_bar=no_progress_bar)
+                res = executor.submit(remote.download,
+                                      from_infos,
+                                      to_infos,
+                                      names=md5s,
+                                      no_progress_bar=no_progress_bar)
+                futures.append(res)
+
+        for f in futures:
+            f.result()
 
     def pull(self, checksum_infos, remote, jobs=1):
         # NOTE: try fetching missing dir info
@@ -410,6 +416,11 @@ class RemoteLOCAL(RemoteBase):
         if len(chunks) == 0:
             return
 
+        futures = []
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
             for to_infos, from_infos, md5s in chunks:
-                executor.submit(remote.upload, from_infos, to_infos, names=md5s)
+                res = executor.submit(remote.upload, from_infos, to_infos, names=md5s)
+                futures.append(res)
+
+        for f in futures:
+            f.result()

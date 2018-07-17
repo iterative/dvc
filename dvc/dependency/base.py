@@ -68,5 +68,5 @@ class DependencyBase(object):
     def dumpd(self):
         return {self.PARAM_PATH: self.path}
 
-    def download(self, path):
-        self.remote.download([self.path_info], [path])
+    def download(self, to_info):
+        self.remote.download([self.path_info], [to_info])
