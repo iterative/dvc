@@ -167,7 +167,7 @@ class RemoteS3(RemoteBase):
 
         return ret
 
-    def upload(self, from_infos, path_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         s3 = self.s3_session_client

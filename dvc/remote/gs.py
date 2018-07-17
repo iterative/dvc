@@ -55,7 +55,7 @@ class RemoteGS(RemoteBase):
 
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'], path_info['key'])}
 
-    def _copy(from_info, to_info, gs=None):
+    def _copy(self, from_info, to_info, gs=None):
         gs = gs if gs else self.gs
  
         blob = gs.bucket(from_info['bucket']).get_blob(from_info['key'])
@@ -160,7 +160,7 @@ class RemoteGS(RemoteBase):
             if from_info['scheme'] != 'gs':
                 raise NotImplementedError
 
-            if from_info['scheme'] == 'gs':
+            if to_info['scheme'] == 'gs':
                 self._copy(from_info, to_info, gs=gs)
                 continue
 
