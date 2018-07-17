@@ -339,8 +339,6 @@ class TestReproExternalBase(TestDvc):
 
         import_remote_stage = self.dvc.imp(out_foo_path, out_foo_path + '_imported')
 
-        add_stage = self.dvc.add(out_foo_path)
-
         cmd_stage = self.dvc.run(outs=[out_bar_path],
                              deps=[out_foo_path],
                              cmd=self.cmd(foo_path, bar_path))
