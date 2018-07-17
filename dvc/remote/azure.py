@@ -152,52 +152,58 @@ class RemoteAzure(RemoteBase):
 
         return ret
 
-    def upload(self, paths, path_infos, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
+    def upload(self, from_infos, to_infos, names=None):
+        names = self._verify_path_args(to_infos, from_infos, names)
 
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != self.scheme:
+        for from_info, to_info, name in zip(from_infos, to_infos, names):
+            if to_info['scheme'] != self.scheme:
                 raise NotImplementedError
 
-            bucket = path_info['bucket']
-            key = path_info['key']
+            if from_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            bucket = to_info['bucket']
+            key = to_info['key']
 
             Logger.debug("Uploading '{}' to '{}/{}'".format(
-                path, bucket, key))
+                from_info['path'], bucket, key))
 
             if not name:
-                name = os.path.basename(path)
+                name = os.path.basename(from_info['path'])
 
             cb = Callback(name)
 
             try:
                 self.blob_service.create_blob_from_path(
-                    bucket, key, path, progress_callback=cb)
+                    bucket, key, from_info['path'], progress_callback=cb)
             except Exception as ex:
-                Logger.error("Failed to upload '{}'".format(path), ex)
+                Logger.error("Failed to upload '{}'".format(from_info['path']), ex)
             else:
                 progress.finish_target(name)
 
-    def download(self, path_infos, fnames, no_progress_bar=False, names=None):
-        names = self._verify_path_args(path_infos, fnames, names)
+    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+        names = self._verify_path_args(from_infos, to_infos, names)
 
-        for fname, path_info, name in zip(fnames, path_infos, names):
-            if path_info['scheme'] != self.scheme:
+        for to_info, from_info, name in zip(to_infos, from_infos, names):
+            if from_info['scheme'] != self.scheme:
                 raise NotImplementedError
 
-            bucket = path_info['bucket']
-            key = path_info['key']
+            if to_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            bucket = from_info['bucket']
+            key = from_info['key']
 
             Logger.debug("Downloading '{}/{}' to '{}'".format(
-                bucket, key, fname))
+                bucket, key, to_info['path']))
 
-            tmp_file = self.tmp_file(fname)
+            tmp_file = self.tmp_file(to_info['path'])
             if not name:
-                name = os.path.basename(fname)
+                name = os.path.basename(to_info['path'])
 
             cb = None if no_progress_bar else Callback(name)
 
-            self._makedirs(fname)
+            self._makedirs(to_info['path'])
 
             try:
                 self.blob_service.get_blob_to_path(
@@ -206,7 +212,7 @@ class RemoteAzure(RemoteBase):
                 Logger.error("Failed to download '{}/{}'".format(
                     bucket, key), exc)
             else:
-                os.rename(tmp_file, fname)
+                os.rename(tmp_file, to_info['path'])
 
                 if not no_progress_bar:
                     progress.finish_target(name)

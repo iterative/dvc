@@ -337,6 +337,10 @@ class TestReproExternalBase(TestDvc):
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.FOO))
 
+        import_remote_stage = self.dvc.imp(out_foo_path, out_foo_path + '_imported')
+
+        add_stage = self.dvc.add(out_foo_path)
+
         cmd_stage = self.dvc.run(outs=[out_bar_path],
                              deps=[out_foo_path],
                              cmd=self.cmd(foo_path, bar_path))
@@ -346,7 +350,7 @@ class TestReproExternalBase(TestDvc):
         sleep()
 
         stages = self.dvc.reproduce(import_stage.path)
-        self.assertEqual(len(stages), 1)
+        self.assertEqual(len(stages), 2)
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.BAR))
 

@@ -47,7 +47,7 @@ class DependencyLOCAL(DependencyBase):
         return os.path.relpath(self.path)
 
     def changed(self):
-        if not os.path.exists(self.path):
+        if not self.exists:
             return True
 
         info = self.remote.save_info(self.path_info)
@@ -55,7 +55,7 @@ class DependencyLOCAL(DependencyBase):
         return self.info != info
 
     def save(self):
-        if not os.path.exists(self.path):
+        if not self.exists:
             raise self.DoesNotExistError(self.rel_path)
 
         if not os.path.isfile(self.path) and not os.path.isdir(self.path):

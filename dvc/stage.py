@@ -103,8 +103,7 @@ class Stage(object):
     def is_import(self):
         return not self.cmd and \
                len(self.deps) == 1 and \
-               len(self.outs) == 1 and \
-               self.outs[0].path_info['scheme'] == 'local'
+               len(self.outs) == 1
 
     def changed(self):
         ret = False
@@ -280,9 +279,9 @@ class Stage(object):
             self.check_missing_outputs()
         elif self.is_import:
             msg = u'Importing \'{}\' -> \'{}\''
-            self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].rel_path))
+            self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].path))
 
-            self.deps[0].download(self.outs[0].path)
+            self.deps[0].download(self.outs[0].path_info)
         elif self.is_data_source:
             self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
             self.check_missing_outputs()
@@ -301,9 +300,10 @@ class Stage(object):
         self.save()
 
     def check_missing_outputs(self):
-        missing_outs = [out.rel_path for out in self.outs if not os.path.exists(out.rel_path)]
-        if missing_outs:
-            raise MissingDataSource(missing_outs)
+        outs = [out for out in self.outs if not out.exists]
+        paths = [out.path if out.path_info['scheme'] != 'local' else out.rel_path for out in outs]
+        if paths:
+            raise MissingDataSource(paths)
 
     def checkout(self):
         for out in self.outs:

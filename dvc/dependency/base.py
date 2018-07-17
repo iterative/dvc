@@ -49,6 +49,10 @@ class DependencyBase(object):
     def sep(self):
         return '/'
 
+    @property
+    def exists(self):
+        return self.remote.exists([self.path_info])
+
     def changed(self):
         raise NotImplementedError
 

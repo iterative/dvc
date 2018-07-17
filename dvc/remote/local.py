@@ -270,46 +270,52 @@ class RemoteLOCAL(RemoteBase):
             ret.append(os.path.exists(path_info['path']))
         return ret
 
-    def upload(self, paths, path_infos, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
+    def upload(self, from_infos, to_infos, names=None):
+        names = self._verify_path_args(to_infos, from_infos, names)
 
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != 'local':
+        for from_info, to_info, name in zip(from_infos, to_infos, names):
+            if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}'".format(path, path_info['path']))
-
-            if not name:
-                name = os.path.basename(path)
-
-            self._makedirs(path_info['path'])
-
-            try:
-                copyfile(path, path_info['path'], name=name)
-            except Exception as exc:
-                Logger.error("Failed to upload '{}' tp '{}'".format(path, path_info['path']))
-
-    def download(self, path_infos, paths, no_progress_bar=False, names=None):
-        names = self._verify_path_args(path_infos, paths, names)
-
-        for path, path_info, name in zip(paths, path_infos, names):
-            if path_info['scheme'] != 'local':
+            if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}' to '{}'".format(path_info['path'], path))
+            Logger.debug("Uploading '{}' to '{}'".format(from_info['path'], to_info['path']))
 
             if not name:
-                name = os.path.basename(path)
+                name = os.path.basename(from_info['path'])
 
-            self._makedirs(path)
-            tmp_file = self.tmp_file(path)
+            self._makedirs(to_info['path'])
+
             try:
-                copyfile(path_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
+                copyfile(from_info['path'], to_info['path'], name=name)
             except Exception as exc:
-                Logger.error("Failed to download '{}' to '{}'".format(path_info['path'], path), exc)
+                Logger.error("Failed to upload '{}' tp '{}'".format(from_info['path'], to_info['path']), exc)
+
+    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+        names = self._verify_path_args(from_infos, to_infos, names)
+
+        for to_info, from_info, name in zip(to_infos, from_infos, names):
+            if from_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            if to_info['scheme'] != 'local':
+                raise NotImplementedError
+
+            Logger.debug("Downloading '{}' to '{}'".format(from_info['path'], to_info['path']))
+
+            if not name:
+                name = os.path.basename(to_info['path'])
+
+            self._makedirs(to_info['path'])
+            tmp_file = self.tmp_file(to_info['path'])
+            try:
+                copyfile(from_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
+            except Exception as exc:
+                Logger.error("Failed to download '{}' to '{}'".format(from_info['path'], to_info['path']), exc)
                 continue
 
-            os.rename(tmp_file, path)
+            os.rename(tmp_file, to_info['path'])
 
     def _collect(self, checksum_infos):
         missing = []
@@ -349,7 +355,7 @@ class RemoteLOCAL(RemoteBase):
         # NOTE: filter files that are not corrupted
         md5s = list(filter(lambda md5: self.changed(md5), md5s))
 
-        cache = [self.get(md5) for md5 in md5s]
+        cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 
         assert len(path_infos) == len(cache) == len(md5s)
@@ -364,9 +370,9 @@ class RemoteLOCAL(RemoteBase):
             return
 
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for path_infos, paths, md5s in chunks:
-                executor.submit(remote.download, path_infos,
-                                                 paths,
+            for from_infos, to_infos, md5s in chunks:
+                executor.submit(remote.download, from_infos,
+                                                 to_infos,
                                                  names=md5s,
                                                  no_progress_bar=no_progress_bar)
 
@@ -390,7 +396,7 @@ class RemoteLOCAL(RemoteBase):
         md5s_exist = filter(lambda x: not x[1], list(zip(md5s, remote.exists(path_infos))))
         md5s = [md5 for md5, exists in md5s_exist]
 
-        cache = [self.get(md5) for md5 in md5s]
+        cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 
         assert len(path_infos) == len(cache) == len(md5s)
@@ -405,5 +411,5 @@ class RemoteLOCAL(RemoteBase):
             return
 
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for path_infos, paths, md5s in chunks:
-                executor.submit(remote.upload, paths, path_infos, names=md5s)
+            for to_infos, from_infos, md5s in chunks:
+                executor.submit(remote.upload, from_infos, to_infos, names=md5s)

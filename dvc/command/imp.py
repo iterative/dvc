@@ -7,6 +7,6 @@ class CmdImport(CmdBase):
         try:
             self.project.imp(self.args.url, self.args.out)
         except DvcException as ex:
-            self.project.logger.error('Failed to import {}', ex)
+            self.project.logger.error('Failed to import {}'.format(self.args.url), ex)
             return 1
         return 0
