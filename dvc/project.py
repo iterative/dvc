@@ -506,6 +506,7 @@ class Project(object):
                     raise DvcException(msg.format(out.rel_path))
 
                 out.metric = val
+                out._verify_metric()
 
             stage.dump()
 
