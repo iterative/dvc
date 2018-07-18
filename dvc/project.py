@@ -488,14 +488,26 @@ class Project(object):
             for fname, metric in val.items():
                 self.logger.info('\t{}: {}'.format(fname, metric))
 
-        return res
+        if res:
+            return res
+
+
+        if path:
+            msg = 'File \'{}\' does not exist'.format(path)
+        else:
+            msg = 'No metric files in this repository. ' \
+                  'Use \'dvc metrics add\' to add a metric file to track.'
+        raise DvcException(msg)
 
     def _metrics_modify(self, path, val):
         apath = os.path.abspath(path)
+        found = False
         for stage in self.stages():
             for out in stage.outs:
                 if apath != out.path:
                     continue
+
+                found = True
 
                 if out.path_info['scheme'] != 'local':
                     msg = 'Output \'{}\' scheme \'{}\' is not supported for metrics'
@@ -509,6 +521,10 @@ class Project(object):
                 out._verify_metric()
 
             stage.dump()
+
+        if not found:
+            msg = 'Unable to find file \'{}\' in the pipeline'.format(path)
+            raise DvcException(msg)
 
     def metrics_add(self, path):
         self._metrics_modify(path, True)

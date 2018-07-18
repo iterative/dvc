@@ -89,7 +89,7 @@ class TestMetricsReproCLI(TestDvc):
         self.assertEqual(ret, 0)
 
         ret = main(['repro', '-f', '-m', stage.path])
-        self.assertEqual(ret, 0)
+        self.assertNotEqual(ret, 0)
 
     def test_dir(self):
         os.mkdir('metrics_dir')
@@ -140,3 +140,16 @@ class TestMetricsCLI(TestMetrics):
         with self.assertRaises(DvcException):
             self.dvc.run(outs_no_cache=['metrics_bin'])
             self.dvc.metrics_add('metrics_bin')
+
+    def test_non_existing(self):
+        ret = main(['metrics', 'add', 'non-existing'])
+        self.assertNotEqual(ret, 0)
+
+        ret = main(['metrics', 'remove', 'non-existing'])
+        self.assertNotEqual(ret, 0)
+
+
+class TestNoMetrics(TestDvc):
+    def test(self):
+        ret = main(['metrics', 'show'])
+        self.assertNotEqual(ret, 0)
