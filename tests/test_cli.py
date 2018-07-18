@@ -160,4 +160,4 @@ class TestStartupTime(TestDvc):
             pass
         t = timeit.default_timer() - start
 
-        self.assertTrue(t < 0.25)
+        self.assertTrue(t < 0.3)
