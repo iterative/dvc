@@ -477,15 +477,22 @@ def parse_args(argv=None):
                         'path',
                         nargs='?',
                         help='Path to metrics file')
-    metrics_show_parser.add_argument(
+    metrics_show_parser_group = metrics_show_parser.add_mutually_exclusive_group()
+    metrics_show_parser_group.add_argument(
                         '--json-path',
                         help='JSON path')
-    metrics_show_parser.add_argument(
+    metrics_show_parser_group.add_argument(
                         '--tsv-path',
                         help='TSV path \'row,column\'(e.g. \'1,2\')')
-    metrics_show_parser.add_argument(
+    metrics_show_parser_group.add_argument(
                         '--htsv-path',
                         help='Headed TSV path \'row,column\'(e.g. \'Name,3\'')
+    metrics_show_parser_group.add_argument(
+                        '--csv-path',
+                        help='CSV path \'row,column\'(e.g. \'1,2\')')
+    metrics_show_parser_group.add_argument(
+                        '--hcsv-path',
+                        help='Headed CSV path \'row,column\'(e.g. \'Name,3\'')
     metrics_show_parser.add_argument(
                         '--all-branches',
                         action='store_true',

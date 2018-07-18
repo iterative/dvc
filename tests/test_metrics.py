@@ -19,6 +19,13 @@ class TestMetrics(TestDvc):
             with open('metric_json', 'w+') as fd:
                 json.dump({'branch': branch}, fd)
 
+            with open('metric_csv', 'w+') as fd:
+                fd.write(branch)
+
+            with open('metric_hcsv', 'w+') as fd:
+                fd.write('branch\n')
+                fd.write(branch)
+
             with open('metric_tsv', 'w+') as fd:
                 fd.write(branch)
 
@@ -26,7 +33,7 @@ class TestMetrics(TestDvc):
                 fd.write('branch\n')
                 fd.write(branch)
 
-            self.dvc.scm.add(['metric', 'metric_json', 'metric_tsv', 'metric_htsv'])
+            self.dvc.scm.add(['metric', 'metric_json', 'metric_tsv', 'metric_htsv', 'metric_csv', 'metric_hcsv'])
             self.dvc.scm.commit('metric')
 
         self.dvc.scm.checkout('master')
@@ -55,6 +62,18 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret['foo']['metric_htsv'] == ['foo'])
         self.assertTrue(ret['bar']['metric_htsv'] == ['bar'])
         self.assertTrue(ret['baz']['metric_htsv'] == ['baz'])
+
+        ret = self.dvc.metrics_show('metric_csv', csv_path='0,0', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric_csv'] == ['foo'])
+        self.assertTrue(ret['bar']['metric_csv'] == ['bar'])
+        self.assertTrue(ret['baz']['metric_csv'] == ['baz'])
+
+        ret = self.dvc.metrics_show('metric_hcsv', hcsv_path='branch,0', all_branches=True)
+        self.assertEqual(len(ret), 3)
+        self.assertTrue(ret['foo']['metric_hcsv'] == ['foo'])
+        self.assertTrue(ret['bar']['metric_hcsv'] == ['bar'])
+        self.assertTrue(ret['baz']['metric_hcsv'] == ['baz'])
 
 
 class TestMetricsReproCLI(TestDvc):
@@ -89,4 +108,10 @@ class TestMetricsCLI(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(['metrics', 'show', '--all-branches', 'metric_htsv', '--htsv-path', 'branch,0'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['metrics', 'show', '--all-branches', 'metric_csv', '--csv-path', '0,0'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['metrics', 'show', '--all-branches', 'metric_hcsv', '--hcsv-path', 'branch,0'])
         self.assertEqual(ret, 0)
