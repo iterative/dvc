@@ -400,7 +400,7 @@ class Project(object):
         parser = parse(json_path)
         return [x.value for x in parser.find(json.load(fd))]
 
-    def _do_read_metric_tsv(self, reader, row, col):
+    def _do_read_metric_xsv(self, reader, row, col):
         if col != None and row != None:
             return [reader[row][col]]
         elif col != None:
@@ -409,24 +409,28 @@ class Project(object):
             return reader[row]
         return None
 
-    def _read_metric_htsv(self, fd, htsv_path):
+    def _read_metric_hxsv(self, fd, hxsv_path, delimiter):
         import csv
 
-        col, row = htsv_path.split(',')
+        col, row = hxsv_path.split(',')
         row = int(row)
-        reader = list(csv.DictReader(fd, delimiter='\t'))
-        return self._do_read_metric_tsv(reader, row, col)
+        reader = list(csv.DictReader(fd, delimiter=delimiter))
+        return self._do_read_metric_xsv(reader, row, col)
 
-    def _read_metric_tsv(self, fd, tsv_path):
+    def _read_metric_xsv(self, fd, xsv_path, delimiter):
         import csv
 
-        col, row = tsv_path.split(',')
+        col, row = xsv_path.split(',')
         row = int(row)
         col = int(col)
-        reader = list(csv.reader(fd, delimiter='\t'))
-        return self._do_read_metric_tsv(reader, row, col)
+        reader = list(csv.reader(fd, delimiter=delimiter))
+        return self._do_read_metric_xsv(reader, row, col)
 
-    def _read_metric(self, path, json_path=None, tsv_path=None, htsv_path=None):
+    def _read_metric(self, path, json_path=None,
+                                 tsv_path=None,
+                                 htsv_path=None,
+                                 csv_path=None,
+                                 hcsv_path=None):
         ret = None
 
         if not os.path.exists(path):
@@ -436,10 +440,14 @@ class Project(object):
             with open(path, 'r') as fd:
                 if json_path:
                     ret = self._read_metric_json(fd, json_path)
+                elif csv_path:
+                    ret = self._read_metric_xsv(fd, csv_path, ',')
                 elif tsv_path:
-                    ret = self._read_metric_tsv(fd, tsv_path)
+                    ret = self._read_metric_xsv(fd, tsv_path, '\t')
+                elif hcsv_path:
+                    ret = self._read_metric_hxsv(fd, hcsv_path, ',')
                 elif htsv_path:
-                    ret = self._read_metric_htsv(fd, htsv_path)
+                    ret = self._read_metric_hxsv(fd, htsv_path, '\t')
                 else:
                     ret = fd.read()
         except Exception as exc:
@@ -447,7 +455,12 @@ class Project(object):
 
         return ret
 
-    def metrics_show(self, path=None, json_path=None, tsv_path=None, htsv_path=None, all_branches=False):
+    def metrics_show(self, path=None, json_path=None,
+                                      tsv_path=None,
+                                      htsv_path=None,
+                                      csv_path=None,
+                                      hcsv_path=None,
+                                      all_branches=False):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches):
             outs = [out for stage in self.active_stages() for out in stage.outs]
@@ -458,7 +471,9 @@ class Project(object):
                 metric = self._read_metric(fname,
                                            json_path=json_path,
                                            tsv_path=tsv_path,
-                                           htsv_path=htsv_path)
+                                           htsv_path=htsv_path,
+                                           csv_path=csv_path,
+                                           hcsv_path=hcsv_path)
                 if not metric:
                     continue
 
@@ -491,6 +506,7 @@ class Project(object):
                     raise DvcException(msg.format(out.rel_path))
 
                 out.metric = val
+                out._verify_metric()
 
             stage.dump()
 

@@ -8,6 +8,7 @@ from dvc.dependency.local import DependencyLOCAL
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.utils import remove
+from dvc.istextfile import istextfile
 
 
 class OutputLOCAL(DependencyLOCAL):
@@ -57,9 +58,22 @@ class OutputLOCAL(DependencyLOCAL):
 
         self.project.cache.local.checkout(self.path_info, self.info)
 
+    def _verify_metric(self):
+        if not self.metric:
+            return
+
+        if os.path.isdir(self.path):
+            msg = 'Directory \'{}\' cannot be used as metrics.'
+            raise DvcException(msg.format(self.rel_path))
+
+        if not istextfile(self.path):
+            msg = 'Binary file \'{}\' cannot be used as metrics.'
+            raise DvcException(msg.format(self.rel_path))
+
     def save(self):
         if not self.use_cache:
             super(OutputLOCAL, self).save()
+            self._verify_metric()
             msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
             self.project.logger.debug(msg.format(self.rel_path))
             return

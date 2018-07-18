@@ -7,6 +7,8 @@ class CmdMetricsShow(CmdBase):
                                   json_path=self.args.json_path,
                                   tsv_path=self.args.tsv_path,
                                   htsv_path=self.args.htsv_path,
+                                  csv_path=self.args.csv_path,
+                                  hcsv_path=self.args.hcsv_path,
                                   all_branches=self.args.all_branches)
         return 0
 
