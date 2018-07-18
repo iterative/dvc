@@ -1,12 +1,13 @@
 import os
 
 from dvc.command.common.base import CmdBase
-from dvc.project import ReproductionError
-from dvc.stage import Stage
 
 
 class CmdRepro(CmdBase):
     def run(self):
+        from dvc.project import ReproductionError
+        from dvc.stage import Stage
+
         recursive = not self.args.single_item
         saved_dir = os.path.realpath(os.curdir)
         if self.args.cwd:

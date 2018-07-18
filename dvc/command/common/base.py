@@ -1,6 +1,5 @@
 import os
 
-from dvc.project import Project
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.lock import LockError
@@ -8,6 +7,8 @@ from dvc.lock import LockError
 
 class CmdBase(object):
     def __init__(self, args):
+        from dvc.project import Project
+
         self.project = Project(self._find_root())
         self.args = args
         self._set_loglevel(args)
@@ -20,6 +21,8 @@ class CmdBase(object):
             Logger.be_verbose()
 
     def _find_root(self):
+        from dvc.project import Project
+
         root = os.getcwd()
         while not os.path.ismount(root):
             dvc_dir = os.path.join(root, Project.DVC_DIR)

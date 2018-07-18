@@ -1,6 +1,7 @@
 import os
 
 from dvc.cli import parse_args
+from dvc.main import main
 from dvc.command.init import CmdInit
 from dvc.command.run import CmdRun
 from dvc.command.data_sync import CmdDataPull, CmdDataPush
@@ -146,3 +147,17 @@ class TestCheckout(TestDvc):
     def test(self):
         args = parse_args(['checkout'])
         self.assertIsInstance(args.func(args), CmdCheckout)
+
+
+class TestStartupTime(TestDvc):
+    def test(self):
+        import timeit
+
+        start = timeit.default_timer()
+        try:
+            main([])
+        except SystemExit:
+            pass
+        t = timeit.default_timer() - start
+
+        self.assertTrue(t < 0.25)
