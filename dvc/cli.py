@@ -25,7 +25,6 @@ from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow
-from dvc.stage import Stage
 from dvc import VERSION
 
 
@@ -268,7 +267,7 @@ def parse_args(argv=None):
     repro_parser.add_argument(
                         'targets',
                         nargs='*',
-                        default=[Stage.STAGE_FILE],
+                        default=['Dvcfile'],
                         help='DVC file to reproduce.')
     repro_parser.add_argument('-f',
                         '--force',

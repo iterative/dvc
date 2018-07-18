@@ -4,11 +4,12 @@ import configobj
 from dvc.command.common.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
-from dvc.project import Project
 
 
 class CmdConfig(CmdBase):
     def __init__(self, args):
+        from dvc.project import Project
+
         self.args = args
         root_dir = self._find_root()
         if args.local:

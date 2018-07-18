@@ -1,23 +1,8 @@
 import os
-import csv
 import stat
-import json
-import shutil
-import networkx as nx
-from jsonpath_rw import parse
 
-import dvc.output as Output
-from dvc.logger import Logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
-from dvc.config import Config
-from dvc.state import LinkState, State
-from dvc.lock import Lock
-from dvc.scm import SCM, Base
-from dvc.cache import Cache
-from dvc.data_cloud import DataCloud
-from dvc.system import System
-from dvc.updater import Updater
 
 
 class InitError(DvcException):
@@ -45,6 +30,15 @@ class Project(object):
     DVC_DIR = '.dvc'
 
     def __init__(self, root_dir):
+        from dvc.logger import Logger
+        from dvc.config import Config
+        from dvc.state import LinkState, State
+        from dvc.lock import Lock
+        from dvc.scm import SCM, Base
+        from dvc.cache import Cache
+        from dvc.data_cloud import DataCloud
+        from dvc.updater import Updater
+
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
@@ -78,6 +72,10 @@ class Project(object):
         Raises:
             KeyError: Raises an exception.
         """
+        import shutil
+        from dvc.scm import SCM, Base
+        from dvc.config import Config
+
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
 
@@ -104,6 +102,8 @@ class Project(object):
         return proj
 
     def destroy(self):
+        import shutil
+
         for stage in self.stages():
             stage.remove()
 
@@ -160,6 +160,8 @@ class Project(object):
         return stage
 
     def move(self, from_path, to_path):
+        import dvc.output as Output
+
         from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
 
         found = False
@@ -236,6 +238,8 @@ class Project(object):
         return [stage]
 
     def reproduce(self, target, recursive=True, force=False):
+        import networkx as nx
+
         G = self.graph()[1]
         stages = nx.get_node_attributes(G, 'stage')
         node = os.path.relpath(os.path.abspath(target), self.root_dir)
@@ -248,6 +252,8 @@ class Project(object):
         return self._reproduce_stage(stages, node, force)
 
     def _reproduce_stages(self, G, stages, node, force):
+        import networkx as nx
+
         result = []
         for n in nx.dfs_postorder_nodes(G, node):
             try:
@@ -388,6 +394,9 @@ class Project(object):
         return self._local_status(target)
 
     def _read_metric_json(self, fd, json_path):
+        import json
+        from jsonpath_rw import parse
+
         parser = parse(json_path)
         return [x.value for x in parser.find(json.load(fd))]
 
@@ -401,12 +410,16 @@ class Project(object):
         return None
 
     def _read_metric_htsv(self, fd, htsv_path):
+        import csv
+
         col, row = htsv_path.split(',')
         row = int(row)
         reader = list(csv.DictReader(fd, delimiter='\t'))
         return self._do_read_metric_tsv(reader, row, col)
 
     def _read_metric_tsv(self, fd, tsv_path):
+        import csv
+
         col, row = tsv_path.split(',')
         row = int(row)
         col = int(col)
@@ -488,6 +501,8 @@ class Project(object):
         self._metrics_modify(path, False)
 
     def graph(self):
+        import networkx as nx
+
         G = nx.DiGraph()
         G_active = nx.DiGraph()
         stages = self.stages()
@@ -519,6 +534,8 @@ class Project(object):
         return G, G_active
 
     def pipelines(self):
+        import networkx as nx
+
         G, G_active = self.graph()
 
         if len(G.nodes()) == 0:
@@ -552,6 +569,8 @@ class Project(object):
         return stages
 
     def active_stages(self):
+        import networkx as nx
+
         stages = []
         for G in self.pipelines():
             stages.extend(list(nx.get_node_attributes(G, 'stage').values()))

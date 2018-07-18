@@ -1,4 +1,3 @@
-from dvc.project import Project, InitError
 from dvc.logger import Logger
 
 
@@ -7,6 +6,8 @@ class CmdInit(object):
         self.args = args
 
     def run_cmd(self):
+        from dvc.project import Project, InitError
+
         try:
             Project.init('.', no_scm=self.args.no_scm, force=self.args.force)
         except InitError as e:

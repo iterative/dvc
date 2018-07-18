@@ -1,4 +1,3 @@
-from dvc.project import Project
 from dvc.logger import Logger
 from dvc.command.common.base import CmdBase
 

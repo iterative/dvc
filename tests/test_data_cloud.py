@@ -90,7 +90,7 @@ def _should_test_hdfs():
         return False
 
     try:
-        check_output(['hadoop', 'version'])
+        check_output(['hadoop', 'version'], shell=True, executable=os.getenv('SHELL'))
     except (CalledProcessError, IOError):
         return False
 
