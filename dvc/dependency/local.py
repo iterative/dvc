@@ -59,7 +59,7 @@ class DependencyLOCAL(DependencyBase):
             raise self.DoesNotExistError(self.rel_path)
 
         if not os.path.isfile(self.path) and not os.path.isdir(self.path):
-            raise self.NotFileOrDirError(self.rel_path)
+            raise self.IsNotFileOrDirError(self.rel_path)
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
