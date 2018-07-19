@@ -381,9 +381,17 @@ class TestDataCloudCLIBase(TestDvc):
         sleep()
         self.main(['status', '-c'] + args)
 
+        self.main(['fetch'] + args)
+        self.assertTrue(os.path.exists(cache))
+        self.assertTrue(os.path.isfile(cache))
+        self.assertTrue(os.path.isfile(cache_dir))
+
         self.main(['pull'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
+        self.assertTrue(os.path.isfile(cache_dir))
+        self.assertTrue(os.path.isfile(self.FOO))
+        self.assertTrue(os.path.isdir(self.DATA_DIR))
 
         sleep()
         with open(cache, 'r') as fd:
