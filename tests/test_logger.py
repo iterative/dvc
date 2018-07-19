@@ -1,6 +1,7 @@
 import colorama
 import logging
 
+from dvc.command.base import CmdBase
 from dvc.config import Config
 from dvc.logger import Logger
 
@@ -32,3 +33,19 @@ class TestLogger(TestDvc):
             msg = Logger.colorize(name, name)
             # This is not a tty, so it should not colorize anything
             self.assertEqual(msg, name)
+
+
+class TestLoggerCLI(TestDvc):
+    def test(self):
+        class A(object):
+            quiet = True
+            verbose = False
+
+        args = A()
+        CmdBase._set_loglevel(args)
+        self.assertEqual(Logger.logger().getEffectiveLevel(), logging.CRITICAL)
+
+        args.quiet = False
+        args.verbose = True
+        CmdBase._set_loglevel(args)
+        self.assertEqual(Logger.logger().getEffectiveLevel(), logging.DEBUG)
