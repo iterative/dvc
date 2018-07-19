@@ -1,5 +1,6 @@
 from dvc.command.base import CmdBase
 from dvc.prompt import prompt
+from dvc.exceptions import DvcException
 
 
 class CmdDestroy(CmdBase):
@@ -10,10 +11,9 @@ class CmdDestroy(CmdBase):
                   u'Are you sure you want to continue?'
 
             if not self.args.force and not prompt(msg, False):
-                err = u'Cannot destroy without a confirmation from the user. ' \
+                msg = u'Cannot destroy without a confirmation from the user. ' \
                       u'Use \'-f\' to force.'
-                self.project.logger.error(err)
-                return 1
+                raise DvcException(err)
 
             self.project.destroy()
         except Exception as exc:
