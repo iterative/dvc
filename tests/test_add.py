@@ -6,6 +6,7 @@ import filecmp
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage
+from dvc.exceptions import DvcException
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
 from dvc.command.add import CmdAdd
@@ -27,10 +28,10 @@ class TestAdd(TestDvc):
         self.assertEqual(stage.outs[0].info['md5'], md5)
 
 
-class TestAddNonExistentFile(TestDvc):
+class TestAddUnupportedFile(TestDvc):
     def test(self):
-        with self.assertRaises(OutputDoesNotExistError) as cx:
-            self.dvc.add('non_existent_file')
+        with self.assertRaises(DvcException) as cx:
+            self.dvc.add('unsupported://unsupported')
 
 
 class TestAddDirectory(TestDvc):
