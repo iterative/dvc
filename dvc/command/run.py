@@ -1,6 +1,6 @@
 import os
 
-from dvc.command.common.base import CmdBase
+from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.exceptions import DvcException
 

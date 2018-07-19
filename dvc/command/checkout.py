@@ -1,5 +1,5 @@
 import os
-from dvc.command.common.base import CmdBase
+from dvc.command.base import CmdBase
 
 
 class CmdCheckout(CmdBase):
