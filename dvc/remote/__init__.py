@@ -6,7 +6,7 @@ from dvc.remote.ssh import RemoteSSH
 from dvc.remote.azure import RemoteAzure
 
 from dvc.config import Config
-from dvc.exceptions import DvcException
+from dvc.exceptions import UnsupportedRemoteError
 
 
 REMOTES = [RemoteHDFS, RemoteSSH, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL]
@@ -24,4 +24,4 @@ def Remote(project, config):
     for r in REMOTES:
         if r.supported(config):
             return r(project, config)
-    raise DvcException('Remote \'{}\' is not supported.'.format(config))
+    raise UnsupportedRemoteError(str(config))

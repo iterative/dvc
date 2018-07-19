@@ -1,5 +1,8 @@
 from dvc.main import main
 from dvc.command.remote import CmdRemoteAdd
+from dvc.exceptions import UnsupportedRemoteError
+from dvc.remote import Remote
+from dvc.config import Config
 
 from tests.basic_env import TestDvc
 
@@ -34,3 +37,7 @@ class TestRemote(TestDvc):
         cmd.configobj.write = None 
         ret = cmd.run()           
         self.assertNotEqual(ret, 0)
+
+    def test_unsupported(self):
+        with self.assertRaises(UnsupportedRemoteError):
+            Remote(self.dvc, {Config.SECTION_REMOTE_URL: 'unsupported://url')
