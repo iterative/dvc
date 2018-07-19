@@ -74,3 +74,9 @@ class TestConfigCLI(TestDvc):
 
         ret = main(['config', 'global.non_existing_field', '-u'])
         self.assertEqual(ret, 1)
+
+        ret = main(['config', 'core.remote', 'myremote'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['config', 'core.non_existing_field', '-u'])
+        self.assertEqual(ret, 1)
