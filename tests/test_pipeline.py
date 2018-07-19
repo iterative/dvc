@@ -12,6 +12,10 @@ class TestPipelineShow(TestRepro):
         ret = main(['pipeline', 'show', self.file1_stage, '--commands'])
         self.assertEqual(ret, 0)        
 
+    def test_outs(self):
+        ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
+        self.assertEqual(ret, 0)        
+
     def test_not_dvc_file(self):
         ret = main(['pipeline', 'show', self.file1])
         self.assertNotEqual(ret, 0)
