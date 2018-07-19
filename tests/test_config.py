@@ -1,6 +1,7 @@
 import configobj
 
 from dvc.main import main
+from dvc.command.config import CmdConfig
 from tests.basic_env import TestDvc
 
 
@@ -80,3 +81,17 @@ class TestConfigCLI(TestDvc):
 
         ret = main(['config', 'core.non_existing_field', '-u'])
         self.assertEqual(ret, 1)
+
+    def test_failed_write(self):
+        class A(object):
+            local = False
+            name = 'core.remote'
+            value = 'myremote'
+            unset = False
+
+        args = A()
+        cmd = CmdConfig(args)
+
+        cmd.configobj.write = None
+        ret = cmd.save()
+        self.assertNotEqual(ret, 0)
