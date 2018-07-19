@@ -207,7 +207,7 @@ def parse_args(argv=None):
     pull_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to pull from')
-    pull_parser.add_argument(
+    pull_parser.add_argument('-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
@@ -222,7 +222,7 @@ def parse_args(argv=None):
     push_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to push to')
-    push_parser.add_argument(
+    push_parser.add_argument('-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
@@ -237,7 +237,7 @@ def parse_args(argv=None):
     fetch_parser.add_argument('-r',
                         '--remote',
                         help='Remote repository to fetch from')
-    fetch_parser.add_argument(
+    fetch_parser.add_argument('-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
@@ -329,7 +329,7 @@ def parse_args(argv=None):
                         'gc',
                         parents=[parent_parser],
                         help='Collect garbage')
-    gc_parser.add_argument(
+    gc_parser.add_argument('-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
@@ -493,7 +493,7 @@ def parse_args(argv=None):
     metrics_show_parser_group.add_argument(
                         '--hcsv-path',
                         help='Headed CSV path \'row,column\'(e.g. \'Name,3\'')
-    metrics_show_parser.add_argument(
+    metrics_show_parser.add_argument('-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
