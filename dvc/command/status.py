@@ -9,8 +9,7 @@ class CmdDataStatus(CmdDataBase):
 
     def _normalize(self, s):
         s+=':'
-        if len(s) >= self.STATUS_LEN:
-            return s
+        assert len(s) < self.STATUS_LEN
         return s + (self.STATUS_LEN - len(s))*' '
 
     def _show(self, status, indent=0):
