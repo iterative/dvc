@@ -5,8 +5,13 @@ from tests.basic_env import TestDvc
 
 
 class TestConfigCLI(TestDvc):
-    def _contains(self, section, field, value):
-        config = configobj.ConfigObj(self.dvc.config.config_file)
+    def _contains(self, section, field, value, local=False):
+        if local:
+            fname = self.dvc.config.config_local_file
+        else:
+            fname = self.dvc.config.config_file
+
+        config = configobj.ConfigObj(fname)
         if section not in config.keys():
             return False
 
@@ -22,28 +27,38 @@ class TestConfigCLI(TestDvc):
         ret = main(['root'])
         self.assertEqual(ret, 0)
 
-    def test(self):
+    def _do_test(self, local=False):
         section = 'setsection'
         field = 'setfield'
         section_field = '{}.{}'.format(section, field)
         value = 'setvalue'
         newvalue = 'setnewvalue'
 
-        ret = main(['config', section_field, value])
-        self.assertEqual(ret, 0)
-        self.assertTrue(self._contains(section, field, value))
+        base = ['config']
+        if local:
+            base.append('--local')
 
-        ret = main(['config', section_field])
+        ret = main(base + [section_field, value])
+        self.assertEqual(ret, 0)
+        self.assertTrue(self._contains(section, field, value, local))
+
+        ret = main(base + [section_field])
         self.assertEqual(ret, 0)
 
-        ret = main(['config', section_field, newvalue])
+        ret = main(base + [section_field, newvalue])
         self.assertEqual(ret, 0)
-        self.assertTrue(self._contains(section, field, newvalue))
-        self.assertFalse(self._contains(section, field, value))
+        self.assertTrue(self._contains(section, field, newvalue, local))
+        self.assertFalse(self._contains(section, field, value, local))
 
-        ret = main(['config', section_field, '--unset'])
+        ret = main(base + [section_field, '--unset'])
         self.assertEqual(ret, 0)
-        self.assertFalse(self._contains(section, field, value))
+        self.assertFalse(self._contains(section, field, value, local))
+
+    def test(self):
+        self._do_test(False)
+
+    def test_local(self):
+        self._do_test(True)
 
     def test_non_existing(self):
         #FIXME check stdout/err
