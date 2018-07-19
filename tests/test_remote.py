@@ -40,4 +40,4 @@ class TestRemote(TestDvc):
 
     def test_unsupported(self):
         with self.assertRaises(UnsupportedRemoteError):
-            Remote(self.dvc, {Config.SECTION_REMOTE_URL: 'unsupported://url')
+            Remote(self.dvc, {Config.SECTION_REMOTE_URL: 'unsupported://url'})
