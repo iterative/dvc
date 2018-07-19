@@ -40,6 +40,14 @@ class TestRepro(TestDvc):
                      cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
 
 
+class TestReproFail(TestRepro):
+    def test(self):
+        os.unlink(self.CODE)
+
+        ret = main(['repro', self.file1_stage])
+        self.assertNotEqual(ret, 0)
+
+
 class TestReproDepUnderDir(TestDvc):
     def test(self):
         self.dir_stage = self.dvc.add(self.DATA_DIR)

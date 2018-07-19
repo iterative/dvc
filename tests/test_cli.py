@@ -12,6 +12,8 @@ from dvc.command.remove import CmdRemove
 from dvc.command.gc import CmdGC
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
+from dvc.exceptions import DvcException
+from dvc.command.base import CmdBase
 
 from tests.basic_env import TestDvc
 
@@ -161,3 +163,16 @@ class TestStartupTime(TestDvc):
         t = timeit.default_timer() - start
 
         self.assertTrue(t < 0.3)
+
+
+class TestFindRoot(TestDvc):
+    def test(self):
+        os.chdir("..")
+
+        class A(object):
+            quiet = False
+            verbose = True
+
+        args = A()
+        with self.assertRaises(DvcException):
+            CmdBase(args)

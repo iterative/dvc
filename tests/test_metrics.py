@@ -91,6 +91,12 @@ class TestMetricsReproCLI(TestDvc):
         ret = main(['repro', '-f', '-m', stage.path])
         self.assertNotEqual(ret, 0)
 
+        ret = main(['metrics', 'add', 'metrics'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['repro', '-f', '-m', stage.path])
+        self.assertEqual(ret, 0)
+
     def test_dir(self):
         os.mkdir('metrics_dir')
 
