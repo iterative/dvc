@@ -97,7 +97,7 @@ class RemoteS3(RemoteBase):
 
         source = {'Bucket': from_info['bucket'],
                   'Key': from_info['key']}
-        self.s3.Bucket(to_info['bucket']).copy(source, to_info['key'])
+        self.s3.copy(source, to_info['bucket'], to_info['key'])
 
     def save(self, path_info):
         if path_info['scheme'] != 's3':
@@ -139,12 +139,7 @@ class RemoteS3(RemoteBase):
                  'bucket': self.bucket,
                  'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
 
-    def exists(self, path_infos):
-        # NOTE: We mostly use exists() method when filtering a bulk of cache
-        # files to decide if we need to download/upload them and in s3
-        # list_objects_v2() is much-much faster than trying to check keys
-        # one-by-one.
-        ret = []
+    def _all_keys(self):
         s3 = self.s3
 
         keys = []
@@ -164,6 +159,17 @@ class RemoteS3(RemoteBase):
                 break
 
             kwargs['ContinuationToken'] = token
+
+        return keys
+
+    def exists(self, path_infos):
+        # NOTE: We mostly use exists() method when filtering a bulk of cache
+        # files to decide if we need to download/upload them and in s3
+        # list_objects_v2() is much-much faster than trying to check keys
+        # one-by-one.
+        ret = []
+
+        keys = self._all_keys()
 
         for path_info in path_infos:
             exists = False
@@ -253,8 +259,8 @@ class RemoteS3(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all(self):
-        objects = self.s3.Bucket(self.bucket).objects.filter(Prefix=self.prefix)
-        return [self._path_to_etag(obj.key) for obj in objects]
+        keys = self._all_keys()
+        return [self._path_to_etag(key) for key in keys]
 
     def gc(self, checksum_infos):
         used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['s3']]
