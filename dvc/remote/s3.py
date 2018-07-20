@@ -41,13 +41,25 @@ class RemoteS3(RemoteBase):
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
+        import configobj
+
         self.project = project
         storagepath = 's3://' + config.get(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.region = config.get(Config.SECTION_AWS_REGION, None)
-        self.profile = config.get(Config.SECTION_AWS_PROFILE, None)
-        self.credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH, None)
+        self.profile = config.get(Config.SECTION_AWS_PROFILE, 'default')
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL, None)
+
+        credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH, None)
+        if credentialpath:
+            creds_conf = configobj.ConfigObj(credentialpath)
+            creds = creds_conf.get(self.profile, {})
+        else:
+            creds = {}
+
+        self.region = creds.get('region', self.region)
+        self.aws_access_key_id = creds.get('aws_access_key_id', None)
+        self.aws_secret_access_key = creds.get('aws_secret_access_key', None)
 
     @property
     def bucket(self):
@@ -59,13 +71,12 @@ class RemoteS3(RemoteBase):
 
     @property
     def s3(self):
-        return boto3.resource('s3', endpoint_url=self.endpoint_url)
-
-    @property
-    def s3_session_client(self):
-        session = boto3.session.Session()
-        s3 = session.client('s3', endpoint_url=self.endpoint_url)
-        return s3
+        session = boto3.session.Session(profile_name=self.profile)
+        return session.client('s3',
+                              aws_access_key_id=self.aws_access_key_id,
+                              aws_secret_access_key=self.aws_secret_access_key,
+                              region_name=self.region,
+                              endpoint_url=self.endpoint_url)
 
     def get_etag(self, bucket, key):
         try:
@@ -139,7 +150,7 @@ class RemoteS3(RemoteBase):
         # list_objects_v2() is much-much faster than trying to check keys
         # one-by-one.
         ret = []
-        s3 = self.s3_session_client
+        s3 = self.s3
 
         keys = []
         kwargs = {'Bucket': self.bucket,
@@ -170,7 +181,7 @@ class RemoteS3(RemoteBase):
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
-        s3 = self.s3_session_client
+        s3 = self.s3
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
             if to_info['scheme'] != 's3':
@@ -200,7 +211,7 @@ class RemoteS3(RemoteBase):
     def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
-        s3 = self.s3_session_client
+        s3 = self.s3
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 's3':
