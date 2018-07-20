@@ -80,7 +80,7 @@ class RemoteS3(RemoteBase):
 
     def get_etag(self, bucket, key):
         try:
-            obj = self.s3.Object(bucket, key).get()
+            obj = self.s3.head_object(Bucket=bucket, Key=key)
         except Exception:
             raise DvcException('s3://{}/{} does not exist'.format(bucket, key))
 
@@ -131,13 +131,8 @@ class RemoteS3(RemoteBase):
         Logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
                                                   path_info['key']))
 
-        obj = self.s3.Object(path_info['bucket'], path_info['key'])
-        try:
-            obj.get()
-        except Exception:
-            return
-
-        obj.delete()
+        self.s3.delete_object(Bucket=path_info['bucket'],
+                              Key=path_info['key'])
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': self.scheme,
