@@ -362,7 +362,7 @@ class Project(object):
             stages = self.active_stages()
 
         for stage in stages:
-            if not stage.locked:
+            if stage.locked:
                 msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
                       'going to be shown in status output.'
                 self.logger.warn(msg.format(stage.relpath))
