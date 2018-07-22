@@ -23,7 +23,7 @@ OUTS_MAP = {'hdfs': OutputHDFS,
             '': OutputLOCAL}
 
 SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
-SCHEMA[schema.Optional(OutputLOCAL.PARAM_METRIC)] = bool
+SCHEMA[schema.Optional(OutputLOCAL.PARAM_METRIC)] = OutputLOCAL.METRIC_SCHEMA
 
 
 def _get(stage, p, info, cache, metric):
