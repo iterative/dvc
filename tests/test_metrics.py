@@ -1,6 +1,7 @@
 import os
 import json
 
+from dvc.project import Project
 from dvc.main import main
 from dvc.exceptions import DvcException
 from tests.basic_env import TestDvc
@@ -159,3 +160,38 @@ class TestNoMetrics(TestDvc):
     def test(self):
         ret = main(['metrics', 'show'])
         self.assertNotEqual(ret, 0)
+
+
+class TestCachedMetrics(TestDvc):
+    def _do_write(self, branch):
+        self.dvc.scm.checkout(branch)
+        self.dvc.checkout()
+
+        with open('metrics.json', 'w+') as fd:
+            json.dump({'metrics': branch}, fd)
+
+        stage = self.dvc.add('metrics.json')
+        self.assertNotEqual(stage, None)
+
+        self.dvc.scm.add(['.gitignore', 'metrics.json.dvc'])
+        self.dvc.scm.commit(branch)
+
+    def test(self):
+        self.dvc.scm.commit('init')
+
+        self.dvc.scm.branch('one')
+        self.dvc.scm.branch('two')
+
+        self._do_write('master')
+        self._do_write('one')
+        self._do_write('two')
+
+        self.dvc = Project('.')
+
+        res = self.dvc.metrics_show('metrics.json',
+                                    all_branches=True,
+                                    json_path='metrics')
+
+        self.assertEqual(res, {"master": {"metrics.json": ["master"]},
+                               "one": {"metrics.json": ["one"]},
+                               "two": {"metrics.json": ["two"]}})
