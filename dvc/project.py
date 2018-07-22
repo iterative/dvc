@@ -455,6 +455,21 @@ class Project(object):
 
         return ret
 
+
+    def _find_output_by_path(self, path, outs=None):
+        from dvc.exceptions import OutputDuplicationError
+
+        if not outs:
+            outs = [out for stage in self.active_stages() for out in stage.outs]
+
+        abs_path = os.path.abspath(path)
+        matched = [out for out in outs if out.path == abs_path]
+        stages = [out.stage.path for out in matched]
+        if len(stages) > 1:
+            raise OutputDuplicationError(path, stages)
+
+        return matched[0] if matched else None
+
     def metrics_show(self, path=None, json_path=None,
                                       tsv_path=None,
                                       htsv_path=None,
@@ -464,9 +479,20 @@ class Project(object):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches):
             outs = [out for stage in self.active_stages() for out in stage.outs]
-            metrics = filter(lambda o: o.metric, outs)
-            fnames = [path] if path else map(lambda o: o.path, metrics)
+
+            if path:
+                out = self._find_output_by_path(path, outs=outs)
+                stage = out.stage.path if out else None
+                fnames = [path]
+            else:
+                metrics = filter(lambda o: o.metric, outs)
+                stage = None
+                fnames = map(lambda o: o.path, metrics)
+
             for fname in fnames:
+                if stage:
+                    self.checkout(stage)
+
                 rel = os.path.relpath(fname)
                 metric = self._read_metric(fname,
                                            json_path=json_path,
@@ -491,7 +517,6 @@ class Project(object):
         if res:
             return res
 
-
         if path:
             msg = 'File \'{}\' does not exist'.format(path)
         else:
@@ -500,31 +525,24 @@ class Project(object):
         raise DvcException(msg)
 
     def _metrics_modify(self, path, val):
-        apath = os.path.abspath(path)
         found = False
-        for stage in self.stages():
-            for out in stage.outs:
-                if apath != out.path:
-                    continue
-
-                found = True
-
-                if out.path_info['scheme'] != 'local':
-                    msg = 'Output \'{}\' scheme \'{}\' is not supported for metrics'
-                    raise DvcException(msg.format(out.path, out.path_info['scheme']))
-
-                if out.use_cache:
-                    msg = 'Cached output \'{}\' is not supported for metrics'
-                    raise DvcException(msg.format(out.rel_path))
-
-                out.metric = val
-                out._verify_metric()
-
-            stage.dump()
-
-        if not found:
+        out = self._find_output_by_path(path)
+        if not out:
             msg = 'Unable to find file \'{}\' in the pipeline'.format(path)
             raise DvcException(msg)
+
+        if out.path_info['scheme'] != 'local':
+            msg = 'Output \'{}\' scheme \'{}\' is not supported for metrics'
+            raise DvcException(msg.format(out.path, out.path_info['scheme']))
+
+        if out.use_cache:
+            msg = 'Cached output \'{}\' is not supported for metrics'
+            raise DvcException(msg.format(out.rel_path))
+
+        out.metric = val
+        out._verify_metric()
+
+        out.stage.dump()
 
     def metrics_add(self, path):
         self._metrics_modify(path, True)
