@@ -19,8 +19,10 @@ from dvc.command.add import CmdAdd
 from dvc.command.imp import CmdImport
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
-from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove, CmdRemoteModify, CmdRemoteList
-from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd, CmdMetricsRemove
+from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove
+from dvc.command.remote import CmdRemoteModify, CmdRemoteList
+from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd
+from dvc.command.metrics import CmdMetricsRemove, CmdMetricsModify
 from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
@@ -477,6 +479,12 @@ def parse_args(argv=None):
                         'path',
                         nargs='?',
                         help='Path to metrics file')
+    metrics_show_parser.add_argument('-t',
+                        '--type',
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+    metrics_show_parser.add_argument('-x',
+                        '--xpath',
+                        help='JSON/TSV/HTSV/CSV/HCSV path')
     metrics_show_parser_group = metrics_show_parser.add_mutually_exclusive_group()
     metrics_show_parser_group.add_argument(
                         '--json-path',
@@ -505,10 +513,32 @@ def parse_args(argv=None):
                         'add',
                         parents=[parent_parser],
                         help='Add metrics')
+    metrics_add_parser.add_argument('-t',
+                        '--type',
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+    metrics_add_parser.add_argument('-x',
+                        '--xpath',
+                        help='JSON/TSV/HTSV/CSV/HCSV path')
     metrics_add_parser.add_argument(
                         'path',
                         help='Path to metrics file')
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
+
+
+    metrics_modify_parser = metrics_subparsers.add_parser(
+                        'modify',
+                        parents=[parent_parser],
+                        help='Modify metrics')
+    metrics_modify_parser.add_argument('-t',
+                        '--type',
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+    metrics_modify_parser.add_argument('-x',
+                        '--xpath',
+                        help='JSON/TSV/HTSV/CSV/HCSV path')
+    metrics_modify_parser.add_argument(
+                        'path',
+                        help='Metrics file')
+    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
 
     metrics_remove_parser = metrics_subparsers.add_parser(

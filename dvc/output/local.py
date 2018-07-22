@@ -14,6 +14,12 @@ from dvc.istextfile import istextfile
 class OutputLOCAL(DependencyLOCAL):
     PARAM_CACHE = 'cache'
     PARAM_METRIC = 'metric'
+    PARAM_METRIC_TYPE = 'type'
+    PARAM_METRIC_XPATH = 'xpath'
+
+    METRIC_SCHEMA = schema.Or(None, bool,
+                              {schema.Optional(PARAM_METRIC_TYPE): schema.Or(str, None),
+                               schema.Optional(PARAM_METRIC_XPATH): schema.Or(str, None)})
 
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
@@ -38,7 +44,15 @@ class OutputLOCAL(DependencyLOCAL):
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
-        ret[self.PARAM_METRIC] = self.metric
+
+        if isinstance(self.metric, dict):
+            if self.PARAM_METRIC_XPATH in self.metric and \
+               not self.metric[self.PARAM_METRIC_XPATH]:
+                del self.metric[self.PARAM_METRIC_XPATH]
+
+        if self.metric:
+            ret[self.PARAM_METRIC] = self.metric
+
         return ret
 
     def changed(self):

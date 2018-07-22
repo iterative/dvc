@@ -426,11 +426,7 @@ class Project(object):
         reader = list(csv.reader(fd, delimiter=delimiter))
         return self._do_read_metric_xsv(reader, row, col)
 
-    def _read_metric(self, path, json_path=None,
-                                 tsv_path=None,
-                                 htsv_path=None,
-                                 csv_path=None,
-                                 hcsv_path=None):
+    def _read_metric(self, path, typ=None, xpath=None):
         ret = None
 
         if not os.path.exists(path):
@@ -438,16 +434,16 @@ class Project(object):
 
         try: 
             with open(path, 'r') as fd:
-                if json_path:
-                    ret = self._read_metric_json(fd, json_path)
-                elif csv_path:
-                    ret = self._read_metric_xsv(fd, csv_path, ',')
-                elif tsv_path:
-                    ret = self._read_metric_xsv(fd, tsv_path, '\t')
-                elif hcsv_path:
-                    ret = self._read_metric_hxsv(fd, hcsv_path, ',')
-                elif htsv_path:
-                    ret = self._read_metric_hxsv(fd, htsv_path, '\t')
+                if typ == 'json':
+                    ret = self._read_metric_json(fd, xpath)
+                elif typ == 'csv':
+                    ret = self._read_metric_xsv(fd, xpath, ',')
+                elif typ == 'tsv':
+                    ret = self._read_metric_xsv(fd, xpath, '\t')
+                elif typ == 'hcsv':
+                    ret = self._read_metric_hxsv(fd, xpath, ',')
+                elif typ == 'htsv':
+                    ret = self._read_metric_hxsv(fd, xpath, '\t')
                 else:
                     ret = fd.read()
         except Exception as exc:
@@ -470,12 +466,7 @@ class Project(object):
 
         return matched[0] if matched else None
 
-    def metrics_show(self, path=None, json_path=None,
-                                      tsv_path=None,
-                                      htsv_path=None,
-                                      csv_path=None,
-                                      hcsv_path=None,
-                                      all_branches=False):
+    def metrics_show(self, path=None, typ=None, xpath=None, all_branches=False):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches):
             outs = [out for stage in self.active_stages() for out in stage.outs]
@@ -483,23 +474,33 @@ class Project(object):
             if path:
                 out = self._find_output_by_path(path, outs=outs)
                 stage = out.stage.path if out else None
-                fnames = [path]
+                if out and all([out.metric, not typ, isinstance(out.metric, dict)]):
+                    entries = [(path,
+                                out.metric.get(out.PARAM_METRIC_TYPE, None),
+                                out.metric.get(out.PARAM_METRIC_XPATH, None))]
+                else:
+                    entries = [(path, typ, xpath)]
             else:
                 metrics = filter(lambda o: o.metric, outs)
                 stage = None
-                fnames = map(lambda o: o.path, metrics)
+                entries = []
+                for o in metrics:
+                    if not typ and isinstance(o.metric, dict):
+                        t = o.metric.get(o.PARAM_METRIC_TYPE, None)
+                        x = o.metric.get(o.PARAM_METRIC_XPATH, None)
+                    else:
+                        t = typ
+                        x = xpath
+                    entries.append((o.path, t, x))
 
-            for fname in fnames:
+            for fname, t, x in entries:
                 if stage:
                     self.checkout(stage)
 
                 rel = os.path.relpath(fname)
                 metric = self._read_metric(fname,
-                                           json_path=json_path,
-                                           tsv_path=tsv_path,
-                                           htsv_path=htsv_path,
-                                           csv_path=csv_path,
-                                           hcsv_path=hcsv_path)
+                                           typ=t,
+                                           xpath=x)
                 if not metric:
                     continue
 
@@ -524,7 +525,7 @@ class Project(object):
                   'Use \'dvc metrics add\' to add a metric file to track.'
         raise DvcException(msg)
 
-    def _metrics_modify(self, path, val):
+    def _metrics_modify(self, path, typ=None, xpath=None, delete=False):
         found = False
         out = self._find_output_by_path(path)
         if not out:
@@ -539,16 +540,33 @@ class Project(object):
             msg = 'Cached output \'{}\' is not supported for metrics'
             raise DvcException(msg.format(out.rel_path))
 
-        out.metric = val
+        if typ:
+            if not isinstance(out.metric, dict):
+                out.metric = {}
+            out.metric[out.PARAM_METRIC_TYPE] = typ
+
+        if xpath:
+            if not isinstance(out.metric, dict):
+                out.metric = {}
+            out.metric[out.PARAM_METRIC_XPATH] = xpath
+
+        if delete:
+            out.metric = None
+
         out._verify_metric()
 
         out.stage.dump()
 
-    def metrics_add(self, path):
-        self._metrics_modify(path, True)
+    def metrics_modify(self, path=None, typ=None, xpath=None):
+        self._metrics_modify(path, typ, xpath)
+
+    def metrics_add(self, path, typ=None, xpath=None):
+        if not typ:
+            typ = 'raw'
+        self._metrics_modify(path, typ, xpath)
 
     def metrics_remove(self, path):
-        self._metrics_modify(path, False)
+        self._metrics_modify(path, delete=True)
 
     def graph(self):
         import networkx as nx
