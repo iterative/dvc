@@ -107,7 +107,7 @@ How DVC works
 
 Contributing
 =========
-See our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_.
+Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_ for more details.
 
 Copyright
 =========
