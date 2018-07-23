@@ -105,6 +105,10 @@ How DVC works
    :alt: how_dvc_works
 
 
+Contributing
+=========
+See our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_.
+
 Copyright
 =========
 
