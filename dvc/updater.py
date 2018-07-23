@@ -34,6 +34,8 @@ class Updater(object):
 
             os.unlink(self.updater_file)
 
+        Logger.info('Checking for updates...')
+
         try:
             r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
             j = r.json()
