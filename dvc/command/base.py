@@ -24,10 +24,12 @@ class CmdBase(object):
         from dvc.project import Project
 
         root = os.getcwd()
-        while not os.path.ismount(root):
+        while True:
             dvc_dir = os.path.join(root, Project.DVC_DIR)
             if os.path.isdir(dvc_dir):
                 return root
+            if os.path.ismount(root):
+                break
             root = os.path.dirname(root)
         msg = "Not a dvc repository (checked up to mount point {})"
         raise DvcException(msg.format(root))
