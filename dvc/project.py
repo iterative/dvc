@@ -131,7 +131,8 @@ class Project(object):
 
     def add(self, fname):
         stage = Stage.loads(project=self,
-                            outs=[fname])
+                            outs=[fname],
+                            add=True)
 
         stage.save()
         stage.dump()

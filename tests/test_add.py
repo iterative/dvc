@@ -39,7 +39,17 @@ class TestAddDirectory(TestDvc):
         dname = 'directory'
         os.mkdir(dname)
         self.create(os.path.join(dname, 'file'), 'file')
-        self.dvc.add(dname)
+        stage = self.dvc.add(dname)
+        self.assertNotEqual(stage, None)
+        self.assertEqual(len(stage.deps), 0)
+        self.assertEqual(len(stage.outs), 1)
+
+        md5 = stage.outs[0].info['md5']
+
+        dir_info = self.dvc.cache.local.load_dir_cache(md5)
+        for info in dir_info:
+            self.assertTrue('\\' not in info['relpath'])
+
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
     def test(self):
@@ -76,6 +86,15 @@ class TestAddModifiedDir(TestDvc):
         self.dvc.add(self.DATA_DIR)
         os.unlink(self.DATA)
         self.dvc.add(self.DATA_DIR)
+
+
+class TestAddFileInDir(TestDvc):
+    def test(self):
+        stage = self.dvc.add(self.DATA_SUB)
+        self.assertNotEqual(stage, None)
+        self.assertEqual(len(stage.deps), 0)
+        self.assertEqual(len(stage.outs), 1)
+        self.assertEqual(stage.relpath, self.DATA_SUB + '.dvc')
 
 
 class TestCmdAdd(TestDvc):
