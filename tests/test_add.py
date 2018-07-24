@@ -88,6 +88,15 @@ class TestAddModifiedDir(TestDvc):
         self.dvc.add(self.DATA_DIR)
 
 
+class TestAddFileInDir(TestDvc):
+    def test(self):
+        stage = self.dvc.add(self.DATA_SUB)
+        self.assertNotEqual(stage, None)
+        self.assertEqual(len(stage.deps), 0)
+        self.assertEqual(len(stage.outs), 1)
+        self.assertEqual(stage.relpath, self.DATA_SUB + '.dvc')
+
+
 class TestCmdAdd(TestDvc):
     def test(self):
         ret = main(['add',

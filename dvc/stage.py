@@ -185,7 +185,7 @@ class Stage(object):
         return stage
 
     @classmethod
-    def _stage_fname_cwd(cls, fname, cwd, outs):
+    def _stage_fname_cwd(cls, fname, cwd, outs, add):
         if fname and cwd:
             return (fname, cwd)
 
@@ -199,7 +199,7 @@ class Stage(object):
             path = posixpath
 
         fname = fname if fname else path.basename(out.path) + cls.STAGE_FILE_SUFFIX
-        cwd = cwd if cwd else path.dirname(out.path)
+        cwd = path.dirname(out.path) if not cwd or add else cwd
 
         return (fname, cwd)
 
@@ -212,7 +212,8 @@ class Stage(object):
               metrics_no_cache=[],
               fname=None,
               cwd=os.curdir,
-              locked=False):
+              locked=False,
+              add=False):
         stage = Stage(project=project,
                       cwd=cwd,
                       cmd=cmd,
@@ -223,7 +224,7 @@ class Stage(object):
         stage.outs += output.loads_from(stage, metrics_no_cache, use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
 
-        fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs)
+        fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
 
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
