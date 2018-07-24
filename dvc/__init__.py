@@ -5,7 +5,7 @@ Make your data science projects reproducible and shareable.
 """
 import os
 
-VERSION_BASE = '0.14.2'
+VERSION_BASE = '0.14.3'
 __version__ = VERSION_BASE
 
 PACKAGEPATH = os.path.abspath(os.path.dirname(__file__))
