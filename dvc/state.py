@@ -2,11 +2,10 @@ import os
 import json
 import nanotime
 import threading
-from operator import itemgetter
 
 from dvc.lock import Lock
 from dvc.system import System
-from dvc.utils import file_md5, dict_md5, remove
+from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
 from dvc.signal_handler import SignalHandler
 from dvc.logger import Logger
@@ -45,10 +44,6 @@ class State(object):
     STATE_FILE = 'state'
     STATE_LOCK_FILE = 'state.lock'
 
-    PARAM_RELPATH = 'relpath'
-    PARAM_MD5 = 'md5'
-    MD5_DIR_SUFFIX = '.dir'
-
     def __init__(self, project):
         self.project = project
         self.dvc_dir = project.dvc_dir
@@ -65,34 +60,9 @@ class State(object):
     def init(project):
         return State(project)
 
-    def _collect_dir(self, dname):
-        dir_info = []
-
-        for root, dirs, files in os.walk(dname):
-            for fname in files:
-                path = os.path.join(root, fname)
-                relpath = os.path.relpath(path, dname)
-
-                # FIXME: we could've used `md5 = self.update(path, dump=False)` here,
-                # but it is around twice as slow(on ssd, don't know about hdd) for a
-                # directory with small files. What we could do here is introduce some
-                # kind of a limit for file size, after which we would actually register
-                # it in our state file.
-                md5 = file_md5(path)[0]
-                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_MD5: md5})
-
-        # NOTE: sorting the list by path to ensure reproducibility
-        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
-
-        md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
-        if self.project.cache.local.changed(md5):
-            self.project.cache.local.dump_dir_cache(md5, dir_info)
-
-        return (md5, dir_info)
-
     def _collect(self, path):
         if os.path.isdir(path):
-            return self._collect_dir(path)
+            return self.project.cache.local.collect_dir_cache(path)
         else:
             return (file_md5(path)[0], None)
 

@@ -1,14 +1,16 @@
 import os
 import uuid
 import json
+import ntpath
 import shutil
 import filecmp
+import posixpath
+from operator import itemgetter
 
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP
-from dvc.state import State
 from dvc.logger import Logger
-from dvc.utils import remove, move, copyfile, file_md5, to_chunks
+from dvc.utils import remove, move, copyfile, file_md5, dict_md5, to_chunks
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.progress import progress
@@ -18,8 +20,9 @@ from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 class RemoteLOCAL(RemoteBase):
     scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
-    PARAM_MD5 = State.PARAM_MD5
-    PARAM_RELPATH = State.PARAM_RELPATH
+    PARAM_MD5 = 'md5'
+    PARAM_RELPATH = 'relpath'
+    MD5_DIR_SUFFIX = '.dir'
 
     CACHE_TYPES = ['reflink', 'hardlink', 'symlink', 'copy']
     CACHE_TYPE_MAP = {
@@ -104,6 +107,50 @@ class RemoteLOCAL(RemoteBase):
 
         raise DvcException('No possible cache types left to try out.')
 
+    @classmethod
+    def ospath(cls, path):
+        if os.name == 'nt':
+            return cls.ntpath(path)
+        return cls.unixpath(path)
+
+    @staticmethod
+    def unixpath(path):
+        assert not ntpath.isabs(path)
+        assert not posixpath.isabs(path)
+        return path.replace('\\', '/')
+
+    @staticmethod
+    def ntpath(path):
+        assert not ntpath.isabs(path)
+        assert not posixpath.isabs(path)
+        return path.replace('/', '\\')
+
+    def collect_dir_cache(self, dname):
+        dir_info = []
+
+        for root, dirs, files in os.walk(dname):
+            for fname in files:
+                path = os.path.join(root, fname)
+                relpath = self.unixpath(os.path.relpath(path, dname))
+
+                # FIXME: we could've used `md5 = state.update(path, dump=False)`
+                # here, but it is around twice as slow(on ssd, don't know about
+                # hdd) for a directory with small files. What we could do here
+                # is introduce some kind of a limit for file size, after which
+                # we would actually register it in our state file.
+                md5 = file_md5(path)[0]
+                dir_info.append({self.PARAM_RELPATH: relpath,
+                                 self.PARAM_MD5: md5})
+
+        # NOTE: sorting the list by path to ensure reproducibility
+        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+
+        md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
+        if self.changed(md5):
+            self.dump_dir_cache(md5, dir_info)
+
+        return (md5, dir_info)
+
     def load_dir_cache(self, md5):
         path = self.get(md5)
 
@@ -121,6 +168,9 @@ class RemoteLOCAL(RemoteBase):
             msg = u'Dir cache file format error \'{}\': skipping the file'
             Logger.error(msg.format(os.path.relpath(path)))
             return []
+
+        for info in d:
+            info['relpath'] = self.ospath(info['relpath'])
 
         return d
 
@@ -141,9 +191,9 @@ class RemoteLOCAL(RemoteBase):
             json.dump(dir_info, fd, sort_keys=True)
         move(tmp, path)
 
-    @staticmethod
-    def is_dir_cache(cache):
-        return cache.endswith(State.MD5_DIR_SUFFIX)
+    @classmethod
+    def is_dir_cache(cls, cache):
+        return cache.endswith(cls.MD5_DIR_SUFFIX)
 
     def checkout(self, path_info, checksum_info):
         path = path_info['path']
@@ -215,8 +265,8 @@ class RemoteLOCAL(RemoteBase):
         md5, dir_info = self.state.update_info(path)
 
         for entry in dir_info:
-            relpath = entry[State.PARAM_RELPATH]
-            m = entry[State.PARAM_MD5]
+            relpath = entry[self.PARAM_RELPATH]
+            m = entry[self.PARAM_MD5]
             p = os.path.join(path, relpath)
             c = self.get(m)
 

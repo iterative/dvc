@@ -1,7 +1,5 @@
 import os
 import schema
-import posixpath
-import ntpath
 
 try:
     from urlparse import urlparse
@@ -31,7 +29,7 @@ class DependencyLOCAL(DependencyBase):
             path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
 
         if not os.path.isabs(path):
-            path = self.ospath(path)
+            path = self.remote.ospath(path)
             path = os.path.join(stage.cwd, path)
         self.path = os.path.abspath(os.path.normpath(path))
 
@@ -67,26 +65,9 @@ class DependencyLOCAL(DependencyBase):
 
         self.info = self.remote.save_info(self.path_info)
 
-    def ospath(self, path):
-        if os.name == 'nt':
-            return self.ntpath(path)
-        return self.unixpath(path)
-
-    @staticmethod
-    def unixpath(path):
-        assert not ntpath.isabs(path)
-        assert not posixpath.isabs(path)
-        return path.replace('\\', '/')
-
-    @staticmethod
-    def ntpath(path):
-        assert not ntpath.isabs(path)
-        assert not posixpath.isabs(path)
-        return path.replace('/', '\\')
-
     def dumpd(self):
         if self.path.startswith(self.stage.project.root_dir):
-            path = self.unixpath(os.path.relpath(self.path, self.stage.cwd))
+            path = self.remote.unixpath(os.path.relpath(self.path, self.stage.cwd))
         else:
             path = self.path
 
