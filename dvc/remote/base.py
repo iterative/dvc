@@ -1,5 +1,6 @@
 import os
 import re
+import errno
 
 from dvc.config import Config
 from dvc.logger import Logger
@@ -84,10 +85,11 @@ class RemoteBase(object):
 
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
+
         try:
             os.makedirs(dname)
         except OSError as e:
-            if e.errno != os.errno.EEXIST:
+            if e.errno != errno.EEXIST:
                 raise
 
     def md5s_to_path_infos(self, md5s):
