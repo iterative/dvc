@@ -1,7 +1,5 @@
 import os
-import errno
 import getpass
-import filecmp
 import posixpath
 
 try:
@@ -10,7 +8,6 @@ except ImportError:
     paramiko = None
 
 from dvc.logger import Logger
-from dvc.utils import copyfile, file_md5
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
@@ -43,7 +40,7 @@ def create_cb(name):
 class RemoteSSH(RemoteBase):
     scheme = 'ssh'
 
-    #NOTE: temporarily only absolute paths are allowed
+    # NOTE: temporarily only absolute paths are allowed
     REGEX = r'^ssh://((?P<user>.*)@)?(?P<host>[^/]*):(?P<path>/.*)$'
 
     REQUIRES = {'paramiko': paramiko}
@@ -55,17 +52,20 @@ class RemoteSSH(RemoteBase):
         self.host = self.group('host')
         self.user = self.group('user')
         if not self.user:
-            self.user = config.get(Config.SECTION_REMOTE_USER, getpass.getuser())
+            self.user = config.get(Config.SECTION_REMOTE_USER,
+                                   getpass.getuser())
         self.prefix = self.group('path')
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
                  'host': self.host,
                  'user': self.user,
-                 'path': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': posixpath.join(self.prefix,
+                                        md5[0:2], md5[2:])} for md5 in md5s]
 
     def ssh(self, host=None, user=None):
-        Logger.debug("Establishing ssh connection with '{}' as user '{}'".format(host, user))
+        msg = "Establishing ssh connection with '{}' as user '{}'"
+        Logger.debug(msg.format(host, user))
 
         ssh = paramiko.SSHClient()
 
@@ -79,7 +79,8 @@ class RemoteSSH(RemoteBase):
     def exists(self, path_infos):
         ret = []
         ssh = self.ssh(host=self.host, user=self.user)
-        stdout = self._exec(ssh, 'find {} -type f -follow -print'.format(self.prefix))
+        cmd = 'find {} -type f -follow -print'.format(self.prefix)
+        stdout = self._exec(ssh, cmd)
         plist = stdout.split()
         ssh.close()
 
@@ -94,7 +95,8 @@ class RemoteSSH(RemoteBase):
     def _exec(self, ssh, cmd):
         stdin, stdout, stderr = ssh.exec_command(cmd)
         if stdout.channel.recv_exit_status() != 0:
-            DvcException('SSH command \'{}\' failed: {}'.format(cmd, stderr.read()))
+            DvcException('SSH command \'{}\' failed: {}'.format(cmd,
+                                                                stderr.read()))
         return stdout.read().decode('utf-8')
 
     def md5(self, path_info):
@@ -112,7 +114,8 @@ class RemoteSSH(RemoteBase):
             md5cmd = 'md5sum'
             index = 0
         else:
-            raise DvcException('\'{}\' is not supported as a remote'.format(stdout))
+            msg = '\'{}\' is not supported as a remote'.format(stdout)
+            raise DvcException(msg)
 
         stdout = self._exec(ssh, '{} {}'.format(md5cmd, path_info['path']))
         md5 = stdout.split()[index]
@@ -129,7 +132,8 @@ class RemoteSSH(RemoteBase):
         assert from_info['host'] == to_info['host']
         assert from_info['user'] == to_info['user']
 
-        s = ssh if ssh else self.ssh(host=from_info['host'], user=from_info['user'])
+        s = ssh if ssh else self.ssh(host=from_info['host'],
+                                     user=from_info['user'])
 
         dname = posixpath.dirname(to_info['path'])
         self._exec(s, 'mkdir -p {}'.format(dname))
@@ -181,7 +185,11 @@ class RemoteSSH(RemoteBase):
         ssh.open_sftp().remove(path_info['path'])
         ssh.close()
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(self,
+                 from_infos,
+                 to_infos,
+                 no_progress_bar=False,
+                 names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         ssh = self.ssh(host=from_infos[0]['host'], user=from_infos[0]['user'])
@@ -199,20 +207,25 @@ class RemoteSSH(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(from_info['host'],
-                                                              from_info['path'],
-                                                              to_info['path']))
+            msg = "Downloading '{}/{}' to '{}'".format(from_info['host'],
+                                                       from_info['path'],
+                                                       to_info['path'])
+            Logger.debug(msg)
+
             if not name:
                 name = os.path.basename(to_info['path'])
 
             self._makedirs(to_info['path'])
             tmp_file = self.tmp_file(to_info['path'])
             try:
-                ssh.open_sftp().get(from_info['path'], tmp_file, callback=create_cb(name))
+                ssh.open_sftp().get(from_info['path'],
+                                    tmp_file,
+                                    callback=create_cb(name))
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}' to '{}'".format(from_info['host'],
-                                                                         from_info['path'],
-                                                                         to_info['path']), exc)
+                msg = "Failed to download '{}/{}' to '{}'"
+                Logger.error(msg.format(from_info['host'],
+                                        from_info['path'],
+                                        to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -244,11 +257,14 @@ class RemoteSSH(RemoteBase):
             self._exec(ssh, 'mkdir -p {}'.format(dname))
 
             try:
-                sftp.put(from_info['path'], to_info['path'], callback=create_cb(name))
+                sftp.put(from_info['path'],
+                         to_info['path'],
+                         callback=create_cb(name))
             except Exception as exc:
-                Logger.error("Failed to upload '{}' to '{}/{}'".format(from_info['path'],
-                                                                       to_info['host'],
-                                                                       to_info['path']), exc)
+                msg = "Failed to upload '{}' to '{}/{}'"
+                Logger.error(msg.format(from_info['path'],
+                                        to_info['host'],
+                                        to_info['path'], exc))
                 continue
 
             progress.finish_target(name)
@@ -262,21 +278,23 @@ class RemoteSSH(RemoteBase):
 
     def _all_md5s(self):
         ssh = self.ssh(host=self.host, user=self.user)
-        stdout = self._exec(ssh, 'find {} -type f -follow -print'.format(self.prefix))
+        cmd = 'find {} -type f -follow -print'.format(self.prefix)
+        stdout = self._exec(ssh, cmd)
         flist = stdout.split()
         ssh.close()
 
         return [self._path_to_md5(path) for path in flist]
 
-    def gc(self, checksum_infos):
-        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos['ssh']]
-        used_md5s += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
+    def gc(self, cinfos):
+        used = [info[self.PARAM_MD5] for info in cinfos['ssh']]
+        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
         for md5 in self._all_md5s():
-            if md5 in used_md5s:
+            if md5 in used:
                 continue
             path_info = {'scheme': 'ssh',
                          'user': self.user,
                          'host': self.host,
-                         'path': posixpath.join(self.prefix, md5[0:2], md5[2:])}
+                         'path': posixpath.join(self.prefix,
+                                                md5[0:2], md5[2:])}
             self.remove(path_info)

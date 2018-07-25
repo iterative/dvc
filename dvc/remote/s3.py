@@ -1,5 +1,4 @@
 import os
-import math
 import threading
 import posixpath
 
@@ -44,7 +43,8 @@ class RemoteS3(RemoteBase):
         import configobj
 
         self.project = project
-        storagepath = 's3://' + config.get(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
+        storagepath = 's3://' + config.get(Config.SECTION_AWS_STORAGEPATH,
+                                           '').lstrip('/')
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.region = config.get(Config.SECTION_AWS_REGION, None)
         self.profile = config.get(Config.SECTION_AWS_PROFILE, 'default')
@@ -90,7 +90,8 @@ class RemoteS3(RemoteBase):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'], path_info['key'])}
+        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
+                                               path_info['key'])}
 
     def _copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
@@ -137,7 +138,8 @@ class RemoteS3(RemoteBase):
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': self.scheme,
                  'bucket': self.bucket,
-                 'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
+                 'key': posixpath.join(self.prefix,
+                                       md5[0:2], md5[2:])} for md5 in md5s]
 
     def _all_keys(self):
         s3 = self.s3
@@ -202,14 +204,22 @@ class RemoteS3(RemoteBase):
             cb = Callback(name, total)
 
             try:
-                s3.upload_file(from_info['path'], to_info['bucket'], to_info['key'], Callback=cb)
+                s3.upload_file(from_info['path'],
+                               to_info['bucket'],
+                               to_info['key'],
+                               Callback=cb)
             except Exception as exc:
-                Logger.error("Failed to upload '{}'".format(from_info['path']), exc)
+                msg = "Failed to upload '{}'".format(from_info['path'])
+                Logger.error(msg, exc)
                 continue
 
             progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(self,
+                 from_infos,
+                 to_infos,
+                 no_progress_bar=False,
+                 names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         s3 = self.s3
@@ -225,9 +235,10 @@ class RemoteS3(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(from_info['bucket'],
-                                                              from_info['key'],
-                                                              to_info['path']))
+            msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
+                                                       from_info['key'],
+                                                       to_info['path'])
+            Logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -243,10 +254,14 @@ class RemoteS3(RemoteBase):
             self._makedirs(to_info['path'])
 
             try:
-                s3.download_file(from_info['bucket'], from_info['key'], tmp_file, Callback=cb)
+                s3.download_file(from_info['bucket'],
+                                 from_info['key'],
+                                 tmp_file,
+                                 Callback=cb)
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}'".format(from_info['bucket'],
-                                                                 from_info['key']), exc)
+                msg = "Failed to download '{}/{}'".format(from_info['bucket'],
+                                                          from_info['key'])
+                Logger.error(msg, exc)
                 return
 
             os.rename(tmp_file, to_info['path'])
@@ -262,14 +277,15 @@ class RemoteS3(RemoteBase):
         keys = self._all_keys()
         return [self._path_to_etag(key) for key in keys]
 
-    def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['s3']]
-        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
+    def gc(self, cinfos):
+        used_etags = [info[self.PARAM_ETAG] for info in cinfos['s3']]
+        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
         for etag in self._all():
             if etag in used_etags:
                 continue
             path_info = {'scheme': 's3',
-                         'key': posixpath.join(self.prefix, etag[0:2], etag[2:]),
+                         'key': posixpath.join(self.prefix,
+                                               etag[0:2], etag[2:]),
                          'bucket': self.bucket}
             self.remove(path_info)

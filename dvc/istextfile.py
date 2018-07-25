@@ -1,4 +1,6 @@
-# Based on https://eli.thegreenplace.net/2011/10/19/perls-guess-if-file-is-text-or-binary-implemented-in-python
+# Based on https://eli.thegreenplace.net/2011/10/19/
+# perls-guess-if-file-is-text-or-binary-implemented-in-python
+
 import sys
 PY3 = sys.version_info[0] == 3
 

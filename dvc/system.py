@@ -4,7 +4,6 @@ import reflink
 
 if os.name == 'nt':
     import ntfsutils.hardlink as winlink
-    from ntfsutils.fs import getdirinfo
 
 
 class System(object):
@@ -44,11 +43,18 @@ class System(object):
     # https://github.com/sunshowers/ntfs/pull/11
     @staticmethod
     def getdirinfo(path):
-        from ntfsutils.fs import FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_READ, OPEN_EXISTING
-        from ntfsutils.fs import CreateFile, WinError, BY_HANDLE_FILE_INFORMATION
+        from ntfsutils.fs import FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_READ
+        from ntfsutils.fs import OPEN_EXISTING, BY_HANDLE_FILE_INFORMATION
+        from ntfsutils.fs import CreateFile, WinError
         from ntfsutils.fs import GetFileInformationByHandle, CloseHandle
         flags = FILE_FLAG_BACKUP_SEMANTICS
-        hfile = CreateFile(path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None)
+        hfile = CreateFile(path,
+                           0,
+                           FILE_SHARE_READ,
+                           None,
+                           OPEN_EXISTING,
+                           flags,
+                           None)
         if hfile is None:
             raise WinError()
         info = BY_HANDLE_FILE_INFORMATION()
@@ -65,4 +71,6 @@ class System(object):
 
         # getdirinfo from ntfsutils works on both files and dirs
         info = System.getdirinfo(path)
-        return hash((info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow))
+        return hash((info.dwVolumeSerialNumber,
+                     info.nFileIndexHigh,
+                     info.nFileIndexLow))

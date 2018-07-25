@@ -7,7 +7,6 @@ except ImportError:
 
 from dvc.dependency.s3 import DependencyS3
 from dvc.remote.gs import RemoteGS
-from dvc.config import Config
 
 
 class DependencyGS(DependencyS3):

@@ -3,7 +3,8 @@ from dvc.exceptions import DvcException
 
 class OutputError(DvcException):
     def __init__(self, path, msg):
-        super(OutputError, self).__init__('Output \'{}\' error: {}'.format(path, msg))
+        msg = 'Output \'{}\' error: {}'.format(path, msg)
+        super(OutputError, self).__init__(msg)
 
 
 class OutputDoesNotExistError(OutputError):
@@ -13,9 +14,11 @@ class OutputDoesNotExistError(OutputError):
 
 class OutputIsNotFileOrDirError(OutputError):
     def __init__(self, path):
-        super(OutputIsNotFileOrDirError, self).__init__(path, 'not a file or directory')
+        msg = 'not a file or directory'
+        super(OutputIsNotFileOrDirError, self).__init__(path, msg)
 
 
 class OutputAlreadyTrackedError(OutputError):
     def __init__(self, path):
-        super(OutputAlreadyTrackedError, self).__init__(path, 'already tracked by scm(e.g. git)')
+        msg = 'already tracked by scm(e.g. git)'
+        super(OutputAlreadyTrackedError, self).__init__(path, msg)

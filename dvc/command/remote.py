@@ -13,10 +13,14 @@ class CmdRemoteAdd(CmdConfig):
             return ret
 
         if self.args.default:
-            Logger.info('Setting \'{}\' as a default remote.'.format(self.args.name))
-            ret = self.set(Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, self.args.name)
+            msg = 'Setting \'{}\' as a default remote.'.format(self.args.name)
+            Logger.info(msg)
+            ret = self.set(Config.SECTION_CORE,
+                           Config.SECTION_CORE_REMOTE,
+                           self.args.name)
 
         return ret
+
 
 class CmdRemoteRemove(CmdConfig):
     def run(self):
@@ -37,6 +41,7 @@ class CmdRemoteList(CmdConfig):
             r = re.match(Config.SECTION_REMOTE_REGEX, section)
             if r:
                 name = r.group('name')
-                url = self.configobj[section].get(Config.SECTION_REMOTE_URL, '')
+                url = self.configobj[section].get(Config.SECTION_REMOTE_URL,
+                                                  '')
                 Logger.info('{}\t{}'.format(name, url))
         return 0

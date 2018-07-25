@@ -3,7 +3,6 @@ import uuid
 import json
 import ntpath
 import shutil
-import filecmp
 import posixpath
 from operator import itemgetter
 
@@ -14,7 +13,7 @@ from dvc.utils import remove, move, copyfile, file_md5, dict_md5, to_chunks
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.progress import progress
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 
 class RemoteLOCAL(RemoteBase):
@@ -47,7 +46,7 @@ class RemoteLOCAL(RemoteBase):
         else:
             self.cache_types = self.CACHE_TYPES
 
-        if self.cache_dir != None and not os.path.exists(self.cache_dir):
+        if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
     @property
@@ -81,7 +80,8 @@ class RemoteLOCAL(RemoteBase):
         cache = self.get(md5)
         if self.state.changed(cache, md5=md5):
             if os.path.exists(cache):
-                Logger.warn('Corrupted cache file {}'.format(os.path.relpath(cache)))
+                msg = 'Corrupted cache file {}'
+                Logger.warn(msg.format(os.path.relpath(cache)))
                 remove(cache)
             return True
 
@@ -100,8 +100,8 @@ class RemoteLOCAL(RemoteBase):
                 self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
                 return
             except Exception as exc:
-                msg = 'Cache type \'{}\' is not supported'.format(self.cache_types[0])
-                Logger.debug(msg)
+                msg = 'Cache type \'{}\' is not supported: {}'
+                Logger.debug(msg.format(self.cache_types[0], str(exc)))
                 del self.cache_types[0]
                 i -= 1
 
@@ -133,7 +133,7 @@ class RemoteLOCAL(RemoteBase):
                 path = os.path.join(root, fname)
                 relpath = self.unixpath(os.path.relpath(path, dname))
 
-                # FIXME: we could've used `md5 = state.update(path, dump=False)`
+                # FIXME: we could've used md5 = state.update(path, dump=False)
                 # here, but it is around twice as slow(on ssd, don't know about
                 # hdd) for a directory with small files. What we could do here
                 # is introduce some kind of a limit for file size, after which
@@ -201,7 +201,8 @@ class RemoteLOCAL(RemoteBase):
         cache = self.get(md5)
 
         if not cache:
-            Logger.warn('No cache info for \'{}\'. Skipping checkout.'.format(os.path.relpath(path)))
+            msg = 'No cache info for \'{}\'. Skipping checkout.'
+            Logger.warn(msg.format(os.path.relpath(path)))
             return
 
         if self.changed(md5):
@@ -246,7 +247,7 @@ class RemoteLOCAL(RemoteBase):
     def _save_file(self, path_info):
         path = path_info['path']
         md5 = self.state.update(path)
-        assert md5 != None
+        assert md5 is not None
 
         cache = self.get(md5)
 
@@ -312,7 +313,8 @@ class RemoteLOCAL(RemoteBase):
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'local',
-                 'path': os.path.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': os.path.join(self.prefix,
+                                      md5[0:2], md5[2:])} for md5 in md5s]
 
     def exists(self, path_infos):
         ret = []
@@ -330,7 +332,8 @@ class RemoteLOCAL(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}'".format(from_info['path'], to_info['path']))
+            Logger.debug("Uploading '{}' to '{}'".format(from_info['path'],
+                                                         to_info['path']))
 
             if not name:
                 name = os.path.basename(from_info['path'])
@@ -340,9 +343,15 @@ class RemoteLOCAL(RemoteBase):
             try:
                 copyfile(from_info['path'], to_info['path'], name=name)
             except Exception as exc:
-                Logger.error("Failed to upload '{}' tp '{}'".format(from_info['path'], to_info['path']), exc)
+                msg = "Failed to upload '{}' tp '{}'"
+                Logger.error(msg.format(from_info['path'],
+                                        to_info['path']), exc)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(self,
+                 from_infos,
+                 to_infos,
+                 no_progress_bar=False,
+                 names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -352,7 +361,8 @@ class RemoteLOCAL(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}' to '{}'".format(from_info['path'], to_info['path']))
+            Logger.debug("Downloading '{}' to '{}'".format(from_info['path'],
+                                                           to_info['path']))
 
             if not name:
                 name = os.path.basename(to_info['path'])
@@ -360,9 +370,14 @@ class RemoteLOCAL(RemoteBase):
             self._makedirs(to_info['path'])
             tmp_file = self.tmp_file(to_info['path'])
             try:
-                copyfile(from_info['path'], tmp_file, no_progress_bar=no_progress_bar, name=name)
+                copyfile(from_info['path'],
+                         tmp_file,
+                         no_progress_bar=no_progress_bar,
+                         name=name)
             except Exception as exc:
-                Logger.error("Failed to download '{}' to '{}'".format(from_info['path'], to_info['path']), exc)
+                msg = "Failed to download '{}' to '{}'"
+                Logger.error(msg.format(from_info['path'],
+                                        to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -383,7 +398,8 @@ class RemoteLOCAL(RemoteBase):
         return collected, missing
 
     def gc(self, checksum_infos):
-        used_md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos['local'])[0]]
+        checksum_infos = self._collect(checksum_infos['local'])[0]
+        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
 
         for md5 in self.all():
             if md5 in used_md5s:
@@ -397,7 +413,9 @@ class RemoteLOCAL(RemoteBase):
         remote_exists = remote.exists(path_infos)
         local_exists = [not self.changed(md5) for md5 in md5s]
 
-        return [(md5, STATUS_MAP[l,r]) for md5, l, r in zip(md5s, local_exists, remote_exists)]
+        return [(md5, STATUS_MAP[l, r]) for md5, l, r in zip(md5s,
+                                                             local_exists,
+                                                             remote_exists)]
 
     def _do_pull(self, checksum_infos, remote, jobs=1, no_progress_bar=False):
         md5s = [info[self.PARAM_MD5] for info in checksum_infos]
@@ -442,14 +460,16 @@ class RemoteLOCAL(RemoteBase):
         self._do_pull(checksum_infos, remote, jobs)
 
     def push(self, checksum_infos, remote, jobs=1):
-        md5s = [info[self.PARAM_MD5] for info in self._collect(checksum_infos)[0]]
+        checksum_infos = self._collect(checksum_infos)[0]
+        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
 
         # NOTE: verifying that our cache is not corrupted
         md5s = list(filter(lambda md5: not self.changed(md5), md5s))
 
         # NOTE: filter files that are already uploaded
         path_infos = remote.md5s_to_path_infos(md5s)
-        md5s_exist = filter(lambda x: not x[1], list(zip(md5s, remote.exists(path_infos))))
+        lexists = remote.exists(path_infos)
+        md5s_exist = filter(lambda x: not x[1], list(zip(md5s, lexists)))
         md5s = [md5 for md5, exists in md5s_exist]
 
         cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
@@ -469,7 +489,10 @@ class RemoteLOCAL(RemoteBase):
         futures = []
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
             for to_infos, from_infos, md5s in chunks:
-                res = executor.submit(remote.upload, from_infos, to_infos, names=md5s)
+                res = executor.submit(remote.upload,
+                                      from_infos,
+                                      to_infos,
+                                      names=md5s)
                 futures.append(res)
 
         for f in futures:

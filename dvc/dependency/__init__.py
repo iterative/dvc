@@ -18,17 +18,19 @@ from dvc.dependency.ssh import DependencySSH
 from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
-from dvc.remote.gs import RemoteGS
-from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 
-DEPS = [DependencyHDFS, DependencyS3, DependencyGS, DependencySSH, DependencyLOCAL]
+DEPS = [DependencyHDFS,
+        DependencyS3,
+        DependencyGS,
+        DependencySSH,
+        DependencyLOCAL]
 
 DEP_MAP = {'': DependencyLOCAL,
            'ssh': DependencySSH,
            's3': DependencyS3,
            'gs': DependencyGS,
-           'hdfs': DependencyHDFS,}
+           'hdfs': DependencyHDFS}
 
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
@@ -41,7 +43,8 @@ SCHEMA = {
 def _get(stage, p, info):
     parsed = urlparse(p)
     if parsed.scheme == 'remote':
-        sect = stage.project.config._config[Config.SECTION_REMOTE_FMT.format(parsed.netloc)]
+        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
+        sect = stage.project.config._config[name]
         remote = Remote(stage.project, sect)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 

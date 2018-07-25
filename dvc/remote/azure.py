@@ -1,23 +1,16 @@
 from __future__ import absolute_import
 import os
 import re
-import time
 
 try:
     from azure.storage.blob import BlockBlobService
 except ImportError:
     BlockBlobService = None
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 from dvc.logger import Logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
-from dvc.remote.local import RemoteLOCAL
 
 
 class Callback(object):
@@ -180,11 +173,16 @@ class RemoteAzure(RemoteBase):
                 self.blob_service.create_blob_from_path(
                     bucket, key, from_info['path'], progress_callback=cb)
             except Exception as ex:
-                Logger.error("Failed to upload '{}'".format(from_info['path']), ex)
+                Logger.error("Failed to upload '{}'".format(from_info['path']),
+                             ex)
             else:
                 progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(self,
+                 from_infos,
+                 to_infos,
+                 no_progress_bar=False,
+                 names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -223,15 +221,15 @@ class RemoteAzure(RemoteBase):
 # FIXME: temporarily disabled because of the lack of test for external azure
 # dependencies/outputs/cache.
 #
-#    def gc(self, checksum_infos):
-#        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['azure']]
-#        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
+#    def gc(self, cinfos):
+#        used = [info[self.PARAM_ETAG] for info in cinfos['azure']]
+#        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 #
 #        all_blobs = self.blob_service.list_blobs(self.bucket)
 #
 #        for blob in all_blobs:
 #            etag = blob.properties.etag
-#            if etag in used_etags:
+#            if etag in used:
 #                continue
 #            path_info = {'scheme': self.scheme,
 #                         'key': blob.name,

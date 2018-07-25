@@ -2,14 +2,10 @@
 Helpers for other modules.
 """
 import os
-import re
-import sys
 import math
 import json
-import stat
 import shutil
 import hashlib
-from multiprocessing.pool import ThreadPool
 
 from dvc.istextfile import istextfile
 from dvc.progress import progress

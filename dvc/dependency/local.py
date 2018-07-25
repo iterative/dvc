@@ -1,15 +1,14 @@
 import os
-import schema
 
 try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.dependency.base import *
+from dvc.dependency.base import DependencyBase
+from dvc.dependency.base import DependencyDoesNotExistError
+from dvc.dependency.base import DependencyIsNotFileOrDirError
 from dvc.logger import Logger
-from dvc.utils import remove
-from dvc.config import Config
 from dvc.remote.local import RemoteLOCAL
 
 
@@ -23,7 +22,10 @@ class DependencyLOCAL(DependencyBase):
         self.stage = stage
         self.project = stage.project
         self.info = info
-        self.remote = remote if remote != None else RemoteLOCAL(stage.project, {})
+        if remote is not None:
+            self.remote = remote
+        else:
+            self.remote = RemoteLOCAL(stage.project, {})
 
         if remote:
             path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
@@ -61,13 +63,14 @@ class DependencyLOCAL(DependencyBase):
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
-            self.project.logger.warn("File/directory '{}' is empty.".format(self.rel_path))
+            Logger.warn("File/directory '{}' is empty.".format(self.rel_path))
 
         self.info = self.remote.save_info(self.path_info)
 
     def dumpd(self):
         if self.path.startswith(self.stage.project.root_dir):
-            path = self.remote.unixpath(os.path.relpath(self.path, self.stage.cwd))
+            path = self.remote.unixpath(os.path.relpath(self.path,
+                                                        self.stage.cwd))
         else:
             path = self.path
 

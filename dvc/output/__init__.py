@@ -29,9 +29,15 @@ SCHEMA[schema.Optional(OutputLOCAL.PARAM_METRIC)] = OutputLOCAL.METRIC_SCHEMA
 def _get(stage, p, info, cache, metric):
     parsed = urlparse(p)
     if parsed.scheme == 'remote':
-        sect = stage.project.config._config[Config.SECTION_REMOTE_FMT.format(parsed.netloc)]
+        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
+        sect = stage.project.config._config[name]
         remote = Remote(stage.project, sect)
-        return OUTS_MAP[remote.scheme](stage, p, info, cache=cache, remote=remote, metric=metric)
+        return OUTS_MAP[remote.scheme](stage,
+                                       p,
+                                       info,
+                                       cache=cache,
+                                       remote=remote,
+                                       metric=metric)
 
     for o in OUTS:
         if o.supported(p):

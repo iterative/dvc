@@ -7,7 +7,8 @@ class CmdMove(CmdBase):
         try:
             self.project.move(self.args.src, self.args.dst)
         except DvcException as ex:
-            self.project.logger.error('Failed to move \'{}\' -> \'{}\''.format(self.args.src,
-                                                                               self.args.dst), ex)
+            msg = 'Failed to move \'{}\' -> \'{}\''.format(self.args.src,
+                                                           self.args.dst)
+            self.project.logger.error(msg, ex)
             return 1
         return 0

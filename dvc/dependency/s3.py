@@ -7,7 +7,6 @@ except ImportError:
 
 from dvc.dependency.base import DependencyBase
 from dvc.remote.s3 import RemoteS3
-from dvc.config import Config
 
 
 class DependencyS3(DependencyBase):

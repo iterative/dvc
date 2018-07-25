@@ -1,5 +1,4 @@
 import os
-import stat
 
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
@@ -34,7 +33,7 @@ class Project(object):
         from dvc.config import Config
         from dvc.state import LinkState, State
         from dvc.lock import Lock
-        from dvc.scm import SCM, Base
+        from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
@@ -49,7 +48,10 @@ class Project(object):
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self)
         self.link_state = LinkState(self)
-        self.logger = Logger(self.config._config[Config.SECTION_CORE].get(Config.SECTION_CORE_LOGLEVEL, None))
+
+        core = self.config._config[Config.SECTION_CORE]
+        self.logger = Logger(core.get(Config.SECTION_CORE_LOGLEVEL, None))
+
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
@@ -81,8 +83,8 @@ class Project(object):
 
         scm = SCM(root_dir)
         if type(scm) == Base and not no_scm:
-            msg = "{} is not tracked by any supported scm tool(e.g. git).".format(root_dir)
-            raise InitError(msg)
+            msg = "{} is not tracked by any supported scm tool(e.g. git)."
+            raise InitError(msg.format(root_dir))
 
         if os.path.isdir(dvc_dir):
             if not force:
@@ -110,18 +112,18 @@ class Project(object):
         shutil.rmtree(self.dvc_dir)
 
     def _ignore(self):
-        l = [self.state.state_file,
-             self.state._lock_file.lock_file,
-             self.link_state.state_file,
-             self.link_state._lock_file.lock_file,
-             self.lock.lock_file,
-             self.config.config_local_file,
-             self.updater.updater_file]
+        flist = [self.state.state_file,
+                 self.state._lock_file.lock_file,
+                 self.link_state.state_file,
+                 self.link_state._lock_file.lock_file,
+                 self.lock.lock_file,
+                 self.config.config_local_file,
+                 self.updater.updater_file]
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
-            l += [self.cache.local.cache_dir]
+            flist += [self.cache.local.cache_dir]
 
-        self.scm.ignore_list(l)
+        self.scm.ignore_list(flist)
 
     def install(self):
         self.scm.install()
@@ -163,7 +165,8 @@ class Project(object):
     def move(self, from_path, to_path):
         import dvc.output as Output
 
-        from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
+        from_out = Output.loads_from(Stage(self, cwd=os.curdir),
+                                     [from_path])[0]
 
         found = False
         for stage in self.stages():
@@ -172,24 +175,32 @@ class Project(object):
                     continue
 
                 if not stage.is_data_source:
-                    raise DvcException('Dvcfile \'{}\' is not a data source.'.format(stage.rel_path))
+                    msg = 'Dvcfile \'{}\' is not a data source.'
+                    raise DvcException(msg.format(stage.rel_path))
 
                 found = True
-                to_out = Output.loads_from(out.stage, [to_path], out.cache, out.metric)[0]
+                to_out = Output.loads_from(out.stage,
+                                           [to_path],
+                                           out.cache,
+                                           out.metric)[0]
                 out.move(to_out)
 
-                stage_base = os.path.basename(stage.path).rstrip(Stage.STAGE_FILE_SUFFIX)
+                stage_base = os.path.basename(stage.path)
+                stage_base = stage_base.rstrip(Stage.STAGE_FILE_SUFFIX)
+
                 stage_dir = os.path.dirname(stage.path)
                 from_base = os.path.basename(from_path)
                 to_base = os.path.basename(to_path)
                 if stage_base == from_base:
                     os.unlink(stage.path)
-                    stage.path = os.path.join(stage_dir, to_base + Stage.STAGE_FILE_SUFFIX)
+                    path = to_base + Stage.STAGE_FILE_SUFFIX
+                    stage.path = os.path.join(stage_dir, path)
 
             stage.dump()
 
         if not found:
-            raise DvcException('Unable to find dvcfile with output \'{}\''.format(from_path))
+            msg = 'Unable to find dvcfile with output \'{}\''
+            raise DvcException(msg.format(from_path))
 
     def run(self,
             cmd=None,
@@ -222,7 +233,6 @@ class Project(object):
         stage.run()
         stage.dump()
         return stage
-
 
     def _reproduce_stage(self, stages, node, force):
         stage = stages[node]
@@ -308,8 +318,8 @@ class Project(object):
 
             for stage in stages:
                 if active and not target and stage.locked:
-                    msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
-                          'going to be pushed/pulled/fetched.'
+                    msg = 'DVC file \'{}\' is locked. Its dependecies are ' \
+                          'not going to be pushed/pulled/fetched.'
                     self.logger.warn(msg.format(stage.relpath))
 
                 for out in stage.outs:
@@ -345,10 +355,14 @@ class Project(object):
             self.cloud._get_cloud(remote).gc(clist)
 
     def push(self, target=None, jobs=1, remote=None, all_branches=False):
-        self.cloud.push(self._used_cache(target, all_branches)['local'], jobs, remote=remote)
+        self.cloud.push(self._used_cache(target, all_branches)['local'],
+                        jobs,
+                        remote=remote)
 
     def fetch(self, target=None, jobs=1, remote=None, all_branches=False):
-        self.cloud.pull(self._used_cache(target, all_branches)['local'], jobs, remote=remote)
+        self.cloud.pull(self._used_cache(target, all_branches)['local'],
+                        jobs,
+                        remote=remote)
 
     def pull(self, target=None, jobs=1, remote=None, all_branches=False):
         self.fetch(target, jobs, remote=remote, all_branches=all_branches)
@@ -376,7 +390,9 @@ class Project(object):
         import dvc.remote.base as cloud
 
         status = {}
-        for md5, ret in self.cloud.status(self._used_cache(target)['local'], jobs, remote=remote):
+        for md5, ret in self.cloud.status(self._used_cache(target)['local'],
+                                          jobs,
+                                          remote=remote):
             if ret == cloud.STATUS_OK:
                 continue
 
@@ -402,11 +418,11 @@ class Project(object):
         return [x.value for x in parser.find(json.load(fd))]
 
     def _do_read_metric_xsv(self, reader, row, col):
-        if col != None and row != None:
+        if col is not None and row is not None:
             return [reader[row][col]]
-        elif col != None:
+        elif col is not None:
             return [r[col] for r in reader]
-        elif row != None:
+        elif row is not None:
             return reader[row]
         return None
 
@@ -433,7 +449,7 @@ class Project(object):
         if not os.path.exists(path):
             return ret
 
-        try: 
+        try:
             with open(path, 'r') as fd:
                 if typ == 'json':
                     ret = self._read_metric_json(fd, xpath)
@@ -448,16 +464,17 @@ class Project(object):
                 else:
                     ret = fd.read()
         except Exception as exc:
-            self.logger.error('Unable to read metric in \'{}\''.format(path), exc)
+            self.logger.error('Unable to read metric in \'{}\''.format(path),
+                              exc)
 
         return ret
-
 
     def _find_output_by_path(self, path, outs=None):
         from dvc.exceptions import OutputDuplicationError
 
         if not outs:
-            outs = [out for stage in self.active_stages() for out in stage.outs]
+            astages = self.active_stages()
+            outs = [out for stage in astages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
         matched = [out for out in outs if out.path == abs_path]
@@ -467,15 +484,22 @@ class Project(object):
 
         return matched[0] if matched else None
 
-    def metrics_show(self, path=None, typ=None, xpath=None, all_branches=False):
+    def metrics_show(self,
+                     path=None,
+                     typ=None,
+                     xpath=None,
+                     all_branches=False):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches):
-            outs = [out for stage in self.active_stages() for out in stage.outs]
+            astages = self.active_stages()
+            outs = [out for stage in astages for out in stage.outs]
 
             if path:
                 out = self._find_output_by_path(path, outs=outs)
                 stage = out.stage.path if out else None
-                if out and all([out.metric, not typ, isinstance(out.metric, dict)]):
+                if out and all([out.metric,
+                                not typ,
+                                isinstance(out.metric, dict)]):
                     entries = [(path,
                                 out.metric.get(out.PARAM_METRIC_TYPE, None),
                                 out.metric.get(out.PARAM_METRIC_XPATH, None))]
@@ -527,7 +551,6 @@ class Project(object):
         raise DvcException(msg)
 
     def _metrics_modify(self, path, typ=None, xpath=None, delete=False):
-        found = False
         out = self._find_output_by_path(path)
         if not out:
             msg = 'Unable to find file \'{}\' in the pipeline'.format(path)
@@ -589,7 +612,8 @@ class Project(object):
 
             for dep in stage.deps:
                 for out in outs:
-                    if out.path != dep.path and not dep.path.startswith(out.path + out.sep):
+                    if out.path != dep.path \
+                       and not dep.path.startswith(out.path + out.sep):
                         continue
 
                     dep_stage = out.stage
