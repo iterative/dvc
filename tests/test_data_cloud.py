@@ -78,7 +78,7 @@ def _should_test_ssh():
         return False
 
     try:
-        check_output(['ssh', '127.0.0.1', 'ls'])
+        check_output(['ssh', '-o', 'BatchMode=yes', '127.0.0.1', 'ls'])
     except (CalledProcessError, IOError):
         return False
 
