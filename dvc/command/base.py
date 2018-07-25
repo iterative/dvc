@@ -39,7 +39,7 @@ class CmdBase(object):
             with self.project.lock:
                 return self.run()
         except LockError as ex:
-            self.project.logger.error('Failed to lock before running a command', ex) 
+            Logger.error('Failed to lock before running a command', ex)
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class

@@ -6,11 +6,17 @@ class OutputS3(DependencyS3):
     PARAM_CACHE = 'cache'
     PARAM_METRIC = 'metric'
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(self,
+                 stage,
+                 path,
+                 info=None,
+                 remote=None,
+                 cache=True,
+                 metric=False):
         super(OutputS3, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         self.metric = metric
-        if cache and self.project.cache.s3 == None:
+        if cache and self.project.cache.s3 is None:
             raise DvcException("No cache location setup for \'s3\' outputs.")
 
     def dumpd(self):
@@ -23,7 +29,8 @@ class OutputS3(DependencyS3):
         if super(OutputS3, self).changed():
             return True
 
-        if self.use_cache and self.info != self.project.cache.s3.save_info(self.path_info):
+        if self.use_cache \
+           and self.info != self.project.cache.s3.save_info(self.path_info):
             return True
 
         return False

@@ -82,7 +82,8 @@ class State(object):
             try:
                 return json.load(fd)
             except ValueError as exc:
-                Logger.error('Failed to load \'{}\''.format(self.state_file), exc)
+                Logger.error('Failed to load \'{}\''.format(self.state_file),
+                             exc)
                 return {}
 
     def dump(self):

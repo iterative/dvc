@@ -24,7 +24,8 @@ class CmdDataPull(CmdDataBase):
                               remote=self.args.remote,
                               all_branches=self.args.all_branches)
         except Exception as exc:
-            self.project.logger.error('Failed to pull data from the cloud', exc)
+            self.project.logger.error('Failed to pull data from the cloud',
+                                      exc)
             return 1
         return 0
 
@@ -50,6 +51,7 @@ class CmdDataFetch(CmdDataBase):
                                remote=self.args.remote,
                                all_branches=self.args.all_branches)
         except Exception as exc:
-            self.project.logger.error('Failed to fetch data from the cloud', exc)
+            self.project.logger.error('Failed to fetch data from the cloud',
+                                      exc)
             return 1
         return 0

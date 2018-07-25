@@ -6,11 +6,17 @@ class OutputHDFS(DependencyHDFS):
     PARAM_CACHE = 'cache'
     PARAM_METRIC = 'metric'
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(self,
+                 stage,
+                 path,
+                 info=None,
+                 remote=None,
+                 cache=True,
+                 metric=False):
         super(OutputHDFS, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         self.metric = metric
-        if cache and self.project.cache.hdfs == None:
+        if cache and self.project.cache.hdfs is None:
             raise DvcException("No cache location setup for \'hdfs\' outputs.")
 
     def dumpd(self):
@@ -23,7 +29,8 @@ class OutputHDFS(DependencyHDFS):
         if super(OutputHDFS, self).changed():
             return True
 
-        if self.use_cache and self.info != self.project.cache.hdfs.save_info(self.path_info):
+        if self.use_cache \
+           and self.info != self.project.cache.hdfs.save_info(self.path_info):
             return True
 
         return False

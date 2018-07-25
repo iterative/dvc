@@ -5,10 +5,12 @@ import requests
 from dvc import VERSION_BASE
 from dvc.logger import Logger
 
+
 class Updater(object):
-    URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/prod/latest-version'
+    URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/' \
+          'prod/latest-version'
     UPDATER_FILE = 'updater'
-    TIMEOUT = 7 * 24 * 60 * 60 #every week
+    TIMEOUT = 7 * 24 * 60 * 60  # every week
     TIMEOUT_GET = 10
 
     def __init__(self, dvc_dir):
@@ -42,7 +44,8 @@ class Updater(object):
             latest = j['version']
             open(self.updater_file, 'w+').close()
         except Exception as exc:
-            Logger.debug('Failed to obtain latest version: {}'.format(str(exc)))
+            msg = 'Failed to obtain latest version: {}'.format(str(exc))
+            Logger.debug(msg)
             return
 
         l_major, l_minor, l_patch = [int(x) for x in latest.split('.')]
@@ -51,7 +54,8 @@ class Updater(object):
         if l_major <= c_major and \
            l_minor <= c_minor and \
            l_patch <= c_patch:
-               return
+            return
 
-        msg = 'You are using dvc version {}, however version {} is available. Consider upgrading.'
+        msg = 'You are using dvc version {}, however version {} is ' \
+              'available. Consider upgrading.'
         Logger.warn(msg.format(current, latest))

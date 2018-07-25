@@ -6,7 +6,6 @@ from dvc.command.base import CmdBase
 class CmdRepro(CmdBase):
     def run(self):
         from dvc.project import ReproductionError
-        from dvc.stage import Stage
 
         recursive = not self.args.single_item
         saved_dir = os.path.realpath(os.curdir)
@@ -27,8 +26,8 @@ class CmdRepro(CmdBase):
                 ret = 1
                 break
             except Exception as ex:
-                msg = 'Failed to reproduce \'{}\' - unexpected error'.format(target)
-                self.project.logger.error(msg, ex)
+                msg = 'Failed to reproduce \'{}\' - unexpected error'
+                self.project.logger.error(msg.format(target), ex)
                 ret = 1
                 break
 

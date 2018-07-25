@@ -6,11 +6,17 @@ class OutputGS(DependencyGS):
     PARAM_CACHE = 'cache'
     PARAM_METRIC = 'metric'
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(self,
+                 stage,
+                 path,
+                 info=None,
+                 remote=None,
+                 cache=True,
+                 metric=False):
         super(OutputGS, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         self.metric = metric
-        if cache and self.project.cache.gs == None:
+        if cache and self.project.cache.gs is None:
             raise DvcException("No cache location setup for \'gs\' outputs.")
 
     def dumpd(self):
@@ -23,7 +29,8 @@ class OutputGS(DependencyGS):
         if super(OutputGS, self).changed():
             return True
 
-        if self.use_cache and self.info != self.project.cache.gs.save_info(self.path_info):
+        if self.use_cache \
+           and self.info != self.project.cache.gs.save_info(self.path_info):
             return True
 
         return False
@@ -39,7 +46,6 @@ class OutputGS(DependencyGS):
 
         if not self.use_cache:
             return
-
 
         self.info = self.project.cache.gs.save(self.path_info)
 

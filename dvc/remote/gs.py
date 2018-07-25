@@ -27,7 +27,9 @@ class RemoteGS(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        storagepath = 'gs://' + config.get(Config.SECTION_AWS_STORAGEPATH, '/').lstrip('/')
+        storagepath = 'gs://'
+        storagepath += config.get(Config.SECTION_AWS_STORAGEPATH, '/')
+        storagepath.lstrip('/')
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
@@ -54,16 +56,21 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'], path_info['key'])}
+        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
+                                               path_info['key'])}
 
     def _copy(self, from_info, to_info, gs=None):
         gs = gs if gs else self.gs
- 
+
         blob = gs.bucket(from_info['bucket']).get_blob(from_info['key'])
         if not blob:
-            raise DvcException('{} doesn\'t exist in the cloud'.format(from_info['key']))
+            msg = '{} doesn\'t exist in the cloud'
+            raise DvcException(msg.format(from_info['key']))
 
-        self.gs.bucket(to_info['bucket']).copy_blob(blob, self.gs.bucket(to_info['bucket']), new_name=to_info['key'])
+        bucket = self.gs.bucket(to_info['bucket'])
+        bucket.copy_blob(blob,
+                         self.gs.bucket(to_info['bucket']),
+                         new_name=to_info['key'])
 
     def save(self, path_info):
         if path_info['scheme'] != 'gs':
@@ -106,13 +113,15 @@ class RemoteGS(RemoteBase):
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'gs',
                  'bucket': self.bucket,
-                 'key': posixpath.join(self.prefix, md5[0:2], md5[2:])} for md5 in md5s]
+                 'key': posixpath.join(self.prefix,
+                                       md5[0:2], md5[2:])} for md5 in md5s]
 
     def exists(self, path_infos):
         ret = []
         gs = self.gs
 
-        keys = [blob.name for blob in gs.bucket(self.bucket).list_blobs(prefix=self.prefix)]
+        bucket = gs.bucket(self.bucket)
+        keys = [blob.name for blob in bucket.list_blobs(prefix=self.prefix)]
 
         for path_info in path_infos:
             exists = False
@@ -143,16 +152,23 @@ class RemoteGS(RemoteBase):
             progress.update_target(name, 0, None)
 
             try:
-                gs.bucket(to_info['bucket']).blob(to_info['key']).upload_from_filename(from_info['path'])
+                bucket = gs.bucket(to_info['bucket'])
+                blob = bucket.blob(to_info['key'])
+                blob.upload_from_filename(from_info['path'])
             except Exception as exc:
-                Logger.error("Failed to upload '{}' to '{}/{}'".format(from_info['path'],
-                                                                       to_info['bucket'],
-                                                                       to_info['key']), exc)
+                msg = "Failed to upload '{}' to '{}/{}'"
+                Logger.error(msg.format(from_info['path'],
+                                        to_info['bucket'],
+                                        to_info['key']), exc)
                 continue
 
             progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(self,
+                 from_infos,
+                 to_infos,
+                 no_progress_bar=False,
+                 names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         gs = self.gs
@@ -168,9 +184,10 @@ class RemoteGS(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(from_info['bucket'],
-                                                              from_info['key'],
-                                                              to_info['path']))
+            msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
+                                                       from_info['key'],
+                                                       to_info['path'])
+            Logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -184,11 +201,14 @@ class RemoteGS(RemoteBase):
             self._makedirs(to_info['path'])
 
             try:
-                gs.bucket(from_info['bucket']).get_blob(from_info['key']).download_to_filename(tmp_file)
+                bucket = gs.bucket(from_info['bucket'])
+                blob = bucket.get_blob(from_info['key'])
+                blob.download_to_filename(tmp_file)
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}' to '{}'".format(from_info['bucket'],
-                                                                         from_info['key'],
-                                                                         to_info['path']), exc)
+                msg = "Failed to download '{}/{}' to '{}'"
+                Logger.error(msg.format(from_info['bucket'],
+                                        from_info['key'],
+                                        to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -201,17 +221,19 @@ class RemoteGS(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all_etags(self):
-        blobs = list(self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix))
+        blobs = self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix)
+        blobs = list(blobs)
         return [self._path_to_etag(blob.name) for blob in blobs]
 
-    def gc(self, checksum_infos):
-        used_etags = [info[self.PARAM_ETAG] for info in checksum_infos['gs']]
-        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in checksum_infos['local']]
+    def gc(self, cinfos):
+        used = [info[self.PARAM_ETAG] for info in cinfos['gs']]
+        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
         for etag in self._all_etags():
-            if etag in used_etags:
+            if etag in used:
                 continue
             path_info = {'scheme': 'gs',
                          'bucket': self.bucket,
-                         'key': posixpath.join(self.prefix, etag[0:2], etag[2:])}
+                         'key': posixpath.join(self.prefix,
+                                               etag[0:2], etag[2:])}
             self.remove(path_info)

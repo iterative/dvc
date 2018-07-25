@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
-import threading 
+import threading
+
 
 class Progress(object):
     """
@@ -55,7 +56,7 @@ class Progress(object):
         total_len = 100
         bar_len = 30
 
-        if total == None:
+        if total is None:
             progress = 0
             percent = "?% "
         else:
@@ -70,8 +71,12 @@ class Progress(object):
         bar = "[" + '#'*n_sh + ' '*n_sp + "] "
 
         name_len = total_len - len(num + bar + percent)
-        name = target_name[:name_len] if len(target_name) > name_len else target_name
+        if len(target_name) > name_len:
+            name = target_name[:name_len]
+        else:
+            name = target_name
 
         return num + bar + percent + name
+
 
 progress = Progress()

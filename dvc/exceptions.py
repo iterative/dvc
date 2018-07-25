@@ -27,4 +27,3 @@ class OutputDuplicationError(DvcException):
         msg = "File '{}' is specified as an output in more than one stage: {}"
         super(OutputDuplicationError, self).__init__(msg.format(output,
                                                                 str(stages)))
-        

@@ -8,7 +8,8 @@ class CmdLockBase(CmdBase):
             try:
                 self.project.lock_stage(target, unlock=unlock)
             except DvcException as ex:
-                msg = 'Failed to {}lock \'{}\''.format('un' if unlock else '', target)
+                msg = 'Failed to {}lock \'{}\''
+                msg.format('un' if unlock else '', target)
                 self.project.logger.error(msg, ex)
                 return 1
         return 0

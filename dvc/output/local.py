@@ -1,13 +1,10 @@
 import os
-import schema
-import posixpath
-import ntpath
+from schema import Optional, Or
 
-from dvc.output.base import *
+from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
+from dvc.output.base import OutputAlreadyTrackedError
 from dvc.dependency.local import DependencyLOCAL
 from dvc.exceptions import DvcException
-from dvc.logger import Logger
-from dvc.utils import remove
 from dvc.istextfile import istextfile
 
 
@@ -17,14 +14,20 @@ class OutputLOCAL(DependencyLOCAL):
     PARAM_METRIC_TYPE = 'type'
     PARAM_METRIC_XPATH = 'xpath'
 
-    METRIC_SCHEMA = schema.Or(None, bool,
-                              {schema.Optional(PARAM_METRIC_TYPE): schema.Or(str, None),
-                               schema.Optional(PARAM_METRIC_XPATH): schema.Or(str, None)})
+    METRIC_SCHEMA = Or(None, bool,
+                       {Optional(PARAM_METRIC_TYPE): Or(str, None),
+                        Optional(PARAM_METRIC_XPATH): Or(str, None)})
 
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(self,
+                 stage,
+                 path,
+                 info=None,
+                 remote=None,
+                 cache=True,
+                 metric=False):
         super(OutputLOCAL, self).__init__(stage, path, info, remote=remote)
         self.use_cache = cache
         self.metric = metric
@@ -100,7 +103,8 @@ class OutputLOCAL(DependencyLOCAL):
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
-            self.project.logger.warn("File/directory '{}' is empty.".format(self.rel_path))
+            msg = "File/directory '{}' is empty.".format(self.rel_path)
+            self.project.logger.warn(msg)
 
         if not self.changed():
             msg = 'Output \'{}\' didn\'t change. Skipping saving.'

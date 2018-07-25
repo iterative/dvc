@@ -1,7 +1,5 @@
 import os
 import re
-import tempfile
-import posixpath
 
 from dvc.config import Config
 from dvc.logger import Logger
@@ -15,10 +13,10 @@ STATUS_DELETED = 4
 
 STATUS_MAP = {
     # (local_exists, remote_exists)
-    (True, True)  : STATUS_OK,
-    (False, False) : STATUS_OK,
-    (True, False) : STATUS_NEW,
-    (False, True) : STATUS_DELETED,
+    (True, True): STATUS_OK,
+    (False, False): STATUS_OK,
+    (True, False): STATUS_NEW,
+    (False, True): STATUS_DELETED,
 }
 
 
@@ -26,7 +24,6 @@ class DataCloudError(DvcException):
     """ Data Cloud exception """
     def __init__(self, msg):
         super(DataCloudError, self).__init__('Data sync error: {}'.format(msg))
-
 
 
 class RemoteBase(object):
@@ -42,8 +39,9 @@ class RemoteBase(object):
         url_ok = cls.match(url)
         deps_ok = all(cls.REQUIRES.values())
         if url_ok and not deps_ok:
-            missing = [k for k,v in cls.REQUIRES.items() if v == None]
-            msg = "URL \'{}\' is supported but requires these missing dependencies: {}"
+            missing = [k for k, v in cls.REQUIRES.items() if v is None]
+            msg = "URL \'{}\' is supported but requires " \
+                  "these missing dependencies: {}"
             Logger.warn(msg.format(url, str(missing)))
         return url_ok and deps_ok
 
@@ -60,7 +58,7 @@ class RemoteBase(object):
     @staticmethod
     def tmp_file(fname):
         """ Temporary name for a partial download """
-        #FIXME probably better use uuid()
+        # FIXME probably better use uuid()
         return fname + '.part'
 
     def save_info(self, path_info):

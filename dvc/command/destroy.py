@@ -6,13 +6,13 @@ from dvc.exceptions import DvcException
 class CmdDestroy(CmdBase):
     def run_cmd(self):
         try:
-            msg = u'This will destroy all information about your pipelines as ' \
-                  u'well as cache in .dvc/cache.\n' \
+            msg = u'This will destroy all information about your pipelines ' \
+                  u'as well as cache in .dvc/cache.\n' \
                   u'Are you sure you want to continue?'
 
             if not self.args.force and not prompt(msg, False):
-                msg = u'Cannot destroy without a confirmation from the user. ' \
-                      u'Use \'-f\' to force.'
+                msg = u'Cannot destroy without a confirmation from the ' \
+                      u'user. Use \'-f\' to force.'
                 raise DvcException(msg)
 
             self.project.destroy()

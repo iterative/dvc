@@ -2,7 +2,7 @@ import os
 import yaml
 import itertools
 import subprocess
-import schema
+from schema import Schema, SchemaError, Optional, Or, And
 import posixpath
 
 import dvc.dependency as dependency
@@ -46,14 +46,22 @@ class Stage(object):
     PARAM_LOCKED = 'locked'
 
     SCHEMA = {
-        schema.Optional(PARAM_MD5): schema.Or(str, None),
-        schema.Optional(PARAM_CMD): schema.Or(str, None),
-        schema.Optional(PARAM_DEPS): schema.Or(schema.And(list, schema.Schema([dependency.SCHEMA])), None),
-        schema.Optional(PARAM_OUTS): schema.Or(schema.And(list, schema.Schema([output.SCHEMA])), None),
-        schema.Optional(PARAM_LOCKED): bool,
+        Optional(PARAM_MD5): Or(str, None),
+        Optional(PARAM_CMD): Or(str, None),
+        Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
+        Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
+        Optional(PARAM_LOCKED): bool,
     }
 
-    def __init__(self, project, path=None, cmd=None, cwd=os.curdir, deps=[], outs=[], md5=None, locked=False):
+    def __init__(self,
+                 project,
+                 path=None,
+                 cmd=None,
+                 cwd=os.curdir,
+                 deps=[],
+                 outs=[],
+                 md5=None,
+                 locked=False):
         self.project = project
         self.path = path
         self.cmd = cmd
@@ -76,7 +84,8 @@ class Stage(object):
         if not os.path.isfile(path):
             return False
 
-        if not path.endswith(Stage.STAGE_FILE_SUFFIX) and os.path.basename(path) != Stage.STAGE_FILE:
+        if not path.endswith(Stage.STAGE_FILE_SUFFIX) \
+           and os.path.basename(path) != Stage.STAGE_FILE:
             return False
 
         return True
@@ -85,7 +94,7 @@ class Stage(object):
         md5 = self.dumpd().get(self.PARAM_MD5, None)
 
         # backward compatibility
-        if self.md5 == None:
+        if self.md5 is None:
             return False
 
         if self.md5 and md5 and self.md5 == md5:
@@ -124,9 +133,11 @@ class Stage(object):
             ret = True
 
         if ret:
-            self.project.logger.debug(u'Dvc file \'{}\' changed'.format(self.relpath))
+            msg = u'Dvc file \'{}\' changed'.format(self.relpath)
         else:
-            self.project.logger.debug(u'Dvc file \'{}\' didn\'t change'.format(self.relpath))
+            msg = u'Dvc file \'{}\' didn\'t change'.format(self.relpath)
+
+        self.project.logger.debug(msg)
 
         return ret
 
@@ -150,15 +161,16 @@ class Stage(object):
 
         self.run()
 
-        self.project.logger.debug(u'\'{}\' was reproduced'.format(self.relpath))
+        msg = u'\'{}\' was reproduced'.format(self.relpath)
+        self.project.logger.debug(msg)
 
         return self
 
     @staticmethod
     def validate(d):
         try:
-            schema.Schema(Stage.SCHEMA).validate(d)
-        except schema.SchemaError as exc:
+            Schema(Stage.SCHEMA).validate(d)
+        except SchemaError as exc:
             Logger.debug(str(exc))
             raise StageFileFormatError()
 
@@ -198,7 +210,9 @@ class Stage(object):
         else:
             path = posixpath
 
-        fname = fname if fname else path.basename(out.path) + cls.STAGE_FILE_SUFFIX
+        if not fname:
+            fname = path.basename(out.path) + cls.STAGE_FILE_SUFFIX
+
         cwd = path.dirname(out.path) if not cwd or add else cwd
 
         return (fname, cwd)
@@ -221,7 +235,8 @@ class Stage(object):
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.outs += output.loads_from(stage, metrics_no_cache, use_cache=False, metric=True)
+        stage.outs += output.loads_from(stage, metrics_no_cache,
+                                        use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
 
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
@@ -244,7 +259,7 @@ class Stage(object):
         outs = [x.dumpd() for x in self.outs]
 
         ret = {}
-        if self.cmd != None:
+        if self.cmd is not None:
             ret[Stage.PARAM_CMD] = self.cmd
 
         if len(deps):
@@ -276,18 +291,22 @@ class Stage(object):
 
     def run(self):
         if self.locked:
-            self.project.logger.info(u'Verifying outputs in locked stage \'{}\''.format(self.relpath))
+            msg = u'Verifying outputs in locked stage \'{}\''
+            self.project.logger.info(msg.format(self.relpath))
             self.check_missing_outputs()
         elif self.is_import:
             msg = u'Importing \'{}\' -> \'{}\''
-            self.project.logger.info(msg.format(self.deps[0].path, self.outs[0].path))
+            self.project.logger.info(msg.format(self.deps[0].path,
+                                                self.outs[0].path))
 
             self.deps[0].download(self.outs[0].path_info)
         elif self.is_data_source:
-            self.project.logger.info(u'Verifying data sources in \'{}\''.format(self.relpath))
+            msg = u'Verifying data sources in \'{}\''.format(self.relpath)
+            self.project.logger.info(msg)
             self.check_missing_outputs()
         else:
-            self.project.logger.info(u'Running command:\n\t{}'.format(self.cmd))
+            msg = u'Running command:\n\t{}'.format(self.cmd)
+            self.project.logger.info(msg)
 
             p = subprocess.Popen(self.cmd,
                                  cwd=self.cwd,
@@ -296,13 +315,14 @@ class Stage(object):
                                  executable=os.getenv('SHELL'))
             p.communicate()
             if p.returncode != 0:
-               raise StageCmdFailedError(self)
+                raise StageCmdFailedError(self)
 
         self.save()
 
     def check_missing_outputs(self):
         outs = [out for out in self.outs if not out.exists]
-        paths = [out.path if out.path_info['scheme'] != 'local' else out.rel_path for out in outs]
+        paths = [out.path if out.path_info['scheme'] != 'local' else
+                 out.rel_path for out in outs]
         if paths:
             raise MissingDataSource(paths)
 

@@ -20,7 +20,8 @@ class DependencySSH(DependencyBase):
         host = remote.host if remote else self.group('host')
         user = remote.user if remote else self.group('user')
         if remote:
-            path = posixpath.join(remote.prefix, urlparse(path).path.lstrip('/'))
+            path = posixpath.join(remote.prefix,
+                                  urlparse(path).path.lstrip('/'))
         else:
             path = self.match(self.path).group('path')
 

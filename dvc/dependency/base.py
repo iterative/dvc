@@ -1,24 +1,24 @@
 import re
-import schema
-import posixpath
-import ntpath
 
 from dvc.exceptions import DvcException
 
 
 class DependencyError(DvcException):
     def __init__(self, path, msg):
-        super(DependencyError, self).__init__('Dependency \'{}\' error: {}'.format(path, msg))
+        msg = 'Dependency \'{}\' error: {}'
+        super(DependencyError, self).__init__(msg.format(path, msg))
 
 
 class DependencyDoesNotExistError(DependencyError):
     def __init__(self, path):
-        super(DependencyDoesNotExistError, self).__init__(path, 'does not exist')
+        msg = 'does not exist'
+        super(DependencyDoesNotExistError, self).__init__(path, msg)
 
 
 class DependencyIsNotFileOrDirError(DependencyError):
     def __init__(self, path):
-        super(DependencyIsNotFileOrDirError, self).__init__(path, 'not a file or directory')
+        msg = 'not a file or directory'
+        super(DependencyIsNotFileOrDirError, self).__init__(path, msg)
 
 
 class DependencyBase(object):
@@ -43,7 +43,7 @@ class DependencyBase(object):
 
     @classmethod
     def supported(cls, url):
-        return cls.match(url) != None
+        return cls.match(url) is not None
 
     @property
     def sep(self):
@@ -58,7 +58,7 @@ class DependencyBase(object):
 
     def status(self):
         if self.changed():
-            #FIXME better msgs
+            # FIXME better msgs
             return {self.rel_path: 'changed'}
         return {}
 

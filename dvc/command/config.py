@@ -39,7 +39,8 @@ class CmdConfig(CmdBase):
         try:
             self.configobj.write()
         except Exception as exc:
-            Logger.error("Failed to write config '{}'".format(self.configobj.filename), exc)
+            msg = "Failed to write config '{}'".format(self.configobj.filename)
+            Logger.error(msg, exc)
             return 1
         return 0
 
@@ -51,7 +52,7 @@ class CmdConfig(CmdBase):
         if opt in self.configobj[section].keys():
             del self.configobj[section][opt]
 
-        if len(self.configobj[section]) == 0 or opt == None:
+        if len(self.configobj[section]) == 0 or opt is None:
             del self.configobj[section]
 
         return self.save()
@@ -70,7 +71,7 @@ class CmdConfig(CmdBase):
 
     def check_opt(self):
         _section, _opt = self.args.name.strip().split('.', 1)
-        add = (self.args.value != None and self.args.unset == False)
+        add = (self.args.value is not None and self.args.unset is False)
 
         section = self._get_key(self.configobj, _section, add)
 

@@ -1,4 +1,3 @@
-import os
 from dvc.command.base import CmdBase
 
 

@@ -113,7 +113,8 @@ class Git(Base):
         ignore_list = []
         if os.path.exists(gitignore):
             ignore_list = open(gitignore, 'r').readlines()
-            filtered = list(filter(lambda x: x.strip() == entry.strip(), ignore_list))
+            filtered = list(filter(lambda x: x.strip() == entry.strip(),
+                                   ignore_list))
             if len(filtered) != 0:
                 return
 
@@ -143,8 +144,10 @@ class Git(Base):
         try:
             self.repo.index.add(paths)
         except AssertionError as exc:
-            msg = 'Failed to add \'{}\' to git. You can add those files manually using \'git add\'. '
-            msg += 'See \'https://github.com/iterative/dvc/issues/610\' for more details.'
+            msg = 'Failed to add \'{}\' to git. You can add those files '
+            msg += 'manually using \'git add\'. '
+            msg += 'See \'https://github.com/iterative/dvc/issues/610\' '
+            msg += 'for more details.'
             Logger.error(msg.format(str(paths)), exc)
 
     def commit(self, msg):
@@ -173,9 +176,13 @@ class Git(Base):
         return [h.name for h in self.repo.heads]
 
     def install(self):
-        hook = os.path.join(self.root_dir, self.GIT_DIR, 'hooks', 'post-checkout')
+        hook = os.path.join(self.root_dir,
+                            self.GIT_DIR,
+                            'hooks',
+                            'post-checkout')
         if os.path.isfile(hook):
-            raise SCMError('Git hook \'{}\' already exists.'.format(os.path.relpath(hook)))
+            msg = 'Git hook \'{}\' already exists.'
+            raise SCMError(msg.format(os.path.relpath(hook)))
         with open(hook, 'w+') as fd:
             fd.write('#!/bin/sh\nexec dvc checkout\n')
         os.chmod(hook, 0o777)
