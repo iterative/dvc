@@ -19,7 +19,10 @@ class CmdDataBase(CmdBase):
 class CmdDataPull(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.pull(target=target, jobs=self.args.jobs, remote=self.args.remote)
+            self.project.pull(target=target,
+                              jobs=self.args.jobs,
+                              remote=self.args.remote,
+                              all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to pull data from the cloud', exc)
             return 1
@@ -29,7 +32,10 @@ class CmdDataPull(CmdDataBase):
 class CmdDataPush(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.push(target=target, jobs=self.args.jobs, remote=self.args.remote)
+            self.project.push(target=target,
+                              jobs=self.args.jobs,
+                              remote=self.args.remote,
+                              all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to push data to the cloud', exc)
             return 1
@@ -39,7 +45,10 @@ class CmdDataPush(CmdDataBase):
 class CmdDataFetch(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.fetch(target=target, jobs=self.args.jobs, remote=self.args.remote)
+            self.project.fetch(target=target,
+                               jobs=self.args.jobs,
+                               remote=self.args.remote,
+                               all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to fetch data from the cloud', exc)
             return 1
