@@ -16,6 +16,7 @@ from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.progress import progress
+from dvc.exceptions import DvcException
 
 
 class RemoteGS(RemoteBase):

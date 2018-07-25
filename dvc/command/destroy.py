@@ -13,7 +13,7 @@ class CmdDestroy(CmdBase):
             if not self.args.force and not prompt(msg, False):
                 msg = u'Cannot destroy without a confirmation from the user. ' \
                       u'Use \'-f\' to force.'
-                raise DvcException(err)
+                raise DvcException(msg)
 
             self.project.destroy()
         except Exception as exc:
