@@ -326,7 +326,10 @@ class Project(object):
                     if not out.use_cache or not out.info:
                         continue
 
-                    cache[out.path_info['scheme']] += [out.info]
+                    info = out.dumpd()
+                    info['branch'] = branch
+
+                    cache[out.path_info['scheme']] += [info]
 
         return cache
 
@@ -354,18 +357,39 @@ class Project(object):
         if cloud:
             self.cloud._get_cloud(remote).gc(clist)
 
-    def push(self, target=None, jobs=1, remote=None, all_branches=False):
+    def push(self,
+             target=None,
+             jobs=1,
+             remote=None,
+             all_branches=False,
+             show_checksums=False):
         self.cloud.push(self._used_cache(target, all_branches)['local'],
                         jobs,
-                        remote=remote)
+                        remote=remote,
+                        show_checksums=show_checksums)
 
-    def fetch(self, target=None, jobs=1, remote=None, all_branches=False):
+    def fetch(self,
+              target=None,
+              jobs=1,
+              remote=None,
+              all_branches=False,
+              show_checksums=False):
         self.cloud.pull(self._used_cache(target, all_branches)['local'],
                         jobs,
-                        remote=remote)
+                        remote=remote,
+                        show_checksums=show_checksums)
 
-    def pull(self, target=None, jobs=1, remote=None, all_branches=False):
-        self.fetch(target, jobs, remote=remote, all_branches=all_branches)
+    def pull(self,
+             target=None,
+             jobs=1,
+             remote=None,
+             all_branches=False,
+             show_checksums=False):
+        self.fetch(target,
+                   jobs,
+                   remote=remote,
+                   all_branches=all_branches,
+                   show_checksums=show_checksums)
         self.checkout(target=target)
 
     def _local_status(self, target=None):
@@ -386,13 +410,18 @@ class Project(object):
 
         return status
 
-    def _cloud_status(self, target=None, jobs=1, remote=None):
+    def _cloud_status(self,
+                      target=None,
+                      jobs=1,
+                      remote=None,
+                      show_checksums=False):
         import dvc.remote.base as cloud
 
         status = {}
         for md5, ret in self.cloud.status(self._used_cache(target)['local'],
                                           jobs,
-                                          remote=remote):
+                                          remote=remote,
+                                          show_checksums=show_checksums):
             if ret == cloud.STATUS_OK:
                 continue
 
@@ -405,9 +434,17 @@ class Project(object):
 
         return status
 
-    def status(self, target=None, jobs=1, cloud=False, remote=None):
+    def status(self,
+               target=None,
+               jobs=1,
+               cloud=False,
+               remote=None,
+               show_checksums=False):
         if cloud:
-            return self._cloud_status(target, jobs, remote=remote)
+            return self._cloud_status(target,
+                                      jobs,
+                                      remote=remote,
+                                      show_checksums=show_checksums)
         return self._local_status(target)
 
     def _read_metric_json(self, fd, json_path):

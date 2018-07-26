@@ -20,6 +20,7 @@ class RemoteLOCAL(RemoteBase):
     scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
     PARAM_MD5 = 'md5'
+    PARAM_PATH = 'path'
     PARAM_RELPATH = 'relpath'
     MD5_DIR_SUFFIX = '.dir'
 
@@ -388,14 +389,47 @@ class RemoteLOCAL(RemoteBase):
         for info in checksum_infos:
             md5 = info[self.PARAM_MD5]
             cache = self.get(md5)
+
             if not self.is_dir_cache(info[self.PARAM_MD5]):
                 continue
+
             if not os.path.exists(cache):
                 missing.append(info)
                 continue
-            collected.extend(self.load_dir_cache(md5))
+
+            for i in self.load_dir_cache(md5):
+                if info.get('branch'):
+                    i['branch'] = info['branch']
+                i[self.PARAM_PATH] = posixpath.join(info[self.PARAM_PATH],
+                                                    i[self.PARAM_RELPATH])
+                collected.append(i.copy())
+
         collected.extend(checksum_infos)
         return collected, missing
+
+    def _group(self, checksum_infos, show_checksums=False):
+        by_md5 = {}
+
+        for info in checksum_infos:
+            md5 = info[self.PARAM_MD5]
+
+            if show_checksums:
+                by_md5[md5] = md5
+                continue
+
+            name = info[self.PARAM_PATH]
+            branch = info.get('branch')
+            if branch:
+                name += '({})'.format(branch)
+
+            if md5 not in by_md5.keys():
+                by_md5[md5] = ''
+            else:
+                by_md5[md5] += ' '
+
+            by_md5[md5] += name
+
+        return list(by_md5.keys()), list(by_md5.values())
 
     def gc(self, checksum_infos):
         checksum_infos = self._collect(checksum_infos['local'])[0]
@@ -406,93 +440,118 @@ class RemoteLOCAL(RemoteBase):
                 continue
             remove(self.get(md5))
 
-    def status(self, checksum_infos, remote, jobs=1):
+    def status(self, checksum_infos, remote, jobs=1, show_checksums=False):
         checksum_infos = self._collect(checksum_infos)[0]
-        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
+        md5s, names = self._group(checksum_infos,
+                                  show_checksums=show_checksums)
         path_infos = remote.md5s_to_path_infos(md5s)
         remote_exists = remote.exists(path_infos)
         local_exists = [not self.changed(md5) for md5 in md5s]
 
-        return [(md5, STATUS_MAP[l, r]) for md5, l, r in zip(md5s,
-                                                             local_exists,
-                                                             remote_exists)]
+        return [(name, STATUS_MAP[l, r]) for name, l, r in zip(names,
+                                                               local_exists,
+                                                               remote_exists)]
 
-    def _do_pull(self, checksum_infos, remote, jobs=1, no_progress_bar=False):
-        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
-
+    def _do_pull(self,
+                 checksum_infos,
+                 remote,
+                 jobs=1,
+                 no_progress_bar=False,
+                 show_checksums=False):
+        md5s = []
+        names = []
         # NOTE: filter files that are not corrupted
-        md5s = list(filter(lambda md5: self.changed(md5), md5s))
+        for md5, name in zip(*self._group(checksum_infos,
+                                          show_checksums=show_checksums)):
+            if self.changed(md5):
+                md5s.append(md5)
+                names.append(name)
 
         cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 
-        assert len(path_infos) == len(cache) == len(md5s)
+        assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),
-                          to_chunks(md5s, jobs)))
+                          to_chunks(names, jobs)))
 
-        progress.set_n_total(len(md5s))
+        progress.set_n_total(len(names))
 
         if len(chunks) == 0:
             return
 
         futures = []
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for from_infos, to_infos, md5s in chunks:
+            for from_infos, to_infos, names in chunks:
                 res = executor.submit(remote.download,
                                       from_infos,
                                       to_infos,
-                                      names=md5s,
+                                      names=names,
                                       no_progress_bar=no_progress_bar)
                 futures.append(res)
 
         for f in futures:
             f.result()
 
-    def pull(self, checksum_infos, remote, jobs=1):
+    def pull(self, checksum_infos, remote, jobs=1, show_checksums=False):
         # NOTE: try fetching missing dir info
         checksum_infos, missing = self._collect(checksum_infos)
         if len(missing) > 0:
-            self._do_pull(missing, remote, jobs, no_progress_bar=True)
+            self._do_pull(missing,
+                          remote,
+                          jobs,
+                          no_progress_bar=True,
+                          show_checksums=show_checksums)
             checksum_infos += self._collect(missing)[0]
 
-        self._do_pull(checksum_infos, remote, jobs)
+        self._do_pull(checksum_infos,
+                      remote,
+                      jobs,
+                      show_checksums=show_checksums)
 
-    def push(self, checksum_infos, remote, jobs=1):
+    def push(self, checksum_infos, remote, jobs=1, show_checksums=False):
         checksum_infos = self._collect(checksum_infos)[0]
-        md5s = [info[self.PARAM_MD5] for info in checksum_infos]
 
         # NOTE: verifying that our cache is not corrupted
-        md5s = list(filter(lambda md5: not self.changed(md5), md5s))
+        def func(info):
+            return not self.changed(info[self.PARAM_MD5])
+        checksum_infos = list(filter(func, checksum_infos))
 
         # NOTE: filter files that are already uploaded
-        path_infos = remote.md5s_to_path_infos(md5s)
-        lexists = remote.exists(path_infos)
-        md5s_exist = filter(lambda x: not x[1], list(zip(md5s, lexists)))
-        md5s = [md5 for md5, exists in md5s_exist]
+        md5s = [i[self.PARAM_MD5] for i in checksum_infos]
+        exists = remote.exists(remote.md5s_to_path_infos(md5s))
 
+        def func(entry):
+            return not entry[0]
+
+        assert len(exists) == len(checksum_infos)
+        infos_exist = list(filter(func, zip(exists, checksum_infos)))
+        checksum_infos = [i for e, i in infos_exist]
+
+        md5s, names = self._group(checksum_infos,
+                                  show_checksums=show_checksums)
         cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
         path_infos = remote.md5s_to_path_infos(md5s)
 
-        assert len(path_infos) == len(cache) == len(md5s)
+        assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),
-                          to_chunks(md5s, jobs)))
+                          to_chunks(names, jobs)))
 
-        progress.set_n_total(len(md5s))
+        progress.set_n_total(len(names))
 
         if len(chunks) == 0:
             return
 
         futures = []
         with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for to_infos, from_infos, md5s in chunks:
+            for to_infos, from_infos, names in chunks:
                 res = executor.submit(remote.upload,
                                       from_infos,
                                       to_infos,
-                                      names=md5s)
+                                      names=names)
                 futures.append(res)
 
         for f in futures:

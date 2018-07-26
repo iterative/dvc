@@ -74,6 +74,6 @@ class DependencyLOCAL(DependencyBase):
         else:
             path = self.path
 
-        info = self.info
+        info = self.info.copy()
         info[self.PARAM_PATH] = path
         return info

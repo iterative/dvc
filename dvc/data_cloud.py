@@ -94,26 +94,29 @@ class DataCloud(object):
               "with 'dvc config core.remote <name>' or use '-r <name>'."
         raise ConfigError(msg)
 
-    def push(self, targets, jobs=1, remote=None):
+    def push(self, targets, jobs=1, remote=None, show_checksums=False):
         """
         Push data items in a cloud-agnostic way.
         """
         return self.project.cache.local.push(targets,
                                              jobs=jobs,
-                                             remote=self._get_cloud(remote))
+                                             remote=self._get_cloud(remote),
+                                             show_checksums=show_checksums)
 
-    def pull(self, targets, jobs=1, remote=None):
+    def pull(self, targets, jobs=1, remote=None, show_checksums=False):
         """
         Pull data items in a cloud-agnostic way.
         """
         return self.project.cache.local.pull(targets,
                                              jobs=jobs,
-                                             remote=self._get_cloud(remote))
+                                             remote=self._get_cloud(remote),
+                                             show_checksums=show_checksums)
 
-    def status(self, targets, jobs=1, remote=None):
+    def status(self, targets, jobs=1, remote=None, show_checksums=False):
         """
         Check status of data items in a cloud-agnostic way.
         """
         return self.project.cache.local.status(targets,
                                                jobs=jobs,
-                                               remote=self._get_cloud(remote))
+                                               remote=self._get_cloud(remote),
+                                               show_checksums=show_checksums)
