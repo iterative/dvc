@@ -53,7 +53,6 @@ class Progress(object):
         Make a progress bar out of info, which looks like:
         (1/2): [########################################] 100% master.zip
         """
-        total_len = 100
         bar_len = 30
 
         if total is None:
@@ -70,13 +69,7 @@ class Progress(object):
         n_sp = bar_len - n_sh
         bar = "[" + '#'*n_sh + ' '*n_sp + "] "
 
-        name_len = total_len - len(num + bar + percent)
-        if len(target_name) > name_len:
-            name = target_name[:name_len]
-        else:
-            name = target_name
-
-        return num + bar + percent + name
+        return num + bar + percent + target_name
 
 
 progress = Progress()

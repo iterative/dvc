@@ -24,11 +24,12 @@ class CmdDataStatus(CmdDataBase):
     def do_run(self, target=None):
         indent = 1 if self.args.cloud else 0
         try:
-            status = self.project.status(target=target,
-                                         jobs=self.args.jobs,
-                                         cloud=self.args.cloud,
-                                         remote=self.args.remote)
-            self._show(status, indent)
+            st = self.project.status(target=target,
+                                     jobs=self.args.jobs,
+                                     cloud=self.args.cloud,
+                                     show_checksums=self.args.show_checksums,
+                                     remote=self.args.remote)
+            self._show(st, indent)
         except Exception as exc:
             self.project.logger.error('Failed to obtain data status', exc)
             return 1

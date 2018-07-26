@@ -22,6 +22,7 @@ class CmdDataPull(CmdDataBase):
             self.project.pull(target=target,
                               jobs=self.args.jobs,
                               remote=self.args.remote,
+                              show_checksums=self.args.show_checksums,
                               all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to pull data from the cloud',
@@ -36,6 +37,7 @@ class CmdDataPush(CmdDataBase):
             self.project.push(target=target,
                               jobs=self.args.jobs,
                               remote=self.args.remote,
+                              show_checksums=self.args.show_checksums,
                               all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to push data to the cloud', exc)
@@ -49,6 +51,7 @@ class CmdDataFetch(CmdDataBase):
             self.project.fetch(target=target,
                                jobs=self.args.jobs,
                                remote=self.args.remote,
+                               show_checksums=self.args.show_checksums,
                                all_branches=self.args.all_branches)
         except Exception as exc:
             self.project.logger.error('Failed to fetch data from the cloud',

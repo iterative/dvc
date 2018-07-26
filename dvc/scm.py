@@ -53,7 +53,6 @@ class Base(object):
         if not branches:
             branches = self.list_branches() if all_branches else [saved]
         for branch in branches:
-            print("OLOLO " + branch)
             self.checkout(branch)
             yield branch
         self.checkout(saved)

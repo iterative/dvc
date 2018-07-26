@@ -209,6 +209,11 @@ def parse_args(argv=None):
                         default=8*cpu_count(),
                         help='Number of jobs to run simultaneously.')
     parent_cache_parser.add_argument(
+                        '--show-checksums',
+                        action='store_true',
+                        default=False,
+                        help='Show checksums instead of file names.')
+    parent_cache_parser.add_argument(
                         'targets',
                         nargs='*',
                         default=None,
