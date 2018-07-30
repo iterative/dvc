@@ -441,7 +441,8 @@ class RemoteLOCAL(RemoteBase):
             remove(self.get(md5))
 
     def status(self, checksum_infos, remote, jobs=1, show_checksums=False):
-        checksum_infos = self._collect(checksum_infos)[0]
+        checksum_infos, missing = self._collect(checksum_infos)
+        checksum_infos += missing
         md5s, names = self._group(checksum_infos,
                                   show_checksums=show_checksums)
         path_infos = remote.md5s_to_path_infos(md5s)
