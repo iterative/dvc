@@ -1,8 +1,6 @@
-.. image:: https://dvc.org/static/img/logo-github-readme.png
-   :height: 161px
-   :width: 213 px
-   :alt: DVC
-   :align: center
+.. raw:: html
+
+    <p align="center"><img src="https://dvc.org/static/img/logo-github-readme.png" height="161px" alt="DVC"></p>
 
 .. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
   :target: https://travis-ci.org/iterative/dvc
