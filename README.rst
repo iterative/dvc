@@ -21,7 +21,7 @@
 Data Science Version Control or DVC is an open source tool for data science projects.
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
 
-.. contents::
+.. contents:: **Contents**
 
 Get started
 ===========
