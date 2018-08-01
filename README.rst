@@ -1,6 +1,3 @@
-`Website <https://dvc.org>`_ • `Docs <https://dvc.org/doc>`_ • `Discuss <https://discuss.dvc.org/>`_ •
-`Blog <https://blog.dataversioncontrol.com/>`_ • `Twitter <https://twitter.com/iterativeai>`_ •
-`Tutorial <https://dvc.org/tutorial>`_
 
 .. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
   :target: https://travis-ci.org/iterative/dvc
