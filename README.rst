@@ -92,14 +92,17 @@ Related technologies
 ====================
 
 #. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (that you
-don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the
-copying actual files.
+   don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the
+   copying actual files.
+
 #. `Git-LFS <https://git-lfs.github.com/>`_. - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
-etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
-large data files.
-#. Makefile (and it's analogues). DVC tracks dependencies (DAG). 
+   etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
+   large data files.
+
+#. Makefile (and it's analogues). DVC tracks dependencies (DAG).
+
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
-management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
+   management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
 DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
 To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
@@ -115,7 +118,7 @@ How DVC works
 
 
 Contributing
-=========
+============
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_ for more
 details.
 
