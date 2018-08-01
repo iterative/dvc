@@ -1,5 +1,3 @@
-.. raw:: html
-
 .. image:: https://travis-ci.org/iterative/dvc.svg?branch=master
   :target: https://travis-ci.org/iterative/dvc
   :alt: Travis
@@ -19,6 +17,8 @@
 `Website <https://dvc.org>`_ • `Docs <https://dvc.org/doc>`_ • `Discuss <https://discuss.dvc.org/>`_ •
 `Blog <https://blog.dataversioncontrol.com/>`_ • `Twitter <https://twitter.com/iterativeai>`_ •
 `Tutorial <https://dvc.org/tutorial>`_
+
+.. raw:: html
 
   <p align="center"><img src="https://dvc.org/static/img/logo-github-readme.png" height="161px" alt="DVC"></p>
 
