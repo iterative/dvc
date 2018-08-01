@@ -23,6 +23,9 @@ It helps data scientists manage their code and data together in a simple form of
 
 Get started
 ===========
+
+See details in `Get Started <https://dvc.org/doc/get-started>`_.
+
 +-----------------------------------+-------------------------------------------------------------------+
 | Step                              | Command                                                           |
 +===================================+===================================================================+
@@ -44,53 +47,33 @@ Get started
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
-See more in `tutorial <https://dvc.org/doc/get-started>`_.
-
 Installation
 ============
 
-Packages
---------
-
-Operating system dependent packages are the recommended way to install DVC.
-The latest version of the packages can be found at GitHub releases page: https://github.com/iterative/dvc/releases
-
-Python Pip
-----------
-
-DVC could be installed via the Python Package Index (PyPI).
+It could be installed using ``pip``, Homebrew or an OS-specific package.
 
 .. code-block:: bash
 
    pip install dvc
 
-Homebrew (Mac OS)
------------------
+Package
+-------
 
-Formula:
-^^^^^^^^
+Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
+GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+
+Homebrew
+--------
 
 .. code-block:: bash
 
    brew install iterative/homebrew-dvc/dvc
 
-Cask:
-^^^^^
+or:
 
 .. code-block:: bash
 
    brew cask install iterative/homebrew-dvc/dvc
-
-Links
-=====
-
-Website: https://dvc.org
-
-Documentation: http://dvc.org/doc
-
-Tutorial: https://dvc.org/doc/tutorial
-
-Discussion: https://discuss.dvc.org/
 
 Related technologies
 ====================
@@ -110,7 +93,7 @@ Related technologies
 
 DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
 To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
-network storage (via SSH. for example).
+network storage (via SSH, for example).
 
 How DVC works
 =============
