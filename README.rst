@@ -8,15 +8,19 @@
 
 .. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
   :target: https://travis-ci.org/iterative/dvc
+  :alt: Travis
 
 .. image:: https://img.shields.io/appveyor/ci/iterative/dvc/master.svg?label=Windows
   :target: https://ci.appveyor.com/project/iterative/dvc/branch/master
+  :alt: Windows Build
 
 .. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
   :target: https://codeclimate.com/github/iterative/dvc
+  :alt: Code Climate
 
 .. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/iterative/dvc
+  :alt: Codecov
 
 Data Science Version Control or DVC is an open source tool for data science projects.
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
