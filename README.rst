@@ -22,11 +22,10 @@ Data Science Version Control or DVC is an open source tool for data science proj
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
 
 .. contents:: **Contents**
+  :backlinks: none
 
 Get started
 ===========
-
-See details in `Get Started <https://dvc.org/doc/get-started>`_.
 
 +-----------------------------------+-------------------------------------------------------------------+
 | Step                              | Command                                                           |
@@ -48,6 +47,8 @@ See details in `Get Started <https://dvc.org/doc/get-started>`_.
 |                                   | | ``$ dvc core.remote myremote``                                  |
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
+
+Follow this link to learn more and get more details: `get started <https://dvc.org/doc/get-started>`_.
 
 Installation
 ============
