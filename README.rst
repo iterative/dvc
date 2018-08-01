@@ -1,3 +1,9 @@
+.. image:: https://dvc.org/static/img/logo-github-readme.png
+   :height: 161px
+   :width: 213 px
+   :alt: DVC
+   :align: center
+
 .. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
   :target: https://travis-ci.org/iterative/dvc
 
@@ -10,7 +16,7 @@
 .. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/iterative/dvc
 
-Data Version Control or DVC is an open source tool for data science projects. 
+Data Science Version Control or DVC is an open source tool for data science projects.
 It helps data scientists manage their code and data together in a simple form of Git-like commands.
 
 Get started
@@ -36,7 +42,7 @@ Get started
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
-See more in `tutorial <https://dvc.org/doc/tutorial>`_.
+See more in `tutorial <https://dvc.org/doc/get-started>`_.
 
 Installation
 ============
@@ -78,23 +84,28 @@ Links
 
 Website: https://dvc.org
 
-Tutorial: https://dvc.org/doc/tutorial
-
 Documentation: http://dvc.org/doc
+
+Tutorial: https://dvc.org/doc/tutorial
 
 Discussion: https://discuss.dvc.org/
 
 Related technologies
 ====================
 
-
-#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (that you don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the copying actual files.
-#. `Git-LFS <https://git-lfs.github.com/>`_.
+#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (that you
+don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the
+copying actual files.
+#. `Git-LFS <https://git-lfs.github.com/>`_. - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
+etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
+large data files.
 #. Makefile (and it's analogues). DVC tracks dependencies (DAG). 
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is workflow management system designed specificaly to manage machine learning experiments. DVC was built on top of Git.
+#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
+management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
 DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
-Data files caches can be transferred separately - now data cache transfer throught AWS S3, Azure Blob Storage and GCP storge are supported.
+To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
+network storage (via SSH. for example).
 
 How DVC works
 =============
@@ -107,11 +118,13 @@ How DVC works
 
 Contributing
 =========
-Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_ for more details.
+Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_ for more
+details.
 
 Copyright
 =========
 
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
-By submitting a pull request for this project, you agree to license your contribution under the Apache license version 2.0 to this project.
+By submitting a pull request for this project, you agree to license your contribution under the Apache license version
+2.0 to this project.
