@@ -63,7 +63,10 @@ class Progress(object):
             progress = int((100 * current)/total) if current < total else 100
             percent = str(progress) + "% "
 
-        num = "({}/{}): ".format(self._n_finished + 1, self._n_total)
+        if self._n_total:
+            num = "({}/{}): ".format(self._n_finished + 1, self._n_total)
+        else:
+            num = ""
 
         n_sh = int((progress * bar_len)/100)
         n_sp = bar_len - n_sh
