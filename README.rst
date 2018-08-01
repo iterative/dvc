@@ -6,11 +6,11 @@
 `Blog <https://blog.dataversioncontrol.com/>`_ • `Twitter <https://twitter.com/iterativeai>`_ •
 `Tutorial <https://dvc.org/tutorial>`_
 
-.. image:: https://img.shields.io/travis/iterative/dvc/master.svg?label=Linux%20%26%20Mac%20OS
+.. image:: https://travis-ci.org/iterative/dvc.svg?branch=master
   :target: https://travis-ci.org/iterative/dvc
   :alt: Travis
 
-.. image:: https://img.shields.io/appveyor/ci/iterative/dvc/master.svg?label=Windows
+.. image:: https://ci.appveyor.com/api/projects/status/github/iterative/dvc?branch=master&svg=true
   :target: https://ci.appveyor.com/project/iterative/dvc/branch/master
   :alt: Windows Build
 
