@@ -14,6 +14,7 @@ from dvc.logger import Logger
 
 LOCAL_CHUNK_SIZE = 1024*1024
 LARGE_FILE_SIZE = 1024*1024*1024
+LARGE_DIR_SIZE = 100
 
 
 def dos2unix(data):

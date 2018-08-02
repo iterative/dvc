@@ -34,8 +34,8 @@ class RemoteAzure(RemoteBase):
         super(RemoteAzure, self).__init__(project, config)
         self.project = project
 
-        url = config.get(Config.SECTION_REMOTE_URL)
-        match = re.match(self.REGEX, url)
+        self.url = config.get(Config.SECTION_REMOTE_URL)
+        match = re.match(self.REGEX, self.url)
 
         self.bucket = (
             match.group('container_name')

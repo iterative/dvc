@@ -9,7 +9,8 @@ from operator import itemgetter
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP
 from dvc.logger import Logger
-from dvc.utils import remove, move, copyfile, file_md5, dict_md5, to_chunks
+from dvc.utils import remove, move, copyfile, dict_md5, to_chunks
+from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.progress import progress
@@ -49,6 +50,10 @@ class RemoteLOCAL(RemoteBase):
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
+
+    @property
+    def url(self):
+        return self.cache_dir
 
     @property
     def prefix(self):
@@ -130,18 +135,38 @@ class RemoteLOCAL(RemoteBase):
         dir_info = []
 
         for root, dirs, files in os.walk(dname):
+            bar = False
+            if len(files) > LARGE_DIR_SIZE:
+                msg = "Computing md5 for a large directory {}. " \
+                      "This is only done once."
+                Logger.info(msg.format(os.path.relpath(dname)))
+                bar = True
+                title = os.path.relpath(dname)
+                processed = 0
+                total = len(files)
+                progress.update_target(title, 0, total)
+
             for fname in files:
                 path = os.path.join(root, fname)
                 relpath = self.unixpath(os.path.relpath(path, dname))
+
+                if bar:
+                    progress.update_target(title, processed, total)
+                    processed += 1
 
                 # FIXME: we could've used md5 = state.update(path, dump=False)
                 # here, but it is around twice as slow(on ssd, don't know about
                 # hdd) for a directory with small files. What we could do here
                 # is introduce some kind of a limit for file size, after which
                 # we would actually register it in our state file.
-                md5 = file_md5(path)[0]
+                md5 = self.state.update(path, dump=False)
                 dir_info.append({self.PARAM_RELPATH: relpath,
                                  self.PARAM_MD5: md5})
+
+            self.state.dump()
+
+            if bar:
+                progress.finish_target(title)
 
         # NOTE: sorting the list by path to ensure reproducibility
         dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
@@ -383,7 +408,7 @@ class RemoteLOCAL(RemoteBase):
 
             os.rename(tmp_file, to_info['path'])
 
-    def _collect(self, checksum_infos):
+    def _collect(self, checksum_infos, push=False):
         missing = []
         collected = []
         for info in checksum_infos:
@@ -441,13 +466,33 @@ class RemoteLOCAL(RemoteBase):
             remove(self.get(md5))
 
     def status(self, checksum_infos, remote, jobs=1, show_checksums=False):
+        Logger.info("Preparing to pull data from {}".format(remote.url))
+        title = "Collecting information"
+
+        progress.set_n_total(0)
+        progress.update_target(title, 0, 100)
+
         checksum_infos, missing = self._collect(checksum_infos)
         checksum_infos += missing
+
+        progress.update_target(title, 10, 100)
+
         md5s, names = self._group(checksum_infos,
                                   show_checksums=show_checksums)
+
+        progress.update_target(title, 20, 100)
+
         path_infos = remote.md5s_to_path_infos(md5s)
+
+        progress.update_target(title, 30, 100)
+
         remote_exists = remote.exists(path_infos)
+
+        progress.update_target(title, 90, 100)
+
         local_exists = [not self.changed(md5) for md5 in md5s]
+
+        progress.finish_target(title)
 
         return [(name, STATUS_MAP[l, r]) for name, l, r in zip(names,
                                                                local_exists,
@@ -457,25 +502,42 @@ class RemoteLOCAL(RemoteBase):
                  checksum_infos,
                  remote,
                  jobs=1,
-                 no_progress_bar=False,
                  show_checksums=False):
+        title = "Collecting information"
+
+        progress.set_n_total(0)
+        progress.update_target(title, 0, 100)
+
+        grouped = zip(*self._group(checksum_infos,
+                                   show_checksums=show_checksums))
+
+        progress.update_target(title, 10, 100)
+
         md5s = []
         names = []
         # NOTE: filter files that are not corrupted
-        for md5, name in zip(*self._group(checksum_infos,
-                                          show_checksums=show_checksums)):
+        for md5, name in grouped:
             if self.changed(md5):
                 md5s.append(md5)
                 names.append(name)
 
+        progress.update_target(title, 30, 100)
+
         cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
+
+        progress.update_target(title, 50, 100)
+
         path_infos = remote.md5s_to_path_infos(md5s)
+
+        progress.update_target(title, 60, 100)
 
         assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),
                           to_chunks(names, jobs)))
+
+        progress.finish_target(title)
 
         progress.set_n_total(len(names))
 
@@ -488,21 +550,21 @@ class RemoteLOCAL(RemoteBase):
                 res = executor.submit(remote.download,
                                       from_infos,
                                       to_infos,
-                                      names=names,
-                                      no_progress_bar=no_progress_bar)
+                                      names=names)
                 futures.append(res)
 
         for f in futures:
             f.result()
 
     def pull(self, checksum_infos, remote, jobs=1, show_checksums=False):
+        Logger.info("Preparing to pull data from {}".format(remote.url))
+
         # NOTE: try fetching missing dir info
         checksum_infos, missing = self._collect(checksum_infos)
         if len(missing) > 0:
             self._do_pull(missing,
                           remote,
                           jobs,
-                          no_progress_bar=True,
                           show_checksums=show_checksums)
             checksum_infos += self._collect(missing)[0]
 
@@ -512,16 +574,28 @@ class RemoteLOCAL(RemoteBase):
                       show_checksums=show_checksums)
 
     def push(self, checksum_infos, remote, jobs=1, show_checksums=False):
+        Logger.info("Preparing to push data to {}".format(remote.url))
+        title = "Collecting information"
+
+        progress.set_n_total(0)
+        progress.update_target(title, 0, 100)
+
         checksum_infos = self._collect(checksum_infos)[0]
+
+        progress.update_target(title, 10, 100)
 
         # NOTE: verifying that our cache is not corrupted
         def func(info):
             return not self.changed(info[self.PARAM_MD5])
         checksum_infos = list(filter(func, checksum_infos))
 
+        progress.update_target(title, 20, 100)
+
         # NOTE: filter files that are already uploaded
         md5s = [i[self.PARAM_MD5] for i in checksum_infos]
         exists = remote.exists(remote.md5s_to_path_infos(md5s))
+
+        progress.update_target(title, 30, 100)
 
         def func(entry):
             return not entry[0]
@@ -530,16 +604,25 @@ class RemoteLOCAL(RemoteBase):
         infos_exist = list(filter(func, zip(exists, checksum_infos)))
         checksum_infos = [i for e, i in infos_exist]
 
+        progress.update_target(title, 70, 100)
+
         md5s, names = self._group(checksum_infos,
                                   show_checksums=show_checksums)
         cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
+
+        progress.update_target(title, 80, 100)
+
         path_infos = remote.md5s_to_path_infos(md5s)
 
         assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
+        progress.update_target(title, 90, 100)
+
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),
                           to_chunks(names, jobs)))
+
+        progress.finish_target(title)
 
         progress.set_n_total(len(names))
 
