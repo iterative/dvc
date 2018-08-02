@@ -41,9 +41,25 @@ class RemoteBase(object):
         deps_ok = all(cls.REQUIRES.values())
         if url_ok and not deps_ok:
             missing = [k for k, v in cls.REQUIRES.items() if v is None]
-            msg = "URL \'{}\' is supported but requires " \
-                  "these missing dependencies: {}"
-            Logger.warn(msg.format(url, str(missing)))
+            msg = "URL \'{}\' is supported but requires these missing " \
+                  "dependencies: {}. If you have installed dvc using pip, " \
+                  "choose one of these options to proceed: \n" \
+                  "\n" \
+                  "    1) Install specific missing dependencies:\n" \
+                  "        pip install {}\n" \
+                  "    2) Install dvc package that includes those missing " \
+                  "dependencies: \n" \
+                  "        pip install dvc[{}]\n" \
+                  "    3) Install dvc package with all possible " \
+                  "dependencies included: \n" \
+                  "        pip install dvc[all]\n" \
+                  "\n" \
+                  "If you have installed dvc from a binary package and you " \
+                  "are still seeing this message, please report it to us " \
+                  "using https://github.com/iterative/dvc/issues. Thank you!"
+            msg = msg.format(url, missing, " ".join(missing), cls.scheme)
+            Logger.warn(msg)
+
         return url_ok and deps_ok
 
     @classmethod

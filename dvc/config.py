@@ -120,7 +120,7 @@ class Config(object):
     SECTION_REMOTE_URL = 'url'
     SECTION_REMOTE_USER = 'user'
     SECTION_REMOTE_SCHEMA = {
-        SECTION_REMOTE_URL: supported_url,
+        SECTION_REMOTE_URL: And(supported_url, error="Unsupported URL"),
         Optional(SECTION_AWS_REGION): str,
         Optional(SECTION_AWS_PROFILE, default='default'): str,
         Optional(SECTION_AWS_CREDENTIALPATH, default=''): str,
