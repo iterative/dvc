@@ -110,6 +110,9 @@ class TestMetricsReproCLI(TestDvc):
         ret = main(['metrics', 'add', 'metrics'])
         self.assertEqual(ret, 0)
 
+        ret = main(['metrics', 'modify', '-t', 'csv', '-x', '0,0', 'metrics'])
+        self.assertEqual(ret, 0)
+
         ret = main(['repro', '-f', '-m', stage.path])
         self.assertEqual(ret, 0)
 
@@ -193,6 +196,9 @@ class TestMetricsCLI(TestMetrics):
 
     def test_non_existing(self):
         ret = main(['metrics', 'add', 'non-existing'])
+        self.assertNotEqual(ret, 0)
+
+        ret = main(['metrics', 'modify', 'non-existing'])
         self.assertNotEqual(ret, 0)
 
         ret = main(['metrics', 'remove', 'non-existing'])
