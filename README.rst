@@ -42,8 +42,10 @@ data file suffixes and prefixes.
 .. contents:: **Contents**
   :backlinks: none
 
-Get started
+Quick start
 ===========
+
+Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full version. Common workflow commands include:
 
 +-----------------------------------+-------------------------------------------------------------------+
 | Step                              | Command                                                           |
@@ -66,12 +68,10 @@ Get started
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
-Follow this link to learn more and get more details: `get started <https://dvc.org/doc/get-started>`_.
-
 Installation
 ============
 
-It could be installed using ``pip``, Homebrew or an OS-specific package.
+There are three options to install DVC: ``pip``, Homebrew, or an OS-specific package:
 
 .. code-block:: bash
 
@@ -103,22 +103,21 @@ Related technologies
    don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the
    copying actual files.
 
-#. `Git-LFS <https://git-lfs.github.com/>`_. - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
+#. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
    etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
    large data files.
 
-#. Makefile (and its analogues). DVC tracks dependencies (DAG).
+#. *Makefile* (and its analogues). DVC tracks dependencies (DAG).
 
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
-DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
-To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
-network storage (via SSH, for example).
-
 How DVC works
 =============
 
+DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
+To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
+network storage (via SSH, for example).
 
 .. image:: https://dvc.org/static/img/flow.png
    :target: https://dvc.org/static/img/flow.png
