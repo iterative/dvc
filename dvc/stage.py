@@ -8,6 +8,7 @@ import posixpath
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
+from dvc.prompt import prompt
 from dvc.logger import Logger
 from dvc.utils import dict_md5
 
@@ -227,7 +228,8 @@ class Stage(object):
               fname=None,
               cwd=os.curdir,
               locked=False,
-              add=False):
+              add=False,
+              overwrite=True):
         stage = Stage(project=project,
                       cwd=cwd,
                       cmd=cmd,
@@ -243,6 +245,12 @@ class Stage(object):
 
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
+
+        if os.path.exists(path):
+            relpath = os.path.relpath(path)
+            msg = "{} already exists. Do you wish to overwrite it?"
+            if not overwrite and not prompt(msg.format(relpath), False):
+                raise DvcException("{} already exists".format(relpath))
 
         stage.cwd = cwd
         stage.path = path

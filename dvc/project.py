@@ -218,7 +218,8 @@ class Project(object):
                             outs=outs,
                             outs_no_cache=outs_no_cache,
                             metrics_no_cache=metrics_no_cache,
-                            deps=deps)
+                            deps=deps,
+                            overwrite=False)
         if not no_exec:
             stage.run()
         stage.dump()
