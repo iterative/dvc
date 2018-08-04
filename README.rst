@@ -22,8 +22,22 @@
   :target: https://codecov.io/gh/iterative/dvc
   :alt: Codecov
 
-Data Science Version Control or DVC is an open source tool for data science projects.
-It helps data scientists manage their code and data together in a simple form of Git-like commands.
+|
+
+**Data Science Version Control** or **DVC** is an **open-source** tool for data science projects.
+With a simple and flexible Git-like architecture and interface it helps data scientists:
+
+#. manage code together with data files and models;
+
+#. make projects **reproducible**;
+
+#. make projects **shareable**;
+
+#. manage experiments with branching and **metrics** tracking;
+
+It aims to replace tools like Excel and Docs that are being commonly used as a knowledge repo and
+a ledger for the team, ad-hoc scripts to track and move deploy different model versions, ad-hoc
+data file suffixes and prefixes.
 
 .. contents:: **Contents**
   :backlinks: none
