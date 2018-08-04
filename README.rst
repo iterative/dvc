@@ -107,7 +107,7 @@ Related technologies
    etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
    large data files.
 
-#. Makefile (and it's analogues). DVC tracks dependencies (DAG).
+#. Makefile (and its analogues). DVC tracks dependencies (DAG).
 
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
