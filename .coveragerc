@@ -7,3 +7,4 @@ exclude_lines =
     if __name__ == .__main__.:
     pass
     raise NotImplementedError
+    # pragma: no cover
