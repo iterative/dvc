@@ -32,7 +32,7 @@ class TestCheckout(TestRepro):
 
     def _test_checkout(self):
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertTrue(filecmp.cmp(self.FOO, self.orig))
+        self.assertTrue(filecmp.cmp(self.FOO, self.orig, shallow=False))
 
 
 class TestCheckoutSingleStage(TestCheckout):

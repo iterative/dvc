@@ -26,7 +26,7 @@ class TestRun(TestDvc):
                              fname=fname,
                              cwd=cwd)
 
-        self.assertTrue(filecmp.cmp(self.FOO, 'out'))
+        self.assertTrue(filecmp.cmp(self.FOO, 'out', shallow=False))
         self.assertTrue(os.path.isfile(stage.path))
         self.assertEqual(stage.cmd, cmd)
         self.assertEqual(len(stage.deps), len(deps))
@@ -64,7 +64,7 @@ class TestCmdRun(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile('out'))
         self.assertTrue(os.path.isfile('out.dvc'))
-        self.assertTrue(filecmp.cmp(self.FOO, 'out'))
+        self.assertTrue(filecmp.cmp(self.FOO, 'out', shallow=False))
 
     def test_run_bad_command(self):
         ret = main(['run',

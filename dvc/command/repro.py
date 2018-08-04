@@ -17,7 +17,9 @@ class CmdRepro(CmdBase):
             try:
                 self.project.reproduce(target,
                                        recursive=recursive,
-                                       force=self.args.force)
+                                       force=self.args.force,
+                                       dry=self.args.dry,
+                                       interactive=self.args.interactive)
                 if self.args.metrics:
                     self.project.metrics_show()
             except ReproductionError as ex:
