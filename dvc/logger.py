@@ -62,7 +62,7 @@ class Logger(object):
         header = ''
         footer = ''
 
-        if sys.stdout.isatty():
+        if sys.stdout.isatty():  # pragma: no cover
             header = Logger.COLOR_MAP.get(typ.lower(), '')
             footer = colorama.Style.RESET_ALL
 
