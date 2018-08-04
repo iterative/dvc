@@ -245,8 +245,10 @@ class TestReproMissingMd5InStageFile(TestRepro):
         self.assertEqual(len(stages), 1)
 
 
-class TestCmdRepro(TestRepro):
+class TestCmdRepro(TestReproChangedData):
     def test(self):
+        self.swap_foo_with_bar()
+
         ret = main(['status'])
         self.assertEqual(ret, 0)
         
