@@ -1,7 +1,6 @@
 import os
 import stat
 import shutil
-import filecmp
 
 from dvc.main import main
 from dvc.command.imp import CmdImport

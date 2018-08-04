@@ -61,7 +61,7 @@ class TestReproDepUnderDir(TestDvc):
                      deps=[self.DATA, self.CODE],
                      cmd='python {} {} {}'.format(self.CODE, self.DATA, self.file1))
 
-        self.assertTrue(filecmp.cmp(self.file1, self.DATA))
+        self.assertTrue(filecmp.cmp(self.file1, self.DATA, shallow=False))
 
         os.unlink(self.DATA)
         shutil.copyfile(self.FOO, self.DATA)
@@ -70,7 +70,7 @@ class TestReproDepUnderDir(TestDvc):
 
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 2)
-        self.assertTrue(filecmp.cmp(self.file1, self.FOO))
+        self.assertTrue(filecmp.cmp(self.file1, self.FOO, shallow=False))
 
 
 class TestReproNoDeps(TestRepro):
@@ -101,7 +101,7 @@ class TestReproChangedCode(TestRepro):
 
         stages = self.dvc.reproduce(self.file1_stage)
 
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
         self.assertEqual(len(stages), 1)
 
     def swap_code(self):
@@ -117,7 +117,7 @@ class TestReproChangedData(TestRepro):
 
         stages = self.dvc.reproduce(self.file1_stage)
 
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
         self.assertEqual(len(stages), 2)
 
     def swap_foo_with_bar(self):
@@ -132,10 +132,10 @@ class TestReproDry(TestReproChangedData):
         stages = self.dvc.reproduce(self.file1_stage, dry=True)
 
         self.assertTrue(len(stages), 2)
-        self.assertFalse(filecmp.cmp(self.file1, self.BAR))
+        self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
         ret = main(['repro', '--dry'])
-        self.assertFalse(filecmp.cmp(self.file1, self.BAR))
+        self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
 
 class TestReproChangedDeepData(TestReproChangedData):
@@ -151,8 +151,8 @@ class TestReproChangedDeepData(TestReproChangedData):
 
         stages = self.dvc.reproduce(file2_stage)
 
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
-        self.assertTrue(filecmp.cmp(file2, self.BAR))
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
+        self.assertTrue(filecmp.cmp(file2, self.BAR, shallow=False))
         self.assertEqual(len(stages), 3)
 
 
@@ -175,8 +175,8 @@ class TestReproLocked(TestReproChangedData):
         ret = main(['unlock', file2_stage])
         self.assertEqual(ret, 0)
         stages = self.dvc.reproduce(file2_stage)
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
-        self.assertTrue(filecmp.cmp(file2, self.BAR))
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
+        self.assertTrue(filecmp.cmp(file2, self.BAR, shallow=False))
         self.assertEqual(len(stages), 3)
 
     def test_non_existing(self):
@@ -195,7 +195,7 @@ class TestReproPhony(TestReproChangedData):
 
         self.dvc.reproduce(stage.path)
 
-        self.assertTrue(filecmp.cmp(self.file1, self.BAR))
+        self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
 
 class TestNonExistingOutput(TestRepro):
@@ -212,7 +212,7 @@ class TestReproDataSource(TestReproChangedData):
 
         stages = self.dvc.reproduce(self.foo_stage.path)
 
-        self.assertTrue(filecmp.cmp(self.FOO, self.BAR))
+        self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
         self.assertEqual(stages[0].outs[0].md5, file_md5(self.BAR)[0])
 
 
@@ -293,7 +293,7 @@ class TestCmdReproChdir(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(foo))
         self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar))
+        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
 
         os.unlink(bar)
 
@@ -302,7 +302,7 @@ class TestCmdReproChdir(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(foo))
         self.assertTrue(os.path.isfile(bar))
-        self.assertTrue(filecmp.cmp(foo, bar))
+        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
 
 
 class TestReproExternalBase(TestDvc):
@@ -361,7 +361,7 @@ class TestReproExternalBase(TestDvc):
 
         import_stage = self.dvc.imp(out_foo_path, 'import')
         self.assertTrue(os.path.exists('import'))
-        self.assertTrue(filecmp.cmp('import', self.FOO))
+        self.assertTrue(filecmp.cmp('import', self.FOO, shallow=False))
 
         import_remote_stage = self.dvc.imp(out_foo_path, out_foo_path + '_imported')
 
@@ -376,7 +376,7 @@ class TestReproExternalBase(TestDvc):
         stages = self.dvc.reproduce(import_stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(os.path.exists('import'))
-        self.assertTrue(filecmp.cmp('import', self.BAR))
+        self.assertTrue(filecmp.cmp('import', self.BAR, shallow=False))
 
         stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)

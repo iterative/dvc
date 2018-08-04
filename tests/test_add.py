@@ -1,7 +1,6 @@
 import os
 import stat
 import shutil
-import filecmp
 
 from dvc.main import main
 from dvc.utils import file_md5
