@@ -34,7 +34,7 @@ def _fix_subparsers(subparsers):
     # More info at:
     #  https://bugs.python.org/issue16308
     #  https://github.com/iterative/dvc/issues/769
-    if sys.version_info[0] == 3:
+    if sys.version_info[0] == 3:  # pragma: no cover
         subparsers.required = True
         subparsers.dest = 'cmd'
 

@@ -17,10 +17,6 @@ class Lock(object):
         self.lock_file = os.path.join(dvc_dir, name)
         self._lock = None
 
-    @staticmethod
-    def init(dvc_dir):
-        return Lock(dvc_dir)
-
     def _do_lock(self):
         try:
             self._lock = zc.lockfile.LockFile(self.lock_file)
