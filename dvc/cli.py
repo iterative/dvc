@@ -80,7 +80,7 @@ def parse_args(argv=None):
     init_parser = subparsers.add_parser(
                         'init',
                         parents=[parent_parser],
-                        help='Initialize dvc over a directory'
+                        help='Initialize dvc over a directory '
                              '(should already be a git dir)')
     init_parser.add_argument(
                         '--no-scm',
@@ -661,7 +661,7 @@ def parse_args(argv=None):
                         '--outs',
                         action='store_true',
                         default=False,
-                        help='Print output files instead of'
+                        help='Print output files instead of '
                              'paths to DVC files.')
     pipeline_show_parser.add_argument(
                         'targets',
