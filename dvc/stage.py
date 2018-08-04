@@ -150,17 +150,17 @@ class Stage(object):
         self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
 
-    def reproduce(self, force=False):
+    def reproduce(self, force=False, dry=False):
         if not self.changed() and not force:
             return None
 
-        if (self.cmd or self.is_import) and not self.locked:
+        if (self.cmd or self.is_import) and not self.locked and not dry:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
         self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
 
-        self.run()
+        self.run(dry=dry)
 
         msg = u'\'{}\' was reproduced'.format(self.relpath)
         self.project.logger.debug(msg)
@@ -297,35 +297,40 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-    def run(self):
+    def run(self, dry=False):
         if self.locked:
             msg = u'Verifying outputs in locked stage \'{}\''
             self.project.logger.info(msg.format(self.relpath))
-            self.check_missing_outputs()
+            if not dry:
+                self.check_missing_outputs()
         elif self.is_import:
             msg = u'Importing \'{}\' -> \'{}\''
             self.project.logger.info(msg.format(self.deps[0].path,
                                                 self.outs[0].path))
 
-            self.deps[0].download(self.outs[0].path_info)
+            if not dry:
+                self.deps[0].download(self.outs[0].path_info)
         elif self.is_data_source:
             msg = u'Verifying data sources in \'{}\''.format(self.relpath)
             self.project.logger.info(msg)
-            self.check_missing_outputs()
+            if not dry:
+                self.check_missing_outputs()
         else:
             msg = u'Running command:\n\t{}'.format(self.cmd)
             self.project.logger.info(msg)
 
-            p = subprocess.Popen(self.cmd,
-                                 cwd=self.cwd,
-                                 shell=True,
-                                 env=os.environ,
-                                 executable=os.getenv('SHELL'))
-            p.communicate()
-            if p.returncode != 0:
-                raise StageCmdFailedError(self)
+            if not dry:
+                p = subprocess.Popen(self.cmd,
+                                     cwd=self.cwd,
+                                     shell=True,
+                                     env=os.environ,
+                                     executable=os.getenv('SHELL'))
+                p.communicate()
+                if p.returncode != 0:
+                    raise StageCmdFailedError(self)
 
-        self.save()
+        if not dry:
+            self.save()
 
     def check_missing_outputs(self):
         outs = [out for out in self.outs if not out.exists]

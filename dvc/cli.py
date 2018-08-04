@@ -324,6 +324,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Show metrics after reproduction')
+    repro_parser.add_argument(
+                        '--dry',
+                        action='store_true',
+                        default=False,
+                        help='Only print the commands that would be executed '
+                             'without actually executing.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove

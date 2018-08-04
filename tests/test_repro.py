@@ -125,6 +125,19 @@ class TestReproChangedData(TestRepro):
         shutil.copyfile(self.BAR, self.FOO)
 
 
+class TestReproDry(TestReproChangedData):
+    def test(self):
+        self.swap_foo_with_bar()
+
+        stages = self.dvc.reproduce(self.file1_stage, dry=True)
+
+        self.assertTrue(len(stages), 2)
+        self.assertFalse(filecmp.cmp(self.file1, self.BAR))
+
+        ret = main(['repro', '--dry'])
+        self.assertFalse(filecmp.cmp(self.file1, self.BAR))
+
+
 class TestReproChangedDeepData(TestReproChangedData):
     def test(self):
         file2 = 'file2'

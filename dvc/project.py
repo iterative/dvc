@@ -235,7 +235,7 @@ class Project(object):
         stage.dump()
         return stage
 
-    def _reproduce_stage(self, stages, node, force):
+    def _reproduce_stage(self, stages, node, force, dry):
         stage = stages[node]
 
         if stage.locked:
@@ -243,13 +243,16 @@ class Project(object):
                   'going to be reproduced.'
             self.logger.warn(msg.format(stage.relpath))
 
-        stage = stage.reproduce(force=force)
+        stage = stage.reproduce(force=force, dry=dry)
         if not stage:
             return []
-        stage.dump()
+
+        if not dry:
+            stage.dump()
+
         return [stage]
 
-    def reproduce(self, target, recursive=True, force=False):
+    def reproduce(self, target, recursive=True, force=False, dry=False):
         import networkx as nx
 
         G = self.graph()[1]
@@ -259,17 +262,17 @@ class Project(object):
             raise NotDvcFileError(target)
 
         if recursive:
-            return self._reproduce_stages(G, stages, node, force)
+            return self._reproduce_stages(G, stages, node, force, dry)
 
-        return self._reproduce_stage(stages, node, force)
+        return self._reproduce_stage(stages, node, force, dry)
 
-    def _reproduce_stages(self, G, stages, node, force):
+    def _reproduce_stages(self, G, stages, node, force, dry):
         import networkx as nx
 
         result = []
         for n in nx.dfs_postorder_nodes(G, node):
             try:
-                result += self._reproduce_stage(stages, n, force)
+                result += self._reproduce_stage(stages, n, force, dry)
             except Exception as ex:
                 raise ReproductionError(stages[n].relpath, ex)
         return result
