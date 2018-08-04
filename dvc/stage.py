@@ -150,13 +150,18 @@ class Stage(object):
         self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
 
-    def reproduce(self, force=False, dry=False):
+    def reproduce(self, force=False, dry=False, interactive=False):
         if not self.changed() and not force:
             return None
 
         if (self.cmd or self.is_import) and not self.locked and not dry:
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
+
+        msg = "Going to reproduce '{}'. Are you sure you want to continue?"
+        msg = msg.format(self.relpath)
+        if interactive and not prompt(msg):
+            raise DvcException('Reproduction aborted by the user')
 
         self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
 
