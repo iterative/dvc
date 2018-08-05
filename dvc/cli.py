@@ -39,6 +39,12 @@ def _fix_subparsers(subparsers):
         subparsers.dest = 'cmd'
 
 
+class VersionAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        print(VERSION)
+        exit(0)
+
+
 def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -63,10 +69,12 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         formatter_class=argparse.RawTextHelpFormatter)
 
+    # NOTE: On some python versions action='version' prints to stderr
+    # instead of stdout https://bugs.python.org/issue18920
     parser.add_argument('-V',
                         '--version',
-                        action='version',
-                        version='%(prog)s ' + VERSION,
+                        action=VersionAction,
+                        nargs=0,
                         help='Show program\'s version')
 
     # Sub commands
