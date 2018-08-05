@@ -21,8 +21,8 @@ if [[ ! -z "$TRAVIS_TAG" ]]; then
         fi
 
         pip install dist/dvc-*.whl
-        if [[ "$(dvc --version | tr -d '\n')" != "dvc $TRAVIS_TAG" ]]; then
-            echo "ERROR: 'dvc --version'$(dvc -V) doesn't match 'dvc $TRAVIS_TAG'"
+        if [[ "$(dvc --version)" != "$TRAVIS_TAG" ]]; then
+            echo "ERROR: 'dvc --version'$(dvc -V) doesn't match '$TRAVIS_TAG'"
             exit 1
         fi
         pip uninstall -y dvc
