@@ -22,8 +22,11 @@ install_requires = [
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
     "requests>=2.18.4",
-    "futures>=3.2.0; python_version == \"2.7\"",
+    "futures>=3.2.0",
 ]
+
+if sys.version_info[0] == 2:
+    install_requires.append("futures>=3.2.0")
 
 # Extra dependencies for remote integrations
 gs = [
