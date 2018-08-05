@@ -13,6 +13,20 @@ fi
 if [[ ! -z "$TRAVIS_TAG" ]]; then
 	./scripts/build_package.sh
 
+        # Test version
+        pip uninstall -y dvc
+        if ! type dvc > /dev/null; then
+            print "ERROR: dvc command already exists!!!"
+            exit 1
+        fi
+
+        pip install dist/dvc-*.whl
+        if [[ "$(dvc --version)" != "dvc $TRAVIS_TAG" ]]; then
+            print "ERROR: 'dvc --version'($(dvc -V)) doesn't match 'dvc $TRAVIS_TAG'"
+            exit 1
+        fi
+        pip uninstall -y dvc
+
         PY_VER=$(python -c 'import sys; print(sys.version_info[0:2])')
         if [[ "$PY_VER" != '(3, 7)' ]]; then
             ./scripts/build_posix.sh
