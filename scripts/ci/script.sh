@@ -15,7 +15,7 @@ if [[ ! -z "$TRAVIS_TAG" ]]; then
 
         # Test version
         pip uninstall -y dvc
-        if ! type dvc > /dev/null; then
+        if [ -x "$(command -v dvc)" ]; then
             print "ERROR: dvc command already exists!!!"
             exit 1
         fi
