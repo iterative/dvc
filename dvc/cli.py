@@ -71,8 +71,11 @@ def parse_args(argv=None):
 
     # Sub commands
     subparsers = parser.add_subparsers(
+                        title='Available Commands',
+                        metavar='COMMAND',
                         dest='cmd',
-                        help='Use dvc CMD --help for command-specific help')
+                        help='Use dvc COMMAND --help for command-specific '
+                             'help')
 
     _fix_subparsers(subparsers)
 
