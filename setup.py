@@ -23,7 +23,6 @@ install_requires = [
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
     "requests>=2.18.4",
-    "futures>=3.2.0",
 ]
 
 if sys.version_info[0] == 2:
