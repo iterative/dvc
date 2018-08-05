@@ -16,13 +16,13 @@ if [[ ! -z "$TRAVIS_TAG" ]]; then
         # Test version
         pip uninstall -y dvc
         if [ -x "$(command -v dvc)" ]; then
-            print "ERROR: dvc command already exists!!!"
+            echo "ERROR: dvc command already exists!!!"
             exit 1
         fi
 
         pip install dist/dvc-*.whl
         if [[ "$(dvc --version)" != "dvc $TRAVIS_TAG" ]]; then
-            print "ERROR: 'dvc --version'($(dvc -V)) doesn't match 'dvc $TRAVIS_TAG'"
+            echo "ERROR: 'dvc --version'($(dvc -V)) doesn't match 'dvc $TRAVIS_TAG'"
             exit 1
         fi
         pip uninstall -y dvc
