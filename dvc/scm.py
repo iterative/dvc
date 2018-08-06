@@ -117,6 +117,10 @@ class Git(Base):
             if len(filtered) != 0:
                 return
 
+        msg = "Adding '{}' to '{}'.".format(os.path.relpath(path),
+                                            os.path.relpath(gitignore))
+        Logger.info(msg)
+
         content = entry
         if len(ignore_list) > 0:
             content = '\n' + content

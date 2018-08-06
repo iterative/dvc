@@ -239,11 +239,11 @@ class RemoteLOCAL(RemoteBase):
 
         if os.path.exists(path):
             msg = u'Data \'{}\' exists. Removing before checkout'
-            Logger.debug(msg.format(os.path.relpath(path)))
+            Logger.warn(msg.format(os.path.relpath(path)))
             remove(path)
 
-        msg = u'Checking out \'{}\' with cache \'{}\''
-        Logger.debug(msg.format(os.path.relpath(path), md5))
+        msg = u'Checking out \'{}\' with cache \'{}\'.'
+        Logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
             self.link(cache, path)
@@ -313,6 +313,10 @@ class RemoteLOCAL(RemoteBase):
             raise NotImplementedError
 
         path = path_info['path']
+
+        msg = "Saving '{}' to cache '{}'."
+        Logger.info(msg.format(os.path.relpath(path),
+                               os.path.relpath(self.cache_dir)))
 
         if os.path.isdir(path):
             return self._save_dir(path_info)
