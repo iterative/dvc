@@ -39,6 +39,13 @@ def _fix_subparsers(subparsers):
         subparsers.dest = 'cmd'
 
 
+class DvcParser(argparse.ArgumentParser):
+    def error(self, message):
+        sys.stderr.write('error: %s\n' % message)
+        self.print_help()
+        sys.exit(2)
+
+
 class VersionAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         print(VERSION)
@@ -63,11 +70,10 @@ def parse_args(argv=None):
 
     # Main parser
     desc = 'Data Version Control'
-    parser = argparse.ArgumentParser(
-                        prog='dvc',
-                        description=desc,
-                        parents=[parent_parser],
-                        formatter_class=argparse.RawTextHelpFormatter)
+    parser = DvcParser(prog='dvc',
+                       description=desc,
+                       parents=[parent_parser],
+                       formatter_class=argparse.RawTextHelpFormatter)
 
     # NOTE: On some python versions action='version' prints to stderr
     # instead of stdout https://bugs.python.org/issue18920
