@@ -292,6 +292,9 @@ class Stage(object):
         if not fname:
             fname = self.path
 
+        msg = "Saving information to '{}'.".format(os.path.relpath(fname))
+        Logger.info(msg)
+
         with open(fname, 'w') as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
