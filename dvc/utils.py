@@ -134,3 +134,21 @@ def to_chunks(l, jobs):
         n = 1
 
     return [l[x:x+n] for x in range(0, len(l), n)]
+
+
+# NOTE: Fix env variables modified by PyInstaller
+# http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
+def fix_env(env):
+    if env is None:
+        env = os.environ.copy()
+    else:
+        env = env.copy()
+
+    lp_key = 'LD_LIBRARY_PATH'
+    lp_orig = env.get(lp_key + '_ORIG')
+    if lp_orig is not None:
+        env[lp_key] = lp_orig
+    else:
+        env.pop(lp_key, None)
+
+    return env

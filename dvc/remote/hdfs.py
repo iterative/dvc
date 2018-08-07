@@ -9,6 +9,7 @@ from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
+from dvc.utils import fix_env
 
 
 class RemoteHDFS(RemoteBase):
@@ -32,6 +33,7 @@ class RemoteHDFS(RemoteBase):
                   shell=True,
                   close_fds=True,
                   executable=os.getenv('SHELL'),
+                  env=fix_env(os.environ),
                   stdin=PIPE,
                   stdout=PIPE,
                   stderr=PIPE)
