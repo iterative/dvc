@@ -2,6 +2,7 @@ import os
 
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
+from dvc.utils import fix_env
 
 
 class SCMError(DvcException):
@@ -86,6 +87,12 @@ class Git(Base):
             self.repo = git.Repo(root_dir)
         except InvalidGitRepositoryError:
             raise SCMError('{} is not a git repository'.format(root_dir))
+
+        # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
+        # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
+        env = fix_env(None)
+        lp = env.get('LD_LIBRARY_PATH', None)
+        self.repo.git.update_environment(LD_LIBRARY_PATH=lp)
 
     @staticmethod
     def is_repo(root_dir):
