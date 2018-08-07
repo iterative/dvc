@@ -49,7 +49,7 @@ class DvcParser(argparse.ArgumentParser):
 class VersionAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         print(VERSION)
-        exit(0)
+        sys.exit(0)
 
 
 def parse_args(argv=None):
