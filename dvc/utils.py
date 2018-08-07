@@ -2,6 +2,7 @@
 Helpers for other modules.
 """
 import os
+import sys
 import math
 import json
 import shutil
@@ -144,11 +145,14 @@ def fix_env(env):
     else:
         env = env.copy()
 
-    lp_key = 'LD_LIBRARY_PATH'
-    lp_orig = env.get(lp_key + '_ORIG')
-    if lp_orig is not None:
-        env[lp_key] = lp_orig
-    else:
-        env.pop(lp_key, None)
+    # NOTE: Check if we are in a bundle
+    # https://pythonhosted.org/PyInstaller/runtime-information.html
+    if getattr(sys, 'frozen', False):
+        lp_key = 'LD_LIBRARY_PATH'
+        lp_orig = env.get(lp_key + '_ORIG', None)
+        if lp_orig is not None:
+            env[lp_key] = lp_orig
+        else:
+            env.pop(lp_key, None)
 
     return env
