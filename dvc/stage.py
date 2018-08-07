@@ -1,16 +1,16 @@
 import os
 import yaml
 import itertools
+import posixpath
 import subprocess
 from schema import Schema, SchemaError, Optional, Or, And
-import posixpath
 
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
 from dvc.prompt import prompt
 from dvc.logger import Logger
-from dvc.utils import dict_md5
+from dvc.utils import dict_md5, fix_env
 
 
 class StageCmdFailedError(DvcException):
@@ -331,7 +331,7 @@ class Stage(object):
                 p = subprocess.Popen(self.cmd,
                                      cwd=self.cwd,
                                      shell=True,
-                                     env=os.environ,
+                                     env=fix_env(os.environ),
                                      executable=os.getenv('SHELL'))
                 p.communicate()
                 if p.returncode != 0:
