@@ -23,7 +23,6 @@ install_requires = [
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
     "requests>=2.18.4",
-    'futures; python_version == "2.7"',
 ]
 
 # Extra dependencies for remote integrations
@@ -57,6 +56,8 @@ setup(
         's3': s3,
         'azure': azure,
         'ssh': ssh,
+        # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
+        ':python_version=="2.7"': ['futures'],
     },
     keywords='data science, data version control, machine learning',
     classifiers=[
