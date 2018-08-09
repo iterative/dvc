@@ -4,6 +4,8 @@ DVC
 Make your data science projects reproducible and shareable.
 """
 import os
+import warnings
+
 
 VERSION_BASE = '0.16.6'
 __version__ = VERSION_BASE
@@ -47,3 +49,11 @@ else:
         pass
 
 VERSION = __version__
+
+
+# Ignore numpy's runtime warnings: https://github.com/numpy/numpy/pull/432.
+# We don't directly import numpy, but our dependency networkx does, causing
+# these warnings in some environments. Luckily these warnings are benign and
+# we can simply ignore them so that they don't show up when you are using dvc.
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
