@@ -227,6 +227,7 @@ class RemoteAzure(RemoteBase):
 #
 #        all_blobs = self.blob_service.list_blobs(self.bucket)
 #
+#        removed = False
 #        for blob in all_blobs:
 #            etag = blob.properties.etag
 #            if etag in used:
@@ -235,3 +236,6 @@ class RemoteAzure(RemoteBase):
 #                         'key': blob.name,
 #                         'bucket': self.bucket}
 #            self.remove(path_info)
+#            removed = True
+#
+#        return removed

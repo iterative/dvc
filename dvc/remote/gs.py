@@ -229,6 +229,7 @@ class RemoteGS(RemoteBase):
         used = [info[self.PARAM_ETAG] for info in cinfos['gs']]
         used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
+        removed = False
         for etag in self._all_etags():
             if etag in used:
                 continue
@@ -237,3 +238,6 @@ class RemoteGS(RemoteBase):
                          'key': posixpath.join(self.prefix,
                                                etag[0:2], etag[2:])}
             self.remove(path_info)
+            removed = True
+
+        return removed
