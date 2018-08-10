@@ -289,6 +289,7 @@ class RemoteSSH(RemoteBase):
         used = [info[self.PARAM_MD5] for info in cinfos['ssh']]
         used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
+        removed = False
         for md5 in self._all_md5s():
             if md5 in used:
                 continue
@@ -298,3 +299,6 @@ class RemoteSSH(RemoteBase):
                          'path': posixpath.join(self.prefix,
                                                 md5[0:2], md5[2:])}
             self.remove(path_info)
+            removed = True
+
+        return removed

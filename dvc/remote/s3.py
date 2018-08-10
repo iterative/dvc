@@ -281,6 +281,7 @@ class RemoteS3(RemoteBase):
         used_etags = [info[self.PARAM_ETAG] for info in cinfos['s3']]
         used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
+        removed = False
         for etag in self._all():
             if etag in used_etags:
                 continue
@@ -289,3 +290,6 @@ class RemoteS3(RemoteBase):
                                                etag[0:2], etag[2:]),
                          'bucket': self.bucket}
             self.remove(path_info)
+            removed = True
+
+        return removed

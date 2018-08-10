@@ -199,6 +199,7 @@ class RemoteHDFS(RemoteBase):
         used = [info[self.PARAM_CHECKSUM] for info in cinfos['hdfs']]
         used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
+        removed = False
         for checksum in self._all_checksums():
             if checksum in used:
                 continue
@@ -207,3 +208,6 @@ class RemoteHDFS(RemoteBase):
                          'url': posixpath.join(self.url,
                                                checksum[0:2], checksum[2:])}
             self.remove(path_info)
+            removed = True
+
+        return removed

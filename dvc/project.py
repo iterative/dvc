@@ -351,29 +351,34 @@ class Project(object):
 
         return cache
 
+    def _do_gc(self, typ, func, clist):
+        removed = func(clist)
+        if not removed:
+            self.logger.info("No unused {} cache to remove.".format(typ))
+
     def gc(self, all_branches=False, cloud=False, remote=None):
         clist = self._used_cache(target=None,
                                  all_branches=all_branches,
                                  active=False)
-        self.cache.local.gc(clist)
+        self._do_gc('local', self.cache.local.gc, clist)
 
         if self.cache.s3:
-            self.cache.s3.gc(clist)
+            self._do_gc('s3', self.cache.s3.gc, clist)
 
         if self.cache.gs:
-            self.cache.gs.gc(clist)
+            self._do_gc('gs', self.cache.gs.gc, clist)
 
         if self.cache.ssh:
-            self.cache.ssh.gc(clist)
+            self._do_gc('ssh', self.cache.ssh.gc, clist)
 
         if self.cache.hdfs:
-            self.cache.hdfs.gc(clist)
+            self._do_gc('hdfs', self.cache.hdfs.gc, clist)
 
         if self.cache.azure:
-            self.cache.azure.gc(clist)
+            self._do_gc('azure', self.cache.azure.gc, clist)
 
         if cloud:
-            self.cloud._get_cloud(remote).gc(clist)
+            self._do_gc('remote', self.cloud._get_cloud(remote).gc, clist)
 
     def push(self,
              target=None,

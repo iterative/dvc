@@ -464,10 +464,14 @@ class RemoteLOCAL(RemoteBase):
         checksum_infos = self._collect(checksum_infos['local'])[0]
         used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
 
+        removed = False
         for md5 in self.all():
             if md5 in used_md5s:
                 continue
             remove(self.get(md5))
+            removed = True
+
+        return removed
 
     def status(self, checksum_infos, remote, jobs=1, show_checksums=False):
         Logger.info("Preparing to pull data from {}".format(remote.url))
