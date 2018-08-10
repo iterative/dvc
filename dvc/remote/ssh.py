@@ -148,6 +148,9 @@ class RemoteSSH(RemoteBase):
 
         return {self.PARAM_MD5: self.md5(path_info)}
 
+    def changed(self, path_info, checksum_info):
+        return checksum_info != self.save_info(path_info)
+
     def save(self, path_info):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError

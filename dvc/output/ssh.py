@@ -30,7 +30,7 @@ class OutputSSH(DependencySSH):
             return True
 
         if self.use_cache \
-           and self.info != self.project.cache.ssh.save_info(self.path_info):
+           and self.project.cache.ssh.changed(self.path_info, self.info):
             return True
 
         return False

@@ -81,6 +81,9 @@ class RemoteBase(object):
     def save_info(self, path_info):
         raise NotImplementedError
 
+    def changed(self, path_info, checksum_info):
+        raise NotImplementedError
+
     def save(self, path_info):
         raise NotImplementedError
 

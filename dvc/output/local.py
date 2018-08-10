@@ -62,7 +62,7 @@ class OutputLOCAL(DependencyLOCAL):
         if not self.use_cache:
             return super(OutputLOCAL, self).changed()
 
-        return self.info != self.project.cache.local.save_info(self.path_info)
+        return self.project.cache.local.changed(self.path_info, self.info)
 
     def checkout(self):
         if not self.use_cache:

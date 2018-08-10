@@ -93,6 +93,9 @@ class RemoteS3(RemoteBase):
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
                                                path_info['key'])}
 
+    def changed(self, path_info, checksum_info):
+        return checksum_info != self.save_info(path_info)
+
     def _copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
 

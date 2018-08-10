@@ -72,6 +72,9 @@ class RemoteHDFS(RemoteBase):
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
+    def changed(self, path_info, checksum_info):
+        return checksum_info != self.save_info(path_info)
+
     def save(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
