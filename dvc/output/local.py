@@ -69,8 +69,8 @@ class OutputLOCAL(DependencyLOCAL):
             return
 
         if not self.changed():
-            msg = u'Data file \'{}\' didn\'t change, skipping checkout.'
-            self.project.logger.debug(msg.format(self.rel_path))
+            msg = u'Data file \'{}\' didn\'t change.'
+            self.project.logger.info(msg.format(self.rel_path))
             return
 
         self.project.cache.local.checkout(self.path_info, self.info)

@@ -104,6 +104,10 @@ class RemoteLOCAL(RemoteBase):
         while i > 0:
             try:
                 self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
+                msg = "Created '{}': {} -> {}"
+                Logger.info(msg.format(self.cache_types[0],
+                                       os.path.relpath(cache),
+                                       os.path.relpath(path)))
                 return
             except Exception as exc:
                 msg = 'Cache type \'{}\' is not supported: {}'
@@ -238,7 +242,7 @@ class RemoteLOCAL(RemoteBase):
             return
 
         if os.path.exists(path):
-            msg = u'Data \'{}\' exists. Removing before checkout'
+            msg = u'Data \'{}\' exists. Removing before checkout.'
             Logger.warn(msg.format(os.path.relpath(path)))
             remove(path)
 
