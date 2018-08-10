@@ -83,15 +83,18 @@ class DataCloud(object):
         cloud = cloud_type(self.project, cloud_config)
         return cloud
 
-    def _get_cloud(self, remote):
+    def _get_cloud(self, remote, cmd):
         if remote:
             return self._init_remote(remote)
 
         if self._cloud:
             return self._cloud
 
-        msg = "No remote repository specified. Setup default repository " \
-              "with 'dvc config core.remote <name>' or use '-r <name>'."
+        msg = "No remote repository specified. Setup default " \
+              "repository with\n"\
+              "    dvc config core.remote <name>\n" \
+              "or use:\n" \
+              "    dvc {} -r <name>".format(cmd)
         raise ConfigError(msg)
 
     def push(self, targets, jobs=1, remote=None, show_checksums=False):
@@ -100,7 +103,8 @@ class DataCloud(object):
         """
         return self.project.cache.local.push(targets,
                                              jobs=jobs,
-                                             remote=self._get_cloud(remote),
+                                             remote=self._get_cloud(remote,
+                                                                    'push'),
                                              show_checksums=show_checksums)
 
     def pull(self, targets, jobs=1, remote=None, show_checksums=False):
@@ -109,14 +113,16 @@ class DataCloud(object):
         """
         return self.project.cache.local.pull(targets,
                                              jobs=jobs,
-                                             remote=self._get_cloud(remote),
+                                             remote=self._get_cloud(remote,
+                                                                    'pull'),
                                              show_checksums=show_checksums)
 
     def status(self, targets, jobs=1, remote=None, show_checksums=False):
         """
         Check status of data items in a cloud-agnostic way.
         """
+        cloud = self._get_cloud(remote, 'status')
         return self.project.cache.local.status(targets,
                                                jobs=jobs,
-                                               remote=self._get_cloud(remote),
+                                               remote=cloud,
                                                show_checksums=show_checksums)
