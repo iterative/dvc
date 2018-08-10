@@ -36,6 +36,14 @@ def supported_cloud(cloud):
     return cloud in ['aws', 'gcp', 'local', '']
 
 
+def is_bool(val):
+    return val.lower() in ['true', 'false']
+
+
+def to_bool(val):
+    return val.lower() == 'true'
+
+
 class Config(object):
     CONFIG = 'config'
     CONFIG_LOCAL = 'config.local'
@@ -44,6 +52,8 @@ class Config(object):
     SECTION_CORE_LOGLEVEL = 'loglevel'
     SECTION_CORE_LOGLEVEL_SCHEMA = And(Use(str.lower), supported_loglevel)
     SECTION_CORE_REMOTE = 'remote'
+    SECTION_CORE_INTERACTIVE_SCHEMA = And(str, is_bool, Use(to_bool))
+    SECTION_CORE_INTERACTIVE = 'interactive'
 
     SECTION_CACHE = 'cache'
     SECTION_CACHE_DIR = 'dir'
@@ -78,6 +88,8 @@ class Config(object):
                  default='info'): And(str, Use(str.lower),
                                       SECTION_CORE_LOGLEVEL_SCHEMA),
         Optional(SECTION_CORE_REMOTE, default=''): And(str, Use(str.lower)),
+        Optional(SECTION_CORE_INTERACTIVE,
+                 default=False): SECTION_CORE_INTERACTIVE_SCHEMA,
 
         # backward compatibility
         Optional(SECTION_CORE_CLOUD, default=''): SECTION_CORE_CLOUD_SCHEMA,

@@ -266,6 +266,11 @@ class Project(object):
         if node not in stages:
             raise NotDvcFileError(target)
 
+        if not interactive:
+            config = self.config
+            core = config._config[config.SECTION_CORE]
+            interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
+
         if recursive:
             return self._reproduce_stages(G,
                                           stages,
