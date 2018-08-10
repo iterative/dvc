@@ -82,7 +82,7 @@ class RemoteLOCAL(RemoteBase):
         relpath = os.path.relpath(path, self.cache_dir)
         return os.path.dirname(relpath) + os.path.basename(relpath)
 
-    def changed(self, md5):
+    def changed_cache(self, md5):
         cache = self.get(md5)
         if self.state.changed(cache, md5=md5):
             if os.path.exists(cache):
@@ -176,7 +176,7 @@ class RemoteLOCAL(RemoteBase):
         dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
 
         md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
-        if self.changed(md5):
+        if self.changed_cache(md5):
             self.dump_dir_cache(md5, dir_info)
 
         return (md5, dir_info)
@@ -235,7 +235,7 @@ class RemoteLOCAL(RemoteBase):
             Logger.warn(msg.format(os.path.relpath(path)))
             return
 
-        if self.changed(md5):
+        if self.changed_cache(md5):
             msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
             Logger.warn(msg.format(md5, os.path.relpath(path)))
             remove(path)
@@ -281,7 +281,7 @@ class RemoteLOCAL(RemoteBase):
 
         cache = self.get(md5)
 
-        if self.changed(md5):
+        if self.changed_cache(md5):
             self._move(path, cache)
         else:
             remove(path)
@@ -301,7 +301,7 @@ class RemoteLOCAL(RemoteBase):
             p = os.path.join(path, relpath)
             c = self.get(m)
 
-            if self.changed(m):
+            if self.changed_cache(m):
                 self._move(p, c)
             else:
                 remove(p)
@@ -502,7 +502,7 @@ class RemoteLOCAL(RemoteBase):
 
         progress.update_target(title, 90, 100)
 
-        local_exists = [not self.changed(md5) for md5 in md5s]
+        local_exists = [not self.changed_cache(md5) for md5 in md5s]
 
         progress.finish_target(title)
 
@@ -529,7 +529,7 @@ class RemoteLOCAL(RemoteBase):
         names = []
         # NOTE: filter files that are not corrupted
         for md5, name in grouped:
-            if self.changed(md5):
+            if self.changed_cache(md5):
                 md5s.append(md5)
                 names.append(name)
 
@@ -598,7 +598,7 @@ class RemoteLOCAL(RemoteBase):
 
         # NOTE: verifying that our cache is not corrupted
         def func(info):
-            return not self.changed(info[self.PARAM_MD5])
+            return not self.changed_cache(info[self.PARAM_MD5])
         checksum_infos = list(filter(func, checksum_infos))
 
         progress.update_target(title, 20, 100)
