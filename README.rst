@@ -129,6 +129,30 @@ Contributing
 Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/>`_ for more
 details.
 
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/0
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/0
+
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/1
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/1
+
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/2
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
+   
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/3
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3   
+
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/4
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
+   
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/5
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
+   
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/6
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
+   
+.. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/7
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
+
 Copyright
 =========
 
