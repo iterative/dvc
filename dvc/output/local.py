@@ -68,11 +68,6 @@ class OutputLOCAL(DependencyLOCAL):
         if not self.use_cache:
             return
 
-        if not self.changed():
-            msg = u'Data file \'{}\' didn\'t change.'
-            self.project.logger.info(msg.format(self.rel_path))
-            return
-
         self.project.cache.local.checkout(self.path_info, self.info)
 
     def _verify_metric(self):

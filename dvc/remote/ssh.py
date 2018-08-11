@@ -148,7 +148,40 @@ class RemoteSSH(RemoteBase):
 
         return {self.PARAM_MD5: self.md5(path_info)}
 
+    @staticmethod
+    def to_string(path_info):
+        return "{}://{}@{}:{}".format(path_info['scheme'],
+                                      path_info['user'],
+                                      path_info['host'],
+                                      path_info['path'])
+
+    def changed_cache(self, md5):
+        cache = {}
+        cache['scheme'] = 'ssh'
+        cache['host'] = self.host
+        cache['user'] = self.user
+        cache['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
+
+        if {self.PARAM_MD5: md5} != self.save_info(cache):
+            if self.exists([cache])[0]:
+                msg = 'Corrupted cache file {}'
+                Logger.warn(msg.format(self.to_string(cache)))
+                self.remove(cache)
+            return True
+
+        return False
+
     def changed(self, path_info, checksum_info):
+        if not self.exists([path_info])[0]:
+            return True
+
+        md5 = checksum_info.get(self.PARAM_MD5, None)
+        if md5 is None:
+            return True
+
+        if self.changed_code(md5):
+            return True
+
         return checksum_info != self.save_info(path_info)
 
     def save(self, path_info):
@@ -170,6 +203,25 @@ class RemoteSSH(RemoteBase):
         md5 = checksum_info.get(self.PARAM_MD5, None)
         if not md5:
             return
+
+        if not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            Logger.info(msg.format(self.to_string(path_info)))
+            return
+
+        if self.changed_cache(md5):
+            msg = "Cache '{}' not found. File '{}' won't be created."
+            Logger.warn(msg.format(md5, self.to_string(path_info)))
+            return
+
+        if self.exists([path_info])[0]:
+            msg = "Data '{}' exists. Removing before checkout."
+            Logger.warn(msg.format(self.to_string(path_info)))
+            self.remove(path_info)
+            return
+
+        msg = "Checking out '{}' with cache '{}'."
+        Logger.info(msg.format(self.to_string(path_info), md5))
 
         src = path_info.copy()
         src['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])

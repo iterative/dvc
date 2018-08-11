@@ -235,6 +235,11 @@ class RemoteLOCAL(RemoteBase):
             Logger.warn(msg.format(os.path.relpath(path)))
             return
 
+        if not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            Logger.info(msg.format(os.path.relpath(path)))
+            return
+
         if self.changed_cache(md5):
             msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
             Logger.warn(msg.format(md5, os.path.relpath(path)))
@@ -334,6 +339,16 @@ class RemoteLOCAL(RemoteBase):
         return {self.PARAM_MD5: self.state.update(path_info['path'])}
 
     def changed(self, path_info, checksum_info):
+        if not self.exists([path_info])[0]:
+            return True
+
+        md5 = checksum_info.get(self.PARAM_MD5, None)
+        if md5 is None:
+            return True
+
+        if self.changed_cache(md5):
+            return True
+
         return checksum_info != self.save_info(path_info)
 
     def remove(self, path_info):
