@@ -72,6 +72,39 @@ class RemoteHDFS(RemoteBase):
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
+    @staticmethod
+    def to_string(path_info):
+        return "{}://{}".format(path_info['scheme'],
+                                path_info['url'])
+
+    def changed_cache(self, checksum):
+        cache = {}
+        cache['scheme'] = 'hdfs'
+        cache['user'] = self.user
+        cache['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
+
+        if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
+            if self.exists([cache])[0]:
+                msg = 'Corrupted cache file {}'
+                Logger.warn(msg.format(self.to_string(cache)))
+                self.remove(cache)
+            return True
+
+        return False
+
+    def changed(self, path_info, checksum_info):
+        if not self.exists([path_info])[0]:
+            return True
+
+        checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
+        if checksum is None:
+            return True
+
+        if self.changed_cache(self, checksum):
+            return True
+
+        return checksum_info != self.save_info(path_info)
+
     def save(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
@@ -95,6 +128,25 @@ class RemoteHDFS(RemoteBase):
         checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
         if not checksum:
             return
+
+        if not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            Logger.info(msg.format(self.to_string(path_info)))
+            return
+
+        if self.changed_cache(checksum):
+            msg = "Cache '{}' not found. File '{}' won't be created."
+            Logger.warn(msg.format(checksum, self.to_string(path_info)))
+            return
+
+        if self.exists([path_info])[0]:
+            msg = "Data '{}' exists. Removing before checkout."
+            Logger.warn(msg.format(self.to_string(path_info)))
+            self.remove(path_info)
+            return
+
+        msg = "Checking out '{}' with cache '{}'."
+        Logger.info(msg.format(self.to_string(path_info), checksum))
 
         src = path_info.copy()
         src['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])

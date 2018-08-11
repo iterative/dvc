@@ -30,7 +30,7 @@ class OutputGS(DependencyGS):
             return True
 
         if self.use_cache \
-           and self.info != self.project.cache.gs.save_info(self.path_info):
+           and self.project.cache.gs.changed(self.path_info, self.info):
             return True
 
         return False

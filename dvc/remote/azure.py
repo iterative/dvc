@@ -92,6 +92,9 @@ class RemoteAzure(RemoteBase):
 #
 #        return {self.PARAM_ETAG: etag}
 #
+#    def changed(self, path_info, checksum_info):
+#        return checksum_info != self.save_info(path_info)
+#
 #    def _copy_blob(self, to_bucket, to_key, from_bucket, from_key):
 #        source = self.blob_service.make_blob_url(from_bucket, from_key)
 #

@@ -383,7 +383,8 @@ class Project(object):
             self._do_gc('azure', self.cache.azure.gc, clist)
 
         if cloud:
-            self._do_gc('remote', self.cloud._get_cloud(remote).gc, clist)
+            self._do_gc('remote', self.cloud._get_cloud(remote,
+                                                        'gc -c').gc, clist)
 
     def push(self,
              target=None,

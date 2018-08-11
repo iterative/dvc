@@ -93,6 +93,19 @@ class RemoteS3(RemoteBase):
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
                                                path_info['key'])}
 
+    def changed(self, path_info, checksum_info):
+        if not self.exists([path_info])[0]:
+            return True
+
+        etag = checksum_info.get(self.PARAM_ETAG, None)
+        if etag is None:
+            return True
+
+        if self.changed_cache(etag):
+            return True
+
+        return checksum_info != self.save_info(path_info)
+
     def _copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
 
@@ -112,6 +125,23 @@ class RemoteS3(RemoteBase):
 
         return {self.PARAM_ETAG: etag}
 
+    @staticmethod
+    def to_string(path_info):
+        return "s3://{}/{}".format(path_info['bucket'], path_info['key'])
+
+    def changed_cache(self, etag):
+        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        cache = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
+
+        if {self.PARAM_ETAG: etag} != self.save_info(cache):
+            if self.exists([cache])[0]:
+                msg = 'Corrupted cache file {}'
+                Logger.warn(msg.format(self.to_string(cache)))
+                self.remove(cache)
+            return True
+
+        return False
+
     def checkout(self, path_info, checksum_info):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
@@ -119,6 +149,25 @@ class RemoteS3(RemoteBase):
         etag = checksum_info.get(self.PARAM_ETAG, None)
         if not etag:
             return
+
+        if not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            Logger.info(msg.format(self.to_string(path_info)))
+            return
+
+        if self.changed_cache(etag):
+            msg = "Cache '{}' not found. File '{}' won't be created."
+            Logger.warn(msg.format(etag, self.to_string(path_info)))
+            return
+
+        if self.exists([path_info])[0]:
+            msg = "Data '{}' exists. Removing before checkout."
+            Logger.warn(msg.format(self.to_string(path_info)))
+            self.remove(path_info)
+            return
+
+        msg = "Checking out '{}' with cache '{}'."
+        Logger.info(msg.format(self.to_string(path_info), etag))
 
         key = posixpath.join(self.prefix, etag[0:2], etag[2:])
         from_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}

@@ -30,7 +30,7 @@ class OutputS3(DependencyS3):
             return True
 
         if self.use_cache \
-           and self.info != self.project.cache.s3.save_info(self.path_info):
+           and self.project.cache.s3.changed(self.path_info, self.info):
             return True
 
         return False

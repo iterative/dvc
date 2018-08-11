@@ -62,15 +62,10 @@ class OutputLOCAL(DependencyLOCAL):
         if not self.use_cache:
             return super(OutputLOCAL, self).changed()
 
-        return self.info != self.project.cache.local.save_info(self.path_info)
+        return self.project.cache.local.changed(self.path_info, self.info)
 
     def checkout(self):
         if not self.use_cache:
-            return
-
-        if not self.changed():
-            msg = u'Data file \'{}\' didn\'t change, skipping checkout.'
-            self.project.logger.debug(msg.format(self.rel_path))
             return
 
         self.project.cache.local.checkout(self.path_info, self.info)

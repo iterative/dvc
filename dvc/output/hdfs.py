@@ -30,7 +30,7 @@ class OutputHDFS(DependencyHDFS):
             return True
 
         if self.use_cache \
-           and self.info != self.project.cache.hdfs.save_info(self.path_info):
+           and self.project.cache.hdfs.changed(self.path_info, self.info):
             return True
 
         return False
