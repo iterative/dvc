@@ -3,9 +3,21 @@
 set -x
 set -e
 
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install -r test-requirements.txt
+N_RETRIES=3
+
+function retry {
+    for i in $(seq $N_RETRIES); do
+        $@ && break
+    done
+}
+
+# NOTE: it is not uncommon for pip to hang on travis for what seems to be
+# networking issues. Thus, let's retry a few times to see if it will eventially
+# work or not.
+retry pip install --upgrade pip
+retry pip install -r requirements.txt
+retry pip install -r test-requirements.txt
+
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"
 
