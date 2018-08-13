@@ -24,6 +24,8 @@ class OutputDuplicationError(DvcException):
         assert isinstance(output, str)
         assert isinstance(stages, list)
         assert all(isinstance(stage, str) for stage in stages)
-        msg = "File '{}' is specified as an output in more than one stage: {}"
-        super(OutputDuplicationError, self).__init__(msg.format(output,
-                                                                str(stages)))
+        msg = "File '{}' is specified as an output in more than one stage:{}"
+        s = ""
+        for stage in stages:
+            s += "\n    " + stage
+        super(OutputDuplicationError, self).__init__(msg.format(output, s))

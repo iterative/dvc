@@ -131,10 +131,22 @@ class Project(object):
     def to_dvc_path(self, path):
         return os.path.relpath(path, self.root_dir)
 
+    def _check_output_duplication(self, outs):
+        from dvc.exceptions import OutputDuplicationError
+
+        for stage in self.stages():
+            for o in stage.outs:
+                for out in outs:
+                    if o.path == out.path and o.stage.path != out.stage.path:
+                        stages = [o.stage.relpath, out.stage.relpath]
+                        raise OutputDuplicationError(o.path, stages)
+
     def add(self, fname):
         stage = Stage.loads(project=self,
                             outs=[fname],
                             add=True)
+
+        self._check_output_duplication(stage.outs)
 
         stage.save()
         stage.dump()
@@ -220,6 +232,9 @@ class Project(object):
                             metrics_no_cache=metrics_no_cache,
                             deps=deps,
                             overwrite=False)
+
+        self._check_output_duplication(stage.outs)
+
         if not no_exec:
             stage.run()
         stage.dump()
@@ -230,6 +245,8 @@ class Project(object):
                             cmd=None,
                             deps=[url],
                             outs=[out])
+
+        self._check_output_duplication(stage.outs)
 
         stage.run()
         stage.dump()
@@ -544,7 +561,7 @@ class Project(object):
 
         abs_path = os.path.abspath(path)
         matched = [out for out in outs if out.path == abs_path]
-        stages = [out.stage.path for out in matched]
+        stages = [out.stage.relpath for out in matched]
         if len(stages) > 1:
             raise OutputDuplicationError(path, stages)
 
@@ -660,14 +677,22 @@ class Project(object):
 
     def graph(self):
         import networkx as nx
+        from dvc.exceptions import OutputDuplicationError
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
         stages = self.stages()
 
         outs = []
+        outs_by_path = {}
         for stage in stages:
-            outs += stage.outs
+            for o in stage.outs:
+                existing = outs_by_path.get(o.path, None)
+                if existing is not None:
+                    stages = [o.stage.relpath, existing.stage.relpath]
+                    raise OutputDuplicationError(o.path, stages)
+                outs.append(o)
+                outs_by_path[o.path] = o
 
         # collect the whole DAG
         for stage in stages:
