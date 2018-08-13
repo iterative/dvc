@@ -11,7 +11,7 @@ def prompt(msg, default=False):
     if not sys.stdout.isatty():
         return default
 
-    answer = input(msg + u'\n').lower()
+    answer = input(msg + u' (y/n)\n').lower()
     while answer not in ['yes', 'no', 'y', 'n']:
         answer = input('Enter \'yes\' or \'no\'.\n').lower()
 
