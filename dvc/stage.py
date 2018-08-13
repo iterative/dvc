@@ -253,9 +253,10 @@ class Stage(object):
 
         if os.path.exists(path):
             relpath = os.path.relpath(path)
-            msg = "{} already exists. Do you wish to overwrite it?"
+            msg = "'{}' already exists. " \
+                  "Do you wish to run the command and overwrite it?"
             if not overwrite and not prompt(msg.format(relpath), False):
-                raise DvcException("{} already exists".format(relpath))
+                raise DvcException("'{}' already exists".format(relpath))
 
         stage.cwd = cwd
         stage.path = path
