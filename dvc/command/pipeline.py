@@ -7,13 +7,12 @@ from dvc.command.base import CmdBase
 class CmdPipelineShow(CmdBase):
     def _show(self, target, commands, outs):
         import networkx
-        from dvc.project import NotDvcFileError
+        from dvc.stage import Stage
 
+        stage = Stage.load(self.project, target)
         G = self.project.graph()[0]
         stages = networkx.get_node_attributes(G, 'stage')
-        node = os.path.relpath(os.path.abspath(target), self.project.root_dir)
-        if node not in stages:
-            raise NotDvcFileError(node)
+        node = os.path.relpath(stage.path, self.project.root_dir)
 
         for n in networkx.dfs_postorder_nodes(G, node):
             if commands:

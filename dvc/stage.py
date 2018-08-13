@@ -24,6 +24,18 @@ class StageFileFormatError(DvcException):
         super(StageFileFormatError, self).__init__('Stage file format error')
 
 
+class StageFileDoesNotExistError(DvcException):
+    def __init__(self, fname):
+        msg = "'{}' does not exist.".format(fname)
+        super(StageFileDoesNotExistError, self).__init__(msg)
+
+
+class StageFileIsNotDvcFileError(DvcException):
+    def __init__(self, fname):
+        msg = "'{}' is not a dvc file".format(fname)
+        super(StageFileIsNotDvcFileError, self).__init__(msg)
+
+
 class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
@@ -266,18 +278,18 @@ class Stage(object):
     @staticmethod
     def _check_dvc_file(fname):
         sname = fname + Stage.STAGE_FILE_SUFFIX
-	if Stage.is_stage_file(sname):
-            self.info("Do you mean '{}'?".format(sname))
+        if Stage.is_stage_file(sname):
+            Logger.info("Do you mean '{}'?".format(sname))
 
     @staticmethod
     def load(project, fname):
         if not os.path.exists(fname):
             Stage._check_dvc_file(fname)
-            raise DvcException("'{}' does not exist.".format(fname))
+            raise StageFileDoesNotExistError(fname)
 
-        if not self.is_stage_file(fname):
+        if not Stage.is_stage_file(fname):
             Stage._check_dvc_file(fname)
-            raise DvcException("'{}' is not a DVC file".format(fname))
+            raise StageFileIsNotDvcFileError(fname)
 
         with open(fname, 'r') as fd:
             return Stage.loadd(project, yaml.safe_load(fd), fname)

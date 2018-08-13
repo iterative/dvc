@@ -14,10 +14,10 @@ from google.cloud import storage as gc
 
 from dvc.main import main
 from dvc.command.repro import CmdRepro
-from dvc.project import Project, ReproductionError, NotDvcFileError
+from dvc.project import Project, ReproductionError
 from dvc.utils import file_md5
 from dvc.remote.local import RemoteLOCAL
-from dvc.stage import Stage
+from dvc.stage import Stage, StageFileDoesNotExistError
 
 from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
@@ -134,7 +134,8 @@ class TestReproDry(TestReproChangedData):
         self.assertTrue(len(stages), 2)
         self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
-        ret = main(['repro', '--dry'])
+        ret = main(['repro', '--dry', self.file1_stage])
+        self.assertEqual(ret, 0)
         self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
 
@@ -180,7 +181,7 @@ class TestReproLocked(TestReproChangedData):
         self.assertEqual(len(stages), 3)
 
     def test_non_existing(self):
-        with self.assertRaises(NotDvcFileError):
+        with self.assertRaises(StageFileDoesNotExistError):
             self.dvc.lock_stage('non-existing-stage')
 
         ret = main(['lock', 'non-existing-stage'])

@@ -336,7 +336,6 @@ def parse_args(argv=None):
     repro_parser.add_argument(
                         'targets',
                         nargs='*',
-                        default=['Dvcfile'],
                         help='DVC file to reproduce.')
     repro_parser.add_argument(
                         '-f',
@@ -762,5 +761,15 @@ def parse_args(argv=None):
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 
     args = parser.parse_args(argv)
+
+    if args.cmd == 'repro' and len(args.targets) == 0:
+        path = os.path.join(args.cwd, 'Dvcfile')
+        if not os.path.exists(path):
+            msg = "error: default target '{}' does not exist.\n"
+            sys.stderr.write(msg.format(path))
+            sys.stderr.flush()
+            repro_parser.print_help()
+            sys.exit(2)
+        args.targets = ['Dvcfile']
 
     return args
