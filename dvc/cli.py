@@ -116,7 +116,8 @@ def parse_args(argv=None):
     init_parser.set_defaults(func=CmdInit)
 
     # Destroy
-    DESTROY_HELP = 'Destroy dvc.'
+    DESTROY_HELP = "Destroy dvc. Will remove all project's information, " \
+                   "data files and cache."
     destroy_parser = subparsers.add_parser(
                         'destroy',
                         parents=[parent_parser],
