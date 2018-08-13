@@ -29,7 +29,11 @@ class CmdDataStatus(CmdDataBase):
                                      cloud=self.args.cloud,
                                      show_checksums=self.args.show_checksums,
                                      remote=self.args.remote)
-            self._show(st, indent)
+            if st:
+                self._show(st, indent)
+            else:
+                self.project.logger.info("Nothing to reproduce. "
+                                         "Pipeline is up to date.")
         except Exception as exc:
             self.project.logger.error('Failed to obtain data status', exc)
             return 1
