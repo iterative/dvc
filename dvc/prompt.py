@@ -7,7 +7,7 @@ except NameError:
     pass
 
 
-def prompt(msg, default=False):
+def prompt(msg, default=False):  # pragma: no cover
     if not sys.stdout.isatty():
         return default
 
