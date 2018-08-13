@@ -9,15 +9,6 @@ class InitError(DvcException):
         super(InitError, self).__init__(msg)
 
 
-class NotDvcFileError(DvcException):
-    def __init__(self, path):
-        msg = '\'{}\' is not a DVC file'.format(path)
-        p = path + Stage.STAGE_FILE_SUFFIX
-        if Stage.is_stage_file(p):
-            msg += '. Maybe you meant \'{}\'?'.format(p)
-        super(NotDvcFileError, self).__init__(msg)
-
-
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
@@ -153,9 +144,6 @@ class Project(object):
         return stage
 
     def remove(self, target, outs_only=False):
-        if not Stage.is_stage_file(target):
-            raise NotDvcFileError(target)
-
         stage = Stage.load(self, target)
         if outs_only:
             stage.remove_outs()
@@ -165,9 +153,6 @@ class Project(object):
         return stage
 
     def lock_stage(self, target, unlock=False):
-        if not Stage.is_stage_file(target):
-            raise NotDvcFileError(target)
-
         stage = Stage.load(self, target)
         stage.locked = False if unlock else True
         stage.dump()
@@ -277,11 +262,10 @@ class Project(object):
                   interactive=False):
         import networkx as nx
 
+        stage = Stage.load(self, target)
         G = self.graph()[1]
         stages = nx.get_node_attributes(G, 'stage')
-        node = os.path.relpath(os.path.abspath(target), self.root_dir)
-        if node not in stages:
-            raise NotDvcFileError(target)
+        node = os.path.relpath(stage.path, self.root_dir)
 
         if not interactive:
             config = self.config
@@ -324,8 +308,6 @@ class Project(object):
         all_stages = self.active_stages()
 
         if target:
-            if not Stage.is_stage_file(target):
-                raise NotDvcFileError(target)
             stages = [Stage.load(self, target)]
         else:
             stages = all_stages

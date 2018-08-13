@@ -264,7 +264,21 @@ class Stage(object):
         return stage
 
     @staticmethod
+    def _check_dvc_file(fname):
+        sname = fname + Stage.STAGE_FILE_SUFFIX
+	if Stage.is_stage_file(sname):
+            self.info("Do you mean '{}'?".format(sname))
+
+    @staticmethod
     def load(project, fname):
+        if not os.path.exists(fname):
+            Stage._check_dvc_file(fname)
+            raise DvcException("'{}' does not exist.".format(fname))
+
+        if not self.is_stage_file(fname):
+            Stage._check_dvc_file(fname)
+            raise DvcException("'{}' is not a DVC file".format(fname))
+
         with open(fname, 'r') as fd:
             return Stage.loadd(project, yaml.safe_load(fd), fname)
 

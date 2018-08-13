@@ -22,14 +22,9 @@ class CmdRepro(CmdBase):
                                        interactive=self.args.interactive)
                 if self.args.metrics:
                     self.project.metrics_show()
-            except ReproductionError as ex:
+            except DvcException as ex:
                 msg = 'Failed to reproduce \'{}\''.format(target)
                 self.project.logger.error(msg, ex)
-                ret = 1
-                break
-            except Exception as ex:
-                msg = 'Failed to reproduce \'{}\' - unexpected error'
-                self.project.logger.error(msg.format(target), ex)
                 ret = 1
                 break
 
