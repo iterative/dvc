@@ -1,12 +1,11 @@
 import os
 
 from dvc.command.base import CmdBase
+from dvc.exceptions import DvcException
 
 
 class CmdRepro(CmdBase):
     def run(self):
-        from dvc.project import ReproductionError
-
         recursive = not self.args.single_item
         saved_dir = os.path.realpath(os.curdir)
         if self.args.cwd:
@@ -22,14 +21,9 @@ class CmdRepro(CmdBase):
                                        interactive=self.args.interactive)
                 if self.args.metrics:
                     self.project.metrics_show()
-            except ReproductionError as ex:
+            except DvcException as ex:
                 msg = 'Failed to reproduce \'{}\''.format(target)
                 self.project.logger.error(msg, ex)
-                ret = 1
-                break
-            except Exception as ex:
-                msg = 'Failed to reproduce \'{}\' - unexpected error'
-                self.project.logger.error(msg.format(target), ex)
                 ret = 1
                 break
 
