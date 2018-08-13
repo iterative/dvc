@@ -5,6 +5,7 @@ from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.command.run import CmdRun
+from dvc.exceptions import OutputDuplicationError
 
 from tests.basic_env import TestDvc
 
@@ -34,6 +35,14 @@ class TestRun(TestDvc):
         self.assertEqual(stage.outs[0].path, outs[0])
         self.assertEqual(stage.outs[0].md5, file_md5(self.FOO)[0])  
         self.assertTrue(stage.path, fname)
+
+        with self.assertRaises(OutputDuplicationError):
+            stage = self.dvc.run(cmd=cmd,
+                                 deps=deps,
+                                 outs=outs,
+                                 outs_no_cache=outs_no_cache,
+                                 fname='duplicate' + fname,
+                                 cwd=cwd)
 
 
 class TestRunEmpty(TestDvc):
