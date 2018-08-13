@@ -81,7 +81,7 @@ def parse_args(argv=None):
                         '--version',
                         action=VersionAction,
                         nargs=0,
-                        help='Show program\'s version')
+                        help='Show program\'s version.')
 
     # Sub commands
     subparsers = parser.add_subparsers(
@@ -89,7 +89,7 @@ def parse_args(argv=None):
                         metavar='COMMAND',
                         dest='cmd',
                         help='Use dvc COMMAND --help for command-specific '
-                             'help')
+                             'help.')
 
     _fix_subparsers(subparsers)
 
@@ -98,67 +98,67 @@ def parse_args(argv=None):
                         'init',
                         parents=[parent_parser],
                         help='Initialize dvc over a directory '
-                             '(should already be a git dir)')
+                             '(should already be a git dir).')
     init_parser.add_argument(
                         '--no-scm',
                         action='store_true',
                         default=False,
                         help="Initiate dvc in directory that is "
-                             "not tracked by any scm tool(e.g. git)")
+                             "not tracked by any scm tool(e.g. git).")
     init_parser.add_argument(
                         '-f',
                         '--force',
                         action='store_true',
                         default=False,
-                        help='Force initialization even if \'.dvc\' exists')
+                        help='Force initialization even if \'.dvc\' exists.')
     init_parser.set_defaults(func=CmdInit)
 
     # Destroy
     destroy_parser = subparsers.add_parser(
                         'destroy',
                         parents=[parent_parser],
-                        help='Destroy dvc')
+                        help='Destroy dvc.')
     destroy_parser.add_argument(
                         '-f',
                         '--force',
                         action='store_true',
                         default=False,
-                        help='Force destruction')
+                        help='Force destruction.')
     destroy_parser.set_defaults(func=CmdDestroy)
 
     # Add
     add_parser = subparsers.add_parser(
                         'add',
                         parents=[parent_parser],
-                        help='Add files/directories to dvc')
+                        help='Add files/directories to dvc.')
     add_parser.add_argument(
                         'targets',
                         nargs='+',
-                        help='Input files/directories')
+                        help='Input files/directories.')
     add_parser.set_defaults(func=CmdAdd)
 
     # Import
     import_parser = subparsers.add_parser(
                         'import',
                         parents=[parent_parser],
-                        help='Import files from URL')
+                        help='Import files from URL.')
     import_parser.add_argument(
                         'url',
-                        help='URL')
+                        help='URL.')
     import_parser.add_argument(
                         'out',
-                        help='Output')
+                        help='Output.')
     import_parser.set_defaults(func=CmdImport)
 
     # Checkout
     checkout_parser = subparsers.add_parser(
                         'checkout',
                         parents=[parent_parser],
-                        help='Checkout data files from cache')
+                        help='Checkout data files from cache.')
     checkout_parser.add_argument(
                         'targets',
                         nargs='*',
-                        help='DVC files')
+                        help='DVC files.')
     checkout_parser.set_defaults(func=CmdCheckout)
 
     # Run
@@ -166,7 +166,7 @@ def parse_args(argv=None):
                         'run',
                         parents=[parent_parser],
                         help='Generate a stage file from a given '
-                             'command and execute the command')
+                             'command and execute the command.')
     run_parser.add_argument(
                         '-d',
                         '--deps',
@@ -196,23 +196,23 @@ def parse_args(argv=None):
     run_parser.add_argument(
                         '-f',
                         '--file',
-                        help='Specify name of the state file')
+                        help='Specify name of the state file.')
     run_parser.add_argument(
                         '-c',
                         '--cwd',
                         default=os.path.curdir,
                         help='Directory to run your command and place state '
-                             'file in')
+                             'file in.')
     run_parser.add_argument(
                         '--no-exec',
                         action='store_true',
                         default=False,
                         help="Only create stage file without actually "
-                             "running it")
+                             "running it.")
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
-                        help='Command or command file to execute')
+                        help='Command or command file to execute.')
     run_parser.set_defaults(func=CmdRun)
 
     # Parent parser used in pull/push/status
@@ -240,11 +240,11 @@ def parse_args(argv=None):
     pull_parser = subparsers.add_parser(
                         'pull',
                         parents=[parent_cache_parser],
-                        help='Pull data files from the cloud')
+                        help='Pull data files from the cloud.')
     pull_parser.add_argument(
                         '-r',
                         '--remote',
-                        help='Remote repository to pull from')
+                        help='Remote repository to pull from.')
     pull_parser.add_argument(
                         '-a',
                         '--all-branches',
@@ -257,11 +257,11 @@ def parse_args(argv=None):
     push_parser = subparsers.add_parser(
                         'push',
                         parents=[parent_cache_parser],
-                        help='Push data files to the cloud')
+                        help='Push data files to the cloud.')
     push_parser.add_argument(
                         '-r',
                         '--remote',
-                        help='Remote repository to push to')
+                        help='Remote repository to push to.')
     push_parser.add_argument(
                         '-a',
                         '--all-branches',
@@ -274,11 +274,11 @@ def parse_args(argv=None):
     fetch_parser = subparsers.add_parser(
                         'fetch',
                         parents=[parent_cache_parser],
-                        help='Fetch data files from the cloud')
+                        help='Fetch data files from the cloud.')
     fetch_parser.add_argument(
                         '-r',
                         '--remote',
-                        help='Remote repository to fetch from')
+                        help='Remote repository to fetch from.')
     fetch_parser.add_argument(
                         '-a',
                         '--all-branches',
@@ -291,18 +291,18 @@ def parse_args(argv=None):
     status_parser = subparsers.add_parser(
                         'status',
                         parents=[parent_cache_parser],
-                        help='Show the project status')
+                        help='Show the project status.')
     status_parser.add_argument(
                         '-c',
                         '--cloud',
                         action='store_true',
                         default=False,
                         help='Show status of a local cache compared to a '
-                             'remote repository')
+                             'remote repository.')
     status_parser.add_argument(
                         '-r',
                         '--remote',
-                        help='Remote repository to compare local cache to')
+                        help='Remote repository to compare local cache to.')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
@@ -310,7 +310,7 @@ def parse_args(argv=None):
                         'repro',
                         parents=[parent_parser],
                         help='Reproduce DVC file. Default file name '
-                             '- \'Dvcfile\'')
+                             '- \'Dvcfile\'.')
     repro_parser.add_argument(
                         'targets',
                         nargs='*',
@@ -340,7 +340,7 @@ def parse_args(argv=None):
                         '--metrics',
                         action='store_true',
                         default=False,
-                        help='Show metrics after reproduction')
+                        help='Show metrics after reproduction.')
     repro_parser.add_argument(
                         '--dry',
                         action='store_true',
@@ -373,7 +373,7 @@ def parse_args(argv=None):
                         '--purge',
                         action='store_true',
                         default=False,
-                        help='Remove DVC file and all its outputs')
+                        help='Remove DVC file and all its outputs.')
     remove_parser.add_argument(
                         'targets',
                         nargs='+',
@@ -387,17 +387,17 @@ def parse_args(argv=None):
                         help='Move output of DVC file.')
     move_parser.add_argument(
                         'src',
-                        help='Source')
+                        help='Source.')
     move_parser.add_argument(
                         'dst',
-                        help='Destination')
+                        help='Destination.')
     move_parser.set_defaults(func=CmdMove)
 
     # Garbage collector
     gc_parser = subparsers.add_parser(
                         'gc',
                         parents=[parent_parser],
-                        help='Collect garbage')
+                        help='Collect garbage.')
     gc_parser.add_argument(
                         '-a',
                         '--all-branches',
@@ -409,79 +409,79 @@ def parse_args(argv=None):
                         '--cloud',
                         action='store_true',
                         default=False,
-                        help='Collect garbage in remote repository')
+                        help='Collect garbage in remote repository.')
     gc_parser.add_argument(
                         '-r',
                         '--remote',
-                        help='Remote repository to collect garbage in')
+                        help='Remote repository to collect garbage in.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config
     config_parser = subparsers.add_parser(
                         'config',
                         parents=[parent_parser],
-                        help='Get or set config options')
+                        help='Get or set config options.')
     config_parser.add_argument(
                         '-u',
                         '--unset',
                         default=False,
                         action='store_true',
-                        help='Unset option')
+                        help='Unset option.')
     config_parser.add_argument(
                         'name',
-                        help='Option name')
+                        help='Option name.')
     config_parser.add_argument(
                         'value',
                         nargs='?',
                         default=None,
-                        help='Option value')
+                        help='Option value.')
     config_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
-                        help='Use local config')
+                        help='Use local config.')
     config_parser.set_defaults(func=CmdConfig)
 
     # Remote
     remote_parser = subparsers.add_parser(
                         'remote',
                         parents=[parent_parser],
-                        help='Manage set of tracked repositories')
+                        help='Manage set of tracked repositories.')
 
     remote_subparsers = remote_parser.add_subparsers(
                         dest='cmd',
                         help='Use dvc remote CMD --help for '
-                             'command-specific help')
+                             'command-specific help.')
 
     _fix_subparsers(remote_subparsers)
 
     remote_add_parser = remote_subparsers.add_parser(
                         'add',
                         parents=[parent_parser],
-                        help='Add remote')
+                        help='Add remote.')
     remote_add_parser.add_argument(
                         'name',
-                        help='Name')
+                        help='Name.')
     remote_add_parser.add_argument(
                         'url',
-                        help='Url')
+                        help='URL.')
     remote_add_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
-                        help='Use local config')
+                        help='Use local config.')
     remote_add_parser.add_argument(
                         '-d',
                         '--default',
                         action='store_true',
                         default=False,
-                        help='Set as default remote')
+                        help='Set as default remote.')
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
 
     remote_remove_parser = remote_subparsers.add_parser(
                         'remove',
                         parents=[parent_parser],
-                        help='Remove remote')
+                        help='Remove remote.')
     remote_remove_parser.add_argument(
                         'name',
                         help='Name')
@@ -489,162 +489,162 @@ def parse_args(argv=None):
                         '--local',
                         action='store_true',
                         default=False,
-                        help='Use local config')
+                        help='Use local config.')
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
 
     remote_modify_parser = remote_subparsers.add_parser(
                         'modify',
                         parents=[parent_parser],
-                        help='Modify remote')
+                        help='Modify remote.')
     remote_modify_parser.add_argument(
                         'name',
-                        help='Name')
+                        help='Name.')
     remote_modify_parser.add_argument(
                         'option',
-                        help='Option')
+                        help='Option.')
     remote_modify_parser.add_argument(
                         'value',
                         nargs='?',
-                        help='Value')
+                        help='Value.')
     remote_modify_parser.add_argument(
                         '-u',
                         '--unset',
                         default=False,
                         action='store_true',
-                        help='Unset option')
+                        help='Unset option.')
     remote_modify_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
-                        help='Use local config')
+                        help='Use local config.')
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
     remote_list_parser = remote_subparsers.add_parser(
                         'list',
                         parents=[parent_parser],
-                        help='List remotes')
+                        help='List remotes.')
     remote_list_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
-                        help='Use local config')
+                        help='Use local config.')
     remote_list_parser.set_defaults(func=CmdRemoteList)
 
     # Metrics
     metrics_parser = subparsers.add_parser(
                         'metrics',
                         parents=[parent_parser],
-                        help='Get metrics from all branches')
+                        help='Get metrics from all branches.')
 
     metrics_subparsers = metrics_parser.add_subparsers(
                         dest='cmd',
                         help='Use dvc metrics CMD --help for '
-                             'command-specific help')
+                             'command-specific help.')
 
     _fix_subparsers(metrics_subparsers)
 
     metrics_show_parser = metrics_subparsers.add_parser(
                         'show',
                         parents=[parent_parser],
-                        help='Show metrics')
+                        help='Show metrics.')
     metrics_show_parser.add_argument(
                         'path',
                         nargs='?',
-                        help='Path to metrics file')
+                        help='Path to metrics file.')
     metrics_show_parser.add_argument(
                         '-t',
                         '--type',
-                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
     metrics_show_parser.add_argument(
                         '-x',
                         '--xpath',
-                        help='JSON/TSV/HTSV/CSV/HCSV path')
+                        help='JSON/TSV/HTSV/CSV/HCSV path.')
     metrics_show_group = metrics_show_parser.add_mutually_exclusive_group()
     metrics_show_group.add_argument(
                         '--json-path',
-                        help='JSON path')
+                        help='JSON path.')
     metrics_show_group.add_argument(
                         '--tsv-path',
-                        help='TSV path \'row,column\'(e.g. \'1,2\')')
+                        help='TSV path \'row,column\'(e.g. \'1,2\').')
     metrics_show_group.add_argument(
                         '--htsv-path',
-                        help='Headed TSV path \'row,column\'(e.g. \'Name,3\'')
+                        help='Headed TSV path \'row,column\'(e.g. \'Name,3\'.')
     metrics_show_group.add_argument(
                         '--csv-path',
-                        help='CSV path \'row,column\'(e.g. \'1,2\')')
+                        help='CSV path \'row,column\'(e.g. \'1,2\').')
     metrics_show_group.add_argument(
                         '--hcsv-path',
-                        help='Headed CSV path \'row,column\'(e.g. \'Name,3\'')
+                        help='Headed CSV path \'row,column\'(e.g. \'Name,3\'.')
     metrics_show_parser.add_argument(
                         '-a',
                         '--all-branches',
                         action='store_true',
                         default=False,
-                        help='Show metrics for all branches')
+                        help='Show metrics for all branches.')
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
     metrics_add_parser = metrics_subparsers.add_parser(
                         'add',
                         parents=[parent_parser],
-                        help='Add metrics')
+                        help='Add metrics.')
     metrics_add_parser.add_argument(
                         '-t',
                         '--type',
-                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
     metrics_add_parser.add_argument(
                         '-x',
                         '--xpath',
-                        help='JSON/TSV/HTSV/CSV/HCSV path')
+                        help='JSON/TSV/HTSV/CSV/HCSV path.')
     metrics_add_parser.add_argument(
                         'path',
-                        help='Path to metrics file')
+                        help='Path to metrics file.')
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
     metrics_modify_parser = metrics_subparsers.add_parser(
                         'modify',
                         parents=[parent_parser],
-                        help='Modify metrics')
+                        help='Modify metrics.')
     metrics_modify_parser.add_argument(
                         '-t',
                         '--type',
-                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)')
+                        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
     metrics_modify_parser.add_argument(
                         '-x',
                         '--xpath',
-                        help='JSON/TSV/HTSV/CSV/HCSV path')
+                        help='JSON/TSV/HTSV/CSV/HCSV path.')
     metrics_modify_parser.add_argument(
                         'path',
-                        help='Metrics file')
+                        help='Metrics file.')
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
     metrics_remove_parser = metrics_subparsers.add_parser(
                         'remove',
                         parents=[parent_parser],
-                        help='Remove metrics')
+                        help='Remove metrics.')
     metrics_remove_parser.add_argument(
                         'path',
-                        help='Path to metrics file')
+                        help='Path to metrics file.')
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)
 
     # Install
     install_parser = subparsers.add_parser(
                         'install',
                         parents=[parent_parser],
-                        help='Install dvc hooks into the repository')
+                        help='Install dvc hooks into the repository.')
     install_parser.set_defaults(func=CmdInstall)
 
     # Root
     root_parser = subparsers.add_parser(
                         'root',
                         parents=[parent_parser],
-                        help='Relative path to project\'s directory')
+                        help='Relative path to project\'s directory.')
     root_parser.set_defaults(func=CmdRoot)
 
     # Lock
     lock_parser = subparsers.add_parser(
                         'lock',
                         parents=[parent_parser],
-                        help='Lock DVC file')
+                        help='Lock DVC file.')
     lock_parser.add_argument(
                         'targets',
                         nargs='+',
@@ -655,7 +655,7 @@ def parse_args(argv=None):
     unlock_parser = subparsers.add_parser(
                         'unlock',
                         parents=[parent_parser],
-                        help='Unlock DVC file')
+                        help='Unlock DVC file.')
     unlock_parser.add_argument(
                         'targets',
                         nargs='+',
@@ -666,19 +666,19 @@ def parse_args(argv=None):
     pipeline_parser = subparsers.add_parser(
                         'pipeline',
                         parents=[parent_parser],
-                        help='Manage pipeline')
+                        help='Manage pipeline.')
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
                         dest='cmd',
                         help='Use dvc pipeline CMD --help '
-                             'for command-specific help')
+                             'for command-specific help.')
 
     _fix_subparsers(pipeline_subparsers)
 
     pipeline_show_parser = pipeline_subparsers.add_parser(
                         'show',
                         parents=[parent_parser],
-                        help='Show pipeline')
+                        help='Show pipeline.')
     pipeline_show_group = pipeline_show_parser.add_mutually_exclusive_group()
     pipeline_show_group.add_argument(
                         '-c',
