@@ -8,3 +8,4 @@ exclude_lines =
     pass
     raise NotImplementedError
     # pragma: no cover
+    #  pragma: no cover
