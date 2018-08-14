@@ -112,7 +112,8 @@ def parse_args(argv=None):
                         '--force',
                         action='store_true',
                         default=False,
-                        help='Force initialization even if \'.dvc\' exists.')
+                        help="Overwrite '.dvc' if it exists. Will remove "
+                             "all local cache.")
     init_parser.set_defaults(func=CmdInit)
 
     # Destroy
