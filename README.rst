@@ -4,7 +4,7 @@
 
 `Website <https://dvc.org>`_ • `Docs <https://dvc.org/doc>`_ • `Discuss <https://discuss.dvc.org/>`_ •
 `Blog <https://blog.dataversioncontrol.com/>`_ • `Twitter <https://twitter.com/iterativeai>`_ •
-`Tutorial <https://dvc.org/doc/tutorial>`_ • `Mailing List (low traffic) <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
+`Tutorial <https://dvc.org/doc/tutorial>`_ • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 .. image:: https://travis-ci.org/iterative/dvc.svg?branch=master
   :target: https://travis-ci.org/iterative/dvc
