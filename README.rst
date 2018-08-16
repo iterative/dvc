@@ -161,6 +161,11 @@ details.
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
   :alt: 7
 
+Mailing List
+=========
+
+Want to be up to date? Want to help improve DVC by participating in our ocassional polls? Subscribe to our [mailing list](https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a). No spam, really low traffic.
+
 Copyright
 =========
 
