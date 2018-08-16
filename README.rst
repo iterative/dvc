@@ -88,13 +88,13 @@ Homebrew
 
 .. code-block:: bash
 
-   brew install iterative/homebrew-dvc/dvc
+   $ brew install iterative/homebrew-dvc/dvc
 
 or:
 
 .. code-block:: bash
 
-   brew cask install iterative/homebrew-dvc/dvc
+   $ brew cask install iterative/homebrew-dvc/dvc
 
 Related technologies
 ====================
