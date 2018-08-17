@@ -1,6 +1,8 @@
 import os
 import stat
 import shutil
+import filecmp
+import tempfile
 
 from dvc.main import main
 from dvc.utils import file_md5
@@ -94,6 +96,22 @@ class TestAddFileInDir(TestDvc):
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
         self.assertEqual(stage.relpath, self.DATA_SUB + '.dvc')
+
+
+class TestAddExternalLocalFile(TestDvc):
+    def test(self):
+        dname = tempfile.mkdtemp()
+        fname = os.path.join(dname, 'foo')
+        shutil.copyfile(self.FOO, fname)
+
+        stage = self.dvc.add(fname)
+        self.assertNotEqual(stage, None)
+        self.assertEqual(len(stage.deps), 0)
+        self.assertEqual(len(stage.outs), 1)
+        self.assertEqual(stage.relpath, 'foo.dvc')
+        self.assertEqual(len(os.listdir(dname)), 1)
+        self.assertTrue(os.path.isfile(fname))
+        self.assertTrue(filecmp.cmp(fname, 'foo', shallow=False))
 
 
 class TestCmdAdd(TestDvc):

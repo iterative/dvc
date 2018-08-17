@@ -231,7 +231,8 @@ class Stage(object):
         if not fname:
             fname = path.basename(out.path) + cls.STAGE_FILE_SUFFIX
 
-        cwd = path.dirname(out.path) if not cwd or add else cwd
+        if not cwd or (add and out.is_local):
+            cwd = path.dirname(out.path)
 
         return (fname, cwd)
 
