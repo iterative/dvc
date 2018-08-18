@@ -756,6 +756,11 @@ def parse_args(argv=None):
                         help='Print output files instead of '
                              'paths to DVC files.')
     pipeline_show_parser.add_argument(
+                        '--ascii',
+                        action='store_true',
+                        default=False,
+                        help='Output DAG as ASCII.')
+    pipeline_show_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='DVC files.')
