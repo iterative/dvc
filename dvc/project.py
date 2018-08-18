@@ -576,8 +576,8 @@ class Project(object):
                 entries = []
                 for o in metrics:
                     if not typ and isinstance(o.metric, dict):
-                        t = o.metric.get(o.PARAM_METRIC_TYPE, None)
-                        x = o.metric.get(o.PARAM_METRIC_XPATH, None)
+                        t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
+                        x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
                     else:
                         t = typ
                         x = xpath
