@@ -756,15 +756,27 @@ def parse_args(argv=None):
                         help='Print output files instead of '
                              'paths to DVC files.')
     pipeline_show_parser.add_argument(
+                        '--ascii',
+                        action='store_true',
+                        default=False,
+                        help='Output DAG as ASCII.')
+    pipeline_show_parser.add_argument(
                         'targets',
-                        nargs='+',
-                        help='DVC files.')
+                        nargs='*',
+                        help="DVC files. 'Dvcfile' by default.")
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 
     args = parser.parse_args(argv)
 
-    if args.cmd == 'repro' and len(args.targets) == 0:
-        path = os.path.join(args.cwd, 'Dvcfile')
+    if (issubclass(args.func, CmdRepro)
+        or issubclass(args.func, CmdPipelineShow)) \
+       and hasattr(args, 'targets') \
+       and len(args.targets) == 0:
+        if hasattr(args, 'cwd'):
+            cwd = args.cwd
+        else:
+            cwd = os.curdir
+        path = os.path.join(cwd, 'Dvcfile')
         if not os.path.exists(path):
             msg = "error: default target '{}' does not exist.\n"
             sys.stderr.write(msg.format(path))
