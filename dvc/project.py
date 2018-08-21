@@ -132,16 +132,36 @@ class Project(object):
                         stages = [o.stage.relpath, out.stage.relpath]
                         raise OutputDuplicationError(o.path, stages)
 
-    def add(self, fname):
-        stage = Stage.loads(project=self,
-                            outs=[fname],
-                            add=True)
+    def add(self, fname, recursive=False):
+        fnames = []
+        if recursive and os.path.isdir(fname):
+            fnames = []
+            for root, dirs, files in os.walk(fname):
+                for f in files:
+                    path = os.path.join(root, f)
+                    if Stage.is_stage_file(path):
+                        continue
+                    if os.path.basename(path) == self.scm.ignore_file():
+                        continue
+                    if self.scm.is_tracked(path):
+                        continue
+                    fnames.append(path)
+        else:
+            fnames = [fname]
 
-        self._check_output_duplication(stage.outs)
+        stages = []
+        for f in fnames:
+            stage = Stage.loads(project=self,
+                                outs=[f],
+                                add=True)
 
-        stage.save()
-        stage.dump()
-        return stage
+            self._check_output_duplication(stage.outs)
+
+            stage.save()
+            stage.dump()
+            stages.append(stage)
+
+        return stages
 
     def remove(self, target, outs_only=False):
         stage = Stage.load(self, target)

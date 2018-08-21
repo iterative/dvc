@@ -16,7 +16,11 @@ class TestCheckout(TestRepro):
     def setUp(self):
         super(TestCheckout, self).setUp()
 
-        self.data_dir_stage = self.dvc.add(self.DATA_DIR)
+
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        self.data_dir_stage = stages[0]
+        self.assertTrue(self.data_dir_stage is not None)
 
         self.orig = 'orig'
         shutil.copy(self.FOO, self.orig)
@@ -74,7 +78,9 @@ class CheckoutBase(TestDvc):
     def commit_data_file(self, fname, content='random text'):
         with open(fname, 'w') as fd:
             fd.write(content)
-        self.dvc.add(fname)
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
         self.dvc.scm.add([fname + '.dvc', '.gitignore'])
         self.dvc.scm.commit('adding ' + fname)
 
@@ -181,7 +187,10 @@ class TestCheckoutEmptyDir(TestDvc):
         dname = 'empty_dir'
         os.mkdir(dname)
 
-        stage = self.dvc.add(dname)
+        stages = self.dvc.add(dname)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
         self.assertEqual(len(stage.outs), 1)
 
         stage.outs[0].remove()

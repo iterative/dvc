@@ -30,7 +30,10 @@ class TestRepro(TestDvc):
     def setUp(self):
         super(TestRepro, self).setUp()
 
-        self.foo_stage = self.dvc.add(self.FOO)
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        self.foo_stage = stages[0]
+        self.assertTrue(self.foo_stage is not None)
 
         self.file1 = 'file1'
         self.file1_stage = self.file1 + '.dvc'
@@ -50,7 +53,10 @@ class TestReproFail(TestRepro):
 
 class TestReproDepUnderDir(TestDvc):
     def test(self):
-        self.dir_stage = self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        self.dir_stage = stages[0]
+        self.assertTrue(self.dir_stage is not None)
 
         sleep()
         

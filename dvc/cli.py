@@ -140,6 +140,12 @@ def parse_args(argv=None):
                         description=ADD_HELP,
                         help=ADD_HELP)
     add_parser.add_argument(
+                        '-R',
+                        '--recursive',
+                        action='store_true',
+                        default=False,
+                        help='Recursively add each file under the directory.')
+    add_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='Input files/directories.')

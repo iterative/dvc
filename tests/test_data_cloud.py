@@ -204,12 +204,19 @@ class TestDataCloudBase(TestDvc):
     def _test_cloud(self):
         self._setup_cloud()
 
-        stage = self.dvc.add(self.FOO)
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
         cache = stage.outs[0].cache
         info = stage.outs[0].dumpd()
         md5 = info['md5']
 
-        stage_dir = self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        stage_dir = stages[0]
+        self.assertTrue(stage_dir is not None)
+
         cache_dir = stage_dir.outs[0].cache
         info_dir = stage_dir.outs[0].dumpd()
         md5_dir = info_dir['md5']
@@ -358,10 +365,16 @@ class TestDataCloudCLIBase(TestDvc):
         else:
             args += []
 
-        stage = self.dvc.add(self.FOO)
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
         cache = stage.outs[0].cache
 
-        stage_dir = self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        stage_dir = stages[0]
+        self.assertTrue(stage_dir is not None)
         cache_dir = stage_dir.outs[0].cache
 
         # FIXME check status output
