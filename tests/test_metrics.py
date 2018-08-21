@@ -219,7 +219,9 @@ class TestCachedMetrics(TestDvc):
         with open('metrics.json', 'w+') as fd:
             json.dump({'metrics': branch}, fd)
 
-        stage = self.dvc.add('metrics.json')
+        stages = self.dvc.add('metrics.json')
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
         self.assertNotEqual(stage, None)
 
         self.dvc.scm.add(['.gitignore', 'metrics.json.dvc'])

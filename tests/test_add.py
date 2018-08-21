@@ -19,7 +19,10 @@ class TestAdd(TestDvc):
     def test(self):
         md5 = file_md5(self.FOO)[0]
 
-        stage = self.dvc.add(self.FOO)
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
 
         self.assertIsInstance(stage, Stage)
         self.assertTrue(os.path.isfile(stage.path))
@@ -40,8 +43,10 @@ class TestAddDirectory(TestDvc):
         dname = 'directory'
         os.mkdir(dname)
         self.create(os.path.join(dname, 'file'), 'file')
-        stage = self.dvc.add(dname)
-        self.assertNotEqual(stage, None)
+        stages = self.dvc.add(dname)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
 
@@ -52,12 +57,29 @@ class TestAddDirectory(TestDvc):
             self.assertTrue('\\' not in info['relpath'])
 
 
+class TestAddDirectoryRecursive(TestDvc):
+    def test(self):
+        stages = self.dvc.add(self.DATA_DIR, recursive=True)
+        self.assertEqual(len(stages), 2)
+
+
+class TestAddCmdDirectoryRecursive(TestDvc):
+    def test(self):
+        ret = main(['add',
+                    '--recursive',
+                    self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+
 class TestAddDirectoryWithForwardSlash(TestDvc):
     def test(self):
         dname = 'directory/'
         os.mkdir(dname)
         self.create(os.path.join(dname, 'file'), 'file')
-        stage = self.dvc.add(dname)
+        stages = self.dvc.add(dname)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
         self.assertEquals(os.path.abspath('directory.dvc'), stage.path)
 
 class TestAddTrackedFile(TestDvc):
@@ -78,20 +100,30 @@ class TestAddDirWithExistingCache(TestDvc):
         os.mkdir(dname)
         shutil.copyfile(self.FOO, fname)
 
-        self.dvc.add(self.FOO)
-        self.dvc.add(dname)
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+        stages = self.dvc.add(dname)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
 
 
 class TestAddModifiedDir(TestDvc):
     def test(self):
-        self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
         os.unlink(self.DATA)
-        self.dvc.add(self.DATA_DIR)
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
 
 
 class TestAddFileInDir(TestDvc):
     def test(self):
-        stage = self.dvc.add(self.DATA_SUB)
+        stages = self.dvc.add(self.DATA_SUB)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
         self.assertNotEqual(stage, None)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
@@ -104,7 +136,9 @@ class TestAddExternalLocalFile(TestDvc):
         fname = os.path.join(dname, 'foo')
         shutil.copyfile(self.FOO, fname)
 
-        stage = self.dvc.add(fname)
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
         self.assertNotEqual(stage, None)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
