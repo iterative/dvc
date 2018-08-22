@@ -47,7 +47,7 @@ class Dagascii(object):
 
         sug.init_all(roots=r, optimize=True)
 
-        sug.yspace = 2*VertexViewer.h
+        sug.yspace = VertexViewer.h
         sug.xspace = minw
         sug.route_edge = route_with_lines
 
