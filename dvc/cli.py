@@ -26,6 +26,7 @@ from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow
+from dvc.logger import Logger
 from dvc import VERSION
 
 
@@ -41,7 +42,7 @@ def _fix_subparsers(subparsers):
 
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('error: %s\n' % message)
+        sys.stderr.write('{}{}\n'.format(Logger.error_prefix(), message))
         self.print_help()
         sys.exit(2)
 
@@ -784,11 +785,7 @@ def parse_args(argv=None):
             cwd = os.curdir
         path = os.path.join(cwd, 'Dvcfile')
         if not os.path.exists(path):
-            msg = "error: default target '{}' does not exist.\n"
-            sys.stderr.write(msg.format(path))
-            sys.stderr.flush()
-            repro_parser.print_help()
-            sys.exit(2)
+            parser.error("default target '{}' does not exist.".format(path))
         args.targets = ['Dvcfile']
 
     return args
