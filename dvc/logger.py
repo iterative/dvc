@@ -84,20 +84,23 @@ class Logger(object):
 
     @staticmethod
     def error(msg, exc=None):
+        prefix = Logger.colorize('Error: ', 'error')
         str_exc, str_tb = Logger.parse_exc(exc)
         if Logger.logger().getEffectiveLevel() == logging.DEBUG and exc:
             str_tb = str_tb if str_tb else traceback.format_exc()
-            Logger.logger().error(str_tb)
-        return Logger.logger().error(Logger.colorize(msg + str_exc, 'error'))
+            Logger.logger().error(prefix + str_tb)
+        return Logger.logger().error(prefix + msg + str_exc)
 
     @staticmethod
     def warn(msg):
-        return Logger.logger().warn(Logger.colorize(msg, 'warn'))
+        prefix = Logger.colorize('Warning: ', 'warn')
+        return Logger.logger().warn(prefix + msg)
 
     @staticmethod
     def debug(msg):
-        return Logger.logger().debug(Logger.colorize(msg, 'debug'))
+        prefix = Logger.colorize('Debug: ', 'debug')
+        return Logger.logger().debug(prefix + msg)
 
     @staticmethod
     def info(msg):
-        return Logger.logger().info(Logger.colorize(msg, 'info'))
+        return Logger.logger().info(msg)
