@@ -785,7 +785,11 @@ def parse_args(argv=None):
             cwd = os.curdir
         path = os.path.join(cwd, 'Dvcfile')
         if not os.path.exists(path):
-            parser.error("default target '{}' does not exist.".format(path))
+            msg = "default target '{}' does not exist.".format(path)
+            if issubclass(args.func, CmdRepro):
+                repro_parser.error(msg)
+            elif issubclass(args.func, CmdPipelineShow):
+                pipeline_show_parser.error(msg)
         args.targets = ['Dvcfile']
 
     return args
