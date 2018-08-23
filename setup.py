@@ -23,7 +23,7 @@ install_requires = [
     "jsonpath-rw==1.4.0",
     "reflink==0.2.0",
     "requests>=2.18.4",
-    "grandalf==0.55555",
+    "grandalf==0.6",
     "asciicanvas==0.0.3",
 ]
 
