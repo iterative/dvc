@@ -57,6 +57,7 @@ class RemoteS3(RemoteBase):
         else:
             creds = {}
 
+        self.creds = creds
         self.region = creds.get('region', self.region)
         self.aws_access_key_id = creds.get('aws_access_key_id', None)
         self.aws_secret_access_key = creds.get('aws_secret_access_key', None)
@@ -71,12 +72,14 @@ class RemoteS3(RemoteBase):
 
     @property
     def s3(self):
-        session = boto3.session.Session(profile_name=self.profile)
-        return session.client('s3',
-                              aws_access_key_id=self.aws_access_key_id,
-                              aws_secret_access_key=self.aws_secret_access_key,
-                              region_name=self.region,
-                              endpoint_url=self.endpoint_url)
+        if not self.creds:
+            session = boto3.session.Session(profile_name=self.profile)
+        else:
+            session = boto3.session.Session(
+                             aws_access_key_id=self.aws_access_key_id,
+                             aws_secret_access_key=self.aws_secret_access_key,
+                             region_name=self.region)
+        return session.client('s3', endpoint_url=self.endpoint_url)
 
     def get_etag(self, bucket, key):
         try:
