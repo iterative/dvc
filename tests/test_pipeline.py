@@ -16,6 +16,18 @@ class TestPipelineShow(TestRepro):
         ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
         self.assertEqual(ret, 0)        
 
+    def test_ascii(self):
+        ret = main(['pipeline', 'show', '--ascii', self.file1_stage])
+        self.assertEqual(ret, 0)
+
+    def test_ascii_commands(self):
+        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--commands'])
+        self.assertEqual(ret, 0)
+
+    def test_ascii_outs(self):
+        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--outs'])
+        self.assertEqual(ret, 0)
+
     def test_not_dvc_file(self):
         ret = main(['pipeline', 'show', self.file1])
         self.assertNotEqual(ret, 0)

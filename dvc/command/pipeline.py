@@ -63,6 +63,10 @@ class CmdPipelineShow(CmdBase):
                 nodes.add(to_stage.relpath)
                 edges.append((from_stage.relpath, to_stage.relpath))
 
+        nodes = list(nodes)
+        if len(nodes) == 0:
+            return
+
         d = Dagascii(nodes, edges)
         d.draw()
 
