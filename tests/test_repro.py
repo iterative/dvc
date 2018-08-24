@@ -380,6 +380,8 @@ class TestReproExternalBase(TestDvc):
 
         sleep()
 
+        self.dvc.status()
+
         stages = self.dvc.reproduce(import_stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(os.path.exists('import'))
