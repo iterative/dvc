@@ -4,6 +4,7 @@ from dvc.command.data_sync import CmdDataBase
 class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 10
     STATUS_INDENT = '\t'
+    UP_TO_DATE_MSG = "Pipeline is up to date. Nothing to reproduce."
 
     def _normalize(self, s):
         s += ':'
@@ -32,8 +33,8 @@ class CmdDataStatus(CmdDataBase):
             if st:
                 self._show(st, indent)
             else:
-                self.project.logger.info("Nothing to reproduce. "
-                                         "Pipeline is up to date.")
+                self.project.logger.info(self.UP_TO_DATE_MSG)
+
         except Exception as exc:
             self.project.logger.error('Failed to obtain data status', exc)
             return 1

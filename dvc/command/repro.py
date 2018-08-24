@@ -1,6 +1,7 @@
 import os
 
 from dvc.command.base import CmdBase
+from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
 
 
@@ -14,11 +15,16 @@ class CmdRepro(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                self.project.reproduce(target,
+                stages = self.project.reproduce(
+                                       target,
                                        recursive=recursive,
                                        force=self.args.force,
                                        dry=self.args.dry,
                                        interactive=self.args.interactive)
+
+                if len(stages) == 0:
+                    self.project.logger.info(CmdDataStatus.UP_TO_DATE_MSG)
+
                 if self.args.metrics:
                     self.project.metrics_show()
             except DvcException as ex:
