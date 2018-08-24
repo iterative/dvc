@@ -217,7 +217,12 @@ def parse_args(argv=None):
     run_parser.add_argument(
                         '-f',
                         '--file',
-                        help='Specify name of the state file.')
+                        help="Specify name of the stage file. It should be "
+                             "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
+                             "'prepare.dvc', 'clean.dvc', etc) in order for "
+                             "dvc to be able to find it later. By default "
+                             "the first output basename + .dvc is used as "
+                             "a stage filename.")
     run_parser.add_argument(
                         '-c',
                         '--cwd',
