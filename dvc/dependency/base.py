@@ -59,7 +59,11 @@ class DependencyBase(object):
     def status(self):
         if self.changed():
             # FIXME better msgs
-            return {self.rel_path: 'changed'}
+            if self.path_info['scheme'] == 'local':
+                p = self.rel_path
+            else:
+                p = self.path
+            return {p: 'changed'}
         return {}
 
     def save(self):

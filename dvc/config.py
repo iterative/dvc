@@ -10,8 +10,9 @@ from dvc.exceptions import DvcException
 
 class ConfigError(DvcException):
     """ DVC config exception """
-    def __init__(self, ex=None):
-        super(ConfigError, self).__init__('Config file error', ex)
+    def __init__(self, msg, ex=None):
+        super(ConfigError, self).__init__('Config file error: {}'.format(msg),
+                                          ex)
 
 
 def supported_url(url):
