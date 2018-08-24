@@ -42,6 +42,17 @@ data file suffixes and prefixes.
 .. contents:: **Contents**
   :backlinks: none
 
+How DVC works
+=============
+
+DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
+To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
+network storage (via SSH, for example).
+
+.. image:: https://dvc.org/static/img/flow.gif
+   :target: https://dvc.org/static/img/flow.gif
+   :alt: how_dvc_works
+
 Quick start
 ===========
 
@@ -111,18 +122,6 @@ Related technologies
 
 #. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
-
-How DVC works
-=============
-
-DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
-To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
-network storage (via SSH, for example).
-
-.. image:: https://dvc.org/static/img/flow.png
-   :target: https://dvc.org/static/img/flow.png
-   :alt: how_dvc_works
-
 
 Contributing
 ============
