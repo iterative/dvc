@@ -3,7 +3,7 @@ import filecmp
 
 from dvc.main import main
 from dvc.utils import file_md5
-from dvc.stage import Stage
+from dvc.stage import Stage, StageFileBadNameError
 from dvc.command.run import CmdRun
 from dvc.exceptions import OutputDuplicationError
 
@@ -53,6 +53,17 @@ class TestRunEmpty(TestDvc):
                      outs_no_cache=[],
                      fname='empty.dvc',
                      cwd=os.curdir)
+
+
+class TestRunBadStageFilename(TestDvc):
+    def test(self):
+        with self.assertRaises(StageFileBadNameError):
+            self.dvc.run(cmd='',
+                         deps=[],
+                         outs=[],
+                         outs_no_cache=[],
+                         fname='empty',
+                         cwd=os.curdir)
 
 
 class TestRunNoExec(TestDvc):

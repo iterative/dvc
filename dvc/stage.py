@@ -36,6 +36,13 @@ class StageFileIsNotDvcFileError(DvcException):
         super(StageFileIsNotDvcFileError, self).__init__(msg)
 
 
+class StageFileBadNameError(DvcException):
+    def __init__(self, fname):
+        msg = "Bad stage filename '{}'. Stage files should be named " \
+              "'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
+        super(StageFileBadNameError, self).__init__(msg.format(fname, fname))
+
+
 class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
@@ -93,15 +100,19 @@ class Stage(object):
         return self.cmd is None
 
     @staticmethod
-    def is_stage_file(path):
-        if not os.path.isfile(path):
-            return False
-
+    def is_stage_filename(path):
         if not path.endswith(Stage.STAGE_FILE_SUFFIX) \
            and os.path.basename(path) != Stage.STAGE_FILE:
             return False
 
         return True
+
+    @staticmethod
+    def is_stage_file(path):
+        if not os.path.isfile(path):
+            return False
+
+        return Stage.is_stage_filename(path)
 
     def changed_md5(self):
         md5 = self.dumpd().get(self.PARAM_MD5, None)
@@ -277,6 +288,11 @@ class Stage(object):
         return stage
 
     @staticmethod
+    def _check_dvc_filename(fname):
+        if not Stage.is_stage_filename(fname):
+            raise StageFileBadNameError(os.path.relpath(fname))
+
+    @staticmethod
     def _check_dvc_file(fname):
         sname = fname + Stage.STAGE_FILE_SUFFIX
         if Stage.is_stage_file(sname):
@@ -287,6 +303,8 @@ class Stage(object):
         if not os.path.exists(fname):
             Stage._check_dvc_file(fname)
             raise StageFileDoesNotExistError(fname)
+
+        Stage._check_dvc_filename(fname)
 
         if not Stage.is_stage_file(fname):
             Stage._check_dvc_file(fname)
@@ -319,6 +337,8 @@ class Stage(object):
     def dump(self, fname=None):
         if not fname:
             fname = self.path
+
+        self._check_dvc_filename(fname)
 
         msg = "Saving information to '{}'.".format(os.path.relpath(fname))
         Logger.info(msg)
