@@ -58,6 +58,7 @@ class RemoteSSH(RemoteBase):
                                    getpass.getuser())
         self.prefix = self.group('path')
         self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
+        self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
@@ -77,7 +78,10 @@ class RemoteSSH(RemoteBase):
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        ssh.connect(host, username=user, port=port)
+        ssh.connect(host,
+                    username=user,
+                    port=port,
+                    key_filename=self.keyfile)
 
         return ssh
 
