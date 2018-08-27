@@ -46,6 +46,8 @@ class RemoteSSH(RemoteBase):
     REQUIRES = {'paramiko': paramiko}
     PARAM_MD5 = 'md5'
 
+    DEFAULT_PORT = 22
+
     def __init__(self, project, config):
         self.project = project
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
@@ -55,30 +57,39 @@ class RemoteSSH(RemoteBase):
             self.user = config.get(Config.SECTION_REMOTE_USER,
                                    getpass.getuser())
         self.prefix = self.group('path')
+        self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
+        self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
                  'host': self.host,
                  'user': self.user,
+                 'port': self.port,
                  'path': posixpath.join(self.prefix,
                                         md5[0:2], md5[2:])} for md5 in md5s]
 
-    def ssh(self, host=None, user=None):
-        msg = "Establishing ssh connection with '{}' as user '{}'"
-        Logger.debug(msg.format(host, user))
+    def ssh(self, host=None, user=None, port=None):
+        msg = "Establishing ssh connection with '{}' " \
+              "through port '{}' as user '{}'"
+        Logger.debug(msg.format(host, port, user))
 
         ssh = paramiko.SSHClient()
 
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        ssh.connect(host, username=user)
+        ssh.connect(host,
+                    username=user,
+                    port=port,
+                    key_filename=self.keyfile)
 
         return ssh
 
     def exists(self, path_infos):
         ret = []
-        ssh = self.ssh(host=self.host, user=self.user)
+        ssh = self.ssh(host=self.host,
+                       user=self.user,
+                       port=self.port)
         cmd = 'find {} -type f -follow -print'.format(self.prefix)
         stdout = self._exec(ssh, cmd)
         plist = stdout.split()
@@ -103,7 +114,9 @@ class RemoteSSH(RemoteBase):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError
 
-        ssh = self.ssh(host=path_info['host'], user=path_info['user'])
+        ssh = self.ssh(host=path_info['host'],
+                       user=path_info['user'],
+                       port=path_info['port'])
 
         # Use different md5 commands depending on os
         stdout = self._exec(ssh, 'uname').strip()
@@ -133,7 +146,8 @@ class RemoteSSH(RemoteBase):
         assert from_info['user'] == to_info['user']
 
         s = ssh if ssh else self.ssh(host=from_info['host'],
-                                     user=from_info['user'])
+                                     user=from_info['user'],
+                                     port=from_info['port'])
 
         dname = posixpath.dirname(to_info['path'])
         self._exec(s, 'mkdir -p {}'.format(dname))
@@ -159,6 +173,7 @@ class RemoteSSH(RemoteBase):
         cache = {}
         cache['scheme'] = 'ssh'
         cache['host'] = self.host
+        cache['port'] = self.port
         cache['user'] = self.user
         cache['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
 
@@ -236,7 +251,9 @@ class RemoteSSH(RemoteBase):
                                                       path_info['host'],
                                                       path_info['path']))
 
-        ssh = self.ssh(host=path_info['host'], user=path_info['user'])
+        ssh = self.ssh(host=path_info['host'],
+                       user=path_info['user'],
+                       port=path_info['port'])
         ssh.open_sftp().remove(path_info['path'])
         ssh.close()
 
@@ -247,7 +264,9 @@ class RemoteSSH(RemoteBase):
                  names=None):
         names = self._verify_path_args(from_infos, to_infos, names)
 
-        ssh = self.ssh(host=from_infos[0]['host'], user=from_infos[0]['user'])
+        ssh = self.ssh(host=from_infos[0]['host'],
+                       user=from_infos[0]['user'],
+                       port=from_infos[0]['port'])
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info['scheme'] != 'ssh':
@@ -255,6 +274,7 @@ class RemoteSSH(RemoteBase):
 
             if to_info['scheme'] == 'ssh':
                 assert from_info['host'] == to_info['host']
+                assert from_info['port'] == to_info['port']
                 assert from_info['user'] == to_info['user']
                 self.cp(from_info, to_info, ssh=ssh)
                 continue
@@ -291,7 +311,9 @@ class RemoteSSH(RemoteBase):
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
-        ssh = self.ssh(host=to_infos[0]['host'], user=to_infos[0]['user'])
+        ssh = self.ssh(host=to_infos[0]['host'],
+                       user=to_infos[0]['user'],
+                       port=to_infos[0]['port'])
         sftp = ssh.open_sftp()
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
@@ -332,7 +354,9 @@ class RemoteSSH(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all_md5s(self):
-        ssh = self.ssh(host=self.host, user=self.user)
+        ssh = self.ssh(host=self.host,
+                       user=self.user,
+                       port=self.port)
         cmd = 'find {} -type f -follow -print'.format(self.prefix)
         stdout = self._exec(ssh, cmd)
         flist = stdout.split()
@@ -351,6 +375,7 @@ class RemoteSSH(RemoteBase):
             path_info = {'scheme': 'ssh',
                          'user': self.user,
                          'host': self.host,
+                         'port': self.port,
                          'path': posixpath.join(self.prefix,
                                                 md5[0:2], md5[2:])}
             self.remove(path_info)

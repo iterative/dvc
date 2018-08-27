@@ -132,6 +132,8 @@ class Config(object):
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
     SECTION_REMOTE_USER = 'user'
+    SECTION_REMOTE_PORT = 'port'
+    SECTION_REMOTE_KEY_FILE = 'keyfile'
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: And(supported_url, error="Unsupported URL"),
         Optional(SECTION_AWS_REGION): str,
@@ -141,6 +143,8 @@ class Config(object):
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_REMOTE_USER): str,
+        Optional(SECTION_REMOTE_PORT): int,
+        Optional(SECTION_REMOTE_KEY_FILE): str,
     }
 
     SCHEMA = {
