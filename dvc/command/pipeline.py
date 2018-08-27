@@ -33,8 +33,6 @@ class CmdPipelineShow(CmdBase):
 
         pipelines = list(filter(lambda g: node in g.nodes(),
                                 self.project.pipelines()))
-        if len(pipelines) == 0:
-            return
 
         assert len(pipelines) == 1
         G = pipelines[0]
@@ -46,9 +44,9 @@ class CmdPipelineShow(CmdBase):
             from_stage = stages[e[0]]
             to_stage = stages[e[1]]
             if commands:
+                nodes.add(from_stage.cmd)
                 if to_stage.cmd is None:
                     continue
-                nodes.add(from_stage.cmd)
                 nodes.add(to_stage.cmd)
                 edges.append((from_stage.cmd, to_stage.cmd))
             elif outs:
