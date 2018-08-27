@@ -146,20 +146,25 @@ class TestReproDry(TestReproChangedData):
 
 
 class TestReproChangedDeepData(TestReproChangedData):
-    def test(self):
-        file2 = 'file2'
-        file2_stage = file2 + '.dvc'
-        self.dvc.run(fname=file2_stage,
-                     outs=[file2],
-                     deps=[self.file1, self.CODE],
-                     cmd='python {} {} {}'.format(self.CODE, self.file1, file2))
+    def setUp(self):
+        super(TestReproChangedDeepData, self).setUp()
 
+        self.file2 = 'file2'
+        self.file2_stage = self.file2 + '.dvc'
+        self.dvc.run(fname=self.file2_stage,
+                     outs=[self.file2],
+                     deps=[self.file1, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE,
+                                                  self.file1,
+                                                  self.file2))
+
+    def test(self):
         self.swap_foo_with_bar()
 
-        stages = self.dvc.reproduce(file2_stage)
+        stages = self.dvc.reproduce(self.file2_stage)
 
         self.assertTrue(filecmp.cmp(self.file1, self.BAR, shallow=False))
-        self.assertTrue(filecmp.cmp(file2, self.BAR, shallow=False))
+        self.assertTrue(filecmp.cmp(self.file2, self.BAR, shallow=False))
         self.assertEqual(len(stages), 3)
 
 
