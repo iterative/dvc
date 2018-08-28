@@ -20,7 +20,7 @@ class CmdPipelineShow(CmdBase):
                 self.project.logger.info(stages[n].cmd)
             elif outs:
                 for out in stages[n].outs:
-                    self.project.logger.info(out.rel_path)
+                    self.project.logger.info(str(out))
             else:
                 self.project.logger.info(n)
 
@@ -52,10 +52,10 @@ class CmdPipelineShow(CmdBase):
             elif outs:
                 for from_out in from_stage.outs:
                     for to_out in to_stage.outs:
-                        nodes.add(from_out.rel_path)
-                        nodes.add(to_out.rel_path)
-                        edges.append((from_out.rel_path,
-                                      to_out.rel_path))
+                        nodes.add(str(from_out))
+                        nodes.add(str(to_out))
+                        edges.append((str(from_out),
+                                      str(to_out)))
             else:
                 nodes.add(from_stage.relpath)
                 nodes.add(to_stage.relpath)

@@ -31,6 +31,9 @@ class DependencyBase(object):
         self.project = stage.project
         self.path = path
 
+    def __str__(self):
+        return self.path
+
     @classmethod
     def match(cls, url):
         return re.match(cls.REGEX, url)
