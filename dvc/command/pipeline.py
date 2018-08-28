@@ -20,7 +20,7 @@ class CmdPipelineShow(CmdBase):
                 self.project.logger.info(stages[n].cmd)
             elif outs:
                 for out in stages[n].outs:
-                    self.project.logger.info(out.rel_path)
+                    self.project.logger.info(str(out))
             else:
                 self.project.logger.info(n)
 
@@ -38,31 +38,37 @@ class CmdPipelineShow(CmdBase):
         G = pipelines[0]
         stages = networkx.get_node_attributes(G, 'stage')
 
-        nodes = set()
+        nodes = []
+        for n in G.nodes():
+            stage = stages[n]
+            if commands:
+                if stage.cmd is None:
+                    continue
+                nodes.append(stage.cmd)
+            elif outs:
+                for out in stage.outs:
+                    nodes.append(str(out))
+            else:
+                nodes.append(stage.relpath)
+
+        if len(nodes) == 0:
+            return
+
         edges = []
         for e in G.edges():
             from_stage = stages[e[0]]
             to_stage = stages[e[1]]
             if commands:
-                nodes.add(from_stage.cmd)
                 if to_stage.cmd is None:
                     continue
-                nodes.add(to_stage.cmd)
                 edges.append((from_stage.cmd, to_stage.cmd))
             elif outs:
                 for from_out in from_stage.outs:
                     for to_out in to_stage.outs:
-                        nodes.add(from_out.rel_path)
-                        nodes.add(to_out.rel_path)
-                        edges.append((from_out.rel_path,
-                                      to_out.rel_path))
+                        edges.append((str(from_out),
+                                      str(to_out)))
             else:
-                nodes.add(from_stage.relpath)
-                nodes.add(to_stage.relpath)
                 edges.append((from_stage.relpath, to_stage.relpath))
-
-        nodes = list(nodes)
-        assert len(nodes) > 0
 
         d = Dagascii(nodes, edges)
         d.draw()

@@ -38,6 +38,9 @@ class DependencyLOCAL(DependencyBase):
         self.path_info = {'scheme': 'local',
                           'path': self.path}
 
+    def __str__(self):
+        return self.rel_path
+
     @property
     def sep(self):
         return os.sep
