@@ -272,6 +272,8 @@ class TestReproChangedDirData(TestDvc):
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 0)
 
+        sleep()
+
         with open(self.DATA_SUB, 'a') as fd:
             fd.write('add')
 
