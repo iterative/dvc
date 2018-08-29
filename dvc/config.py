@@ -143,7 +143,7 @@ class Config(object):
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_REMOTE_USER): str,
-        Optional(SECTION_REMOTE_PORT): int,
+        Optional(SECTION_REMOTE_PORT): Use(int),
         Optional(SECTION_REMOTE_KEY_FILE): str,
     }
 
