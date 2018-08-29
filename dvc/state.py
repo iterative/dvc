@@ -96,18 +96,14 @@ class State(object):
 
     @staticmethod
     def mtime(path):
+        mtime = os.path.getmtime(path)
         if os.path.isdir(path):
-            mtime = -1
             for root, dirs, files in os.walk(path):
                 for fname in files:
                     f = os.path.join(root, fname)
                     m = os.path.getmtime(f)
                     if m > mtime:
                         mtime = m
-            if mtime == -1:
-                mtime = os.path.getmtime(path)
-        else:
-            mtime = os.path.getmtime(path)
 
         return str(int(nanotime.timestamp(mtime)))
 

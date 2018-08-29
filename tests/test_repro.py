@@ -281,6 +281,12 @@ class TestReproChangedDirData(TestDvc):
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
 
+        # Check that dvc indeed registers changed output dir
+        shutil.move(self.BAR, dir_name)
+        stages = self.dvc.reproduce(stage.path)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
 
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
