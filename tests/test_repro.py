@@ -255,6 +255,31 @@ class TestReproChangedDir(TestDvc):
         self.assertEqual(len(stages), 1)
 
 
+class TestReproChangedDirData(TestDvc):
+    def test(self):
+        dir_name = 'dir'
+        dir_code = 'dir_code.py'
+        with open(dir_code, 'w+') as fd:
+            fd.write("import os; import sys; import shutil; shutil.copytree(sys.argv[1], sys.argv[2])")
+
+        stage = self.dvc.run(outs=[dir_name],
+                             deps=[self.DATA_DIR, dir_code],
+                             cmd="python {} {} {}".format(dir_code,
+                                                          self.DATA_DIR,
+                                                          dir_name))
+        self.assertTrue(stage is not None)
+
+        stages = self.dvc.reproduce(stage.path)
+        self.assertEqual(len(stages), 0)
+
+        with open(self.DATA_SUB, 'a') as fd:
+            fd.write('add')
+
+        stages = self.dvc.reproduce(stage.path)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
+
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
         with open(self.file1_stage, 'r') as fd:
