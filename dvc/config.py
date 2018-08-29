@@ -171,7 +171,7 @@ class Config(object):
             # need to convert our config to dict before passing it to
             self._config = self._lower(self._config)
             local = self._lower(local)
-            self._config.update(local)
+            self._config = self._merge(self._config, local)
 
             self._config = Schema(self.SCHEMA).validate(self._config)
 
@@ -181,6 +181,17 @@ class Config(object):
             self._config.filename = self.config_file
         except Exception as ex:
             raise ConfigError(ex)
+
+    @staticmethod
+    def _merge(first, second):
+        res = {}
+        sections = list(first.keys()) + list(second.keys())
+        for section in sections:
+            f = first.get(section, {}).copy()
+            s = second.get(section, {}).copy()
+            f.update(s)
+            res[section] = f
+        return res
 
     @staticmethod
     def _lower(config):
