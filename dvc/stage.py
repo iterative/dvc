@@ -8,7 +8,6 @@ from schema import Schema, SchemaError, Optional, Or, And
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.prompt import prompt
 from dvc.logger import Logger
 from dvc.utils import dict_md5, fix_env
 
@@ -183,7 +182,8 @@ class Stage(object):
 
         msg = "Going to reproduce '{}'. Are you sure you want to continue?"
         msg = msg.format(self.relpath)
-        if interactive and not prompt(msg):
+        if interactive \
+           and not self.project.prompt.prompt(msg):
             raise DvcException('Reproduction aborted by the user')
 
         self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
@@ -279,7 +279,8 @@ class Stage(object):
             relpath = os.path.relpath(path)
             msg = "'{}' already exists. " \
                   "Do you wish to run the command and overwrite it?"
-            if not overwrite and not prompt(msg.format(relpath), False):
+            if not overwrite \
+               and not project.prompt.prompt(msg.format(relpath), False):
                 raise DvcException("'{}' already exists".format(relpath))
 
         stage.cwd = cwd

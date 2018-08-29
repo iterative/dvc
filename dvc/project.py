@@ -28,6 +28,7 @@ class Project(object):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
+        from dvc.prompt import Prompt
 
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
@@ -46,6 +47,7 @@ class Project(object):
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
+        self.prompt = Prompt()
 
         self._ignore()
 
@@ -227,7 +229,8 @@ class Project(object):
             metrics_no_cache=[],
             fname=Stage.STAGE_FILE,
             cwd=os.curdir,
-            no_exec=False):
+            no_exec=False,
+            overwrite=False):
         stage = Stage.loads(project=self,
                             fname=fname,
                             cmd=cmd,
@@ -236,7 +239,7 @@ class Project(object):
                             outs_no_cache=outs_no_cache,
                             metrics_no_cache=metrics_no_cache,
                             deps=deps,
-                            overwrite=False)
+                            overwrite=overwrite)
 
         self._check_output_duplication(stage.outs)
 

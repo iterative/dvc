@@ -5,6 +5,9 @@ from dvc.exceptions import DvcException
 class CmdRun(CmdBase):
     def run(self):
         try:
+            if self.args.yes:
+                self.project.prompt.default = True
+
             self.project.run(cmd=' '.join(self.args.command),
                              outs=self.args.outs,
                              outs_no_cache=self.args.outs_no_cache,

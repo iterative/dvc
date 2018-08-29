@@ -236,6 +236,14 @@ def parse_args(argv=None):
                         help="Only create stage file without actually "
                              "running it.")
     run_parser.add_argument(
+                        '-y',
+                        '--yes',
+                        action='store_true',
+                        default=False,
+                        help="Automatic 'yes' answer to all prompts. E.g. "
+                             "when '.dvc' file exists and dvc asks if you "
+                             "want to overwrite it.")
+    run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
                         help='Command or command file to execute.')
