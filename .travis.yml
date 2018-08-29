@@ -78,6 +78,8 @@ install:
   - bash ./scripts/ci/install.sh
   - pip install flake8
 before_script:
+  # stop the build if there are any readme formatting errors
+  - python setup.py checkdocs
   # stop the build if there are any flake8 errors
   - flake8 dvc
 script:
