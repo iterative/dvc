@@ -7,12 +7,19 @@ except NameError:
     pass
 
 
-def prompt(msg, default=False):  # pragma: no cover
-    if not sys.stdout.isatty():
-        return default
+class Prompt(object):
+    def __init__(self):
+        self.default = None
 
-    answer = input(msg + u' (y/n)\n').lower()
-    while answer not in ['yes', 'no', 'y', 'n']:
-        answer = input('Enter \'yes\' or \'no\'.\n').lower()
+    def prompt(self, msg, default=False):  # pragma: no cover
+        if self.default is not None:
+            return self.default
 
-    return answer[0] == "y"
+        if not sys.stdout.isatty():
+            return default
+
+        answer = input(msg + u' (y/n)\n').lower()
+        while answer not in ['yes', 'no', 'y', 'n']:
+            answer = input('Enter \'yes\' or \'no\'.\n').lower()
+
+        return answer[0] == "y"
