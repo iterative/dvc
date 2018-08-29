@@ -7,3 +7,5 @@ xmltodict>=0.11.0
 awscli>=1.14.18
 google-compute-engine
 pywin32; sys_platform == 'win32'
+Pygments
+collective.checkdocs
