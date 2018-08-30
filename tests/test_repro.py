@@ -259,6 +259,9 @@ class TestReproChangedDirData(TestDvc):
     def test(self):
         dir_name = 'dir'
         dir_code = 'dir_code.py'
+
+        sleep()
+
         with open(dir_code, 'w+') as fd:
             fd.write("import os; import sys; import shutil; shutil.copytree(sys.argv[1], sys.argv[2])")
 
