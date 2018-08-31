@@ -1,4 +1,6 @@
+import os
 import re
+import configobj
 
 from dvc.config import Config
 from dvc.command.config import CmdConfig
@@ -23,9 +25,35 @@ class CmdRemoteAdd(CmdConfig):
 
 
 class CmdRemoteRemove(CmdConfig):
+    def _remove_default(self, config_file, remote):
+        path = os.path.join(os.path.dirname(self.config_file),
+                            config_file)
+        config = configobj.ConfigObj(path)
+
+        core = config.get(Config.SECTION_CORE, None)
+        if core is None:
+            return
+
+        default = core.get(Config.SECTION_CORE_REMOTE, None)
+        if default is None:
+            return
+
+        if default == remote:
+            del config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE]
+            if len(config[Config.SECTION_CORE]) == 0:
+                del config[Config.SECTION_CORE]
+
+        config.write()
+
     def run(self):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        return self.unset(section, Config.SECTION_REMOTE_URL)
+        ret = self.unset(section)
+        if ret != 0:
+            return ret
+
+        self._remove_default(Config.CONFIG, self.args.name)
+        self._remove_default(Config.CONFIG_LOCAL, self.args.name)
+        return 0
 
 
 class CmdRemoteModify(CmdConfig):
