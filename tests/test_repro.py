@@ -18,6 +18,7 @@ from dvc.project import Project, ReproductionError
 from dvc.utils import file_md5
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
+from dvc.system import System
 
 from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
@@ -291,6 +292,13 @@ class TestReproChangedDirData(TestDvc):
         
         # Check that dvc indeed registers changed output dir
         shutil.move(self.BAR, dir_name)
+        sleep()
+        stages = self.dvc.reproduce(stage.path)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
+        # Check that dvc registers mtime change for the directory.
+        System.hardlink(self.DATA_SUB, self.DATA_SUB + '.lnk')
         sleep()
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
