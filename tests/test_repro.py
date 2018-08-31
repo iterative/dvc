@@ -265,6 +265,8 @@ class TestReproChangedDirData(TestDvc):
         with open(dir_code, 'w+') as fd:
             fd.write("import os; import sys; import shutil; shutil.copytree(sys.argv[1], sys.argv[2])")
 
+        sleep()
+            
         stage = self.dvc.run(outs=[dir_name],
                              deps=[self.DATA_DIR, dir_code],
                              cmd="python {} {} {}".format(dir_code,
@@ -280,12 +282,16 @@ class TestReproChangedDirData(TestDvc):
         with open(self.DATA_SUB, 'a') as fd:
             fd.write('add')
 
+        sleep()
+        
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
-
+        sleep()
+        
         # Check that dvc indeed registers changed output dir
         shutil.move(self.BAR, dir_name)
+        sleep()
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
