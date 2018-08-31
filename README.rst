@@ -7,7 +7,6 @@
 • `Discuss <https://discuss.dvc.org/>`_
 • `Blog <https://blog.dataversioncontrol.com/>`_
 • `Twitter <https://twitter.com/iterativeai>`_
-• `Slack <https://dvc-org.slack.com>`_
 • `Tutorial <https://dvc.org/doc/tutorial>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
