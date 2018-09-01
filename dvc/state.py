@@ -99,9 +99,9 @@ class State(object):
         mtime = os.path.getmtime(path)
         if os.path.isdir(path):
             for root, dirs, files in os.walk(path):
-                for fname in files:
-                    f = os.path.join(root, fname)
-                    m = os.path.getmtime(f)
+                for entry in list(dirs) + list(files):
+                    p = os.path.join(root, entry)
+                    m = os.path.getmtime(p)
                     if m > mtime:
                         mtime = m
 
