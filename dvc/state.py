@@ -86,13 +86,18 @@ class State(object):
                              exc)
                 return {}
 
-    def dump(self):
+    def _dump(self):
         if not self.state_file:
             return
 
         with SignalHandler():
             with open(self.state_file, 'w+') as fd:
                 json.dump(self._db, fd)
+
+    def dump(self):
+        with self._lock:
+            with self._lock_file:
+                self._dump()
 
     @staticmethod
     def mtime(path):
@@ -131,7 +136,7 @@ class State(object):
                 self._db[inode] = d
 
                 if dump:
-                    self.dump()
+                    self._dump()
 
         return (md5, info)
 
@@ -207,7 +212,7 @@ class LinkState(State):
             self._db[os.path.relpath(path, self.root_dir)] = d
             if dump:
                 with self._lock_file:
-                    self.dump()
+                    self._dump()
 
     def _do_remove_unused(self, used):
         items = self._db.copy().items()
@@ -233,4 +238,4 @@ class LinkState(State):
         with self._lock:
             with self._lock_file:
                 self._do_remove_unused(used)
-                self.dump()
+                self._dump()
