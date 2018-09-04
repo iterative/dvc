@@ -93,8 +93,9 @@ class State(object):
             return
 
         with SignalHandler():
+            j = json.dumps(self._db)
             with open(self.state_file, 'w+') as fd:
-                json.dump(self._db, fd)
+                fd.write(j)
 
     def dump(self):
         with self._lock:
