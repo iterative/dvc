@@ -43,6 +43,8 @@ class StateDuplicateError(DvcException):
 class State(object):
     STATE_FILE = 'state'
     STATE_LOCK_FILE = 'state.lock'
+    STATE_ENTRY_LIMIT = 10000
+    STATE_SIZE_LIMIT = 7 * 1024 * 1024
 
     def __init__(self, project):
         self.project = project
@@ -116,6 +118,14 @@ class State(object):
     def inode(path):
         return str(System.inode(path))
 
+    def _check_db_size(self):
+        if len(self._db.keys()) > self.STATE_ENTRY_LIMIT:
+            msg = "Entry limit size '{}' has been reached for '{}'. "
+            msg += "Dropping current state cache."
+            self.project.logger.debug(msg.format(self.STATE_ENTRY_LIMIT,
+                                                 self.state_file))
+            self._db = {}
+
     def _do_update(self, path, dump=True):
         if not os.path.exists(path):
             return (None, None)
@@ -128,15 +138,21 @@ class State(object):
             return (md5, None)
 
         md5, info = self._collect(path)
-        state = StateEntry(md5, mtime)
-        d = state.dumpd()
 
-        with self._lock:
-            with self._lock_file:
-                self._db[inode] = d
+        if os.path.getsize(path) > self.STATE_SIZE_LIMIT:
+            msg = "Saving info about '{}' to state file."
+            self.project.logger.debug(msg.format(path))
 
-                if dump:
-                    self._dump()
+            state = StateEntry(md5, mtime)
+            d = state.dumpd()
+
+            with self._lock:
+                with self._lock_file:
+                    self._check_db_size()
+                    self._db[inode] = d
+
+                    if dump:
+                        self._dump()
 
         return (md5, info)
 
