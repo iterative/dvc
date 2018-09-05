@@ -257,7 +257,7 @@ def parse_args(argv=None):
                         '-j',
                         '--jobs',
                         type=int,
-                        default=8*cpu_count(),
+                        default=4*cpu_count(),
                         help='Number of jobs to run simultaneously.')
     parent_cache_parser.add_argument(
                         '--show-checksums',
