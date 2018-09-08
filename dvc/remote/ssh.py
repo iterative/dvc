@@ -47,6 +47,7 @@ class RemoteSSH(RemoteBase):
     PARAM_MD5 = 'md5'
 
     DEFAULT_PORT = 22
+    TIMEOUT = 1800
 
     def __init__(self, project, config):
         self.project = project
@@ -59,6 +60,7 @@ class RemoteSSH(RemoteBase):
         self.prefix = self.group('path')
         self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
+        self.timeout= config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
@@ -81,7 +83,8 @@ class RemoteSSH(RemoteBase):
         ssh.connect(host,
                     username=user,
                     port=port,
-                    key_filename=self.keyfile)
+                    key_filename=self.keyfile,
+                    timeout=self.timeout)
 
         return ssh
 
