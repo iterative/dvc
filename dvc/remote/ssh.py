@@ -60,7 +60,7 @@ class RemoteSSH(RemoteBase):
         self.prefix = self.group('path')
         self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
-        self.timeout= config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
+        self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
@@ -108,10 +108,51 @@ class RemoteSSH(RemoteBase):
 
     def _exec(self, ssh, cmd):
         stdin, stdout, stderr = ssh.exec_command(cmd)
+        channel = stdout.channel
+
+        stdin.close()
+        channel.shutdown_write()
+
+        stdout_chunks = []
+        stderr_chunks = []
+        stdout_len = len(stdout.channel.in_buffer)
+        stderr_len = len(stderr.channel.in_stderr_buffer)
+        stdout_chunks.append(stdout.channel.recv(stdout_len))
+        stderr_chunks.append(stderr.channel.recv_stderr(stderr_len))
+        while (not channel.closed
+               or channel.recv_ready()
+               or channel.recv_stderr_ready()):
+            import select
+            got_chunk = False
+            readq, _, _ = select.select([stdout.channel], [], [], self.timeout)
+            for c in readq:
+                if c.recv_ready():
+                    stdout_chunks.append(stdout.channel.recv(len(c.in_buffer)))
+                    got_chunk = True
+
+                if c.recv_stderr_ready():
+                    stderr_len = len(c.in_stderr_buffer)
+                    s = stderr.channel.recv_stderr(stderr_len)
+                    stderr_chunks.append(s)
+                    got_chunk = True
+
+            if not got_chunk \
+               and stdout.channel.exit_status_ready() \
+               and not stderr.channel.recv_stderr_ready() \
+               and not stdout.channel.recv_ready():
+                stdout.channel.shutdown_read()
+                stdout.channel.close()
+                break
+
+        stdout.close()
+        stderr.close()
+
         if stdout.channel.recv_exit_status() != 0:
-            DvcException('SSH command \'{}\' failed: {}'.format(cmd,
-                                                                stderr.read()))
-        return stdout.read().decode('utf-8')
+            err = ''.join(stderr_chunks)
+            msg = 'SSH command \'{}\' failed: {}'.format(cmd, err)
+            raise DvcException(msg)
+
+        return b''.join(stdout_chunks).decode('utf-8')
 
     def md5(self, path_info):
         if path_info['scheme'] != 'ssh':
