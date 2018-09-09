@@ -115,10 +115,6 @@ class RemoteSSH(RemoteBase):
 
         stdout_chunks = []
         stderr_chunks = []
-        stdout_len = len(stdout.channel.in_buffer)
-        stderr_len = len(stderr.channel.in_stderr_buffer)
-        stdout_chunks.append(stdout.channel.recv(stdout_len))
-        stderr_chunks.append(stderr.channel.recv_stderr(stderr_len))
         while (not channel.closed
                or channel.recv_ready()
                or channel.recv_stderr_ready()):
