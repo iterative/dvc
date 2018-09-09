@@ -42,6 +42,19 @@ class StageFileBadNameError(DvcException):
         super(StageFileBadNameError, self).__init__(msg.format(fname, fname))
 
 
+class MissingDep(DvcException):
+    def __init__(self, deps):
+        assert len(deps) > 0
+
+        if len(deps) > 1:
+            dep = 'dependencies'
+        else:
+            dep = 'dependency'
+
+        msg = u'missing {}: {}'.format(dep, ', '.join(map(str, deps)))
+        super(MissingDep, self).__init__(msg)
+
+
 class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
@@ -354,7 +367,18 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
+    def _check_missing_deps(self):
+        missing = []
+        for dep in self.deps:
+            if not dep.exists:
+                missing.append(dep)
+
+        if len(missing) > 0:
+            raise MissingDep(missing)
+
     def run(self, dry=False):
+        self._check_missing_deps()
+
         if self.locked:
             msg = u'Verifying outputs in locked stage \'{}\''
             self.project.logger.info(msg.format(self.relpath))
