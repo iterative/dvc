@@ -54,7 +54,7 @@ class DependencyBase(object):
 
     @property
     def exists(self):
-        return self.remote.exists([self.path_info])
+        return self.remote.exists([self.path_info])[0]
 
     def changed(self):
         raise NotImplementedError
