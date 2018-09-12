@@ -1,39 +1,11 @@
 import os
-import json
+import sqlite3
 import nanotime
-import threading
 
-from dvc.lock import Lock
 from dvc.system import System
 from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
-from dvc.signal_handler import SignalHandler
 from dvc.logger import Logger
-
-
-class StateEntry(object):
-    PARAM_MTIME = 'mtime'
-    PARAM_MD5 = 'md5'
-
-    def __init__(self, md5, mtime):
-        self.mtime = mtime
-        self.md5 = md5
-
-    def update(self, md5, mtime):
-        self.mtime = mtime
-        self.md5 = md5
-
-    @staticmethod
-    def loadd(d):
-        mtime = d[StateEntry.PARAM_MTIME]
-        md5 = d[StateEntry.PARAM_MD5]
-        return StateEntry(md5, mtime)
-
-    def dumpd(self):
-        return {
-            self.PARAM_MD5: self.md5,
-            self.PARAM_MTIME: self.mtime,
-        }
 
 
 class StateDuplicateError(DvcException):
@@ -43,20 +15,29 @@ class StateDuplicateError(DvcException):
 class State(object):
     STATE_FILE = 'state'
     STATE_LOCK_FILE = 'state.lock'
-    STATE_ENTRY_LIMIT = 10000
-    STATE_SIZE_LIMIT = 7 * 1024 * 1024
+    STATE_TABLE = 'state'
+    STATE_TABLE_LAYOUT = "inode TEXT PRIMARY KEY, " \
+                         "mtime TEXT NOT NULL, " \
+                         "md5 TEXT NOT NULL"
 
     def __init__(self, project):
         self.project = project
         self.dvc_dir = project.dvc_dir
-        self._lock = threading.Lock()
-        if self.dvc_dir:
-            self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
-            self._lock_file = Lock(self.dvc_dir, self.STATE_LOCK_FILE)
-        else:
+
+        if not self.dvc_dir:
             self.state_file = None
-            self._lock_file = threading.Lock()
-        self._db = self.load()
+            return
+
+        self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
+        # Try loading once to check that the file is indeed a database
+        # and reformat it if it is not.
+        try:
+            db = self.load()
+            db.close()
+        except sqlite3.DatabaseError:
+            os.unlink(self.state_file)
+            db = self.load()
+            db.close()
 
     @staticmethod
     def init(project):
@@ -77,30 +58,17 @@ class State(object):
         return actual.split('.')[0] != md5.split('.')[0]
 
     def load(self):
-        if not self.state_file or not os.path.isfile(self.state_file):
-            return {}
-
-        with open(self.state_file, 'r') as fd:
-            try:
-                return json.load(fd)
-            except ValueError as exc:
-                Logger.error('Failed to load \'{}\''.format(self.state_file),
-                             exc)
-                return {}
-
-    def _dump(self):
-        if not self.state_file:
-            return
-
-        with SignalHandler():
-            j = json.dumps(self._db)
-            with open(self.state_file, 'w+') as fd:
-                fd.write(j)
-
-    def dump(self):
-        with self._lock:
-            with self._lock_file:
-                self._dump()
+        db = sqlite3.connect(self.state_file,
+                             check_same_thread=False,
+                             timeout=20)
+        c = db.cursor()
+        # Check that the state file is indeed a database
+        cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
+        c.execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE_LAYOUT))
+        c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        db.commit()
+        c.close()
+        return db
 
     @staticmethod
     def mtime(path):
@@ -119,64 +87,76 @@ class State(object):
     def inode(path):
         return str(System.inode(path))
 
-    def _check_db_size(self):
-        if len(self._db.keys()) > self.STATE_ENTRY_LIMIT:
-            msg = "Entry limit size '{}' has been reached for '{}'. "
-            msg += "Dropping current state cache."
-            self.project.logger.debug(msg.format(self.STATE_ENTRY_LIMIT,
-                                                 self.state_file))
-            self._db = {}
-
-    def _do_update(self, path, dump=True):
+    def _do_update(self, path, use_db=None):
         if not os.path.exists(path):
             return (None, None)
 
         mtime = self.mtime(path)
         inode = self.inode(path)
 
-        md5 = self._get(inode, mtime)
+        if use_db is None:
+            db = self.load()
+        else:
+            db = use_db
+
+        c = db.cursor()
+
+        md5 = self._get(inode, mtime, use_db=db)
         if md5:
             return (md5, None)
 
         md5, info = self._collect(path)
 
-        if os.path.getsize(path) > self.STATE_SIZE_LIMIT:
-            msg = "Saving info about '{}' to state file."
-            self.project.logger.debug(msg.format(path))
+        cmd = 'REPLACE INTO {}(inode, mtime, md5) ' \
+              'VALUES ("{}", "{}", "{}")'.format(self.STATE_TABLE,
+                                                 inode,
+                                                 mtime,
+                                                 md5)
 
-            state = StateEntry(md5, mtime)
-            d = state.dumpd()
-
-            with self._lock:
-                with self._lock_file:
-                    self._check_db_size()
-                    self._db[inode] = d
-
-                    if dump:
-                        self._dump()
+        c.execute(cmd)
+        c.close()
+        if use_db is None:
+            db.commit()
+            db.close()
 
         return (md5, info)
 
-    def update(self, path, dump=True):
-        return self._do_update(path, dump=dump)[0]
+    def update(self, path, use_db=None):
+        return self._do_update(path, use_db=use_db)[0]
 
-    def update_info(self, path, dump=True):
-        md5, info = self._do_update(path, dump=dump)
+    def update_info(self, path, use_db=None):
+        md5, info = self._do_update(path, use_db=use_db)
         if not info:
             info = self.project.cache.local.load_dir_cache(md5)
         return (md5, info)
 
-    def _get(self, inode, mtime):
-        with self._lock:
-            with self._lock_file:
-                d = self._db.get(inode, None)
+    def _get(self, inode, mtime, use_db=None):
+        cmd = 'SELECT * from {} WHERE inode="{}"'.format(self.STATE_TABLE,
+                                                         inode)
 
-        if not d:
+        if use_db is None:
+            db = self.load()
+        else:
+            db = use_db
+
+        c = db.cursor()
+        c.execute(cmd)
+        ret = c.fetchall()
+        c.close()
+
+        if use_db is None:
+            db.commit()
+            db.close()
+
+        if len(ret) == 0:
             return None
+        assert len(ret) == 1
+        assert len(ret[0]) == 3
+        i, m, md5 = ret[0]
+        assert i == inode
 
-        state = StateEntry.loadd(d)
-        if mtime == state.mtime:
-            return state.md5
+        if mtime == m:
+            return md5
 
         return None
 
@@ -187,55 +167,54 @@ class State(object):
         return self._get(inode, mtime)
 
 
-class LinkStateEntry(object):
-    PARAM_MTIME = 'mtime'
-    PARAM_INODE = 'inode'
-
-    def __init__(self, inode, mtime):
-        self.mtime = mtime
-        self.inode = inode
-
-    @staticmethod
-    def loadd(d):
-        mtime = d[LinkStateEntry.PARAM_MTIME]
-        inode = d[LinkStateEntry.PARAM_INODE]
-        return LinkStateEntry(inode, mtime)
-
-    def dumpd(self):
-        return {
-            self.PARAM_INODE: self.inode,
-            self.PARAM_MTIME: self.mtime,
-        }
-
-
 class LinkState(State):
     STATE_FILE = 'link.state'
     STATE_LOCK_FILE = STATE_FILE + '.lock'
+    STATE_TABLE = 'link'
+    STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
+                         "inode TEXT NOT NULL, " \
+                         "mtime TEXT NOT NULL"
 
     def __init__(self, project):
         super(LinkState, self).__init__(project)
         self.root_dir = project.root_dir
 
-    def update(self, path, dump=True):
+    def update(self, path, use_db=None):
         if not os.path.exists(path):
             return
 
         mtime = self.mtime(path)
         inode = self.inode(path)
+        relpath = os.path.relpath(path, self.root_dir)
 
-        with self._lock:
-            state = LinkStateEntry(inode, mtime)
-            d = state.dumpd()
-            self._db[os.path.relpath(path, self.root_dir)] = d
-            if dump:
-                with self._lock_file:
-                    self._dump()
+        if use_db is None:
+            db = self.load()
+        else:
+            db = use_db
 
-    def _do_remove_unused(self, used):
-        items = self._db.copy().items()
-        for p, s in items:
+        c = db.cursor()
+
+        cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
+              'VALUES ("{}", "{}", "{}")'.format(self.STATE_TABLE,
+                                                 relpath,
+                                                 inode,
+                                                 mtime)
+        c.execute(cmd)
+        c.close()
+
+        if use_db is None:
+            db.commit()
+            db.close()
+
+    def remove_unused(self, used):
+        unused = []
+
+        db = self.load()
+        c = db.cursor()
+        c.execute('SELECT * FROM {}'.format(self.STATE_TABLE))
+        for row in c:
+            p, i, m = row
             path = os.path.join(self.root_dir, p)
-            state = LinkStateEntry.loadd(s)
 
             if path in used:
                 continue
@@ -246,13 +225,16 @@ class LinkState(State):
             inode = self.inode(path)
             mtime = self.mtime(path)
 
-            if inode == state.inode and mtime == state.mtime:
+            if i == inode and m == mtime:
                 Logger.debug('Removing \'{}\' as unused link.'.format(path))
                 remove(path)
-                del self._db[p]
+                unused.append(p)
 
-    def remove_unused(self, used):
-        with self._lock:
-            with self._lock_file:
-                self._do_remove_unused(used)
-                self._dump()
+        db.commit()
+        for p in unused:
+            cmd = 'DELETE FROM {} WHERE path = "{}"'
+            c.execute(cmd.format(self.STATE_TABLE, p))
+
+        c.close()
+        db.commit()
+        db.close()

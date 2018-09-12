@@ -3,7 +3,7 @@ import stat
 import time
 
 from dvc.system import System
-from dvc.state import State, StateEntry
+from dvc.state import State
 from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc
@@ -38,9 +38,3 @@ class TestState(TestDvc):
 
         entry_md5 = state.update(path)
         self.assertEqual(entry_md5, md5)
-
-        # Reload state db to make sure that it stays the same
-        old_db = state._db
-        state = State(self.dvc)
-        new_db = state._db
-        self.assertEqual(old_db, new_db)
