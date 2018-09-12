@@ -106,9 +106,7 @@ class Project(object):
 
     def _ignore(self):
         flist = [self.state.state_file,
-                 self.state._lock_file.lock_file,
                  self.link_state.state_file,
-                 self.link_state._lock_file.lock_file,
                  self.lock.lock_file,
                  self.config.config_local_file,
                  self.updater.updater_file]
