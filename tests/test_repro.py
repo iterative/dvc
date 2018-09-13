@@ -146,6 +146,42 @@ class TestReproDry(TestReproChangedData):
         self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
 
+class TestReproDryNoExec(TestDvc):
+    def test(self):
+        deps = []
+        for d in range(3):
+            idir = 'idir{}'.format(d)
+            odir = 'odir{}'.format(d)
+
+            deps.append('-d')
+            deps.append(odir)
+
+            os.mkdir(idir)
+
+            f = os.path.join(idir, 'file')
+            with open(f, 'w+') as fobj:
+                fobj.write(str(d))
+
+            if os.name == 'nt':
+                cp = 'copy'
+            else:
+                cp = 'cp'
+
+            ret = main(['run',
+                        '--no-exec',
+                        '-d', idir,
+                        '-o', odir,
+                        "python -c 'import shutil; "
+                        "shutil.copytree(\"{}\", \"{}\")'".format(idir, odir)])
+            self.assertEqual(ret, 0)
+
+        ret = main(['run', '--no-exec', '-f', 'Dvcfile'] + deps)
+        self.assertEqual(ret, 0)
+
+        ret = main(['repro', '--dry'])
+        self.assertEqual(ret, 0)
+
+
 class TestReproChangedDeepData(TestReproChangedData):
     def setUp(self):
         super(TestReproChangedDeepData, self).setUp()
