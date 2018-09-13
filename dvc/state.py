@@ -58,9 +58,7 @@ class State(object):
         return actual.split('.')[0] != md5.split('.')[0]
 
     def load(self):
-        db = sqlite3.connect(self.state_file,
-                             check_same_thread=False,
-                             timeout=20)
+        db = sqlite3.connect(self.state_file)
         c = db.cursor()
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
