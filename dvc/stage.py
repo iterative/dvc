@@ -377,8 +377,6 @@ class Stage(object):
             raise MissingDep(missing)
 
     def run(self, dry=False):
-        self._check_missing_deps()
-
         if self.locked:
             msg = u'Verifying outputs in locked stage \'{}\''
             self.project.logger.info(msg.format(self.relpath))
@@ -401,6 +399,7 @@ class Stage(object):
             self.project.logger.info(msg)
 
             if not dry:
+                self._check_missing_deps()
                 p = subprocess.Popen(self.cmd,
                                      cwd=self.cwd,
                                      shell=True,
