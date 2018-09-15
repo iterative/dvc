@@ -14,7 +14,6 @@ class StateDuplicateError(DvcException):
 
 class State(object):
     STATE_FILE = 'state'
-    STATE_LOCK_FILE = 'state.lock'
     STATE_TABLE = 'state'
     STATE_TABLE_LAYOUT = "inode TEXT PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
@@ -166,8 +165,6 @@ class State(object):
 
 
 class LinkState(State):
-    STATE_FILE = 'link.state'
-    STATE_LOCK_FILE = STATE_FILE + '.lock'
     STATE_TABLE = 'link'
     STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
                          "inode TEXT NOT NULL, " \
