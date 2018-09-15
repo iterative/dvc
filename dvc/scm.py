@@ -99,6 +99,10 @@ class Git(Base):
         git_dir = os.path.join(root_dir, Git.GIT_DIR)
         return os.path.isdir(git_dir)
 
+    @property
+    def dir(self):
+        return self.repo.git_dir
+
     def ignore_file(self):
         return self.GITIGNORE
 

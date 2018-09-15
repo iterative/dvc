@@ -746,12 +746,28 @@ class Project(object):
 
     def stages(self):
         stages = []
+        outs = []
         for root, dirs, files in os.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_stage_file(path):
                     continue
-                stages.append(Stage.load(self, path))
+                stage = Stage.load(self, path)
+                for out in stage.outs:
+                    outs.append(out.path + out.sep)
+                stages.append(stage)
+
+            def filter_dirs(dname):
+                path = os.path.join(root, dname)
+                if path == self.dvc_dir or path == self.scm.dir:
+                    return False
+                for out in outs:
+                    if path == os.path.normpath(out) or path.startswith(out):
+                        return False
+                return True
+
+            dirs[:] = list(filter(filter_dirs, dirs))
+
         return stages
 
     def active_stages(self):
