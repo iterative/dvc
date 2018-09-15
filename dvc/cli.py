@@ -805,4 +805,12 @@ def parse_args(argv=None):
                 pipeline_show_parser.error(msg)
         args.targets = ['Dvcfile']
 
+    if issubclass(args.func, CmdRun) \
+       and len(args.deps) == 0 \
+       and len(args.outs) == 0 \
+       and len(args.outs_no_cache) == 0 \
+       and len(args.command) == 0:
+        run_parser.error("Too few arguments. Specify at least one: "
+                         "'-d', '-o', '-O', 'command'.")
+
     return args
