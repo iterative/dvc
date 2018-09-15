@@ -15,7 +15,7 @@ class StateDuplicateError(DvcException):
 class State(object):
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = "inode TEXT PRIMARY KEY, " \
+    STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
                          "md5 TEXT NOT NULL"
 
@@ -82,7 +82,7 @@ class State(object):
 
     @staticmethod
     def inode(path):
-        return str(System.inode(path))
+        return System.inode(path)
 
     def _do_update(self, path, use_db=None):
         if not os.path.exists(path):
@@ -105,10 +105,10 @@ class State(object):
         md5, info = self._collect(path)
 
         cmd = 'REPLACE INTO {}(inode, mtime, md5) ' \
-              'VALUES ("{}", "{}", "{}")'.format(self.STATE_TABLE,
-                                                 inode,
-                                                 mtime,
-                                                 md5)
+              'VALUES ({}, "{}", "{}")'.format(self.STATE_TABLE,
+                                               inode,
+                                               mtime,
+                                               md5)
 
         c.execute(cmd)
         c.close()
@@ -128,8 +128,8 @@ class State(object):
         return (md5, info)
 
     def _get(self, inode, mtime, use_db=None):
-        cmd = 'SELECT * from {} WHERE inode="{}"'.format(self.STATE_TABLE,
-                                                         inode)
+        cmd = 'SELECT * from {} WHERE inode={}'.format(self.STATE_TABLE,
+                                                       inode)
 
         if use_db is None:
             db = self.load()
@@ -167,7 +167,7 @@ class State(object):
 class LinkState(State):
     STATE_TABLE = 'link'
     STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                         "inode TEXT NOT NULL, " \
+                         "inode INTEGER NOT NULL, " \
                          "mtime TEXT NOT NULL"
 
     def __init__(self, project):
@@ -190,10 +190,10 @@ class LinkState(State):
         c = db.cursor()
 
         cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
-              'VALUES ("{}", "{}", "{}")'.format(self.STATE_TABLE,
-                                                 relpath,
-                                                 inode,
-                                                 mtime)
+              'VALUES ("{}", {}, "{}")'.format(self.STATE_TABLE,
+                                               relpath,
+                                               inode,
+                                               mtime)
         c.execute(cmd)
         c.close()
 
