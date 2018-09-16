@@ -22,7 +22,7 @@ class Project(object):
     def __init__(self, root_dir):
         from dvc.logger import Logger
         from dvc.config import Config
-        from dvc.state import LinkState, State
+        from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
         from dvc.cache import Cache
@@ -39,7 +39,6 @@ class Project(object):
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self)
-        self.link_state = LinkState(self)
 
         core = self.config._config[Config.SECTION_CORE]
         self.logger = Logger(core.get(Config.SECTION_CORE_LOGLEVEL, None))
@@ -322,7 +321,7 @@ class Project(object):
         for stage in all_stages:
             for out in stage.outs:
                 used.append(out.path)
-        self.link_state.remove_unused(used)
+        self.state.remove_unused_links(used)
 
     def checkout(self, target=None):
         all_stages = self.active_stages()
