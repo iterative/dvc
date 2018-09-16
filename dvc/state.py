@@ -19,9 +19,15 @@ class State(object):
                          "mtime TEXT NOT NULL, " \
                          "md5 TEXT NOT NULL"
 
+    LINK_STATE_TABLE = 'link_state'
+    LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
+                              "inode INTEGER NOT NULL, " \
+                              "mtime TEXT NOT NULL"
+
     def __init__(self, project):
         self.project = project
         self.dvc_dir = project.dvc_dir
+        self.root_dir = project.root_dir
 
         if not self.dvc_dir:
             self.state_file = None
@@ -62,7 +68,8 @@ class State(object):
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
         c.execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE_LAYOUT))
-        c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        c.execute(cmd.format(self.LINK_STATE_TABLE,
+                             self.LINK_STATE_TABLE_LAYOUT))
         db.commit()
         c.close()
         return db
@@ -163,18 +170,7 @@ class State(object):
 
         return self._get(inode, mtime)
 
-
-class LinkState(State):
-    STATE_TABLE = 'link'
-    STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                         "inode INTEGER NOT NULL, " \
-                         "mtime TEXT NOT NULL"
-
-    def __init__(self, project):
-        super(LinkState, self).__init__(project)
-        self.root_dir = project.root_dir
-
-    def update(self, path, use_db=None):
+    def update_link(self, path, use_db=None):
         if not os.path.exists(path):
             return
 
@@ -190,7 +186,7 @@ class LinkState(State):
         c = db.cursor()
 
         cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
-              'VALUES ("{}", {}, "{}")'.format(self.STATE_TABLE,
+              'VALUES ("{}", {}, "{}")'.format(self.LINK_STATE_TABLE,
                                                relpath,
                                                inode,
                                                mtime)
@@ -201,12 +197,12 @@ class LinkState(State):
             db.commit()
             db.close()
 
-    def remove_unused(self, used):
+    def remove_unused_links(self, used):
         unused = []
 
         db = self.load()
         c = db.cursor()
-        c.execute('SELECT * FROM {}'.format(self.STATE_TABLE))
+        c.execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
         for row in c:
             p, i, m = row
             path = os.path.join(self.root_dir, p)
@@ -228,7 +224,7 @@ class LinkState(State):
         db.commit()
         for p in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
-            c.execute(cmd.format(self.STATE_TABLE, p))
+            c.execute(cmd.format(self.LINK_STATE_TABLE, p))
 
         c.close()
         db.commit()
