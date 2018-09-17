@@ -21,6 +21,10 @@ class State(object):
                          "md5 TEXT NOT NULL, " \
                          "timestamp TEXT NOT NULL"
 
+    STATE_INFO_TABLE = 'state_info'
+    STATE_INFO_TABLE_LAYOUT = 'count INTEGER'
+    STATE_INFO_ROW = 1
+
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
                               "inode INTEGER NOT NULL, " \
@@ -38,6 +42,7 @@ class State(object):
         self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
         self.db = None
         self.c = None
+        self.inserts = 0
 
     def __enter__(self):
         self.load()
@@ -67,6 +72,8 @@ class State(object):
         retries = 1
         while True:
             assert self.db is None
+            assert self.c is None
+            assert self.inserts == 0
             self.db = sqlite3.connect(self.state_file)
             self.c = self.db.cursor()
 
@@ -77,14 +84,23 @@ class State(object):
                 cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
                 self.c.execute(cmd.format(self.STATE_TABLE,
                                           self.STATE_TABLE_LAYOUT))
+                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                          self.STATE_INFO_TABLE_LAYOUT))
                 self.c.execute(cmd.format(self.LINK_STATE_TABLE,
                                           self.LINK_STATE_TABLE_LAYOUT))
+
+                cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
+                      "WHERE NOT EXISTS (SELECT * FROM {})"
+                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                          self.STATE_INFO_TABLE))
+
                 return
             except sqlite3.DatabaseError:
-                self.db.close()
                 self.c.close()
+                self.db.close()
                 self.db = None
                 self.c = None
+                self.inserts = 0
                 if retries > 0:
                     os.unlink(self.state_file)
                     retries -= 1
@@ -93,11 +109,18 @@ class State(object):
 
     def dump(self):
         assert self.db is not None
+
+        cmd = "UPDATE {} SET count = count + {} WHERE rowid = {}"
+        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                  self.inserts,
+                                  self.STATE_INFO_ROW))
+
         self.db.commit()
         self.c.close()
         self.db.close()
         self.db = None
         self.c = None
+        self.inserts = 0
 
     @staticmethod
     def mtime(path):
@@ -137,6 +160,7 @@ class State(object):
                                       mtime,
                                       md5,
                                       int(nanotime.timestamp(time.time()))))
+            self.inserts += 1
         else:
             assert len(ret) == 1
             assert len(ret[0]) == 4
