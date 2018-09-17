@@ -137,7 +137,6 @@ class RemoteLOCAL(RemoteBase):
     def collect_dir_cache(self, dname):
         dir_info = []
 
-        db = self.state.load()
         bar = False
         for root, dirs, files in os.walk(dname):
             if len(files) > LARGE_DIR_SIZE:
@@ -158,12 +157,9 @@ class RemoteLOCAL(RemoteBase):
                     progress.update_target(title, processed, total)
                     processed += 1
 
-                md5 = self.state.update(path, use_db=db)
+                md5 = self.state.update(path)
                 dir_info.append({self.PARAM_RELPATH: relpath,
                                  self.PARAM_MD5: md5})
-
-        db.commit()
-        db.close()
 
         if bar:
             progress.finish_target(title)
