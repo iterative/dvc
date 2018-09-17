@@ -36,7 +36,6 @@ class RemoteLOCAL(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.state = self.project.state
-        self.link_state = project.link_state
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
 
@@ -138,7 +137,6 @@ class RemoteLOCAL(RemoteBase):
     def collect_dir_cache(self, dname):
         dir_info = []
 
-        db = self.state.load()
         bar = False
         for root, dirs, files in os.walk(dname):
             if len(files) > LARGE_DIR_SIZE:
@@ -159,12 +157,9 @@ class RemoteLOCAL(RemoteBase):
                     progress.update_target(title, processed, total)
                     processed += 1
 
-                md5 = self.state.update(path, use_db=db)
+                md5 = self.state.update(path)
                 dir_info.append({self.PARAM_RELPATH: relpath,
                                  self.PARAM_MD5: md5})
-
-        db.commit()
-        db.close()
 
         if bar:
             progress.finish_target(title)
@@ -253,7 +248,7 @@ class RemoteLOCAL(RemoteBase):
 
         if not self.is_dir_cache(cache):
             self.link(cache, path)
-            self.link_state.update(path)
+            self.state.update_link(path)
             return
 
         # Create dir separately so that dir is created
@@ -267,7 +262,7 @@ class RemoteLOCAL(RemoteBase):
             relpath = entry[self.PARAM_RELPATH]
             p = os.path.join(path, relpath)
             self.link(c, p)
-        self.link_state.update(path)
+        self.state.update_link(path)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
@@ -289,7 +284,7 @@ class RemoteLOCAL(RemoteBase):
             remove(path)
 
         self.link(cache, path)
-        self.link_state.update(path)
+        self.state.update_link(path)
 
         return {self.PARAM_MD5: md5}
 
@@ -310,7 +305,7 @@ class RemoteLOCAL(RemoteBase):
 
             self.link(c, p)
 
-        self.link_state.update(path)
+        self.state.update_link(path)
 
         return {self.PARAM_MD5: md5}
 

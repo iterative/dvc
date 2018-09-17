@@ -22,7 +22,7 @@ class Project(object):
     def __init__(self, root_dir):
         from dvc.logger import Logger
         from dvc.config import Config
-        from dvc.state import LinkState, State
+        from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
         from dvc.cache import Cache
@@ -39,7 +39,6 @@ class Project(object):
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self)
-        self.link_state = LinkState(self)
 
         core = self.config._config[Config.SECTION_CORE]
         self.logger = Logger(core.get(Config.SECTION_CORE_LOGLEVEL, None))
@@ -149,16 +148,17 @@ class Project(object):
             fnames = [fname]
 
         stages = []
-        for f in fnames:
-            stage = Stage.loads(project=self,
-                                outs=[f],
-                                add=True)
+        with self.state:
+            for f in fnames:
+                stage = Stage.loads(project=self,
+                                    outs=[f],
+                                    add=True)
 
-            self._check_output_duplication(stage.outs)
+                self._check_output_duplication(stage.outs)
 
-            stage.save()
-            stage.dump()
-            stages.append(stage)
+                stage.save()
+                stage.dump()
+                stages.append(stage)
 
         return stages
 
@@ -185,34 +185,35 @@ class Project(object):
                                      [from_path])[0]
 
         found = False
-        for stage in self.stages():
-            for out in stage.outs:
-                if out.path != from_out.path:
-                    continue
+        with self.state:
+            for stage in self.stages():
+                for out in stage.outs:
+                    if out.path != from_out.path:
+                        continue
 
-                if not stage.is_data_source:
-                    msg = 'Dvcfile \'{}\' is not a data source.'
-                    raise DvcException(msg.format(stage.rel_path))
+                    if not stage.is_data_source:
+                        msg = 'Dvcfile \'{}\' is not a data source.'
+                        raise DvcException(msg.format(stage.rel_path))
 
-                found = True
-                to_out = Output.loads_from(out.stage,
-                                           [to_path],
-                                           out.cache,
-                                           out.metric)[0]
-                out.move(to_out)
+                    found = True
+                    to_out = Output.loads_from(out.stage,
+                                               [to_path],
+                                               out.cache,
+                                               out.metric)[0]
+                    out.move(to_out)
 
-                stage_base = os.path.basename(stage.path)
-                stage_base = stage_base.rstrip(Stage.STAGE_FILE_SUFFIX)
+                    stage_base = os.path.basename(stage.path)
+                    stage_base = stage_base.rstrip(Stage.STAGE_FILE_SUFFIX)
 
-                stage_dir = os.path.dirname(stage.path)
-                from_base = os.path.basename(from_path)
-                to_base = os.path.basename(to_path)
-                if stage_base == from_base:
-                    os.unlink(stage.path)
-                    path = to_base + Stage.STAGE_FILE_SUFFIX
-                    stage.path = os.path.join(stage_dir, path)
+                    stage_dir = os.path.dirname(stage.path)
+                    from_base = os.path.basename(from_path)
+                    to_base = os.path.basename(to_path)
+                    if stage_base == from_base:
+                        os.unlink(stage.path)
+                        path = to_base + Stage.STAGE_FILE_SUFFIX
+                        stage.path = os.path.join(stage_dir, path)
 
-            stage.dump()
+                stage.dump()
 
         if not found:
             msg = 'Unable to find dvcfile with output \'{}\''
@@ -240,9 +241,12 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
-        if not no_exec:
-            stage.run()
+        with self.state:
+            if not no_exec:
+                stage.run()
+
         stage.dump()
+
         return stage
 
     def imp(self, url, out):
@@ -253,7 +257,9 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
-        stage.run()
+        with self.state:
+            stage.run()
+
         stage.dump()
         return stage
 
@@ -292,15 +298,22 @@ class Project(object):
             core = config._config[config.SECTION_CORE]
             interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
 
-        if recursive:
-            return self._reproduce_stages(G,
-                                          stages,
-                                          node,
-                                          force,
-                                          dry,
-                                          interactive)
+        with self.state:
+            if recursive:
+                ret = self._reproduce_stages(G,
+                                             stages,
+                                             node,
+                                             force,
+                                             dry,
+                                             interactive)
+            else:
+                ret = self._reproduce_stage(stages,
+                                            node,
+                                            force,
+                                            dry,
+                                            interactive)
 
-        return self._reproduce_stage(stages, node, force, dry, interactive)
+        return ret
 
     def _reproduce_stages(self, G, stages, node, force, dry, interactive):
         import networkx as nx
@@ -322,7 +335,7 @@ class Project(object):
         for stage in all_stages:
             for out in stage.outs:
                 used.append(out.path)
-        self.link_state.remove_unused(used)
+        self.state.remove_unused_links(used)
 
     def checkout(self, target=None):
         all_stages = self.active_stages()
@@ -332,15 +345,16 @@ class Project(object):
         else:
             stages = all_stages
 
-        self._cleanup_unused_links(all_stages)
+        with self.state:
+            self._cleanup_unused_links(all_stages)
 
-        for stage in stages:
-            if stage.locked:
-                msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
-                      'going to be checked out.'
-                self.logger.warn(msg.format(stage.relpath))
+            for stage in stages:
+                if stage.locked:
+                    msg = 'DVC file \'{}\' is locked. Its dependecies are ' \
+                          'not going to be checked out.'
+                    self.logger.warn(msg.format(stage.relpath))
 
-            stage.checkout()
+                stage.checkout()
 
     def _used_cache(self, target=None, all_branches=False, active=True):
         cache = {}
@@ -381,29 +395,30 @@ class Project(object):
             self.logger.info("No unused {} cache to remove.".format(typ))
 
     def gc(self, all_branches=False, cloud=False, remote=None):
-        clist = self._used_cache(target=None,
-                                 all_branches=all_branches,
-                                 active=False)
-        self._do_gc('local', self.cache.local.gc, clist)
+        with self.state:
+            clist = self._used_cache(target=None,
+                                     all_branches=all_branches,
+                                     active=False)
+            self._do_gc('local', self.cache.local.gc, clist)
 
-        if self.cache.s3:
-            self._do_gc('s3', self.cache.s3.gc, clist)
+            if self.cache.s3:
+                self._do_gc('s3', self.cache.s3.gc, clist)
 
-        if self.cache.gs:
-            self._do_gc('gs', self.cache.gs.gc, clist)
+            if self.cache.gs:
+                self._do_gc('gs', self.cache.gs.gc, clist)
 
-        if self.cache.ssh:
-            self._do_gc('ssh', self.cache.ssh.gc, clist)
+            if self.cache.ssh:
+                self._do_gc('ssh', self.cache.ssh.gc, clist)
 
-        if self.cache.hdfs:
-            self._do_gc('hdfs', self.cache.hdfs.gc, clist)
+            if self.cache.hdfs:
+                self._do_gc('hdfs', self.cache.hdfs.gc, clist)
 
-        if self.cache.azure:
-            self._do_gc('azure', self.cache.azure.gc, clist)
+            if self.cache.azure:
+                self._do_gc('azure', self.cache.azure.gc, clist)
 
-        if cloud:
-            self._do_gc('remote', self.cloud._get_cloud(remote,
-                                                        'gc -c').gc, clist)
+            if cloud:
+                self._do_gc('remote', self.cloud._get_cloud(remote,
+                                                            'gc -c').gc, clist)
 
     def push(self,
              target=None,
@@ -411,10 +426,11 @@ class Project(object):
              remote=None,
              all_branches=False,
              show_checksums=False):
-        self.cloud.push(self._used_cache(target, all_branches)['local'],
-                        jobs,
-                        remote=remote,
-                        show_checksums=show_checksums)
+        with self.state:
+            self.cloud.push(self._used_cache(target, all_branches)['local'],
+                            jobs,
+                            remote=remote,
+                            show_checksums=show_checksums)
 
     def fetch(self,
               target=None,
@@ -422,10 +438,11 @@ class Project(object):
               remote=None,
               all_branches=False,
               show_checksums=False):
-        self.cloud.pull(self._used_cache(target, all_branches)['local'],
-                        jobs,
-                        remote=remote,
-                        show_checksums=show_checksums)
+        with self.state:
+            self.cloud.pull(self._used_cache(target, all_branches)['local'],
+                            jobs,
+                            remote=remote,
+                            show_checksums=show_checksums)
 
     def pull(self,
              target=None,
@@ -488,12 +505,13 @@ class Project(object):
                cloud=False,
                remote=None,
                show_checksums=False):
-        if cloud:
-            return self._cloud_status(target,
-                                      jobs,
-                                      remote=remote,
-                                      show_checksums=show_checksums)
-        return self._local_status(target)
+        with self.state:
+            if cloud:
+                return self._cloud_status(target,
+                                          jobs,
+                                          remote=remote,
+                                          show_checksums=show_checksums)
+            return self._local_status(target)
 
     def _read_metric_json(self, fd, json_path):
         import json
