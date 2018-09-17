@@ -168,12 +168,6 @@ class State(object):
 
         return None
 
-    def get(self, path):
-        mtime = self.mtime(path)
-        inode = self.inode(path)
-
-        return self._get(inode, mtime)
-
     def update_link(self, path, use_db=None):
         if not os.path.exists(path):
             return
