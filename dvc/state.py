@@ -1,4 +1,5 @@
 import os
+import time
 import sqlite3
 import nanotime
 
@@ -17,7 +18,8 @@ class State(object):
     STATE_TABLE = 'state'
     STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
-                         "md5 TEXT NOT NULL"
+                         "md5 TEXT NOT NULL, " \
+                         "timestamp TEXT NOT NULL"
 
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
@@ -106,16 +108,18 @@ class State(object):
         c = db.cursor()
 
         md5 = self._get(inode, mtime, use_db=db)
-        if md5:
-            return (md5, None)
+        if md5 is None:
+            md5, info = self._collect(path)
+        else:
+            info = None
 
-        md5, info = self._collect(path)
-
-        cmd = 'REPLACE INTO {}(inode, mtime, md5) ' \
-              'VALUES ({}, "{}", "{}")'.format(self.STATE_TABLE,
-                                               inode,
-                                               mtime,
-                                               md5)
+        timestamp = int(nanotime.timestamp(time.time()))
+        cmd = 'REPLACE INTO {}(inode, mtime, md5, timestamp) ' \
+              'VALUES ({}, "{}", "{}", "{}")'.format(self.STATE_TABLE,
+                                                     inode,
+                                                     mtime,
+                                                     md5,
+                                                     timestamp)
 
         c.execute(cmd)
         c.close()
@@ -155,8 +159,8 @@ class State(object):
         if len(ret) == 0:
             return None
         assert len(ret) == 1
-        assert len(ret[0]) == 3
-        i, m, md5 = ret[0]
+        assert len(ret[0]) == 4
+        i, m, md5, timestamp = ret[0]
         assert i == inode
 
         if mtime == m:
