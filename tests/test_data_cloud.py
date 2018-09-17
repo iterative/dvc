@@ -221,55 +221,56 @@ class TestDataCloudBase(TestDvc):
         info_dir = stage_dir.outs[0].dumpd()
         md5_dir = info_dir['md5']
 
-        # Check status
-        sleep()
-        status = self.cloud.status([info], show_checksums=True)
-        self.assertEqual([(md5, STATUS_NEW)], status)
+        with self.cloud.project.state:
+            # Check status
+            sleep()
+            status = self.cloud.status([info], show_checksums=True)
+            self.assertEqual([(md5, STATUS_NEW)], status)
 
-        status_dir = self.cloud.status([info_dir], show_checksums=True)
-        self.assertTrue((md5_dir, STATUS_NEW) in status_dir)
+            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            self.assertTrue((md5_dir, STATUS_NEW) in status_dir)
 
-        # Push and check status
-        self.cloud.push([info])
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
+            # Push and check status
+            self.cloud.push([info])
+            self.assertTrue(os.path.exists(cache))
+            self.assertTrue(os.path.isfile(cache))
 
-        self.cloud.push([info_dir])
-        self.assertTrue(os.path.isfile(cache_dir))
+            self.cloud.push([info_dir])
+            self.assertTrue(os.path.isfile(cache_dir))
 
-        sleep()
-        status = self.cloud.status([info], show_checksums=True)
-        self.assertEqual([(md5, STATUS_OK)], status)
+            sleep()
+            status = self.cloud.status([info], show_checksums=True)
+            self.assertEqual([(md5, STATUS_OK)], status)
 
-        status_dir = self.cloud.status([info_dir], show_checksums=True)
-        self.assertTrue((md5_dir, STATUS_OK) in status_dir)
+            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
-        # Remove and check status
-        sleep()
-        shutil.rmtree(self.dvc.cache.local.cache_dir)
+            # Remove and check status
+            sleep()
+            shutil.rmtree(self.dvc.cache.local.cache_dir)
 
-        status = self.cloud.status([info], show_checksums=True)
-        self.assertEqual([(md5, STATUS_DELETED)], status)
+            status = self.cloud.status([info], show_checksums=True)
+            self.assertEqual([(md5, STATUS_DELETED)], status)
 
-        status_dir = self.cloud.status([info_dir], show_checksums=True)
-        self.assertEqual([(md5_dir, STATUS_DELETED)], status_dir)
+            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            self.assertEqual([(md5_dir, STATUS_DELETED)], status_dir)
 
-        # Pull and check status
-        self.cloud.pull([info])
-        self.assertTrue(os.path.exists(cache))
-        self.assertTrue(os.path.isfile(cache))
-        with open(cache, 'r') as fd:
-            self.assertEqual(fd.read(), self.FOO_CONTENTS)
+            # Pull and check status
+            self.cloud.pull([info])
+            self.assertTrue(os.path.exists(cache))
+            self.assertTrue(os.path.isfile(cache))
+            with open(cache, 'r') as fd:
+                self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
-        self.cloud.pull([info_dir])
-        self.assertTrue(os.path.isfile(cache_dir))
+            self.cloud.pull([info_dir])
+            self.assertTrue(os.path.isfile(cache_dir))
 
-        sleep()
-        status = self.cloud.status([info], show_checksums=True)
-        self.assertEqual([(md5, STATUS_OK)], status)
+            sleep()
+            status = self.cloud.status([info], show_checksums=True)
+            self.assertEqual([(md5, STATUS_OK)], status)
 
-        status_dir = self.cloud.status([info_dir], show_checksums=True)
-        self.assertTrue((md5_dir, STATUS_OK) in status_dir)
+            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
     def test(self):
         self._ensure_should_run()
@@ -335,9 +336,6 @@ class TestRemoteSSH(TestDataCloudBase):
     def _get_cloud_class(self):
         return RemoteSSH
 
-    def test(self):
-        super(TestRemoteSSH, self).test()
-
 
 class TestRemoteHDFS(TestDataCloudBase):
     def _should_test(self):
@@ -348,9 +346,6 @@ class TestRemoteHDFS(TestDataCloudBase):
 
     def _get_cloud_class(self):
         return RemoteHDFS
-
-    def test(self):
-        super(TestRemoteHDFS, self).test()
 
 
 class TestDataCloudCLIBase(TestDvc):
