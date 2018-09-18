@@ -14,8 +14,9 @@ class FileNotInRepoError(DvcException):
 
 
 class Base(object):
-    def __init__(self, root_dir=os.curdir):
-        self.root_dir = os.path.abspath(os.path.realpath(root_dir))
+    def __init__(self, root_dir=os.curdir, project=None):
+        self.project = project
+        self.root_dir = root_dir
 
     @staticmethod
     def is_repo(root_dir):
@@ -78,15 +79,16 @@ class Git(Base):
     GITIGNORE = '.gitignore'
     GIT_DIR = '.git'
 
-    def __init__(self, root_dir=os.curdir):
-        super(Git, self).__init__(root_dir)
+    def __init__(self, root_dir=os.curdir, project=None):
+        super(Git, self).__init__(root_dir, project=project)
 
         import git
         from git.exc import InvalidGitRepositoryError
         try:
             self.repo = git.Repo(root_dir)
         except InvalidGitRepositoryError:
-            raise SCMError('{} is not a git repository'.format(root_dir))
+            msg = '{} is not a git repository'
+            raise SCMError(msg.format(root_dir))
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
@@ -136,7 +138,11 @@ class Git(Base):
         if len(ignore_list) > 0:
             content = '\n' + content
 
-        open(gitignore, 'a').write(content)
+        with open(gitignore, 'a') as fd:
+            fd.write(content)
+
+        if self.project is not None:
+            self.project._files_to_git_add.append(os.path.relpath(gitignore))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -151,6 +157,9 @@ class Git(Base):
 
         with open(gitignore, 'w') as fd:
             fd.writelines(filtered)
+
+        if self.project is not None:
+            self.project._files_to_git_add.append(os.path.relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
@@ -202,8 +211,8 @@ class Git(Base):
         os.chmod(hook, 0o777)
 
 
-def SCM(root_dir=os.curdir, no_scm=False):
+def SCM(root_dir, no_scm=False, project=None):
     if Git.is_repo(root_dir):
-        return Git(root_dir)
+        return Git(root_dir, project=project)
 
-    return Base(root_dir)
+    return Base(root_dir, project=project)
