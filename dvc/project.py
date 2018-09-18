@@ -34,7 +34,7 @@ class Project(object):
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.config = Config(self.dvc_dir)
-        self.scm = SCM(self.root_dir)
+        self.scm = SCM(self.root_dir, project=self)
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
@@ -48,9 +48,20 @@ class Project(object):
         self.updater = Updater(self.dvc_dir)
         self.prompt = Prompt()
 
+        self._files_to_git_add = []
+
         self._ignore()
 
         self.updater.check()
+
+    def _remind_to_git_add(self):
+        if len(self._files_to_git_add) == 0:
+            return
+
+        msg = '\nTo track the changes with git run:\n\n'
+        msg += '\tgit add ' + " ".join(self._files_to_git_add)
+
+        self.logger.info(msg)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -69,10 +80,10 @@ class Project(object):
         import shutil
         from dvc.scm import SCM, Base
         from dvc.config import Config
+        from dvc.logger import Logger
 
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
-
         scm = SCM(root_dir)
         if type(scm) == Base and not no_scm:
             msg = "{} is not tracked by any supported scm tool(e.g. git)."
@@ -92,6 +103,8 @@ class Project(object):
         scm.add([config.config_file])
         if scm.ignore_file():
             scm.add([os.path.join(dvc_dir, scm.ignore_file())])
+
+        Logger.info('You can now commit the changes to git.')
 
         return proj
 
@@ -148,6 +161,7 @@ class Project(object):
             fnames = [fname]
 
         stages = []
+        self._files_to_git_add = []
         with self.state:
             for f in fnames:
                 stage = Stage.loads(project=self,
@@ -159,6 +173,8 @@ class Project(object):
                 stage.save()
                 stage.dump()
                 stages.append(stage)
+
+        self._remind_to_git_add()
 
         return stages
 
@@ -185,6 +201,7 @@ class Project(object):
                                      [from_path])[0]
 
         found = False
+        self._files_to_git_add = []
         with self.state:
             for stage in self.stages():
                 for out in stage.outs:
@@ -215,6 +232,8 @@ class Project(object):
 
                 stage.dump()
 
+        self._remind_to_git_add()
+
         if not found:
             msg = 'Unable to find dvcfile with output \'{}\''
             raise DvcException(msg.format(from_path))
@@ -241,11 +260,14 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
+        self._files_to_git_add = []
         with self.state:
             if not no_exec:
                 stage.run()
 
         stage.dump()
+
+        self._remind_to_git_add()
 
         return stage
 
@@ -257,10 +279,14 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
+        self._files_to_git_add = []
         with self.state:
             stage.run()
 
         stage.dump()
+
+        self._remind_to_git_add()
+
         return stage
 
     def _reproduce_stage(self, stages, node, force, dry, interactive):
@@ -298,6 +324,7 @@ class Project(object):
             core = config._config[config.SECTION_CORE]
             interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
 
+        self._files_to_git_add = []
         with self.state:
             if recursive:
                 ret = self._reproduce_stages(G,
@@ -312,6 +339,8 @@ class Project(object):
                                             force,
                                             dry,
                                             interactive)
+
+        self._remind_to_git_add()
 
         return ret
 
