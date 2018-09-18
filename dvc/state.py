@@ -3,6 +3,7 @@ import time
 import sqlite3
 import nanotime
 
+from dvc.config import Config
 from dvc.system import System
 from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
@@ -21,15 +22,31 @@ class State(object):
                          "md5 TEXT NOT NULL, " \
                          "timestamp TEXT NOT NULL"
 
+    STATE_INFO_TABLE = 'state_info'
+    STATE_INFO_TABLE_LAYOUT = 'count INTEGER'
+    STATE_INFO_ROW = 1
+
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
                               "inode INTEGER NOT NULL, " \
                               "mtime TEXT NOT NULL"
 
-    def __init__(self, project):
+    STATE_ROW_LIMIT = 10000000
+    STATE_ROW_CLEANUP_QUOTA = 50
+
+    def __init__(self, project, config):
         self.project = project
         self.dvc_dir = project.dvc_dir
         self.root_dir = project.root_dir
+
+        self.row_limit = 100
+        self.row_cleanup_quota = 50
+
+        c = config.get(Config.SECTION_STATE, {})
+        self.row_limit = c.get(Config.SECTION_STATE_ROW_LIMIT,
+                               self.STATE_ROW_LIMIT)
+        self.row_cleanup_quota = c.get(Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
+                                       self.STATE_ROW_CLEANUP_QUOTA)
 
         if not self.dvc_dir:
             self.state_file = None
@@ -38,6 +55,7 @@ class State(object):
         self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
         self.db = None
         self.c = None
+        self.inserts = 0
 
     def __enter__(self):
         self.load()
@@ -67,6 +85,8 @@ class State(object):
         retries = 1
         while True:
             assert self.db is None
+            assert self.c is None
+            assert self.inserts == 0
             self.db = sqlite3.connect(self.state_file)
             self.c = self.db.cursor()
 
@@ -77,14 +97,23 @@ class State(object):
                 cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
                 self.c.execute(cmd.format(self.STATE_TABLE,
                                           self.STATE_TABLE_LAYOUT))
+                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                          self.STATE_INFO_TABLE_LAYOUT))
                 self.c.execute(cmd.format(self.LINK_STATE_TABLE,
                                           self.LINK_STATE_TABLE_LAYOUT))
+
+                cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
+                      "WHERE NOT EXISTS (SELECT * FROM {})"
+                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                          self.STATE_INFO_TABLE))
+
                 return
             except sqlite3.DatabaseError:
-                self.db.close()
                 self.c.close()
+                self.db.close()
                 self.db = None
                 self.c = None
+                self.inserts = 0
                 if retries > 0:
                     os.unlink(self.state_file)
                     retries -= 1
@@ -93,11 +122,48 @@ class State(object):
 
     def dump(self):
         assert self.db is not None
+
+        cmd = "SELECT count from {} WHERE rowid={}"
+        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                  self.STATE_INFO_ROW))
+        ret = self.c.fetchall()
+        assert len(ret) == 1
+        assert len(ret[0]) == 1
+        count = ret[0][0] + self.inserts
+
+        if count > self.row_limit:
+            msg = "Cleaning up state. This might take a while."
+            self.project.logger.warn(msg)
+
+            delete = (count - self.row_limit)
+            delete += int(self.row_limit * (self.row_cleanup_quota/100.))
+            cmd = "DELETE FROM {} WHERE timestamp IN (" \
+                  "SELECT timestamp FROM {} ORDER BY timestamp ASC LIMIT {});"
+            self.c.execute(cmd.format(self.STATE_TABLE,
+                                      self.STATE_TABLE,
+                                      delete))
+
+            self.c.execute("VACUUM")
+
+            cmd = "SELECT COUNT(*) FROM {}"
+
+            self.c.execute(cmd.format(self.STATE_TABLE))
+            ret = self.c.fetchall()
+            assert len(ret) == 1
+            assert len(ret[0]) == 1
+            count = ret[0][0]
+
+        cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
+        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                  count,
+                                  self.STATE_INFO_ROW))
+
         self.db.commit()
         self.c.close()
         self.db.close()
         self.db = None
         self.c = None
+        self.inserts = 0
 
     @staticmethod
     def mtime(path):
@@ -137,6 +203,7 @@ class State(object):
                                       mtime,
                                       md5,
                                       int(nanotime.timestamp(time.time()))))
+            self.inserts += 1
         else:
             assert len(ret) == 1
             assert len(ret[0]) == 4

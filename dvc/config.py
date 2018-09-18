@@ -45,6 +45,14 @@ def to_bool(val):
     return val.lower() == 'true'
 
 
+def is_whole(val):
+    return int(val) >= 0
+
+
+def is_percent(val):
+    return int(val) >= 0 and int(val) <= 100
+
+
 class Config(object):
     CONFIG = 'config'
     CONFIG_LOCAL = 'config.local'
@@ -149,10 +157,19 @@ class Config(object):
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
     }
 
+    SECTION_STATE = 'state'
+    SECTION_STATE_ROW_LIMIT = 'row_limit'
+    SECTION_STATE_ROW_CLEANUP_QUOTA = 'row_cleanup_quota'
+    SECTION_STATE_SCHEMA = {
+        Optional(SECTION_STATE_ROW_LIMIT): And(Use(int), is_whole),
+        Optional(SECTION_STATE_ROW_CLEANUP_QUOTA): And(Use(int), is_percent),
+    }
+
     SCHEMA = {
         Optional(SECTION_CORE, default={}): SECTION_CORE_SCHEMA,
         Optional(Regex(SECTION_REMOTE_REGEX)): SECTION_REMOTE_SCHEMA,
         Optional(SECTION_CACHE, default={}): SECTION_CACHE_SCHEMA,
+        Optional(SECTION_STATE, default={}): SECTION_STATE_SCHEMA,
 
         # backward compatibility
         Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,

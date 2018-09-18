@@ -16,7 +16,7 @@ class TestState(TestDvc):
         mtime = os.path.getmtime(path)
         inode = System.inode(path)
 
-        state = State(self.dvc)
+        state = State(self.dvc, self.dvc.config._config)
 
         with state:
             entry_md5 = state.update(path)
