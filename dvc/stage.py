@@ -36,10 +36,8 @@ class StageFileIsNotDvcFileError(DvcException):
 
 
 class StageFileBadNameError(DvcException):
-    def __init__(self, fname):
-        msg = "Bad stage filename '{}'. Stage files should be named " \
-              "'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
-        super(StageFileBadNameError, self).__init__(msg.format(fname, fname))
+    def __init__(self, msg):
+        super(StageFileBadNameError, self).__init__(msg)
 
 
 class MissingDep(DvcException):
@@ -283,6 +281,11 @@ class Stage(object):
                                         use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
 
+        if fname is not None and os.path.basename(fname) != fname:
+            msg = "Stage file name '{}' should not contain subdirectories. " \
+                  "Use '-c|--cwd' to change location of the stage file."
+            raise StageFileBadNameError(msg.format(fname))
+
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
 
         cwd = os.path.abspath(cwd)
@@ -304,7 +307,10 @@ class Stage(object):
     @staticmethod
     def _check_dvc_filename(fname):
         if not Stage.is_stage_filename(fname):
-            raise StageFileBadNameError(os.path.relpath(fname))
+            msg = "Bad stage filename '{}'. Stage files should be named " \
+                  "'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
+            raise StageFileBadNameError(msg.format(os.path.relpath(fname),
+                                                   os.path.basename(fname)))
 
     @staticmethod
     def _check_dvc_file(fname):
