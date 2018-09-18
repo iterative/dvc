@@ -16,7 +16,7 @@ class TestRun(TestDvc):
         deps = [self.FOO, self.CODE]
         outs = [os.path.join(self.dvc.root_dir, 'out')]
         outs_no_cache = []
-        fname = os.path.join(self.dvc.root_dir, 'out.dvc')
+        fname = 'out.dvc'
         cwd = os.curdir
 
         self.dvc.add(self.FOO)
@@ -75,6 +75,15 @@ class TestRunBadStageFilename(TestDvc):
                          outs_no_cache=[],
                          fname='empty',
                          cwd=os.curdir)
+
+        with self.assertRaises(StageFileBadNameError):
+            self.dvc.run(cmd='',
+                         deps=[],
+                         outs=[],
+                         outs_no_cache=[],
+                         fname=os.path.join(self.DATA_DIR, 'empty.dvc'),
+                         cwd=os.curdir)
+
 
 
 class TestRunNoExec(TestDvc):
