@@ -366,6 +366,8 @@ class Stage(object):
         with open(fname, 'w') as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
+        self.project._files_to_git_add.append(os.path.relpath(fname))
+
     def save(self):
         for dep in self.deps:
             dep.save()
