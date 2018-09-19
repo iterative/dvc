@@ -396,6 +396,13 @@ def parse_args(argv=None):
                         default=False,
                         help='Ask for confirmation before reproducing each '
                              'stage.')
+    repro_parser.add_argument(
+                        '-p',
+                        '--pipeline',
+                        action='store_true',
+                        default=False,
+                        help='Reproduce the whole pipeline that the '
+                             'specified stage file belongs to.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove

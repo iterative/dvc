@@ -311,7 +311,50 @@ class Project(object):
                   recursive=True,
                   force=False,
                   dry=False,
-                  interactive=False):
+                  interactive=False,
+                  pipeline=False):
+
+        if not interactive:
+            config = self.config
+            core = config._config[config.SECTION_CORE]
+            interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
+
+        targets = []
+        if pipeline:
+            stage = Stage.load(self, target)
+            node = os.path.relpath(stage.path, self.root_dir)
+            pipelines = list(filter(lambda g: node in g.nodes(),
+                                    self.pipelines()))
+            assert len(pipelines) == 1
+            G = pipelines[0]
+            for node in G.nodes():
+                if G.in_degree(node) == 0:
+                    targets.append(os.path.join(self.root_dir, node))
+        else:
+            targets.append(target)
+
+        self._files_to_git_add = []
+
+        ret = []
+        with self.state:
+            for target in targets:
+                stages = self._reproduce(target,
+                                         recursive=recursive,
+                                         force=force,
+                                         dry=dry,
+                                         interactive=interactive)
+                ret.extend(stages)
+
+        self._remind_to_git_add()
+
+        return ret
+
+    def _reproduce(self,
+                   target,
+                   recursive=True,
+                   force=False,
+                   dry=False,
+                   interactive=False):
         import networkx as nx
 
         stage = Stage.load(self, target)
@@ -319,28 +362,19 @@ class Project(object):
         stages = nx.get_node_attributes(G, 'stage')
         node = os.path.relpath(stage.path, self.root_dir)
 
-        if not interactive:
-            config = self.config
-            core = config._config[config.SECTION_CORE]
-            interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
-
-        self._files_to_git_add = []
-        with self.state:
-            if recursive:
-                ret = self._reproduce_stages(G,
-                                             stages,
-                                             node,
-                                             force,
-                                             dry,
-                                             interactive)
-            else:
-                ret = self._reproduce_stage(stages,
-                                            node,
-                                            force,
-                                            dry,
-                                            interactive)
-
-        self._remind_to_git_add()
+        if recursive:
+            ret = self._reproduce_stages(G,
+                                         stages,
+                                         node,
+                                         force,
+                                         dry,
+                                         interactive)
+        else:
+            ret = self._reproduce_stage(stages,
+                                        node,
+                                        force,
+                                        dry,
+                                        interactive)
 
         return ret
 
