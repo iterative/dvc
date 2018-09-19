@@ -84,7 +84,7 @@ class RemoteSSH(RemoteBase):
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         if self.ask_password and self.password is None:
-            msg = "host '{}' user '{}' port '{}'".format(host, port, user)
+            msg = "host '{}' port '{}' user '{}'".format(host, port, user)
             self.password = self.project.prompt.prompt_password(msg)
 
         ssh.connect(host,
