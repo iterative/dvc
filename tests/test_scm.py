@@ -35,13 +35,14 @@ class TestIgnore(TestGit):
 
     def test(self):
         git = Git(self._root_dir)
+        foo = os.path.join(self._root_dir, self.FOO)
 
-        git.ignore('foo')
+        git.ignore(foo)
         self.assertTrue(os.path.isfile(Git.GITIGNORE))
         self.assertEqual(self._count_gitignore(), 1)
 
-        git.ignore('foo')
+        git.ignore(foo)
         self.assertEqual(self._count_gitignore(), 1)
 
-        git.ignore_remove('foo')
+        git.ignore_remove(foo)
         self.assertEqual(self._count_gitignore(), 0)
