@@ -16,6 +16,10 @@ class Progress(object):
         self._n_total = total
         self._n_finished = 0
 
+    @property
+    def is_finished(self):
+        return self._n_total == self._n_finished
+
     def _clearln(self):
         print('\r\x1b[K', end='')
 
@@ -63,7 +67,7 @@ class Progress(object):
             progress = int((100 * current)/total) if current < total else 100
             percent = str(progress) + "% "
 
-        if self._n_total:
+        if self._n_total > 1:
             num = "({}/{}): ".format(self._n_finished + 1, self._n_total)
         else:
             num = ""

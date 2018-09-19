@@ -61,6 +61,9 @@ class RemoteSSH(RemoteBase):
         self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
         self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
+        self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
+        self.ask_password = config.get(Config.SECTION_REMOTE_ASK_PASSWORD,
+                                       False)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'ssh',
@@ -80,11 +83,16 @@ class RemoteSSH(RemoteBase):
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
+        if self.ask_password and self.password is None:
+            msg = "host '{}' user '{}' port '{}'".format(host, port, user)
+            self.password = self.project.prompt.prompt_password(msg)
+
         ssh.connect(host,
                     username=user,
                     port=port,
                     key_filename=self.keyfile,
-                    timeout=self.timeout)
+                    timeout=self.timeout,
+                    password=self.password)
 
         return ssh
 

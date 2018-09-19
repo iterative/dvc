@@ -1,5 +1,7 @@
 import sys
 
+from dvc.progress import progress
+
 try:
     # NOTE: in Python3 raw_input() was renamed to input()
     input = raw_input
@@ -23,3 +25,16 @@ class Prompt(object):
             answer = input('Enter \'yes\' or \'no\'.\n').lower()
 
         return answer[0] == "y"
+
+    def prompt_password(self, msg):  # pragma: no cover
+        import getpass
+
+        if not sys.stdout.isatty():
+            return None
+
+        msg = 'Enter password for {}:\n'.format(msg)
+
+        if not progress.is_finished:
+            msg = u'\n' + msg
+
+        return getpass.getpass(msg)
