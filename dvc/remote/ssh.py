@@ -152,7 +152,7 @@ class RemoteSSH(RemoteBase):
         stderr.close()
 
         if stdout.channel.recv_exit_status() != 0:
-            err = ''.join(stderr_chunks)
+            err = b''.join(stderr_chunks).decode('utf-8')
             msg = 'SSH command \'{}\' failed: {}'.format(cmd, err)
             raise DvcException(msg)
 
