@@ -143,6 +143,8 @@ class Config(object):
     SECTION_REMOTE_PORT = 'port'
     SECTION_REMOTE_KEY_FILE = 'keyfile'
     SECTION_REMOTE_TIMEOUT = 'timeout'
+    SECTION_REMOTE_PASSWORD = 'password'
+    SECTION_REMOTE_ASK_PASSWORD = 'ask_password'
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: And(supported_url, error="Unsupported URL"),
         Optional(SECTION_AWS_REGION): str,
@@ -155,6 +157,8 @@ class Config(object):
         Optional(SECTION_REMOTE_PORT): Use(int),
         Optional(SECTION_REMOTE_KEY_FILE): str,
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
+        Optional(SECTION_REMOTE_PASSWORD): str,
+        Optional(SECTION_REMOTE_ASK_PASSWORD): And(str, is_bool, Use(to_bool)),
     }
 
     SECTION_STATE = 'state'

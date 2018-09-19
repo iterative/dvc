@@ -491,7 +491,7 @@ class RemoteLOCAL(RemoteBase):
         Logger.info("Preparing to pull data from {}".format(remote.url))
         title = "Collecting information"
 
-        progress.set_n_total(0)
+        progress.set_n_total(1)
         progress.update_target(title, 0, 100)
 
         checksum_infos, missing = self._collect(checksum_infos)
@@ -527,7 +527,7 @@ class RemoteLOCAL(RemoteBase):
                  show_checksums=False):
         title = "Collecting information"
 
-        progress.set_n_total(0)
+        progress.set_n_total(1)
         progress.update_target(title, 0, 100)
 
         grouped = zip(*self._group(checksum_infos,
@@ -599,7 +599,7 @@ class RemoteLOCAL(RemoteBase):
         Logger.info("Preparing to push data to {}".format(remote.url))
         title = "Collecting information"
 
-        progress.set_n_total(0)
+        progress.set_n_total(1)
         progress.update_target(title, 0, 100)
 
         checksum_infos = self._collect(checksum_infos)[0]
