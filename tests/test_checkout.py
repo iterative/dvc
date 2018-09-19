@@ -99,7 +99,8 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
         # add the file into a separate branch
         self.dvc.scm.checkout(branch_1, True)
-        main(['checkout'])
+        ret = main(['checkout'])
+        self.assertEqual(ret, 0)
         self.commit_data_file(fname)
 
         # Checkout back in master
@@ -108,7 +109,8 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
         # Make sure `dvc checkout` removes the file
         # self.dvc.checkout()
-        main(['checkout'])
+        ret = main(['checkout'])
+        self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(fname))
 
 
@@ -151,11 +153,13 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         self.commit_data_file(fname_master)
 
         self.dvc.scm.checkout(branch_1, True)
-        main(['checkout'])
+        ret = main(['checkout'])
+        self.assertEqual(ret, 0)
         self.commit_data_file(fname_branch)
 
         self.dvc.scm.checkout(branch_master)
-        main(['checkout'])
+        ret = main(['checkout'])
+        self.assertEqual(ret, 0)
 
         ignored = self.read_ignored()
 
@@ -163,7 +167,8 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         self.assertIn(fname_master, ignored)
 
         self.dvc.scm.checkout(branch_1)
-        main(['checkout'])
+        ret = main(['checkout'])
+        self.assertEqual(ret, 0)
         ignored = self.read_ignored()
         self.assertIn(fname_branch, ignored)
 
