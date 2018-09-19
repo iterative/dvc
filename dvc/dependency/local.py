@@ -42,6 +42,12 @@ class DependencyLOCAL(DependencyBase):
         return self.rel_path
 
     @property
+    def is_local(self):
+        assert os.path.isabs(self.path)
+        assert os.path.isabs(self.project.root_dir)
+        return self.path.startswith(self.project.root_dir)
+
+    @property
     def sep(self):
         return os.sep
 
@@ -71,7 +77,7 @@ class DependencyLOCAL(DependencyBase):
         self.info = self.remote.save_info(self.path_info)
 
     def dumpd(self):
-        if self.path.startswith(self.stage.project.root_dir):
+        if self.is_local:
             path = self.remote.unixpath(os.path.relpath(self.path,
                                                         self.stage.cwd))
         else:
