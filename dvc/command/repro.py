@@ -20,7 +20,8 @@ class CmdRepro(CmdBase):
                                        recursive=recursive,
                                        force=self.args.force,
                                        dry=self.args.dry,
-                                       interactive=self.args.interactive)
+                                       interactive=self.args.interactive,
+                                       pipeline=self.args.pipeline)
 
                 if len(stages) == 0:
                     self.project.logger.info(CmdDataStatus.UP_TO_DATE_MSG)
