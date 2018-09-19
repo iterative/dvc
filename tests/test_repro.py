@@ -205,6 +205,18 @@ class TestReproChangedDeepData(TestReproChangedData):
         self.assertEqual(len(stages), 3)
 
 
+class TestReproPipeline(TestReproChangedDeepData):
+    def test(self):
+        stages = self.dvc.reproduce(self.file1_stage,
+                                    force=True,
+                                    pipeline=True)
+        self.assertEqual(len(stages), 3)
+
+    def test_cli(self):
+        ret = main(['repro', '--pipeline', '-f', self.file1_stage])
+        self.assertEqual(ret, 0)
+
+
 class TestReproLocked(TestReproChangedData):
     def test(self):
         file2 = 'file2'
