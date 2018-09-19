@@ -40,10 +40,6 @@ class OutputLOCAL(DependencyLOCAL):
     def cache(self):
         return self.project.cache.local.get(self.md5)
 
-    @property
-    def is_local(self):
-        return self.path.startswith(self.project.root_dir)
-
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         ret[self.PARAM_CACHE] = self.use_cache
