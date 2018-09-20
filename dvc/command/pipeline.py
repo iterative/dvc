@@ -73,6 +73,41 @@ class CmdPipelineShow(CmdBase):
         d = Dagascii(nodes, edges)
         d.draw()
 
+    def __write_dot(self, target, commands, outs, filename):
+        import networkx
+        from networkx.drawing.nx_pydot import write_dot
+        from dvc.stage import Stage
+
+        stage = Stage.load(self.project, target)
+        node = os.path.relpath(stage.path, self.project.root_dir)
+
+        pipelines = list(filter(lambda g: node in g.nodes(),
+                                self.project.pipelines()))
+
+        assert len(pipelines) == 1
+        G = pipelines[0]
+        stages = networkx.get_node_attributes(G, 'stage')
+
+        edges = []
+        for e in G.edges():
+            from_stage = stages[e[0]]
+            to_stage = stages[e[1]]
+            if commands:
+                if to_stage.cmd is None:
+                    continue
+                edges.append((to_stage.cmd, from_stage.cmd))
+            elif outs:
+                for from_out in from_stage.outs:
+                    for to_out in to_stage.outs:
+                        edges.append((str(to_out),
+                                      str(from_out)))
+            else:
+                edges.append((to_stage.relpath, from_stage.relpath))
+
+        simple_g = networkx.DiGraph()
+        simple_g.add_edges_from(edges)
+        write_dot(simple_g, filename)
+
     def run(self, unlock=False):
         for target in self.args.targets:
             try:
@@ -80,6 +115,11 @@ class CmdPipelineShow(CmdBase):
                     self._show_ascii(target,
                                      self.args.commands,
                                      self.args.outs)
+                elif self.args.filename:
+                    self.__write_dot(target,
+                                     self.args.commands,
+                                     self.args.outs,
+                                     self.args.filename)
                 else:
                     self._show(target,
                                self.args.commands,
