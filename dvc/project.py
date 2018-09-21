@@ -323,10 +323,7 @@ class Project(object):
         if pipeline:
             stage = Stage.load(self, target)
             node = os.path.relpath(stage.path, self.root_dir)
-            pipelines = list(filter(lambda g: node in g.nodes(),
-                                    self.pipelines()))
-            assert len(pipelines) == 1
-            G = pipelines[0]
+            G = self._get_pipeline(node)
             for node in G.nodes():
                 if G.in_degree(node) == 0:
                     targets.append(os.path.join(self.root_dir, node))
@@ -419,7 +416,34 @@ class Project(object):
 
                 stage.checkout()
 
-    def _used_cache(self, target=None, all_branches=False, active=True):
+    def _get_pipeline(self, node):
+        pipelines = list(filter(lambda g: node in g.nodes(),
+                                self.pipelines()))
+        assert len(pipelines) == 1
+        return pipelines[0]
+
+    def _collect(self, target, with_deps=False):
+        import networkx as nx
+
+        stage = Stage.load(self, target)
+        if not with_deps:
+            return [stage]
+
+        node = os.path.relpath(stage.path, self.root_dir)
+        G = self._get_pipeline(node)
+        stages = nx.get_node_attributes(G, 'stage')
+
+        ret = [stage]
+        for n in nx.dfs_postorder_nodes(G, node):
+            ret.append(stages[n])
+
+        return ret
+
+    def _used_cache(self,
+                    target=None,
+                    all_branches=False,
+                    active=True,
+                    with_deps=False):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
@@ -429,7 +453,8 @@ class Project(object):
 
         for branch in self.scm.brancher(all_branches=all_branches):
             if target:
-                stages = [Stage.load(self, target)]
+                stages = self._collect(target,
+                                       with_deps=with_deps)
             elif active:
                 stages = self.active_stages()
             else:
@@ -457,11 +482,16 @@ class Project(object):
         if not removed:
             self.logger.info("No unused {} cache to remove.".format(typ))
 
-    def gc(self, all_branches=False, cloud=False, remote=None):
+    def gc(self,
+           all_branches=False,
+           cloud=False,
+           remote=None,
+           with_deps=False):
         with self.state:
             clist = self._used_cache(target=None,
                                      all_branches=all_branches,
-                                     active=False)
+                                     active=False,
+                                     with_deps=with_deps)
             self._do_gc('local', self.cache.local.gc, clist)
 
             if self.cache.s3:
@@ -488,9 +518,13 @@ class Project(object):
              jobs=1,
              remote=None,
              all_branches=False,
-             show_checksums=False):
+             show_checksums=False,
+             with_deps=False):
         with self.state:
-            self.cloud.push(self._used_cache(target, all_branches)['local'],
+            used = self._used_cache(target,
+                                    all_branches=all_branches,
+                                    with_deps=with_deps)['local']
+            self.cloud.push(used,
                             jobs,
                             remote=remote,
                             show_checksums=show_checksums)
@@ -500,9 +534,13 @@ class Project(object):
               jobs=1,
               remote=None,
               all_branches=False,
-              show_checksums=False):
+              show_checksums=False,
+              with_deps=False):
         with self.state:
-            self.cloud.pull(self._used_cache(target, all_branches)['local'],
+            used = self._used_cache(target,
+                                    all_branches=all_branches,
+                                    with_deps=with_deps)['local']
+            self.cloud.pull(used,
                             jobs,
                             remote=remote,
                             show_checksums=show_checksums)
@@ -512,12 +550,14 @@ class Project(object):
              jobs=1,
              remote=None,
              all_branches=False,
-             show_checksums=False):
+             show_checksums=False,
+             with_deps=False):
         self.fetch(target,
                    jobs,
                    remote=remote,
                    all_branches=all_branches,
-                   show_checksums=show_checksums)
+                   show_checksums=show_checksums,
+                   with_deps=with_deps)
         self.checkout(target=target)
 
     def _local_status(self, target=None):
@@ -542,11 +582,17 @@ class Project(object):
                       target=None,
                       jobs=1,
                       remote=None,
-                      show_checksums=False):
+                      show_checksums=False,
+                      all_branches=False,
+                      with_deps=False):
         import dvc.remote.base as cloud
 
+        used = self._used_cache(target,
+                                all_branches=all_branches,
+                                with_deps=with_deps)['local']
+
         status = {}
-        for md5, ret in self.cloud.status(self._used_cache(target)['local'],
+        for md5, ret in self.cloud.status(used,
                                           jobs,
                                           remote=remote,
                                           show_checksums=show_checksums):
@@ -567,13 +613,17 @@ class Project(object):
                jobs=1,
                cloud=False,
                remote=None,
-               show_checksums=False):
+               show_checksums=False,
+               all_branches=False,
+               with_deps=False):
         with self.state:
             if cloud:
                 return self._cloud_status(target,
                                           jobs,
                                           remote=remote,
-                                          show_checksums=show_checksums)
+                                          show_checksums=show_checksums,
+                                          all_branches=all_branches,
+                                          with_deps=with_deps)
             return self._local_status(target)
 
     def _read_metric_json(self, fd, json_path):
