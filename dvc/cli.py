@@ -287,6 +287,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Fetch cache for all branches.')
+    pull_parser.add_argument(
+                        '-d',
+                        '--with-deps',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all dependencies of the '
+                             'specified target.')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -306,6 +313,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Push cache for all branches.')
+    push_parser.add_argument(
+                        '-d',
+                        '--with-deps',
+                        action='store_true',
+                        default=False,
+                        help='Push cache for all dependencies of the '
+                             'specified target.')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
@@ -325,6 +339,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Fetch cache for all branches.')
+    fetch_parser.add_argument(
+                        '-d',
+                        '--with-deps',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all dependencies of the '
+                             'specified target.')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
@@ -345,6 +366,21 @@ def parse_args(argv=None):
                         '-r',
                         '--remote',
                         help='Remote repository to compare local cache to.')
+    status_parser.add_argument(
+                        '-a',
+                        '--all-branches',
+                        action='store_true',
+                        default=False,
+                        help='Show status of a local cache compared to a '
+                             'remote repository for all branches.')
+    status_parser.add_argument(
+                        '-d',
+                        '--with-deps',
+                        action='store_true',
+                        default=False,
+                        help='Show statusof a local cache compared to a '
+                             'remote repository for all dependencies of the '
+                             'specified target.')
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
