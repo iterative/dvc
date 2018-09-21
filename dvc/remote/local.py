@@ -443,8 +443,8 @@ class RemoteLOCAL(RemoteBase):
             for i in self.load_dir_cache(md5):
                 if info.get('branch'):
                     i['branch'] = info['branch']
-                i[self.PARAM_PATH] = posixpath.join(info[self.PARAM_PATH],
-                                                    i[self.PARAM_RELPATH])
+                i[self.PARAM_PATH] = os.path.join(info[self.PARAM_PATH],
+                                                  i[self.PARAM_RELPATH])
                 collected.append(i.copy())
 
         collected.extend(checksum_infos)
