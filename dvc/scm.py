@@ -22,6 +22,10 @@ class Base(object):
     def is_repo(root_dir):
         return True
 
+    @staticmethod
+    def is_submodule(root_dir):
+        return True
+
     def ignore(self, path):
         pass
 
@@ -98,8 +102,15 @@ class Git(Base):
 
     @staticmethod
     def is_repo(root_dir):
-        git_dir = os.path.join(root_dir, Git.GIT_DIR)
-        return os.path.isdir(git_dir)
+        return os.path.isdir(Git._get_git_dir(root_dir))
+
+    @staticmethod
+    def is_submodule(root_dir):
+        return os.path.isfile(Git._get_git_dir(root_dir))
+
+    @staticmethod
+    def _get_git_dir(root_dir):
+        return os.path.join(root_dir, Git.GIT_DIR)
 
     @property
     def dir(self):
@@ -211,7 +222,7 @@ class Git(Base):
 
 
 def SCM(root_dir, no_scm=False, project=None):
-    if Git.is_repo(root_dir):
+    if Git.is_repo(root_dir) or Git.is_submodule(root_dir):
         return Git(root_dir, project=project)
 
     return Base(root_dir, project=project)
