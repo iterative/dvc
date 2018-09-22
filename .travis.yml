@@ -29,6 +29,8 @@ matrix:
     - PYTHON_VER=2.7.10
     - PYENV_ROOT="$HOME/.pyenv"
     - PATH="$PYENV_ROOT/bin:$PATH"
+    - CPPFLAGS="-I/usr/local/opt/openssl/include $CPPFLAGS"
+    - LDFLAGS="-L/usr/local/opt/openssl/lib $LDFLAGS"
   - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
