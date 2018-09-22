@@ -1,6 +1,5 @@
 import os
 import ctypes
-import reflink
 
 if os.name == 'nt':
     import ntfsutils.hardlink as winlink
@@ -36,7 +35,15 @@ class System(object):
 
     @staticmethod
     def reflink(source, link_name):
-        return reflink.reflink(source, link_name)
+        from dvc.reflink import reflink
+        from dvc.exceptions import DvcException
+
+        ret = reflink(source, link_name)
+        if ret != 0:
+            raise DvcException("Failed to reflink '{}' -> '{}' returned "
+                               "non-zero code '{}'".format(source,
+                                                           link_name,
+                                                           ret))
 
     # FIXME
     # Temporary fix while waiting for the PR to be merged and released:
