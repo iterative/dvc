@@ -4,10 +4,9 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
-• `Discuss <https://discuss.dvc.org/>`_
 • `Blog <https://blog.dataversioncontrol.com/>`_
 • `Twitter <https://twitter.com/iterativeai>`_
-• `Chat <https://discord.gg/tW6t4gV>`_
+• `Chat Community <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/tutorial>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
@@ -29,10 +28,12 @@
 
 |
 
-**Data Science Version Control** or **DVC** is an **open-source** tool for data science projects.
-With a simple and flexible Git-like architecture and interface it helps data scientists:
+**Data Science Version Control** or **DVC** is an **open-source** tool for data science and 
+machine learning projects. With a simple and flexible Git-like architecture and interface it
+helps data scientists:
 
-#. manage code together with data files and models;
+#. manage **machine learning models** - versioning, including data sets and transformations (scripts) that were
+   used to generate models;
 
 #. make projects **reproducible**;
 
