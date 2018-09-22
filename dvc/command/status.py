@@ -29,7 +29,9 @@ class CmdDataStatus(CmdDataBase):
                                      jobs=self.args.jobs,
                                      cloud=self.args.cloud,
                                      show_checksums=self.args.show_checksums,
-                                     remote=self.args.remote)
+                                     remote=self.args.remote,
+                                     all_branches=self.args.all_branches,
+                                     with_deps=self.args.with_deps)
             if st:
                 self._show(st, indent)
             else:

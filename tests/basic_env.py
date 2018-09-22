@@ -61,6 +61,15 @@ class TestGit(TestDir):
         self.git.index.commit('add code')
 
 
+class TestGitSubmodule(TestGit):
+    def setUp(self):
+        super(TestGitSubmodule, self).setUp()
+        subrepo = Repo.init()
+        subrepo_path = 'subrepo'
+        self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
+        self._pushd(subrepo_path)
+
+
 class TestDvc(TestGit):
     def setUp(self):
         super(TestDvc, self).setUp()

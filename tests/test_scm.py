@@ -4,7 +4,7 @@ from git import Repo
 
 from dvc.scm import SCM, Base, Git
 
-from tests.basic_env import TestDir, TestGit
+from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
 class TestSCM(TestDir):
@@ -21,6 +21,20 @@ class TestSCMGit(TestGit):
         self.assertTrue(Git.is_repo(os.curdir))
 
     def test_commit(self):
+        G = Git(self._root_dir)
+        G.add(['foo'])
+        G.commit('add')
+        self.assertTrue('foo' in self.git.git.ls_files())
+
+
+class TestSCMGitSubmodule(TestGitSubmodule):
+    def test_git_submodule(self):
+        self.assertIsInstance(SCM(os.curdir), Git)
+
+    def test_is_submodule(self):
+        self.assertTrue(Git.is_submodule(os.curdir))
+
+    def test_commit_in_submodule(self):
         G = Git(self._root_dir)
         G.add(['foo'])
         G.commit('add')

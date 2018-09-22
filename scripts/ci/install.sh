@@ -14,7 +14,7 @@ function retry {
 # NOTE: it is not uncommon for pip to hang on travis for what seems to be
 # networking issues. Thus, let's retry a few times to see if it will eventially
 # work or not.
-retry pip install --upgrade pip
+retry pip install --upgrade pip setuptools wheel
 retry pip install -r requirements.txt
 retry pip install -r test-requirements.txt
 
