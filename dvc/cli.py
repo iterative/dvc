@@ -824,6 +824,10 @@ def parse_args(argv=None):
                         default=False,
                         help='Output DAG as ASCII.')
     pipeline_show_parser.add_argument(
+                        '--dot',
+                        help='Write DAG in .dot format.'
+    )
+    pipeline_show_parser.add_argument(
                         'targets',
                         nargs='*',
                         help="DVC files. 'Dvcfile' by default.")

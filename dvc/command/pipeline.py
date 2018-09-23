@@ -24,7 +24,7 @@ class CmdPipelineShow(CmdBase):
             else:
                 self.project.logger.info(n)
 
-    def _show_ascii(self, target, commands, outs):
+    def __build_graph(self, target, commands, outs):
         import networkx
         from dvc.stage import Stage
 
@@ -51,9 +51,6 @@ class CmdPipelineShow(CmdBase):
             else:
                 nodes.append(stage.relpath)
 
-        if len(nodes) == 0:
-            return
-
         edges = []
         for e in G.edges():
             from_stage = stages[e[0]]
@@ -70,8 +67,27 @@ class CmdPipelineShow(CmdBase):
             else:
                 edges.append((from_stage.relpath, to_stage.relpath))
 
+        return nodes, edges
+
+    def _show_ascii(self, target, commands, outs):
+        nodes, edges = self.__build_graph(target, commands, outs)
+
+        if not nodes:
+            return
+
         d = Dagascii(nodes, edges)
         d.draw()
+
+    def __write_dot(self, target, commands, outs, filename):
+        import networkx
+        from networkx.drawing.nx_pydot import write_dot
+
+        _, edges = self.__build_graph(target, commands, outs)
+        edges = [edge[::-1] for edge in edges]
+
+        simple_g = networkx.DiGraph()
+        simple_g.add_edges_from(edges)
+        write_dot(simple_g, filename)
 
     def run(self, unlock=False):
         for target in self.args.targets:
@@ -80,6 +96,11 @@ class CmdPipelineShow(CmdBase):
                     self._show_ascii(target,
                                      self.args.commands,
                                      self.args.outs)
+                elif self.args.dot:
+                    self.__write_dot(target,
+                                     self.args.commands,
+                                     self.args.outs,
+                                     self.args.dot)
                 else:
                     self._show(target,
                                self.args.commands,
