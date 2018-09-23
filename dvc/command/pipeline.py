@@ -69,7 +69,6 @@ class CmdPipelineShow(CmdBase):
 
         return nodes, edges
 
-
     def _show_ascii(self, target, commands, outs):
 
         nodes, edges = self.__build_graph(target, commands, outs)
