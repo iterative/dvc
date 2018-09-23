@@ -36,6 +36,13 @@ class System(object):
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
+        import platform
+
+        version = platform.mac_ver()[0]
+        major, minor, patch = version.split('.')
+        # Starting from High Sierra
+        if major < 10 or (major == 10 and minor < 13):
+            return -1
 
         clonefile = ctypes.CDLL('libc.dylib').clonefile
         clonefile.argtypes = [ctypes.c_char_p,
