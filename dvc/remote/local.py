@@ -108,7 +108,7 @@ class RemoteLOCAL(RemoteBase):
                                        os.path.relpath(cache),
                                        os.path.relpath(path)))
                 return
-            except Exception as exc:
+            except DvcException as exc:
                 msg = 'Cache type \'{}\' is not supported: {}'
                 Logger.debug(msg.format(self.cache_types[0], str(exc)))
                 del self.cache_types[0]

@@ -24,7 +24,6 @@ install_requires = [
     "requests>=2.18.4",
     "grandalf==0.6",
     "asciicanvas==0.0.3",
-    "cffi>=1.0.0",
 ]
 
 # Extra dependencies for remote integrations
@@ -61,7 +60,6 @@ setup(
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ':python_version=="2.7"': ['futures'],
     },
-    setup_requires=['cffi>=1.0.0'],
     keywords='data science, data version control, machine learning',
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -75,5 +73,4 @@ setup(
         'console_scripts': ['dvc = dvc.main:main']
     },
     zip_safe=False,
-    cffi_modules=["dvc/reflink_ffi.py:ffibuilder"]
 )
