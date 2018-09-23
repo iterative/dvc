@@ -24,12 +24,11 @@ install_requires = [
     "requests>=2.18.4",
     "grandalf==0.6",
     "asciicanvas==0.0.3",
-    "cffi",
 ]
 
 # Extra dependencies for remote integrations
 gs = [
-    "google-cloud==0.32.0",
+    "google-cloud-storage==1.12.0",
 ]
 s3 = [
     "boto3==1.7.4",
@@ -67,11 +66,11 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ],
-    packages=find_packages(exclude=['bin', 'tests', 'functests']),
+    packages=find_packages(exclude=['tests']),
     include_package_data=True,
     url='http://dataversioncontrol.com',
     entry_points={
         'console_scripts': ['dvc = dvc.main:main']
     },
-    zip_safe=False
+    zip_safe=False,
 )
