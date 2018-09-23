@@ -1,5 +1,4 @@
 import os
-import ctypes
 
 if os.name == 'nt':
     import ntfsutils.hardlink as winlink
@@ -19,6 +18,7 @@ class System(object):
 
     @staticmethod
     def symlink(source, link_name):
+        import ctypes
         if System.is_unix():
             return os.symlink(source, link_name)
 
@@ -34,16 +34,69 @@ class System(object):
             raise ctypes.WinError()
 
     @staticmethod
+    def _reflink_darwin(src, dst):
+        import ctypes
+
+        clonefile = ctypes.CDLL('libc.dylib').clonefile
+        clonefile.argtypes = [ctypes.c_char_p,
+                              ctypes.c_char_p,
+                              ctypes.c_int]
+        clonefile.restype = ctypes.c_int
+
+        return clonefile(ctypes.c_char_p(src.encode('utf-8')),
+                         ctypes.c_char_p(src.encode('utf-8')),
+                         ctypes.c_int(0))
+
+    @staticmethod
+    def _reflink_windows(src, dst):
+        return -1
+
+    @staticmethod
+    def _reflink_linux(src, dst):
+        import os
+        import fcntl
+
+        FICLONE = 0x40049409
+
+        s = open(src, 'r')
+        d = open(dst, 'w+')
+
+        try:
+            ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
+        except IOError:
+            s.close()
+            d.close()
+            os.unlink(dst)
+            raise
+
+        s.close()
+        d.close()
+
+        if ret != 0:
+            os.unlink(dst)
+
+        return ret
+
+    @staticmethod
     def reflink(source, link_name):
-        from dvc.reflink import reflink
+        import platform
         from dvc.exceptions import DvcException
 
-        ret = reflink(source, link_name)
+        system = platform.system()
+        try:
+            if system == 'Windows':
+                ret = System._reflink_windows(source, link_name)
+            elif system == 'Darwin':
+                ret = System._reflink_darwin(source, link_name)
+            elif system == 'Linux':
+                ret = System._reflink_linux(source, link_name)
+            else:
+                ret = -1
+        except IOError:
+            ret = -1
+
         if ret != 0:
-            raise DvcException("Failed to reflink '{}' -> '{}' returned "
-                               "non-zero code '{}'".format(source,
-                                                           link_name,
-                                                           ret))
+            raise DvcException('Reflink is not supported')
 
     # FIXME
     # Temporary fix while waiting for the PR to be merged and released:
