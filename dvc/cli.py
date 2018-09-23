@@ -825,7 +825,6 @@ def parse_args(argv=None):
                         help='Output DAG as ASCII.')
     pipeline_show_parser.add_argument(
                         '--dot',
-                        dest='filename',
                         help='Write DAG in .dot format.'
     )
     pipeline_show_parser.add_argument(

@@ -24,3 +24,4 @@ futures>=3.2.0; python_version == "2.7"
 grandalf==0.6
 asciicanvas==0.0.3
 cffi
+pydot>=1.2.4
