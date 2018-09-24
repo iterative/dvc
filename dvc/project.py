@@ -293,7 +293,7 @@ class Project(object):
         stage = stages[node]
 
         if stage.locked:
-            msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
+            msg = 'DVC file \'{}\' is locked. Its dependencies are not ' \
                   'going to be reproduced.'
             self.logger.warn(msg.format(stage.relpath))
 
@@ -410,7 +410,7 @@ class Project(object):
 
             for stage in stages:
                 if stage.locked:
-                    msg = 'DVC file \'{}\' is locked. Its dependecies are ' \
+                    msg = 'DVC file \'{}\' is locked. Its dependencies are ' \
                           'not going to be checked out.'
                     self.logger.warn(msg.format(stage.relpath))
 
@@ -462,7 +462,7 @@ class Project(object):
 
             for stage in stages:
                 if active and not target and stage.locked:
-                    msg = 'DVC file \'{}\' is locked. Its dependecies are ' \
+                    msg = 'DVC file \'{}\' is locked. Its dependencies are ' \
                           'not going to be pushed/pulled/fetched.'
                     self.logger.warn(msg.format(stage.relpath))
 
@@ -570,8 +570,8 @@ class Project(object):
 
         for stage in stages:
             if stage.locked:
-                msg = 'DVC file \'{}\' is locked. Its dependecies are not ' \
-                      'going to be shown in status output.'
+                msg = 'DVC file \'{}\' is locked. Its dependencies are not ' \
+                      'going to be shown in the status output.'
                 self.logger.warn(msg.format(stage.relpath))
 
             status.update(stage.status())
