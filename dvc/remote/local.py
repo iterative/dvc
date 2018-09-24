@@ -553,6 +553,12 @@ class RemoteLOCAL(RemoteBase):
 
         progress.update_target(title, 60, 100)
 
+        # NOTE: dummy call to try to establish a connection
+        # to see if we need to ask user for a password.
+        remote.exists(remote.md5s_to_path_infos(['000']))
+
+        progress.update_target(title, 70, 100)
+
         assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
         chunks = list(zip(to_chunks(path_infos, jobs),
