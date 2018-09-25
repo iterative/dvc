@@ -454,7 +454,7 @@ def parse_args(argv=None):
                         '--outs',
                         action='store_true',
                         default=True,
-                        help='Only remove DVC file outputs.')
+                        help='Only remove DVC file outputs.(default)')
     remove_parser_group.add_argument(
                         '-p',
                         '--purge',
