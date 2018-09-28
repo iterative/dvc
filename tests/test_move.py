@@ -1,9 +1,10 @@
 import os
 
 from dvc.main import main
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, MoveNotDataSourceError
 
 from tests.basic_env import TestDvc
+from tests.test_repro import TestRepro
 
 
 class TestMove(TestDvc):
@@ -38,4 +39,16 @@ class TestCmdMove(TestDvc):
         self.assertEqual(ret, 0)
 
         ret = main(['move', 'non-existing-file', 'dst'])
+        self.assertNotEqual(ret, 0)
+
+
+class TestMoveNotDataSource(TestRepro):
+    def test(self):
+        from dvc.project import Project
+
+        self.dvc = Project(self._root_dir)
+        with self.assertRaises(MoveNotDataSourceError):
+            self.dvc.move(self.file1, 'dst')
+
+        ret = main(['move', self.file1, 'dst'])
         self.assertNotEqual(ret, 0)
