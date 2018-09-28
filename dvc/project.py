@@ -306,12 +306,16 @@ class Project(object):
         return [stage]
 
     def reproduce(self,
-                  target,
+                  target=None,
                   recursive=True,
                   force=False,
                   dry=False,
                   interactive=False,
-                  pipeline=False):
+                  pipeline=False,
+                  all_pipelines=False):
+
+        if target is None and not all_pipelines:
+            raise ValueError()
 
         if not interactive:
             config = self.config
@@ -319,13 +323,18 @@ class Project(object):
             interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
 
         targets = []
-        if pipeline:
-            stage = Stage.load(self, target)
-            node = os.path.relpath(stage.path, self.root_dir)
-            G = self._get_pipeline(node)
-            for node in G.nodes():
-                if G.in_degree(node) == 0:
-                    targets.append(os.path.join(self.root_dir, node))
+        if pipeline or all_pipelines:
+            if pipeline:
+                stage = Stage.load(self, target)
+                node = os.path.relpath(stage.path, self.root_dir)
+                pipelines = [self._get_pipeline(node)]
+            else:
+                pipelines = self.pipelines()
+
+            for G in pipelines:
+                for node in G.nodes():
+                    if G.in_degree(node) == 0:
+                        targets.append(os.path.join(self.root_dir, node))
         else:
             targets.append(target)
 
