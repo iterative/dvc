@@ -1,11 +1,86 @@
 import math
 
-from asciicanvas.asciicanvas import AsciiCanvas
-from asciicanvas.style import Style
-
 from grandalf.graphs import Vertex, Edge, Graph
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import route_with_lines, EdgeViewer
+
+
+class AsciiCanvas(object):
+    def __init__(self, cols, lines):
+        assert cols > 1
+        assert lines > 1
+
+        self.cols = cols
+        self.lines = lines
+        self.canvas = [[' '] * cols for l in range(lines)]
+
+    def draw(self):
+        for line in self.canvas:
+            print(''.join(line))
+
+    def point(self, x, y, char):
+        assert x >= 0
+        assert x < self.cols
+        assert y >= 0
+        assert y < self.lines
+
+        self.canvas[y][x] = char
+
+    def line(self, x0, y0, x1, y1, char):
+        if x0 > x1:
+            x1, x0 = x0, x1
+            y1, y0 = y0, y1
+
+        dx = x1 - x0
+        dy = y1 - y0
+
+        if dx == 0 and dy == 0:
+            self.point(x0, y0, char)
+        elif abs(dx) >= abs(dy):
+            for x in range(x0, x1 + 1):
+                if dx == 0:
+                    y = y0
+                else:
+                    y = y0 + int(round((x - x0) * dy / float((dx))))
+                self.point(x, y, char)
+        elif y0 < y1:
+            for y in range(y0, y1 + 1):
+                if dy == 0:
+                    x = x0
+                else:
+                    x = x0 + int(round((y - y0) * dx / float((dy))))
+                self.point(x, y, char)
+        else:
+            for y in range(y1, y0 + 1):
+                if dy == 0:
+                    x = x0
+                else:
+                    x = x1 + int(round((y - y1) * dx / float((dy))))
+                self.point(x, y, char)
+
+    def text(self, x, y, text):
+        for i, c in enumerate(text):
+            self.point(x + i, y, c)
+
+    def box(self, x0, y0, w, h):
+        assert w > 1
+        assert h > 1
+
+        w -= 1
+        h -= 1
+
+        for x in range(x0, x0 + w):
+            self.point(x, y0, '-')
+            self.point(x, y0 + h, '-')
+
+        for y in range(y0, y0 + h):
+            self.point(x0, y, '|')
+            self.point(x0 + w, y, '|')
+
+        self.point(x0, y0, '+')
+        self.point(x0 + w, y0, '+')
+        self.point(x0, y0 + h, '+')
+        self.point(x0 + w, y0 + h, '+')
 
 
 class Dagascii(object):
@@ -100,22 +175,22 @@ class Dagascii(object):
                 assert end_x >= 0
                 assert end_y >= 0
 
-                canvas.add_line(start_x, start_y,
-                                end_x, end_y,
-                                style=Style('*'))
+                canvas.line(start_x, start_y,
+                            end_x, end_y,
+                            '*')
 
         for v in self.sug.g.sV:
             # NOTE: moving boxes w/2 to the left
             x = v.view.xy[0] - v.view.w/2.0
             y = v.view.xy[1]
 
-            canvas.add_nine_patch_rect(int(round(x - minx)),
-                                       int(round(y - miny)),
-                                       v.view.w,
-                                       v.view.h)
+            canvas.box(int(round(x - minx)),
+                       int(round(y - miny)),
+                       v.view.w,
+                       v.view.h)
 
-            canvas.add_text(int(round(x - minx)) + 1,
-                            int(round(y - miny)) + 1,
-                            v.data)
+            canvas.text(int(round(x - minx)) + 1,
+                        int(round(y - miny)) + 1,
+                        v.data)
 
-        canvas.print_out()
+        canvas.draw()
