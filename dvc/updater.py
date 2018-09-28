@@ -10,7 +10,7 @@ class Updater(object):
     URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/' \
           'prod/latest-version'
     UPDATER_FILE = 'updater'
-    TIMEOUT = 7 * 24 * 60 * 60  # every week
+    TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10
 
     def __init__(self, dvc_dir):
