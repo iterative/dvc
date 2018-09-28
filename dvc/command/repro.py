@@ -21,7 +21,8 @@ class CmdRepro(CmdBase):
                                        force=self.args.force,
                                        dry=self.args.dry,
                                        interactive=self.args.interactive,
-                                       pipeline=self.args.pipeline)
+                                       pipeline=self.args.pipeline,
+                                       all_pipelines=self.args.all_pipelines)
 
                 if len(stages) == 0:
                     self.project.logger.info(CmdDataStatus.UP_TO_DATE_MSG)
