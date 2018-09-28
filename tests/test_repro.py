@@ -217,6 +217,49 @@ class TestReproPipeline(TestReproChangedDeepData):
         self.assertEqual(ret, 0)
 
 
+class TestReproPipelines(TestDvc):
+    def setUp(self):
+        super(TestReproPipelines, self).setUp()
+
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        self.foo_stage = stages[0]
+        self.assertTrue(self.foo_stage is not None)
+
+        stages = self.dvc.add(self.BAR)
+        self.assertEqual(len(stages), 1)
+        self.bar_stage = stages[0]
+        self.assertTrue(self.bar_stage is not None)
+
+        self.file1 = 'file1'
+        self.file1_stage = self.file1 + '.dvc'
+        self.dvc.run(fname=self.file1_stage,
+                     outs=[self.file1],
+                     deps=[self.FOO, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.FOO, self.file1))
+
+        self.file2 = 'file2'
+        self.file2_stage = self.file2 + '.dvc'
+        self.dvc.run(fname=self.file2_stage,
+                     outs=[self.file2],
+                     deps=[self.BAR, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.BAR, self.file2))
+
+
+    def test(self):
+        stages = self.dvc.reproduce(all_pipelines=True, force=True)
+        self.assertEqual(len(stages), 4)
+        names = [stage.relpath for stage in stages]
+        self.assertTrue(self.foo_stage.relpath in names)
+        self.assertTrue(self.bar_stage.relpath in names)
+        self.assertTrue(self.file1_stage in names)
+        self.assertTrue(self.file2_stage in names)
+
+    def test_cli(self):
+        ret = main(['repro', '-f', '-P'])
+        self.assertEqual(ret, 0)
+
+
 class TestReproLocked(TestReproChangedData):
     def test(self):
         file2 = 'file2'

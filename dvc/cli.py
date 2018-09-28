@@ -439,6 +439,12 @@ def parse_args(argv=None):
                         default=False,
                         help='Reproduce the whole pipeline that the '
                              'specified stage file belongs to.')
+    repro_parser.add_argument(
+                        '-P',
+                        '--all-pipelines',
+                        action='store_true',
+                        default=False,
+                        help='Reproduce all pipelines in the project.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
@@ -838,7 +844,9 @@ def parse_args(argv=None):
     if (issubclass(args.func, CmdRepro)
         or issubclass(args.func, CmdPipelineShow)) \
        and hasattr(args, 'targets') \
-       and len(args.targets) == 0:
+       and len(args.targets) == 0 \
+       and not (hasattr(args, 'all_pipelines')
+                and args.all_pipelines):
         if hasattr(args, 'cwd'):
             cwd = args.cwd
         else:
