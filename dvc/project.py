@@ -1,6 +1,6 @@
 import os
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.stage import Stage
 
 
@@ -209,8 +209,7 @@ class Project(object):
                         continue
 
                     if not stage.is_data_source:
-                        msg = 'Dvcfile \'{}\' is not a data source.'
-                        raise DvcException(msg.format(stage.rel_path))
+                        raise MoveNotDataSourceError(stage.relpath)
 
                     found = True
                     to_out = Output.loads_from(out.stage,
