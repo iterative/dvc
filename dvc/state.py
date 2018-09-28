@@ -15,6 +15,7 @@ class StateDuplicateError(DvcException):
 
 
 class State(object):
+    VERSION = 0
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
     STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
@@ -81,6 +82,51 @@ class State(object):
 
         return actual.split('.')[0] != md5.split('.')[0]
 
+    def _load(self):
+        from dvc import VERSION
+
+        cmd = "PRAGMA user_version;"
+        self.c.execute(cmd)
+        ret = self.c.fetchall()
+        assert len(ret) == 1
+        assert len(ret[0]) == 1
+        assert isinstance(ret[0][0], int)
+        self.version = ret[0][0]
+
+        if self.version > self.VERSION:
+            msg = "You are using an old version '{}' of dvc that is using " \
+                  "state file version '{}' which is not compatible with the " \
+                  "state file version '{}' that is used in this projet. " \
+                  "Please upgrade right now!"
+            raise DvcException(msg.format(VERSION,
+                                          self.VERSION,
+                                          self.version))
+        elif self.version < self.VERSION:
+            msg = "State file version '{}' is too old. " \
+                  "Reformatting to the current version '{}'."
+            self.project.logger.warn(msg.format(self.version, self.VERSION))
+            cmd = "DROP TABLE IF EXISTS {};"
+            self.c.execute(cmd.format(self.STATE_TABLE))
+            self.c.execute(cmd.format(self.STATE_INFO_TABLE))
+            self.c.execute(cmd.format(self.LINK_STATE_TABLE))
+
+        # Check that the state file is indeed a database
+        cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
+        self.c.execute(cmd.format(self.STATE_TABLE,
+                                  self.STATE_TABLE_LAYOUT))
+        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                  self.STATE_INFO_TABLE_LAYOUT))
+        self.c.execute(cmd.format(self.LINK_STATE_TABLE,
+                                  self.LINK_STATE_TABLE_LAYOUT))
+
+        cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
+              "WHERE NOT EXISTS (SELECT * FROM {})"
+        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
+                                  self.STATE_INFO_TABLE))
+
+        cmd = "PRAGMA user_version = {};"
+        self.c.execute(cmd.format(self.VERSION))
+
     def load(self):
         retries = 1
         while True:
@@ -93,20 +139,7 @@ class State(object):
             # Try loading once to check that the file is indeed a database
             # and reformat it if it is not.
             try:
-                # Check that the state file is indeed a database
-                cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
-                self.c.execute(cmd.format(self.STATE_TABLE,
-                                          self.STATE_TABLE_LAYOUT))
-                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                          self.STATE_INFO_TABLE_LAYOUT))
-                self.c.execute(cmd.format(self.LINK_STATE_TABLE,
-                                          self.LINK_STATE_TABLE_LAYOUT))
-
-                cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
-                      "WHERE NOT EXISTS (SELECT * FROM {})"
-                self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                          self.STATE_INFO_TABLE))
-
+                self._load()
                 return
             except sqlite3.DatabaseError:
                 self.c.close()
