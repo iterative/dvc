@@ -47,7 +47,9 @@ class RemoteS3(RemoteBase):
                                            '').lstrip('/')
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.region = config.get(Config.SECTION_AWS_REGION, None)
-        self.profile = config.get(Config.SECTION_AWS_PROFILE, 'default')
+        self.profile = os.getenv('AWS_PROFILE',
+                                 config.get(Config.SECTION_AWS_PROFILE,
+                                            'default'))
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL, None)
 
         credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH, None)
@@ -61,6 +63,12 @@ class RemoteS3(RemoteBase):
         self.region = creds.get('region', self.region)
         self.aws_access_key_id = creds.get('aws_access_key_id', None)
         self.aws_secret_access_key = creds.get('aws_secret_access_key', None)
+
+        self.region = os.getenv('AWS_DEFAULT_REGION', self.region)
+        self.aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID',
+                                           self.aws_access_key_id)
+        self.aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY',
+                                               self.aws_secret_access_key)
 
     @property
     def bucket(self):
