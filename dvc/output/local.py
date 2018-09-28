@@ -83,7 +83,7 @@ class OutputLOCAL(DependencyLOCAL):
             super(OutputLOCAL, self).save()
             self._verify_metric()
             msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
-            self.project.logger.debug(msg.format(self.rel_path))
+            self.project.logger.info(msg.format(self.rel_path))
             return
 
         if not os.path.exists(self.path):
@@ -99,7 +99,7 @@ class OutputLOCAL(DependencyLOCAL):
 
         if not self.changed():
             msg = 'Output \'{}\' didn\'t change. Skipping saving.'
-            self.project.logger.debug(msg.format(self.rel_path))
+            self.project.logger.info(msg.format(self.rel_path))
             return
 
         if self.is_local:
