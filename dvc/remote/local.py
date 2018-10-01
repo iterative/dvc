@@ -487,7 +487,7 @@ class RemoteLOCAL(RemoteBase):
 
         return removed
 
-    def status(self, checksum_infos, remote, jobs=1, show_checksums=False):
+    def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
         Logger.info("Preparing to pull data from {}".format(remote.url))
         title = "Collecting information"
 
@@ -523,7 +523,7 @@ class RemoteLOCAL(RemoteBase):
     def _do_pull(self,
                  checksum_infos,
                  remote,
-                 jobs=1,
+                 jobs=None,
                  show_checksums=False):
         title = "Collecting information"
 
@@ -561,6 +561,9 @@ class RemoteLOCAL(RemoteBase):
 
         assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
+        if jobs is None:
+            jobs = remote.JOBS
+
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),
                           to_chunks(names, jobs)))
@@ -584,7 +587,7 @@ class RemoteLOCAL(RemoteBase):
         for f in futures:
             f.result()
 
-    def pull(self, checksum_infos, remote, jobs=1, show_checksums=False):
+    def pull(self, checksum_infos, remote, jobs=None, show_checksums=False):
         Logger.info("Preparing to pull data from {}".format(remote.url))
 
         # NOTE: try fetching missing dir info
@@ -601,7 +604,7 @@ class RemoteLOCAL(RemoteBase):
                       jobs,
                       show_checksums=show_checksums)
 
-    def push(self, checksum_infos, remote, jobs=1, show_checksums=False):
+    def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         Logger.info("Preparing to push data to {}".format(remote.url))
         title = "Collecting information"
 
@@ -645,6 +648,9 @@ class RemoteLOCAL(RemoteBase):
         assert len(path_infos) == len(cache) == len(md5s) == len(names)
 
         progress.update_target(title, 90, 100)
+
+        if jobs is None:
+            jobs = remote.JOBS
 
         chunks = list(zip(to_chunks(path_infos, jobs),
                           to_chunks(cache, jobs),

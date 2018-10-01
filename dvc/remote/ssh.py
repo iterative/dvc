@@ -44,6 +44,9 @@ class RemoteSSH(RemoteBase):
     REGEX = r'^ssh://((?P<user>.*)@)?(?P<host>[^/]*):(?P<path>/.*)$'
 
     REQUIRES = {'paramiko': paramiko}
+
+    JOBS = 4
+
     PARAM_MD5 = 'md5'
 
     DEFAULT_PORT = 22

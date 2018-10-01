@@ -28,7 +28,8 @@ class CmdMetricsShow(CmdBase):
             self.project.metrics_show(self.args.path,
                                       typ=typ,
                                       xpath=xpath,
-                                      all_branches=self.args.all_branches)
+                                      all_branches=self.args.all_branches,
+                                      all_tags=self.args.all_tags)
         except DvcException as exc:
             self.project.logger.error('Failed to show metrics', exc)
             return 1

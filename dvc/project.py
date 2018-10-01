@@ -451,7 +451,8 @@ class Project(object):
                     target=None,
                     all_branches=False,
                     active=True,
-                    with_deps=False):
+                    with_deps=False,
+                    all_tags=False):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
@@ -459,7 +460,8 @@ class Project(object):
         cache['hdfs'] = []
         cache['ssh'] = []
 
-        for branch in self.scm.brancher(all_branches=all_branches):
+        for branch in self.scm.brancher(all_branches=all_branches,
+                                        all_tags=all_tags):
             if target:
                 stages = self._collect(target,
                                        with_deps=with_deps)
@@ -494,12 +496,14 @@ class Project(object):
            all_branches=False,
            cloud=False,
            remote=None,
-           with_deps=False):
+           with_deps=False,
+           all_tags=False):
         with self.state:
             clist = self._used_cache(target=None,
                                      all_branches=all_branches,
                                      active=False,
-                                     with_deps=with_deps)
+                                     with_deps=with_deps,
+                                     all_tags=all_tags)
             self._do_gc('local', self.cache.local.gc, clist)
 
             if self.cache.s3:
@@ -527,10 +531,12 @@ class Project(object):
              remote=None,
              all_branches=False,
              show_checksums=False,
-             with_deps=False):
+             with_deps=False,
+             all_tags=False):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
+                                    all_tags=all_tags,
                                     with_deps=with_deps)['local']
             self.cloud.push(used,
                             jobs,
@@ -543,10 +549,12 @@ class Project(object):
               remote=None,
               all_branches=False,
               show_checksums=False,
-              with_deps=False):
+              with_deps=False,
+              all_tags=False):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
+                                    all_tags=all_tags,
                                     with_deps=with_deps)['local']
             self.cloud.pull(used,
                             jobs,
@@ -559,11 +567,13 @@ class Project(object):
              remote=None,
              all_branches=False,
              show_checksums=False,
-             with_deps=False):
+             with_deps=False,
+             all_tags=False):
         self.fetch(target,
                    jobs,
                    remote=remote,
                    all_branches=all_branches,
+                   all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps)
         self.checkout(target=target)
@@ -592,11 +602,13 @@ class Project(object):
                       remote=None,
                       show_checksums=False,
                       all_branches=False,
-                      with_deps=False):
+                      with_deps=False,
+                      all_tags=False):
         import dvc.remote.base as cloud
 
         used = self._used_cache(target,
                                 all_branches=all_branches,
+                                all_tags=all_tags,
                                 with_deps=with_deps)['local']
 
         status = {}
@@ -623,7 +635,8 @@ class Project(object):
                remote=None,
                show_checksums=False,
                all_branches=False,
-               with_deps=False):
+               with_deps=False,
+               all_tags=False):
         with self.state:
             if cloud:
                 return self._cloud_status(target,
@@ -631,7 +644,8 @@ class Project(object):
                                           remote=remote,
                                           show_checksums=show_checksums,
                                           all_branches=all_branches,
-                                          with_deps=with_deps)
+                                          with_deps=with_deps,
+                                          all_tags=all_tags)
             return self._local_status(target)
 
     def _read_metric_json(self, fd, json_path):
@@ -712,9 +726,11 @@ class Project(object):
                      path=None,
                      typ=None,
                      xpath=None,
-                     all_branches=False):
+                     all_branches=False,
+                     all_tags=False):
         res = {}
-        for branch in self.scm.brancher(all_branches=all_branches):
+        for branch in self.scm.brancher(all_branches=all_branches,
+                                        all_tags=all_tags):
             astages = self.active_stages()
             outs = [out for stage in astages for out in stage.outs]
 
@@ -759,7 +775,7 @@ class Project(object):
                 res[branch][rel] = metric
 
         for branch, val in res.items():
-            if all_branches:
+            if all_branches or all_tags:
                 self.logger.info('{}:'.format(branch))
             for fname, metric in val.items():
                 self.logger.info('\t{}: {}'.format(fname, metric))

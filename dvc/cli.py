@@ -3,7 +3,6 @@ from __future__ import print_function
 import os
 import sys
 import argparse
-from multiprocessing import cpu_count
 
 from dvc.command.init import CmdInit
 from dvc.command.destroy import CmdDestroy
@@ -257,7 +256,7 @@ def parse_args(argv=None):
                         '-j',
                         '--jobs',
                         type=int,
-                        default=4*cpu_count(),
+                        default=None,
                         help='Number of jobs to run simultaneously.')
     parent_cache_parser.add_argument(
                         '--show-checksums',
@@ -288,6 +287,12 @@ def parse_args(argv=None):
                         default=False,
                         help='Fetch cache for all branches.')
     pull_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all tags.')
+    pull_parser.add_argument(
                         '-d',
                         '--with-deps',
                         action='store_true',
@@ -314,6 +319,12 @@ def parse_args(argv=None):
                         default=False,
                         help='Push cache for all branches.')
     push_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Push cache for all tags.')
+    push_parser.add_argument(
                         '-d',
                         '--with-deps',
                         action='store_true',
@@ -339,6 +350,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Fetch cache for all branches.')
+    fetch_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Fetch cache for all tags.')
     fetch_parser.add_argument(
                         '-d',
                         '--with-deps',
@@ -373,6 +390,13 @@ def parse_args(argv=None):
                         default=False,
                         help='Show status of a local cache compared to a '
                              'remote repository for all branches.')
+    status_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Show status of a local cache compared to a '
+                             'remote repository for all tags.')
     status_parser.add_argument(
                         '-d',
                         '--with-deps',
@@ -501,6 +525,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Collect garbage for all branches.')
+    gc_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Collect garbage for all tags.')
     gc_parser.add_argument(
                         '-c',
                         '--cloud',
@@ -694,6 +724,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Show metrics for all branches.')
+    metrics_show_parser.add_argument(
+                        '-T',
+                        '--all-tags',
+                        action='store_true',
+                        default=False,
+                        help='Show metrics for all tags.')
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
     METRICS_ADD_HELP = 'Add metrics.'
