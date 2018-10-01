@@ -31,6 +31,7 @@ class CmdDataStatus(CmdDataBase):
                                      show_checksums=self.args.show_checksums,
                                      remote=self.args.remote,
                                      all_branches=self.args.all_branches,
+                                     all_tags=self.args.all_tags,
                                      with_deps=self.args.with_deps)
             if st:
                 self._show(st, indent)

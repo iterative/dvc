@@ -50,17 +50,34 @@ class Base(object):
     def branch(self, branch):
         pass
 
-    def brancher(self, branches=None, all_branches=False):
-        if not branches and not all_branches:
+    def brancher(self,
+                 branches=None,
+                 all_branches=False,
+                 tags=None,
+                 all_tags=False):
+        if not branches and not all_branches \
+           and not tags and not all_tags:
             yield ''
             return
 
         saved = self.active_branch()
-        if not branches:
-            branches = self.list_branches() if all_branches else [saved]
-        for branch in branches:
-            self.checkout(branch)
-            yield branch
+        revs = []
+
+        if branches is not None:
+            revs.extend(branches)
+        elif all_branches:
+            revs.extend(self.list_branches())
+        elif tags is not None:
+            revs.extend(tags)
+        elif all_tags:
+            revs.extend(self.list_tags())
+        else:
+            revs.extend([saved])
+
+        for rev in revs:
+            self.checkout(rev)
+            yield rev
+
         self.checkout(saved)
 
     def untracked_files(self):
@@ -73,6 +90,9 @@ class Base(object):
         pass
 
     def list_branches(self):
+        pass
+
+    def list_tags(self):
         pass
 
     def install(self):
@@ -207,6 +227,9 @@ class Git(Base):
 
     def list_branches(self):
         return [h.name for h in self.repo.heads]
+
+    def list_tags(self):
+        return [t.name for t in self.repo.tags]
 
     def install(self):
         hook = os.path.join(self.root_dir,
