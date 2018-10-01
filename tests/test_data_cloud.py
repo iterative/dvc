@@ -1,5 +1,5 @@
 from subprocess import CalledProcessError
-from subprocess import check_output
+from subprocess import check_output, Popen
 from unittest import SkipTest
 import os
 import time
@@ -92,6 +92,13 @@ def _should_test_hdfs():
     try:
         check_output(['hadoop', 'version'], shell=True, executable=os.getenv('SHELL'))
     except (CalledProcessError, IOError):
+        return False
+
+    p = Popen('hadoop fs -ls hdfs://127.0.0.1/',
+              shell=True,
+              executable=os.getenv('SHELL'))
+    p.communicate()
+    if p.returncode != 0:
         return False
 
     return True
