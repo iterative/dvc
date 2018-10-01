@@ -103,3 +103,12 @@ class TestSharedCacheDir(TestDir):
         self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[0]))), 1)
         self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[1]))), 1)
         self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[2]))), 1)
+
+
+class TestCacheLinkType(TestDvc):
+    def test(self):
+        ret = main(['config', 'cache.type', 'reflink,copy'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['add', self.FOO])
+        self.assertEqual(ret, 0)
