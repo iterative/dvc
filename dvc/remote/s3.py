@@ -57,18 +57,12 @@ class RemoteS3(RemoteBase):
             creds_conf = configobj.ConfigObj(credentialpath)
             creds = creds_conf.get(self.profile, {})
         else:
-            creds = {}
+            creds = self._get_aws_config_from_env()
 
         self.creds = creds
         self.region = creds.get('region', self.region)
         self.aws_access_key_id = creds.get('aws_access_key_id', None)
         self.aws_secret_access_key = creds.get('aws_secret_access_key', None)
-
-        self.region = os.getenv('AWS_DEFAULT_REGION', self.region)
-        self.aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID',
-                                           self.aws_access_key_id)
-        self.aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY',
-                                               self.aws_secret_access_key)
 
     @property
     def bucket(self):
@@ -88,6 +82,14 @@ class RemoteS3(RemoteBase):
                              aws_secret_access_key=self.aws_secret_access_key,
                              region_name=self.region)
         return session.client('s3', endpoint_url=self.endpoint_url)
+
+    def _get_aws_config_from_env(self):
+        creds = {
+            'region': os.getenv('AWS_DEFAULT_REGION'),
+            'aws_access_key_id': os.getenv('AWS_ACCESS_KEY_ID'),
+            'aws_secret_access_key': os.getenv('AWS_SECRET_ACCESS_KEY'),
+        }
+        return {k: v for k, v in creds.items() if v is not None}
 
     def get_etag(self, bucket, key):
         try:
