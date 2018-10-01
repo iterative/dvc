@@ -1,6 +1,7 @@
 import os
 import re
 import errno
+from multiprocessing import cpu_count
 
 from dvc.config import Config
 from dvc.logger import Logger
@@ -30,6 +31,7 @@ class DataCloudError(DvcException):
 class RemoteBase(object):
     REGEX = None
     REQUIRES = {}
+    JOBS = 4 * cpu_count()
 
     def __init__(self, project, config):
         pass
