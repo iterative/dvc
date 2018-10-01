@@ -402,7 +402,7 @@ def parse_args(argv=None):
                         '--with-deps',
                         action='store_true',
                         default=False,
-                        help='Show statusof a local cache compared to a '
+                        help='Show status of a local cache compared to a '
                              'remote repository for all dependencies of the '
                              'specified target.')
     status_parser.set_defaults(func=CmdDataStatus)
