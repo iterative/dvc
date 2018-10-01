@@ -72,3 +72,16 @@ class TestRemoteRemoveDefault(TestDvc):
         core = local_config.get(Config.SECTION_CORE, None)
         if core is not None:
             self.assertTrue(Config.SECTION_CORE_REMOTE not in core.keys())
+
+
+class TestRemoteRemove(TestDvc):
+    def test(self):
+        ret = main(['config', 'core.jobs', '1'])
+        self.assertEqual(ret, 0)
+
+        remote = 'mys3'
+        ret = main(['remote', 'add', remote, 's3://bucket/name'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['remote', 'remove', remote])
+        self.assertEqual(ret, 0)

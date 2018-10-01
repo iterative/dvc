@@ -205,3 +205,15 @@ class TestCheckoutEmptyDir(TestDvc):
 
         self.assertTrue(os.path.isdir(dname))
         self.assertEqual(len(os.listdir(dname)), 0)
+
+
+class TestCheckoutNotCachedFile(TestDvc):
+    def test(self):
+        cmd = 'python {} {} {}'.format(self.CODE, self.FOO, 'out')
+
+        self.dvc.add(self.FOO)
+        stage = self.dvc.run(cmd=cmd,
+                             deps=[self.FOO, self.CODE],
+                             outs_no_cache=['out'])
+
+        self.dvc.checkout()

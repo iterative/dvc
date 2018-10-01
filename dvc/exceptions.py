@@ -8,7 +8,7 @@ class DvcException(Exception):
         if cause:
             try:
                 self.cause_tb = traceback.format_exc()
-            except Exception:
+            except Exception:  # pragma: no cover
                 pass
         super(DvcException, self).__init__(msg)
 

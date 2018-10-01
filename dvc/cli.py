@@ -46,7 +46,7 @@ class DvcParser(argparse.ArgumentParser):
         sys.exit(2)
 
 
-class VersionAction(argparse.Action):
+class VersionAction(argparse.Action):  # pragma: no cover
     def __call__(self, parser, namespace, values, option_string=None):
         print(VERSION)
         sys.exit(0)
@@ -882,7 +882,7 @@ def parse_args(argv=None):
        and hasattr(args, 'targets') \
        and len(args.targets) == 0 \
        and not (hasattr(args, 'all_pipelines')
-                and args.all_pipelines):
+       and args.all_pipelines):  # pragma: no cover
         if hasattr(args, 'cwd'):
             cwd = args.cwd
         else:
@@ -900,7 +900,7 @@ def parse_args(argv=None):
        and len(args.deps) == 0 \
        and len(args.outs) == 0 \
        and len(args.outs_no_cache) == 0 \
-       and len(args.command) == 0:
+       and len(args.command) == 0:  # pragma: no cover
         run_parser.error("Too few arguments. Specify at least one: "
                          "'-d', '-o', '-O', 'command'.")
 

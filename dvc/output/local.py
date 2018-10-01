@@ -89,7 +89,8 @@ class OutputLOCAL(DependencyLOCAL):
         if not os.path.exists(self.path):
             raise self.DoesNotExistError(self.rel_path)
 
-        if not os.path.isfile(self.path) and not os.path.isdir(self.path):
+        if not os.path.isfile(self.path) \
+           and not os.path.isdir(self.path):  # pragma: no cover
             raise self.IsNotFileOrDirError(self.rel_path)
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \

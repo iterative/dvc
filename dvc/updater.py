@@ -6,7 +6,7 @@ from dvc import VERSION_BASE
 from dvc.logger import Logger
 
 
-class Updater(object):
+class Updater(object):  # pragma: no cover
     URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/' \
           'prod/latest-version'
     UPDATER_FILE = 'updater'

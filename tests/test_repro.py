@@ -146,6 +146,12 @@ class TestReproDry(TestReproChangedData):
         self.assertFalse(filecmp.cmp(self.file1, self.BAR, shallow=False))
 
 
+class TestReproUpToDate(TestRepro):
+    def test(self):
+        ret = main(['repro', self.file1_stage])
+        self.assertEqual(ret, 0)
+
+
 class TestReproDryNoExec(TestDvc):
     def test(self):
         deps = []
