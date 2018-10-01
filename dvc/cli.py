@@ -3,7 +3,6 @@ from __future__ import print_function
 import os
 import sys
 import argparse
-from multiprocessing import cpu_count
 
 from dvc.command.init import CmdInit
 from dvc.command.destroy import CmdDestroy
@@ -257,7 +256,7 @@ def parse_args(argv=None):
                         '-j',
                         '--jobs',
                         type=int,
-                        default=4*cpu_count(),
+                        default=None,
                         help='Number of jobs to run simultaneously.')
     parent_cache_parser.add_argument(
                         '--show-checksums',
