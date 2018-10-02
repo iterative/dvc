@@ -541,6 +541,12 @@ def parse_args(argv=None):
                         '-r',
                         '--remote',
                         help='Remote repository to collect garbage in.')
+    gc_parser.add_argument(
+                        '-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Force garbage collection.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config
