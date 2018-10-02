@@ -29,7 +29,8 @@ class TestGC(TestDvc):
         self._test_gc()
 
     def test_cli(self):
-        ret = main(['gc'])
+        ret = main(['gc', '-f'])
+        self.assertEqual(ret, 0)
         self._test_gc()
 
     def _test_gc(self):
