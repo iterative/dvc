@@ -23,3 +23,4 @@ wheel>=0.31.1
 futures>=3.2.0; python_version == "2.7"
 grandalf==0.6
 pydot>=1.2.4
+asciimatics>=1.10.0
