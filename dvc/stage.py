@@ -19,8 +19,9 @@ class StageCmdFailedError(DvcException):
 
 
 class StageFileFormatError(DvcException):
-    def __init__(self):
-        super(StageFileFormatError, self).__init__('Stage file format error')
+    def __init__(self, fname, e):
+        msg = "Stage file '{}' format error: {}".format(fname, str(e))
+        super(StageFileFormatError, self).__init__(msg)
 
 
 class StageFileDoesNotExistError(DvcException):
@@ -207,17 +208,15 @@ class Stage(object):
         return self
 
     @staticmethod
-    def validate(d):
+    def validate(d, fname=None):
         try:
             Schema(Stage.SCHEMA).validate(d)
         except SchemaError as exc:
-            Logger.debug(str(exc))
-            raise StageFileFormatError()
+            raise StageFileFormatError(fname, exc)
 
     @staticmethod
     def loadd(project, d, path):
-        Stage.validate(d)
-
+        Stage.validate(d, fname=os.path.relpath(path))
         path = os.path.abspath(path)
         cwd = os.path.dirname(path)
         cmd = d.get(Stage.PARAM_CMD, None)
