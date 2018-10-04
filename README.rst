@@ -112,6 +112,13 @@ or:
 
    $ brew cask install iterative/homebrew-dvc/dvc
 
+AUR
+---
+
+.. code-block:: bash
+  # https://aur.archlinux.org/packages/dvc
+  $ yay -S dvc
+
 Related technologies
 ====================
 
