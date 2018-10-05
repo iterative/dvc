@@ -105,7 +105,9 @@ class Logger(object):
         if Logger.logger().getEffectiveLevel() == logging.DEBUG and exc:
             str_tb = str_tb if str_tb else traceback.format_exc()
             Logger.logger().error(prefix + str_tb)
-        return Logger.logger().error(prefix + msg + str_exc)
+        chat = "\n\nHaving any troubles? Hit us up at dvc.org/support, " \
+               "we are always happy to help!"
+        return Logger.logger().error(prefix + msg + str_exc + chat)
 
     @staticmethod
     def warn(msg):
