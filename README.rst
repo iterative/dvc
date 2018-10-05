@@ -112,6 +112,17 @@ or:
 
    $ brew cask install iterative/homebrew-dvc/dvc
 
+AUR
+---
+
+*Unofficial package*, any inquiries regarding the AUR package,
+`refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.
+
+.. code-block:: bash
+
+  # https://aur.archlinux.org/packages/dvc
+  $ yay -S dvc
+
 Related technologies
 ====================
 
