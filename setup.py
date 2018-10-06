@@ -23,6 +23,7 @@ install_requires = [
     "jsonpath-rw==1.4.0",
     "requests>=2.18.4",
     "grandalf==0.6",
+    "asciimatics>=1.10.0",
 ]
 
 # Extra dependencies for remote integrations
