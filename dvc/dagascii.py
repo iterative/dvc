@@ -21,13 +21,13 @@ class AsciiCanvas(object):
         self.canvas = [[' '] * cols for l in range(lines)]
 
     def draw(self):
-        if sys.stdout.isatty():
+        if sys.stdout.isatty():  # pragma: no cover
             Screen.wrapper(self._do_draw)
         else:
             for line in self.canvas:
                 print(''.join(line))
 
-    def _do_draw(self, screen):
+    def _do_draw(self, screen):  # pragma: no cover
         offset_x = 0
         offset_y = 0
         smaxrow, smaxcol = screen.dimensions
