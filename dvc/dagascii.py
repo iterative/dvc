@@ -71,19 +71,23 @@ class AsciiCanvas(object):
                 continue
 
             k = event.key_code
-            if k == screen.KEY_DOWN:
+            if k == screen.KEY_DOWN or k == ord('s'):
                 offset_y += 1
-            elif k == screen.KEY_PAGE_DOWN:
+            elif k == screen.KEY_PAGE_DOWN or k == ord('S'):
                 offset_y += smaxrow
-            elif k == screen.KEY_UP:
+            elif k == screen.KEY_UP or k == ord('w'):
                 offset_y -= 1
-            elif k == screen.KEY_PAGE_UP:
+            elif k == screen.KEY_PAGE_UP or k == ord('W'):
                 offset_y -= smaxrow
-            elif k == screen.KEY_RIGHT:
+            elif k == screen.KEY_RIGHT or k == ord('d'):
                 offset_x += 1
-            elif k == screen.KEY_LEFT:
+            elif k == ord('D'):
+                offset_x += smaxcol
+            elif k == screen.KEY_LEFT or k == ord('a'):
                 offset_x -= 1
-            elif k == ord('q'):
+            elif k == ord('A'):
+                offset_x -= smaxcol
+            elif k == ord('q') or k == ord('Q'):
                 break
 
             if offset_y > max_y:
