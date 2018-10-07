@@ -1,8 +1,5 @@
 import os
 
-if os.name == 'nt':
-    import ntfsutils.hardlink as winlink
-
 
 class System(object):
     @staticmethod
@@ -11,10 +8,20 @@ class System(object):
 
     @staticmethod
     def hardlink(source, link_name):
+        import ctypes
         if System.is_unix():
-            return os.link(source, link_name)
+            os.link(source, link_name)
+            return
 
-        return winlink.create(source, link_name)
+        CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
+        CreateHardLink.argtypes = [ctypes.c_wchar_p,
+                                   ctypes.c_wchar_p,
+                                   ctypes.c_void_p]
+        CreateHardLink.restype = ctypes.wintypes.BOOL
+
+        res = CreateHardLink(link_name, source, None)
+        if res == 0:
+            raise ctypes.WinError()
 
     @staticmethod
     def symlink(source, link_name):
@@ -102,30 +109,70 @@ class System(object):
         if ret != 0:
             raise DvcException('Reflink is not supported')
 
-    # FIXME
-    # Temporary fix while waiting for the PR to be merged and released:
-    # https://github.com/sunshowers/ntfs/pull/11
     @staticmethod
     def getdirinfo(path):
-        from ntfsutils.fs import FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_READ
-        from ntfsutils.fs import OPEN_EXISTING, BY_HANDLE_FILE_INFORMATION
-        from ntfsutils.fs import CreateFile, WinError
-        from ntfsutils.fs import GetFileInformationByHandle, CloseHandle
+        import ctypes
+        from ctypes import c_void_p, c_wchar_p, Structure, WinError
+        from ctypes.wintypes import DWORD, HANDLE, POINTER, BOOL
+
+        FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
+        FILE_SHARE_READ = 0x00000001
+        OPEN_EXISTING = 3
+
+        class FILETIME(Structure):
+            _fields_ = [("dwLowDateTime", DWORD),
+                        ("dwHighDateTime", DWORD)]
+
+        class BY_HANDLE_FILE_INFORMATION(Structure):
+            _fields_ = [("dwFileAttributes", DWORD),
+                        ("ftCreationTime", FILETIME),
+                        ("ftLastAccessTime", FILETIME),
+                        ("ftLastWriteTime", FILETIME),
+                        ("dwVolumeSerialNumber", DWORD),
+                        ("nFileSizeHigh", DWORD),
+                        ("nFileSizeLow", DWORD),
+                        ("nNumberOfLinks", DWORD),
+                        ("nFileIndexHigh", DWORD),
+                        ("nFileIndexLow", DWORD)]
+
         flags = FILE_FLAG_BACKUP_SEMANTICS
-        hfile = CreateFile(path,
-                           0,
-                           FILE_SHARE_READ,
-                           None,
-                           OPEN_EXISTING,
-                           flags,
-                           None)
+
+        func = ctypes.windll.kernel32.CreateFileW
+        func.argtypes = [c_wchar_p,
+                         DWORD,
+                         DWORD,
+                         c_void_p,
+                         DWORD,
+                         DWORD,
+                         HANDLE]
+        func.restype = HANDLE
+
+        hfile = func(path,
+                     0,
+                     FILE_SHARE_READ,
+                     None,
+                     OPEN_EXISTING,
+                     flags,
+                     None)
         if hfile is None:
             raise WinError()
+
+        func = ctypes.windll.kernel32.GetFileInformationByHandle
+        func.argtypes = [HANDLE, POINTER(BY_HANDLE_FILE_INFORMATION)]
+        func.restype = BOOL
+
         info = BY_HANDLE_FILE_INFORMATION()
-        rv = GetFileInformationByHandle(hfile, info)
-        CloseHandle(hfile)
+        rv = func(hfile, info)
+
+        func = ctypes.windll.kernel32.CloseHandle
+        func.argtypes = [HANDLE]
+        func.restype = BOOL
+
+        func(hfile)
+
         if rv == 0:
             raise WinError()
+
         return info
 
     @staticmethod
