@@ -6,8 +6,7 @@ set -e
 python -mtests
 
 if [[ "$TRAVIS_PULL_REQUEST" == "false" && \
-      "$TRAVIS_SECURE_ENV_VARS" == "true" && \
-      "$TRAVIS_EVENT_TYPE" == "cron" ]]; then
+      "$TRAVIS_SECURE_ENV_VARS" == "true" ]]; then
 	codecov
 fi
 
