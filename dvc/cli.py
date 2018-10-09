@@ -160,7 +160,15 @@ def parse_args(argv=None):
                         help=IMPORT_HELP)
     import_parser.add_argument(
                         'url',
-                        help='URL.')
+                        help="URL. Supported urls: "
+                             "'/path/to/file', "
+                             "'C:\\\\path\\to\\file', "
+                             "'s3://bucket/path/to/file', "
+                             "'gs://bucket/path/to/file', "
+                             "'hdfs://example.com/path/to/file', "
+                             "'ssh://example.com:/path/to/file', "
+                             "'remote://myremote/path/to/file'(see "
+                             "`dvc remote` commands). ")
     import_parser.add_argument(
                         'out',
                         help='Output.')
