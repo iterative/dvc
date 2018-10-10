@@ -1,6 +1,5 @@
 import os
 import yaml
-import itertools
 import posixpath
 import subprocess
 from schema import Schema, SchemaError, Optional, Or, And
@@ -135,8 +134,6 @@ class Stage(object):
         if self.md5 and md5 and self.md5 == md5:
             return False
 
-        msg = "Dvc file '{}' md5 changed(expected '{}', actual '{}')"
-        self.project.logger.debug(msg.format(self.relpath, self.md5, md5))
         return True
 
     @property
@@ -149,30 +146,51 @@ class Stage(object):
                len(self.deps) == 1 and \
                len(self.outs) == 1
 
-    def changed(self):
+    def changed(self, print_info=False):
         ret = False
 
+        if print_info:
+            log = self.project.logger.info
+        else:
+            log = self.project.logger.debug
+
         if self.is_callback:
+            msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
+                  "no dependencies) and thus always considered as changed."
+            self.project.logger.warn(msg.format(self.relpath))
             ret = True
 
-        if self.locked:
-            entries = self.outs
-        else:
-            entries = itertools.chain(self.outs, self.deps)
-
-        for entry in entries:
-            if entry.changed():
+        if not self.locked:
+            for dep in self.deps:
+                if not dep.changed():
+                    continue
+                if print_info:
+                    msg = "Dependency '{}' of '{}' changed."
+                    log(msg.format(dep, self.relpath))
                 ret = True
 
+        for out in self.outs:
+            if not out.changed():
+                continue
+            if print_info:
+                msg = "Output '{}' of '{}' changed."
+                log(msg.format(out, self.relpath))
+            ret = True
+
         if self.changed_md5():
+            if print_info:
+                msg = "Dvc file '{}' changed."
+                log(msg.format(self.relpath))
             ret = True
 
         if ret:
-            msg = u'Dvc file \'{}\' changed'.format(self.relpath)
+            msg = "Stage '{}' changed.".format(self.relpath)
+            color = 'yellow'
         else:
-            msg = u'Dvc file \'{}\' didn\'t change'.format(self.relpath)
+            msg = "Stage '{}' didn't change.".format(self.relpath)
+            color = 'green'
 
-        self.project.logger.debug(msg)
+        log(Logger.colorize(msg, color))
 
         return ret
 
@@ -185,7 +203,7 @@ class Stage(object):
         os.unlink(self.path)
 
     def reproduce(self, force=False, dry=False, interactive=False):
-        if not self.changed() and not force:
+        if not self.changed(print_info=True) and not force:
             return None
 
         if (self.cmd or self.is_import) and not self.locked and not dry:
