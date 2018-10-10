@@ -19,9 +19,16 @@ class Logger(object):
     }
 
     COLOR_MAP = {
-        'debug': colorama.Fore.BLUE,
-        'warn': colorama.Fore.YELLOW,
-        'error': colorama.Fore.RED
+        'green': colorama.Fore.GREEN,
+        'yellow': colorama.Fore.YELLOW,
+        'blue': colorama.Fore.BLUE,
+        'red': colorama.Fore.RED,
+    }
+
+    LEVEL_COLOR_MAP = {
+        'debug': 'blue',
+        'warn': 'yellow',
+        'error': 'red',
     }
 
     def __init__(self, loglevel=None):
@@ -58,12 +65,12 @@ class Logger(object):
         Logger.logger().setLevel(logging.DEBUG)
 
     @staticmethod
-    def colorize(msg, typ):
+    def colorize(msg, color):
         header = ''
         footer = ''
 
         if sys.stdout.isatty():  # pragma: no cover
-            header = Logger.COLOR_MAP.get(typ.lower(), '')
+            header = Logger.COLOR_MAP.get(color.lower(), '')
             footer = colorama.Style.RESET_ALL
 
         return u'{}{}{}'.format(header, msg, footer)
@@ -84,7 +91,8 @@ class Logger(object):
 
     @staticmethod
     def _prefix(msg, typ):
-        return Logger.colorize('{}: '.format(msg), typ)
+        color = Logger.LEVEL_COLOR_MAP.get(typ.lower(), '')
+        return Logger.colorize('{}: '.format(msg), color)
 
     @staticmethod
     def error_prefix():
