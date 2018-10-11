@@ -55,7 +55,7 @@ class System(object):
         clonefile.restype = ctypes.c_int
 
         return clonefile(ctypes.c_char_p(src.encode('utf-8')),
-                         ctypes.c_char_p(src.encode('utf-8')),
+                         ctypes.c_char_p(dst.encode('utf-8')),
                          ctypes.c_int(0))
 
     @staticmethod
