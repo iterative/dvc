@@ -2,9 +2,6 @@ import sys
 import math
 import select
 
-from asciimatics.screen import Screen
-from asciimatics.event import KeyboardEvent
-
 from grandalf.graphs import Vertex, Edge, Graph
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import route_with_lines, EdgeViewer
@@ -22,12 +19,15 @@ class AsciiCanvas(object):
 
     def draw(self):
         if sys.stdout.isatty():  # pragma: no cover
+            from asciimatics.screen import Screen
             Screen.wrapper(self._do_draw)
         else:
             for line in self.canvas:
                 print(''.join(line))
 
     def _do_draw(self, screen):  # pragma: no cover
+        from asciimatics.event import KeyboardEvent
+
         offset_x = 0
         offset_y = 0
         smaxrow, smaxcol = screen.dimensions
