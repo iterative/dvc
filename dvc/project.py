@@ -48,18 +48,17 @@ class Project(object):
         self.updater = Updater(self.dvc_dir)
         self.prompt = Prompt()
 
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
 
         self._ignore()
 
         self.updater.check()
 
     def _remind_to_git_add(self):
-        if len(self._files_to_git_add) == 0:
+        if len(self._files_to_scm_add) == 0:
             return
 
-        msg = '\nTo track the changes with git run:\n\n'
-        msg += '\tgit add ' + " ".join(self._files_to_git_add)
+        msg = self.scm.get_add_reminder(self._files_to_scm_add)
 
         self.logger.info(msg)
 
@@ -86,7 +85,8 @@ class Project(object):
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
         scm = SCM(root_dir)
         if type(scm) == Base and not no_scm:
-            msg = "{} is not tracked by any supported scm tool(e.g. git)."
+            msg = "{} is not tracked by any supported scm tool(e.g. git, hg)." \
+                  " Use the --no-scm flag to use dvc without scm integration."
             raise InitError(msg.format(root_dir))
 
         if os.path.isdir(dvc_dir):
@@ -100,11 +100,11 @@ class Project(object):
         config = Config.init(dvc_dir)
         proj = Project(root_dir)
 
-        scm.add([config.config_file])
+        files_to_add = [config.config_file]
         if scm.ignore_file():
-            scm.add([os.path.join(dvc_dir, scm.ignore_file())])
-
-        Logger.info('You can now commit the changes to git.')
+            files_to_add.append(os.path.join(dvc_dir, scm.ignore_file()))
+        
+        scm.add(files_to_add)
 
         return proj
 
@@ -161,7 +161,7 @@ class Project(object):
             fnames = [fname]
 
         stages = []
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
         with self.state:
             for f in fnames:
                 stage = Stage.loads(project=self,
@@ -201,7 +201,7 @@ class Project(object):
                                      [from_path])[0]
 
         found = False
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
         with self.state:
             for stage in self.stages():
                 for out in stage.outs:
@@ -259,7 +259,7 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
         with self.state:
             if not no_exec:
                 stage.run()
@@ -278,7 +278,7 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
 
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
         with self.state:
             stage.run()
 
@@ -338,7 +338,7 @@ class Project(object):
         else:
             targets.append(target)
 
-        self._files_to_git_add = []
+        self._files_to_scm_add = []
 
         ret = []
         with self.state:

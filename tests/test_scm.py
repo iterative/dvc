@@ -1,10 +1,12 @@
 import os
 
 from git import Repo
+import hglib
 
-from dvc.scm import SCM, Base, Git
+from dvc.scm import SCM, Base, Git, Mercurial
 
-from tests.basic_env import TestDir, TestGit, TestGitSubmodule
+from tests.basic_env import (TestDir, TestGit, TestGitSubmodule,
+                             TestMercurial)
 
 
 class TestSCM(TestDir):
@@ -14,6 +16,10 @@ class TestSCM(TestDir):
     def test_git(self):
         Repo.init(os.curdir)
         self.assertIsInstance(SCM(self._root_dir), Git)
+    
+    def test_hg(self):
+        hglib.init(os.curdir)
+        self.assertIsInstance(SCM(self._root_dir), Mercurial)
 
 
 class TestSCMGit(TestGit):
@@ -39,6 +45,16 @@ class TestSCMGitSubmodule(TestGitSubmodule):
         G.add(['foo'])
         G.commit('add')
         self.assertTrue('foo' in self.git.git.ls_files())
+
+class TestSCMMercurial(TestMercurial):
+    def test_is_repo(self):
+        self.assertTrue(Mercurial.is_repo(os.curdir))
+
+    def test_commit(self):
+        hg = Mercurial(self._root_dir)
+        hg.add(['foo'])
+        hg.commit('add')
+        self.assertTrue('foo' in [fname for (_, _, _, _, fname) in self.hg.manifest()])
 
 
 class TestIgnore(TestGit):

@@ -11,6 +11,7 @@ configobj>=5.0.6
 networkx>=2.1
 pyyaml>=3.12
 gitpython>=2.1.8
+python-hglib==2.6.1
 setuptools>=34.0.0
 nanotime>=0.5.2
 pyasn1>=0.4.1

@@ -2,6 +2,7 @@ import os
 import shutil
 import tempfile
 from git import Repo
+import hglib
 from unittest import TestCase
 
 from dvc.project import Project
@@ -69,6 +70,12 @@ class TestGitSubmodule(TestGit):
         self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
         self._pushd(subrepo_path)
 
+class TestMercurial(TestDir):
+    def setUp(self):
+        super(TestMercurial, self).setUp()
+        self.hg = hglib.init(os.curdir).open()
+        self.hg.add(self.CODE)
+        self.hg.commit('add code')
 
 class TestDvc(TestGit):
     def setUp(self):
