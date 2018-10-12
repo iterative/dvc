@@ -112,8 +112,8 @@ class System(object):
     @staticmethod
     def getdirinfo(path):
         import ctypes
-        from ctypes import c_void_p, c_wchar_p, Structure, WinError
-        from ctypes.wintypes import DWORD, HANDLE, POINTER, BOOL
+        from ctypes import c_void_p, c_wchar_p, Structure, WinError, POINTER
+        from ctypes.wintypes import DWORD, HANDLE, BOOL
 
         FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
         FILE_SHARE_READ = 0x00000001
