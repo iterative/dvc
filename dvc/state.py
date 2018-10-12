@@ -15,10 +15,10 @@ class StateDuplicateError(DvcException):
 
 
 class State(object):
-    VERSION = 0
+    VERSION = 1
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
+    STATE_TABLE_LAYOUT = "inode UNSIGNED INTEGER PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
                          "md5 TEXT NOT NULL, " \
                          "timestamp TEXT NOT NULL"
@@ -29,7 +29,7 @@ class State(object):
 
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                              "inode INTEGER NOT NULL, " \
+                              "inode UNSIGNED INTEGER NOT NULL, " \
                               "mtime TEXT NOT NULL"
 
     STATE_ROW_LIMIT = 10000000
