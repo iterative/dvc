@@ -15,10 +15,10 @@ class StateDuplicateError(DvcException):
 
 
 class State(object):
-    VERSION = 0
+    VERSION = 1
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
+    STATE_TABLE_LAYOUT = "inode UNSIGNED INTEGER PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
                          "md5 TEXT NOT NULL, " \
                          "timestamp TEXT NOT NULL"
@@ -29,7 +29,7 @@ class State(object):
 
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                              "inode INTEGER NOT NULL, " \
+                              "inode UNSIGNED INTEGER NOT NULL, " \
                               "mtime TEXT NOT NULL"
 
     STATE_ROW_LIMIT = 10000000
@@ -82,11 +82,15 @@ class State(object):
 
         return actual.split('.')[0] != md5.split('.')[0]
 
+    def _execute(self, cmd):
+        Logger.debug(cmd)
+        return self.c.execute(cmd)
+
     def _load(self):
         from dvc import VERSION
 
         cmd = "PRAGMA user_version;"
-        self.c.execute(cmd)
+        self._execute(cmd)
         ret = self.c.fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
@@ -106,26 +110,26 @@ class State(object):
                   "Reformatting to the current version '{}'."
             self.project.logger.warn(msg.format(self.version, self.VERSION))
             cmd = "DROP TABLE IF EXISTS {};"
-            self.c.execute(cmd.format(self.STATE_TABLE))
-            self.c.execute(cmd.format(self.STATE_INFO_TABLE))
-            self.c.execute(cmd.format(self.LINK_STATE_TABLE))
+            self._execute(cmd.format(self.STATE_TABLE))
+            self._execute(cmd.format(self.STATE_INFO_TABLE))
+            self._execute(cmd.format(self.LINK_STATE_TABLE))
 
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
-        self.c.execute(cmd.format(self.STATE_TABLE,
-                                  self.STATE_TABLE_LAYOUT))
-        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                  self.STATE_INFO_TABLE_LAYOUT))
-        self.c.execute(cmd.format(self.LINK_STATE_TABLE,
-                                  self.LINK_STATE_TABLE_LAYOUT))
+        self._execute(cmd.format(self.STATE_TABLE,
+                                 self.STATE_TABLE_LAYOUT))
+        self._execute(cmd.format(self.STATE_INFO_TABLE,
+                                 self.STATE_INFO_TABLE_LAYOUT))
+        self._execute(cmd.format(self.LINK_STATE_TABLE,
+                                 self.LINK_STATE_TABLE_LAYOUT))
 
         cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
               "WHERE NOT EXISTS (SELECT * FROM {})"
-        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                  self.STATE_INFO_TABLE))
+        self._execute(cmd.format(self.STATE_INFO_TABLE,
+                                 self.STATE_INFO_TABLE))
 
         cmd = "PRAGMA user_version = {};"
-        self.c.execute(cmd.format(self.VERSION))
+        self._execute(cmd.format(self.VERSION))
 
     def load(self):
         retries = 1
@@ -157,8 +161,8 @@ class State(object):
         assert self.db is not None
 
         cmd = "SELECT count from {} WHERE rowid={}"
-        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                  self.STATE_INFO_ROW))
+        self._execute(cmd.format(self.STATE_INFO_TABLE,
+                                 self.STATE_INFO_ROW))
         ret = self.c.fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
@@ -172,24 +176,24 @@ class State(object):
             delete += int(self.row_limit * (self.row_cleanup_quota/100.))
             cmd = "DELETE FROM {} WHERE timestamp IN (" \
                   "SELECT timestamp FROM {} ORDER BY timestamp ASC LIMIT {});"
-            self.c.execute(cmd.format(self.STATE_TABLE,
-                                      self.STATE_TABLE,
-                                      delete))
+            self._execute(cmd.format(self.STATE_TABLE,
+                                     self.STATE_TABLE,
+                                     delete))
 
-            self.c.execute("VACUUM")
+            self._execute("VACUUM")
 
             cmd = "SELECT COUNT(*) FROM {}"
 
-            self.c.execute(cmd.format(self.STATE_TABLE))
+            self._execute(cmd.format(self.STATE_TABLE))
             ret = self.c.fetchall()
             assert len(ret) == 1
             assert len(ret[0]) == 1
             count = ret[0][0]
 
         cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
-        self.c.execute(cmd.format(self.STATE_INFO_TABLE,
-                                  count,
-                                  self.STATE_INFO_ROW))
+        self._execute(cmd.format(self.STATE_INFO_TABLE,
+                                 count,
+                                 self.STATE_INFO_ROW))
 
         self.db.commit()
         self.c.close()
@@ -225,17 +229,17 @@ class State(object):
         cmd = 'SELECT * from {} WHERE inode={}'.format(self.STATE_TABLE,
                                                        inode)
 
-        self.c.execute(cmd)
+        self._execute(cmd)
         ret = self.c.fetchall()
         if len(ret) == 0:
             md5, info = self._collect(path)
             cmd = 'INSERT INTO {}(inode, mtime, md5, timestamp) ' \
                   'VALUES ({}, "{}", "{}", "{}")'
-            self.c.execute(cmd.format(self.STATE_TABLE,
-                                      inode,
-                                      mtime,
-                                      md5,
-                                      int(nanotime.timestamp(time.time()))))
+            self._execute(cmd.format(self.STATE_TABLE,
+                                     inode,
+                                     mtime,
+                                     md5,
+                                     int(nanotime.timestamp(time.time()))))
             self.inserts += 1
         else:
             assert len(ret) == 1
@@ -247,17 +251,17 @@ class State(object):
                 cmd = 'UPDATE {} SET ' \
                       'mtime = "{}", md5 = "{}", timestamp = "{}" ' \
                       'WHERE inode = {}'
-                self.c.execute(cmd.format(self.STATE_TABLE,
-                                          mtime,
-                                          md5,
-                                          int(nanotime.timestamp(time.time())),
-                                          inode))
+                self._execute(cmd.format(self.STATE_TABLE,
+                                         mtime,
+                                         md5,
+                                         int(nanotime.timestamp(time.time())),
+                                         inode))
             else:
                 info = None
                 cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
-                self.c.execute(cmd.format(self.STATE_TABLE,
-                                          int(nanotime.timestamp(time.time())),
-                                          inode))
+                self._execute(cmd.format(self.STATE_TABLE,
+                                         int(nanotime.timestamp(time.time())),
+                                         inode))
 
         return (md5, info)
 
@@ -283,12 +287,12 @@ class State(object):
                                                relpath,
                                                inode,
                                                mtime)
-        self.c.execute(cmd)
+        self._execute(cmd)
 
     def remove_unused_links(self, used):
         unused = []
 
-        self.c.execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
+        self._execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
         for row in self.c:
             p, i, m = row
             path = os.path.join(self.root_dir, p)
@@ -309,4 +313,4 @@ class State(object):
 
         for p in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
-            self.c.execute(cmd.format(self.LINK_STATE_TABLE, p))
+            self._execute(cmd.format(self.LINK_STATE_TABLE, p))
