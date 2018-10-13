@@ -2,7 +2,6 @@ import os
 import stat
 import shutil
 import filecmp
-import tempfile
 
 from dvc.main import main
 from dvc.utils import file_md5
@@ -132,7 +131,7 @@ class TestAddFileInDir(TestDvc):
 
 class TestAddExternalLocalFile(TestDvc):
     def test(self):
-        dname = tempfile.mkdtemp()
+        dname = TestDvc.mkdtemp()
         fname = os.path.join(dname, 'foo')
         shutil.copyfile(self.FOO, fname)
 
