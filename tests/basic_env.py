@@ -1,4 +1,5 @@
 import os
+import uuid
 import shutil
 import tempfile
 from git import Repo
@@ -38,8 +39,15 @@ class TestDir(TestCase):
         with open(name, 'a') as f:
             f.write(contents)
 
+    @staticmethod
+    def mkdtemp():
+        prefix = 'dvc-test.{}.'.format(os.getpid())
+        suffix = '.{}'.format(uuid.uuid4())
+        return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
+
     def setUp(self):
-        self._root_dir = tempfile.mkdtemp()
+        self._root_dir = TestDir.mkdtemp()
+
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)

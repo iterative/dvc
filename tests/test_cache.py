@@ -1,6 +1,5 @@
 import os
 import shutil
-import tempfile
 
 from dvc.cache import Cache
 from dvc.system import System
@@ -52,7 +51,7 @@ class TestCacheLoadBadDirCache(TestDvc):
 
 class TestExternalCacheDir(TestDvc):
     def test(self):
-        cache_dir = tempfile.mkdtemp()
+        cache_dir = TestDvc.mkdtemp()
 
         ret = main(['config', 'cache.dir', cache_dir])
         self.assertEqual(ret, 0)
