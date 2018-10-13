@@ -86,33 +86,34 @@ class State(object):
         Logger.debug(cmd)
         return self.c.execute(cmd)
 
-    def _load(self):
+    def _load(self, empty=False):
         from dvc import VERSION
 
-        cmd = "PRAGMA user_version;"
-        self._execute(cmd)
-        ret = self.c.fetchall()
-        assert len(ret) == 1
-        assert len(ret[0]) == 1
-        assert isinstance(ret[0][0], int)
-        self.version = ret[0][0]
+        if not empty:
+            cmd = "PRAGMA user_version;"
+            self._execute(cmd)
+            ret = self.c.fetchall()
+            assert len(ret) == 1
+            assert len(ret[0]) == 1
+            assert isinstance(ret[0][0], int)
+            version = ret[0][0]
 
-        if self.version > self.VERSION:
-            msg = "You are using an old version '{}' of dvc that is using " \
-                  "state file version '{}' which is not compatible with the " \
-                  "state file version '{}' that is used in this projet. " \
-                  "Please upgrade right now!"
-            raise DvcException(msg.format(VERSION,
-                                          self.VERSION,
-                                          self.version))
-        elif self.version < self.VERSION:
-            msg = "State file version '{}' is too old. " \
-                  "Reformatting to the current version '{}'."
-            self.project.logger.warn(msg.format(self.version, self.VERSION))
-            cmd = "DROP TABLE IF EXISTS {};"
-            self._execute(cmd.format(self.STATE_TABLE))
-            self._execute(cmd.format(self.STATE_INFO_TABLE))
-            self._execute(cmd.format(self.LINK_STATE_TABLE))
+            if version > self.VERSION:
+                msg = "You are using an old version '{}' of dvc that is " \
+                      "using state file version '{}' which is not " \
+                      "compatible with the state file version '{}' that " \
+                      "is used in this projet. Please upgrade right now!"
+                raise DvcException(msg.format(VERSION,
+                                              self.VERSION,
+                                              version))
+            elif version < self.VERSION:
+                msg = "State file version '{}' is too old. " \
+                      "Reformatting to the current version '{}'."
+                self.project.logger.warn(msg.format(version, self.VERSION))
+                cmd = "DROP TABLE IF EXISTS {};"
+                self._execute(cmd.format(self.STATE_TABLE))
+                self._execute(cmd.format(self.STATE_INFO_TABLE))
+                self._execute(cmd.format(self.LINK_STATE_TABLE))
 
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
@@ -137,13 +138,14 @@ class State(object):
             assert self.db is None
             assert self.c is None
             assert self.inserts == 0
+            empty = not os.path.exists(self.state_file)
             self.db = sqlite3.connect(self.state_file)
             self.c = self.db.cursor()
 
             # Try loading once to check that the file is indeed a database
             # and reformat it if it is not.
             try:
-                self._load()
+                self._load(empty=empty)
                 return
             except sqlite3.DatabaseError:
                 self.c.close()
