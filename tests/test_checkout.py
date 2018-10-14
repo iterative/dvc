@@ -68,6 +68,8 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
+        time.sleep(1)
+        
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(['config', 'cache.type', 'copy'])
         self.assertEqual(ret, 0)
