@@ -6,6 +6,7 @@ import shutil
 import filecmp
 
 from dvc.main import main
+from dvc.project import Project
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
@@ -63,6 +64,32 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
         self.assertFalse(os.path.isfile(self.FOO))
         self.assertFalse(os.path.isfile(cache))
+
+
+class TestCheckoutCorruptedCacheDir(TestDvc):
+    def test(self):
+        # NOTE: using 'copy' so that cache and link don't have same inode
+        ret = main(['config', 'cache.type', 'copy'])
+        self.assertEqual(ret, 0)
+
+        self.dvc = Project('.')
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        self.assertEqual(len(stages[0].outs), 1)
+        out = stages[0].outs[0]
+
+        # NOTE: modifying cache file for one of the files inside the directory
+        # to check if dvc will detect that the cache is corrupted.
+        entry = self.dvc.cache.local.load_dir_cache(out.md5)[0]
+        md5 = entry[self.dvc.cache.local.PARAM_MD5]
+        cache = self.dvc.cache.local.get(md5)
+
+        with open(cache, 'w+') as fobj:
+            fobj.write('1')
+
+        self.dvc.checkout()
+
+        self.assertFalse(os.path.exists(cache))
 
 
 class TestCmdCheckout(TestCheckout):

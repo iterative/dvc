@@ -4,7 +4,6 @@ import stat
 import shutil
 import filecmp
 import getpass
-import tempfile
 import posixpath
 from subprocess import Popen, PIPE
 
@@ -655,7 +654,7 @@ class TestReproExternalSSH(TestReproExternalBase):
     @property
     def bucket(self):
         if not self._dir:
-            self._dir = tempfile.mkdtemp()
+            self._dir = TestDvc.mkdtemp()
         return '{}@127.0.0.1:{}'.format(getpass.getuser(), self._dir)
 
     def cmd(self, i, o):
@@ -702,7 +701,7 @@ class TestReproExternalSSH(TestReproExternalBase):
 class TestReproExternalLOCAL(TestReproExternalBase):
     def setUp(self):
         super(TestReproExternalLOCAL, self).setUp()
-        self.tmpdir = tempfile.mkdtemp()
+        self.tmpdir = TestDvc.mkdtemp()
 
     def should_test(self):
         return True

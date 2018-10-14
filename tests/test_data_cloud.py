@@ -6,7 +6,6 @@ import time
 import uuid
 import shutil
 import getpass
-import tempfile
 import platform
 
 from dvc.main import main
@@ -105,7 +104,7 @@ def _should_test_hdfs():
 
 
 def get_local_storagepath():
-    return tempfile.mkdtemp()
+    return TestDvc.mkdtemp()
 
 
 def get_local_url():
@@ -164,7 +163,7 @@ class TestDataCloud(TestDvc):
         clist = [('s3://', RemoteS3),
                  ('gs://', RemoteGS),
                  ('ssh://user@localhost:/', RemoteSSH),
-                 (tempfile.mkdtemp(), RemoteLOCAL)]
+                 (TestDvc.mkdtemp(), RemoteLOCAL)]
 
         if _should_test_azure():
             clist.append(('azure://ContainerName=', RemoteAzure))
