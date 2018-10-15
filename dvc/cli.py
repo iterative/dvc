@@ -725,13 +725,15 @@ def parse_args(argv=None):
                         help='TSV path \'row,column\'(e.g. \'1,2\').')
     metrics_show_group.add_argument(
                         '--htsv-path',
-                        help='Headed TSV path \'row,column\'(e.g. \'Name,3\').')
+                        help='Headed TSV path \'row,column\''
+                             '(e.g. \'Name,3\').')
     metrics_show_group.add_argument(
                         '--csv-path',
                         help='CSV path \'row,column\'(e.g. \'1,2\').')
     metrics_show_group.add_argument(
                         '--hcsv-path',
-                        help='Headed CSV path \'row,column\'(e.g. \'Name,3\').')
+                        help='Headed CSV path \'row,column\''
+                             '(e.g. \'Name,3\').')
     metrics_show_parser.add_argument(
                         '-a',
                         '--all-branches',
