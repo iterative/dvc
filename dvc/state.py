@@ -86,13 +86,18 @@ class State(object):
         Logger.debug(cmd)
         return self.c.execute(cmd)
 
+    def _fetchall(self):
+        ret = self.c.fetchall()
+        Logger.debug("fetched: {}".format(ret))
+        return ret
+
     def _load(self, empty=False):
         from dvc import VERSION
 
         if not empty:
             cmd = "PRAGMA user_version;"
             self._execute(cmd)
-            ret = self.c.fetchall()
+            ret = self._fetchall()
             assert len(ret) == 1
             assert len(ret[0]) == 1
             assert isinstance(ret[0][0], int)
@@ -165,7 +170,7 @@ class State(object):
         cmd = "SELECT count from {} WHERE rowid={}"
         self._execute(cmd.format(self.STATE_INFO_TABLE,
                                  self.STATE_INFO_ROW))
-        ret = self.c.fetchall()
+        ret = self._fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
         count = ret[0][0] + self.inserts
@@ -187,7 +192,7 @@ class State(object):
             cmd = "SELECT COUNT(*) FROM {}"
 
             self._execute(cmd.format(self.STATE_TABLE))
-            ret = self.c.fetchall()
+            ret = self._fetchall()
             assert len(ret) == 1
             assert len(ret[0]) == 1
             count = ret[0][0]
@@ -232,7 +237,7 @@ class State(object):
                                                        inode)
 
         self._execute(cmd)
-        ret = self.c.fetchall()
+        ret = self._fetchall()
         if len(ret) == 0:
             md5, info = self._collect(path)
             cmd = 'INSERT INTO {}(inode, mtime, md5, timestamp) ' \
