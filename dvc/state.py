@@ -15,10 +15,10 @@ class StateDuplicateError(DvcException):
 
 
 class State(object):
-    VERSION = 1
+    VERSION = 2
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = "inode UNSIGNED INTEGER PRIMARY KEY, " \
+    STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
                          "mtime TEXT NOT NULL, " \
                          "md5 TEXT NOT NULL, " \
                          "timestamp TEXT NOT NULL"
@@ -29,11 +29,14 @@ class State(object):
 
     LINK_STATE_TABLE = 'link_state'
     LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                              "inode UNSIGNED INTEGER NOT NULL, " \
+                              "inode INTEGER NOT NULL, " \
                               "mtime TEXT NOT NULL"
 
     STATE_ROW_LIMIT = 10000000
     STATE_ROW_CLEANUP_QUOTA = 50
+
+    MAX_INT = 2**63 - 1
+    MAX_UINT = 2**64 - 2
 
     def __init__(self, project, config):
         self.project = project
@@ -90,6 +93,26 @@ class State(object):
         ret = self.c.fetchall()
         Logger.debug("fetched: {}".format(ret))
         return ret
+
+    def _to_sqlite(self, n):
+        assert n >= 0
+        assert n < self.MAX_UINT
+        # NOTE: sqlite stores unit as signed ints, so maximum uint is 2^63-1
+        # see http://jakegoulding.com/blog/2011/02/06/sqlite-64-bit-integers/
+        if n > self.MAX_INT:
+            ret = -(n - self.MAX_INT)
+        else:
+            ret = n
+        assert self._from_sqlite(ret) == n
+        return ret
+
+    def _from_sqlite(self, n):
+        assert abs(n) <= self.MAX_INT
+        if n < 0:
+            return abs(n) + self.MAX_INT
+        assert n < self.MAX_UINT
+        assert n >= 0
+        return n
 
     def _load(self, empty=False):
         from dvc import VERSION
@@ -173,7 +196,7 @@ class State(object):
         ret = self._fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
-        count = ret[0][0] + self.inserts
+        count = self._from_sqlite(ret[0][0]) + self.inserts
 
         if count > self.row_limit:
             msg = "Cleaning up state. This might take a while."
@@ -199,7 +222,7 @@ class State(object):
 
         cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
         self._execute(cmd.format(self.STATE_INFO_TABLE,
-                                 count,
+                                 self._to_sqlite(count),
                                  self.STATE_INFO_ROW))
 
         self.db.commit()
@@ -234,7 +257,7 @@ class State(object):
         inode = self.inode(path)
 
         cmd = 'SELECT * from {} WHERE inode={}'.format(self.STATE_TABLE,
-                                                       inode)
+                                                       self._to_sqlite(inode))
 
         self._execute(cmd)
         ret = self._fetchall()
@@ -243,7 +266,7 @@ class State(object):
             cmd = 'INSERT INTO {}(inode, mtime, md5, timestamp) ' \
                   'VALUES ({}, "{}", "{}", "{}")'
             self._execute(cmd.format(self.STATE_TABLE,
-                                     inode,
+                                     self._to_sqlite(inode),
                                      mtime,
                                      md5,
                                      int(nanotime.timestamp(time.time()))))
@@ -252,6 +275,7 @@ class State(object):
             assert len(ret) == 1
             assert len(ret[0]) == 4
             i, m, md5, timestamp = ret[0]
+            i = self._from_sqlite(i)
             assert i == inode
             if mtime != m:
                 md5, info = self._collect(path)
@@ -262,13 +286,13 @@ class State(object):
                                          mtime,
                                          md5,
                                          int(nanotime.timestamp(time.time())),
-                                         inode))
+                                         self._to_sqlite(inode)))
             else:
                 info = None
                 cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
                 self._execute(cmd.format(self.STATE_TABLE,
                                          int(nanotime.timestamp(time.time())),
-                                         inode))
+                                         self._to_sqlite(inode)))
 
         return (md5, info)
 
@@ -292,7 +316,7 @@ class State(object):
         cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
               'VALUES ("{}", {}, "{}")'.format(self.LINK_STATE_TABLE,
                                                relpath,
-                                               inode,
+                                               self._to_sqlite(inode),
                                                mtime)
         self._execute(cmd)
 
@@ -302,6 +326,7 @@ class State(object):
         self._execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
         for row in self.c:
             p, i, m = row
+            i = self._from_sqlite(i)
             path = os.path.join(self.root_dir, p)
 
             if path in used:
