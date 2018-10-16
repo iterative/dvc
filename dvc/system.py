@@ -178,10 +178,13 @@ class System(object):
     @staticmethod
     def inode(path):
         if System.is_unix():
-            return os.lstat(path).st_ino
-
-        # getdirinfo from ntfsutils works on both files and dirs
-        info = System.getdirinfo(path)
-        return hash((info.dwVolumeSerialNumber,
-                     info.nFileIndexHigh,
-                     info.nFileIndexLow))
+            inode = os.lstat(path).st_ino
+        else:
+            # getdirinfo from ntfsutils works on both files and dirs
+            info = System.getdirinfo(path)
+            inode = abs(hash((info.dwVolumeSerialNumber,
+                              info.nFileIndexHigh,
+                              info.nFileIndexLow)))
+        assert inode >= 0
+        assert inode < 2**64
+        return inode
