@@ -50,6 +50,13 @@ class RemoteLOCAL(RemoteBase):
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
+    @staticmethod
+    def compat_config(config):
+        ret = config.copy()
+        url = ret.pop(Config.SECTION_AWS_STORAGEPATH, '')
+        ret[Config.SECTION_REMOTE_URL] = url
+        return ret
+
     @property
     def url(self):
         return self.cache_dir

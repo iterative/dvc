@@ -160,8 +160,8 @@ class TestDataCloud(TestDvc):
     def test(self):
         config = TEST_CONFIG
 
-        clist = [('s3://', RemoteS3),
-                 ('gs://', RemoteGS),
+        clist = [('s3://mybucket/', RemoteS3),
+                 ('gs://mybucket/', RemoteGS),
                  ('ssh://user@localhost:/', RemoteSSH),
                  (TestDvc.mkdtemp(), RemoteLOCAL)]
 
