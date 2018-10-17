@@ -64,6 +64,13 @@ class RemoteS3(RemoteBase):
         self.aws_access_key_id = creds.get('aws_access_key_id', None)
         self.aws_secret_access_key = creds.get('aws_secret_access_key', None)
 
+    @staticmethod
+    def compat_config(config):
+        ret = config.copy()
+        url = 's3://' + ret.pop(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
+        ret[Config.SECTION_REMOTE_URL] = url
+        return ret
+
     @property
     def bucket(self):
         return urlparse(self.url).netloc

@@ -36,10 +36,13 @@ class RemoteBase(object):
     def __init__(self, project, config):
         pass
 
+    def compat_config(config):
+        return config.copy()
+
     @classmethod
     def supported(cls, config):
         url = config[Config.SECTION_REMOTE_URL]
-        url_ok = cls.match(url)
+        url_ok = cls.match(url) is not None
         deps_ok = all(cls.REQUIRES.values())
         if url_ok and not deps_ok:
             missing = [k for k, v in cls.REQUIRES.items() if v is None]
