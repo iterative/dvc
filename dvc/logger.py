@@ -107,24 +107,34 @@ class Logger(object):
         return Logger._prefix('Debug', 'debug')
 
     @staticmethod
+    def _with_progress(func, msg):
+        from dvc.progress import progress
+        with progress:
+            func(msg)
+
+    @staticmethod
     def error(msg, exc=None):
         prefix = Logger.error_prefix()
         str_exc, str_tb = Logger.parse_exc(exc)
         if Logger.logger().getEffectiveLevel() == logging.DEBUG and exc:
             str_tb = str_tb if str_tb else traceback.format_exc()
-            Logger.logger().error(prefix + str_tb)
+            Logger._with_progress(Logger.logger().error,
+                                  prefix + str_tb)
         chat = "\n\nHaving any troubles? Hit us up at dvc.org/support, " \
                "we are always happy to help!"
-        return Logger.logger().error(prefix + msg + str_exc + chat)
+        Logger._with_progress(Logger.logger().error,
+                              prefix + msg + str_exc + chat)
 
     @staticmethod
     def warn(msg):
-        return Logger.logger().warn(Logger.warning_prefix() + msg)
+        Logger._with_progress(Logger.logger().warn,
+                              Logger.warning_prefix() + msg)
 
     @staticmethod
     def debug(msg):
-        return Logger.logger().debug(Logger.debug_prefix() + msg)
+        Logger._with_progress(Logger.logger().debug,
+                              Logger.debug_prefix() + msg)
 
     @staticmethod
     def info(msg):
-        return Logger.logger().info(msg)
+        Logger._with_progress(Logger.logger().info, msg)
