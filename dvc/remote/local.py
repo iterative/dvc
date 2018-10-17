@@ -158,14 +158,15 @@ class RemoteLOCAL(RemoteBase):
     def collect_dir_cache(self, dname):
         dir_info = []
 
-        bar = False
         for root, dirs, files in os.walk(dname):
+            bar = False
+
             if len(files) > LARGE_DIR_SIZE:
                 msg = "Computing md5 for a large directory {}. " \
                       "This is only done once."
-                Logger.info(msg.format(os.path.relpath(dname)))
+                Logger.info(msg.format(os.path.relpath(root)))
                 bar = True
-                title = os.path.relpath(dname)
+                title = os.path.relpath(root)
                 processed = 0
                 total = len(files)
                 progress.update_target(title, 0, total)
@@ -182,8 +183,8 @@ class RemoteLOCAL(RemoteBase):
                 dir_info.append({self.PARAM_RELPATH: relpath,
                                  self.PARAM_MD5: md5})
 
-        if bar:
-            progress.finish_target(title)
+            if bar:
+                progress.finish_target(title)
 
         # NOTE: sorting the list by path to ensure reproducibility
         dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
