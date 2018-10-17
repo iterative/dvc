@@ -11,6 +11,7 @@ class Progress(object):
         self._n_total = 0
         self._n_finished = 0
         self._lock = threading.Lock()
+        self._line = None
 
     def set_n_total(self, total):
         self._n_total = total
@@ -28,17 +29,22 @@ class Progress(object):
         print(line, end='')
         sys.stdout.flush()
 
-    def update_target(self, name, current, total):
+    def refresh(self, line=None):
         # Just go away if it is locked. Will update next time
         if not self._lock.acquire(False):
             return
 
-        bar = self._bar(name, current, total)
+        if line is None:
+            line = self._line
 
-        if sys.stdout.isatty():
-            self._writeln(bar)
+        if sys.stdout.isatty() and line is not None:
+            self._writeln(line)
+            self._line = line
 
         self._lock.release()
+
+    def update_target(self, name, current, total):
+        self.refresh(self._bar(name, current, total))
 
     def finish_target(self, name):
         # We have to write a msg about finished target
@@ -51,6 +57,7 @@ class Progress(object):
             print(bar)
 
             self._n_finished += 1
+            self._line = None
 
     def _bar(self, target_name, current, total):
         """
@@ -77,6 +84,16 @@ class Progress(object):
         bar = "[" + '#'*n_sh + ' '*n_sp + "] "
 
         return num + bar + percent + target_name
+
+    def __enter__(self):
+        self._lock.acquire(True)
+        if self._line is not None:
+            self._clearln()
+
+    def __exit__(self, type, value, tb):
+        if self._line is not None:
+            self.refresh()
+        self._lock.release()
 
 
 progress = Progress()
