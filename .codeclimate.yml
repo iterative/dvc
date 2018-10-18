@@ -1,14 +1,5 @@
 languages:
     Python: true
 
-checks:
-    argument-count:
-        enabled: false
-    method-complexity:
-        enabled: false
-    method-lines:
-        config:
-            threshold: 50
-
 exclude_paths:
     - tests/
