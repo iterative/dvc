@@ -417,8 +417,8 @@ class RemoteLOCAL(RemoteBase):
                 copyfile(from_info['path'], to_info['path'], name=name)
             except Exception as exc:
                 msg = "Failed to upload '{}' tp '{}'"
-                Logger.error(msg.format(from_info['path'],
-                                        to_info['path']), exc)
+                Logger.warn(msg.format(from_info['path'],
+                                       to_info['path']), exc)
 
     def download(self,
                  from_infos,
@@ -449,8 +449,8 @@ class RemoteLOCAL(RemoteBase):
                          name=name)
             except Exception as exc:
                 msg = "Failed to download '{}' to '{}'"
-                Logger.error(msg.format(from_info['path'],
-                                        to_info['path']), exc)
+                Logger.warn(msg.format(from_info['path'],
+                                       to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])
