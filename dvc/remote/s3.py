@@ -313,16 +313,17 @@ class RemoteS3(RemoteBase):
             if not name:
                 name = os.path.basename(to_info['path'])
 
-            if no_progress_bar:
-                cb = None
-            else:
-                total = s3.head_object(Bucket=from_info['bucket'],
-                                       Key=from_info['key'])['ContentLength']
-                cb = Callback(name, total)
-
             self._makedirs(to_info['path'])
 
             try:
+                if no_progress_bar:
+                    cb = None
+                else:
+                    total = s3.head_object(
+                                    Bucket=from_info['bucket'],
+                                    Key=from_info['key'])['ContentLength']
+                    cb = Callback(name, total)
+
                 s3.download_file(from_info['bucket'],
                                  from_info['key'],
                                  tmp_file,
