@@ -33,6 +33,13 @@ class RemoteGS(RemoteBase):
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
+    @staticmethod
+    def compat_config(config):
+        ret = config.copy()
+        url = 'gs://' + ret.pop(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
+        ret[Config.SECTION_REMOTE_URL] = url
+        return ret
+
     @property
     def bucket(self):
         return urlparse(self.url).netloc

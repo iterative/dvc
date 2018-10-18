@@ -73,6 +73,11 @@ class DataCloud(object):
             msg = "Can't find cloud section '{}' in config"
             raise ConfigError(msg.format(name))
 
+        # NOTE: check if the class itself has everything needed for operation.
+        # E.g. all the imported packages.
+        if not cloud_type.supported(cloud_type.compat_config(cloud_config)):
+            raise ConfigError("Unsupported cloud '{}'".format(name))
+
         return self._init_cloud(cloud_config, cloud_type)
 
     def _init_cloud(self, cloud_config, cloud_type):
