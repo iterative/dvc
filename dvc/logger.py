@@ -113,27 +113,40 @@ class Logger(object):
             func(msg)
 
     @staticmethod
-    def error(msg, exc=None):
+    def _error_exc(exc):
+        if exc is None:
+            return
+
+        if Logger.logger().getEffectiveLevel() != logging.DEBUG:
+            return
+
         prefix = Logger.error_prefix()
         str_exc, str_tb = Logger.parse_exc(exc)
-        if Logger.logger().getEffectiveLevel() == logging.DEBUG and exc:
-            str_tb = str_tb if str_tb else traceback.format_exc()
-            Logger._with_progress(Logger.logger().error,
-                                  prefix + str_tb)
+        str_tb = str_tb if str_tb else traceback.format_exc()
+        Logger._with_progress(Logger.logger().error, prefix + str_tb)
+
+    @staticmethod
+    def _with_exc(func, msg, suffix="", exc=None):
+        Logger._error_exc(exc)
+        msg = msg + Logger.parse_exc(exc)[0] + suffix
+        Logger._with_progress(func, msg)
+
+    @staticmethod
+    def error(msg, exc=None):
         chat = "\n\nHaving any troubles? Hit us up at dvc.org/support, " \
                "we are always happy to help!"
-        Logger._with_progress(Logger.logger().error,
-                              prefix + msg + str_exc + chat)
+        Logger._with_exc(Logger.logger().error,
+                         Logger.error_prefix() + msg,
+                         suffix=chat,
+                         exc=exc)
 
-    @staticmethod
-    def warn(msg):
-        Logger._with_progress(Logger.logger().warn,
-                              Logger.warning_prefix() + msg)
+    @classmethod
+    def warn(cls, msg, exc=None):
+        cls._with_exc(cls.logger().warn, cls.warning_prefix() + msg, exc=exc)
 
-    @staticmethod
-    def debug(msg):
-        Logger._with_progress(Logger.logger().debug,
-                              Logger.debug_prefix() + msg)
+    @classmethod
+    def debug(cls, msg, exc=None):
+        cls._with_exc(cls.logger().debug, cls.debug_prefix() + msg, exc=exc)
 
     @staticmethod
     def info(msg):

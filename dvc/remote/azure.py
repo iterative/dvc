@@ -176,8 +176,8 @@ class RemoteAzure(RemoteBase):
                 self.blob_service.create_blob_from_path(
                     bucket, key, from_info['path'], progress_callback=cb)
             except Exception as ex:
-                Logger.error("Failed to upload '{}'".format(from_info['path']),
-                             ex)
+                msg = "Failed to upload '{}'".format(from_info['path'])
+                Logger.warn(msg, ex)
             else:
                 progress.finish_target(name)
 
@@ -213,8 +213,8 @@ class RemoteAzure(RemoteBase):
                 self.blob_service.get_blob_to_path(
                     bucket, key, tmp_file, progress_callback=cb)
             except Exception as exc:
-                Logger.error("Failed to download '{}/{}'".format(
-                    bucket, key), exc)
+                msg = "Failed to download '{}/{}'".format(bucket, key)
+                Logger.warn(msg, exc)
             else:
                 os.rename(tmp_file, to_info['path'])
 

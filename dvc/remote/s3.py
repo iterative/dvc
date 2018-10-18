@@ -279,7 +279,7 @@ class RemoteS3(RemoteBase):
                                Callback=cb)
             except Exception as exc:
                 msg = "Failed to upload '{}'".format(from_info['path'])
-                Logger.error(msg, exc)
+                Logger.warn(msg, exc)
                 continue
 
             progress.finish_target(name)
@@ -331,8 +331,8 @@ class RemoteS3(RemoteBase):
             except Exception as exc:
                 msg = "Failed to download '{}/{}'".format(from_info['bucket'],
                                                           from_info['key'])
-                Logger.error(msg, exc)
-                return
+                Logger.warn(msg, exc)
+                continue
 
             os.rename(tmp_file, to_info['path'])
 
