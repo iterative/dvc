@@ -214,9 +214,9 @@ class RemoteGS(RemoteBase):
                 blob.upload_from_filename(from_info['path'])
             except Exception as exc:
                 msg = "Failed to upload '{}' to '{}/{}'"
-                Logger.error(msg.format(from_info['path'],
-                                        to_info['bucket'],
-                                        to_info['key']), exc)
+                Logger.warn(msg.format(from_info['path'],
+                                       to_info['bucket'],
+                                       to_info['key']), exc)
                 continue
 
             progress.finish_target(name)
@@ -263,9 +263,9 @@ class RemoteGS(RemoteBase):
                 blob.download_to_filename(tmp_file)
             except Exception as exc:
                 msg = "Failed to download '{}/{}' to '{}'"
-                Logger.error(msg.format(from_info['bucket'],
-                                        from_info['key'],
-                                        to_info['path']), exc)
+                Logger.warn(msg.format(from_info['bucket'],
+                                       from_info['key'],
+                                       to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])

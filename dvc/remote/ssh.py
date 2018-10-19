@@ -349,9 +349,9 @@ class RemoteSSH(RemoteBase):
                                     callback=create_cb(name))
             except Exception as exc:
                 msg = "Failed to download '{}/{}' to '{}'"
-                Logger.error(msg.format(from_info['host'],
-                                        from_info['path'],
-                                        to_info['path']), exc)
+                Logger.warn(msg.format(from_info['host'],
+                                       from_info['path'],
+                                       to_info['path']), exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -390,9 +390,9 @@ class RemoteSSH(RemoteBase):
                          callback=create_cb(name))
             except Exception as exc:
                 msg = "Failed to upload '{}' to '{}/{}'"
-                Logger.error(msg.format(from_info['path'],
-                                        to_info['host'],
-                                        to_info['path'], exc))
+                Logger.warn(msg.format(from_info['path'],
+                                       to_info['host'],
+                                       to_info['path'], exc))
                 continue
 
             progress.finish_target(name)
