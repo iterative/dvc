@@ -178,7 +178,12 @@ class System(object):
     @staticmethod
     def inode(path):
         if System.is_unix():
+            import ctypes
             inode = os.lstat(path).st_ino
+            # NOTE: See https://bugs.python.org/issue29619 and
+            # https://stackoverflow.com/questions/34643289/
+            # pythons-os-stat-is-returning-wrong-inode-value
+            inode = ctypes.c_ulong(inode).value
         else:
             # getdirinfo from ntfsutils works on both files and dirs
             info = System.getdirinfo(path)
