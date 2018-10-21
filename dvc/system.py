@@ -9,6 +9,8 @@ class System(object):
     @staticmethod
     def hardlink(source, link_name):
         import ctypes
+        from dvc.exceptions import DvcException
+
         if System.is_unix():
             os.link(source, link_name)
             return
@@ -21,11 +23,13 @@ class System(object):
 
         res = CreateHardLink(link_name, source, None)
         if res == 0:
-            raise ctypes.WinError()
+            raise DvcException('CreateHardLinkW', cause=ctypes.WinError())
 
     @staticmethod
     def symlink(source, link_name):
         import ctypes
+        from dvc.exceptions import DvcException
+
         if System.is_unix():
             return os.symlink(source, link_name)
 
@@ -38,7 +42,7 @@ class System(object):
         func.restype = ctypes.c_ubyte
 
         if func(link_name, source, flags) == 0:
-            raise ctypes.WinError()
+            raise DvcException('CreateSymbolicLinkW', cause=ctypes.WinError())
 
     @staticmethod
     def _reflink_darwin(src, dst):
