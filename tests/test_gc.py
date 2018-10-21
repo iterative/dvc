@@ -40,3 +40,63 @@ class TestGC(TestDvc):
 
         for c in self.good_cache:
             self.assertTrue(os.path.exists(c))
+
+
+class TestGCBranchesTags(TestDvc):
+    def _check_cache(self, num):
+        total = 0
+        for root, dirs, files in os.walk(os.path.join('.dvc', 'cache')):
+            total += len(files)
+        self.assertEqual(total, num)
+
+    def test(self):
+        fname = 'file'
+
+        with open(fname, 'w+') as fobj:
+            fobj.write('v1.0')
+
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        self.dvc.scm.add(['.gitignore', stages[0].relpath])
+        self.dvc.scm.commit('v1.0')
+        self.dvc.scm.tag('v1.0')
+
+        self.dvc.scm.checkout('test', create_new=True)
+        self.dvc.remove(stages[0].relpath, outs_only=True)
+        with open(fname, 'w+') as fobj:
+            fobj.write('test')
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        self.dvc.scm.add(['.gitignore', stages[0].relpath])
+        self.dvc.scm.commit('test')
+
+        self.dvc.scm.checkout('master')
+        self.dvc.remove(stages[0].relpath, outs_only=True)
+        with open(fname, 'w+') as fobj:
+            fobj.write('trash')
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        self.dvc.scm.add(['.gitignore', stages[0].relpath])
+        self.dvc.scm.commit('trash')
+
+        self.dvc.remove(stages[0].relpath, outs_only=True)
+        with open(fname, 'w+') as fobj:
+            fobj.write('master')
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+        self.dvc.scm.add(['.gitignore', stages[0].relpath])
+        self.dvc.scm.commit('master')
+
+        self._check_cache(4)
+
+        self.dvc.gc(all_tags=True, all_branches=True)
+
+        self._check_cache(3)
+
+        self.dvc.gc(all_tags=False, all_branches=True)
+
+        self._check_cache(2)
+
+        self.dvc.gc(all_tags=True, all_branches=False)
+
+        self._check_cache(1)

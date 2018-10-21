@@ -50,6 +50,9 @@ class Base(object):
     def branch(self, branch):
         pass
 
+    def tag(self, tag):
+        pass
+
     def brancher(self,
                  branches=None,
                  all_branches=False,
@@ -63,16 +66,19 @@ class Base(object):
         saved = self.active_branch()
         revs = []
 
-        if branches is not None:
-            revs.extend(branches)
-        elif all_branches:
-            revs.extend(self.list_branches())
-        elif tags is not None:
-            revs.extend(tags)
-        elif all_tags:
-            revs.extend(self.list_tags())
-        else:
+        if all_branches:
+            branches = self.list_branches()
+
+        if all_tags:
+            tags = self.list_tags()
+
+        if branches is None:
             revs.extend([saved])
+        else:
+            revs.extend(branches)
+
+        if tags is not None:
+            revs.extend(tags)
 
         for rev in revs:
             self.checkout(rev)
@@ -214,6 +220,9 @@ class Git(Base):
 
     def branch(self, branch):
         self.repo.git.branch(branch)
+
+    def tag(self, tag):
+        self.repo.git.tag(tag)
 
     def untracked_files(self):
         files = self.repo.untracked_files
