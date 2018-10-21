@@ -13,7 +13,11 @@ class TestInstall(TestDvc):
         ret = main(['install'])
         self.assertNotEqual(ret, 0)
 
-        self.assertTrue(os.path.isfile('.git/hooks/post-checkout'))
+        def hook(name):
+            return os.path.join('.git', 'hooks', name)
+
+        self.assertTrue(os.path.isfile(hook('post-checkout')))
+        self.assertTrue(os.path.isfile(hook('pre-commit')))
 
         self.dvc.add(self.FOO)
         os.unlink(self.FOO)
