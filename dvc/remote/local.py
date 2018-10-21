@@ -127,6 +127,14 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(dname):
             os.makedirs(dname)
 
+        # NOTE: just create an empty file for an empty cache
+        if os.path.getsize(cache) == 0:
+            open(path, 'w+').close()
+            msg = "Created empty file: {} -> {}"
+            self.project.logger.info(msg.format(os.path.relpath(cache),
+                                                os.path.relpath(path)))
+            return
+
         i = len(self.cache_types)
         while i > 0:
             try:
