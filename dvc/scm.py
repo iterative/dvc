@@ -240,17 +240,21 @@ class Git(Base):
     def list_tags(self):
         return [t.name for t in self.repo.tags]
 
-    def install(self):
+    def _install_hook(self, name, cmd):
         hook = os.path.join(self.root_dir,
                             self.GIT_DIR,
                             'hooks',
-                            'post-checkout')
+                            name)
         if os.path.isfile(hook):
             msg = 'Git hook \'{}\' already exists.'
             raise SCMError(msg.format(os.path.relpath(hook)))
         with open(hook, 'w+') as fd:
-            fd.write('#!/bin/sh\nexec dvc checkout\n')
+            fd.write('#!/bin/sh\nexec dvc {}\n'.format(cmd))
         os.chmod(hook, 0o777)
+
+    def install(self):
+        self._install_hook('post-checkout', 'checkout')
+        self._install_hook('pre-commit', 'status')
 
 
 def SCM(root_dir, no_scm=False, project=None):
