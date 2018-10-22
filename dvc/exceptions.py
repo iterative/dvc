@@ -31,6 +31,13 @@ class OutputDuplicationError(DvcException):
         super(OutputDuplicationError, self).__init__(msg.format(output, s))
 
 
+class CircularDependencyError(DvcException):
+    def __init__(self, dependency):
+        assert isinstance(dependency, str)
+        msg = "File '{}' is specified as an output and as a dependency."
+        super(CircularDependencyError, self).__init__(msg.format(dependency))
+
+
 class MoveNotDataSourceError(DvcException):
     def __init__(self, path):
         msg = "Move is not permitted for stages that are not data sources. " \
