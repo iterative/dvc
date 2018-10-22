@@ -12,8 +12,11 @@ class System(object):
         from dvc.exceptions import DvcException
 
         if System.is_unix():
-            os.link(source, link_name)
-            return
+            try:
+                os.link(source, link_name)
+                return
+            except Exception as exc:
+                raise DvcException('link', cause=exc)
 
         CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
         CreateHardLink.argtypes = [ctypes.c_wchar_p,
@@ -31,7 +34,11 @@ class System(object):
         from dvc.exceptions import DvcException
 
         if System.is_unix():
-            return os.symlink(source, link_name)
+            try:
+                os.symlink(source, link_name)
+                return
+            except Exception as exc:
+                raise DvcException('symlink', cause=exc)
 
         flags = 0
         if source is not None and os.path.isdir(source):
