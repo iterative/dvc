@@ -143,6 +143,14 @@ class Project(object):
                         stages = [o.stage.relpath, out.stage.relpath]
                         raise OutputDuplicationError(o.path, stages)
 
+    def _check_circular_dependency(self, deps, outs):
+        from dvc.exceptions import CircularDependencyError
+
+        circular_dependencies = set(deps) & set(outs)
+
+        raise CircularDependencyError(circular_dependencies.pop())
+
+
     def add(self, fname, recursive=False):
         fnames = []
         if recursive and os.path.isdir(fname):
@@ -258,6 +266,7 @@ class Project(object):
                             overwrite=overwrite)
 
         self._check_output_duplication(stage.outs)
+        self._check_circular_dependency(deps, outs)
 
         self._files_to_git_add = []
         with self.state:
