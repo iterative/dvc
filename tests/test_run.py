@@ -5,7 +5,7 @@ from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
 from dvc.command.run import CmdRun
-from dvc.exceptions import OutputDuplicationError
+from dvc.exceptions import OutputDuplicationError, CircularDependencyError
 
 from tests.basic_env import TestDvc
 
@@ -91,6 +91,15 @@ class TestRunNoExec(TestDvc):
         self.dvc.run(cmd='python {} {} {}'.format(self.CODE, self.FOO, 'out'),
                      no_exec=True)
         self.assertFalse(os.path.exists('out'))
+
+
+class TestRunCircularDependency(TestDvc):
+    def test(self):
+        with self.assertRaises(CircularDependencyError):
+            self.dvc.run(cmd='',
+                         deps=[self.FOO],
+                         outs=[self.FOO],
+                         fname='circular-dependency.dvc')
 
 
 class TestCmdRun(TestDvc):
