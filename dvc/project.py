@@ -148,8 +148,8 @@ class Project(object):
 
         circular_dependencies = set(deps) & set(outs)
 
-        raise CircularDependencyError(circular_dependencies.pop())
-
+        if circular_dependencies:
+            raise CircularDependencyError(circular_dependencies.pop())
 
     def add(self, fname, recursive=False):
         fnames = []
