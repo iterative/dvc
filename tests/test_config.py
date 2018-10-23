@@ -28,6 +28,11 @@ class TestConfigCLI(TestDvc):
         ret = main(['root'])
         self.assertEqual(ret, 0)
 
+        # NOTE: check that `dvc root` is not blocked with dvc lock
+        with self.dvc.lock:
+            ret = main(['root'])
+        self.assertEqual(ret, 0)
+
     def _do_test(self, local=False):
         section = 'setsection'
         field = 'setfield'
