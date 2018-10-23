@@ -27,7 +27,7 @@
 
 |
 
-**Data Science Version Control** or **DVC** is an **open-source** tool for data science and 
+**Data Science Version Control** or **DVC** is an **open-source** tool for data science and
 machine learning projects. With a simple and flexible Git-like architecture and interface it
 helps data scientists:
 
@@ -80,7 +80,7 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full versio
 |                                   | | ``$ git push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 | Share data and ML models          | | ``$ dvc remote add myremote s3://mybucket/image_cnn``           |
-|                                   | | ``$ dvc core.remote myremote``                                  |
+|                                   | | ``$ dvc config core.remote myremote``                           |
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
@@ -154,15 +154,15 @@ details.
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/2
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/2
-  :alt: 2   
+  :alt: 2
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/3
-  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3   
+  :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/3
   :alt: 3
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/4
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/4
-  :alt: 4   
+  :alt: 4
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/5
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/5
@@ -170,7 +170,7 @@ details.
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/6
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/6
-  :alt: 6   
+  :alt: 6
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/7
   :target: https://sourcerer.io/fame/efiop/iterative/dvc/links/7
