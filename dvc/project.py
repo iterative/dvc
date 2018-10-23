@@ -143,6 +143,14 @@ class Project(object):
                         stages = [o.stage.relpath, out.stage.relpath]
                         raise OutputDuplicationError(o.path, stages)
 
+    def _check_outs_duplication(self, outs):
+        if len(outs) != len(set(outs)):
+            msg = "Output '{}' was specified more than one time"
+            f = set([x for x in outs if outs.count(x) > 1])
+            for i in f:
+                s = i + " "
+            self.logger.warn(msg.format(s))
+
     def add(self, fname, recursive=False):
         fnames = []
         if recursive and os.path.isdir(fname):
@@ -247,6 +255,7 @@ class Project(object):
             cwd=os.curdir,
             no_exec=False,
             overwrite=False):
+        self._check_outs_duplication(outs)
         stage = Stage.loads(project=self,
                             fname=fname,
                             cmd=cmd,
