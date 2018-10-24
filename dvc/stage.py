@@ -40,6 +40,12 @@ class StageFileBadNameError(DvcException):
         super(StageFileBadNameError, self).__init__(msg)
 
 
+class StageBadCwdError(DvcException):
+    def __init__(self, cwd):
+        msg = "Stage cwd '{}' is outside of the current dvc project"
+        super(StageBadCwdError, self).__init__(msg.format(cwd))
+
+
 class MissingDep(DvcException):
     def __init__(self, deps):
         assert len(deps) > 0
@@ -276,6 +282,13 @@ class Stage(object):
         return (fname, cwd)
 
     @staticmethod
+    def _check_inside_project(project, cwd):
+        assert project is not None
+        proj_dir = os.path.realpath(project.root_dir)
+        if not os.path.realpath(cwd).startswith(proj_dir):
+            raise StageBadCwdError(cwd)
+
+    @staticmethod
     def loads(project=None,
               cmd=None,
               deps=[],
@@ -304,6 +317,8 @@ class Stage(object):
             raise StageFileBadNameError(msg.format(fname))
 
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
+
+        Stage._check_inside_project(project, cwd)
 
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)

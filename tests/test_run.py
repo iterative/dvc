@@ -4,6 +4,7 @@ import filecmp
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
+from dvc.stage import StageBadCwdError
 from dvc.command.run import CmdRun
 from dvc.exceptions import OutputDuplicationError, CircularDependencyError
 
@@ -100,6 +101,12 @@ class TestRunCircularDependency(TestDvc):
                          deps=[self.FOO],
                          outs=[self.FOO],
                          fname='circular-dependency.dvc')
+
+class TestRunBadCwd(TestDvc):
+    def test(self):
+        with self.assertRaises(StageBadCwdError):
+            self.dvc.run(cmd='',
+                         cwd=self.mkdtemp())
 
 
 class TestCmdRun(TestDvc):
