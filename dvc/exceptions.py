@@ -46,6 +46,7 @@ class MoveNotDataSourceError(DvcException):
               "desired location."
         super(MoveNotDataSourceError, self).__init__(msg.format(path=path))
 
+
 class ArgumentDuplicationError(DvcException):
     def __init__(self, outs):
         msg = "Output '{}' was specified more than one time"
