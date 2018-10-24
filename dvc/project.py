@@ -5,11 +5,13 @@ from dvc.stage import Stage
 
 
 class InitError(DvcException):
+
     def __init__(self, msg):
         super(InitError, self).__init__(msg)
 
 
 class ReproductionError(DvcException):
+
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
         msg = 'Failed to reproduce \'{}\''.format(dvc_file_name)
@@ -151,6 +153,12 @@ class Project(object):
         if circular_dependencies:
             raise CircularDependencyError(circular_dependencies.pop())
 
+    def _check_argument_duplication(self, outs):
+        from dvc.exceptions import ArgumentDuplicationError
+
+        if len(outs) != len(set(outs)):
+            raise ArgumentDuplicationError(outs)
+
     def add(self, fname, recursive=False):
         fnames = []
         if recursive and os.path.isdir(fname):
@@ -255,7 +263,6 @@ class Project(object):
             cwd=os.curdir,
             no_exec=False,
             overwrite=False):
-        self._check_outs_duplication(outs)
         stage = Stage.loads(project=self,
                             fname=fname,
                             cmd=cmd,
@@ -268,6 +275,7 @@ class Project(object):
 
         self._check_output_duplication(stage.outs)
         self._check_circular_dependency(deps, outs)
+        self._check_argument_duplication(outs)
 
         self._files_to_git_add = []
         with self.state:

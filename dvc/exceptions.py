@@ -45,3 +45,10 @@ class MoveNotDataSourceError(DvcException):
               "it by hand, or remove '{path}' and create a new one at the " \
               "desired location."
         super(MoveNotDataSourceError, self).__init__(msg.format(path=path))
+
+class ArgumentDuplicationError(DvcException):
+    def __init__(self, outs):
+        msg = "Output '{}' was specified more than one time"
+        f = set([x for x in outs if outs.count(x) > 1])
+        s = f.pop()
+        super(ArgumentDuplicationError, self).__init__(msg.format(s))
