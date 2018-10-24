@@ -5,13 +5,11 @@ from dvc.stage import Stage
 
 
 class InitError(DvcException):
-
     def __init__(self, msg):
         super(InitError, self).__init__(msg)
 
 
 class ReproductionError(DvcException):
-
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
         msg = 'Failed to reproduce \'{}\''.format(dvc_file_name)
