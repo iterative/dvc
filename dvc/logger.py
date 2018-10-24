@@ -142,7 +142,7 @@ class Logger(object):
 
     @classmethod
     def warn(cls, msg, exc=None):
-        cls._with_exc(cls.logger().warn, cls.warning_prefix() + msg, exc=exc)
+        cls._with_exc(cls.logger().warning, cls.warning_prefix() + msg, exc=exc)
 
     @classmethod
     def debug(cls, msg, exc=None):
