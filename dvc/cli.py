@@ -234,8 +234,8 @@ def parse_args(argv=None):
                         '-c',
                         '--cwd',
                         default=os.path.curdir,
-                        help='Directory to run your command and place state '
-                             'file in.')
+                        help='Directory within your project to run your '
+                             'command and place stage file in.')
     run_parser.add_argument(
                         '--no-exec',
                         action='store_true',
@@ -444,7 +444,8 @@ def parse_args(argv=None):
                         '-c',
                         '--cwd',
                         default=os.path.curdir,
-                        help='Directory to reproduce from.')
+                        help='Directory within your project to '
+                             'reroduce from.')
     repro_parser.add_argument(
                         '-m',
                         '--metrics',
