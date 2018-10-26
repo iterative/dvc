@@ -34,10 +34,11 @@ class RemoteHDFS(RemoteBase):
         # See https://github.com/iterative/dvc/issues/1197.
         close_fds = (os.name != 'nt')
 
+        executable = os.getenv('SHELL') if os.name != 'nt' else None
         p = Popen(cmd,
                   shell=True,
                   close_fds=close_fds,
-                  executable=os.getenv('SHELL'),
+                  executable=executable,
                   env=fix_env(os.environ),
                   stdin=PIPE,
                   stdout=PIPE,
