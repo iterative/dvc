@@ -3,6 +3,7 @@ Helpers for other modules.
 """
 import os
 import sys
+import stat
 import math
 import json
 import shutil
@@ -102,6 +103,7 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
 
 
 def move(src, dst):
+    dst = os.path.abspath(dst)
     dname = os.path.dirname(dst)
     if not os.path.exists(dname):
         os.makedirs(dname)
@@ -119,10 +121,17 @@ def remove(path):
         return
 
     Logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
+
+    def _chmod(func, p, excinfo):
+        perm = os.stat(p).st_mode
+        perm |= stat.S_IWRITE
+        os.chmod(p, perm)
+        func(p)
+
     if os.path.isfile(path):
-        os.unlink(path)
+        _chmod(os.unlink, path, None)
     else:
-        shutil.rmtree(path)
+        shutil.rmtree(path, onerror=_chmod)
 
 
 def to_chunks(l, jobs):

@@ -8,6 +8,7 @@ from dvc.command.init import CmdInit
 from dvc.command.destroy import CmdDestroy
 from dvc.command.remove import CmdRemove
 from dvc.command.move import CmdMove
+from dvc.command.unprotect import CmdUnprotect
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
@@ -520,6 +521,19 @@ def parse_args(argv=None):
                         'dst',
                         help='Destination.')
     move_parser.set_defaults(func=CmdMove)
+
+    # Unprotect
+    UNPROTECT_HELP = 'Unprotect data file/directory.'
+    unprotect_parser = subparsers.add_parser(
+                        'unprotect',
+                        parents=[parent_parser],
+                        description=UNPROTECT_HELP,
+                        help=UNPROTECT_HELP)
+    unprotect_parser.add_argument(
+                        'targets',
+                        nargs='+',
+                        help='Data files/directory.')
+    unprotect_parser.set_defaults(func=CmdUnprotect)
 
     # Garbage collector
     GC_HELP = 'Collect garbage.'
