@@ -440,11 +440,12 @@ class Stage(object):
 
             if not dry:
                 self._check_missing_deps()
+                executable = os.getenv('SHELL') if os.name != 'nt' else None
                 p = subprocess.Popen(self.cmd,
                                      cwd=self.cwd,
                                      shell=True,
                                      env=fix_env(os.environ),
-                                     executable=os.getenv('SHELL'))
+                                     executable=executable)
                 p.communicate()
                 if p.returncode != 0:
                     raise StageCmdFailedError(self)
