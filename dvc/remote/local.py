@@ -1,4 +1,5 @@
 import os
+import stat
 import uuid
 import json
 import ntpath
@@ -36,6 +37,7 @@ class RemoteLOCAL(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.state = self.project.state
+        self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
 
@@ -139,8 +141,13 @@ class RemoteLOCAL(RemoteBase):
         while i > 0:
             try:
                 self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
-                msg = "Created '{}': {} -> {}"
-                Logger.info(msg.format(self.cache_types[0],
+
+                if self.protected:
+                    os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+
+                msg = "Created {}'{}': {} -> {}"
+                Logger.info(msg.format('protected ' if self.protected else '',
+                                       self.cache_types[0],
                                        os.path.relpath(cache),
                                        os.path.relpath(path)))
                 return
