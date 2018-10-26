@@ -27,6 +27,9 @@ class Cache(object):
             t = config.get(Config.SECTION_CACHE_TYPE, None)
             if t:
                 sect[Config.SECTION_CACHE_TYPE] = t
+            protected = config.get(Config.SECTION_CACHE_PROTECTED, None)
+            if protected is not None:
+                sect[Config.SECTION_CACHE_PROTECTED] = protected
 
         self.local = Remote(project, sect)
 

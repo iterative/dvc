@@ -245,6 +245,38 @@ class Project(object):
             msg = 'Unable to find dvcfile with output \'{}\''
             raise DvcException(msg.format(from_path))
 
+    def _unprotect_file(self, path):
+        import stat
+        import uuid
+        from dvc.utils import copyfile, move, remove
+
+        self.logger.debug("Unprotecting '{}'".format(path))
+
+        tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
+        move(path, tmp)
+
+        copyfile(tmp, path)
+
+        remove(tmp)
+
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+
+    def _unprotect_dir(self, path):
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                path = os.path.join(root, f)
+                self._unprotect_file(path)
+
+    def unprotect(self, path):
+        if not os.path.exists(path):
+            raise DvcException("Can't unprotect non-existing "
+                               "data '{}'".format(path))
+
+        if os.path.isdir(path):
+            self._unprotect_dir(path)
+        else:
+            self._unprotect_file(path)
+
     def run(self,
             cmd=None,
             deps=[],
