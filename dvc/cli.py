@@ -506,7 +506,7 @@ def parse_args(argv=None):
                         '--force',
                         action='store_true',
                         default=False,
-                        help='Force destruction.')
+                        help='Force purge.')
     remove_parser.add_argument(
                         'targets',
                         nargs='+',
