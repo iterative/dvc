@@ -1,9 +1,9 @@
 import os
-import configobj
 
 from dvc.command.base import CmdBase
 from dvc.logger import Logger
 from dvc.config import Config
+from dvc.exceptions import DvcException
 
 
 class CmdConfig(CmdBase):
@@ -11,92 +11,58 @@ class CmdConfig(CmdBase):
         from dvc.project import Project
 
         self.args = args
-        root_dir = self._find_root()
-        if args.local:
-            config = Config.CONFIG_LOCAL
+        dvc_dir = os.path.join(self._find_root(), Project.DVC_DIR)
+        self.config = Config(dvc_dir)
+        if self.args.system:
+            self.configobj = self.config._system_config
+        elif self.args.glob:
+            self.configobj = self.config._global_config
+        elif self.args.local:
+            self.configobj = self.config._local_config
         else:
-            config = Config.CONFIG
-        self.config_file = os.path.join(root_dir, Project.DVC_DIR, config)
-        # Using configobj because it doesn't
-        # drop comments like configparser does.
-        self.configobj = configobj.ConfigObj(self.config_file)
+            self.configobj = self.config._project_config
 
     def run_cmd(self):
         return self.run()
 
-    def _get_key(self, d, name, add=False):
-        for k in d.keys():
-            if k.lower() == name.lower():
-                return k
+    def _unset(self, section, opt=None, configobj=None):
+        if configobj is None:
+            configobj = self.configobj
 
-        if add:
-            d[name] = {}
-            return name
-
-        return None
-
-    def save(self):
         try:
-            self.configobj.write()
-        except Exception as exc:
-            msg = "Failed to write config '{}'".format(self.configobj.filename)
-            Logger.error(msg, exc)
+            self.config.unset(configobj, section, opt)
+            self.config.save(configobj)
+        except DvcException as exc:
+            Logger.error("Failed to unset '{}'".format(self.args.name), exc)
             return 1
         return 0
 
-    def unset(self, section, opt=None):
-        if section not in self.configobj.keys():
-            Logger.error("Section '{}' doesn't exist".format(section))
+    def _show(self, section, opt):
+        try:
+            self.config.show(self.configobj, section, opt)
+        except DvcException as exc:
+            Logger.error("Failed to show '{}'".format(self.args.name), exc)
             return 1
-
-        if opt in self.configobj[section].keys():
-            del self.configobj[section][opt]
-
-        if len(self.configobj[section]) == 0 or opt is None:
-            del self.configobj[section]
-
-        return self.save()
-
-    def show(self):
-        Logger.info(self.configobj[self.section][self.opt])
         return 0
 
-    def set(self, section, opt, value):
-        if section not in self.configobj.keys():
-            self.configobj[section] = {}
-
-        self.configobj[section][opt] = value
-
-        return self.save()
-
-    def check_opt(self):
-        _section, _opt = self.args.name.strip().split('.', 1)
-        add = (self.args.value is not None and self.args.unset is False)
-
-        section = self._get_key(self.configobj, _section, add)
-
-        if not section:
-            Logger.error('Invalid option name {}'.format(_section))
+    def _set(self, section, opt, value):
+        try:
+            self.config.set(self.configobj, section, opt, value)
+            self.config.save(self.configobj)
+        except DvcException as exc:
+            Logger.error("Failed to set '{}.{}' to '{}'".format(section,
+                                                                opt,
+                                                                value),
+                         exc)
             return 1
-
-        opt = self._get_key(self.configobj[section], _opt, add)
-        if not opt:
-            Logger.error('Invalid option value: {}'.format(_opt))
-            return 1
-
-        self.section = section
-        self.opt = opt
-
         return 0
 
     def run(self):
-        if self.check_opt() != 0:
-            return 1
+        section, opt = self.args.name.lower().strip().split('.', 1)
 
         if self.args.unset:
-            return self.unset(self.section, self.opt)
-
-        if self.args.value is None:
-            return self.show()
-
-        return self.set(self.section, self.opt, self.args.value)
+            return self._unset(section, opt)
+        elif self.args.value is None:
+            return self._show(section, opt)
+        else:
+            return self._set(section, opt, self.args.value)

@@ -1,6 +1,4 @@
-import os
 import re
-import configobj
 
 from dvc.config import Config
 from dvc.command.config import CmdConfig
@@ -10,49 +8,50 @@ from dvc.logger import Logger
 class CmdRemoteAdd(CmdConfig):
     def run(self):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        ret = self.set(section, Config.SECTION_REMOTE_URL, self.args.url)
+        ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
         if ret != 0:
             return ret
 
         if self.args.default:
             msg = 'Setting \'{}\' as a default remote.'.format(self.args.name)
             Logger.info(msg)
-            ret = self.set(Config.SECTION_CORE,
-                           Config.SECTION_CORE_REMOTE,
-                           self.args.name)
+            ret = self._set(Config.SECTION_CORE,
+                            Config.SECTION_CORE_REMOTE,
+                            self.args.name)
 
         return ret
 
 
 class CmdRemoteRemove(CmdConfig):
-    def _remove_default(self, config_file, remote):
-        path = os.path.join(os.path.dirname(self.config_file),
-                            config_file)
-        config = configobj.ConfigObj(path)
-
+    def _remove_default(self, config):
         core = config.get(Config.SECTION_CORE, None)
         if core is None:
-            return
+            return 0
 
         default = core.get(Config.SECTION_CORE_REMOTE, None)
         if default is None:
-            return
+            return 0
 
-        if default == remote:
-            del config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE]
-            if len(config[Config.SECTION_CORE]) == 0:
-                del config[Config.SECTION_CORE]
-
-        config.write()
+        if default == self.args.name:
+            return self._unset(Config.SECTION_CORE,
+                               opt=Config.SECTION_CORE_REMOTE,
+                               configobj=config)
 
     def run(self):
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        ret = self.unset(section)
+        ret = self._unset(section)
         if ret != 0:
             return ret
 
-        self._remove_default(Config.CONFIG, self.args.name)
-        self._remove_default(Config.CONFIG_LOCAL, self.args.name)
+        for configobj in [self.config._local_config,
+                          self.config._project_config,
+                          self.config._global_config,
+                          self.config._system_config]:
+            self._remove_default(configobj)
+            self.config.save(configobj)
+            if configobj == self.configobj:
+                break
+
         return 0
 
 

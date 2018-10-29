@@ -35,6 +35,8 @@ class Project(object):
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.config = Config(self.dvc_dir)
+        self.config.load()
+
         self.scm = SCM(self.root_dir, project=self)
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid

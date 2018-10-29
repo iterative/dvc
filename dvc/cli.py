@@ -639,6 +639,17 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value.')
     config_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    config_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    config_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -673,6 +684,17 @@ def parse_args(argv=None):
                         'url',
                         help='URL.')
     remote_add_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_add_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    remote_add_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -694,6 +716,17 @@ def parse_args(argv=None):
     remote_remove_parser.add_argument(
                         'name',
                         help='Name')
+    remote_remove_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_remove_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
     remote_remove_parser.add_argument(
                         '--local',
                         action='store_true',
@@ -724,6 +757,17 @@ def parse_args(argv=None):
                         action='store_true',
                         help='Unset option.')
     remote_modify_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_modify_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    remote_modify_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -736,6 +780,17 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         description=REMOTE_LIST_HELP,
                         help=REMOTE_LIST_HELP)
+    remote_list_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_list_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
     remote_list_parser.add_argument(
                         '--local',
                         action='store_true',
