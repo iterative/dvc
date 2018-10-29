@@ -146,7 +146,10 @@ class Project(object):
     def _check_circular_dependency(self, deps, outs):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = set(deps) & set(outs)
+        circular_dependencies = (
+            set(file.path for file in deps) &
+            set(file.path for file in outs)
+        )
 
         if circular_dependencies:
             raise CircularDependencyError(circular_dependencies.pop())
@@ -298,7 +301,7 @@ class Project(object):
                             overwrite=overwrite)
 
         self._check_output_duplication(stage.outs)
-        self._check_circular_dependency(deps, outs)
+        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:
