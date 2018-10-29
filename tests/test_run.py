@@ -102,6 +102,21 @@ class TestRunCircularDependency(TestDvc):
                          outs=[self.FOO],
                          fname='circular-dependency.dvc')
 
+    def test_outs_no_cache(self):
+        with self.assertRaises(CircularDependencyError):
+            self.dvc.run(cmd='',
+                         deps=[self.FOO],
+                         outs_no_cache=[self.FOO],
+                         fname='circular-dependency.dvc')
+
+    def test_non_normalized_paths(self):
+        with self.assertRaises(CircularDependencyError):
+            self.dvc.run(cmd='',
+                         deps=['./foo'],
+                         outs=['foo'],
+                         fname='circular-dependency.dvc')
+
+
 class TestRunBadCwd(TestDvc):
     def test(self):
         with self.assertRaises(StageBadCwdError):
