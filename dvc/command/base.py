@@ -15,9 +15,10 @@ class CmdBase(object):
 
     @staticmethod
     def _set_loglevel(args):
-        if args.quiet and not args.verbose:
+        if args.quiet:
             Logger.be_quiet()
-        elif not args.quiet and args.verbose:
+
+        elif args.verbose:
             Logger.be_verbose()
 
     def _find_root(self):

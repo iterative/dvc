@@ -56,13 +56,15 @@ class VersionAction(argparse.Action):  # pragma: no cover
 def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument(
+
+    log_level_group = parent_parser.add_mutually_exclusive_group()
+    log_level_group.add_argument(
                         '-q',
                         '--quiet',
                         action='store_true',
                         default=False,
                         help='Be quiet.')
-    parent_parser.add_argument(
+    log_level_group.add_argument(
                         '-v',
                         '--verbose',
                         action='store_true',
