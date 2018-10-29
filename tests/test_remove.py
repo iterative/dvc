@@ -2,9 +2,11 @@ import os
 
 from dvc.main import main
 from dvc.stage import Stage, StageFileDoesNotExistError
+from dvc.exceptions import DvcException
 from dvc.command.remove import CmdRemove
 
 from tests.basic_env import TestDvc
+from unittest.mock import patch
 
 
 class TestRemove(TestDvc):
@@ -57,3 +59,23 @@ class TestCmdRemove(TestDvc):
         ret = main(['remove',
                     'non-existing-dvc-file'])
         self.assertNotEqual(ret, 0)
+
+class TestRemovePurge(TestDvc):
+    def test(self):
+        dvcfile = self.dvc.add(self.FOO)[0].path
+        ret = main(['remove', '--purge', '--force', dvcfile])
+
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.path.exists(self.FOO))
+        self.assertFalse(os.path.exists(dvcfile))
+
+    @patch('dvc.prompt.Prompt.prompt')
+    def test_force(self, mock_prompt):
+        mock_prompt.return_value = False
+
+        dvcfile = self.dvc.add(self.FOO)[0].path
+        ret = main(['remove', '--purge', dvcfile])
+
+        mock_prompt.assert_called()
+        self.assertEqual(ret, 1)
+        self.assertRaises(DvcException)
