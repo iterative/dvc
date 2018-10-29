@@ -6,7 +6,7 @@ from dvc.exceptions import DvcException
 from dvc.command.remove import CmdRemove
 
 from tests.basic_env import TestDvc
-from unittest.mock import patch
+from mock import patch
 
 
 class TestRemove(TestDvc):
