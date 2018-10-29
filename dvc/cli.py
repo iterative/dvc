@@ -502,6 +502,12 @@ def parse_args(argv=None):
                         default=False,
                         help='Remove DVC file and all its outputs.')
     remove_parser.add_argument(
+                        '-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Force purge.')
+    remove_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='DVC files.')
