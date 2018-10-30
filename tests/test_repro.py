@@ -763,3 +763,9 @@ class TestReproShell(TestDvc):
 
         with open(fname, 'r') as fd:
             self.assertEqual(os.getenv('SHELL'), fd.read().strip())
+
+class TestReproNoSCM(TestRepro):
+    def test(self):
+        shutil.rmtree(self.dvc.scm.dir)
+        ret = main(['repro', self.file1_stage])
+        self.assertEqual(ret, 0)
