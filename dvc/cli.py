@@ -8,6 +8,7 @@ from dvc.command.init import CmdInit
 from dvc.command.destroy import CmdDestroy
 from dvc.command.remove import CmdRemove
 from dvc.command.move import CmdMove
+from dvc.command.unprotect import CmdUnprotect
 from dvc.command.run import CmdRun
 from dvc.command.repro import CmdRepro
 from dvc.command.data_sync import CmdDataPush, CmdDataPull, CmdDataFetch
@@ -55,13 +56,15 @@ class VersionAction(argparse.Action):  # pragma: no cover
 def parse_args(argv=None):
     # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument(
+
+    log_level_group = parent_parser.add_mutually_exclusive_group()
+    log_level_group.add_argument(
                         '-q',
                         '--quiet',
                         action='store_true',
                         default=False,
                         help='Be quiet.')
-    parent_parser.add_argument(
+    log_level_group.add_argument(
                         '-v',
                         '--verbose',
                         action='store_true',
@@ -501,6 +504,12 @@ def parse_args(argv=None):
                         default=False,
                         help='Remove DVC file and all its outputs.')
     remove_parser.add_argument(
+                        '-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Force purge.')
+    remove_parser.add_argument(
                         'targets',
                         nargs='+',
                         help='DVC files.')
@@ -520,6 +529,19 @@ def parse_args(argv=None):
                         'dst',
                         help='Destination.')
     move_parser.set_defaults(func=CmdMove)
+
+    # Unprotect
+    UNPROTECT_HELP = 'Unprotect data file/directory.'
+    unprotect_parser = subparsers.add_parser(
+                        'unprotect',
+                        parents=[parent_parser],
+                        description=UNPROTECT_HELP,
+                        help=UNPROTECT_HELP)
+    unprotect_parser.add_argument(
+                        'targets',
+                        nargs='+',
+                        help='Data files/directory.')
+    unprotect_parser.set_defaults(func=CmdUnprotect)
 
     # Garbage collector
     GC_HELP = 'Collect garbage.'

@@ -68,6 +68,7 @@ class Config(object):
     SECTION_CACHE_DIR = 'dir'
     SECTION_CACHE_TYPE = 'type'
     SECTION_CACHE_TYPE_SCHEMA = supported_cache_type
+    SECTION_CACHE_PROTECTED = 'protected'
     SECTION_CACHE_LOCAL = 'local'
     SECTION_CACHE_S3 = 's3'
     SECTION_CACHE_GS = 'gs'
@@ -82,9 +83,10 @@ class Config(object):
         Optional(SECTION_CACHE_SSH): str,
         Optional(SECTION_CACHE_AZURE): str,
 
-        # backward compatibility
         Optional(SECTION_CACHE_DIR, default='cache'): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
+        Optional(SECTION_CACHE_PROTECTED,
+                 default=False): And(str, is_bool, Use(to_bool)),
     }
 
     # backward compatibility
@@ -153,6 +155,8 @@ class Config(object):
         Optional(SECTION_AWS_ENDPOINT_URL, default=None): str,
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
+        Optional(SECTION_CACHE_PROTECTED,
+                 default=False): And(str, is_bool, Use(to_bool)),
         Optional(SECTION_REMOTE_USER): str,
         Optional(SECTION_REMOTE_PORT): Use(int),
         Optional(SECTION_REMOTE_KEY_FILE): str,

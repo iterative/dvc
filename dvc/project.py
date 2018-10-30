@@ -146,7 +146,10 @@ class Project(object):
     def _check_circular_dependency(self, deps, outs):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = set(deps) & set(outs)
+        circular_dependencies = (
+            set(file.path for file in deps) &
+            set(file.path for file in outs)
+        )
 
         if circular_dependencies:
             raise CircularDependencyError(circular_dependencies.pop())
@@ -251,6 +254,38 @@ class Project(object):
             msg = 'Unable to find dvcfile with output \'{}\''
             raise DvcException(msg.format(from_path))
 
+    def _unprotect_file(self, path):
+        import stat
+        import uuid
+        from dvc.utils import copyfile, move, remove
+
+        self.logger.debug("Unprotecting '{}'".format(path))
+
+        tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
+        move(path, tmp)
+
+        copyfile(tmp, path)
+
+        remove(tmp)
+
+        os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
+
+    def _unprotect_dir(self, path):
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                path = os.path.join(root, f)
+                self._unprotect_file(path)
+
+    def unprotect(self, path):
+        if not os.path.exists(path):
+            raise DvcException("Can't unprotect non-existing "
+                               "data '{}'".format(path))
+
+        if os.path.isdir(path):
+            self._unprotect_dir(path)
+        else:
+            self._unprotect_file(path)
+
     def run(self,
             cmd=None,
             deps=[],
@@ -272,8 +307,7 @@ class Project(object):
                             overwrite=overwrite)
 
         self._check_output_duplication(stage.outs)
-        self._check_circular_dependency(deps, outs)
-        self._check_argument_duplication(outs)
+        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:
