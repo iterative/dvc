@@ -1,6 +1,7 @@
 import os
 import time
 import requests
+import colorama
 
 from dvc import VERSION_BASE
 from dvc.logger import Logger
@@ -56,6 +57,18 @@ class Updater(object):  # pragma: no cover
            l_patch <= c_patch:
             return
 
-        msg = 'You are using dvc version {}, however version {} is ' \
-              'available. Consider upgrading.'
-        Logger.warn(msg.format(current, latest))
+        msg = (
+            'Update available {red}{current}{reset} → {green}{latest}{reset}\n'
+            'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}'
+            .format(
+                red=colorama.Fore.RED,
+                reset=colorama.Fore.RESET,
+                green=colorama.Fore.GREEN,
+                yellow=colorama.Fore.YELLOW,
+                blue=colorama.Fore.BLUE,
+                current=current,
+                latest=latest,
+            )
+        )
+
+        Logger.box(msg, border_color='yellow')
