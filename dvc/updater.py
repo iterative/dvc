@@ -58,7 +58,8 @@ class Updater(object):  # pragma: no cover
             return
 
         msg = (
-            'Update available {red}{current}{reset} → {green}{latest}{reset}\n'
+            'Update available {red}{current}{reset} -> {green}{latest}{reset}'
+            '\n'
             'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}'
             .format(
                 red=colorama.Fore.RED,

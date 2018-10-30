@@ -178,27 +178,22 @@ class Logger(object):
         lines = msg.split('\n')
         max_width = max(visual_width(line) for line in lines)
 
-        # Spaces between the borders and the content
         padding_horizontal = 5
         padding_vertical = 1
 
         box_size_horizontal = (max_width + (padding_horizontal * 2))
 
         chars = {
-            'top_left':     '┌',
-            'top_right':    '┐',
-            'bottom_right': '┘',
-            'bottom_left':  '└',
-            'vertical':     '│',
-            'horizontal':   '─',
-            'empty':        ' ',
+            'corner':     '+',
+            'horizontal': '-',
+            'vertical':   '|',
+            'empty':      ' ',
         }
 
-        top_line = "{top_left}{line}{top_right}\n".format(
-                        top_left=chars['top_left'],
-                        line=chars['horizontal'] * box_size_horizontal,
-                        top_right=chars['top_right']
-                    )
+        margin = "{corner}{line}{corner}\n".format(
+            corner=chars['corner'],
+            line=chars['horizontal'] * box_size_horizontal,
+        )
 
         padding_lines = [
             "{border}{space}{border}\n".format(
@@ -208,22 +203,15 @@ class Logger(object):
         ]
 
         content_lines = [
-            "{border}{padding}{content}{padding}{border}\n".format(
+            "{border}{space}{content}{space}{border}\n".format(
                 border=cls.colorize(chars['vertical'], border_color),
-                padding=chars['empty'] * padding_horizontal,
+                space=chars['empty'] * padding_horizontal,
                 content=visual_center(line, max_width),
             ) for line in lines
         ]
 
-        bottom_line = "{bottom_left}{line}{bottom_right}\n".format(
-                          bottom_left=chars['bottom_left'],
-                          line=chars['horizontal'] * box_size_horizontal,
-                          bottom_right=chars['bottom_right']
-                      )
-
-        return "{top}{padding}{content}{padding}{bottom}".format(
-            top=cls.colorize(top_line, border_color),
+        return "{margin}{padding}{content}{padding}{margin}".format(
+            margin=cls.colorize(margin, border_color),
             padding=''.join(padding_lines),
             content=''.join(content_lines),
-            bottom=cls.colorize(bottom_line, border_color)
         )
