@@ -3,13 +3,14 @@ import re
 import getpass
 import posixpath
 from subprocess import Popen, PIPE
+import json
 
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException
 from dvc.logger import Logger
-from dvc.utils import fix_env
+from dvc.utils import fix_env, bytes_md5
 
 
 class RemoteHDFS(RemoteBase):
@@ -45,7 +46,7 @@ class RemoteHDFS(RemoteBase):
                   stderr=PIPE)
         out, err = p.communicate()
         if p.returncode != 0:
-            raise DvcException('HDFS command failed: {}: {}'.format(cmd, err))
+            raise DvcException('HDFS command failed: {}: {}'.format(cmd, err), cause=p.returncode)
         return out.decode('utf-8')
 
     @staticmethod
@@ -56,9 +57,39 @@ class RemoteHDFS(RemoteBase):
 
     def checksum(self, path_info):
         regex = r'.*\t.*\t(?P<checksum>.*)'
-        stdout = self.hadoop_fs('checksum {}'.format(path_info['url']),
-                                user=path_info['user'])
-        return self._group(regex, stdout, 'checksum')
+        # Check for dir
+        try:
+            self.hadoop_fs('test -d {}'.format(path_info['url']),
+                           user=path_info['user'])
+            is_dir = True
+        except DvcException as e:
+            if e.cause == 1:
+                is_dir = False
+            else:
+                raise e
+
+        if is_dir:
+            msg = "Computing md5 for a directory hdfs path {}. " \
+                      "This might take a while, due to latency of hadoop command."
+            Logger.info(msg.format(os.path.relpath(path_info['url'])))
+            out = self.hadoop_fs('ls {}'.format(path_info['url']),
+                                 user=path_info['user'])
+            # First line is summary, last line is empty
+            file_list = [file_path.split(' ')[-1] for file_path in out.split('\n')[1:-1]]
+            checksums = list()
+            for file_path in file_list:
+                stdout = self.hadoop_fs('checksum {}'.format(file_path),
+                                         user=path_info['user'])
+                checksums.append(self._group(regex, stdout, 'checksum'))
+            # Sort to guarantee determnistic checksum
+            checksums = sorted(checksums)
+            byts = json.dumps(checksums, sort_keys=True).encode('utf-8')
+            checksum = bytes_md5(byts)
+        else:
+            stdout = self.hadoop_fs('checksum {}'.format(path_info['url']),
+                                    user=path_info['user'])
+            checksum = self._group(regex, stdout, 'checksum')
+        return checksum
 
     def cp(self, from_info, to_info):
         self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])),
