@@ -18,6 +18,10 @@ class Base(object):
         self.project = project
         self.root_dir = root_dir
 
+    @property
+    def dir(self):
+        return None
+
     @staticmethod
     def is_repo(root_dir):
         return True
