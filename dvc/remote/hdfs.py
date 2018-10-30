@@ -58,41 +58,48 @@ class RemoteHDFS(RemoteBase):
 
     def checksum(self, path_info):
         regex = r'.*\t.*\t(?P<checksum>.*)'
-        # Check for dir
-        try:
-            self.hadoop_fs('test -d {}'.format(path_info['url']),
-                           user=path_info['user'])
-            is_dir = True
-        except DvcException as e:
-            if e.cause == 1:
-                is_dir = False
-            else:
-                raise e
 
-        if is_dir:
-            msg = "Computing md5 for a directory hdfs path {}. " \
-                    "This might take a while, due to latency of"\
-                    "hadoop command."
-            Logger.info(msg.format(os.path.relpath(path_info['url'])))
-            out = self.hadoop_fs('ls {}'.format(path_info['url']),
-                                 user=path_info['user'])
-            # First line is summary, last line is empty
-            file_list = [file_path.split(' ')[-1]
-                         for file_path in out.split('\n')[1:-1]]
-            checksums = list()
-            for file_path in file_list:
-                stdout = self.hadoop_fs('checksum {}'.format(file_path),
-                                        user=path_info['user'])
-                checksums.append(self._group(regex, stdout, 'checksum'))
-            # Sort to guarantee determnistic checksum
-            checksums = sorted(checksums)
-            byts = json.dumps(checksums, sort_keys=True).encode('utf-8')
-            checksum = bytes_md5(byts)
+        if self.is_dir(path_info):
+            checksum = self.checksum_dir(path_info)
         else:
             stdout = self.hadoop_fs('checksum {}'.format(path_info['url']),
                                     user=path_info['user'])
             checksum = self._group(regex, stdout, 'checksum')
         return checksum
+
+    def checksum_dir(self, path_info):
+        regex = r'.*\t.*\t(?P<checksum>.*)'
+
+        msg = "Computing md5 for a directory hdfs path {}. " \
+              "This might take a while, due to latency of"\
+              "hadoop command."
+        Logger.info(msg.format(os.path.relpath(path_info['url'])))
+        out = self.hadoop_fs('ls {}'.format(path_info['url']),
+                             user=path_info['user'])
+        # First line is summary, last line is empty
+        file_list = [file_path.split(' ')[-1]
+                     for file_path in out.split('\n')[1:-1]]
+        checksums = list()
+        for file_path in file_list:
+            stdout = self.hadoop_fs('checksum {}'.format(file_path),
+                                    user=path_info['user'])
+            checksums.append(self._group(regex, stdout, 'checksum'))
+        # Sort to guarantee determnistic checksum
+        checksums = sorted(checksums)
+        byts = json.dumps(checksums, sort_keys=True).encode('utf-8')
+        return bytes_md5(byts)
+
+    def is_dir(self, path_info):
+        try:
+            self.hadoop_fs('test -d {}'.format(path_info['url']),
+                           user=path_info['user'])
+            result = True
+        except DvcException as e:
+            if e.cause == 1:
+                result = False
+            else:
+                raise e
+        return result
 
     def cp(self, from_info, to_info):
         self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])),
