@@ -48,8 +48,8 @@ class MoveNotDataSourceError(DvcException):
 
 
 class ArgumentDuplicationError(DvcException):
-    def __init__(self, outs):
-        msg = "Output '{}' was specified more than one time"
-        f = set([x for x in outs if outs.count(x) > 1])
+    def __init__(self, args):
+        msg = "Argument '{}' was specified more than one time"
+        f = set([x for x in args if args.count(x) > 1])
         s = f.pop()
         super(ArgumentDuplicationError, self).__init__(msg.format(s))

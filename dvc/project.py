@@ -154,11 +154,24 @@ class Project(object):
         if circular_dependencies:
             raise CircularDependencyError(circular_dependencies.pop())
 
-    def _check_argument_duplication(self, outs):
+    def _check_argument_duplication(self, outs, outs_no_cache, deps):
         from dvc.exceptions import ArgumentDuplicationError
+        norm_outs = []
+        norm_outs_no_cache = []
+        norm_deps = []
+        for i in outs:
+            norm_outs.append(os.path.abspath(i))
+        for i in outs_no_cache:
+            norm_outs_no_cache.append(os.path.abspath(i))
+        for i in deps:
+            norm_deps.append(os.path.abspath(i))
 
-        if len(outs) != len(set(outs)):
-            raise ArgumentDuplicationError(outs)
+        if len(norm_outs) != len(set(norm_outs)):
+            raise ArgumentDuplicationError(norm_outs)
+        if len(norm_outs_no_cache) != len(set(norm_outs_no_cache)):
+            raise ArgumentDuplicationError(norm_outs_no_cache)
+        if len(norm_deps) != len(set(norm_deps)):
+            raise ArgumentDuplicationError(deps)
 
     def add(self, fname, recursive=False):
         fnames = []
@@ -296,6 +309,9 @@ class Project(object):
             cwd=os.curdir,
             no_exec=False,
             overwrite=False):
+
+        self._check_argument_duplication(outs, outs_no_cache, deps)
+
         stage = Stage.loads(project=self,
                             fname=fname,
                             cmd=cmd,
