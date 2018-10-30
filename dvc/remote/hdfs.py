@@ -46,7 +46,8 @@ class RemoteHDFS(RemoteBase):
                   stderr=PIPE)
         out, err = p.communicate()
         if p.returncode != 0:
-            raise DvcException('HDFS command failed: {}: {}'.format(cmd, err), cause=p.returncode)
+            raise DvcException('HDFS command failed: {}: {}'.format(cmd, err),
+                               cause=p.returncode)
         return out.decode('utf-8')
 
     @staticmethod
@@ -70,16 +71,18 @@ class RemoteHDFS(RemoteBase):
 
         if is_dir:
             msg = "Computing md5 for a directory hdfs path {}. " \
-                      "This might take a while, due to latency of hadoop command."
+                    "This might take a while, due to latency of"\
+                    "hadoop command."
             Logger.info(msg.format(os.path.relpath(path_info['url'])))
             out = self.hadoop_fs('ls {}'.format(path_info['url']),
                                  user=path_info['user'])
             # First line is summary, last line is empty
-            file_list = [file_path.split(' ')[-1] for file_path in out.split('\n')[1:-1]]
+            file_list = [file_path.split(' ')[-1]
+                         for file_path in out.split('\n')[1:-1]]
             checksums = list()
             for file_path in file_list:
                 stdout = self.hadoop_fs('checksum {}'.format(file_path),
-                                         user=path_info['user'])
+                                        user=path_info['user'])
                 checksums.append(self._group(regex, stdout, 'checksum'))
             # Sort to guarantee determnistic checksum
             checksums = sorted(checksums)
