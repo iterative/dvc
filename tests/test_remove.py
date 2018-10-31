@@ -52,30 +52,29 @@ class TestCmdRemove(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        ret = main(['remove',
-                    stage.path])
+        ret = main(['remove', '--force', stage.path])
         self.assertEqual(ret, 0)
 
-        ret = main(['remove',
-                    'non-existing-dvc-file'])
+    def test_non_existent_file(self):
+        ret = main(['remove', '--force', 'non-existing-dvc-file'])
         self.assertNotEqual(ret, 0)
 
-class TestRemovePurge(TestDvc):
-    def test(self):
+    @patch('dvc.command.remove.CmdRemove._confirm_removal')
+    def test_confirmation(self, mock_confirm):
+        mock_confirm.side_effect = DvcException
+
         dvcfile = self.dvc.add(self.FOO)[0].path
-        ret = main(['remove', '--purge', '--force', dvcfile])
+        ret = main(['remove', dvcfile])
+
+        mock_confirm.assert_called()
+        self.assertNotEqual(ret, 0)
+        self.assertRaises(DvcException)
+
+    def test_force(self):
+        dvcfile = self.dvc.add(self.FOO)[0].path
+        ret = main(['remove', '--force', dvcfile])
 
         self.assertEqual(ret, 0)
+        self.assertRaises(DvcException)
         self.assertFalse(os.path.exists(self.FOO))
         self.assertFalse(os.path.exists(dvcfile))
-
-    @patch('dvc.prompt.Prompt.prompt')
-    def test_force(self, mock_prompt):
-        mock_prompt.return_value = False
-
-        dvcfile = self.dvc.add(self.FOO)[0].path
-        ret = main(['remove', '--purge', dvcfile])
-
-        mock_prompt.assert_called()
-        self.assertEqual(ret, 1)
-        self.assertRaises(DvcException)
