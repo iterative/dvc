@@ -4,33 +4,33 @@ from dvc.logger import Logger
 
 
 class CmdRemove(CmdBase):
-    def _is_outs_only(self, target):
-        if not self.args.purge:
-            return True
-
+    def _confirm_removal(self, target):
         if self.args.force:
-            return False
+            return
 
-        msg = (
+        confirmed = self.project.prompt.prompt(
             u'Are you sure you want to remove {} with its outputs?'
             .format(target)
         )
 
-        confirmed = self.project.prompt.prompt(msg)
-
         if confirmed:
-            return False
+            return
 
         raise DvcException(
-            u'Cannot purge without a confirmation from the user.'
+            u'Cannot remove without a confirmation from the user.'
             u" Use '-f' to force."
         )
 
     def run(self):
         for target in self.args.targets:
             try:
-                outs_only = self._is_outs_only(target)
+                outs_only = self.args.outs
+
+                if not outs_only:
+                    self._confirm_removal(target)
+
                 self.project.remove(target, outs_only=outs_only)
+
             except DvcException as ex:
                 Logger.error('Failed to remove {}'.format(target), ex)
                 return 1

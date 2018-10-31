@@ -484,7 +484,7 @@ def parse_args(argv=None):
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
-    REMOVE_HELP = 'Remove outputs of DVC file.'
+    REMOVE_HELP = 'Remove DVC file and all its outputs from your workspace.'
     remove_parser = subparsers.add_parser(
                         'remove',
                         parents=[parent_parser],
@@ -495,14 +495,14 @@ def parse_args(argv=None):
                         '-o',
                         '--outs',
                         action='store_true',
-                        default=True,
-                        help='Only remove DVC file outputs.(default)')
+                        default=False,
+                        help='Only remove outputs from DVC files')
     remove_parser_group.add_argument(
                         '-p',
                         '--purge',
                         action='store_true',
-                        default=False,
-                        help='Remove DVC file and all its outputs.')
+                        default=True,
+                        help='Remove DVC file and all its outputs. (default)')
     remove_parser.add_argument(
                         '-f',
                         '--force',
