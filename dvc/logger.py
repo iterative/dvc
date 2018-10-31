@@ -2,9 +2,26 @@ import sys
 import logging
 import colorama
 import traceback
+import re
 
 
 colorama.init()
+
+
+def visual_width(line):
+    """ Get the the number of columns required to display a string """
+
+    return len(re.sub(colorama.ansitowin32.AnsiToWin32.ANSI_CSI_RE, '', line))
+
+
+def visual_center(line, width):
+    """ Center align string according to it's visual width """
+
+    spaces = max(width - visual_width(line), 0)
+    left_padding = int(spaces / 2)
+    right_padding = (spaces - left_padding)
+
+    return (left_padding * ' ') + line + (right_padding * ' ')
 
 
 class Logger(object):
@@ -155,3 +172,46 @@ class Logger(object):
     @staticmethod
     def info(msg):
         Logger._with_progress(Logger.logger().info, msg)
+
+    @classmethod
+    def box(cls, msg, border_color=''):
+        lines = msg.split('\n')
+        max_width = max(visual_width(line) for line in lines)
+
+        padding_horizontal = 5
+        padding_vertical = 1
+
+        box_size_horizontal = (max_width + (padding_horizontal * 2))
+
+        chars = {
+            'corner':     '+',
+            'horizontal': '-',
+            'vertical':   '|',
+            'empty':      ' ',
+        }
+
+        margin = "{corner}{line}{corner}\n".format(
+            corner=chars['corner'],
+            line=chars['horizontal'] * box_size_horizontal,
+        )
+
+        padding_lines = [
+            "{border}{space}{border}\n".format(
+                border=cls.colorize(chars['vertical'], border_color),
+                space=chars['empty'] * box_size_horizontal,
+            ) * padding_vertical
+        ]
+
+        content_lines = [
+            "{border}{space}{content}{space}{border}\n".format(
+                border=cls.colorize(chars['vertical'], border_color),
+                space=chars['empty'] * padding_horizontal,
+                content=visual_center(line, max_width),
+            ) for line in lines
+        ]
+
+        return "{margin}{padding}{content}{padding}{margin}".format(
+            margin=cls.colorize(margin, border_color),
+            padding=''.join(padding_lines),
+            content=''.join(content_lines),
+        )
