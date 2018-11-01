@@ -78,35 +78,41 @@ class Updater(object):  # pragma: no cover
             Logger.box(message, border_color='yellow')
 
     def _get_update_instructions(self):
-        distribution = distro.id()
+        instructions = {
+            'pip': 'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}',
+            'yum': 'Run {yellow}yum{reset} update {blue}dvc{reset}',
+            'yay': 'Run {yellow}yay{reset} {blue}-S{reset} dvc',
+            'brew': 'Run {yellow}brew{reset} upgrade {blue}dvc{reset}',
+            'apt': ('Run {yellow}apt-get{reset} install'
+                    ' {blue}--only-upgrade{reset} dvc'),
+            None: ('To upgrade follow this steps:\n'
+                   '1. Uninstall dvc binary\n'
+                   '2. Go to {blue}https://dvc.org{reset}\n'
+                   '3. Download and install new binary'),
+        }
+
+        package_manager = self._get_package_manager()
+
+        return instructions[package_manager]
+
+    def _get_package_manager(self):
+        package_managers = {
+            'rhel': 'yum',
+            'centos': 'yum',
+            'fedora': 'yum',
+            'amazon': 'yum',
+            'opensuse': 'yum',
+            'arch': 'yay',
+            'ubuntu': 'apt',
+            'debian': 'apt',
+            'darwin': 'brew',
+            'windows': None,
+        }
 
         if self._is_installed_with_pip():
-            msg = 'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}'
+            return 'pip'
 
-        elif distribution in ['windows']:
-            msg = (
-                'To upgrade follow this steps:\n'
-                '1. Uninstall dvc binary\n'
-                '2. Go to {blue}https://dvc.org{reset}\n'
-                '3. Download and install new binary'
-            )
-
-        elif distribution in ['darwin']:
-            msg = 'Run {yellow}brew{reset} upgrade {blue}dvc{reset}'
-
-        elif distribution in ['debian', 'ubuntu']:
-            msg = (
-                'Run {yellow}apt-get{reset} install'
-                ' {blue}--only-upgrade{reset} dvc'
-            )
-
-        elif distribution in ['rhel', 'centos', 'fedora', 'amazon', 'opensuse']:
-            msg = 'Run {yellow}yum{reset} update {blue}dvc{reset}'
-
-        elif distribution in ['arch']:
-            msg = 'Run {yellow}yay{reset} {blue}-S{reset} dvc'
-
-        return msg
+        return package_managers[distro.id()]
 
     def _is_installed_with_pip(self):
         command = ['pip', 'show', 'dvc']
