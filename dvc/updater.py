@@ -81,37 +81,38 @@ class Updater(object):  # pragma: no cover
         distribution = distro.id()
 
         if self._is_installed_with_pip():
-            return 'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}'
+            msg = 'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}'
 
-        if distribution in ['windows']:
-            return (
+        elif distribution in ['windows']:
+            msg = (
                 'To upgrade follow this steps:\n'
                 '1. Uninstall dvc binary\n'
                 '2. Go to {blue}https://dvc.org{reset}\n'
                 '3. Download and install new binary'
             )
 
-        if distribution in ['darwin']:
-            return 'Run {yellow}brew{reset} upgrade {blue}dvc{reset}'
+        elif distribution in ['darwin']:
+            msg = 'Run {yellow}brew{reset} upgrade {blue}dvc{reset}'
 
-        if distribution in ['debian', 'ubuntu']:
-            return (
+        elif distribution in ['debian', 'ubuntu']:
+            msg = (
                 'Run {yellow}apt-get{reset} install'
                 ' {blue}--only-upgrade{reset} dvc'
             )
 
-        if distribution in ['rhel', 'centos', 'fedora', 'amazon', 'opensuse']:
-            return 'Run {yellow}yum{reset} update {blue}dvc{reset}'
+        elif distribution in ['rhel', 'centos', 'fedora', 'amazon', 'opensuse']:
+            msg = 'Run {yellow}yum{reset} update {blue}dvc{reset}'
 
-        if distribution in ['arch']:
-            return 'Run {yellow}yay{reset} {blue}-S{reset} dvc'
+        elif distribution in ['arch']:
+            msg = 'Run {yellow}yay{reset} {blue}-S{reset} dvc'
+
+        return msg
 
     def _is_installed_with_pip(self):
         command = ['pip', 'show', 'dvc']
 
         try:
             with open(os.devnull, 'w') as devnull:
-                if subprocess.check_call(command, stdout=devnull) == 0:
-                    return True
+                return subprocess.check_call(command, stdout=devnull) == 0
         except Exception:
             return False
