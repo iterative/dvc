@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 import colorama
 import logging
 
 from dvc.command.base import CmdBase
 from dvc.config import Config
 from dvc.logger import Logger
+from dvc.main import main
 
 from tests.basic_env import TestDvc
 
@@ -49,3 +52,18 @@ class TestLoggerCLI(TestDvc):
         args.verbose = True
         CmdBase._set_loglevel(args)
         self.assertEqual(Logger.logger().getEffectiveLevel(), logging.DEBUG)
+
+    @patch('sys.stderr.write')
+    @patch('sys.stdout.write')
+    def test_stderr(self, mock_stdout, mock_stderr):
+        main(['config', 'non_existing_section.field'])
+        mock_stdout.assert_not_called()
+        mock_stderr.assert_called()
+
+    @patch('sys.stderr.write')
+    @patch('sys.stdout.write')
+    def test_stdout(self, mock_stdout, mock_stderr):
+        main(['remote', 'add', 'test_repo', 'repo_url'])
+        main(['remote', 'list'])
+        mock_stdout.assert_called()
+        mock_stderr.assert_not_called()
