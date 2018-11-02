@@ -54,11 +54,17 @@ class Logger(object):
 
     @staticmethod
     def init():
-        sh = logging.StreamHandler(sys.stdout)
-        sh.setFormatter(logging.Formatter(Logger.FMT))
-        sh.setLevel(logging.DEBUG)
+        sh_out = logging.StreamHandler(sys.stdout)
+        sh_out.setFormatter(logging.Formatter(Logger.FMT))
+        sh_out.setLevel(logging.DEBUG)
+        sh_out.addFilter(lambda record: record.levelno <= logging.WARNING)
 
-        Logger.logger().addHandler(sh)
+        sh_err = logging.StreamHandler(sys.stderr)
+        sh_err.setFormatter(logging.Formatter(Logger.FMT))
+        sh_err.setLevel(logging.ERROR)
+
+        Logger.logger().addHandler(sh_out)
+        Logger.logger().addHandler(sh_err)
         Logger.set_level()
 
     @staticmethod
