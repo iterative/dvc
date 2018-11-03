@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from mock import patch
 
 import colorama
 import logging
