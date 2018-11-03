@@ -54,10 +54,15 @@ class Logger(object):
 
     @staticmethod
     def init():
+
+        class LogLevelFilter(logging.Filter):
+            def filter(self, record):
+                return record.levelno <= logging.WARNING
+
         sh_out = logging.StreamHandler(sys.stdout)
         sh_out.setFormatter(logging.Formatter(Logger.FMT))
         sh_out.setLevel(logging.DEBUG)
-        sh_out.addFilter(lambda record: record.levelno <= logging.WARNING)
+        sh_out.addFilter(LogLevelFilter())
 
         sh_err = logging.StreamHandler(sys.stderr)
         sh_err.setFormatter(logging.Formatter(Logger.FMT))
