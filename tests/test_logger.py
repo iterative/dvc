@@ -56,7 +56,8 @@ class TestLoggerCLI(TestDvc):
     @patch('sys.stderr.write')
     @patch('sys.stdout.write')
     def test_stderr(self, mock_stdout, mock_stderr):
-        main(['config', 'non_existing_section.field'])
+        ret = main(['config', 'non_existing_section.field'])
+        self.assertEqual(ret, 1)
         mock_stdout.assert_not_called()
         mock_stderr.assert_called()
 
@@ -64,6 +65,7 @@ class TestLoggerCLI(TestDvc):
     @patch('sys.stdout.write')
     def test_stdout(self, mock_stdout, mock_stderr):
         main(['remote', 'add', 'test_repo', 'repo_url'])
-        main(['remote', 'list'])
+        ret = main(['remote', 'list'])
+        self.assertEqual(ret, 0)
         mock_stdout.assert_called()
         mock_stderr.assert_not_called()
