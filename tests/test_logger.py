@@ -1,5 +1,10 @@
 from mock import patch
 
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import colorama
 import logging
 
@@ -42,23 +47,23 @@ class TestLogger(TestDvc):
             # This is not a tty, so it should not colorize anything
             self.assertEqual(msg, name)
 
-    @patch('sys.stderr.write')
-    @patch('sys.stdout.write')
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
     def test_stderr(self, mock_stdout, mock_stderr):
         error_message = 'error msg'
         Logger.init()
         Logger.error(error_message)
-        mock_stdout.assert_not_called()
-        mock_stderr.assert_any_call(StringContaining(error_message))
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertIn(error_message, mock_stderr.getvalue())
 
-    @patch('sys.stderr.write')
-    @patch('sys.stdout.write')
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
     def test_stdout(self, mock_stdout, mock_stderr):
         non_error_message = 'non-error message'
         Logger.init()
         Logger.info(non_error_message)
-        mock_stderr.assert_not_called()
-        mock_stdout.assert_any_call(StringContaining(non_error_message))
+        self.assertEqual('', mock_stderr.getvalue())
+        self.assertIn(non_error_message, mock_stdout.getvalue())
 
 
 class TestLoggerCLI(TestDvc):
