@@ -54,7 +54,10 @@ class TestLogger(TestDvc):
         Logger.init()
         Logger.error(error_message)
         self.assertEqual('', mock_stdout.getvalue())
-        self.assertIn(error_message, mock_stderr.getvalue())
+        self.assertEqual('Error: {}\n\nHaving any troubles? '
+                                   'Hit us up at dvc.org/support, we '
+                                   'are always happy to help!\n'.format(error_message),
+                                   mock_stderr.getvalue())
 
     @patch('sys.stderr', new_callable=StringIO)
     @patch('sys.stdout', new_callable=StringIO)
