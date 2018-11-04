@@ -66,7 +66,8 @@ class TestLogger(TestDvc):
         Logger.init()
         Logger.info(non_error_message)
         self.assertEqual('', mock_stderr.getvalue())
-        self.assertIn(non_error_message, mock_stdout.getvalue())
+        self.assertEqual('{}\n'.format(non_error_message),
+                                   mock_stdout.getvalue())
 
 
 class TestLoggerCLI(TestDvc):
