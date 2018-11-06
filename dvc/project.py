@@ -503,6 +503,7 @@ class Project(object):
         cache['gs'] = []
         cache['hdfs'] = []
         cache['ssh'] = []
+        cache['azure'] = []
 
         for branch in self.scm.brancher(all_branches=all_branches,
                                         all_tags=all_tags):

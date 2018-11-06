@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 import os
 import re
+import posixpath
 
 try:
     from azure.storage.blob import BlockBlobService
@@ -121,14 +122,14 @@ class RemoteAzure(RemoteBase):
 #                        from_bucket=self.bucket,
 #                        from_key='{}/{}'.format(etag[0:2], etag[2:]))
 #
-#    def remove(self, path_info):
-#        if path_info['scheme'] != self.scheme:
-#            raise NotImplementedError
-#
-#        Logger.debug('Removing azure://{}/{}'.format(path_info['bucket'],
-#                                                     path_info['key']))
-#
-#        self.blob_service.delete_blob(path_info['bucket'], path_info['key'])
+    def remove(self, path_info):
+        if path_info['scheme'] != self.scheme:
+            raise NotImplementedError
+
+        Logger.debug('Removing azure://{}/{}'.format(path_info['bucket'],
+                                                     path_info['key']))
+
+        self.blob_service.delete_blob(path_info['bucket'], path_info['key'])
 
     def md5s_to_path_infos(self, md5s):
         return [{
@@ -137,10 +138,12 @@ class RemoteAzure(RemoteBase):
             'key': '{}/{}'.format(md5[0:2], md5[2:])
         } for md5 in md5s]
 
-    def exists(self, path_infos):
-        keys = {blob.name
+    def _all_keys(self):
+        return {blob.name
                 for blob in self.blob_service.list_blobs(self.bucket)}
 
+    def exists(self, path_infos):
+        keys = self._all_keys()
         ret = []
         for path_info in path_infos:
             if path_info['scheme'] != self.scheme:
@@ -221,24 +224,28 @@ class RemoteAzure(RemoteBase):
                 if not no_progress_bar:
                     progress.finish_target(name)
 
-# FIXME: temporarily disabled because of the lack of test for external azure
-# dependencies/outputs/cache.
-#
-#    def gc(self, cinfos):
-#        used = [info[self.PARAM_ETAG] for info in cinfos['azure']]
-#        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-#
-#        all_blobs = self.blob_service.list_blobs(self.bucket)
-#
-#        removed = False
-#        for blob in all_blobs:
-#            etag = blob.properties.etag
-#            if etag in used:
-#                continue
-#            path_info = {'scheme': self.scheme,
-#                         'key': blob.name,
-#                         'bucket': self.bucket}
-#            self.remove(path_info)
-#            removed = True
-#
-#        return removed
+    def _path_to_etag(self, path):
+        assert len(path.split('/')) == 2
+        return posixpath.dirname(path) + posixpath.basename(path)
+
+    def _all(self):
+        keys = self._all_keys()
+        return [self._path_to_etag(key) for key in keys]
+
+    def gc(self, cinfos):
+        from dvc.remote.local import RemoteLOCAL
+
+        used = [info[self.PARAM_ETAG] for info in cinfos['azure']]
+        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
+
+        removed = False
+        for etag in self._all():
+            if etag in used:
+                continue
+            path_info = {'scheme': self.scheme,
+                         'key': posixpath.join(etag[0:2], etag[2:]),
+                         'bucket': self.bucket}
+            self.remove(path_info)
+            removed = True
+
+        return removed
