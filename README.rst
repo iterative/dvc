@@ -89,9 +89,33 @@ Installation
 
 There are three options to install DVC: ``pip``, Homebrew, or an OS-specific package:
 
+pip (PyPI)
+----------
+
+Stable
+^^^^^^
 .. code-block:: bash
 
    pip install dvc
+
+Development
+^^^^^^^^^^^
+.. code-block:: bash
+
+   pip install git+git://github.com/iterative/dvc
+
+Homebrew
+--------
+
+.. code-block:: bash
+
+   brew install iterative/homebrew-dvc/dvc
+
+or:
+
+.. code-block:: bash
+
+   brew cask install iterative/homebrew-dvc/dvc
 
 Package
 -------
@@ -99,29 +123,30 @@ Package
 Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
 GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
-Homebrew
---------
-
+Ubuntu / Debian (apt)
+^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
-   $ brew install iterative/homebrew-dvc/dvc
+   sudo wget https://dvc.org/deb/dvc.list -O etc/apt/sources.list.d/dvc.list
+   sudo apt-get update
+   sudo apt-get install dvc
 
-or:
-
+Fedora / CentOS (rpm)
+^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
-   $ brew cask install iterative/homebrew-dvc/dvc
+   sudo wget https://dvc.org/rpm/dvc.repo -O /etc/yum.repos.d/dvc.repo
+   sudo yum update
+   sudo yum install dvc
 
-AUR
----
-
+Arch linux (AUR)
+^^^^^^^^^^^^^^^^
 *Unofficial package*, any inquiries regarding the AUR package,
 `refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.
 
 .. code-block:: bash
 
-  # https://aur.archlinux.org/packages/dvc
-  $ yay -S dvc
+   yay -S dvc
 
 Related technologies
 ====================
