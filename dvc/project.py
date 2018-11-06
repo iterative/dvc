@@ -449,11 +449,12 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None):
+    def checkout(self, target=None, with_deps=False):
         all_stages = self.active_stages()
 
         if target:
-            stages = [Stage.load(self, target)]
+            stages = self._collect(target,
+                                   with_deps=with_deps)
         else:
             stages = all_stages
 
@@ -491,18 +492,89 @@ class Project(object):
 
         return ret
 
+    def _collect_dir_cache(self,
+                           out,
+                           branch=None,
+                           remote=None,
+                           force=False,
+                           jobs=None):
+        info = out.dumpd()
+        ret = [info]
+        r = out.remote
+        md5 = info[r.PARAM_MD5]
+
+        if self.cache.local.changed_cache_file(md5):
+            try:
+                self.cloud.pull(ret,
+                                jobs=jobs,
+                                remote=remote,
+                                show_checksums=False)
+            except DvcException as exc:
+                msg = "Failed to pull cache for '{}': {}"
+                self.logger.debug(msg.format(out, exc))
+
+        if self.cache.local.changed_cache_file(md5):
+            msg = "Missing cache for directory '{}'. " \
+                  "Cache for files inside will be lost. " \
+                  "Would you like to continue? Use '-f' to force. "
+            if not (force or self.prompt.prompt(msg, False)):
+                raise DvcException("Unable to fully collect "
+                                   "used cache without cache "
+                                   "for directory '{}'".format(out))
+            else:
+                return ret
+
+        for i in self.cache.local.load_dir_cache(md5):
+            i['branch'] = branch
+            i[r.PARAM_PATH] = os.path.join(info[r.PARAM_PATH],
+                                           i[r.PARAM_RELPATH])
+            ret.append(i)
+
+        return ret
+
+    def _collect_used_cache(self,
+                            out,
+                            branch=None,
+                            remote=None,
+                            force=False,
+                            jobs=None):
+        if not out.use_cache or not out.info:
+            return []
+
+        info = out.dumpd()
+        info['branch'] = branch
+        ret = [info]
+
+        if out.path_info['scheme'] != 'local':
+            return ret
+
+        md5 = info[out.remote.PARAM_MD5]
+        cache = self.cache.local.get(md5)
+        if not out.remote.is_dir_cache(cache):
+            return ret
+
+        return self._collect_dir_cache(out,
+                                       branch=branch,
+                                       remote=remote,
+                                       force=force,
+                                       jobs=jobs)
+
     def _used_cache(self,
                     target=None,
                     all_branches=False,
                     active=True,
                     with_deps=False,
-                    all_tags=False):
+                    all_tags=False,
+                    remote=None,
+                    force=False,
+                    jobs=None):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
         cache['gs'] = []
         cache['hdfs'] = []
         cache['ssh'] = []
+        cache['azure'] = []
 
         for branch in self.scm.brancher(all_branches=all_branches,
                                         all_tags=all_tags):
@@ -521,13 +593,12 @@ class Project(object):
                     self.logger.warn(msg.format(stage.relpath))
 
                 for out in stage.outs:
-                    if not out.use_cache or not out.info:
-                        continue
-
-                    info = out.dumpd()
-                    info['branch'] = branch
-
-                    cache[out.path_info['scheme']] += [info]
+                    scheme = out.path_info['scheme']
+                    cache[scheme] += self._collect_used_cache(out,
+                                                              branch=branch,
+                                                              remote=remote,
+                                                              force=force,
+                                                              jobs=jobs)
 
         return cache
 
@@ -541,13 +612,18 @@ class Project(object):
            cloud=False,
            remote=None,
            with_deps=False,
-           all_tags=False):
+           all_tags=False,
+           force=False,
+           jobs=None):
         with self.state:
             clist = self._used_cache(target=None,
                                      all_branches=all_branches,
                                      active=False,
                                      with_deps=with_deps,
-                                     all_tags=all_tags)
+                                     all_tags=all_tags,
+                                     remote=remote,
+                                     force=force,
+                                     jobs=jobs)
             self._do_gc('local', self.cache.local.gc, clist)
 
             if self.cache.s3:
@@ -581,7 +657,10 @@ class Project(object):
             used = self._used_cache(target,
                                     all_branches=all_branches,
                                     all_tags=all_tags,
-                                    with_deps=with_deps)['local']
+                                    with_deps=with_deps,
+                                    force=True,
+                                    remote=remote,
+                                    jobs=jobs)['local']
             self.cloud.push(used,
                             jobs,
                             remote=remote,
@@ -599,7 +678,10 @@ class Project(object):
             used = self._used_cache(target,
                                     all_branches=all_branches,
                                     all_tags=all_tags,
-                                    with_deps=with_deps)['local']
+                                    with_deps=with_deps,
+                                    force=True,
+                                    remote=remote,
+                                    jobs=jobs)['local']
             self.cloud.pull(used,
                             jobs,
                             remote=remote,
@@ -620,7 +702,7 @@ class Project(object):
                    all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps)
-        self.checkout(target=target)
+        self.checkout(target=target, with_deps=with_deps)
 
     def _local_status(self, target=None):
         status = {}
@@ -653,7 +735,10 @@ class Project(object):
         used = self._used_cache(target,
                                 all_branches=all_branches,
                                 all_tags=all_tags,
-                                with_deps=with_deps)['local']
+                                with_deps=with_deps,
+                                force=True,
+                                remote=remote,
+                                jobs=jobs)['local']
 
         status = {}
         for md5, ret in self.cloud.status(used,

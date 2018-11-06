@@ -185,6 +185,13 @@ def parse_args(argv=None):
                         description=CHECKOUT_HELP,
                         help=CHECKOUT_HELP)
     checkout_parser.add_argument(
+                        '-d',
+                        '--with-deps',
+                        action='store_true',
+                        default=False,
+                        help='Checkout all dependencies of the '
+                             'specified target.')
+    checkout_parser.add_argument(
                         'targets',
                         nargs='*',
                         help='DVC files.')
@@ -578,6 +585,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Force garbage collection.')
+    gc_parser.add_argument(
+                        '-j',
+                        '--jobs',
+                        type=int,
+                        default=None,
+                        help='Number of jobs to run simultaneously.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config

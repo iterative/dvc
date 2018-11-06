@@ -22,5 +22,7 @@ class CmdGC(CmdBase):
         self.project.gc(all_branches=self.args.all_branches,
                         all_tags=self.args.all_tags,
                         cloud=self.args.cloud,
-                        remote=self.args.remote)
+                        remote=self.args.remote,
+                        force=self.args.force,
+                        jobs=self.args.jobs)
         return 0

@@ -470,30 +470,6 @@ class RemoteLOCAL(RemoteBase):
 
             os.rename(tmp_file, to_info['path'])
 
-    def _collect(self, checksum_infos, push=False):
-        missing = []
-        collected = []
-        for info in checksum_infos:
-            md5 = info[self.PARAM_MD5]
-            cache = self.get(md5)
-
-            if not self.is_dir_cache(info[self.PARAM_MD5]):
-                continue
-
-            if not os.path.exists(cache):
-                missing.append(info)
-                continue
-
-            for i in self.load_dir_cache(md5):
-                if info.get('branch'):
-                    i['branch'] = info['branch']
-                i[self.PARAM_PATH] = os.path.join(info[self.PARAM_PATH],
-                                                  i[self.PARAM_RELPATH])
-                collected.append(i.copy())
-
-        collected.extend(checksum_infos)
-        return collected, missing
-
     def _group(self, checksum_infos, show_checksums=False):
         by_md5 = {}
 
@@ -519,7 +495,7 @@ class RemoteLOCAL(RemoteBase):
         return list(by_md5.keys()), list(by_md5.values())
 
     def gc(self, checksum_infos):
-        checksum_infos = self._collect(checksum_infos['local'])[0]
+        checksum_infos = checksum_infos['local']
         used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
 
         removed = False
@@ -537,9 +513,6 @@ class RemoteLOCAL(RemoteBase):
 
         progress.set_n_total(1)
         progress.update_target(title, 0, 100)
-
-        checksum_infos, missing = self._collect(checksum_infos)
-        checksum_infos += missing
 
         progress.update_target(title, 10, 100)
 
@@ -564,11 +537,11 @@ class RemoteLOCAL(RemoteBase):
                                                                local_exists,
                                                                remote_exists)]
 
-    def _do_pull(self,
-                 checksum_infos,
-                 remote,
-                 jobs=None,
-                 show_checksums=False):
+    def pull(self,
+             checksum_infos,
+             remote,
+             jobs=None,
+             show_checksums=False):
         title = "Collecting information"
 
         progress.set_n_total(1)
@@ -631,33 +604,12 @@ class RemoteLOCAL(RemoteBase):
         for f in futures:
             f.result()
 
-    def pull(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        Logger.info("Preparing to pull data from {}".format(remote.url))
-
-        # NOTE: try fetching missing dir info
-        checksum_infos, missing = self._collect(checksum_infos)
-        if len(missing) > 0:
-            self._do_pull(missing,
-                          remote,
-                          jobs,
-                          show_checksums=show_checksums)
-            checksum_infos += self._collect(missing)[0]
-
-        self._do_pull(checksum_infos,
-                      remote,
-                      jobs,
-                      show_checksums=show_checksums)
-
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         Logger.info("Preparing to push data to {}".format(remote.url))
         title = "Collecting information"
 
         progress.set_n_total(1)
         progress.update_target(title, 0, 100)
-
-        checksum_infos = self._collect(checksum_infos)[0]
-
-        progress.update_target(title, 10, 100)
 
         # NOTE: verifying that our cache is not corrupted
         def func(info):
