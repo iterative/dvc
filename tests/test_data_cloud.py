@@ -414,6 +414,16 @@ class TestDataCloudCLIBase(TestDvc):
 
         self.main(['status', '-c', '--show-checksums'] + args)
 
+        # NOTE: check if remote gc works correctly on directories
+        self.main(['gc', '-c', '-f'] + args)
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
+        self.main(['pull'] + args)
+        self.assertTrue(os.path.exists(cache))
+        self.assertTrue(os.path.isfile(cache))
+        self.assertTrue(os.path.isfile(cache_dir))
+        self.assertTrue(os.path.isfile(self.FOO))
+        self.assertTrue(os.path.isdir(self.DATA_DIR))
+
     def _should_test(self):
         return True
 

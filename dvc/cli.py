@@ -578,6 +578,12 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Force garbage collection.')
+    gc_parser.add_argument(
+                        '-j',
+                        '--jobs',
+                        type=int,
+                        default=None,
+                        help='Number of jobs to run simultaneously.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config
