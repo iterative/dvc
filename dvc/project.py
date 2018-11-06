@@ -449,11 +449,12 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None):
+    def checkout(self, target=None, with_deps=False):
         all_stages = self.active_stages()
 
         if target:
-            stages = [Stage.load(self, target)]
+            stages = self._collect(target,
+                                   with_deps=with_deps)
         else:
             stages = all_stages
 
@@ -701,7 +702,7 @@ class Project(object):
                    all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps)
-        self.checkout(target=target)
+        self.checkout(target=target, with_deps=with_deps)
 
     def _local_status(self, target=None):
         status = {}

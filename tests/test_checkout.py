@@ -246,3 +246,18 @@ class TestCheckoutNotCachedFile(TestDvc):
                              outs_no_cache=['out'])
 
         self.dvc.checkout()
+
+
+class TestCheckoutWithDeps(TestRepro):
+    def test(self):
+        os.unlink(self.FOO)
+        os.unlink(self.file1)
+
+        self.assertFalse(os.path.exists(self.FOO))
+        self.assertFalse(os.path.exists(self.file1))
+
+        ret = main(['checkout', self.file1_stage, '--with-deps'])
+        self.assertEqual(ret, 0)
+
+        self.assertTrue(os.path.exists(self.FOO))
+        self.assertTrue(os.path.exists(self.file1))
