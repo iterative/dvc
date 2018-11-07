@@ -277,6 +277,8 @@ class State(object):
             i, m, md5, timestamp = ret[0]
             i = self._from_sqlite(i)
             assert i == inode
+            msg = "Inode '{}', mtime '{}', actual mtime '{}'."
+            Logger.debug(msg.format(i, m, mtime))
             if mtime != m:
                 md5, info = self._collect(path)
                 cmd = 'UPDATE {} SET ' \
