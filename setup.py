@@ -28,7 +28,7 @@ install_requires = [
 
 # Extra dependencies for remote integrations
 gs = [
-    "google-cloud-storage==1.12.0",
+    "google-cloud-storage==1.13.0",
 ]
 s3 = [
     "boto3==1.7.4",
