@@ -165,3 +165,15 @@ class TestPipelineShowDeep(TestReproChangedDeepData):
     def test_non_existing(self):
         ret = main(['pipeline', 'show', 'non-existing'])
         self.assertNotEqual(ret, 0)
+
+
+class TestPipelineListEmpty(TestDvc):
+    def test(self):
+        ret = main(['pipeline', 'list'])
+        self.assertEqual(ret, 0)
+
+
+class TestPipelineListSingle(TestPipelineShowDeep):
+    def test(self):
+        ret = main(['pipeline', 'list'])
+        self.assertEqual(ret, 0)
