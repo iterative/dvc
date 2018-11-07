@@ -422,7 +422,7 @@ class TestDataCloudCLIBase(TestDvc):
         self.main(['fetch'] + args)
 
         sleep()
-        self.main(['checkout'])
+        self.main(['pull'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
