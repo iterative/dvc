@@ -1,13 +1,18 @@
 import os
 import shutil
 import filecmp
+import configobj
+
+from git import Repo
 
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage
+from dvc.project import Project
 from dvc.command.gc import CmdGC
 
 from tests.basic_env import TestDvc
+from tests.basic_env import TestDir
 
 
 class TestGC(TestDvc):
@@ -16,7 +21,8 @@ class TestGC(TestDvc):
 
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
-        self.good_cache = [self.dvc.cache.local.get(md5) for md5 in self.dvc.cache.local.all()]
+        self.good_cache = [self.dvc.cache.local.get(
+            md5) for md5 in self.dvc.cache.local.all()]
 
         self.bad_cache = []
         for i in ['123', '234', '345']:
@@ -100,3 +106,75 @@ class TestGCBranchesTags(TestDvc):
         self.dvc.gc(all_tags=True, all_branches=False)
 
         self._check_cache(1)
+
+
+class TestGCMultipleProjects(TestDvc):
+    def _check_cache(self, num):
+        total = 0
+        for root, dirs, files in os.walk(os.path.join('.dvc', 'cache')):
+            total += len(files)
+        self.assertEqual(total, num)
+
+    def setUp(self):
+        super(TestGCMultipleProjects, self).setUp()
+        self.additional_path = TestDir.mkdtemp()
+        self.additional_git = Repo.init(self.additional_path)
+        self.additional_dvc = Project.init(self.additional_path)
+
+        cache_path = os.path.join(self._root_dir, '.dvc', 'cache')
+        config_path = os.path.join(self.additional_path, '.dvc',
+                                   'config.local')
+        cfg = configobj.ConfigObj()
+        cfg.filename = config_path
+        cfg['cache'] = {
+            'dir': cache_path
+        }
+        cfg.write()
+
+        self.additional_dvc = Project(self.additional_path)
+
+    def test(self):
+
+        # ADD FILE ONLY IN MAIN PROJECT
+        fname = 'only_in_first'
+        with open(fname, 'w+') as fobj:
+            fobj.write('only in main project')
+
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+
+        # ADD FILE IN MAIN PROJECT THAT IS ALSO IN SECOND PROJECT
+        fname = 'in_both'
+        with open(fname, 'w+') as fobj:
+            fobj.write('in both projects')
+
+        stages = self.dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+
+        cwd = os.getcwd()
+        os.chdir(self.additional_path)
+        # ADD FILE ONLY IN SECOND PROJECT
+        fname = os.path.join(self.additional_path, 'only_in_second')
+        with open(fname, 'w+') as fobj:
+            fobj.write('only in additional project')
+
+        stages = self.additional_dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+
+        # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
+        fname = os.path.join(self.additional_path, 'in_both')
+        with open(fname, 'w+') as fobj:
+            fobj.write('in both projects')
+
+        stages = self.additional_dvc.add(fname)
+        self.assertEqual(len(stages), 1)
+
+        os.chdir(cwd)
+
+        self._check_cache(3)
+
+        self.dvc.gc(projects=[self.additional_path])
+        self._check_cache(3)
+
+        self.dvc.gc()
+        self._check_cache(2)
