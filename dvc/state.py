@@ -79,7 +79,7 @@ class State(object):
 
     def changed(self, path, md5):
         actual = self.update(path)
-        
+
         msg = "File '{}', md5 '{}', actual '{}'"
         Logger.debug(msg.format(path, md5, actual))
 
