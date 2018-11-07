@@ -129,6 +129,20 @@ class TestGC(TestDvc):
         self.assertIsInstance(args.func(args), CmdGC)
 
 
+class TestGCMultipleProjects(TestDvc):
+    def test(self):
+        args = parse_args([
+            'gc',
+            '-p',
+            '/tmp/asdf',
+            '/tmp/xyz'
+        ])
+
+        self.assertIsInstance(args.func(args), CmdGC)
+
+        self.assertEqual(args.projects, ['/tmp/asdf', '/tmp/xyz'])
+
+
 class TestConfig(TestDvc):
     def test(self):
         name = 'param'

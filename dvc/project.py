@@ -1,3 +1,4 @@
+import collections
 import os
 
 from dvc.exceptions import DvcException, MoveNotDataSourceError
@@ -107,6 +108,19 @@ class Project(object):
         Logger.info('You can now commit the changes to git.')
 
         return proj
+
+    @staticmethod
+    def load_all(projects_paths):
+        """
+        Instantiate all projects in the given list of paths.
+
+        Args:
+            projects_paths: List of paths to projects.
+
+        Returns:
+            List of Project instances in the same order of the given paths.
+        """
+        return [Project(path) for path in projects_paths]
 
     def destroy(self):
         import shutil
@@ -602,6 +616,45 @@ class Project(object):
 
         return cache
 
+    @staticmethod
+    def merge_cache_lists(clists):
+        merged_cache = collections.defaultdict(list)
+
+        for cache_list in clists:
+            for scheme, cache in cache_list.items():
+                for item in cache:
+                    if item not in merged_cache[scheme]:
+                        merged_cache[scheme].append(item)
+
+        return merged_cache
+
+    @staticmethod
+    def load_all_used_cache(projects,
+                            target=None,
+                            all_branches=False,
+                            active=True,
+                            with_deps=False,
+                            all_tags=False,
+                            remote=None,
+                            force=False,
+                            jobs=None):
+        clists = []
+
+        for project in projects:
+            with project.state:
+                project_clist = project._used_cache(target=None,
+                                                    all_branches=all_branches,
+                                                    active=False,
+                                                    with_deps=with_deps,
+                                                    all_tags=all_tags,
+                                                    remote=remote,
+                                                    force=force,
+                                                    jobs=jobs)
+
+                clists.append(project_clist)
+
+        return clists
+
     def _do_gc(self, typ, func, clist):
         removed = func(clist)
         if not removed:
@@ -614,16 +667,30 @@ class Project(object):
            with_deps=False,
            all_tags=False,
            force=False,
-           jobs=None):
+           jobs=None,
+           projects=None):
+
+        all_projects = [self]
+
+        if projects is not None and len(projects) > 0:
+            all_projects.extend(Project.load_all(projects))
+
+        all_clists = Project.load_all_used_cache(all_projects,
+                                                 target=None,
+                                                 all_branches=all_branches,
+                                                 active=False,
+                                                 with_deps=with_deps,
+                                                 all_tags=all_tags,
+                                                 remote=remote,
+                                                 force=force,
+                                                 jobs=jobs)
+
+        if len(all_clists) > 1:
+            clist = Project.merge_cache_lists(all_clists)
+        else:
+            clist = all_clists[0]
+
         with self.state:
-            clist = self._used_cache(target=None,
-                                     all_branches=all_branches,
-                                     active=False,
-                                     with_deps=with_deps,
-                                     all_tags=all_tags,
-                                     remote=remote,
-                                     force=force,
-                                     jobs=jobs)
             self._do_gc('local', self.cache.local.gc, clist)
 
             if self.cache.s3:

@@ -591,6 +591,13 @@ def parse_args(argv=None):
                         type=int,
                         default=None,
                         help='Number of jobs to run simultaneously.')
+    gc_parser.add_argument(
+                        '-p',
+                        '--projects',
+                        type=str,
+                        nargs='*',
+                        default=None,
+                        help='Collect garbage for all given projects.')
     gc_parser.set_defaults(func=CmdGC)
 
     # Config
