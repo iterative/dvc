@@ -80,8 +80,8 @@ class RemoteBase(object):
     @staticmethod
     def tmp_file(fname):
         """ Temporary name for a partial download """
-        # FIXME probably better use uuid()
-        return fname + '.part'
+        import uuid
+        return fname + '.' + str(uuid.uuid4())
 
     def save_info(self, path_info):
         raise NotImplementedError
