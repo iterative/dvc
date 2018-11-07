@@ -3,8 +3,6 @@ import os
 import time
 import requests
 import colorama
-import distro
-import subprocess
 
 from dvc import VERSION_BASE
 from dvc.logger import Logger
@@ -82,7 +80,8 @@ class Updater(object):  # pragma: no cover
             'pip': 'Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}',
             'yum': 'Run {yellow}yum{reset} update dvc',
             'yay': 'Run {yellow}yay{reset} {blue}-S{reset} dvc',
-            'brew': 'Run {yellow}brew{reset} upgrade dvc',
+            'formula': 'Run {yellow}brew{reset} upgrade dvc',
+            'cask': 'Run {yellow}brew cask{reset} upgrade dvc',
             'apt': ('Run {yellow}apt-get{reset} install'
                     ' {blue}--only-upgrade{reset} dvc'),
             'binary': ('To upgrade follow this steps:\n'
@@ -98,7 +97,16 @@ class Updater(object):  # pragma: no cover
 
         return instructions[package_manager]
 
-    def _get_package_manager(self):
+    @staticmethod
+    def _is_binary():
+        return getattr(sys, 'frozen', False)
+
+    def _get_linux(self):
+        import distro
+
+        if not self._is_binary():
+            return 'pip'
+
         package_managers = {
             'rhel':     'yum',
             'centos':   'yum',
@@ -107,20 +115,42 @@ class Updater(object):  # pragma: no cover
             'opensuse': 'yum',
             'ubuntu':   'apt',
             'debian':   'apt',
-            'darwin':   'binary',
-            'windows':  'binary',
         }
-
-        if self._is_installed_with_brew():
-            return 'brew'
-
-        if self._is_installed_with_pip():
-            return 'pip'
 
         return package_managers.get(distro.id())
 
-    def _is_installed_with_brew(self):
-        pass
+    def _get_darwin(self):
+        if not self._is_binary():
+            if __file__.startswith('/usr/local/Cellar'):
+                return 'formula'
+            else:
+                return 'pip'
 
-    def _is_installed_with_pip(self):
-        pass
+        # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
+        # so in order to know which method of installation was used,
+        # we need to actually call `brew cask`
+        ret = os.system('brew cask ls dvc')
+        if ret == 0:
+            return 'cask'
+
+        return None
+
+    def _get_windows(self):
+        return None if self._is_binary() else 'pip'
+
+    def _get_package_manager(self):
+        import platform
+        from dvc.exceptions import DvcException
+
+        m = {
+            'Windows': self._get_windows,
+            'Darwin': self._get_darwin,
+            'Linux': self._get_linux,
+        }
+
+        system = platform.system()
+        func = m.get(system)
+        if func is None:
+            raise DvcException("Not supported system '{}'".format(system))
+
+        return func()
