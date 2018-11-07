@@ -117,9 +117,9 @@ class Config(object):
     SECTION_AWS_SCHEMA = {
         SECTION_AWS_STORAGEPATH: str,
         Optional(SECTION_AWS_REGION): str,
-        Optional(SECTION_AWS_PROFILE, default='default'): str,
-        Optional(SECTION_AWS_CREDENTIALPATH, default=''): str,
-        Optional(SECTION_AWS_ENDPOINT_URL, default=None): str,
+        Optional(SECTION_AWS_PROFILE): str,
+        Optional(SECTION_AWS_CREDENTIALPATH): str,
+        Optional(SECTION_AWS_ENDPOINT_URL): str,
     }
 
     # backward compatibility
@@ -150,9 +150,9 @@ class Config(object):
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: And(supported_url, error="Unsupported URL"),
         Optional(SECTION_AWS_REGION): str,
-        Optional(SECTION_AWS_PROFILE, default='default'): str,
-        Optional(SECTION_AWS_CREDENTIALPATH, default=''): str,
-        Optional(SECTION_AWS_ENDPOINT_URL, default=None): str,
+        Optional(SECTION_AWS_PROFILE): str,
+        Optional(SECTION_AWS_CREDENTIALPATH): str,
+        Optional(SECTION_AWS_ENDPOINT_URL): str,
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED,
