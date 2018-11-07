@@ -38,7 +38,8 @@ class System(object):
                 os.symlink(source, link_name)
                 return
             except Exception as exc:
-                raise DvcException('symlink', cause=exc)
+                msg = "Failed to symlink '{}' -> '{}': {}"
+                raise DvcException(msg.format(source, link_name, str(exc)))
 
         flags = 0
         if source is not None and os.path.isdir(source):
