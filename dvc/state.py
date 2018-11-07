@@ -250,6 +250,7 @@ class State(object):
 
     @staticmethod
     def inode(path):
+        Logger.debug('Path {} inode {}'.format(path, System.inode(path)))
         return System.inode(path)
 
     def _do_update(self, path):
