@@ -221,8 +221,10 @@ class Logger(object):
             ) for line in lines
         ]
 
-        return "{margin}{padding}{content}{padding}{margin}".format(
-            margin=cls.colorize(margin, border_color),
-            padding=''.join(padding_lines),
-            content=''.join(content_lines),
-        )
+        box = "{margin}{padding}{content}{padding}{margin}".format(
+                margin=cls.colorize(margin, border_color),
+                padding=''.join(padding_lines),
+                content=''.join(content_lines),
+            )
+
+        print(box)

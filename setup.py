@@ -23,6 +23,7 @@ install_requires = [
     "requests>=2.18.4",
     "grandalf==0.6",
     "asciimatics>=1.10.0",
+    "distro>=1.3.0",
 ]
 
 # Extra dependencies for remote integrations
