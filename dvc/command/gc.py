@@ -1,3 +1,5 @@
+import os
+
 from dvc.command.base import CmdBase
 
 
@@ -5,13 +7,21 @@ class CmdGC(CmdBase):
     def run(self):
         msg = 'This will remove all cache except the cache that is used in '
         if not self.args.all_branches and not self.args.all_tags:
-            msg += 'the current git branch.'
+            msg += 'the current git branch'
         elif self.args.all_branches and not self.args.all_tags:
-            msg += 'all git branches.'
+            msg += 'all git branches'
         elif not self.args.all_branches and self.args.all_tags:
-            msg += 'all git tags.'
+            msg += 'all git tags'
         else:
-            msg += 'all git branches and all git tags.'
+            msg += 'all git branches and all git tags'
+
+        if self.args.projects is not None and len(self.args.projects) > 0:
+            msg += ' of the current and the following projects:'
+
+            for project_path in self.args.projects:
+                msg += '\n  - %s' % os.path.abspath(project_path)
+        else:
+            msg += ' of the current project.'
 
         self.project.logger.warn(msg)
 
@@ -24,5 +34,6 @@ class CmdGC(CmdBase):
                         cloud=self.args.cloud,
                         remote=self.args.remote,
                         force=self.args.force,
-                        jobs=self.args.jobs)
+                        jobs=self.args.jobs,
+                        projects=self.args.projects)
         return 0
