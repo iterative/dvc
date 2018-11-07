@@ -25,7 +25,7 @@ from dvc.command.metrics import CmdMetricsRemove, CmdMetricsModify
 from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
-from dvc.command.pipeline import CmdPipelineShow
+from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
 from dvc.logger import Logger
 from dvc import VERSION
 
@@ -926,6 +926,14 @@ def parse_args(argv=None):
                         nargs='*',
                         help="DVC files. 'Dvcfile' by default.")
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
+
+    PIPELINE_LIST_HELP = 'List pipelines.'
+    pipeline_list_parser = pipeline_subparsers.add_parser(
+                        'list',
+                        parents=[parent_parser],
+                        description=PIPELINE_LIST_HELP,
+                        help=PIPELINE_LIST_HELP)
+    pipeline_list_parser.set_defaults(func=CmdPipelineList)
 
     args = parser.parse_args(argv)
 

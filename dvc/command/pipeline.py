@@ -110,3 +110,19 @@ class CmdPipelineShow(CmdBase):
                 self.project.logger.error(msg, ex)
                 return 1
         return 0
+
+
+class CmdPipelineList(CmdBase):
+    def run(self):
+        import networkx
+
+        pipelines = self.project.pipelines()
+        for p in pipelines:
+            stages = networkx.get_node_attributes(p, 'stage')
+            for stage in stages:
+                self.project.logger.info(stage)
+            if len(stages) != 0:
+                self.project.logger.info("="*80)
+        self.project.logger.info("{} pipeline(s) total".format(len(pipelines)))
+
+        return 0
