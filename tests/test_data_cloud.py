@@ -419,7 +419,10 @@ class TestDataCloudCLIBase(TestDvc):
         shutil.rmtree(self.dvc.cache.local.cache_dir)
         
         sleep()
-        self.main(['pull'] + args)
+        self.main(['fetch'] + args)
+
+        sleep()
+        self.main(['checkout'])
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
