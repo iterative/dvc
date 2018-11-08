@@ -416,7 +416,7 @@ class TestDataCloudCLIBase(TestDvc):
 
         # NOTE: check if remote gc works correctly on directories
         self.main(['gc', '-c', '-f'] + args)
-        shutil.rmtree(self.dvc.cache.local.cache_dir)
+        shutil.move(self.dvc.cache.local.cache_dir, self.dvc.cache.local.cache_dir + '.back')
         
         sleep()
         self.main(['fetch'] + args)
