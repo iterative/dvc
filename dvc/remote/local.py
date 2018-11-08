@@ -150,9 +150,9 @@ class RemoteLOCAL(RemoteBase):
                 if verbose:
                     msg = "Created {}'{}': {} -> {}".format(
                                 'protected ' if self.protected else '',
-                                 self.cache_types[0],
-                                 os.path.relpath(cache),
-                                 os.path.relpath(path)
+                                self.cache_types[0],
+                                os.path.relpath(cache),
+                                os.path.relpath(path)
                             )
 
                     Logger.info(msg)
