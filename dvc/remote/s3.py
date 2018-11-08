@@ -47,15 +47,22 @@ class RemoteS3(RemoteBase):
         )
 
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
-        self.region = config.get(Config.SECTION_AWS_REGION)
-        self.profile = config.get(Config.SECTION_AWS_PROFILE)
+
+        self.region = (
+            os.environ.get('AWS_DEFAULT_REGION') or
+            config.get(Config.SECTION_AWS_REGION)
+        )
+
+        self.profile = (
+            os.environ.get('AWS_PROFILE') or
+            config.get(Config.SECTION_AWS_PROFILE)
+        )
+
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
-        # backward compatibility
-        credentialpath = config.get(Config.SECTION_AWS_CREDENTIALPATH)
-
-        if credentialpath:
-            os.environ['AWS_SHARED_CREDENTIALS_FILE'] = credentialpath
+        shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
+        if shared_creds:
+            os.environ.setdefault('AWS_SHARED_CREDENTIALS_FILE', shared_creds)
 
     @staticmethod
     def compat_config(config):
