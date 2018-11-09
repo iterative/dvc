@@ -122,7 +122,7 @@ class RemoteLOCAL(RemoteBase):
 
         return False
 
-    def link(self, cache, path, verbose=True):
+    def link(self, cache, path):
         assert os.path.isfile(cache)
 
         dname = os.path.dirname(path)
@@ -133,10 +133,12 @@ class RemoteLOCAL(RemoteBase):
         if os.path.getsize(cache) == 0:
             open(path, 'w+').close()
 
-            if verbose:
-                msg = "Created empty file: {} -> {}"
-                self.project.logger.info(msg.format(os.path.relpath(cache),
-                                                    os.path.relpath(path)))
+            msg = "Created empty file: {} -> {}".format(
+                os.path.relpath(cache),
+                os.path.relpath(path),
+            )
+
+            Logger.debug(msg)
             return
 
         i = len(self.cache_types)
@@ -147,15 +149,14 @@ class RemoteLOCAL(RemoteBase):
                 if self.protected:
                     os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
-                if verbose:
-                    msg = "Created {}'{}': {} -> {}".format(
-                                'protected ' if self.protected else '',
-                                self.cache_types[0],
-                                os.path.relpath(cache),
-                                os.path.relpath(path)
-                            )
+                msg = "Created {}'{}': {} -> {}".format(
+                    'protected ' if self.protected else '',
+                    self.cache_types[0],
+                    os.path.relpath(cache),
+                    os.path.relpath(path)
+                )
 
-                    Logger.info(msg)
+                Logger.debug(msg)
                 return
             except DvcException as exc:
                 msg = 'Cache type \'{}\' is not supported: {}'
@@ -345,8 +346,7 @@ class RemoteLOCAL(RemoteBase):
         dir_size = len(dir_info)
         bar = dir_size > LARGE_DIR_SIZE
 
-        if bar:
-            Logger.info("Linking directory '{}'.".format(dir_relpath))
+        Logger.info("Linking directory '{}'.".format(dir_relpath))
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
@@ -362,7 +362,7 @@ class RemoteLOCAL(RemoteBase):
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
 
-            self.link(c, p, verbose=not bar)
+            self.link(c, p)
 
         self.state.update_link(path)
 
