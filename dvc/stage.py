@@ -416,6 +416,33 @@ class Stage(object):
         if len(missing) > 0:
             raise MissingDep(missing)
 
+    def _check_if_fish(self, executable):  # pragma: no cover
+        if executable is None \
+           or os.path.basename(os.path.realpath(executable)) != 'fish':
+            return
+
+        msg = "DVC detected that you are using fish as your default " \
+              "shell. Be aware that it might cause problems by overwriting " \
+              "your current environment variables with values defined " \
+              "in '.fishrc', which might affect your command. See " \
+              "https://github.com/iterative/dvc/issues/1307. "
+        self.project.logger.warn(msg)
+
+    def _run(self):
+        self._check_missing_deps()
+        executable = os.getenv('SHELL') if os.name != 'nt' else None
+        self._check_if_fish(executable)
+
+        p = subprocess.Popen(self.cmd,
+                             cwd=self.cwd,
+                             shell=True,
+                             env=fix_env(os.environ),
+                             executable=executable)
+        p.communicate()
+
+        if p.returncode != 0:
+            raise StageCmdFailedError(self)
+
     def run(self, dry=False):
         if self.locked:
             msg = u'Verifying outputs in locked stage \'{}\''
@@ -439,16 +466,7 @@ class Stage(object):
             self.project.logger.info(msg)
 
             if not dry:
-                self._check_missing_deps()
-                executable = os.getenv('SHELL') if os.name != 'nt' else None
-                p = subprocess.Popen(self.cmd,
-                                     cwd=self.cwd,
-                                     shell=True,
-                                     env=fix_env(os.environ),
-                                     executable=executable)
-                p.communicate()
-                if p.returncode != 0:
-                    raise StageCmdFailedError(self)
+                self._run()
 
         if not dry:
             self.save()
