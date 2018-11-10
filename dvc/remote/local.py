@@ -307,13 +307,27 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        for entry in self.load_dir_cache(md5):
-            md5 = entry[self.PARAM_MD5]
-            c = self.get(md5)
+        dir_info = self.load_dir_cache(md5)
+        dir_relpath = os.path.relpath(path)
+        dir_size = len(dir_info)
+        bar = dir_size > LARGE_DIR_SIZE
+
+        Logger.info("Linking directory '{}'.".format(dir_relpath))
+
+        for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
+            m = entry[self.PARAM_MD5]
             p = os.path.join(path, relpath)
+            c = self.get(m)
             self.link(c, p)
+
+            if bar:
+                progress.update_target(dir_relpath, processed, dir_size)
+
         self.state.update_link(path)
+
+        if bar:
+            progress.finish_target(dir_relpath)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
@@ -359,10 +373,10 @@ class RemoteLOCAL(RemoteBase):
             else:
                 remove(p)
 
+            self.link(c, p)
+
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
-
-            self.link(c, p)
 
         self.state.update_link(path)
 
