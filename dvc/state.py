@@ -190,6 +190,12 @@ class State(object):
                 else:
                     raise
 
+    def _vacuum(self):
+        # NOTE: see https://bugs.python.org/issue28518
+        self.db.isolation_level = None
+        self._execute("VACUUM")
+        self.db.isolation_level = ''
+
     def dump(self):
         assert self.db is not None
 
@@ -213,7 +219,7 @@ class State(object):
                                      self.STATE_TABLE,
                                      delete))
 
-            self._execute("VACUUM")
+            self._vacuum()
 
             cmd = "SELECT COUNT(*) FROM {}"
 
