@@ -14,14 +14,11 @@ REMOTES = [RemoteHDFS, RemoteSSH, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL]
 
 def supported_url(url):
     config = {Config.SECTION_REMOTE_URL: url}
-    for r in REMOTES:
-        if r.supported(config):
-            return True
-    return False
+    return any(remote.suppored(config) for remote in REMOTES)
 
 
 def Remote(project, config):
-    for r in REMOTES:
-        if r.supported(config):
-            return r(project, config)
+    for remote in REMOTES:
+        if remote.supported(config):
+            return remote(project, config)
     raise UnsupportedRemoteError(str(config))
