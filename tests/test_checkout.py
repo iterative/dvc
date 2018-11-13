@@ -175,6 +175,8 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
 
         checkedout_files = self.outs_info(stage)
 
+        self.assertEqual(len(staged_files), len(checkedout_files))
+        self.assertEqual(staged_files[0].path, checkedout_files[0].path)
         self.assertNotEqual(staged_files[0].inode, checkedout_files[0].inode)
         self.assertEqual(staged_files[1].inode, checkedout_files[1].inode)
 
