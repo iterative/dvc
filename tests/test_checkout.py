@@ -171,7 +171,8 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         staged_files = self.outs_info(stage)
 
         os.remove(staged_files[0].path)
-        main(['checkout', 'data_dir.dvc'])
+        ret = main(['checkout', stage.relpath])
+        self.assertEqual(ret, 0)
 
         checkedout_files = self.outs_info(stage)
 
