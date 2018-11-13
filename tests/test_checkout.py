@@ -4,7 +4,6 @@ import time
 import stat
 import shutil
 import filecmp
-import itertools
 import collections
 
 from dvc.main import main
