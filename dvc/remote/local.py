@@ -270,7 +270,7 @@ class RemoteLOCAL(RemoteBase):
 
     def checkout(self, path_info, checksum_info):
         path = path_info['path']
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_MD5)
         cache = self.get(md5)
 
         if not cache:
@@ -289,15 +289,16 @@ class RemoteLOCAL(RemoteBase):
             remove(path)
             return
 
-        if os.path.exists(path):
-            msg = u'Data \'{}\' exists. Removing before checkout.'
-            Logger.warn(msg.format(os.path.relpath(path)))
-            remove(path)
-
         msg = u'Checking out \'{}\' with cache \'{}\'.'
         Logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
+
+            if os.path.exists(path):
+                msg = u'File \'{}\' exists. Removing before checkout.'
+                Logger.warn(msg.format(os.path.relpath(path)))
+                remove(path)
+
             self.link(cache, path)
             self.state.update_link(path)
             return
@@ -319,7 +320,19 @@ class RemoteLOCAL(RemoteBase):
             m = entry[self.PARAM_MD5]
             p = os.path.join(path, relpath)
             c = self.get(m)
-            self.link(c, p)
+
+            entry_info = {
+                'scheme': path_info['scheme'],
+                self.PARAM_PATH: p,
+            }
+
+            entry_checksum_info = {
+                self.PARAM_MD5: m,
+            }
+
+            if self.changed(entry_info, entry_checksum_info):
+                remove(p)
+                self.link(c, p)
 
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)

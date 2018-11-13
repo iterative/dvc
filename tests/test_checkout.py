@@ -4,9 +4,12 @@ import time
 import stat
 import shutil
 import filecmp
+import itertools
+import collections
 
 from dvc.main import main
 from dvc.project import Project
+from dvc.system import System
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
@@ -116,6 +119,20 @@ class CheckoutBase(TestDvc):
     def read_ignored(self):
         return list(map(lambda s: s.strip('\n'), open(self.GIT_IGNORE).readlines()))
 
+    def outs_info(self, stage):
+        FileInfo = collections.namedtuple('FileInfo', 'path inode')
+
+        paths = [
+            os.path.join(root, file)
+            for output in stage.outs
+            for root, _, files in os.walk(output.path)
+            for file in files
+        ]
+
+        return [
+            FileInfo(path=path, inode=System.inode(path))
+            for path in paths
+        ]
 
 class TestRemoveFilesWhenCheckout(CheckoutBase):
     def test(self):
@@ -141,6 +158,23 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
         ret = main(['checkout'])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(fname))
+
+
+class TestCheckoutSelectiveRemove(CheckoutBase):
+    def test(self):
+        # Use copy to test for changes in the inodes
+        main(['config', 'cache.type', 'copy'])
+
+        stage = self.dvc.add('data_dir')[0]
+        staged_files = self.outs_info(stage)
+
+        os.remove(staged_files[0].path)
+        main(['checkout', 'data_dir.dvc'])
+
+        checkedout_files = self.outs_info(stage)
+
+        self.assertNotEqual(staged_files[0].inode, checkedout_files[0].inode)
+        self.assertEqual(staged_files[1].inode, checkedout_files[1].inode)
 
 
 class TestGitIgnoreBasic(CheckoutBase):
