@@ -12,24 +12,25 @@ class Cache(object):
         self.project = project
 
         config = project.config._config[Config.SECTION_CACHE]
+        local = config.get(Config.SECTION_CACHE_LOCAL)
 
-        local = config.get(Config.SECTION_CACHE_LOCAL, None)
         if local:
             name = Config.SECTION_REMOTE_FMT.format(local)
             sect = project.config._config[name]
         else:
-            sect = {}
             cache_dir = config.get(Config.SECTION_CACHE_DIR, self.CACHE_DIR)
+            cache_type = config.get(Config.SECTION_CACHE_TYPE)
+            protected = config.get(Config.SECTION_CACHE_PROTECTED)
+
             if not os.path.isabs(cache_dir):
                 cache_dir = os.path.join(project.dvc_dir, cache_dir)
                 cache_dir = os.path.abspath(os.path.realpath(cache_dir))
-            sect[Config.SECTION_REMOTE_URL] = cache_dir
-            t = config.get(Config.SECTION_CACHE_TYPE, None)
-            if t:
-                sect[Config.SECTION_CACHE_TYPE] = t
-            protected = config.get(Config.SECTION_CACHE_PROTECTED, None)
-            if protected is not None:
-                sect[Config.SECTION_CACHE_PROTECTED] = protected
+
+            sect = {
+                Config.SECTION_REMOTE_URL: cache_dir,
+                Config.SECTION_CACHE_TYPE: cache_type,
+                Config.SECTION_CACHE_PROTECTED: protected
+            }
 
         self.local = Remote(project, sect)
 
