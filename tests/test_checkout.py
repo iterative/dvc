@@ -165,7 +165,9 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         # Use copy to test for changes in the inodes
         main(['config', 'cache.type', 'copy'])
 
-        stage = self.dvc.add('data_dir')[0]
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
         staged_files = self.outs_info(stage)
 
         os.remove(staged_files[0].path)
