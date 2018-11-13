@@ -465,12 +465,10 @@ class Project(object):
 
     def checkout(self, target=None, with_deps=False):
         all_stages = self.active_stages()
+        stages = all_stages
 
         if target:
-            stages = self._collect(target,
-                                   with_deps=with_deps)
-        else:
-            stages = all_stages
+            stages = self._collect(target, with_deps=with_deps)
 
         with self.state:
             self._cleanup_unused_links(all_stages)
