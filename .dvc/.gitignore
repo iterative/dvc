@@ -6,3 +6,5 @@ updater
 cache
 state
 state.lock
+state-journal
+state-wal

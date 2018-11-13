@@ -57,6 +57,13 @@ class State(object):
             return
 
         self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
+
+        # https://www.sqlite.org/tempfiles.html
+        self.temp_files = [
+            self.state_file + '-journal',
+            self.state_file + '-wal',
+        ]
+
         self.db = None
         self.c = None
         self.inserts = 0
