@@ -205,8 +205,8 @@ class TestGitIgnoreBasic(CheckoutBase):
 
         self.assertEqual(len(ignored), 2)
 
-        self.assertIn(fname1, ignored)
-        self.assertIn(fname2, ignored)
+        self.assertIn('/' + fname1, ignored)
+        self.assertIn('/' + fname2, ignored)
 
 
 class TestGitIgnoreWhenCheckout(CheckoutBase):
@@ -232,13 +232,13 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         ignored = self.read_ignored()
 
         self.assertEqual(len(ignored), 1)
-        self.assertIn(fname_master, ignored)
+        self.assertIn('/' + fname_master, ignored)
 
         self.dvc.scm.checkout(branch_1)
         ret = main(['checkout'])
         self.assertEqual(ret, 0)
         ignored = self.read_ignored()
-        self.assertIn(fname_branch, ignored)
+        self.assertIn('/' + fname_branch, ignored)
 
 
 class TestCheckoutMissingMd5InStageFile(TestRepro):
