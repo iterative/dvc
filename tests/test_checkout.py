@@ -161,6 +161,8 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
 class TestCheckoutSelectiveRemove(CheckoutBase):
     def test(self):
+        from tests.test_data_cloud import sleep
+
         # Use copy to test for changes in the inodes
         ret = main(['config', 'cache.type', 'copy'])
         self.assertEqual(ret, 0)
@@ -170,10 +172,17 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         stage = stages[0]
         staged_files = self.outs_info(stage)
 
+        sleep()
+        
         os.remove(staged_files[0].path)
+        
+        sleep()
+        
         ret = main(['checkout', stage.relpath])
         self.assertEqual(ret, 0)
 
+        sleep()
+        
         checkedout_files = self.outs_info(stage)
 
         self.assertEqual(len(staged_files), len(checkedout_files))
