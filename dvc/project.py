@@ -131,10 +131,12 @@ class Project(object):
         shutil.rmtree(self.dvc_dir)
 
     def _ignore(self):
-        flist = [self.state.state_file,
-                 self.lock.lock_file,
-                 self.config.config_local_file,
-                 self.updater.updater_file]
+        flist = [
+            self.state.state_file,
+            self.lock.lock_file,
+            self.config.config_local_file,
+            self.updater.updater_file,
+        ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
             flist += [self.cache.local.cache_dir]
