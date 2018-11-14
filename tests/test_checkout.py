@@ -71,7 +71,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
         time.sleep(1)
-        
+
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(['config', 'cache.type', 'copy'])
         self.assertEqual(ret, 0)
@@ -157,6 +157,20 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
         ret = main(['checkout'])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(fname))
+
+
+class TestCheckoutCleanWorkingDir(CheckoutBase):
+    def test(self):
+        stages = self.dvc.add(self.DATA_DIR)
+        stage = stages[0]
+
+        working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
+        with open(working_dir_change, 'w') as f:
+            f.write('not_cached')
+
+        ret = main(['checkout', stage.relpath])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.path.exists(working_dir_change))
 
 
 class TestCheckoutSelectiveRemove(CheckoutBase):
