@@ -337,10 +337,29 @@ class RemoteLOCAL(RemoteBase):
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
 
+        self._discard_working_directory_changes(path, dir_info)
+
         self.state.update_link(path)
 
         if bar:
             progress.finish_target(dir_relpath)
+
+    def _discard_working_directory_changes(self, path, dir_info):
+        working_dir_files = set(
+            os.path.join(root, file)
+            for root, _, files in os.walk(path)
+            for file in files
+        )
+
+        cached_files = set(
+            os.path.join(path, file['relpath'])
+            for file in dir_info
+        )
+
+        delta = working_dir_files - cached_files
+
+        for file in delta:
+            remove(file)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
