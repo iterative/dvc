@@ -151,7 +151,8 @@ class Git(Base):
 
     def _get_gitignore(self, path):
         assert os.path.isabs(path)
-        entry = os.path.basename(path)
+        # NOTE: using '/' prefix to make path unambiguous
+        entry = '/' + os.path.basename(path)
         gitignore = os.path.join(os.path.dirname(path), self.GITIGNORE)
 
         if not gitignore.startswith(self.root_dir):
