@@ -193,6 +193,13 @@ def parse_args(argv=None):
                         help='Checkout all dependencies of the '
                              'specified target.')
     checkout_parser.add_argument(
+                        '-f',
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help='Do not prompt when removing '
+                             'working directory files.')
+    checkout_parser.add_argument(
                         'targets',
                         nargs='*',
                         help='DVC files.')

@@ -13,7 +13,9 @@ from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
+from dvc.exceptions import DvcException
 
+from mock import patch
 
 class TestCheckout(TestRepro):
     def setUp(self):
@@ -162,21 +164,38 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 class TestCheckoutCleanWorkingDir(CheckoutBase):
     def test(self):
         from tests.test_data_cloud import sleep
-        
+
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
 
         sleep()
-        
+
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
 
         sleep()
-            
-        ret = main(['checkout', stage.relpath])
+
+        ret = main(['checkout', '--force', stage.relpath])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(working_dir_change))
+
+    @patch('dvc.prompt.Prompt.prompt')
+    def test_force(self, mock_prompt):
+        mock_prompt.return_value = False
+
+        stages = self.dvc.add(self.DATA_DIR)
+        stage = stages[0]
+
+        working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
+        with open(working_dir_change, 'w') as f:
+            f.write('not_cached')
+
+        ret = main(['checkout', stage.relpath])
+
+        mock_prompt.assert_called()
+        self.assertNotEqual(ret, 0)
+        self.assertRaises(DvcException)
 
 
 class TestCheckoutSelectiveRemove(CheckoutBase):
@@ -193,16 +212,16 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         staged_files = self.outs_info(stage)
 
         sleep()
-        
+
         os.remove(staged_files[0].path)
-        
+
         sleep()
-        
+
         ret = main(['checkout', stage.relpath])
         self.assertEqual(ret, 0)
 
         sleep()
-        
+
         checkedout_files = self.outs_info(stage)
 
         self.assertEqual(len(staged_files), len(checkedout_files))

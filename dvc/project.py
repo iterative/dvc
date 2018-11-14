@@ -466,7 +466,7 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None, with_deps=False):
+    def checkout(self, target=None, with_deps=False, force=False):
         all_stages = self.active_stages()
         stages = all_stages
 
@@ -482,7 +482,7 @@ class Project(object):
                           'not going to be checked out.'
                     self.logger.warn(msg.format(stage.relpath))
 
-                stage.checkout()
+                stage.checkout(force=force)
 
     def _get_pipeline(self, node):
         pipelines = list(filter(lambda g: node in g.nodes(),
