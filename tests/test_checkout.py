@@ -161,13 +161,19 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
 class TestCheckoutCleanWorkingDir(CheckoutBase):
     def test(self):
+        from tests.test_data_cloud import sleep
+        
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
 
+        sleep()
+        
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
 
+        sleep()
+            
         ret = main(['checkout', stage.relpath])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(working_dir_change))
