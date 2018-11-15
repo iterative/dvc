@@ -32,7 +32,7 @@ class State(object):
                               "inode INTEGER NOT NULL, " \
                               "mtime TEXT NOT NULL"
 
-    STATE_ROW_LIMIT = 10000000
+    STATE_ROW_LIMIT = 100000000
     STATE_ROW_CLEANUP_QUOTA = 50
 
     MAX_INT = 2**63 - 1
