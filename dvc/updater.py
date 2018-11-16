@@ -6,6 +6,7 @@ import colorama
 
 from dvc import VERSION_BASE
 from dvc.logger import Logger
+from dvc.utils import is_binary
 
 
 class Updater(object):  # pragma: no cover
@@ -16,40 +17,65 @@ class Updater(object):  # pragma: no cover
     TIMEOUT_GET = 10
 
     def __init__(self, dvc_dir):
+        from dvc.lock import Lock
+
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
+        self.lock = Lock(dvc_dir, self.updater_file + '.lock')
         self.current = VERSION_BASE
+
+    def _is_outdated_file(self):
+        ctime = os.path.getmtime(self.updater_file)
+        outdated = (time.time() - ctime >= self.TIMEOUT)
+        if outdated:
+            Logger.debug("'{}' is outdated(".format(self.updater_file))
+        return outdated
 
     def check(self):
         if os.getenv('CI'):
             return
 
-        if os.path.isfile(self.updater_file):
-            ctime = os.path.getctime(self.updater_file)
-            if time.time() - ctime < self.TIMEOUT:
-                msg = '{} is not old enough to check for updates'
-                Logger.debug(msg.format(self.UPDATER_FILE))
-                return
+        with self.lock:
+            self._check()
 
-            os.unlink(self.updater_file)
-
-        Logger.info('Checking for updates...')
-
-        try:
-            self._get_latest_version()
-        except Exception as exc:
-            msg = 'Failed to obtain latest version: {}'.format(str(exc))
-            Logger.debug(msg)
+    def _check(self):
+        if not os.path.exists(self.updater_file) or self._is_outdated_file():
+            self.fetch()
             return
+
+        with open(self.updater_file, 'r') as fobj:
+            import json
+
+            try:
+                info = json.load(fobj)
+                self.latest = info['version']
+            except json.decoder.JSONDecodeError as exc:
+                msg = "'{}' is not a valid json: {}"
+                Logger.debug(msg.format(self.updater_file, exc))
+                self.fetch()
+                return
 
         if self._is_outdated():
             self._notify()
 
+    def fetch(self, detach=True):
+        from dvc.daemon import Daemon
+
+        if detach:
+            d = Daemon()
+            d('updater')
+            return
+
+        with self.lock:
+            self._get_latest_version()
+
     def _get_latest_version(self):
+        import json
+
         r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
-        j = r.json()
-        self.latest = j['version']
-        open(self.updater_file, 'w+').close()
+        info = r.json()
+        with open(self.updater_file, 'w+') as fobj:
+            json.dump(info, fobj)
 
     def _is_outdated(self):
         l_major, l_minor, l_patch = [int(x) for x in self.latest.split('.')]
@@ -97,14 +123,10 @@ class Updater(object):  # pragma: no cover
 
         return instructions[package_manager]
 
-    @staticmethod
-    def _is_binary():
-        return getattr(sys, 'frozen', False)
-
     def _get_linux(self):
         import distro
 
-        if not self._is_binary():
+        if not is_binary():
             return 'pip'
 
         package_managers = {
@@ -120,7 +142,7 @@ class Updater(object):  # pragma: no cover
         return package_managers.get(distro.id())
 
     def _get_darwin(self):
-        if not self._is_binary():
+        if not is_binary():
             if __file__.startswith('/usr/local/Cellar'):
                 return 'formula'
             else:
@@ -136,7 +158,7 @@ class Updater(object):  # pragma: no cover
         return None
 
     def _get_windows(self):
-        return None if self._is_binary() else 'pip'
+        return None if is_binary() else 'pip'
 
     def _get_package_manager(self):
         import platform

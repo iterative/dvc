@@ -26,6 +26,7 @@ from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
+from dvc.command.daemon import CmdDaemonUpdater
 from dvc.logger import Logger
 from dvc import VERSION
 
@@ -941,6 +942,29 @@ def parse_args(argv=None):
                         description=PIPELINE_LIST_HELP,
                         help=PIPELINE_LIST_HELP)
     pipeline_list_parser.set_defaults(func=CmdPipelineList)
+
+    # Daemon
+    DAEMON_HELP = 'Service daemon.'
+    daemon_parser = subparsers.add_parser(
+                        'daemon',
+                        parents=[parent_parser],
+                        description=DAEMON_HELP,
+                        help=DAEMON_HELP)
+
+    daemon_subparsers = daemon_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc daemon CMD --help '
+                             'for command-specific help.')
+
+    _fix_subparsers(daemon_subparsers)
+
+    DAEMON_UPDATER_HELP = 'Fetch latest available version.'
+    daemon_updater_parser = daemon_subparsers.add_parser(
+                        'updater',
+                        parents=[parent_parser],
+                        description=DAEMON_UPDATER_HELP,
+                        help=DAEMON_UPDATER_HELP)
+    daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
 
     args = parser.parse_args(argv)
 
