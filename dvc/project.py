@@ -136,6 +136,7 @@ class Project(object):
             self.lock.lock_file,
             self.config.config_local_file,
             self.updater.updater_file,
+            self.updater.lock.lock_file,
         ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):

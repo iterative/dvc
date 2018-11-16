@@ -146,6 +146,12 @@ def to_chunks(l, jobs):
     return [l[x:x+n] for x in range(0, len(l), n)]
 
 
+# NOTE: Check if we are in a bundle
+# https://pythonhosted.org/PyInstaller/runtime-information.html
+def is_binary():
+    return getattr(sys, 'frozen', False)
+
+
 # NOTE: Fix env variables modified by PyInstaller
 # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
 def fix_env(env):
@@ -154,9 +160,7 @@ def fix_env(env):
     else:
         env = env.copy()
 
-    # NOTE: Check if we are in a bundle
-    # https://pythonhosted.org/PyInstaller/runtime-information.html
-    if getattr(sys, 'frozen', False):
+    if is_binary():
         lp_key = 'LD_LIBRARY_PATH'
         lp_orig = env.get(lp_key + '_ORIG', None)
         if lp_orig is not None:
