@@ -32,7 +32,7 @@ class Updater(object):  # pragma: no cover
         return outdated
 
     def check(self):
-        if os.getenv('CI'):
+        if os.getenv('CI') or os.getenv('DVC_TEST'):
             return
 
         with self.lock:
