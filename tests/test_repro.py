@@ -585,7 +585,7 @@ class TestReproExternalBase(TestDvc):
         self.dvc.gc()
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
-        self.dvc.checkout(cmd_stage.path)
+        self.dvc.checkout(cmd_stage.path, force=True)
 
 
 class TestReproExternalS3(TestReproExternalBase):

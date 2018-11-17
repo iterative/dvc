@@ -957,7 +957,7 @@ class Project(object):
 
             for fname, t, x in entries:
                 if stage:
-                    self.checkout(stage)
+                    self.checkout(stage, force=True)
 
                 rel = os.path.relpath(fname)
                 metric = self._read_metric(fname,
