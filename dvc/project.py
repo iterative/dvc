@@ -1058,7 +1058,8 @@ class Project(object):
             for dep in stage.deps:
                 for out in outs:
                     if out.path != dep.path \
-                       and not dep.path.startswith(out.path + out.sep):
+                       and not dep.path.startswith(out.path + out.sep) \
+                       and not out.path.startswith(dep.path + dep.sep):
                         continue
 
                     dep_stage = out.stage

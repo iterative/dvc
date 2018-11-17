@@ -79,6 +79,47 @@ class TestReproDepUnderDir(TestDvc):
         self.assertTrue(filecmp.cmp(self.file1, self.FOO, shallow=False))
 
 
+class TestReproDepDirWithOutputsUnderIt(TestDvc):
+    def test(self):
+        stages = self.dvc.add(self.DATA)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
+        sleep()
+
+        stages = self.dvc.add(self.DATA_SUB)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
+        sleep()
+
+        stage = self.dvc.run(fname='Dvcfile',
+                             deps=[self.DATA, self.DATA_SUB])
+        self.assertTrue(stage is not None)
+
+        sleep()
+
+        file1 = 'file1'
+        file1_stage = file1 + '.dvc'
+        stage = self.dvc.run(fname=file1_stage,
+                             deps=[self.DATA_DIR],
+                             outs=[file1],
+                             cmd='python {} {} {}'.format(self.CODE,
+                                                          self.DATA,
+                                                          file1))
+        self.assertTrue(stage is not None)
+
+        sleep()
+
+        os.unlink(self.DATA)
+        shutil.copyfile(self.FOO, self.DATA)
+
+        sleep()
+
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 2)
+
+
 class TestReproNoDeps(TestRepro):
     def test(self):
         out = 'out'
