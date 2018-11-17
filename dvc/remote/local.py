@@ -295,9 +295,7 @@ class RemoteLOCAL(RemoteBase):
         if not self.is_dir_cache(cache):
 
             if os.path.exists(path):
-                msg = u'File \'{}\' exists. Removing before checkout.'
-                Logger.warn(msg.format(os.path.relpath(path)))
-                remove(path)
+                remove(path) if force else self._safe_remove(path)
 
             self.link(cache, path)
             self.state.update_link(path)
@@ -331,7 +329,7 @@ class RemoteLOCAL(RemoteBase):
             }
 
             if self.changed(entry_info, entry_checksum_info):
-                remove(p)
+                remove(p) if force else self._safe_remove(p)
                 self.link(c, p)
 
             if bar:
@@ -359,20 +357,21 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            msg = (
-                'File "{}" is going to be removed. '
-                'Are you sure you want to proceed?'
-                .format(file)
-            )
+            remove(file) if force else self._safe_remove(file)
 
-            confirmed = force or self.project.prompt.prompt(msg, False)
+    def _safe_remove(self, file):
+        msg = (
+            'File "{}" is going to be removed. '
+            'Are you sure you want to proceed?'
+            .format(file)
+        )
 
-            if not confirmed:
-                raise DvcException('Unable to remove {} without a confirmation'
-                                   " from the user. Use '-f' to force."
-                                   .format(file))
+        confirmed = self.project.prompt.prompt(msg, False)
 
-            remove(file)
+        if not confirmed:
+            raise DvcException('Unable to remove {} without a confirmation'
+                               " from the user. Use '-f' to force."
+                               .format(file))
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
