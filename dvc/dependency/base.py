@@ -5,8 +5,8 @@ from dvc.exceptions import DvcException
 
 class DependencyError(DvcException):
     def __init__(self, path, msg):
-        msg = 'Dependency \'{}\' error: {}'
-        super(DependencyError, self).__init__(msg.format(path, msg))
+        msg = 'Dependency \'{}\' error: {}'.format(path, msg)
+        super(DependencyError, self).__init__(msg)
 
 
 class DependencyDoesNotExistError(DependencyError):
