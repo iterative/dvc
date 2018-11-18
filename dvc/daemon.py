@@ -48,7 +48,7 @@ class Daemon(object):  # pragma: no cover
         cmd = [sys.executable]
         if not is_binary():
             cmd += ['-m', 'dvc']
-        cmd += ['daemon', name, '-v']
+        cmd += ['daemon', name, '-q']
 
         Logger.debug("Trying to spawn '{}'".format(cmd))
 

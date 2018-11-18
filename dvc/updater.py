@@ -72,8 +72,14 @@ class Updater(object):  # pragma: no cover
     def _get_latest_version(self):
         import json
 
-        r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
-        info = r.json()
+        try:
+            r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
+            info = r.json()
+        except requests.exceptions.RequestException as exc:
+            msg = "Failed to retrieve latest version: {}"
+            Logger.debug(msg.format(exc))
+            return
+
         with open(self.updater_file, 'w+') as fobj:
             json.dump(info, fobj)
 
