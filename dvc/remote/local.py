@@ -268,7 +268,7 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cls, cache):
         return cache.endswith(cls.MD5_DIR_SUFFIX)
 
-    def checkout(self, path_info, checksum_info):
+    def checkout(self, path_info, checksum_info, force=False):
         path = path_info['path']
         md5 = checksum_info.get(self.PARAM_MD5)
         cache = self.get(md5)
@@ -295,9 +295,7 @@ class RemoteLOCAL(RemoteBase):
         if not self.is_dir_cache(cache):
 
             if os.path.exists(path):
-                msg = u'File \'{}\' exists. Removing before checkout.'
-                Logger.warn(msg.format(os.path.relpath(path)))
-                remove(path)
+                remove(path) if force else self._safe_remove(path)
 
             self.link(cache, path)
             self.state.update_link(path)
@@ -331,20 +329,20 @@ class RemoteLOCAL(RemoteBase):
             }
 
             if self.changed(entry_info, entry_checksum_info):
-                remove(p)
+                remove(p) if force else self._safe_remove(p)
                 self.link(c, p)
 
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
 
-        self._discard_working_directory_changes(path, dir_info)
+        self._discard_working_directory_changes(path, dir_info, force=force)
 
         self.state.update_link(path)
 
         if bar:
             progress.finish_target(dir_relpath)
 
-    def _discard_working_directory_changes(self, path, dir_info):
+    def _discard_working_directory_changes(self, path, dir_info, force=False):
         working_dir_files = set(
             os.path.join(root, file)
             for root, _, files in os.walk(path)
@@ -359,7 +357,21 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            remove(file)
+            remove(file) if force else self._safe_remove(file)
+
+    def _safe_remove(self, file):
+        msg = (
+            'File "{}" is going to be removed. '
+            'Are you sure you want to proceed?'
+            .format(file)
+        )
+
+        confirmed = self.project.prompt.prompt(msg, False)
+
+        if not confirmed:
+            raise DvcException('Unable to remove {} without a confirmation'
+                               " from the user. Use '-f' to force."
+                               .format(file))
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in

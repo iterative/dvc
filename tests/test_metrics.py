@@ -214,7 +214,7 @@ class TestNoMetrics(TestDvc):
 class TestCachedMetrics(TestDvc):
     def _do_write(self, branch):
         self.dvc.scm.checkout(branch)
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
         with open('metrics.json', 'w+') as fd:
             json.dump({'metrics': branch}, fd)

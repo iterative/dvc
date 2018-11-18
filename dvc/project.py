@@ -466,7 +466,7 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None, with_deps=False):
+    def checkout(self, target=None, with_deps=False, force=False):
         all_stages = self.active_stages()
         stages = all_stages
 
@@ -482,7 +482,7 @@ class Project(object):
                           'not going to be checked out.'
                     self.logger.warn(msg.format(stage.relpath))
 
-                stage.checkout()
+                stage.checkout(force=force)
 
     def _get_pipeline(self, node):
         pipelines = list(filter(lambda g: node in g.nodes(),
@@ -762,7 +762,8 @@ class Project(object):
              all_branches=False,
              show_checksums=False,
              with_deps=False,
-             all_tags=False):
+             all_tags=False,
+             force=False):
         self.fetch(target,
                    jobs,
                    remote=remote,
@@ -770,7 +771,7 @@ class Project(object):
                    all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps)
-        self.checkout(target=target, with_deps=with_deps)
+        self.checkout(target=target, with_deps=with_deps, force=force)
 
     def _local_status(self, target=None):
         status = {}
@@ -957,7 +958,7 @@ class Project(object):
 
             for fname, t, x in entries:
                 if stage:
-                    self.checkout(stage)
+                    self.checkout(stage, force=True)
 
                 rel = os.path.relpath(fname)
                 metric = self._read_metric(fname,

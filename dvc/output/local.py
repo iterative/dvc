@@ -60,11 +60,13 @@ class OutputLOCAL(DependencyLOCAL):
 
         return self.project.cache.local.changed(self.path_info, self.info)
 
-    def checkout(self):
+    def checkout(self, force=False):
         if not self.use_cache:
             return
 
-        self.project.cache.local.checkout(self.path_info, self.info)
+        self.project.cache.local.checkout(self.path_info,
+                                          self.info,
+                                          force=force)
 
     def _verify_metric(self):
         if not self.metric:

@@ -92,7 +92,7 @@ class RemoteBase(object):
     def save(self, path_info):
         raise NotImplementedError
 
-    def checkout(self, path_info, checksum_info):
+    def checkout(self, path_info, checksum_info, force=False):
         raise NotImplementedError
 
     def download(self, from_infos, to_infos, no_progress_bar=False, name=None):

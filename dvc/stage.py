@@ -478,9 +478,9 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
-    def checkout(self):
+    def checkout(self, force=False):
         for out in self.outs:
-            out.checkout()
+            out.checkout(force=force)
 
     def _status(self, entries, name):
         ret = {}

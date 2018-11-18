@@ -35,7 +35,7 @@ class OutputHDFS(DependencyHDFS):
 
         return False
 
-    def checkout(self):
+    def checkout(self, force=False):
         if not self.use_cache:
             return
 

@@ -13,7 +13,9 @@ from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
+from dvc.exceptions import DvcException
 
+from mock import patch
 
 class TestCheckout(TestRepro):
     def setUp(self):
@@ -34,7 +36,7 @@ class TestCheckout(TestRepro):
         shutil.rmtree(self.DATA_DIR)
 
     def test(self):
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
         self._test_checkout()
 
     def _test_checkout(self):
@@ -44,10 +46,10 @@ class TestCheckout(TestRepro):
 
 class TestCheckoutSingleStage(TestCheckout):
     def test(self):
-        ret = main(['checkout', self.foo_stage.path])
+        ret = main(['checkout', '--force', self.foo_stage.path])
         self.assertEqual(ret, 0)
 
-        ret = main(['checkout', self.data_dir_stage.path])
+        ret = main(['checkout', '--force', self.data_dir_stage.path])
         self.assertEqual(ret, 0)
 
         self._test_checkout()
@@ -62,7 +64,7 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
         with open(cache, 'a') as fd:
             fd.write('1')
 
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
         self.assertFalse(os.path.isfile(self.FOO))
         self.assertFalse(os.path.isfile(cache))
@@ -91,14 +93,14 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         with open(cache, 'w+') as fobj:
             fobj.write('1')
 
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
         self.assertFalse(os.path.exists(cache))
 
 
 class TestCmdCheckout(TestCheckout):
     def test(self):
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
         self._test_checkout()
 
@@ -144,7 +146,7 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
         # add the file into a separate branch
         self.dvc.scm.checkout(branch_1, True)
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
         self.commit_data_file(fname)
 
@@ -154,7 +156,7 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
         # Make sure `dvc checkout` removes the file
         # self.dvc.checkout()
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(fname))
 
@@ -162,21 +164,38 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 class TestCheckoutCleanWorkingDir(CheckoutBase):
     def test(self):
         from tests.test_data_cloud import sleep
-        
+
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
 
         sleep()
-        
+
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
 
         sleep()
-            
-        ret = main(['checkout', stage.relpath])
+
+        ret = main(['checkout', '--force', stage.relpath])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(working_dir_change))
+
+    @patch('dvc.prompt.Prompt.prompt')
+    def test_force(self, mock_prompt):
+        mock_prompt.return_value = False
+
+        stages = self.dvc.add(self.DATA_DIR)
+        stage = stages[0]
+
+        working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
+        with open(working_dir_change, 'w') as f:
+            f.write('not_cached')
+
+        ret = main(['checkout', stage.relpath])
+
+        mock_prompt.assert_called()
+        self.assertNotEqual(ret, 0)
+        self.assertRaises(DvcException)
 
 
 class TestCheckoutSelectiveRemove(CheckoutBase):
@@ -193,16 +212,16 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         staged_files = self.outs_info(stage)
 
         sleep()
-        
+
         os.remove(staged_files[0].path)
-        
+
         sleep()
-        
-        ret = main(['checkout', stage.relpath])
+
+        ret = main(['checkout', '--force', stage.relpath])
         self.assertEqual(ret, 0)
 
         sleep()
-        
+
         checkedout_files = self.outs_info(stage)
 
         self.assertEqual(len(staged_files), len(checkedout_files))
@@ -250,12 +269,12 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         self.commit_data_file(fname_master)
 
         self.dvc.scm.checkout(branch_1, True)
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
         self.commit_data_file(fname_branch)
 
         self.dvc.scm.checkout(branch_master)
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
 
         ignored = self.read_ignored()
@@ -264,7 +283,7 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
         self.assertIn('/' + fname_master, ignored)
 
         self.dvc.scm.checkout(branch_1)
-        ret = main(['checkout'])
+        ret = main(['checkout', '--force'])
         self.assertEqual(ret, 0)
         ignored = self.read_ignored()
         self.assertIn('/' + fname_branch, ignored)
@@ -281,7 +300,7 @@ class TestCheckoutMissingMd5InStageFile(TestRepro):
         with open(self.file1_stage, 'w') as fd:
             yaml.dump(d, fd)
 
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
 
 class TestCheckoutEmptyDir(TestDvc):
@@ -298,7 +317,7 @@ class TestCheckoutEmptyDir(TestDvc):
         stage.outs[0].remove()
         self.assertFalse(os.path.exists(dname))
 
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
         self.assertTrue(os.path.isdir(dname))
         self.assertEqual(len(os.listdir(dname)), 0)
@@ -313,7 +332,7 @@ class TestCheckoutNotCachedFile(TestDvc):
                              deps=[self.FOO, self.CODE],
                              outs_no_cache=['out'])
 
-        self.dvc.checkout()
+        self.dvc.checkout(force=True)
 
 
 class TestCheckoutWithDeps(TestRepro):
@@ -324,7 +343,7 @@ class TestCheckoutWithDeps(TestRepro):
         self.assertFalse(os.path.exists(self.FOO))
         self.assertFalse(os.path.exists(self.file1))
 
-        ret = main(['checkout', self.file1_stage, '--with-deps'])
+        ret = main(['checkout', '--force', self.file1_stage, '--with-deps'])
         self.assertEqual(ret, 0)
 
         self.assertTrue(os.path.exists(self.FOO))
