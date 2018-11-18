@@ -325,6 +325,11 @@ def parse_args(argv=None):
                         default=False,
                         help='Fetch cache for all dependencies of the '
                              'specified target.')
+    pull_parser.add_argument(
+                        '-f',
+                        '--force',
+                        help='Do not prompt when removing '
+                             'working directory files.')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push

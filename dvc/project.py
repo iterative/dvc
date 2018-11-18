@@ -762,7 +762,8 @@ class Project(object):
              all_branches=False,
              show_checksums=False,
              with_deps=False,
-             all_tags=False):
+             all_tags=False,
+             force=False):
         self.fetch(target,
                    jobs,
                    remote=remote,
@@ -770,7 +771,7 @@ class Project(object):
                    all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps)
-        self.checkout(target=target, with_deps=with_deps)
+        self.checkout(target=target, with_deps=with_deps, force=force)
 
     def _local_status(self, target=None):
         status = {}

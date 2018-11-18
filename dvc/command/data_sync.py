@@ -25,7 +25,8 @@ class CmdDataPull(CmdDataBase):
                               show_checksums=self.args.show_checksums,
                               all_branches=self.args.all_branches,
                               all_tags=self.args.all_tags,
-                              with_deps=self.args.with_deps)
+                              with_deps=self.args.with_deps,
+                              force=self.args.force)
         except Exception as exc:
             self.project.logger.error('Failed to pull data from the cloud',
                                       exc)
