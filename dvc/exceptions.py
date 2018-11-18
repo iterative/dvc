@@ -4,7 +4,7 @@ import traceback
 class DvcException(Exception):
     def __init__(self, msg, cause=None):
         self.cause = cause
-        self.case_tb = None
+        self.cause_tb = None
         if cause:
             try:
                 self.cause_tb = traceback.format_exc()
