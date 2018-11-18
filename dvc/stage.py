@@ -363,7 +363,7 @@ class Stage(object):
             raise StageFileIsNotDvcFileError(fname)
 
         with open(fname, 'r') as fd:
-            return Stage.loadd(project, yaml.safe_load(fd), fname)
+            return Stage.loadd(project, yaml.safe_load(fd) or dict(), fname)
 
     def dumpd(self):
         deps = [x.dumpd() for x in self.deps]
