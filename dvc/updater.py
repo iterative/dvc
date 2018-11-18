@@ -49,7 +49,7 @@ class Updater(object):  # pragma: no cover
             try:
                 info = json.load(fobj)
                 self.latest = info['version']
-            except json.decoder.JSONDecodeError as exc:
+            except Exception as exc:
                 msg = "'{}' is not a valid json: {}"
                 Logger.debug(msg.format(self.updater_file, exc))
                 self.fetch()
