@@ -182,16 +182,24 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
 
     @patch('dvc.prompt.Prompt.prompt')
     def test_force(self, mock_prompt):
+        from tests.test_data_cloud import sleep
+
         mock_prompt.return_value = False
 
         stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
         stage = stages[0]
-
+        
+        sleep()
+        
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
 
+        sleep()
+            
         ret = main(['checkout', stage.relpath])
+        self.assertNotEqual(ret, 0)
 
         mock_prompt.assert_called()
         self.assertNotEqual(ret, 0)
