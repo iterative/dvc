@@ -5,6 +5,7 @@ import requests
 import colorama
 
 from dvc import VERSION_BASE
+from dvc.lock import Lock, LockError
 from dvc.logger import Logger
 from dvc.utils import is_binary
 
@@ -17,8 +18,6 @@ class Updater(object):  # pragma: no cover
     TIMEOUT_GET = 10
 
     def __init__(self, dvc_dir):
-        from dvc.lock import Lock
-
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
         self.lock = Lock(dvc_dir, self.updater_file + '.lock')
@@ -31,12 +30,19 @@ class Updater(object):  # pragma: no cover
             Logger.debug("'{}' is outdated(".format(self.updater_file))
         return outdated
 
+    def _with_lock(self, func, action):
+        try:
+            with self.lock:
+                func()
+        except LockError:
+            msg = "Failed to acquire '{}' before {} updates"
+            Logger.debug(msg.format(self.lock.lock_file, action))
+
     def check(self):
         if os.getenv('CI') or os.getenv('DVC_TEST'):
             return
 
-        with self.lock:
-            self._check()
+        self._with_lock(self._check, 'checking')
 
     def _check(self):
         if not os.path.exists(self.updater_file) or self._is_outdated_file():
@@ -66,8 +72,7 @@ class Updater(object):  # pragma: no cover
             d('updater')
             return
 
-        with self.lock:
-            self._get_latest_version()
+        self._with_lock(self._get_latest_version, 'fetching')
 
     def _get_latest_version(self):
         import json
