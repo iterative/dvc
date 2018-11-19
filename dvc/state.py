@@ -267,6 +267,10 @@ class State(object):
         return System.inode(path)
 
     def _do_update(self, path):
+        """
+        Search for the current inode on the table or update it with
+        gathered information.
+        """
         if not os.path.exists(path):
             return (None, None)
 

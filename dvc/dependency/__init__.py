@@ -14,28 +14,38 @@ from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.ssh import DependencySSH
+from dvc.dependency.http import DependencyHTTP
 
 from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.hdfs import RemoteHDFS
+from dvc.remote.http import RemoteHTTP
 
-DEPS = [DependencyHDFS,
-        DependencyS3,
-        DependencyGS,
-        DependencySSH,
-        DependencyLOCAL]
+DEPS = [
+    DependencyGS,
+    DependencyHDFS,
+    DependencyHTTP,
+    DependencyLOCAL,
+    DependencyS3,
+    DependencySSH,
+]
 
-DEP_MAP = {'': DependencyLOCAL,
-           'ssh': DependencySSH,
-           's3': DependencyS3,
-           'gs': DependencyGS,
-           'hdfs': DependencyHDFS}
+DEP_MAP = {
+    '': DependencyLOCAL,
+    'ssh': DependencySSH,
+    's3': DependencyS3,
+    'gs': DependencyGS,
+    'hdfs': DependencyHDFS,
+    'http': DependencyHTTP,
+    'https': DependencyHTTP,
+}
 
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
     schema.Optional(RemoteLOCAL.PARAM_MD5): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_ETAG): schema.Or(str, None),
+    schema.Optional(RemoteHTTP.PARAM_ETAG): schema.Or(str, None),
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
 }
 
