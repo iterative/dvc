@@ -14,6 +14,7 @@ class TestCmdImport(TestDvc):
         ret = main(['import',
                     self.FOO, 'import'])
         self.assertEqual(ret, 0)
+        self.assertTrue(os.path.exists('import.dvc'))
 
         ret = main(['import',
                     'non-existing-file', 'import'])
@@ -22,3 +23,8 @@ class TestCmdImport(TestDvc):
     def test_unsupported(self):
         ret = main(['import', 'unsupported://path', 'import_unsupported'])
         self.assertNotEqual(ret, 0)
+
+class TestDefaultOutput(TestDvc):
+    def test(self):
+        ret = main(['import', self.FOO])
+        self.assertEqual(ret, 0)
