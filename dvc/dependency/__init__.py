@@ -41,11 +41,11 @@ DEP_MAP = {
     'https': DependencyHTTP,
 }
 
+# We are skipping RemoteHTTP.PARAM_ETAG because is the same as RemoteS3
 SCHEMA = {
     DependencyBase.PARAM_PATH: str,
     schema.Optional(RemoteLOCAL.PARAM_MD5): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_ETAG): schema.Or(str, None),
-    schema.Optional(RemoteHTTP.PARAM_ETAG): schema.Or(str, None),
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
 }
 
