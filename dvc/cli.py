@@ -26,7 +26,8 @@ from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
-from dvc.command.daemon import CmdDaemonUpdater
+from dvc.command.daemon import CmdDaemonUpdater, CmdDaemonAnalytics
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc import VERSION
 
@@ -41,11 +42,16 @@ def _fix_subparsers(subparsers):
         subparsers.dest = 'cmd'
 
 
+class DvcParserError(DvcException):
+    def __init__(self):
+        super(DvcException, self).__init__("Parser error")
+
+
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
         sys.stderr.write('{}{}\n'.format(Logger.error_prefix(), message))
         self.print_help()
-        sys.exit(2)
+        raise DvcParserError()
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -1036,6 +1042,17 @@ def parse_args(argv=None):
                         description=DAEMON_UPDATER_HELP,
                         help=DAEMON_UPDATER_HELP)
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
+
+    DAEMON_ANALYTICS_HELP = 'Send dvc usage analytics.'
+    daemon_analytics_parser = daemon_subparsers.add_parser(
+                        'analytics',
+                        parents=[parent_parser],
+                        description=DAEMON_ANALYTICS_HELP,
+                        help=DAEMON_ANALYTICS_HELP)
+    daemon_analytics_parser.add_argument(
+                        'target',
+                        help="Analytics file.")
+    daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)
 
     args = parser.parse_args(argv)
 

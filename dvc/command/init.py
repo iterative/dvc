@@ -9,7 +9,10 @@ class CmdInit(object):
         from dvc.project import Project, InitError
 
         try:
-            Project.init('.', no_scm=self.args.no_scm, force=self.args.force)
+            self.project = Project.init('.',
+                                        no_scm=self.args.no_scm,
+                                        force=self.args.force)
+            self.config = self.project.config
         except InitError as e:
             Logger.error('Failed to initiate dvc', e)
             return 1

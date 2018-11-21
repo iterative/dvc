@@ -68,6 +68,8 @@ class Config(object):
     SECTION_CORE_REMOTE = 'remote'
     SECTION_CORE_INTERACTIVE_SCHEMA = And(str, is_bool, Use(to_bool))
     SECTION_CORE_INTERACTIVE = 'interactive'
+    SECTION_CORE_ANALYTICS = 'analytics'
+    SECTION_CORE_ANALYTICS_SCHEMA = And(str, is_bool, Use(to_bool))
 
     SECTION_CACHE = 'cache'
     SECTION_CACHE_DIR = 'dir'
@@ -106,6 +108,8 @@ class Config(object):
         Optional(SECTION_CORE_REMOTE, default=''): And(str, Use(str.lower)),
         Optional(SECTION_CORE_INTERACTIVE,
                  default=False): SECTION_CORE_INTERACTIVE_SCHEMA,
+        Optional(SECTION_CORE_ANALYTICS,
+                 default=True): SECTION_CORE_ANALYTICS_SCHEMA,
 
         # backward compatibility
         Optional(SECTION_CORE_CLOUD, default=''): SECTION_CORE_CLOUD_SCHEMA,
@@ -190,28 +194,34 @@ class Config(object):
         Optional(SECTION_LOCAL, default={}): SECTION_LOCAL_SCHEMA,
     }
 
-    def __init__(self, dvc_dir):
-        self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
-        self.system_config_file = os.path.join(self.system_config_dir,
+    def __init__(self, dvc_dir=None, validate=True):
+        self.system_config_file = os.path.join(self.get_system_config_dir(),
                                                self.CONFIG)
-        self.global_config_file = os.path.join(self.global_config_dir,
+        self.global_config_file = os.path.join(self.get_global_config_dir(),
                                                self.CONFIG)
-        self.config_file = os.path.join(dvc_dir, self.CONFIG)
-        self.config_local_file = os.path.join(dvc_dir, self.CONFIG_LOCAL)
 
-        self._load()
+        if dvc_dir is not None:
+            self.dvc_dir = os.path.abspath(os.path.realpath(dvc_dir))
+            self.config_file = os.path.join(dvc_dir, self.CONFIG)
+            self.config_local_file = os.path.join(dvc_dir, self.CONFIG_LOCAL)
+        else:
+            self.dvc_dir = None
+            self.config_file = None
+            self.config_local_file = None
 
-    @property
-    def global_config_dir(self):
+        self.load(validate=validate)
+
+    @staticmethod
+    def get_global_config_dir():
         from appdirs import user_config_dir
-        return user_config_dir(appname=self.APPNAME,
-                               appauthor=self.APPAUTHOR)
+        return user_config_dir(appname=Config.APPNAME,
+                               appauthor=Config.APPAUTHOR)
 
-    @property
-    def system_config_dir(self):
+    @staticmethod
+    def get_system_config_dir():
         from appdirs import site_config_dir
-        return site_config_dir(appname=self.APPNAME,
-                               appauthor=self.APPAUTHOR)
+        return site_config_dir(appname=Config.APPNAME,
+                               appauthor=Config.APPAUTHOR)
 
     @staticmethod
     def init(dvc_dir):
@@ -222,11 +232,20 @@ class Config(object):
     def _load(self):
         self._system_config = configobj.ConfigObj(self.system_config_file)
         self._global_config = configobj.ConfigObj(self.global_config_file)
-        self._project_config = configobj.ConfigObj(self.config_file)
-        self._local_config = configobj.ConfigObj(self.config_local_file)
+
+        if self.config_file is not None:
+            self._project_config = configobj.ConfigObj(self.config_file)
+        else:
+            self._project_config = configobj.ConfigObj()
+
+        if self.config_local_file is not None:
+            self._local_config = configobj.ConfigObj(self.config_local_file)
+        else:
+            self._local_config = configobj.ConfigObj()
+
         self._config = None
 
-    def load(self):
+    def load(self, validate=True):
         self._load()
         try:
             self._config = configobj.ConfigObj(self.system_config_file)
@@ -241,7 +260,8 @@ class Config(object):
                 c = self._lower(c)
                 self._config = self._merge(self._config, c)
 
-            self._config = Schema(self.SCHEMA).validate(self._config)
+            if validate:
+                self._config = Schema(self.SCHEMA).validate(self._config)
 
             # NOTE: now converting back to ConfigObj
             self._config = configobj.ConfigObj(self._config,
@@ -271,6 +291,9 @@ class Config(object):
                      self._local_config]
 
         for conf in clist:
+            if conf.filename is None:
+                continue
+
             try:
                 Logger.debug("Writing '{}'.".format(conf.filename))
                 dname = os.path.dirname(os.path.abspath(conf.filename))

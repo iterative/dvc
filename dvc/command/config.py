@@ -8,18 +8,29 @@ from dvc.exceptions import DvcException
 
 class CmdConfig(CmdBase):
     def __init__(self, args):
-        from dvc.project import Project
+        from dvc.project import Project, NotDvcProjectError
 
         self.args = args
-        dvc_dir = os.path.join(self._find_root(), Project.DVC_DIR)
-        self.config = Config(dvc_dir)
+
+        try:
+            dvc_dir = os.path.join(Project._find_root(), Project.DVC_DIR)
+            saved_exc = None
+        except NotDvcProjectError as exc:
+            dvc_dir = None
+            saved_exc = exc
+
+        self.config = Config(dvc_dir, validate=False)
         if self.args.system:
             self.configobj = self.config._system_config
         elif self.args.glob:
             self.configobj = self.config._global_config
         elif self.args.local:
+            if dvc_dir is None:
+                raise saved_exc
             self.configobj = self.config._local_config
         else:
+            if dvc_dir is None:
+                raise saved_exc
             self.configobj = self.config._project_config
 
     def run_cmd(self):
