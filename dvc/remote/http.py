@@ -1,14 +1,16 @@
 import os
 import threading
 import requests
+import posixpath
 
 from dvc.logger import Logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
+from dvc.config import Config
 from dvc.remote.base import RemoteBase
 
 
-class Callback(object):
+class ProgressBarCallback(object):
     def __init__(self, name, total):
         self.name = name
         self.total = total
@@ -23,12 +25,17 @@ class Callback(object):
 
 class RemoteHTTP(RemoteBase):
     REGEX = r'^https?://.*$'
-    TIMEOUT_GET = 10
+    REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 128
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
         self.project = project
+        self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
+
+    @property
+    def prefix(self):
+        return self.cache_dir
 
     def download(self,
                  from_infos,
@@ -54,17 +61,17 @@ class RemoteHTTP(RemoteBase):
 
             self._makedirs(to_info['path'])
 
-            try:
-                if no_progress_bar:
-                    cb = None
-                else:
-                    total = self._content_length(from_info['url'])
-                    cb = Callback(name, total)
+            total = self._content_length(from_info['url'])
 
-                self._download_to(from_info['url'], tmp_file)
+            if no_progress_bar or not total:
+                cb = None
+            else:
+                cb = ProgressBarCallback(name, total)
+
+            try:
+                self._download_to(from_info['url'], tmp_file, callback=cb)
             except Exception as exc:
-                msg = "Failed to download '{}/{}'".format(from_info['bucket'],
-                                                          from_info['key'])
+                msg = "Failed to download '{}'".format(from_info['url'])
                 Logger.warn(msg, exc)
                 continue
 
@@ -75,7 +82,7 @@ class RemoteHTTP(RemoteBase):
 
     def exists(self, path_infos):
         return [
-            bool(self._etag(path_info['url']))
+            bool(self._request('HEAD', path_info.get('url')))
             for path_info in path_infos
         ]
 
@@ -85,13 +92,20 @@ class RemoteHTTP(RemoteBase):
 
         return {self.PARAM_ETAG: self._etag(path_info['url'])}
 
+    def md5s_to_path_infos(self, md5s):
+        return [
+            {
+                'scheme': 'http',
+                'url': posixpath.join(self.prefix, md5[0:2], md5[2:]),
+            }
+            for md5 in md5s
+        ]
+
     def _content_length(self, url):
-        r = requests.head(url, allow_redirects=True, timeout=self.TIMEOUT_GET)
-        return r.headers.get('Content-Length')
+        return self._request('HEAD', url).headers.get('Content-Length')
 
     def _etag(self, url):
-        r = requests.head(url, allow_redirects=True, timeout=self.TIMEOUT_GET)
-        etag = r.headers.get('ETag')
+        etag = self._request('HEAD', url).headers.get('ETag')
 
         if not etag:
             raise DvcException('Could not find an ETag for that resource')
@@ -102,10 +116,7 @@ class RemoteHTTP(RemoteBase):
         return etag
 
     def _download_to(self, url, file, callback=None):
-        r = requests.get(url,
-                         allow_redirects=True,
-                         stream=True,
-                         timeout=self.TIMEOUT_GET)
+        r = self._request('GET', url, stream=True)
 
         with open(file, 'wb') as fd:
             bytes_transfered = 0
@@ -116,3 +127,12 @@ class RemoteHTTP(RemoteBase):
                 if callback:
                     bytes_transfered += len(chunk)
                     callback(bytes_transfered)
+
+    def _request(self, method, url, **kwargs):
+        kwargs.setdefault('allow_redirects', True)
+        kwargs.setdefault('timeout', self.REQUEST_TIMEOUT)
+
+        try:
+            return requests.request(method, url, **kwargs)
+        except requests.exceptions.RequestException as exc:
+            raise DvcException('Could not perform a {} request'.format(method))

@@ -7,6 +7,7 @@ from dvc.remote.azure import RemoteAzure
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
+from dvc.remote.http import RemoteHTTP
 
 
 class DataCloud(object):
@@ -17,6 +18,8 @@ class DataCloud(object):
         'ssh': RemoteSSH,
         'hdfs': RemoteHDFS,
         'local': RemoteLOCAL,
+        'http': RemoteHTTP,
+        'https': RemoteHTTP,
     }
 
     def __init__(self, project, config=None):
