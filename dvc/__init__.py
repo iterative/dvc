@@ -7,7 +7,7 @@ import os
 import warnings
 
 
-VERSION_BASE = '0.20.6'
+VERSION_BASE = '0.20.7'
 __version__ = VERSION_BASE
 
 PACKAGEPATH = os.path.abspath(os.path.dirname(__file__))
