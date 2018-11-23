@@ -7,7 +7,7 @@ from grandalf.routing import route_with_lines, EdgeViewer
 
 
 class AsciiCanvas(object):
-    TIMEOUT = 1
+    TIMEOUT = 10
 
     def __init__(self, cols, lines):
         assert cols > 1
@@ -27,6 +27,7 @@ class AsciiCanvas(object):
                 print(''.join(line))
 
     def _do_draw(self, screen):  # pragma: no cover
+        from dvc.system import System
         from asciimatics.event import KeyboardEvent
 
         offset_x = 0
@@ -66,12 +67,12 @@ class AsciiCanvas(object):
             # NOTE: get_event() doesn't block by itself,
             # so we have to do the blocking ourselves.
             #
-            # NOTE: using formally private method while waiting for PR [1]
-            # to get merged. After that need to adjust asciimatics version
-            # requirements.
+            # NOTE: using this workaround while waiting for PR [1]
+            # to get merged and released. After that need to adjust
+            # asciimatics version requirements.
             #
             # [1] https://github.com/peterbrittain/asciimatics/pull/188
-            screen._wait_for_input(self.TIMEOUT)
+            System.wait_for_input(self.TIMEOUT)
 
             event = screen.get_event()
             if not isinstance(event, KeyboardEvent):
