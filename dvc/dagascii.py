@@ -1,6 +1,5 @@
 import sys
 import math
-import select
 
 from grandalf.graphs import Vertex, Edge, Graph
 from grandalf.layouts import SugiyamaLayout
@@ -8,6 +7,8 @@ from grandalf.routing import route_with_lines, EdgeViewer
 
 
 class AsciiCanvas(object):
+    TIMEOUT = 1
+
     def __init__(self, cols, lines):
         assert cols > 1
         assert lines > 1
@@ -64,7 +65,13 @@ class AsciiCanvas(object):
 
             # NOTE: get_event() doesn't block by itself,
             # so we have to do the blocking ourselves.
-            select.select([sys.stdin], [], [], None)
+            #
+            # NOTE: using formally private method while waiting for PR [1]
+            # to get merged. After that need to adjust asciimatics version
+            # requirements.
+            #
+            # [1] https://github.com/peterbrittain/asciimatics/pull/188
+            screen._wait_for_input(self.TIMEOUT)
 
             event = screen.get_event()
             if not isinstance(event, KeyboardEvent):
