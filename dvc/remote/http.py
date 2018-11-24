@@ -112,7 +112,7 @@ class RemoteHTTP(RemoteBase):
             raise DvcException('Could not find an ETag for that resource')
 
         if etag.startswith('W/'):
-            raise DvcException('DVC do not support weak ETags for caching')
+            raise DvcException("Weak ETag '{}' is not supported for url '{}'".format(etag, url))
 
         return etag
 
