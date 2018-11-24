@@ -24,6 +24,7 @@ class ProgressBarCallback(object):
 
 
 class RemoteHTTP(RemoteBase):
+    scheme = 'http'
     REGEX = r'^https?://.*$'
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 128
@@ -134,5 +135,5 @@ class RemoteHTTP(RemoteBase):
 
         try:
             return requests.request(method, url, **kwargs)
-        except requests.exceptions.RequestException as exc:
+        except requests.exceptions.RequestException:
             raise DvcException('Could not perform a {} request'.format(method))

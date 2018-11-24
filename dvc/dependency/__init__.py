@@ -20,7 +20,6 @@ from dvc.remote import Remote
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.http import RemoteHTTP
 
 DEPS = [
     DependencyGS,

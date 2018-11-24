@@ -1,7 +1,7 @@
 try:
-    from urlparse import urlparse
+    from urlparse import urlparse, urljoin
 except ImportError:
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, urljoin
 
 from dvc.dependency.base import DependencyBase
 from dvc.remote.http import RemoteHTTP
@@ -15,6 +15,10 @@ class DependencyHTTP(DependencyBase):
 
         self.info = info
         self.remote = remote or RemoteHTTP(stage.project, {})
+
+        if path.startswith('remote'):
+            path = urljoin(self.remote.cache_dir, urlparse(path).path)
+
         self.path_info = {
             'scheme': urlparse(path).scheme,
             'url': path,
