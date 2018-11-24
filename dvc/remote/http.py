@@ -109,7 +109,7 @@ class RemoteHTTP(RemoteBase):
         etag = self._request('HEAD', url).headers.get('ETag')
 
         if not etag:
-            raise DvcException('Could not find an ETag for that resource')
+            raise DvcException("Could not find an ETag for '{}'".format(url))
 
         if etag.startswith('W/'):
             raise DvcException("Weak ETag '{}' is not supported for url '{}'".format(etag, url))
