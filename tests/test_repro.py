@@ -7,6 +7,11 @@ import getpass
 import posixpath
 from subprocess import Popen, PIPE
 
+try:
+    from urlparse import urljoin
+except ImportError:
+    from urllib.parse import urljoin
+
 import boto3
 import uuid
 from google.cloud import storage as gc
@@ -785,16 +790,36 @@ class TestReproExternalLOCAL(TestReproExternalBase):
 
 
 class TestReproExternalHTTP(TestReproExternalBase):
+    _external_cache_id = None
+
     @property
     def remote(self):
         return 'http://localhost:8000/'
 
+    @property
+    def local_cache(self):
+        return os.path.join(self.dvc.dvc_dir, 'cache')
+
+    @property
+    def external_cache_id(self):
+        if not self._external_cache_id:
+            self._external_cache_id = str(uuid.uuid4())
+
+        return self._external_cache_id
+
+    @property
+    def external_cache(self):
+        return urljoin(self.remote, self.external_cache_id)
+
     def test(self):
-        ret = main(['remote', 'add', 'myremote', self.remote])
-        self.assertEqual(ret, 0)
+        ret1 = main(['remote', 'add', 'mycache', self.external_cache])
+        ret2 = main(['remote', 'add', 'myremote', self.remote])
+        self.assertEqual(ret1, 0)
+        self.assertEqual(ret2, 0)
 
         self.dvc = Project('.')
 
+        # Import
         with StaticFileServer() as server:
             import_url = urljoin(self.remote, self.FOO)
             import_output = 'imported_file'
@@ -803,16 +828,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
-        self.dvc.remove(import_stage.path, outs_only=True)
-        self.dvc.gc()
-
-        self.assertFalse(os.path.exists(import_output))
-
-        with StaticFileServer() as server:
-            self.dvc.pull(import_stage.path, remote='myremote')
-
-        self.assertTrue(os.path.exists(import_output))
-
+        # Run --deps
         with StaticFileServer() as server:
             run_dependency = urljoin(self.remote, self.BAR)
             run_output = 'remote_file'
@@ -823,6 +839,18 @@ class TestReproExternalHTTP(TestReproExternalBase):
                                      cmd=cmd)
 
         self.assertTrue(os.path.exists(run_output))
+
+        # Pull
+        self.dvc.remove(import_stage.path, outs_only=True)
+        self.assertFalse(os.path.exists(import_output))
+
+        shutil.move(self.local_cache, self.external_cache_id)
+        self.assertFalse(os.path.exists(self.local_cache))
+
+        with StaticFileServer() as server:
+            self.dvc.pull(import_stage.path, remote='mycache')
+
+        self.assertTrue(os.path.exists(import_output))
 
 
 class TestReproShell(TestDvc):

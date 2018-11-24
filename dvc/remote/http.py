@@ -27,7 +27,7 @@ class RemoteHTTP(RemoteBase):
     scheme = 'http'
     REGEX = r'^https?://.*$'
     REQUEST_TIMEOUT = 10
-    CHUNK_SIZE = 128
+    CHUNK_SIZE = 1000000  # Megabyte
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
@@ -112,7 +112,10 @@ class RemoteHTTP(RemoteBase):
             raise DvcException("Could not find an ETag for '{}'".format(url))
 
         if etag.startswith('W/'):
-            raise DvcException("Weak ETag '{}' is not supported for url '{}'".format(etag, url))
+            raise DvcException(
+                "Weak ETag '{}' is not supported for url '{}'"
+                .format(etag, url)
+            )
 
         return etag
 
