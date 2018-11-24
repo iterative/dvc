@@ -113,8 +113,8 @@ class RemoteHTTP(RemoteBase):
 
         if etag.startswith('W/'):
             raise DvcException(
-                "Weak ETag '{}' is not supported for url '{}'"
-                .format(etag, url)
+                "Weak ETags are not supported."
+                " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
             )
 
         return etag
