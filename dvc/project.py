@@ -788,11 +788,12 @@ class Project(object):
                    with_deps=with_deps)
         self.checkout(target=target, with_deps=with_deps, force=force)
 
-    def _local_status(self, target=None):
+    def _local_status(self, target=None, with_deps=False):
         status = {}
 
         if target:
-            stages = [Stage.load(self, target)]
+            stages = self._collect(target,
+                                   with_deps=with_deps)
         else:
             stages = self.active_stages()
 
@@ -859,7 +860,8 @@ class Project(object):
                                           all_branches=all_branches,
                                           with_deps=with_deps,
                                           all_tags=all_tags)
-            return self._local_status(target)
+            return self._local_status(target,
+                                      with_deps=with_deps)
 
     def _read_metric_json(self, fd, json_path):
         import json
