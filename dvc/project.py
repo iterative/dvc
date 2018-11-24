@@ -1023,9 +1023,6 @@ class Project(object):
         self._metrics_modify(path, typ, xpath)
 
     def metrics_add(self, path, typ=None, xpath=None):
-        if not os.path.exists(path):
-            raise DvcException('File does not exist'.format(path))
-
         if not typ:
             typ = 'raw'
         self._metrics_modify(path, typ, xpath)
