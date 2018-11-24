@@ -72,6 +72,9 @@ class OutputLOCAL(DependencyLOCAL):
         if not self.metric:
             return
 
+        if not os.path.exists(self.path):
+            return
+
         if os.path.isdir(self.path):
             msg = 'Directory \'{}\' cannot be used as metrics.'
             raise DvcException(msg.format(self.rel_path))
