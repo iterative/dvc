@@ -15,7 +15,7 @@ class DependencyS3(DependencyBase):
     def __init__(self, stage, path, info=None, remote=None):
         super(DependencyS3, self).__init__(stage, path)
         self.info = info
-        self.remote = remote if remote else RemoteS3(stage.project, {})
+        self.remote = remote or RemoteS3(stage.project, {})
 
         bucket = remote.bucket if remote else urlparse(path).netloc
         key = urlparse(path).path.lstrip('/')

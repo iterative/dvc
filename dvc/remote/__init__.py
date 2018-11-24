@@ -1,15 +1,24 @@
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
+from dvc.remote.azure import RemoteAzure
 from dvc.remote.gs import RemoteGS
 from dvc.remote.hdfs import RemoteHDFS
+from dvc.remote.local import RemoteLOCAL
+from dvc.remote.s3 import RemoteS3
 from dvc.remote.ssh import RemoteSSH
-from dvc.remote.azure import RemoteAzure
+from dvc.remote.http import RemoteHTTP
 
 from dvc.config import Config
 from dvc.exceptions import UnsupportedRemoteError
 
 
-REMOTES = [RemoteHDFS, RemoteSSH, RemoteS3, RemoteGS, RemoteAzure, RemoteLOCAL]
+REMOTES = [
+    RemoteAzure,
+    RemoteGS,
+    RemoteHDFS,
+    RemoteHTTP,
+    RemoteLOCAL,
+    RemoteS3,
+    RemoteSSH,
+]
 
 
 def supported_url(url):

@@ -11,7 +11,7 @@ import platform
 from dvc.main import main
 from dvc.config import Config, ConfigError
 from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
-                            RemoteLOCAL, RemoteSSH, RemoteHDFS)
+                            RemoteLOCAL, RemoteSSH, RemoteHDFS, RemoteHTTP)
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
@@ -163,6 +163,7 @@ class TestDataCloud(TestDvc):
         clist = [('s3://mybucket/', RemoteS3),
                  ('gs://mybucket/', RemoteGS),
                  ('ssh://user@localhost:/', RemoteSSH),
+                 ('http://localhost:8000/', RemoteHTTP),
                  (TestDvc.mkdtemp(), RemoteLOCAL)]
 
         if _should_test_azure():

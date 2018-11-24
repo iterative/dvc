@@ -7,6 +7,11 @@ import getpass
 import posixpath
 from subprocess import Popen, PIPE
 
+try:
+    from urlparse import urljoin
+except ImportError:
+    from urllib.parse import urljoin
+
 import boto3
 import uuid
 from google.cloud import storage as gc
@@ -24,6 +29,7 @@ from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
 from tests.test_data_cloud import sleep
+from tests.utils.httpd import StaticFileServer
 
 
 class TestRepro(TestDvc):
@@ -59,7 +65,7 @@ class TestReproDepUnderDir(TestDvc):
         self.assertTrue(self.dir_stage is not None)
 
         sleep()
-        
+
         self.file1 = 'file1'
         self.file1_stage = self.file1 + '.dvc'
         self.dvc.run(fname=self.file1_stage,
@@ -404,7 +410,7 @@ class TestReproChangedDirData(TestDvc):
             fd.write("import os; import sys; import shutil; shutil.copytree(sys.argv[1], sys.argv[2])")
 
         sleep()
-            
+
         stage = self.dvc.run(outs=[dir_name],
                              deps=[self.DATA_DIR, dir_code],
                              cmd="python {} {} {}".format(dir_code,
@@ -421,12 +427,12 @@ class TestReproChangedDirData(TestDvc):
             fd.write('add')
 
         sleep()
-        
+
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
         sleep()
-        
+
         # Check that dvc indeed registers changed output dir
         shutil.move(self.BAR, dir_name)
         sleep()
@@ -463,7 +469,7 @@ class TestCmdRepro(TestReproChangedData):
 
         ret = main(['status'])
         self.assertEqual(ret, 0)
-        
+
         ret = main(['repro',
                     self.file1_stage])
         self.assertEqual(ret, 0)
@@ -738,7 +744,7 @@ class TestReproExternalSSH(TestReproExternalBase):
             print(err)
         self.assertEqual(p.returncode, 0)
 
- 
+
 class TestReproExternalLOCAL(TestReproExternalBase):
     def setUp(self):
         super(TestReproExternalLOCAL, self).setUp()
@@ -781,6 +787,73 @@ class TestReproExternalLOCAL(TestReproExternalBase):
 
         with open(path, 'w+') as fd:
             fd.write(body)
+
+
+class TestReproExternalHTTP(TestReproExternalBase):
+    _external_cache_id = None
+
+    @property
+    def remote(self):
+        return 'http://localhost:8000/'
+
+    @property
+    def local_cache(self):
+        return os.path.join(self.dvc.dvc_dir, 'cache')
+
+    @property
+    def external_cache_id(self):
+        if not self._external_cache_id:
+            self._external_cache_id = str(uuid.uuid4())
+
+        return self._external_cache_id
+
+    @property
+    def external_cache(self):
+        return urljoin(self.remote, self.external_cache_id)
+
+    def test(self):
+        ret1 = main(['remote', 'add', 'mycache', self.external_cache])
+        ret2 = main(['remote', 'add', 'myremote', self.remote])
+        self.assertEqual(ret1, 0)
+        self.assertEqual(ret2, 0)
+
+        self.dvc = Project('.')
+
+        # Import
+        with StaticFileServer() as server:
+            import_url = urljoin(self.remote, self.FOO)
+            import_output = 'imported_file'
+            import_stage = self.dvc.imp(import_url, import_output)
+
+        self.assertTrue(os.path.exists(import_output))
+        self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
+
+        # Run --deps
+        with StaticFileServer() as server:
+            run_dependency = urljoin(self.remote, self.BAR)
+            run_output = 'remote_file'
+            cmd = 'open("{}", "w+")'.format(run_output)
+
+            with open('create-output.py', 'w') as fd:
+                fd.write(cmd)
+
+            run_stage = self.dvc.run(deps=[run_dependency],
+                                     outs=[run_output],
+                                     cmd='python create-output.py')
+
+        self.assertTrue(os.path.exists(run_output))
+
+        # Pull
+        self.dvc.remove(import_stage.path, outs_only=True)
+        self.assertFalse(os.path.exists(import_output))
+
+        shutil.move(self.local_cache, self.external_cache_id)
+        self.assertFalse(os.path.exists(self.local_cache))
+
+        with StaticFileServer() as server:
+            self.dvc.pull(import_stage.path, remote='mycache')
+
+        self.assertTrue(os.path.exists(import_output))
 
 
 class TestReproShell(TestDvc):
