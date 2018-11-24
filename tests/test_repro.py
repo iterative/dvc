@@ -832,11 +832,14 @@ class TestReproExternalHTTP(TestReproExternalBase):
         with StaticFileServer() as server:
             run_dependency = urljoin(self.remote, self.BAR)
             run_output = 'remote_file'
-            cmd = "python -c 'open(\"{}\", \"w+\")'".format(run_output)
+            cmd = 'open("{}", "w+")'.format(run_output)
+
+            with open('create-output.py', 'w') as fd:
+                fd.write(cmd)
 
             run_stage = self.dvc.run(deps=[run_dependency],
                                      outs=[run_output],
-                                     cmd=cmd)
+                                     cmd='python create-output.py')
 
         self.assertTrue(os.path.exists(run_output))
 
