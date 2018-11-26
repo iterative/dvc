@@ -24,17 +24,19 @@ class TestUpdater(TestDvc):
 
         os.environ = env.copy()
 
-    def test_check_version(self):
+    def test_check_version_newer(self):
         self.dvc.updater.latest = "0.20.8"
         self.dvc.updater.current = "0.21.0"
 
         self.assertFalse(self.dvc.updater._is_outdated())
 
+    def test_check_version_equal(self):
         self.dvc.updater.latest = "0.20.8"
         self.dvc.updater.current = "0.20.8"
 
         self.assertFalse(self.dvc.updater._is_outdated())
 
+    def test_check_version_outdated(self):
         self.dvc.updater.latest = "0.21.0"
         self.dvc.updater.current = "0.20.8"
 
