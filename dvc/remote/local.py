@@ -294,7 +294,7 @@ class RemoteLOCAL(RemoteBase):
 
         if not self.is_dir_cache(cache):
             if os.path.exists(path):
-                if force or self._already_cached(path_info):
+                if force or self._already_cached(path):
                     remove(path)
                 else:
                     self._safe_remove(path)
@@ -321,17 +321,12 @@ class RemoteLOCAL(RemoteBase):
             p = os.path.join(path, relpath)
             c = self.get(m)
 
-            entry_info = {
-                'scheme': path_info['scheme'],
-                self.PARAM_PATH: p,
-            }
+            entry_info = { 'scheme': path_info['scheme'], self.PARAM_PATH: p }
 
-            entry_checksum_info = {
-                self.PARAM_MD5: m,
-            }
+            entry_checksum_info = { self.PARAM_MD5: m }
 
             if self.changed(entry_info, entry_checksum_info):
-                if force or self._already_cached(entry_info):
+                if force or self._already_cached(p):
                     remove(p)
                 else:
                     self._safe_remove(p)
@@ -348,8 +343,8 @@ class RemoteLOCAL(RemoteBase):
         if bar:
             progress.finish_target(dir_relpath)
 
-    def _already_cached(self, path_info):
-        current_md5 = self.save_info(path_info).get(self.PARAM_MD5)
+    def _already_cached(self, path):
+        current_md5 = self.state.update(path)
 
         return not self.changed_cache(current_md5)
 
@@ -368,9 +363,7 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            path_info = {'scheme': 'local', self.PARAM_PATH: file}
-
-            if force or self._already_cached(path_info):
+            if force or self._already_cached(file):
                 remove(file)
             else:
                 self._safe_remove(file)
