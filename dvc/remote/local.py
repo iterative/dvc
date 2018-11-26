@@ -321,9 +321,9 @@ class RemoteLOCAL(RemoteBase):
             p = os.path.join(path, relpath)
             c = self.get(m)
 
-            entry_info = { 'scheme': path_info['scheme'], self.PARAM_PATH: p }
+            entry_info = {'scheme': path_info['scheme'], self.PARAM_PATH: p}
 
-            entry_checksum_info = { self.PARAM_MD5: m }
+            entry_checksum_info = {self.PARAM_MD5: m}
 
             if self.changed(entry_info, entry_checksum_info):
                 if force or self._already_cached(p):
