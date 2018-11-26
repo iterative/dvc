@@ -293,9 +293,11 @@ class RemoteLOCAL(RemoteBase):
         Logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-
             if os.path.exists(path):
-                remove(path) if force else self._safe_remove(path)
+                if force or self._already_cached(path_info):
+                    remove(path)
+                else:
+                    self._safe_remove(path)
 
             self.link(cache, path)
             self.state.update_link(path)
@@ -329,7 +331,11 @@ class RemoteLOCAL(RemoteBase):
             }
 
             if self.changed(entry_info, entry_checksum_info):
-                remove(p) if force else self._safe_remove(p)
+                if force or self._already_cached(entry_info):
+                    remove(p)
+                else:
+                    self._safe_remove(p)
+
                 self.link(c, p)
 
             if bar:
@@ -341,6 +347,11 @@ class RemoteLOCAL(RemoteBase):
 
         if bar:
             progress.finish_target(dir_relpath)
+
+    def _already_cached(self, path_info):
+        current_md5 = self.save_info(path_info).get(self.PARAM_MD5)
+
+        return not self.changed_cache(current_md5)
 
     def _discard_working_directory_changes(self, path, dir_info, force=False):
         working_dir_files = set(
