@@ -293,9 +293,11 @@ class RemoteLOCAL(RemoteBase):
         Logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
-
             if os.path.exists(path):
-                remove(path) if force else self._safe_remove(path)
+                if force or self._already_cached(path):
+                    remove(path)
+                else:
+                    self._safe_remove(path)
 
             self.link(cache, path)
             self.state.update_link(path)
@@ -319,17 +321,16 @@ class RemoteLOCAL(RemoteBase):
             p = os.path.join(path, relpath)
             c = self.get(m)
 
-            entry_info = {
-                'scheme': path_info['scheme'],
-                self.PARAM_PATH: p,
-            }
+            entry_info = {'scheme': path_info['scheme'], self.PARAM_PATH: p}
 
-            entry_checksum_info = {
-                self.PARAM_MD5: m,
-            }
+            entry_checksum_info = {self.PARAM_MD5: m}
 
             if self.changed(entry_info, entry_checksum_info):
-                remove(p) if force else self._safe_remove(p)
+                if force or self._already_cached(p):
+                    remove(p)
+                else:
+                    self._safe_remove(p)
+
                 self.link(c, p)
 
             if bar:
@@ -341,6 +342,11 @@ class RemoteLOCAL(RemoteBase):
 
         if bar:
             progress.finish_target(dir_relpath)
+
+    def _already_cached(self, path):
+        current_md5 = self.state.update(path)
+
+        return not self.changed_cache(current_md5)
 
     def _discard_working_directory_changes(self, path, dir_info, force=False):
         working_dir_files = set(
@@ -357,7 +363,10 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            remove(file) if force else self._safe_remove(file)
+            if force or self._already_cached(file):
+                remove(file)
+            else:
+                self._safe_remove(file)
 
     def _safe_remove(self, file):
         msg = (
@@ -372,6 +381,8 @@ class RemoteLOCAL(RemoteBase):
             raise DvcException('Unable to remove {} without a confirmation'
                                " from the user. Use '-f' to force."
                                .format(file))
+
+        remove(file)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
