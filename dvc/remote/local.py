@@ -368,7 +368,12 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            remove(file) if force else self._safe_remove(file)
+            path_info = {'scheme': 'local', self.PARAM_PATH: file}
+
+            if force or self._already_cached(path_info):
+                remove(file)
+            else:
+                self._safe_remove(file)
 
     def _safe_remove(self, file):
         msg = (
@@ -383,6 +388,8 @@ class RemoteLOCAL(RemoteBase):
             raise DvcException('Unable to remove {} without a confirmation'
                                " from the user. Use '-f' to force."
                                .format(file))
+
+        remove(file)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in

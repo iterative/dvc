@@ -162,8 +162,11 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
 
 class TestCheckoutCleanWorkingDir(CheckoutBase):
-    def test(self):
+    @patch('dvc.prompt.Prompt.prompt')
+    def test(self, mock_prompt):
         from tests.test_data_cloud import sleep
+
+        mock_prompt.return_value = True
 
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
@@ -176,7 +179,7 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
 
         sleep()
 
-        ret = main(['checkout', '--force', stage.relpath])
+        ret = main(['checkout', stage.relpath])
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(working_dir_change))
 
@@ -189,15 +192,15 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
-        
+
         sleep()
-        
+
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
 
         sleep()
-            
+
         ret = main(['checkout', stage.relpath])
         self.assertNotEqual(ret, 0)
 
