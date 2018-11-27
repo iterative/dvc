@@ -6,7 +6,9 @@ from dvc.utils import file_md5
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError
 from dvc.command.run import CmdRun
-from dvc.exceptions import OutputDuplicationError, CircularDependencyError
+from dvc.exceptions import (OutputDuplicationError,
+                            CircularDependencyError,
+                            WorkingDirectoryAsOutputError)
 
 from tests.basic_env import TestDvc
 
@@ -115,6 +117,19 @@ class TestRunCircularDependency(TestDvc):
                          deps=['./foo'],
                          outs=['foo'],
                          fname='circular-dependency.dvc')
+
+
+class TestRunWorkingDirectoryAsOutput(TestDvc):
+    def test(self):
+        self.dvc.run(cmd='',
+                     deps=[],
+                     outs=[self.DATA_DIR])
+
+        with self.assertRaises(WorkingDirectoryAsOutputError):
+            self.dvc.run(cmd='',
+                         cwd=self.DATA_DIR,
+                         outs=[self.FOO],
+                         fname='inside-cwd.dvc')
 
 
 class TestRunBadCwd(TestDvc):
