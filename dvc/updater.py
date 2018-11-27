@@ -92,9 +92,13 @@ class Updater(object):  # pragma: no cover
         l_major, l_minor, l_patch = [int(x) for x in self.latest.split('.')]
         c_major, c_minor, c_patch = [int(x) for x in self.current.split('.')]
 
-        return (l_major > c_major or
-                l_minor > c_minor or
-                l_patch > c_patch)
+        if l_major != c_major:
+            return l_major > c_major
+
+        if l_minor != c_minor:
+            return l_minor > c_minor
+
+        return l_patch > c_patch
 
     def _notify(self):
         message = (
