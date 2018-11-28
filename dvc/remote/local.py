@@ -326,10 +326,11 @@ class RemoteLOCAL(RemoteBase):
             entry_checksum_info = {self.PARAM_MD5: m}
 
             if self.changed(entry_info, entry_checksum_info):
-                if force or self._already_cached(p):
-                    remove(p)
-                else:
-                    self._safe_remove(p)
+                if os.path.exists(p):
+                    if force or self._already_cached(p):
+                        remove(p)
+                    else:
+                        self._safe_remove(p)
 
                 self.link(c, p)
 
@@ -345,6 +346,9 @@ class RemoteLOCAL(RemoteBase):
 
     def _already_cached(self, path):
         current_md5 = self.state.update(path)
+
+        if not current_md5:
+            return False
 
         return not self.changed_cache(current_md5)
 
