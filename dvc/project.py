@@ -1137,7 +1137,7 @@ class Project(object):
         any SCM (e.g. `.git`) or DVC itself (`.dvc`).
 
         NOTE: For large projects, this could be an expensive
-              operation.  Consider use some memoization.
+              operation.  Consider using some memorization.
         """
         stages = []
         outs = []
