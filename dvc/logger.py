@@ -184,8 +184,15 @@ class Logger(object):
     def info(msg):
         Logger._with_progress(Logger.logger().info, msg)
 
+    @staticmethod
+    def is_quiet():
+        return Logger.logger().level == logging.CRITICAL
+
     @classmethod
     def box(cls, msg, border_color=''):
+        if cls.is_quiet():
+            return
+
         lines = msg.split('\n')
         max_width = max(visual_width(line) for line in lines)
 
