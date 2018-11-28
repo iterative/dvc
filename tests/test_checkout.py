@@ -359,3 +359,16 @@ class TestCheckoutWithDeps(TestRepro):
 
         self.assertTrue(os.path.exists(self.FOO))
         self.assertTrue(os.path.exists(self.file1))
+
+
+class TestCheckoutDirectory(TestRepro):
+    def test(self):
+        stage = self.dvc.add(self.DATA_DIR)[0]
+
+        shutil.rmtree(self.DATA_DIR)
+        self.assertFalse(os.path.exists(self.DATA_DIR))
+
+        ret = main(['checkout', stage.path])
+        self.assertEqual(ret, 0)
+
+        self.assertTrue(os.path.exists(self.DATA_DIR))
