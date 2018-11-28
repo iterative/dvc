@@ -176,6 +176,7 @@ def parse_args(argv=None):
                              "`dvc remote` commands). ")
     import_parser.add_argument(
                         'out',
+                        nargs='?',
                         help='Output.')
     import_parser.set_defaults(func=CmdImport)
 
