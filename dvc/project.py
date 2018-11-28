@@ -366,7 +366,7 @@ class Project(object):
                             deps=[url],
                             outs=[out])
 
-        self._check_output_duplication(stage.outs)
+        self._check_output_duplication(stage.outs, self.stages())
 
         self._files_to_git_add = []
         with self.state:
