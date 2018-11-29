@@ -148,6 +148,33 @@ Arch linux (AUR)
 
    yay -S dvc
 
+Syntax Highlighting
+===================
+When you add a file or a stage to your pipeline, DVC creates a special
+`.dvc file <https://dvc.org/doc/user-guide/dvc-file-format>`_ that contains all
+the needed information to track your data.
+
+The file itself is in a simple YAML format.
+
+Vim
+---
+.. code-block:: vim
+
+  " DVC
+  autocmd! BufNewFile,BufRead Dvcfile,*.dvc setfiletype yaml
+
+IntelliJ IDEs
+-------------
+A community member, `@prihoda <https://github.com/prihoda>`_, maintains a
+plugin for IntelliJ IDEs, it offers a more robust integration than just
+syntax highlighting.
+
+You can download the plugin from `JetBrains Plugins repository
+<https://plugins.jetbrains.com/plugin/11368-dvc-support-poc>`_.
+
+For more information, visit the plugin's repository:
+https://github.com/prihoda/intellij-dvc-support-poc/
+
 Related technologies
 ====================
 
