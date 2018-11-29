@@ -165,10 +165,20 @@ class Project(object):
     def to_dvc_path(self, path):
         return os.path.relpath(path, self.root_dir)
 
-    def _check_output_duplication(self, outs):
+    def _check_cwd_specified_as_output(self, cwd, stages):
+        from dvc.exceptions import WorkingDirectoryAsOutputError
+
+        cwd_path = os.path.abspath(os.path.normpath(cwd))
+
+        for stage in stages:
+            for output in stage.outs:
+                if os.path.isdir(output.path) and output.path == cwd_path:
+                    raise WorkingDirectoryAsOutputError(cwd, stage.relpath)
+
+    def _check_output_duplication(self, outs, stages):
         from dvc.exceptions import OutputDuplicationError
 
-        for stage in self.stages():
+        for stage in stages:
             for o in stage.outs:
                 for out in outs:
                     if o.path == out.path and o.stage.path != out.stage.path:
@@ -203,6 +213,7 @@ class Project(object):
         else:
             fnames = [fname]
 
+        all_stages = self.stages()
         stages = []
         self._files_to_git_add = []
         with self.state:
@@ -211,7 +222,7 @@ class Project(object):
                                     outs=[f],
                                     add=True)
 
-                self._check_output_duplication(stage.outs)
+                self._check_output_duplication(stage.outs, all_stages)
 
                 stage.save()
                 stage.dump()
@@ -332,7 +343,10 @@ class Project(object):
                             deps=deps,
                             overwrite=overwrite)
 
-        self._check_output_duplication(stage.outs)
+        all_stages = self.stages()
+
+        self._check_cwd_specified_as_output(cwd, all_stages)
+        self._check_output_duplication(stage.outs, all_stages)
         self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
@@ -352,7 +366,8 @@ class Project(object):
                             deps=[url],
                             outs=[out])
 
-        self._check_output_duplication(stage.outs)
+        self._check_output_duplication(stage.outs, self.stages())
+        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:
@@ -1116,6 +1131,14 @@ class Project(object):
         return pipelines
 
     def stages(self):
+        """
+        Walks down the root directory looking for Dvcfiles,
+        skipping the directories that are related with
+        any SCM (e.g. `.git`) or DVC itself (`.dvc`).
+
+        NOTE: For large projects, this could be an expensive
+              operation.  Consider using some memorization.
+        """
         stages = []
         outs = []
         for root, dirs, files in os.walk(self.root_dir):

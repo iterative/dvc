@@ -31,6 +31,18 @@ class OutputDuplicationError(DvcException):
         super(OutputDuplicationError, self).__init__(msg.format(output, s))
 
 
+class WorkingDirectoryAsOutputError(DvcException):
+    def __init__(self, cwd, fname):
+        assert isinstance(cwd, str)
+        assert isinstance(fname, str)
+        msg = (
+            "Current working directory '{cwd}' is specified as an output in"
+            " '{fname}'. Use another CWD to prevent any data removal."
+            .format(cwd=cwd, fname=fname)
+        )
+        super(WorkingDirectoryAsOutputError, self).__init__(msg)
+
+
 class CircularDependencyError(DvcException):
     def __init__(self, dependency):
         assert isinstance(dependency, str)
