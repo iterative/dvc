@@ -367,6 +367,7 @@ class Project(object):
                             outs=[out])
 
         self._check_output_duplication(stage.outs, self.stages())
+        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:
