@@ -22,11 +22,11 @@ class Progress(object):
         return self._n_total == self._n_finished
 
     def _clearln(self):
-        print('\r\x1b[K', end='')
+        self._print('\r\x1b[K', end='')
 
     def _writeln(self, line):
         self._clearln()
-        print(line, end='')
+        self._print(line, end='')
         sys.stdout.flush()
 
     def refresh(self, line=None):
@@ -54,7 +54,7 @@ class Progress(object):
             if sys.stdout.isatty():
                 self._clearln()
 
-            print(bar)
+            self._print(bar)
 
             self._n_finished += 1
             self._line = None
@@ -84,6 +84,14 @@ class Progress(object):
         bar = "[" + '#'*n_sh + ' '*n_sp + "] "
 
         return num + bar + percent + target_name
+
+    def _print(self, *args, **kwargs):
+        from dvc.logger import Logger
+
+        if Logger.is_quiet():
+            return
+
+        print(*args, **kwargs)
 
     def __enter__(self):
         self._lock.acquire(True)
