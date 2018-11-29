@@ -70,6 +70,30 @@ class TestLogger(TestDvc):
                                    mock_stdout.getvalue())
 
 
+class TestLoggerQuiet(TestDvc):
+    def setUp(self):
+        super(TestLoggerQuiet, self).setUp()
+        class A(object):
+            quiet = True
+            verbose = False
+        CmdBase._set_loglevel(A())
+
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_progress(self, mock_stdout, mock_stderr):
+        from dvc.progress import progress
+        progress.update_target('target', 50, 100)
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertEqual('', mock_stderr.getvalue())
+
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_box(self, mock_stdout, mock_stderr):
+        Logger.box('message')
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertEqual('', mock_stderr.getvalue())
+
+
 class TestLoggerCLI(TestDvc):
     def test(self):
         class A(object):
