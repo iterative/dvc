@@ -27,18 +27,19 @@ class DataCloud(object):
         self._config = config
         self._core = self._config[Config.SECTION_CORE]
 
+    @property
+    def _cloud(self):
         remote = self._core.get(Config.SECTION_CORE_REMOTE, '')
-        if remote == '':
-            if self._core.get(Config.SECTION_CORE_CLOUD, None):
-                # backward compatibility
-                msg = 'Using obsoleted config format. Consider updating.'
-                Logger.warn(msg)
-                self._cloud = self.__init__compat()
-            else:
-                self._cloud = None
-            return
+        if remote != '':
+            return self._init_remote(remote)
 
-        self._cloud = self._init_remote(remote)
+        if self._core.get(Config.SECTION_CORE_CLOUD, None):
+            # backward compatibility
+            msg = 'Using obsoleted config format. Consider updating.'
+            Logger.warn(msg)
+            return self._init_compat()
+
+        return None
 
     @staticmethod
     def supported(config):
@@ -60,7 +61,7 @@ class DataCloud(object):
 
         return self._init_cloud(cloud_config, cloud_type)
 
-    def __init__compat(self):
+    def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, '').strip().lower()
         if name == '':
             self._cloud = None

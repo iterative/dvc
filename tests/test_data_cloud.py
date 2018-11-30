@@ -175,11 +175,15 @@ class TestDataCloud(TestDvc):
             self._test_cloud(config, cl)
 
     def test_unsupported(self):
+        remote_url = 'notsupportedscheme://a/b'
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
+
+        # NOTE: making sure that error doesn't raise too early
+        cloud = DataCloud(self.dvc, config=config)
+
         with self.assertRaises(ConfigError):
-            remote_url = 'notsupportedscheme://a/b'
-            config = TEST_CONFIG
-            config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
-            DataCloud(self.dvc, config=config)
+            cloud._cloud
 
 
 class TestDataCloudBase(TestDvc):
