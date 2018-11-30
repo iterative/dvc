@@ -131,13 +131,10 @@ class Stage(object):
         return Stage.is_stage_filename(path)
 
     def changed_md5(self):
-        md5 = self.dumpd().get(self.PARAM_MD5, None)
+        md5 = self._get_md5()
+        assert md5 is not None
 
-        # backward compatibility
-        if self.md5 is None:
-            return False
-
-        if self.md5 and md5 and self.md5 == md5:
+        if self.md5 == md5:
             return False
 
         return True
@@ -371,23 +368,21 @@ class Stage(object):
             return Stage.loadd(project, yaml.safe_load(fd) or dict(), fname)
 
     def dumpd(self):
-        deps = [x.dumpd() for x in self.deps]
-        outs = [x.dumpd() for x in self.outs]
-
         ret = {}
+
         if self.cmd is not None:
             ret[Stage.PARAM_CMD] = self.cmd
 
-        if len(deps):
-            ret[Stage.PARAM_DEPS] = deps
+        if len(self.deps):
+            ret[Stage.PARAM_DEPS] = [d.dumpd() for d in self.deps]
 
-        if len(outs):
-            ret[Stage.PARAM_OUTS] = outs
+        if len(self.outs):
+            ret[Stage.PARAM_OUTS] = [o.dumpd() for o in self.outs]
+
+        ret[Stage.PARAM_MD5] = self.md5
 
         if self.locked:
             ret[Stage.PARAM_LOCKED] = self.locked
-
-        ret[Stage.PARAM_MD5] = dict_md5(ret)
 
         return ret
 
@@ -405,12 +400,31 @@ class Stage(object):
 
         self.project._files_to_git_add.append(os.path.relpath(fname))
 
+    def _get_md5(self):
+        from dvc.output.local import OutputLOCAL
+
+        # NOTE: excluding parameters that don't affect the state of the
+        # pipeline. Not excluding OutputLOCAL.PARAM_CACHE, because if
+        # it has changed, we might not have that output in our cache.
+        exclude = [self.PARAM_LOCKED,
+                   OutputLOCAL.PARAM_METRIC]
+
+        d = self.dumpd()
+
+        # NOTE: removing md5 manually in order to not affect md5s in deps/outs
+        if self.PARAM_MD5 in d.keys():
+            del d[self.PARAM_MD5]
+
+        return dict_md5(d, exclude)
+
     def save(self):
         for dep in self.deps:
             dep.save()
 
         for out in self.outs:
             out.save()
+
+        self.md5 = self._get_md5()
 
     def _check_missing_deps(self):
         missing = []

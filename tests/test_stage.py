@@ -62,3 +62,31 @@ class TestSchemaDepsOuts(TestSchema):
         l[1][OutputLOCAL.PARAM_CACHE] = False
         d = {Stage.PARAM_OUTS: l}
         Stage.validate(d)
+
+
+class TestReload(TestDvc):
+    def test(self):
+        import yaml
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertTrue(stage is not None)
+
+        with open(stage.relpath, 'r') as fobj:
+            d = yaml.safe_load(fobj)
+
+        # NOTE: checking that reloaded stage didn't change its checksum
+        md5 = '11111111111111111111111111111111'
+        d[stage.PARAM_MD5] = md5
+
+        with open(stage.relpath, 'w') as fobj:
+            yaml.safe_dump(d, fobj, default_flow_style=False)
+
+        stage = Stage.load(self.dvc, stage.relpath)
+        self.assertTrue(stage is not None)
+        stage.dump()
+
+        with open(stage.relpath, 'r') as fobj:
+            d = yaml.safe_load(fobj)
+
+        self.assertEqual(d[stage.PARAM_MD5], md5)
