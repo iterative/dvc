@@ -68,8 +68,31 @@ def bytes_md5(byts):
     return hasher.hexdigest()
 
 
-def dict_md5(d):
-    byts = json.dumps(d, sort_keys=True).encode('utf-8')
+def dict_filter(d, exclude=[]):
+    """
+    Exclude specified keys from a nested dict
+    """
+
+    if isinstance(d, list):
+        ret = []
+        for e in d:
+            ret.append(dict_filter(e, exclude))
+        return ret
+    elif isinstance(d, dict):
+        ret = {}
+        for k, v in d.items():
+            assert isinstance(k, str)
+            if k in exclude:
+                continue
+            ret[k] = dict_filter(v, exclude)
+        return ret
+
+    return d
+
+
+def dict_md5(d, exclude=[]):
+    filtered = dict_filter(d, exclude)
+    byts = json.dumps(filtered, sort_keys=True).encode('utf-8')
     return bytes_md5(byts)
 
 

@@ -361,14 +361,53 @@ class TestReproLockedCallback(TestDvc):
         self.assertEqual(len(stages), 1)
 
         self.dvc.lock_stage(file1_stage)
-
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
         self.dvc.lock_stage(file1_stage, unlock=True)
-
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 1)
+
+class TestReproLockedUnchanged(TestRepro):
+    def test(self):
+        """
+        Check that locking/unlocking doesn't affect stage state
+        """
+        self.dvc.lock_stage(self.file1_stage)
+        stages = self.dvc.reproduce(self.file1_stage)
+        self.assertEqual(len(stages), 0)
+
+        self.dvc.lock_stage(self.file1_stage, unlock=True)
+        stages = self.dvc.reproduce(self.file1_stage)
+        self.assertEqual(len(stages), 0)
+
+
+class TestReproMetricsAddUnchanged(TestDvc):
+    def test(self):
+        """
+        Check that adding/removing metrics doesn't affect stage state
+        """
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        self.assertTrue(stages[0] is not None)
+
+        file1 = 'file1'
+        file1_stage = file1 + '.dvc'
+        self.dvc.run(fname=file1_stage,
+                     outs_no_cache=[file1],
+                     deps=[self.FOO, self.CODE],
+                     cmd='python {} {} {}'.format(self.CODE, self.FOO, file1))
+
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 0)
+
+        self.dvc.metrics_add(file1)
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 0)
+
+        self.dvc.metrics_remove(file1)
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 0)
 
 
 class TestReproPhony(TestReproChangedData):
