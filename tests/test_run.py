@@ -156,3 +156,20 @@ class TestCmdRun(TestDvc):
         ret = main(['run',
                     'non-existing-command'])
         self.assertNotEqual(ret, 0)
+
+    def test_run_args_with_spaces(self):
+        with open(self.CODE, 'w') as fobj:
+            fobj.write("import sys\nopen(sys.argv[1], 'w+').write(sys.argv[2])")
+
+        arg = 'arg1 arg2'
+        log = 'log'
+        ret = main(['run',
+                    'python',
+                    self.CODE,
+                    log,
+                    'arg1 arg2'])
+
+        self.assertEqual(ret, 0)
+
+        with open(log, 'r') as fobj:
+            self.assertEqual(fobj.read(), arg)
