@@ -152,6 +152,23 @@ class Stage(object):
                len(self.deps) == 1 and \
                len(self.outs) == 1
 
+    def _changed_deps(self, print_info, log):
+        if self.is_callback:
+            msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
+                  "no dependencies) and thus always considered as changed."
+            self.project.logger.warn(msg.format(self.relpath))
+            return True
+
+        for dep in self.deps:
+            if not dep.changed():
+                continue
+            if print_info:
+                msg = "Dependency '{}' of '{}' changed."
+                log(msg.format(dep, self.relpath))
+            return True
+
+        return False
+
     def changed(self, print_info=False):
         ret = False
 
@@ -160,20 +177,8 @@ class Stage(object):
         else:
             log = self.project.logger.debug
 
-        if self.is_callback:
-            msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
-                  "no dependencies) and thus always considered as changed."
-            self.project.logger.warn(msg.format(self.relpath))
-            ret = True
-
         if not self.locked:
-            for dep in self.deps:
-                if not dep.changed():
-                    continue
-                if print_info:
-                    msg = "Dependency '{}' of '{}' changed."
-                    log(msg.format(dep, self.relpath))
-                ret = True
+            ret = self._changed_deps(print_info, log)
 
         for out in self.outs:
             if not out.changed():

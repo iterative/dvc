@@ -343,6 +343,34 @@ class TestReproLocked(TestReproChangedData):
         self.assertNotEqual(ret, 0)
 
 
+class TestReproLockedCallback(TestDvc):
+    def test(self):
+        file1 = 'file1'
+        file1_stage = file1 + '.dvc'
+        # NOTE: purposefully not specifying dependencies
+        # to create a callbacs stage.
+        stage = self.dvc.run(fname=file1_stage,
+                             outs=[file1],
+                             cmd='python {} {} {}'.format(self.CODE,
+                                                          self.FOO,
+                                                          file1))
+        self.assertTrue(stage is not None)
+        self.assertEqual(stage.relpath, file1_stage)
+
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 1)
+
+        self.dvc.lock_stage(file1_stage)
+
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 0)
+
+        self.dvc.lock_stage(file1_stage, unlock=True)
+
+        stages = self.dvc.reproduce(file1_stage)
+        self.assertEqual(len(stages), 1)
+
+
 class TestReproPhony(TestReproChangedData):
     def test(self):
         stage = self.dvc.run(deps=[self.file1])
