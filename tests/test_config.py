@@ -89,6 +89,8 @@ class TestConfigCLI(TestDvc):
 
     def test_failed_write(self):
         class A(object):
+            system = False
+            glob = False
             local = False
             name = 'core.remote'
             value = 'myremote'
@@ -98,5 +100,5 @@ class TestConfigCLI(TestDvc):
         cmd = CmdConfig(args)
 
         cmd.configobj.write = None
-        ret = cmd.save()
+        ret = cmd.run()
         self.assertNotEqual(ret, 0)

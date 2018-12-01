@@ -10,6 +10,12 @@ class InitError(DvcException):
         super(InitError, self).__init__(msg)
 
 
+class NotDvcProjectError(DvcException):
+    def __init__(self, root):
+        msg = "Not a dvc repository (checked up to mount point {})"
+        super(NotDvcProjectError, self).__init__(msg.format(root))
+
+
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
@@ -20,7 +26,7 @@ class ReproductionError(DvcException):
 class Project(object):
     DVC_DIR = '.dvc'
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir=None):
         from dvc.logger import Logger
         from dvc.config import Config
         from dvc.state import State
@@ -31,10 +37,13 @@ class Project(object):
         from dvc.updater import Updater
         from dvc.prompt import Prompt
 
+        root_dir = self._find_root(root_dir)
+
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.config = Config(self.dvc_dir)
+
         self.scm = SCM(self.root_dir, project=self)
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
@@ -54,6 +63,27 @@ class Project(object):
         self._ignore()
 
         self.updater.check()
+
+    @staticmethod
+    def _find_root(root=None):
+        if root is None:
+            root = os.getcwd()
+        else:
+            root = os.path.abspath(os.path.realpath(root))
+
+        while True:
+            dvc_dir = os.path.join(root, Project.DVC_DIR)
+            if os.path.isdir(dvc_dir):
+                return root
+            if os.path.ismount(root):
+                break
+            root = os.path.dirname(root)
+        raise NotDvcProjectError(root)
+
+    @staticmethod
+    def _find_dvc_dir(root=None):
+        root_dir = Project._find_root(root)
+        return os.path.join(root_dir, Project.DVC_DIR)
 
     def _remind_to_git_add(self):
         if len(self._files_to_git_add) == 0:

@@ -42,13 +42,13 @@ class Daemon(object):  # pragma: no cover
               close_fds=True,
               shell=False)
 
-    def __call__(self, name):
+    def __call__(self, args):
         from dvc.utils import is_binary
 
         cmd = [sys.executable]
         if not is_binary():
             cmd += ['-m', 'dvc']
-        cmd += ['daemon', name, '-q']
+        cmd += ['daemon', '-q'] + args
 
         Logger.debug("Trying to spawn '{}'".format(cmd))
 

@@ -26,7 +26,8 @@ from dvc.command.install import CmdInstall
 from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
-from dvc.command.daemon import CmdDaemonUpdater
+from dvc.command.daemon import CmdDaemonUpdater, CmdDaemonAnalytics
+from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc import VERSION
 
@@ -41,11 +42,16 @@ def _fix_subparsers(subparsers):
         subparsers.dest = 'cmd'
 
 
+class DvcParserError(DvcException):
+    def __init__(self):
+        super(DvcException, self).__init__("Parser error")
+
+
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
         sys.stderr.write('{}{}\n'.format(Logger.error_prefix(), message))
         self.print_help()
-        sys.exit(2)
+        raise DvcParserError()
 
 
 class VersionAction(argparse.Action):  # pragma: no cover
@@ -639,6 +645,17 @@ def parse_args(argv=None):
                         default=None,
                         help='Option value.')
     config_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    config_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    config_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -673,6 +690,17 @@ def parse_args(argv=None):
                         'url',
                         help='URL.')
     remote_add_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_add_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    remote_add_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -694,6 +722,17 @@ def parse_args(argv=None):
     remote_remove_parser.add_argument(
                         'name',
                         help='Name')
+    remote_remove_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_remove_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
     remote_remove_parser.add_argument(
                         '--local',
                         action='store_true',
@@ -724,6 +763,17 @@ def parse_args(argv=None):
                         action='store_true',
                         help='Unset option.')
     remote_modify_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_modify_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    remote_modify_parser.add_argument(
                         '--local',
                         action='store_true',
                         default=False,
@@ -736,6 +786,17 @@ def parse_args(argv=None):
                         parents=[parent_parser],
                         description=REMOTE_LIST_HELP,
                         help=REMOTE_LIST_HELP)
+    remote_list_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_list_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
     remote_list_parser.add_argument(
                         '--local',
                         action='store_true',
@@ -981,6 +1042,17 @@ def parse_args(argv=None):
                         description=DAEMON_UPDATER_HELP,
                         help=DAEMON_UPDATER_HELP)
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
+
+    DAEMON_ANALYTICS_HELP = 'Send dvc usage analytics.'
+    daemon_analytics_parser = daemon_subparsers.add_parser(
+                        'analytics',
+                        parents=[parent_parser],
+                        description=DAEMON_ANALYTICS_HELP,
+                        help=DAEMON_ANALYTICS_HELP)
+    daemon_analytics_parser.add_argument(
+                        'target',
+                        help="Analytics file.")
+    daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)
 
     args = parser.parse_args(argv)
 

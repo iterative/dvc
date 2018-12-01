@@ -30,6 +30,8 @@ class TestRemote(TestDvc):
 
     def test_failed_write(self):
         class A(object):
+            system = False
+            glob = False
             local = False
             name = 'myremote'
             url = 's3://remote'
