@@ -30,6 +30,6 @@ class CmdDaemonAnalytics(CmdDaemonBase):
         from dvc.analytics import Analytics
 
         analytics = Analytics.load(self.args.target)
-        analytics.send(detach=False)
+        analytics.send()
 
         return 0

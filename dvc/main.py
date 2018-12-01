@@ -30,6 +30,6 @@ def main(argv=None):
         Logger.error('Unexpected error', ex)
         ret = 255
 
-    Analytics().send(detach=True, cmd=cmd, args=args, ret=ret)
+    Analytics().send_cmd(cmd, args, ret)
 
     return ret

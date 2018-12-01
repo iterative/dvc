@@ -129,10 +129,9 @@ class Analytics(object):
         else:
             raise NotImplementedError
 
-    def _collect(self, args=None, ret=None):
+    def collect(self):
         from dvc.scm import SCM
         from dvc.project import Project, NotDvcProjectError
-        from dvc.command.daemon import CmdDaemonAnalytics
 
         self.info[self.PARAM_DVC_VERSION] = VERSION
         self.info[self.PARAM_IS_BINARY] = is_binary()
@@ -145,6 +144,11 @@ class Analytics(object):
             self.info[self.PARAM_SCM_CLASS] = type(scm).__name__
         except NotDvcProjectError:
             pass
+
+    def collect_cmd(self, args, ret):
+        from dvc.command.daemon import CmdDaemonAnalytics
+
+        assert isinstance(ret, int) or ret is None
 
         if ret is not None:
             self.info[self.PARAM_CMD_RETURN_CODE] = ret
@@ -161,7 +165,7 @@ class Analytics(object):
             return fobj.name
 
     @staticmethod
-    def _is_enabled(cmd):
+    def _is_enabled(cmd=None):
         from dvc.config import Config
         from dvc.project import Project, NotDvcProjectError
         from dvc.command.daemon import CmdDaemonBase
@@ -190,18 +194,24 @@ class Analytics(object):
                      .format('en' if enabled else 'dis'))
         return enabled
 
-    def send(self, detach=True, cmd=None, args=None, ret=None):
-        import requests
+    @staticmethod
+    def send_cmd(cmd, args, ret):
         from dvc.daemon import Daemon
 
-        if not self._is_enabled(cmd):
+        if not Analytics._is_enabled(cmd):
             return
 
-        if detach:  # pragma: no cover
-            Daemon()(['analytics', self.dump()])
+        a = Analytics()
+        a.collect_cmd(args, ret)
+        Daemon()(['analytics', a.dump()])
+
+    def send(self):
+        import requests
+
+        if not self._is_enabled():
             return
 
-        self._collect(args=args, ret=ret)
+        self.collect()
 
         Logger.debug("Sending analytics: {}".format(self.info))
 
