@@ -20,7 +20,7 @@ def _clean_getenv(key, default=None):
 class TestAnalytics(TestDir):
     def test(self):
         a = Analytics()
-        a._collect()
+        a.collect()
         self.assertTrue(isinstance(a.info, dict))
         self.assertNotEqual(a.info, {})
         self.assertTrue(a.PARAM_USER_ID in a.info.keys())
