@@ -381,7 +381,6 @@ class Stage(object):
                and not project.prompt.prompt(msg.format(relpath), False):
                 raise DvcException("'{}' already exists".format(relpath))
 
-
         stage.cwd = cwd
         stage.path = path
 
