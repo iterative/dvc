@@ -1,4 +1,3 @@
-import collections
 import os
 import yaml
 import posixpath
@@ -70,43 +69,6 @@ class MissingDataSource(DvcException):
 
         msg = u'missing data {}: {}'.format(source, ', '.join(missing_files))
         super(MissingDataSource, self).__init__(msg)
-
-
-def _identify_dicts(dicts):
-    return collections.Counter(frozenset(d.items()) for d in dicts)
-
-
-def _deps_equal(old, new):
-    old_identities = _identify_dicts(dep.dumpd() for dep in old.deps)
-    new_identities = _identify_dicts(dep.dumpd() for dep in new.deps)
-    return old_identities == new_identities
-
-
-def _outs_equal(old, new):
-    old_dicts = [out.dumpd() for out in old.outs]
-    new_dicts = [out.dumpd() for out in new.outs]
-    for d in old_dicts:
-        del d['md5']
-    old_identities = _identify_dicts(old_dicts)
-    new_identities = _identify_dicts(new_dicts)
-    return old_identities == new_identities
-
-
-def _stage_equal(old, new):
-    deps_unchanged = all(dep.changed() is False for dep in old.deps)
-    if not deps_unchanged:
-        Logger.debug('Deps changed')
-        return False
-    if not _deps_equal(old, new):
-        Logger.debug('Deps unequal')
-        return False
-
-    if not _outs_equal(old, new):
-        Logger.debug('Outs unequal')
-        return False
-
-    Logger.debug('stage equal')
-    return True
 
 
 class Stage(object):
@@ -328,6 +290,37 @@ class Stage(object):
         if not os.path.realpath(cwd).startswith(proj_dir):
             raise StageBadCwdError(cwd)
 
+    def is_cached(self):
+        """
+        Checks if this stage has been already ran and saved to the same
+        dvc file.
+        """
+        from dvc.remote.local import RemoteLOCAL
+        from dvc.remote.s3 import RemoteS3
+
+        old = Stage.load(self.project, self.path)
+        if old.changed():
+            return False
+
+        # NOTE: need to save checksums for deps in order to compare them
+        # with what is written in the old stage.
+        for dep in self.deps:
+            dep.save()
+
+        old_d = old.dumpd()
+        new_d = self.dumpd()
+
+        # NOTE: need to remove checksums from old dict in order to compare
+        # it to the new one, since the new one doesn't have checksums yet.
+        old_d.pop(self.PARAM_MD5, None)
+        new_d.pop(self.PARAM_MD5, None)
+        outs = old_d.get(self.PARAM_OUTS, [])
+        for out in outs:
+            out.pop(RemoteLOCAL.PARAM_MD5, None)
+            out.pop(RemoteS3.PARAM_ETAG, None)
+
+        return old_d == new_d
+
     @staticmethod
     def loads(project=None,
               cmd=None,
@@ -365,12 +358,11 @@ class Stage(object):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
 
-        if os.path.exists(path):
+        stage.cwd = cwd
+        stage.path = path
 
-            old = Stage.load(project=project, fname=fname)
-            for dep in stage.deps:
-                dep.save()
-            if deterministic and _stage_equal(old, stage):
+        if os.path.exists(path):
+            if deterministic and stage.is_cached():
                 Logger.info('Stage is cached, skipping.')
                 return None
 
@@ -380,9 +372,6 @@ class Stage(object):
             if not overwrite \
                and not project.prompt.prompt(msg.format(relpath), False):
                 raise DvcException("'{}' already exists".format(relpath))
-
-        stage.cwd = cwd
-        stage.path = path
 
         return stage
 

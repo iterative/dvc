@@ -199,60 +199,83 @@ class TestCmdRun(TestDvc):
         self.assertIn(('deterministic', True), kwargs.items())
 
 
-class TestRunDeterministic(TestDvc):
+class TestRunDeterministicBase(TestDvc):
+    def setUp(self):
+        super(TestRunDeterministicBase, self).setUp()
+        self.out_file = 'out'
+        self.stage_file = self.out_file + '.dvc'
+        self.cmd = 'python {} {} {}'.format(self.CODE, self.FOO, self.out_file)
+        self.deterministic = True
+        self.deps = [self.FOO, self.CODE]
+        self.outs = [self.out_file]
+
+        self._run(check=False)
+        self.assertTrue(self.stage is not None)
+        self.stage_file_mtime = os.path.getmtime(self.stage_file)
+        self.out_file_mtime = os.path.getmtime(self.out_file)
+
+    def _run(self, should_run=True, check=True):
+        self.stage = self.dvc.run(cmd=self.cmd,
+                                  fname=self.stage_file,
+                                  deterministic=self.deterministic,
+                                  overwrite=True,
+                                  deps=self.deps,
+                                  outs=self.outs)
+
+        if not check:
+            return
+
+        stage_file_mtime = os.path.getmtime(self.stage_file)
+        out_file_mtime = os.path.getmtime(self.out_file)
+
+        if should_run:
+            self.assertTrue(self.stage is not None)
+            self.assertNotEqual(self.stage_file_mtime, stage_file_mtime)
+            self.assertNotEqual(self.out_file_mtime, out_file_mtime)
+        else:
+            self.assertTrue(self.stage is None)
+            self.assertEqual(self.stage_file_mtime, stage_file_mtime)
+            self.assertEqual(self.out_file_mtime, out_file_mtime)
+
+
+class TestRunDeterministic(TestRunDeterministicBase):
     def test(self):
-        out_file = 'out'
-        stage_file = out_file + '.dvc'
-        cmd = 'python {} {} {}'.format(self.CODE, self.FOO, out_file)
-        self.dvc.add(self.FOO)
-        stage = self.dvc.run(cmd=cmd,
-                             fname=stage_file,
-                             deterministic=False,
-                             overwrite=True,
-                             deps=[self.FOO, self.CODE],
-                             outs=[out_file])
-        self.assertTrue(stage is not None)
+        self._run(False)
 
-        # save timestamps to make sure that files didn't change.
-        stage_file_mtime_1 = os.path.getmtime(stage_file)
-        out_file_mtime_1 = os.path.getmtime(out_file)
 
-        # sleep to make sure that mtime changes even on filesystems
-        # with very low timestamp resolution(e.g. 1 sec on APFS).
-        time.sleep(2)
-
-        # dependencies didn't change, so deterministic stage shouldn't
-        # be ran again.
-        stage = self.dvc.run(cmd=cmd,
-                             fname=stage_file,
-                             deterministic=True,
-                             overwrite=True,
-                             deps=[self.FOO, self.CODE],
-                             outs=[out_file])
-        self.assertTrue(stage is None)
-
-        stage_file_mtime_2 = os.path.getmtime(stage_file)
-        out_file_mtime_2 = os.path.getmtime(out_file)
-
-        self.assertEqual(stage_file_mtime_1, stage_file_mtime_2)
-        self.assertEqual(out_file_mtime_1, out_file_mtime_2)
-
-        time.sleep(2)
-
-        # now change one of the deps and make sure stage did run
+class TestRunDeterministicChangedDep(TestRunDeterministicBase):
+    def test(self):
         os.unlink(self.FOO)
         shutil.copy(self.BAR, self.FOO)
+        self._run()
 
-        stage = self.dvc.run(cmd=cmd,
-                             fname=stage_file,
-                             deterministic=True,
-                             overwrite=True,
-                             deps=[self.FOO, self.CODE],
-                             outs=[out_file])
-        self.assertTrue(stage is not None)
 
-        stage_file_mtime_3 = os.path.getmtime(stage_file)
-        out_file_mtime_3 = os.path.getmtime(out_file)
+class TestRunDeterministicChangedDepsList(TestRunDeterministicBase):
+    def test(self):
+        self.deps = [self.BAR, self.CODE]
+        self._run()
 
-        self.assertNotEqual(stage_file_mtime_2, stage_file_mtime_3)
-        self.assertNotEqual(out_file_mtime_2, out_file_mtime_3)
+
+class TestRunDeterministicNewDep(TestRunDeterministicBase):
+    def test(self):
+        self.deps = [self.FOO, self.BAR, self.CODE]
+        self._run()
+
+
+class TestRunDeterministicRemoveDep(TestRunDeterministicBase):
+    def test(self):
+        self.deps = [self.CODE]
+        self._run()
+
+
+class TestRunDeterministicChangedOut(TestRunDeterministicBase):
+    def test(self):
+        os.unlink(self.out_file)
+        self.out_file_mtime = None
+        self._run()
+
+
+class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
+    def test(self):
+        self.cmd += ' arg'
+        self._run()
