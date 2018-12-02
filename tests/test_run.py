@@ -1,8 +1,11 @@
 import os
 import mock
+import time
+import shutil
 import filecmp
 import subprocess
 
+from dvc.project import Project
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
@@ -181,43 +184,75 @@ class TestCmdRun(TestDvc):
         ret = main(['run', 'mycmd'])
         self.assertEqual(ret, 252)
 
+    @mock.patch.object(Project, 'run')
+    def test_deterministic(self, mock_run):
+        ret = main(['run',
+                    '-d', self.FOO,
+                    '-d', self.CODE,
+                    '--deterministic',
+                    '-o', 'out',
+                    '-f', 'out.dvc',
+                    'python', self.CODE, self.FOO, 'out'])
+        self.assertEqual(ret, 0)
+        mock_run.assert_called_once()
+        args, kwargs = mock_run.call_args
+        self.assertIn(('deterministic', True), kwargs.items())
+
 
 class TestRunDeterministic(TestDvc):
-
     def test(self):
+        out_file = 'out'
+        stage_file = out_file + '.dvc'
+        cmd = 'python {} {} {}'.format(self.CODE, self.FOO, out_file)
+        self.dvc.add(self.FOO)
+        stage = self.dvc.run(cmd=cmd,
+                             fname=stage_file,
+                             deterministic=False,
+                             overwrite=True,
+                             deps=[self.FOO, self.CODE],
+                             outs=[out_file])
+        self.assertTrue(stage is not None)
 
-        def _run(target, deterministic=False):
-            try:  # py3
-                from shlex import quote
-            except ImportError:  # py2
-                from pipes import quote
+        # save timestamps to make sure that files didn't change.
+        stage_file_mtime_1 = os.path.getmtime(stage_file)
+        out_file_mtime_1 = os.path.getmtime(out_file)
 
-            command = [
-                'dvc', 'run', '--verbose', '-f', '{}.dvc'.format(target), '-d', 'file1', '-o', target,
-                'python', '-c', quote("open('{}', 'w').write('hi')").format(target),
-            ]
-            if deterministic:
-                command.insert(2, '--deterministic')
+        # sleep to make sure that mtime changes even on filesystems
+        # with very low timestamp resolution(e.g. 1 sec on APFS).
+        time.sleep(2)
 
-            return command
+        # dependencies didn't change, so deterministic stage shouldn't
+        # be ran again.
+        stage = self.dvc.run(cmd=cmd,
+                             fname=stage_file,
+                             deterministic=True,
+                             overwrite=True,
+                             deps=[self.FOO, self.CODE],
+                             outs=[out_file])
+        self.assertTrue(stage is None)
 
+        stage_file_mtime_2 = os.path.getmtime(stage_file)
+        out_file_mtime_2 = os.path.getmtime(out_file)
 
+        self.assertEqual(stage_file_mtime_1, stage_file_mtime_2)
+        self.assertEqual(out_file_mtime_1, out_file_mtime_2)
 
+        time.sleep(2)
 
-        subprocess.check_call([
-            'dvc', 'run', '--verbose', '-f', 'f1.dvc', '-o', 'file1',
-             'bash', '-c', '"echo hi > file1"',
-        ])
+        # now change one of the deps and make sure stage did run
+        os.unlink(self.FOO)
+        shutil.copy(self.BAR, self.FOO)
 
-        subprocess.check_call(_run('file2', deterministic=True))
+        stage = self.dvc.run(cmd=cmd,
+                             fname=stage_file,
+                             deterministic=True,
+                             overwrite=True,
+                             deps=[self.FOO, self.CODE],
+                             outs=[out_file])
+        self.assertTrue(stage is not None)
 
-        # Does not run because its inputs already exist.
-        subprocess.check_call(_run('file3', deterministic=True))
+        stage_file_mtime_3 = os.path.getmtime(stage_file)
+        out_file_mtime_3 = os.path.getmtime(out_file)
 
-        subprocess.check_call(_run('file4'))
-
-        self.assertTrue(os.path.exists('file1'))
-        self.assertTrue(os.path.exists('file2'))
-        self.assertTrue(os.path.exists('file4'))
-
-        self.assertFalse(os.path.exists('file3'))
+        self.assertNotEqual(stage_file_mtime_2, stage_file_mtime_3)
+        self.assertNotEqual(out_file_mtime_2, out_file_mtime_3)
