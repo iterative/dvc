@@ -106,21 +106,26 @@ class Logger(object):
     @staticmethod
     def parse_exc(exc, tb=None):
         str_tb = tb if tb else None
-        str_exc = ': {}'.format(str(exc)) if exc else ""
+        str_exc = str(exc) if exc else ""
+        l_str_exc = []
+
+        if len(str_exc) != 0:
+            l_str_exc.append(str_exc)
 
         if exc and hasattr(exc, 'cause') and exc.cause:
             cause_tb = exc.cause_tb if hasattr(exc, 'cause_tb') else None
-            cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause, cause_tb)
+            l_cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause,
+                                                             cause_tb)
 
             str_tb = cause_str_tb
-            str_exc = '{}{}'.format(str_exc, cause_str_exc)
+            l_str_exc += l_cause_str_exc
 
-        return (str_exc, str_tb)
+        return (l_str_exc, str_tb)
 
     @staticmethod
     def _prefix(msg, typ):
         color = Logger.LEVEL_COLOR_MAP.get(typ.lower(), '')
-        return Logger.colorize('{}: '.format(msg), color)
+        return Logger.colorize('{}'.format(msg), color)
 
     @staticmethod
     def error_prefix():
@@ -141,43 +146,42 @@ class Logger(object):
             func(msg)
 
     @staticmethod
-    def _error_exc(exc):
-        if exc is None:
-            return
+    def _with_exc(func, prefix, msg, suffix="", exc=None):
+        l_str_exc, str_tb = Logger.parse_exc(exc)
 
-        if Logger.logger().getEffectiveLevel() != logging.DEBUG:
-            return
+        if exc is not None and Logger.is_verbose():
+            str_tb = str_tb if str_tb else traceback.format_exc()
+            Logger._with_progress(Logger.logger().error, str_tb)
 
-        prefix = Logger.error_prefix()
-        str_exc, str_tb = Logger.parse_exc(exc)
-        str_tb = str_tb if str_tb else traceback.format_exc()
-        Logger._with_progress(Logger.logger().error, prefix + str_tb)
+        l_msg = [prefix]
+        if msg is not None and len(msg) != 0:
+            l_msg.append(msg)
+        l_msg += l_str_exc
 
-    @staticmethod
-    def _with_exc(func, msg, suffix="", exc=None):
-        Logger._error_exc(exc)
-        msg = msg + Logger.parse_exc(exc)[0] + suffix
-        Logger._with_progress(func, msg)
+        Logger._with_progress(func, ': '.join(l_msg) + suffix)
 
     @staticmethod
     def error(msg, exc=None):
         chat = "\n\nHaving any troubles? Hit us up at dvc.org/support, " \
                "we are always happy to help!"
         Logger._with_exc(Logger.logger().error,
-                         Logger.error_prefix() + msg,
+                         Logger.error_prefix(),
+                         msg,
                          suffix=chat,
                          exc=exc)
 
     @classmethod
     def warn(cls, msg, exc=None):
         cls._with_exc(cls.logger().warning,
-                      cls.warning_prefix() + msg,
+                      cls.warning_prefix(),
+                      msg,
                       exc=exc)
 
     @classmethod
     def debug(cls, msg, exc=None):
         cls._with_exc(cls.logger().debug,
-                      cls.debug_prefix() + msg,
+                      cls.debug_prefix(),
+                      msg,
                       exc=exc)
 
     @staticmethod
@@ -187,6 +191,10 @@ class Logger(object):
     @staticmethod
     def is_quiet():
         return Logger.logger().level == logging.CRITICAL
+
+    @staticmethod
+    def is_verbose():
+        return Logger.logger().getEffectiveLevel() == logging.DEBUG
 
     @classmethod
     def box(cls, msg, border_color=''):

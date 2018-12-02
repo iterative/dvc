@@ -70,6 +70,54 @@ class TestLogger(TestDvc):
                                    mock_stdout.getvalue())
 
 
+class TestLoggerException(TestDvc):
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_empty_err_msg(self, mock_stdout, mock_stderr):
+        from dvc.exceptions import DvcException
+
+        Logger.init()
+        exc_msg = 'msg'
+        Logger.error("", exc=DvcException(exc_msg))
+        
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertEqual('Error: {}\n\nHaving any troubles? '
+                         'Hit us up at dvc.org/support, we '
+                         'are always happy to help!\n'.format(exc_msg),
+                         mock_stderr.getvalue())
+
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_empty_exc_msg(self, mock_stdout, mock_stderr):
+        from dvc.exceptions import DvcException
+
+        Logger.init()
+        err_msg = 'msg'
+        Logger.error(err_msg, exc=DvcException(""))
+        
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertEqual('Error: {}\n\nHaving any troubles? '
+                         'Hit us up at dvc.org/support, we '
+                         'are always happy to help!\n'.format(err_msg),
+                         mock_stderr.getvalue())
+
+    @patch('sys.stderr', new_callable=StringIO)
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_msg_and_exc(self, mock_stdout, mock_stderr):
+        from dvc.exceptions import DvcException
+
+        Logger.init()
+        err_msg = 'error'
+        exc_msg = 'exception'
+        Logger.error(err_msg, exc=DvcException(exc_msg))
+
+        self.assertEqual('', mock_stdout.getvalue())
+        self.assertEqual('Error: {}: {}\n\nHaving any troubles? '
+                         'Hit us up at dvc.org/support, we are always '
+                         'happy to help!\n'.format(err_msg, exc_msg),
+                         mock_stderr.getvalue())
+
+
 class TestLoggerQuiet(TestDvc):
     def setUp(self):
         super(TestLoggerQuiet, self).setUp()
