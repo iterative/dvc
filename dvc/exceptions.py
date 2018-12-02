@@ -57,3 +57,14 @@ class MoveNotDataSourceError(DvcException):
               "it by hand, or remove '{path}' and create a new one at the " \
               "desired location."
         super(MoveNotDataSourceError, self).__init__(msg.format(path=path))
+
+
+class NotDvcProjectError(DvcException):
+    def __init__(self, root):
+        msg = "Not a dvc repository (checked up to mount point {})"
+        super(NotDvcProjectError, self).__init__(msg.format(root))
+
+
+class DvcParserError(DvcException):
+    def __init__(self):
+        super(DvcException, self).__init__("Parser error")

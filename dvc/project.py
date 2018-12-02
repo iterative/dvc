@@ -2,18 +2,12 @@ import collections
 import os
 
 from dvc.exceptions import DvcException, MoveNotDataSourceError
-from dvc.stage import Stage
+from dvc.exceptions import NotDvcProjectError
 
 
 class InitError(DvcException):
     def __init__(self, msg):
         super(InitError, self).__init__(msg)
-
-
-class NotDvcProjectError(DvcException):
-    def __init__(self, root):
-        msg = "Not a dvc repository (checked up to mount point {})"
-        super(NotDvcProjectError, self).__init__(msg.format(root))
 
 
 class ReproductionError(DvcException):
@@ -227,6 +221,8 @@ class Project(object):
             raise CircularDependencyError(circular_dependencies.pop())
 
     def add(self, fname, recursive=False):
+        from dvc.stage import Stage
+
         fnames = []
         if recursive and os.path.isdir(fname):
             fnames = []
@@ -263,6 +259,8 @@ class Project(object):
         return stages
 
     def remove(self, target, outs_only=False):
+        from dvc.stage import Stage
+
         stage = Stage.load(self, target)
         if outs_only:
             stage.remove_outs()
@@ -272,6 +270,8 @@ class Project(object):
         return stage
 
     def lock_stage(self, target, unlock=False):
+        from dvc.stage import Stage
+
         stage = Stage.load(self, target)
         stage.locked = False if unlock else True
         stage.dump()
@@ -280,6 +280,7 @@ class Project(object):
 
     def move(self, from_path, to_path):
         import dvc.output as Output
+        from dvc.stage import Stage
 
         from_out = Output.loads_from(Stage(self, cwd=os.curdir),
                                      [from_path])[0]
@@ -359,10 +360,12 @@ class Project(object):
             outs=[],
             outs_no_cache=[],
             metrics_no_cache=[],
-            fname=Stage.STAGE_FILE,
+            fname=None,
             cwd=os.curdir,
             no_exec=False,
             overwrite=False):
+        from dvc.stage import Stage
+
         stage = Stage.loads(project=self,
                             fname=fname,
                             cmd=cmd,
@@ -391,6 +394,8 @@ class Project(object):
         return stage
 
     def imp(self, url, out):
+        from dvc.stage import Stage
+
         stage = Stage.loads(project=self,
                             cmd=None,
                             deps=[url],
@@ -434,6 +439,7 @@ class Project(object):
                   interactive=False,
                   pipeline=False,
                   all_pipelines=False):
+        from dvc.stage import Stage
 
         if target is None and not all_pipelines:
             raise ValueError()
@@ -482,6 +488,7 @@ class Project(object):
                    dry=False,
                    interactive=False):
         import networkx as nx
+        from dvc.stage import Stage
 
         stage = Stage.load(self, target)
         G = self.graph()[1]
@@ -552,6 +559,7 @@ class Project(object):
 
     def _collect(self, target, with_deps=False):
         import networkx as nx
+        from dvc.stage import Stage
 
         stage = Stage.load(self, target)
         if not with_deps:
@@ -1169,6 +1177,8 @@ class Project(object):
         NOTE: For large projects, this could be an expensive
               operation.  Consider using some memorization.
         """
+        from dvc.stage import Stage
+
         stages = []
         outs = []
         for root, dirs, files in os.walk(self.root_dir):

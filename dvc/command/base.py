@@ -1,5 +1,4 @@
 from dvc.logger import Logger
-from dvc.lock import LockError
 
 
 class CmdBase(object):
@@ -20,6 +19,8 @@ class CmdBase(object):
             Logger.be_verbose()
 
     def run_cmd(self):
+        from dvc.lock import LockError
+
         try:
             with self.project.lock:
                 return self.run()
