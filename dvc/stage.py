@@ -71,6 +71,7 @@ class MissingDataSource(DvcException):
         msg = u'missing data {}: {}'.format(source, ', '.join(missing_files))
         super(MissingDataSource, self).__init__(msg)
 
+
 def _identify_dicts(dicts):
     return collections.Counter(frozenset(d.items()) for d in dicts)
 
