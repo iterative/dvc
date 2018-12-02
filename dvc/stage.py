@@ -1,3 +1,4 @@
+import collections
 import os
 import yaml
 import posixpath
@@ -69,6 +70,42 @@ class MissingDataSource(DvcException):
 
         msg = u'missing data {}: {}'.format(source, ', '.join(missing_files))
         super(MissingDataSource, self).__init__(msg)
+
+def _identify_dicts(dicts):
+    return collections.Counter(frozenset(d.items()) for d in dicts)
+
+
+def _deps_equal(old, new):
+    old_identities = _identify_dicts(dep.dumpd() for dep in old.deps)
+    new_identities = _identify_dicts(dep.dumpd() for dep in new.deps)
+    return old_identities == new_identities
+
+
+def _outs_equal(old, new):
+    old_dicts = [out.dumpd() for out in old.outs]
+    new_dicts = [out.dumpd() for out in new.outs]
+    for d in old_dicts:
+        del d['md5']
+    old_identities = _identify_dicts(old_dicts)
+    new_identities = _identify_dicts(new_dicts)
+    return old_identities == new_identities
+
+
+def _stage_equal(old, new):
+    deps_unchanged = all(dep.changed() is False for dep in old.deps)
+    if not deps_unchanged:
+        Logger.debug('Deps changed')
+        return False
+    if not _deps_equal(old, new):
+        Logger.debug('Deps unequal')
+        return False
+
+    if not _outs_equal(old, new):
+        Logger.debug('Outs unequal')
+        return False
+
+    Logger.debug('stage equal')
+    return True
 
 
 class Stage(object):
@@ -301,7 +338,9 @@ class Stage(object):
               cwd=os.curdir,
               locked=False,
               add=False,
-              overwrite=True):
+              overwrite=True,
+              deterministic=False):
+
         stage = Stage(project=project,
                       cwd=cwd,
                       cmd=cmd,
@@ -326,12 +365,21 @@ class Stage(object):
         path = os.path.join(cwd, fname)
 
         if os.path.exists(path):
+
+            old = Stage.load(project=project, fname=fname)
+            for dep in stage.deps:
+                dep.save()
+            if deterministic and _stage_equal(old, stage):
+                Logger.info('Stage is cached, skipping.')
+                return None
+
             relpath = os.path.relpath(path)
             msg = "'{}' already exists. " \
                   "Do you wish to run the command and overwrite it?"
             if not overwrite \
                and not project.prompt.prompt(msg.format(relpath), False):
                 raise DvcException("'{}' already exists".format(relpath))
+
 
         stage.cwd = cwd
         stage.path = path

@@ -180,3 +180,40 @@ class TestCmdRun(TestDvc):
     def test_keyboard_interrupt(self, mock_popen):
         ret = main(['run', 'mycmd'])
         self.assertEqual(ret, 252)
+
+
+class TestRunDeterministic(TestDvc):
+
+    def test(self):
+
+        def _run(target, deterministic=False):
+
+            command = [
+                'dvc', 'run', '--verbose', '-f', '{}.dvc'.format(target), '-d', 'file1', '-o', target,
+                'python', '-c', shlex.quote("open('{}', 'w').write('hi')").format(target),
+            ]
+            if deterministic:
+                command.insert(2, '--deterministic')
+
+            return command
+
+
+
+
+        subprocess.check_call([
+            'dvc', 'run', '--verbose', '-f', 'f1.dvc', '-o', 'file1',
+             'bash', '-c', '"echo hi > file1"',
+        ])
+
+        subprocess.check_call(_run('file2', deterministic=True))
+
+        # Does not run because its inputs already exist.
+        subprocess.check_call(_run('file3', deterministic=True))
+
+        subprocess.check_call(_run('file4'))
+
+        self.assertTrue(os.path.exists('file1'))
+        self.assertTrue(os.path.exists('file2'))
+        self.assertTrue(os.path.exists('file4'))
+
+        self.assertFalse(os.path.exists('file3'))

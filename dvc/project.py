@@ -363,18 +363,23 @@ class Project(object):
             fname=None,
             cwd=os.curdir,
             no_exec=False,
-            overwrite=False):
-        from dvc.stage import Stage
+            overwrite=False,
+            deterministic=False):
 
-        stage = Stage.loads(project=self,
-                            fname=fname,
-                            cmd=cmd,
-                            cwd=cwd,
-                            outs=outs,
-                            outs_no_cache=outs_no_cache,
-                            metrics_no_cache=metrics_no_cache,
-                            deps=deps,
-                            overwrite=overwrite)
+        with self.state:
+            stage = Stage.loads(project=self,
+                                fname=fname,
+                                cmd=cmd,
+                                cwd=cwd,
+                                outs=outs,
+                                outs_no_cache=outs_no_cache,
+                                metrics_no_cache=metrics_no_cache,
+                                deps=deps,
+                                overwrite=overwrite,
+                                deterministic=deterministic)
+
+        if stage is None:
+            return None
 
         all_stages = self.stages()
 
