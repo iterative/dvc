@@ -27,7 +27,7 @@ from dvc.command.root import CmdRoot
 from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
 from dvc.command.daemon import CmdDaemonUpdater, CmdDaemonAnalytics
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcParserError
 from dvc.logger import Logger
 from dvc import VERSION
 
@@ -40,11 +40,6 @@ def _fix_subparsers(subparsers):
     if sys.version_info[0] == 3:  # pragma: no cover
         subparsers.required = True
         subparsers.dest = 'cmd'
-
-
-class DvcParserError(DvcException):
-    def __init__(self):
-        super(DvcException, self).__init__("Parser error")
 
 
 class DvcParser(argparse.ArgumentParser):

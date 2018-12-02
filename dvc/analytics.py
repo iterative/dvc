@@ -3,8 +3,6 @@ import json
 import errno
 
 from dvc import VERSION
-from dvc.utils import is_binary
-from dvc.lock import Lock, LockError
 from dvc.logger import Logger
 
 
@@ -38,6 +36,7 @@ class Analytics(object):
 
     def __init__(self, info={}):
         from dvc.config import Config
+        from dvc.lock import Lock
 
         self.info = info
 
@@ -80,6 +79,8 @@ class Analytics(object):
                 return None
 
     def _get_user_id(self):
+        from dvc.lock import LockError
+
         try:
             with self.user_id_file_lock:
                 user_id = self._read_user_id()
@@ -131,7 +132,9 @@ class Analytics(object):
 
     def collect(self):
         from dvc.scm import SCM
-        from dvc.project import Project, NotDvcProjectError
+        from dvc.utils import is_binary
+        from dvc.project import Project
+        from dvc.exceptions import NotDvcProjectError
 
         self.info[self.PARAM_DVC_VERSION] = VERSION
         self.info[self.PARAM_IS_BINARY] = is_binary()
@@ -167,7 +170,8 @@ class Analytics(object):
     @staticmethod
     def _is_enabled(cmd=None):
         from dvc.config import Config
-        from dvc.project import Project, NotDvcProjectError
+        from dvc.project import Project
+        from dvc.exceptions import NotDvcProjectError
         from dvc.command.daemon import CmdDaemonBase
 
         if os.getenv('DVC_TEST'):

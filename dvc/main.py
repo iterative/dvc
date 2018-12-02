@@ -2,8 +2,7 @@ from dvc.logger import Logger
 from dvc.cli import parse_args
 from dvc.command.base import CmdBase
 from dvc.analytics import Analytics
-from dvc.cli import DvcParserError
-from dvc.project import NotDvcProjectError
+from dvc.exceptions import NotDvcProjectError, DvcParserError
 
 
 def main(argv=None):

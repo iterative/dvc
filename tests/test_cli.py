@@ -165,20 +165,6 @@ class TestCheckout(TestDvc):
         self.assertIsInstance(args.func(args), CmdCheckout)
 
 
-class TestStartupTime(TestDvc):
-    def test(self):
-        import timeit
-
-        start = timeit.default_timer()
-        try:
-            main([])
-        except SystemExit:
-            pass
-        t = timeit.default_timer() - start
-
-        self.assertTrue(t < 0.3)
-
-
 class TestFindRoot(TestDvc):
     def test(self):
         os.chdir("..")

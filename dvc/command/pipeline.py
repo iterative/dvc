@@ -2,7 +2,6 @@ import os
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
-from dvc.dagascii import Dagascii
 
 
 class CmdPipelineShow(CmdBase):
@@ -70,6 +69,8 @@ class CmdPipelineShow(CmdBase):
         return nodes, edges
 
     def _show_ascii(self, target, commands, outs):
+        from dvc.dagascii import Dagascii
+
         nodes, edges = self.__build_graph(target, commands, outs)
 
         if not nodes:
