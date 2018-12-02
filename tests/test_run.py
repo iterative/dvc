@@ -187,7 +187,10 @@ class TestRunDeterministic(TestDvc):
     def test(self):
 
         def _run(target, deterministic=False):
-            from shlex import shlex
+            try:  # py3
+                from shlex import quote
+            except ImportError:  # py2
+                from pipes import quote
 
             command = [
                 'dvc', 'run', '--verbose', '-f', '{}.dvc'.format(target), '-d', 'file1', '-o', target,
