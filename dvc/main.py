@@ -20,8 +20,11 @@ def main(argv=None):
         cmd = args.func(args)
 
         ret = cmd.run_cmd()
+    except KeyboardInterrupt as ex:
+        Logger.error("Interrupted by the user", ex)
+        ret = 252
     except NotDvcProjectError as ex:
-        Logger.error(str(ex))
+        Logger.error("", ex)
         ret = 253
     except DvcParserError:
         ret = 254

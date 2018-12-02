@@ -1,5 +1,7 @@
 import os
+import mock
 import filecmp
+import subprocess
 
 from dvc.main import main
 from dvc.utils import file_md5
@@ -173,3 +175,8 @@ class TestCmdRun(TestDvc):
 
         with open(log, 'r') as fobj:
             self.assertEqual(fobj.read(), arg)
+
+    @mock.patch.object(subprocess, 'Popen', side_effect=KeyboardInterrupt)
+    def test_keyboard_interrupt(self, mock_popen):
+        ret = main(['run', 'mycmd'])
+        self.assertEqual(ret, 252)
