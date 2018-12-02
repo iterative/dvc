@@ -275,8 +275,8 @@ def parse_args(argv=None):
                         '--deterministic',
                         action='store_true',
                         default=False,
-                        help=("Use cached result if previously run with "
-                              "current dependencies and command."))
+                        help="Use cached result if previously run with "
+                             "current dependencies and command.")
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
