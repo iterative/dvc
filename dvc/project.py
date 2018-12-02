@@ -365,6 +365,7 @@ class Project(object):
             no_exec=False,
             overwrite=False,
             deterministic=False):
+        from dvc.stage import Stage
 
         with self.state:
             stage = Stage.loads(project=self,
