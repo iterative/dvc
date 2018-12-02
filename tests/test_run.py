@@ -194,7 +194,7 @@ class TestRunDeterministic(TestDvc):
 
             command = [
                 'dvc', 'run', '--verbose', '-f', '{}.dvc'.format(target), '-d', 'file1', '-o', target,
-                'python', '-c', shlex.quote("open('{}', 'w').write('hi')").format(target),
+                'python', '-c', quote("open('{}', 'w').write('hi')").format(target),
             ]
             if deterministic:
                 command.insert(2, '--deterministic')
