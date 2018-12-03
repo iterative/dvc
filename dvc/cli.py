@@ -272,12 +272,6 @@ def parse_args(argv=None):
                              "when '.dvc' file exists and dvc asks if you "
                              "want to overwrite it.")
     run_parser.add_argument(
-                        '--deterministic',
-                        action='store_true',
-                        default=False,
-                        help="Use cached result if previously run with "
-                             "current dependencies and command.")
-    run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
                         help='Command or command file to execute.')

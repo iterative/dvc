@@ -9,7 +9,7 @@ from dvc.project import Project
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
-from dvc.stage import StageBadCwdError
+from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
 from dvc.command.run import CmdRun
 from dvc.exceptions import (OutputDuplicationError,
                             CircularDependencyError,
@@ -184,20 +184,6 @@ class TestCmdRun(TestDvc):
         ret = main(['run', 'mycmd'])
         self.assertEqual(ret, 252)
 
-    @mock.patch.object(Project, 'run')
-    def test_deterministic(self, mock_run):
-        ret = main(['run',
-                    '-d', self.FOO,
-                    '-d', self.CODE,
-                    '--deterministic',
-                    '-o', 'out',
-                    '-f', 'out.dvc',
-                    'python', self.CODE, self.FOO, 'out'])
-        self.assertEqual(ret, 0)
-        mock_run.assert_called_once()
-        args, kwargs = mock_run.call_args
-        self.assertIn(('deterministic', True), kwargs.items())
-
 
 class TestRunDeterministicBase(TestDvc):
     def setUp(self):
@@ -205,77 +191,78 @@ class TestRunDeterministicBase(TestDvc):
         self.out_file = 'out'
         self.stage_file = self.out_file + '.dvc'
         self.cmd = 'python {} {} {}'.format(self.CODE, self.FOO, self.out_file)
-        self.deterministic = True
         self.deps = [self.FOO, self.CODE]
         self.outs = [self.out_file]
+        self.overwrite = False
 
-        self._run(check=False)
-        self.assertTrue(self.stage is not None)
-        self.stage_file_mtime = os.path.getmtime(self.stage_file)
-        self.out_file_mtime = os.path.getmtime(self.out_file)
+        self._run()
 
-    def _run(self, should_run=True, check=True):
+    def _run(self):
         self.stage = self.dvc.run(cmd=self.cmd,
                                   fname=self.stage_file,
-                                  deterministic=self.deterministic,
-                                  overwrite=True,
+                                  overwrite=self.overwrite,
                                   deps=self.deps,
                                   outs=self.outs)
-
-        if not check:
-            return
-
-        stage_file_mtime = os.path.getmtime(self.stage_file)
-        out_file_mtime = os.path.getmtime(self.out_file)
-
-        if should_run:
-            self.assertTrue(self.stage is not None)
-            self.assertNotEqual(self.stage_file_mtime, stage_file_mtime)
-            self.assertNotEqual(self.out_file_mtime, out_file_mtime)
-        else:
-            self.assertTrue(self.stage is None)
-            self.assertEqual(self.stage_file_mtime, stage_file_mtime)
-            self.assertEqual(self.out_file_mtime, out_file_mtime)
 
 
 class TestRunDeterministic(TestRunDeterministicBase):
     def test(self):
-        self._run(False)
+        self._run()
+
+
+class TestRunDeterministicOverwrite(TestRunDeterministicBase):
+    def test(self):
+        self.overwrite = True
+        self._run()
+
+
+class TestRunDeterministicCallback(TestRunDeterministicBase):
+    def test(self):
+        self.stage.remove()
+        self.deps = []
+        self._run()
+        self._run()
 
 
 class TestRunDeterministicChangedDep(TestRunDeterministicBase):
     def test(self):
         os.unlink(self.FOO)
         shutil.copy(self.BAR, self.FOO)
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
 
 
 class TestRunDeterministicChangedDepsList(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.BAR, self.CODE]
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
 
 
 class TestRunDeterministicNewDep(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.FOO, self.BAR, self.CODE]
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
 
 
 class TestRunDeterministicRemoveDep(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.CODE]
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
 
 
 class TestRunDeterministicChangedOut(TestRunDeterministicBase):
     def test(self):
         os.unlink(self.out_file)
         self.out_file_mtime = None
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
 
 
 class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
     def test(self):
         self.cmd += ' arg'
-        self._run()
+        with self.assertRaises(StageFileAlreadyExistsError):
+           self._run()
