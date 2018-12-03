@@ -268,9 +268,16 @@ def parse_args(argv=None):
                         '--yes',
                         action='store_true',
                         default=False,
-                        help="Automatic 'yes' answer to all prompts. E.g. "
+                        help="(OBSOLETED, use --force instead) Automatic "
+                             "'yes' answer to all prompts. E.g. "
                              "when '.dvc' file exists and dvc asks if you "
                              "want to overwrite it.")
+    run_parser.add_argument(
+                        '--force',
+                        action='store_true',
+                        default=False,
+                        help="Overwrite existing dvc file without asking "
+                             "for confirmation.")
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,

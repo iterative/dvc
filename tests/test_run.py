@@ -185,6 +185,23 @@ class TestCmdRun(TestDvc):
         self.assertEqual(ret, 252)
 
 
+class TestCmdRunOverwrite(TestDvc):
+    def test(self):
+        ret = main(['run',
+                    '-d', self.FOO,
+                    '-d', self.CODE,
+                    '-o', 'out',
+                    '-f', 'out.dvc',
+                    'python', self.CODE, self.FOO, 'out'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['run',
+                    '--force',
+                    '-f', 'out.dvc',
+                    '-d', self.BAR])
+        self.assertEqual(ret, 0)
+
+
 class TestRunDeterministicBase(TestDvc):
     def setUp(self):
         super(TestRunDeterministicBase, self).setUp()

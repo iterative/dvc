@@ -21,9 +21,6 @@ class CmdRun(CmdBase):
 
     def run(self):
         try:
-            if self.args.yes:
-                self.project.prompt.default = True
-
             self.project.run(cmd=self._joined_cmd(),
                              outs=self.args.outs,
                              outs_no_cache=self.args.outs_no_cache,
@@ -31,7 +28,8 @@ class CmdRun(CmdBase):
                              deps=self.args.deps,
                              fname=self.args.file,
                              cwd=self.args.cwd,
-                             no_exec=self.args.no_exec)
+                             no_exec=self.args.no_exec,
+                             overwrite=(self.args.yes or self.args.force))
         except DvcException as ex:
             self.project.logger.error('Failed to run command', ex)
             return 1
