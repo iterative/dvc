@@ -325,16 +325,21 @@ class Project(object):
     def _unprotect_file(self, path):
         import stat
         import uuid
+        from dvc.system import System
         from dvc.utils import copyfile, move, remove
 
-        self.logger.debug("Unprotecting '{}'".format(path))
+        if System.is_symlink(path) or System.is_hardlink(path):
+            self.logger.debug("Unprotecting '{}'".format(path))
 
-        tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
-        move(path, tmp)
+            tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
+            move(path, tmp)
 
-        copyfile(tmp, path)
+            copyfile(tmp, path)
 
-        remove(tmp)
+            remove(tmp)
+        else:
+            self.logger.debug("Skipping copying for '{}', since it is not "
+                              "a symlink or a hardlink.".format(path))
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
@@ -363,18 +368,26 @@ class Project(object):
             fname=None,
             cwd=os.curdir,
             no_exec=False,
-            overwrite=False):
+            overwrite=False,
+            ignore_build_cache=False,
+            remove_outs=False):
         from dvc.stage import Stage
 
-        stage = Stage.loads(project=self,
-                            fname=fname,
-                            cmd=cmd,
-                            cwd=cwd,
-                            outs=outs,
-                            outs_no_cache=outs_no_cache,
-                            metrics_no_cache=metrics_no_cache,
-                            deps=deps,
-                            overwrite=overwrite)
+        with self.state:
+            stage = Stage.loads(project=self,
+                                fname=fname,
+                                cmd=cmd,
+                                cwd=cwd,
+                                outs=outs,
+                                outs_no_cache=outs_no_cache,
+                                metrics_no_cache=metrics_no_cache,
+                                deps=deps,
+                                overwrite=overwrite,
+                                ignore_build_cache=ignore_build_cache,
+                                remove_outs=remove_outs)
+
+        if stage is None:
+            return None
 
         all_stages = self.stages()
 

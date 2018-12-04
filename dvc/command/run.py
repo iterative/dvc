@@ -20,10 +20,8 @@ class CmdRun(CmdBase):
         return cmd
 
     def run(self):
+        overwrite = (self.args.yes or self.args.overwrite_dvcfile)
         try:
-            if self.args.yes:
-                self.project.prompt.default = True
-
             self.project.run(cmd=self._joined_cmd(),
                              outs=self.args.outs,
                              outs_no_cache=self.args.outs_no_cache,
@@ -31,7 +29,10 @@ class CmdRun(CmdBase):
                              deps=self.args.deps,
                              fname=self.args.file,
                              cwd=self.args.cwd,
-                             no_exec=self.args.no_exec)
+                             no_exec=self.args.no_exec,
+                             overwrite=overwrite,
+                             ignore_build_cache=self.args.ignore_build_cache,
+                             remove_outs=self.args.remove_outs)
         except DvcException as ex:
             self.project.logger.error('Failed to run command', ex)
             return 1

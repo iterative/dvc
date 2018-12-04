@@ -268,9 +268,28 @@ def parse_args(argv=None):
                         '--yes',
                         action='store_true',
                         default=False,
-                        help="Automatic 'yes' answer to all prompts. E.g. "
+                        help="(OBSOLETED, use --overwrite-dvcfile instead) "
+                             "Automatic 'yes' answer to all prompts. E.g. "
                              "when '.dvc' file exists and dvc asks if you "
                              "want to overwrite it.")
+    run_parser.add_argument(
+                        '--overwrite-dvcfile',
+                        action='store_true',
+                        default=False,
+                        help="Overwrite existing dvc file without asking "
+                             "for confirmation.")
+    run_parser.add_argument(
+                        '--ignore-build-cache',
+                        action='store_true',
+                        default=False,
+                        help="Run this stage even if it has been already "
+                        "ran with the same command/dependencies/outputs/etc "
+                        "before.")
+    run_parser.add_argument(
+                        '--remove-outs',
+                        action='store_true',
+                        default=False,
+                        help="Remove outputs before running the command.")
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,

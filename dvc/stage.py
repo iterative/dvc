@@ -29,6 +29,12 @@ class StageFileDoesNotExistError(DvcException):
         super(StageFileDoesNotExistError, self).__init__(msg)
 
 
+class StageFileAlreadyExistsError(DvcException):
+    def __init__(self, relpath):
+        msg = "Stage '{}' already exists".format(relpath)
+        super(StageFileAlreadyExistsError, self).__init__(msg)
+
+
 class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
         msg = "'{}' is not a dvc file".format(fname)
@@ -149,7 +155,10 @@ class Stage(object):
                len(self.deps) == 1 and \
                len(self.outs) == 1
 
-    def _changed_deps(self, print_info, log):
+    def _changed_deps(self, log):
+        if self.locked:
+            return False
+
         if self.is_callback:
             msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
                   "no dependencies) and thus always considered as changed."
@@ -159,37 +168,35 @@ class Stage(object):
         for dep in self.deps:
             if not dep.changed():
                 continue
-            if print_info:
-                msg = "Dependency '{}' of '{}' changed."
-                log(msg.format(dep, self.relpath))
+            log("Dependency '{}' of '{}' changed.".format(dep, self.relpath))
             return True
 
         return False
 
-    def changed(self, print_info=False):
-        ret = False
+    def _changed_outs(self, log):
+        for out in self.outs:
+            if not out.changed():
+                continue
+            log("Output '{}' of '{}' changed.".format(out, self.relpath))
+            return True
 
+        return False
+
+    def _changed_md5(self, log):
+        if self.changed_md5():
+            log("Dvc file '{}' changed.".format(self.relpath))
+            return True
+        return False
+
+    def changed(self, print_info=False):
         if print_info:
             log = self.project.logger.info
         else:
             log = self.project.logger.debug
 
-        if not self.locked:
-            ret = self._changed_deps(print_info, log)
-
-        for out in self.outs:
-            if not out.changed():
-                continue
-            if print_info:
-                msg = "Output '{}' of '{}' changed."
-                log(msg.format(out, self.relpath))
-            ret = True
-
-        if self.changed_md5():
-            if print_info:
-                msg = "Dvc file '{}' changed."
-                log(msg.format(self.relpath))
-            ret = True
+        ret = any([self._changed_deps(log),
+                   self._changed_outs(log),
+                   self._changed_md5(log)])
 
         if ret:
             msg = "Stage '{}' changed.".format(self.relpath)
@@ -205,6 +212,12 @@ class Stage(object):
     def remove_outs(self, ignore_remove=False):
         for out in self.outs:
             out.remove(ignore_remove=ignore_remove)
+
+    def unprotect_outs(self):
+        for out in self.outs:
+            if out.path_info['scheme'] != 'local' or not out.exists:
+                continue
+            self.project.unprotect(out.path)
 
     def remove(self):
         self.remove_outs(ignore_remove=True)
@@ -290,6 +303,37 @@ class Stage(object):
         if not os.path.realpath(cwd).startswith(proj_dir):
             raise StageBadCwdError(cwd)
 
+    def is_cached(self):
+        """
+        Checks if this stage has been already ran and saved to the same
+        dvc file.
+        """
+        from dvc.remote.local import RemoteLOCAL
+        from dvc.remote.s3 import RemoteS3
+
+        old = Stage.load(self.project, self.path)
+        if old._changed_outs(log=self.project.logger.debug):
+            return False
+
+        # NOTE: need to save checksums for deps in order to compare them
+        # with what is written in the old stage.
+        for dep in self.deps:
+            dep.save()
+
+        old_d = old.dumpd()
+        new_d = self.dumpd()
+
+        # NOTE: need to remove checksums from old dict in order to compare
+        # it to the new one, since the new one doesn't have checksums yet.
+        old_d.pop(self.PARAM_MD5, None)
+        new_d.pop(self.PARAM_MD5, None)
+        outs = old_d.get(self.PARAM_OUTS, [])
+        for out in outs:
+            out.pop(RemoteLOCAL.PARAM_MD5, None)
+            out.pop(RemoteS3.PARAM_ETAG, None)
+
+        return old_d == new_d
+
     @staticmethod
     def loads(project=None,
               cmd=None,
@@ -301,7 +345,10 @@ class Stage(object):
               cwd=os.curdir,
               locked=False,
               add=False,
-              overwrite=True):
+              overwrite=True,
+              ignore_build_cache=False,
+              remove_outs=False):
+
         stage = Stage(project=project,
                       cwd=cwd,
                       cmd=cmd,
@@ -325,16 +372,27 @@ class Stage(object):
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
 
-        if os.path.exists(path):
-            relpath = os.path.relpath(path)
-            msg = "'{}' already exists. " \
-                  "Do you wish to run the command and overwrite it?"
-            if not overwrite \
-               and not project.prompt.prompt(msg.format(relpath), False):
-                raise DvcException("'{}' already exists".format(relpath))
-
         stage.cwd = cwd
         stage.path = path
+
+        # NOTE: remove outs before we check build cache
+        if remove_outs:
+            stage.remove_outs(ignore_remove=False)
+            project.logger.warn("Build cache is ignored when using "
+                                "--remove-outs.")
+            ignore_build_cache = True
+        else:
+            stage.unprotect_outs()
+
+        if os.path.exists(path):
+            if not ignore_build_cache and stage.is_cached():
+                Logger.info('Stage is cached, skipping.')
+                return None
+
+            msg = "'{}' already exists. Do you wish to run the command and " \
+                  "overwrite it?".format(stage.relpath)
+            if not overwrite and not project.prompt.prompt(msg, False):
+                raise StageFileAlreadyExistsError(stage.relpath)
 
         return stage
 
