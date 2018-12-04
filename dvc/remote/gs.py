@@ -175,14 +175,22 @@ class RemoteGS(RemoteBase):
 
     def exists(self, path_infos):
         ret = []
-        gs = self.gs
 
-        bucket = gs.bucket(self.bucket)
-        keys = [blob.name for blob in bucket.list_blobs(prefix=self.prefix)]
+        if len(path_infos) == 0:
+            return ret
+
+        gs = self.gs
+        bucket_name = path_infos[0]['bucket']
+        bucket = gs.bucket(bucket_name)
 
         for path_info in path_infos:
+            assert self.scheme == path_info['scheme']
+            assert bucket_name == path_info['bucket']
+
             exists = False
-            if path_info['key'] in keys:
+            key = path_info['key']
+            keys = [blob.name for blob in bucket.list_blobs(prefix=key)]
+            if key in keys:
                 exists = True
             ret.append(exists)
         return ret

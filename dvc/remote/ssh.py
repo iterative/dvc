@@ -9,7 +9,7 @@ except ImportError:
 
 from dvc.logger import Logger
 from dvc.progress import progress
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -35,6 +35,10 @@ def percent_cb(name, complete, total):
 def create_cb(name):
     """ Create callback function for multipart object """
     return (lambda cur, tot: percent_cb(name, cur, tot))
+
+
+class RemoteSSHCmdError(RemoteBaseCmdError):
+    pass
 
 
 class RemoteSSH(RemoteBase):
@@ -101,19 +105,29 @@ class RemoteSSH(RemoteBase):
 
     def exists(self, path_infos):
         ret = []
-        ssh = self.ssh(host=self.host,
-                       user=self.user,
-                       port=self.port)
-        cmd = 'find {} -type f -follow -print'.format(self.prefix)
-        stdout = self._exec(ssh, cmd)
-        plist = stdout.split()
-        ssh.close()
+
+        if len(path_infos) == 0:
+            return ret
+
+        host = path_infos[0]['host']
+        user = path_infos[0]['user']
+        port = path_infos[0]['port']
+        ssh = self.ssh(host=host,
+                       user=user,
+                       port=port)
 
         for path_info in path_infos:
-            exists = False
-            if path_info['path'] in plist:
+            assert host == path_info['host']
+            assert user == path_info['user']
+            assert port == path_info['port']
+            try:
+                self._exec(ssh, 'test -e {}'.format(path_info['path']))
                 exists = True
+            except RemoteSSHCmdError:
+                exists = False
             ret.append(exists)
+
+        ssh.close()
 
         return ret
 
@@ -154,10 +168,10 @@ class RemoteSSH(RemoteBase):
         stdout.close()
         stderr.close()
 
-        if stdout.channel.recv_exit_status() != 0:
+        ret = stdout.channel.recv_exit_status()
+        if ret != 0:
             err = b''.join(stderr_chunks).decode('utf-8')
-            msg = 'SSH command \'{}\' failed: {}'.format(cmd, err)
-            raise DvcException(msg)
+            raise RemoteSSHCmdError(cmd, ret, err)
 
         return b''.join(stdout_chunks).decode('utf-8')
 
@@ -245,7 +259,7 @@ class RemoteSSH(RemoteBase):
         if md5 is None:
             return True
 
-        if self.changed_code(md5):
+        if self.changed_cache(md5):
             return True
 
         return checksum_info != self.save_info(path_info)

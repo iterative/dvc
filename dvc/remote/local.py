@@ -505,6 +505,7 @@ class RemoteLOCAL(RemoteBase):
     def exists(self, path_infos):
         ret = []
         for path_info in path_infos:
+            assert path_info['scheme'] == 'local'
             ret.append(os.path.exists(path_info['path']))
         return ret
 

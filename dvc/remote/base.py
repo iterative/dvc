@@ -28,6 +28,12 @@ class DataCloudError(DvcException):
         super(DataCloudError, self).__init__('Data sync error: {}'.format(msg))
 
 
+class RemoteBaseCmdError(DvcException):
+    def __init__(self, cmd, ret, err):
+        m = "SSH command '{}' finished with non-zero return code '{}': {}"
+        super(RemoteBaseCmdError, self).__init__(m.format(cmd, ret, err))
+
+
 class RemoteBase(object):
     REGEX = None
     REQUIRES = {}

@@ -5,11 +5,14 @@ import posixpath
 from subprocess import Popen, PIPE
 
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 from dvc.remote.local import RemoteLOCAL
-from dvc.exceptions import DvcException
 from dvc.logger import Logger
 from dvc.utils import fix_env
+
+
+class RemoteHDFSCmdError(RemoteBaseCmdError):
+    pass
 
 
 class RemoteHDFS(RemoteBase):
@@ -45,7 +48,7 @@ class RemoteHDFS(RemoteBase):
                   stderr=PIPE)
         out, err = p.communicate()
         if p.returncode != 0:
-            raise DvcException('HDFS command failed: {}: {}'.format(cmd, err))
+            raise RemoteHDFSCmdError(cmd, p.returncode, err)
         return out.decode('utf-8')
 
     @staticmethod
@@ -106,7 +109,7 @@ class RemoteHDFS(RemoteBase):
         if checksum is None:
             return True
 
-        if self.changed_cache(self, checksum):
+        if self.changed_cache(checksum):
             return True
 
         return checksum_info != self.save_info(path_info)
@@ -176,23 +179,18 @@ class RemoteHDFS(RemoteBase):
                                        md5[0:2], md5[2:])} for md5 in md5s]
 
     def exists(self, path_infos):
-        try:
-            stdout = self.hadoop_fs('ls -R {}'.format(self.url))
-        except DvcException:
-            return len(path_infos) * [False]
-
-        lines = stdout.split('\n')
-        lurl = []
-        for line in lines:
-            if not line.startswith('-'):
-                continue
-            lurl.append(line.split()[-1])
-
         ret = []
+
+        if len(path_infos) == 0:
+            return ret
+
         for path_info in path_infos:
-            exists = False
-            if path_info['url'] in lurl:
+            assert path_info['scheme'] == self.scheme
+            try:
+                self.hadoop_fs('test -e {}'.format(path_info['url']))
                 exists = True
+            except RemoteHDFSCmdError:
+                exists = False
             ret.append(exists)
 
         return ret
