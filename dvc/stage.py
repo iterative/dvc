@@ -213,6 +213,12 @@ class Stage(object):
         for out in self.outs:
             out.remove(ignore_remove=ignore_remove)
 
+    def unprotect_outs(self):
+        for out in self.outs:
+            if out.path_info['scheme'] != 'local' or not out.exists:
+                continue
+            self.project.unprotect(out.path)
+
     def remove(self):
         self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
@@ -372,6 +378,11 @@ class Stage(object):
         # NOTE: remove outs before we check build cache
         if remove_outs:
             stage.remove_outs(ignore_remove=False)
+            project.logger.warn("Build cache is ignored when using "
+                                "--remove-outs.")
+            ignore_build_cache = True
+        else:
+            stage.unprotect_outs()
 
         if os.path.exists(path):
             if not ignore_build_cache and stage.is_cached():

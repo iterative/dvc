@@ -202,6 +202,112 @@ class TestRunRemoveOuts(TestDvc):
         self.assertEqual(ret, 0)
 
 
+class TestRunUnprotectOutsCopy(TestDvc):
+    def test(self):
+        with open(self.CODE, 'w+') as fobj:
+            fobj.write("import sys\n")
+            fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
+            fobj.write("    fobj.write('foo')\n")
+
+        ret = main(['config', 'cache.protected', 'true'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['config', 'cache.type', 'copy'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['run',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+
+        ret = main(['run',
+                    '--overwrite-dvcfile',
+                    '--ignore-build-cache',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+
+
+class TestRunUnprotectOutsSymlink(TestDvc):
+    def test(self):
+        with open(self.CODE, 'w+') as fobj:
+            fobj.write("import sys\n")
+            fobj.write("import os\n")
+            fobj.write("assert os.path.exists(sys.argv[1])\n")
+            fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
+            fobj.write("    fobj.write('foo')\n")
+
+        ret = main(['config', 'cache.protected', 'true'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['config', 'cache.type', 'symlink'])
+        self.assertEqual(ret, 0)
+
+        self.assertEqual(ret, 0)
+        ret = main(['run',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(os.path.islink(self.FOO))
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+
+        ret = main(['run',
+                    '--overwrite-dvcfile',
+                    '--ignore-build-cache',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(os.path.islink(self.FOO))
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+
+
+class TestRunUnprotectOutsHardlink(TestDvc):
+    def test(self):
+        with open(self.CODE, 'w+') as fobj:
+            fobj.write("import sys\n")
+            fobj.write("import os\n")
+            fobj.write("assert os.path.exists(sys.argv[1])\n")
+            fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
+            fobj.write("    fobj.write('foo')\n")
+
+        ret = main(['config', 'cache.protected', 'true'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['config', 'cache.type', 'hardlink'])
+        self.assertEqual(ret, 0)
+
+        self.assertEqual(ret, 0)
+        ret = main(['run',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertEqual(os.stat(self.FOO).st_nlink, 2)
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+
+        ret = main(['run',
+                    '--overwrite-dvcfile',
+                    '--ignore-build-cache',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertEqual(os.stat(self.FOO).st_nlink, 2)
+        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+
+
 class TestCmdRunOverwrite(TestDvc):
     def test(self):
         ret = main(['run',
@@ -213,7 +319,6 @@ class TestCmdRunOverwrite(TestDvc):
         self.assertEqual(ret, 0)
 
         stage_mtime = os.path.getmtime('out.dvc')
-        out_mtime = os.path.getmtime('out')
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -223,12 +328,9 @@ class TestCmdRunOverwrite(TestDvc):
                     'python', self.CODE, self.FOO, 'out'])
         self.assertEqual(ret, 0)
 
-        # NOTE: check output and dvcfile were NOT overwritten
+        # NOTE: check that dvcfile was NOT overwritten
         self.assertEqual(stage_mtime, os.path.getmtime('out.dvc'))
-        self.assertEqual(out_mtime, os.path.getmtime('out'))
-
         stage_mtime = os.path.getmtime('out.dvc')
-        out_mtime = os.path.getmtime('out')
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -240,12 +342,9 @@ class TestCmdRunOverwrite(TestDvc):
                     'python', self.CODE, self.FOO, 'out'])
         self.assertEqual(ret, 0)
 
-        # NOTE: check output and dvcfile were overwritten
+        # NOTE: check that dvcfile was overwritten
         self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
-        self.assertNotEqual(out_mtime, os.path.getmtime('out'))
-
         stage_mtime = os.path.getmtime('out.dvc')
-        out_mtime = os.path.getmtime('out')
 
         ret = main(['run',
                     '--overwrite-dvcfile',
@@ -253,8 +352,7 @@ class TestCmdRunOverwrite(TestDvc):
                     '-d', self.BAR])
         self.assertEqual(ret, 0)
 
-        # NOTE: check output was NOT overwritten, but dvcfile was
-        self.assertEqual(out_mtime, os.path.getmtime('out'))
+        # NOTE: check that dvcfile was overwritten
         self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
 
 
