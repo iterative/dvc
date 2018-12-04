@@ -152,7 +152,7 @@ class System(object):
                         ("nFileIndexHigh", DWORD),
                         ("nFileIndexLow", DWORD)]
 
-        flags = FILE_FLAG_BACKUP_SEMANTICS & FILE_FLAG_OPEN_REPARSE_POINT
+        flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT
 
         func = ctypes.windll.kernel32.CreateFileW
         func.argtypes = [c_wchar_p,
