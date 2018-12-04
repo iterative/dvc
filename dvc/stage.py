@@ -339,7 +339,8 @@ class Stage(object):
               cwd=os.curdir,
               locked=False,
               add=False,
-              overwrite=True):
+              overwrite=True,
+              ignore_build_cache=False):
 
         stage = Stage(project=project,
                       cwd=cwd,
@@ -367,14 +368,14 @@ class Stage(object):
         stage.cwd = cwd
         stage.path = path
 
-        if os.path.exists(path) and not overwrite:
-            if stage.is_cached():
+        if os.path.exists(path):
+            if not ignore_build_cache and stage.is_cached():
                 Logger.info('Stage is cached, skipping.')
                 return None
 
-            msg = "'{}' already exists. " \
-                  "Do you wish to run the command and overwrite it?"
-            if not project.prompt.prompt(msg.format(stage.relpath), False):
+            msg = "'{}' already exists. Do you wish to run the command and " \
+                  "overwrite it?".format(stage.relpath)
+            if not overwrite and not project.prompt.prompt(msg, False):
                 raise StageFileAlreadyExistsError(stage.relpath)
 
         return stage

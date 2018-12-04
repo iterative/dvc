@@ -195,11 +195,50 @@ class TestCmdRunOverwrite(TestDvc):
                     'python', self.CODE, self.FOO, 'out'])
         self.assertEqual(ret, 0)
 
+        stage_mtime = os.path.getmtime('out.dvc')
+        out_mtime = os.path.getmtime('out')
+
         ret = main(['run',
-                    '--force',
+                    '-d', self.FOO,
+                    '-d', self.CODE,
+                    '-o', 'out',
+                    '-f', 'out.dvc',
+                    'python', self.CODE, self.FOO, 'out'])
+        self.assertEqual(ret, 0)
+
+        # NOTE: check output and dvcfile were NOT overwritten
+        self.assertEqual(stage_mtime, os.path.getmtime('out.dvc'))
+        self.assertEqual(out_mtime, os.path.getmtime('out'))
+
+        stage_mtime = os.path.getmtime('out.dvc')
+        out_mtime = os.path.getmtime('out')
+
+        ret = main(['run',
+                    '-d', self.FOO,
+                    '-d', self.CODE,
+                    '--overwrite-dvcfile',
+                    '--ignore-build-cache',
+                    '-o', 'out',
+                    '-f', 'out.dvc',
+                    'python', self.CODE, self.FOO, 'out'])
+        self.assertEqual(ret, 0)
+
+        # NOTE: check output and dvcfile were overwritten
+        self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
+        self.assertNotEqual(out_mtime, os.path.getmtime('out'))
+
+        stage_mtime = os.path.getmtime('out.dvc')
+        out_mtime = os.path.getmtime('out')
+
+        ret = main(['run',
+                    '--overwrite-dvcfile',
                     '-f', 'out.dvc',
                     '-d', self.BAR])
         self.assertEqual(ret, 0)
+
+        # NOTE: check output was NOT overwritten, but dvcfile was
+        self.assertEqual(out_mtime, os.path.getmtime('out'))
+        self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
 
 
 class TestRunDeterministicBase(TestDvc):
@@ -211,6 +250,7 @@ class TestRunDeterministicBase(TestDvc):
         self.deps = [self.FOO, self.CODE]
         self.outs = [self.out_file]
         self.overwrite = False
+        self.ignore_build_cache = False
 
         self._run()
 
@@ -218,6 +258,7 @@ class TestRunDeterministicBase(TestDvc):
         self.stage = self.dvc.run(cmd=self.cmd,
                                   fname=self.stage_file,
                                   overwrite=self.overwrite,
+                                  ignore_build_cache=self.ignore_build_cache,
                                   deps=self.deps,
                                   outs=self.outs)
 
@@ -230,6 +271,7 @@ class TestRunDeterministic(TestRunDeterministicBase):
 class TestRunDeterministicOverwrite(TestRunDeterministicBase):
     def test(self):
         self.overwrite = True
+        self.ignore_build_cache = True
         self._run()
 
 

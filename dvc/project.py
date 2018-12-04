@@ -363,7 +363,8 @@ class Project(object):
             fname=None,
             cwd=os.curdir,
             no_exec=False,
-            overwrite=False):
+            overwrite=False,
+            ignore_build_cache=False):
         from dvc.stage import Stage
 
         with self.state:
@@ -375,7 +376,8 @@ class Project(object):
                                 outs_no_cache=outs_no_cache,
                                 metrics_no_cache=metrics_no_cache,
                                 deps=deps,
-                                overwrite=overwrite)
+                                overwrite=overwrite,
+                                ignore_build_cache=ignore_build_cache)
 
         if stage is None:
             return None

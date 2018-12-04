@@ -273,11 +273,18 @@ def parse_args(argv=None):
                              "when '.dvc' file exists and dvc asks if you "
                              "want to overwrite it.")
     run_parser.add_argument(
-                        '--force',
+                        '--overwrite-dvcfile',
                         action='store_true',
                         default=False,
                         help="Overwrite existing dvc file without asking "
                              "for confirmation.")
+    run_parser.add_argument(
+                        '--ignore-build-cache',
+                        action='store_true',
+                        default=False,
+                        help="Run this stage even if it has been already "
+                        "ran with the same command/dependencies/outputs/etc "
+                        "before.")
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
