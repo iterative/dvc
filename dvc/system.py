@@ -127,6 +127,11 @@ class System(object):
         from ctypes import c_void_p, c_wchar_p, Structure, WinError, POINTER
         from ctypes.wintypes import DWORD, HANDLE, BOOL
 
+        # NOTE: use this flag to open symlink itself and not the target
+        # See https://docs.microsoft.com/en-us/windows/desktop/api/
+        # fileapi/nf-fileapi-createfilew#symbolic-link-behavior
+        FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
+
         FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
         FILE_SHARE_READ = 0x00000001
         OPEN_EXISTING = 3
@@ -147,7 +152,7 @@ class System(object):
                         ("nFileIndexHigh", DWORD),
                         ("nFileIndexLow", DWORD)]
 
-        flags = FILE_FLAG_BACKUP_SEMANTICS
+        flags = FILE_FLAG_BACKUP_SEMANTICS & FILE_FLAG_OPEN_REPARSE_POINT
 
         func = ctypes.windll.kernel32.CreateFileW
         func.argtypes = [c_wchar_p,
