@@ -23,7 +23,7 @@ class RemoteGS(RemoteBase):
     scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
     REQUIRES = {'google.cloud.storage': storage}
-    PARAM_ETAG = 'etag'
+    PARAM_MD5 = 'md5'
 
     def __init__(self, project, config):
         self.project = project
@@ -52,19 +52,23 @@ class RemoteGS(RemoteBase):
     def gs(self):
         return storage.Client()
 
-    def get_etag(self, bucket, key):
+    def get_md5(self, bucket, key):
+        import base64
+
         blob = self.gs.bucket(bucket).get_blob(key)
         if not blob:
             return None
 
-        return blob.etag
+        b64_md5 = blob.md5_hash
+        md5 = base64.b64decode(b64_md5)
+        return md5.encode('hex')
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
-                                               path_info['key'])}
+        return {self.PARAM_MD5: self.get_md5(path_info['bucket'],
+                                             path_info['key'])}
 
     @staticmethod
     def to_string(path_info):
@@ -72,27 +76,28 @@ class RemoteGS(RemoteBase):
                                    path_info['bucket'],
                                    path_info['key'])
 
-    def changed_cache(self, etag):
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+    def changed_cache(self, md5):
+        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
         cache = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
-        if {self.PARAM_ETAG: etag} != self.save_info(cache):
+        if {self.PARAM_MD5: md5} != self.save_info(cache):
             if self.exists([cache])[0]:
                 msg = 'Corrupted cache file {}'
                 Logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
             return True
+
         return False
 
     def changed(self, path_info, checksum_info):
         if not self.exists([path_info])[0]:
             return True
 
-        etag = checksum_info.get(self.PARAM_ETAG, None)
-        if etag is None:
+        md5 = checksum_info.get(self.PARAM_MD5, None)
+        if md5 is None:
             return True
 
-        if self.changed_cache(etag):
+        if self.changed_cache(md5):
             return True
 
         return checksum_info != self.save_info(path_info)
@@ -114,20 +119,20 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        etag = self.get_etag(path_info['bucket'], path_info['key'])
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        md5 = self.get_md5(path_info['bucket'], path_info['key'])
+        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
         to_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
         self._copy(path_info, to_info)
 
-        return {self.PARAM_ETAG: etag}
+        return {self.PARAM_MD5: md5}
 
     def checkout(self, path_info, checksum_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        etag = checksum_info.get(self.PARAM_ETAG, None)
-        if not etag:
+        md5 = checksum_info.get(self.PARAM_MD5, None)
+        if not md5:
             return
 
         if not self.changed(path_info, checksum_info):
@@ -135,9 +140,9 @@ class RemoteGS(RemoteBase):
             Logger.info(msg.format(self.to_string(path_info)))
             return
 
-        if self.changed_cache(etag):
+        if self.changed_cache(md5):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            Logger.warn(msg.format(etag, self.to_string(path_info)))
+            Logger.warn(msg.format(md5, self.to_string(path_info)))
             return
 
         if self.exists([path_info])[0]:
@@ -147,9 +152,9 @@ class RemoteGS(RemoteBase):
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        Logger.info(msg.format(self.to_string(path_info), etag))
+        Logger.info(msg.format(self.to_string(path_info), md5))
 
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
         from_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
         self._copy(from_info, path_info)
@@ -281,27 +286,27 @@ class RemoteGS(RemoteBase):
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def _path_to_etag(self, path):
+    def _path_to_md5(self, path):
         relpath = posixpath.relpath(path, self.prefix)
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
-    def _all_etags(self):
+    def _all_md5s(self):
         blobs = self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix)
         blobs = list(blobs)
-        return [self._path_to_etag(blob.name) for blob in blobs]
+        return [self._path_to_md5(blob.name) for blob in blobs]
 
     def gc(self, cinfos):
-        used = [info[self.PARAM_ETAG] for info in cinfos['gs']]
+        used = [info[self.PARAM_MD5] for info in cinfos['gs']]
         used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
 
         removed = False
-        for etag in self._all_etags():
-            if etag in used:
+        for md5 in self._all_md5s():
+            if md5 in used:
                 continue
             path_info = {'scheme': 'gs',
                          'bucket': self.bucket,
                          'key': posixpath.join(self.prefix,
-                                               etag[0:2], etag[2:])}
+                                               md5[0:2], md5[2:])}
             self.remove(path_info)
             removed = True
 
