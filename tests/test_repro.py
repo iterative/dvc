@@ -616,6 +616,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
 
         self.dvc = Project('.')
+        self.dvc.logger.be_verbose()
 
         foo_key = remote_key + self.sep + self.FOO
         bar_key = remote_key + self.sep + self.BAR
@@ -634,31 +635,47 @@ class TestReproExternalBase(TestDvc):
         import_stage = self.dvc.imp(out_foo_path, 'import')
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.FOO, shallow=False))
+        self.assertEqual(self.dvc.status(import_stage.path), {})
 
         import_remote_stage = self.dvc.imp(out_foo_path, out_foo_path + '_imported')
+        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
 
         cmd_stage = self.dvc.run(outs=[out_bar_path],
                              deps=[out_foo_path],
                              cmd=self.cmd(foo_path, bar_path))
+        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+
+        self.assertEqual(self.dvc.status(), {})
 
         self.write(self.bucket, foo_key, self.BAR_CONTENTS)
 
         sleep()
 
-        self.dvc.status()
+        self.assertNotEqual(self.dvc.status(), {})
 
         stages = self.dvc.reproduce(import_stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.BAR, shallow=False))
+        self.assertEqual(self.dvc.status(import_stage.path), {})
+
+        stages = self.dvc.reproduce(import_remote_stage.path)
+        self.assertEqual(len(stages), 1)
+        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
 
         stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)
+        self.assertEqual(self.dvc.status(cmd_stage.path), {})
 
+        self.assertEqual(self.dvc.status(), {})
         self.dvc.gc()
+        self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
+        self.assertNotEqual(self.dvc.status(cmd_stage.path), {})
+
         self.dvc.checkout(cmd_stage.path, force=True)
+        self.assertEqual(self.dvc.status(cmd_stage.path), {})
 
 
 class TestReproExternalS3(TestReproExternalBase):

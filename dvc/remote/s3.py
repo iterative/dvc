@@ -198,13 +198,17 @@ class RemoteS3(RemoteBase):
                  'key': posixpath.join(self.prefix,
                                        md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _all_keys(self):
+    def _all_keys(self, bucket, prefix):
         s3 = self.s3
 
         keys = []
-        kwargs = {'Bucket': self.bucket,
-                  'Prefix': self.prefix}
+        kwargs = {'Bucket': bucket,
+                  'Prefix': prefix}
         while True:
+            # NOTE: list_objects_v2() is 90% faster than head_object [1]
+            #
+            # [1] https://www.peterbe.com/plog/
+            #     fastest-way-to-find-out-if-a-file-exists-in-s3
             resp = s3.list_objects_v2(**kwargs)
             contents = resp.get('Contents', None)
             if not contents:
@@ -222,17 +226,19 @@ class RemoteS3(RemoteBase):
         return keys
 
     def exists(self, path_infos):
-        # NOTE: We mostly use exists() method when filtering a bulk of cache
-        # files to decide if we need to download/upload them and in s3
-        # list_objects_v2() is much-much faster than trying to check keys
-        # one-by-one.
         ret = []
 
-        keys = self._all_keys()
+        if len(path_infos) == 0:
+            return ret
+
+        bucket = path_infos[0]['bucket']
 
         for path_info in path_infos:
+            assert path_info['scheme'] == self.scheme
+            assert path_info['bucket'] == bucket
             exists = False
-            if path_info['key'] in keys:
+            key = path_info['key']
+            if key in self._all_keys(bucket, key):
                 exists = True
             ret.append(exists)
 
@@ -332,7 +338,7 @@ class RemoteS3(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all(self):
-        keys = self._all_keys()
+        keys = self._all_keys(self.bucket, self.prefix)
         return [self._path_to_etag(key) for key in keys]
 
     def gc(self, cinfos):

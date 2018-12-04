@@ -42,6 +42,9 @@ class RemoteAzure(RemoteBase):
             match.group('container_name')
             or os.getenv('AZURE_STORAGE_CONTAINER_NAME'))
 
+        # FIXME: currently Azure doesn't support prefixes
+        self.prefix = '/'
+
         self.connection_string = (
             match.group('connection_string')
             or os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
@@ -138,19 +141,26 @@ class RemoteAzure(RemoteBase):
             'key': '{}/{}'.format(md5[0:2], md5[2:])
         } for md5 in md5s]
 
-    def _all_keys(self):
+    def _all_keys(self, bucket, prefix):
         return {blob.name
-                for blob in self.blob_service.list_blobs(self.bucket)}
+                for blob in self.blob_service.list_blobs(bucket,
+                                                         prefix=prefix)}
 
     def exists(self, path_infos):
-        keys = self._all_keys()
         ret = []
+
+        if len(path_infos) == 0:
+            return ret
+
+        bucket = path_infos[0]['bucket']
+        key = path_infos[0]['key']
+
         for path_info in path_infos:
-            if path_info['scheme'] != self.scheme:
-                raise NotImplementedError
+            assert path_info['scheme'] == self.scheme
+            assert path_info['bucket'] == bucket
 
             key = path_info['key']
-            ret.append(key in keys)
+            ret.append(key in self._all_keys(bucket, key))
 
         return ret
 
@@ -229,7 +239,7 @@ class RemoteAzure(RemoteBase):
         return posixpath.dirname(path) + posixpath.basename(path)
 
     def _all(self):
-        keys = self._all_keys()
+        keys = self._all_keys(self.bucket, self.prefix)
         return [self._path_to_etag(key) for key in keys]
 
     def gc(self, cinfos):

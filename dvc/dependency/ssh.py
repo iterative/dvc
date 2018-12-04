@@ -33,6 +33,9 @@ class DependencySSH(DependencyBase):
                           'path': path}
 
     def changed(self):
+        if not self.exists:
+            return True
+
         return self.info != self.remote.save_info(self.path_info)
 
     def save(self):

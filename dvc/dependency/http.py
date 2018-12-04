@@ -33,4 +33,7 @@ class DependencyHTTP(DependencyBase):
         return ret
 
     def changed(self):
+        if not self.exists:
+            return True
+
         return self.info != self.remote.save_info(self.path_info)
