@@ -8,6 +8,7 @@ import subprocess
 from dvc.project import Project
 from dvc.main import main
 from dvc.utils import file_md5
+from dvc.system import System
 from dvc.stage import Stage, StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
 from dvc.command.run import CmdRun
@@ -256,7 +257,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
                     'python', self.CODE, self.FOO])
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(os.path.islink(self.FOO))
+        self.assertTrue(System.is_symlink(self.FOO))
         self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
 
         ret = main(['run',
@@ -267,7 +268,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
                     'python', self.CODE, self.FOO])
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertTrue(os.path.islink(self.FOO))
+        self.assertTrue(System.is_symlink(self.FOO))
         self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
 
 
@@ -293,7 +294,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
                     'python', self.CODE, self.FOO])
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(os.stat(self.FOO).st_nlink, 2)
+        self.assertTrue(System.is_hardlink(self.FOO))
         self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
 
         ret = main(['run',
@@ -304,7 +305,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
                     'python', self.CODE, self.FOO])
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(os.stat(self.FOO).st_nlink, 2)
+        self.assertTrue(System.is_hardlink(self.FOO))
         self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
 
 
