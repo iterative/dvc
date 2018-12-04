@@ -240,3 +240,22 @@ class System(object):
             return System._wait_for_input_posix(timeout)
         else:
             return System._wait_for_input_windows(timeout)
+
+    @staticmethod
+    def is_symlink(path):
+        if System.is_unix():
+            return os.path.islink(path)
+
+        # https://docs.microsoft.com/en-us/windows/desktop/fileio/
+        # file-attribute-constants
+        FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+        info = System.getdirinfo(path)
+        return info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+
+    @staticmethod
+    def is_hardlink(path):
+        if System.is_unix():
+            return os.stat(path).st_nlink > 1
+
+        info = System.getdirinfo(path)
+        return info.nNumberOfLinks > 1
