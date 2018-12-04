@@ -31,7 +31,8 @@ class CmdRun(CmdBase):
                              cwd=self.args.cwd,
                              no_exec=self.args.no_exec,
                              overwrite=overwrite,
-                             ignore_build_cache=self.args.ignore_build_cache)
+                             ignore_build_cache=self.args.ignore_build_cache,
+                             remove_outs=self.args.remove_outs)
         except DvcException as ex:
             self.project.logger.error('Failed to run command', ex)
             return 1

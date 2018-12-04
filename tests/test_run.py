@@ -185,6 +185,23 @@ class TestCmdRun(TestDvc):
         self.assertEqual(ret, 252)
 
 
+class TestRunRemoveOuts(TestDvc):
+    def test(self):
+        with open(self.CODE, 'w+') as fobj:
+            fobj.write("import sys\n")
+            fobj.write("import os\n")
+            fobj.write("if os.path.exists(sys.argv[1]):\n")
+            fobj.write("    sys.exit(1)\n")
+            fobj.write("open(sys.argv[1], 'w+').close()\n")
+
+        ret = main(['run',
+                    '--remove-outs',
+                    '-d', self.CODE,
+                    '-o', self.FOO,
+                    'python', self.CODE, self.FOO])
+        self.assertEqual(ret, 0)
+
+
 class TestCmdRunOverwrite(TestDvc):
     def test(self):
         ret = main(['run',

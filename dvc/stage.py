@@ -340,7 +340,8 @@ class Stage(object):
               locked=False,
               add=False,
               overwrite=True,
-              ignore_build_cache=False):
+              ignore_build_cache=False,
+              remove_outs=False):
 
         stage = Stage(project=project,
                       cwd=cwd,
@@ -367,6 +368,10 @@ class Stage(object):
 
         stage.cwd = cwd
         stage.path = path
+
+        # NOTE: remove outs before we check build cache
+        if remove_outs:
+            stage.remove_outs(ignore_remove=False)
 
         if os.path.exists(path):
             if not ignore_build_cache and stage.is_cached():

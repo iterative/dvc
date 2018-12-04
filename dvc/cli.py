@@ -286,6 +286,11 @@ def parse_args(argv=None):
                         "ran with the same command/dependencies/outputs/etc "
                         "before.")
     run_parser.add_argument(
+                        '--remove-outs',
+                        action='store_true',
+                        default=False,
+                        help="Remove outputs before running the command.")
+    run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
                         help='Command or command file to execute.')
