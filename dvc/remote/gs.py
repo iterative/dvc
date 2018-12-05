@@ -62,7 +62,7 @@ class RemoteGS(RemoteBase):
 
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
-        return codecs.getencoder('hex')(md5)[0]
+        return codecs.getencoder('hex')(md5)[0].decode('utf-8')
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'gs':
