@@ -1,5 +1,6 @@
 import os
 import stat
+import time
 import shutil
 import filecmp
 
@@ -113,6 +114,9 @@ class TestAddModifiedDir(TestDvc):
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
         os.unlink(self.DATA)
+
+        time.sleep(2)
+
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
