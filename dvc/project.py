@@ -248,6 +248,10 @@ class Project(object):
                                     outs=[f],
                                     add=True)
 
+                if stage is None:
+                    stages.append(stage)
+                    continue
+
                 self._check_output_duplication(stage.outs, all_stages)
 
                 stage.save()
@@ -413,6 +417,9 @@ class Project(object):
                             cmd=None,
                             deps=[url],
                             outs=[out])
+
+        if stage is None:
+            return None
 
         self._check_output_duplication(stage.outs, self.stages())
         self._check_circular_dependency(stage.deps, stage.outs)
