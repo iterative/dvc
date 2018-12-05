@@ -59,6 +59,9 @@ class Logger(object):
             def filter(self, record):
                 return record.levelno <= logging.WARNING
 
+        if Logger._already_initialized():
+            return
+
         sh_out = logging.StreamHandler(sys.stdout)
         sh_out.setFormatter(logging.Formatter(Logger.FMT))
         sh_out.setLevel(logging.DEBUG)
@@ -243,3 +246,7 @@ class Logger(object):
             )
 
         print(box)
+
+    @staticmethod
+    def _already_initialized():
+        return bool(Logger.logger().handlers)
