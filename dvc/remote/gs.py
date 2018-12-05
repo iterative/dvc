@@ -54,6 +54,7 @@ class RemoteGS(RemoteBase):
 
     def get_md5(self, bucket, key):
         import base64
+        import codecs
 
         blob = self.gs.bucket(bucket).get_blob(key)
         if not blob:
@@ -61,7 +62,7 @@ class RemoteGS(RemoteBase):
 
         b64_md5 = blob.md5_hash
         md5 = base64.b64decode(b64_md5)
-        return md5.encode('hex')
+        return codecs.getencoder('hex')(md5)[0]
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'gs':
