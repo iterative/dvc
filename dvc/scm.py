@@ -18,6 +18,12 @@ class Base(object):
         self.project = project
         self.root_dir = root_dir
 
+    def __repr__(self):
+        return "{class_name}: '{directory}'".format(
+            class_name=type(self).__name__,
+            directory=self.dir
+        )
+
     @property
     def dir(self):
         return None

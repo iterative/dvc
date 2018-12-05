@@ -113,12 +113,20 @@ class Stage(object):
         self.md5 = md5
         self.locked = locked
 
+    def __repr__(self):
+        return "Stage: '{path}'".format(
+            path=self.relpath if self.path else 'No path'
+        )
+
     @property
     def relpath(self):
         return os.path.relpath(self.path)
 
     @property
     def is_data_source(self):
+        """
+        Whether the stage file was created with `dvc add`.
+        """
         return self.cmd is None
 
     @staticmethod
@@ -147,13 +155,20 @@ class Stage(object):
 
     @property
     def is_callback(self):
+        """
+        A callback stage is always considered as changed,
+        so it runs on every `dvc repro` call.
+        """
         return not self.is_data_source and len(self.deps) == 0
 
     @property
     def is_import(self):
-        return not self.cmd and \
-               len(self.deps) == 1 and \
-               len(self.outs) == 1
+        """
+        Whether the stage file was created with `dvc import`.
+        """
+        return (not self.cmd
+                and len(self.deps) == 1
+                and len(self.outs) == 1)
 
     def _changed_deps(self, log):
         if self.locked:
@@ -210,6 +225,9 @@ class Stage(object):
         return ret
 
     def remove_outs(self, ignore_remove=False):
+        """
+        Used mainly for `dvc remove --outs`
+        """
         for out in self.outs:
             out.remove(ignore_remove=ignore_remove)
 
@@ -254,7 +272,7 @@ class Stage(object):
             raise StageFileFormatError(fname, exc)
 
     @staticmethod
-    def loadd(project, d, path):
+    def _loadd(project, d, path):
         Stage.validate(d, fname=os.path.relpath(path))
         path = os.path.abspath(path)
         cwd = os.path.dirname(path)
@@ -303,10 +321,10 @@ class Stage(object):
         if not os.path.realpath(cwd).startswith(proj_dir):
             raise StageBadCwdError(cwd)
 
+    @property
     def is_cached(self):
         """
-        Checks if this stage has been already ran and saved to the same
-        dvc file.
+        Checks if this stage has been already ran and stored
         """
         from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
@@ -335,19 +353,19 @@ class Stage(object):
         return old_d == new_d
 
     @staticmethod
-    def loads(project=None,
-              cmd=None,
-              deps=[],
-              outs=[],
-              outs_no_cache=[],
-              metrics_no_cache=[],
-              fname=None,
-              cwd=os.curdir,
-              locked=False,
-              add=False,
-              overwrite=True,
-              ignore_build_cache=False,
-              remove_outs=False):
+    def create(project=None,
+               cmd=None,
+               deps=[],
+               outs=[],
+               outs_no_cache=[],
+               metrics_no_cache=[],
+               fname=None,
+               cwd=os.curdir,
+               locked=False,
+               add=False,
+               overwrite=True,
+               ignore_build_cache=False,
+               remove_outs=False):
 
         stage = Stage(project=project,
                       cwd=cwd,
@@ -359,6 +377,9 @@ class Stage(object):
         stage.outs += output.loads_from(stage, metrics_no_cache,
                                         use_cache=False, metric=True)
         stage.deps = dependency.loads_from(stage, deps)
+
+        stage._check_circular_dependency()
+        stage._check_duplicated_arguments()
 
         if fname is not None and os.path.basename(fname) != fname:
             msg = "Stage file name '{}' should not contain subdirectories. " \
@@ -385,7 +406,7 @@ class Stage(object):
             stage.unprotect_outs()
 
         if os.path.exists(path):
-            if not ignore_build_cache and stage.is_cached():
+            if not ignore_build_cache and stage.is_cached:
                 Logger.info('Stage is cached, skipping.')
                 return None
 
@@ -423,7 +444,7 @@ class Stage(object):
             raise StageFileIsNotDvcFileError(fname)
 
         with open(fname, 'r') as fd:
-            return Stage.loadd(project, yaml.safe_load(fd) or dict(), fname)
+            return Stage._loadd(project, yaml.safe_load(fd) or dict(), fname)
 
     def dumpd(self):
         ret = {}
@@ -504,6 +525,27 @@ class Stage(object):
               "in '.fishrc', which might affect your command. See " \
               "https://github.com/iterative/dvc/issues/1307. "
         self.project.logger.warn(msg)
+
+    def _check_circular_dependency(self):
+        from dvc.exceptions import CircularDependencyError
+
+        circular_dependencies = (
+            set(file.path for file in self.deps) &
+            set(file.path for file in self.outs)
+        )
+
+        if circular_dependencies:
+            raise CircularDependencyError(circular_dependencies.pop())
+
+    def _check_duplicated_arguments(self):
+        from dvc.exceptions import ArgumentDuplicationError
+        from collections import Counter
+
+        count = Counter(file.path for file in self.deps + self.outs)
+
+        for file, occurrence in count.items():
+            if occurrence > 1:
+                raise ArgumentDuplicationError(file)
 
     def _run(self):
         self._check_missing_deps()

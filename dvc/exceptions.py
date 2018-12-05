@@ -50,6 +50,13 @@ class CircularDependencyError(DvcException):
         super(CircularDependencyError, self).__init__(msg.format(dependency))
 
 
+class ArgumentDuplicationError(DvcException):
+    def __init__(self, path):
+        assert isinstance(path, str)
+        msg = "File '{}' is specified more than once."
+        super(ArgumentDuplicationError, self).__init__(msg.format(path))
+
+
 class MoveNotDataSourceError(DvcException):
     def __init__(self, path):
         msg = "Move is not permitted for stages that are not data sources. " \
