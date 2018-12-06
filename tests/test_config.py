@@ -67,7 +67,7 @@ class TestConfigCLI(TestDvc):
         self._do_test(True)
 
     def test_non_existing(self):
-        #FIXME check stdout/err
+        # FIXME check stdout/err
 
         ret = main(['config', 'non_existing_section.field'])
         self.assertEqual(ret, 1)

@@ -1,17 +1,14 @@
 import os
 import mock
-import time
 import shutil
 import filecmp
 import subprocess
 
-from dvc.project import Project
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.system import System
-from dvc.stage import Stage, StageFileBadNameError, MissingDep
+from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
-from dvc.command.run import CmdRun
 from dvc.exceptions import (OutputDuplicationError,
                             CircularDependencyError,
                             WorkingDirectoryAsOutputError)
@@ -42,7 +39,7 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].path, outs[0])
-        self.assertEqual(stage.outs[0].md5, file_md5(self.FOO)[0])  
+        self.assertEqual(stage.outs[0].md5, file_md5(self.FOO)[0])
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):
@@ -92,7 +89,6 @@ class TestRunBadStageFilename(TestDvc):
                          outs_no_cache=[],
                          fname=os.path.join(self.DATA_DIR, 'empty.dvc'),
                          cwd=os.curdir)
-
 
 
 class TestRunNoExec(TestDvc):
@@ -165,7 +161,8 @@ class TestCmdRun(TestDvc):
 
     def test_run_args_with_spaces(self):
         with open(self.CODE, 'w') as fobj:
-            fobj.write("import sys\nopen(sys.argv[1], 'w+').write(sys.argv[2])")
+            fobj.write(
+                "import sys\nopen(sys.argv[1], 'w+').write(sys.argv[2])")
 
         arg = 'arg1 arg2'
         log = 'log'
@@ -412,28 +409,28 @@ class TestRunDeterministicChangedDep(TestRunDeterministicBase):
         os.unlink(self.FOO)
         shutil.copy(self.BAR, self.FOO)
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()
 
 
 class TestRunDeterministicChangedDepsList(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.BAR, self.CODE]
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()
 
 
 class TestRunDeterministicNewDep(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.FOO, self.BAR, self.CODE]
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()
 
 
 class TestRunDeterministicRemoveDep(TestRunDeterministicBase):
     def test(self):
         self.deps = [self.CODE]
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()
 
 
 class TestRunDeterministicChangedOut(TestRunDeterministicBase):
@@ -441,11 +438,11 @@ class TestRunDeterministicChangedOut(TestRunDeterministicBase):
         os.unlink(self.out_file)
         self.out_file_mtime = None
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()
 
 
 class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
     def test(self):
         self.cmd += ' arg'
         with self.assertRaises(StageFileAlreadyExistsError):
-           self._run()
+            self._run()

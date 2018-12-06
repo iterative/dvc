@@ -1,15 +1,10 @@
 import os
-import shutil
-import filecmp
 import configobj
 
 from git import Repo
 
 from dvc.main import main
-from dvc.utils import file_md5
-from dvc.stage import Stage
 from dvc.project import Project
-from dvc.command.gc import CmdGC
 
 from tests.basic_env import TestDvc
 from tests.basic_env import TestDir

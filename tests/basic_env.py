@@ -1,6 +1,5 @@
 import os
 import uuid
-import shutil
 import tempfile
 from git import Repo
 from unittest import TestCase
@@ -9,7 +8,9 @@ from dvc.project import Project
 
 
 class TestDir(TestCase):
-    GCP_CREDS_FILE = os.path.abspath(os.path.join('scripts', 'ci', 'gcp-creds.json'))
+    GCP_CREDS_FILE = os.path.abspath(os.path.join('scripts',
+                                                  'ci',
+                                                  'gcp-creds.json'))
     DATA_DIR = 'data_dir'
     DATA_SUB_DIR = os.path.join(DATA_DIR, 'data_sub_dir')
     DATA = os.path.join(DATA_DIR, 'data')
@@ -21,7 +22,8 @@ class TestDir(TestCase):
     BAR = 'bar'
     BAR_CONTENTS = BAR
     CODE = 'code.py'
-    CODE_CONTENTS = 'import sys\nimport shutil\nshutil.copyfile(sys.argv[1], sys.argv[2])'
+    CODE_CONTENTS = ('import sys\nimport shutil\n'
+                     'shutil.copyfile(sys.argv[1], sys.argv[2])')
 
     def _pushd(self, d):
         self._saved_dir = os.path.realpath(os.curdir)

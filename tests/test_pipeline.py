@@ -19,11 +19,11 @@ class TestPipelineShowSingle(TestDvc):
 
     def test_commands(self):
         ret = main(['pipeline', 'show', self.stage, '--commands'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_outs(self):
         ret = main(['pipeline', 'show', self.stage, '--outs'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_ascii(self):
         ret = main(['pipeline', 'show', '--ascii', self.stage])
@@ -43,12 +43,14 @@ class TestPipelineShowSingle(TestDvc):
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage, '--commands'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage,
+                    '--commands'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage, '--outs'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage,
+                    '--outs'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
@@ -72,23 +74,25 @@ class TestPipelineShow(TestRepro):
 
     def test_commands(self):
         ret = main(['pipeline', 'show', self.file1_stage, '--commands'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_outs(self):
         ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_ascii(self):
         ret = main(['pipeline', 'show', '--ascii', self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_dot(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_ascii_commands(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--commands'])
+        ret = main(['pipeline', 'show', '--ascii', self.file1_stage,
+                    '--commands'])
         self.assertEqual(ret, 0)
 
     def test_ascii_outs(self):
@@ -96,12 +100,14 @@ class TestPipelineShow(TestRepro):
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage, '--commands'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage, '--commands'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage, '--outs'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage, '--outs'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
@@ -125,23 +131,25 @@ class TestPipelineShowDeep(TestReproChangedDeepData):
 
     def test_commands(self):
         ret = main(['pipeline', 'show', self.file1_stage, '--commands'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_outs(self):
         ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
-        self.assertEqual(ret, 0)        
+        self.assertEqual(ret, 0)
 
     def test_ascii(self):
         ret = main(['pipeline', 'show', '--ascii', self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_dot(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_ascii_commands(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--commands'])
+        ret = main(['pipeline', 'show', '--ascii', self.file1_stage,
+                    '--commands'])
         self.assertEqual(ret, 0)
 
     def test_ascii_outs(self):
@@ -149,12 +157,14 @@ class TestPipelineShowDeep(TestReproChangedDeepData):
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage, '--commands'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage, '--commands'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.file1_stage, '--outs'])
+        ret = main(['pipeline', 'show', '--dot', self.dotFile,
+                    self.file1_stage, '--outs'])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 

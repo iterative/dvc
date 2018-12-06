@@ -2,7 +2,6 @@ import os
 import configobj
 
 from dvc.main import main
-from dvc.project import Project
 from dvc.command.remote import CmdRemoteAdd
 from dvc.exceptions import UnsupportedRemoteError
 from dvc.remote import Remote
@@ -19,12 +18,14 @@ class TestRemote(TestDvc):
         self.assertNotEqual(main(['remote', 'remove', remotes[0]]), 0)
 
         for r in remotes:
-            self.assertEqual(main(['remote', 'add', '--default', r, 's3://bucket/name']), 0)
+            self.assertEqual(main(['remote', 'add', '--default', r,
+                                   's3://bucket/name']), 0)
 
         self.assertEqual(main(['remote', 'list']), 0)
 
         self.assertEqual(main(['remote', 'remove', remotes[0]]), 0)
-        self.assertEqual(main(['remote', 'modify', remotes[0], 'option', 'value']), 0)
+        self.assertEqual(main(['remote', 'modify', remotes[0],
+                               'option', 'value']), 0)
 
         self.assertEqual(main(['remote', 'list']), 0)
 
@@ -52,18 +53,26 @@ class TestRemote(TestDvc):
 class TestRemoteRemoveDefault(TestDvc):
     def test(self):
         remote = 'mys3'
-        self.assertEqual(main(['remote', 'add', '--default', remote, 's3://bucket/name']), 0)
-        self.assertEqual(main(['remote', 'modify', remote, 'profile', 'default']), 0)
+        self.assertEqual(main(['remote', 'add', '--default', remote,
+                               's3://bucket/name']), 0)
+        self.assertEqual(main(['remote', 'modify', remote, 'profile',
+                               'default']), 0)
         self.assertEqual(main(['config', '--local', 'core.remote', remote]), 0)
 
-        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG))
-        local_config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL))
-        self.assertEqual(config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE], remote)
-        self.assertEqual(local_config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE], remote)
+        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir,
+                                                  Config.CONFIG))
+        local_config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir,
+                                                        Config.CONFIG_LOCAL))
+        self.assertEqual(config[Config.SECTION_CORE]
+                               [Config.SECTION_CORE_REMOTE], remote)
+        self.assertEqual(local_config[Config.SECTION_CORE]
+                                     [Config.SECTION_CORE_REMOTE], remote)
 
         self.assertEqual(main(['remote', 'remove', remote]), 0)
-        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG))
-        local_config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL))
+        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir,
+                                                  Config.CONFIG))
+        local_config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir,
+                                                        Config.CONFIG_LOCAL))
         section = Config.SECTION_REMOTE_FMT.format(remote)
         self.assertTrue(section not in config.keys())
 

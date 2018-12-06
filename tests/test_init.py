@@ -1,7 +1,6 @@
 import os
 
 from dvc.main import main
-from dvc.command.init import CmdInit
 from dvc.project import Project, InitError
 
 from tests.basic_env import TestGit, TestDir
@@ -14,7 +13,7 @@ class TestInit(TestGit):
 
     def test_api(self):
         Project.init()
-        
+
         self._test_init()
 
     def test_cli(self):

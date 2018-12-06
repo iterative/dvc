@@ -3,7 +3,6 @@ import os
 from dvc.main import main
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.exceptions import DvcException
-from dvc.command.remove import CmdRemove
 
 from tests.basic_env import TestDvc
 from mock import patch
@@ -30,7 +29,7 @@ class TestRemove(TestDvc):
 
 class TestRemoveNonExistentFile(TestDvc):
     def test(self):
-        with self.assertRaises(StageFileDoesNotExistError) as cx:
+        with self.assertRaises(StageFileDoesNotExistError):
             self.dvc.remove('non_existent_dvc_file')
 
 
@@ -59,6 +58,7 @@ class TestCmdRemove(TestDvc):
         ret = main(['remove',
                     'non-existing-dvc-file'])
         self.assertNotEqual(ret, 0)
+
 
 class TestRemovePurge(TestDvc):
     def test(self):
