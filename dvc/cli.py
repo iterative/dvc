@@ -44,7 +44,7 @@ def _fix_subparsers(subparsers):
 
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('{}{}\n'.format(Logger.error_prefix(), message))
+        sys.stderr.write('{}: {}\n'.format(Logger.error_prefix(), message))
         self.print_help()
         raise DvcParserError()
 
