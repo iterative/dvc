@@ -1,5 +1,4 @@
 import os
-import stat
 import time
 import shutil
 import filecmp
@@ -9,8 +8,6 @@ from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.exceptions import DvcException
 from dvc.output.base import OutputAlreadyTrackedError
-from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
-from dvc.command.add import CmdAdd
 
 from tests.basic_env import TestDvc
 
@@ -34,7 +31,7 @@ class TestAdd(TestDvc):
 
 class TestAddUnupportedFile(TestDvc):
     def test(self):
-        with self.assertRaises(DvcException) as cx:
+        with self.assertRaises(DvcException):
             self.dvc.add('unsupported://unsupported')
 
 
@@ -82,6 +79,7 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertTrue(stage is not None)
         self.assertEquals(os.path.abspath('directory.dvc'), stage.path)
 
+
 class TestAddTrackedFile(TestDvc):
     def test(self):
         fname = 'tracked_file'
@@ -89,7 +87,7 @@ class TestAddTrackedFile(TestDvc):
         self.dvc.scm.add([fname])
         self.dvc.scm.commit('add {}'.format(fname))
 
-        with self.assertRaises(OutputAlreadyTrackedError) as cx:
+        with self.assertRaises(OutputAlreadyTrackedError):
             self.dvc.add(fname)
 
 

@@ -1,7 +1,6 @@
 import os
 import mock
 import requests
-import tempfile
 
 from dvc.main import main
 from dvc.analytics import Analytics

@@ -1,7 +1,6 @@
 import os
 import yaml
 import time
-import stat
 import shutil
 import filecmp
 import collections
@@ -17,10 +16,10 @@ from dvc.exceptions import DvcException
 
 from mock import patch
 
+
 class TestCheckout(TestRepro):
     def setUp(self):
         super(TestCheckout, self).setUp()
-
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
@@ -118,7 +117,8 @@ class CheckoutBase(TestDvc):
         self.dvc.scm.commit('adding ' + fname)
 
     def read_ignored(self):
-        return list(map(lambda s: s.strip('\n'), open(self.GIT_IGNORE).readlines()))
+        return list(map(lambda s: s.strip('\n'),
+                        open(self.GIT_IGNORE).readlines()))
 
     def outs_info(self, stage):
         FileInfo = collections.namedtuple('FileInfo', 'path inode')
@@ -134,6 +134,7 @@ class CheckoutBase(TestDvc):
             FileInfo(path=path, inode=System.inode(path))
             for path in paths
         ]
+
 
 class TestRemoveFilesWhenCheckout(CheckoutBase):
     def test(self):
@@ -342,6 +343,7 @@ class TestCheckoutNotCachedFile(TestDvc):
         stage = self.dvc.run(cmd=cmd,
                              deps=[self.FOO, self.CODE],
                              outs_no_cache=['out'])
+        self.assertTrue(stage is not None)
 
         self.dvc.checkout(force=True)
 

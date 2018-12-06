@@ -14,6 +14,6 @@ class TestSystem(TestDir):
         fd = os.open(locked, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
 
         # should not raise WinError
-        info = System.getdirinfo(locked)
+        System.getdirinfo(locked)
 
         os.close(fd)

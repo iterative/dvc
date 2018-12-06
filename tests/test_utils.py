@@ -21,7 +21,9 @@ class TestUtils(TestDvc):
         self.assertTrue(filecmp.cmp(src, dest, shallow=False))
 
         utils.copyfile(src, dest_dir)
-        self.assertTrue(filecmp.cmp(src, '{}/{}'.format(dest_dir, src), shallow=False))
+        self.assertTrue(filecmp.cmp(src,
+                                    '{}/{}'.format(dest_dir, src),
+                                    shallow=False))
 
         shutil.rmtree(dest_dir)
         os.remove(src)
@@ -41,12 +43,11 @@ class TestUtils(TestDvc):
              'outs': [{'path': 'file1',
                        'metric': {'type': 'raw'},
                        'cache': False,
-                       'md5':'acbd18db4cc2f85cedef654fccc4a4d8'}],
+                       'md5': 'acbd18db4cc2f85cedef654fccc4a4d8'}],
              'deps': [{'path': 'foo',
                        'md5': 'acbd18db4cc2f85cedef654fccc4a4d8'},
                       {'path': 'code.py',
                        'md5': 'd05447644b89960913c7eee5fd776adb'}]}
-
 
         md5 = '8b263fa05ede6c3145c164829be694b4'
 

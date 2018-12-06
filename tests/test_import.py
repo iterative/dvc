@@ -1,12 +1,7 @@
 import os
-import stat
-import shutil
-import tempfile
 from uuid import uuid4
 
 from dvc.main import main
-from dvc.command.imp import CmdImport
-from dvc.exceptions import DvcException
 
 from tests.basic_env import TestDvc
 
@@ -23,6 +18,7 @@ class TestCmdImport(TestDvc):
     def test_unsupported(self):
         ret = main(['import', 'unsupported://path', 'import_unsupported'])
         self.assertNotEqual(ret, 0)
+
 
 class TestDefaultOutput(TestDvc):
     def test(self):

@@ -89,7 +89,9 @@ def _should_test_hdfs():
         return False
 
     try:
-        check_output(['hadoop', 'version'], shell=True, executable=os.getenv('SHELL'))
+        check_output(['hadoop', 'version'],
+                     shell=True,
+                     executable=os.getenv('SHELL'))
     except (CalledProcessError, IOError):
         return False
 
@@ -421,8 +423,9 @@ class TestDataCloudCLIBase(TestDvc):
 
         # NOTE: check if remote gc works correctly on directories
         self.main(['gc', '-c', '-f'] + args)
-        shutil.move(self.dvc.cache.local.cache_dir, self.dvc.cache.local.cache_dir + '.back')
-        
+        shutil.move(self.dvc.cache.local.cache_dir,
+                    self.dvc.cache.local.cache_dir + '.back')
+
         sleep()
         self.main(['fetch'] + args)
 

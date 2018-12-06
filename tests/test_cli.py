@@ -1,7 +1,6 @@
 import os
 
 from dvc.cli import parse_args
-from dvc.main import main
 from dvc.command.init import CmdInit
 from dvc.command.run import CmdRun
 from dvc.command.data_sync import CmdDataPull, CmdDataPush

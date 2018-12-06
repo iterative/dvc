@@ -52,15 +52,15 @@ class TestSchemaDepsOuts(TestSchema):
         Stage.validate(d)
 
     def test_list(self):
-        l = [{OutputLOCAL.PARAM_PATH: 'foo', RemoteLOCAL.PARAM_MD5: '123'},
-             {OutputLOCAL.PARAM_PATH: 'bar', RemoteLOCAL.PARAM_MD5: None},
-             {OutputLOCAL.PARAM_PATH: 'baz'}]
-        d = {Stage.PARAM_DEPS: l}
+        lst = [{OutputLOCAL.PARAM_PATH: 'foo', RemoteLOCAL.PARAM_MD5: '123'},
+               {OutputLOCAL.PARAM_PATH: 'bar', RemoteLOCAL.PARAM_MD5: None},
+               {OutputLOCAL.PARAM_PATH: 'baz'}]
+        d = {Stage.PARAM_DEPS: lst}
         Stage.validate(d)
 
-        l[0][OutputLOCAL.PARAM_CACHE] = True
-        l[1][OutputLOCAL.PARAM_CACHE] = False
-        d = {Stage.PARAM_OUTS: l}
+        lst[0][OutputLOCAL.PARAM_CACHE] = True
+        lst[1][OutputLOCAL.PARAM_CACHE] = False
+        d = {Stage.PARAM_OUTS: lst}
         Stage.validate(d)
 
 

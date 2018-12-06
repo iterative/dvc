@@ -2,9 +2,7 @@ import os
 import shutil
 
 from dvc.cache import Cache
-from dvc.system import System
 from dvc.main import main
-from dvc.remote.local import RemoteLOCAL
 
 from tests.basic_env import TestDvc, TestDir
 
@@ -97,11 +95,16 @@ class TestSharedCacheDir(TestDir):
         self.assertFalse(os.path.exists(os.path.join('dir1', '.dvc', 'cache')))
         self.assertFalse(os.path.exists(os.path.join('dir2', '.dvc', 'cache')))
 
-        subdirs = list(filter(lambda x: os.path.isdir(os.path.join(cache_dir, x)), os.listdir(cache_dir)))
+        subdirs = list(filter(
+                        lambda x: os.path.isdir(os.path.join(cache_dir, x)),
+                        os.listdir(cache_dir)))
         self.assertEqual(len(subdirs), 3)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[0]))), 1)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[1]))), 1)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[2]))), 1)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir,
+                                                     subdirs[0]))), 1)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir,
+                                                     subdirs[1]))), 1)
+        self.assertEqual(len(os.listdir(os.path.join(cache_dir,
+                                                     subdirs[2]))), 1)
 
 
 class TestCacheLinkType(TestDvc):

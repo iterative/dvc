@@ -5,13 +5,10 @@ try:
 except ImportError:
     from io import StringIO
 
-import colorama
 import logging
 
 from dvc.command.base import CmdBase
-from dvc.config import Config
 from dvc.logger import Logger
-from dvc.main import main
 
 from tests.basic_env import TestDvc
 
@@ -52,7 +49,6 @@ class TestLogger(TestDvc):
         Logger.init()
         self.assertEqual(len(Logger.logger().handlers), 2)
 
-
     @patch('dvc.logger.Logger._already_initialized', return_value=False)
     @patch('sys.stderr', new_callable=StringIO)
     @patch('sys.stdout', new_callable=StringIO)
@@ -62,9 +58,9 @@ class TestLogger(TestDvc):
         Logger.error(error_message)
         self.assertEqual('', mock_stdout.getvalue())
         self.assertEqual('Error: {}\n\nHaving any troubles? '
-                                   'Hit us up at dvc.org/support, we '
-                                   'are always happy to help!\n'.format(error_message),
-                                   mock_stderr.getvalue())
+                         'Hit us up at dvc.org/support, we '
+                         'are always happy to help!\n'.format(error_message),
+                         mock_stderr.getvalue())
 
     @patch('dvc.logger.Logger._already_initialized', return_value=False)
     @patch('sys.stderr', new_callable=StringIO)
@@ -75,7 +71,7 @@ class TestLogger(TestDvc):
         Logger.info(non_error_message)
         self.assertEqual('', mock_stderr.getvalue())
         self.assertEqual('{}\n'.format(non_error_message),
-                                   mock_stdout.getvalue())
+                         mock_stdout.getvalue())
 
 
 class TestLoggerException(TestDvc):
@@ -132,9 +128,11 @@ class TestLoggerException(TestDvc):
 class TestLoggerQuiet(TestDvc):
     def setUp(self):
         super(TestLoggerQuiet, self).setUp()
+
         class A(object):
             quiet = True
             verbose = False
+
         CmdBase._set_loglevel(A())
 
     @patch('dvc.logger.Logger._already_initialized', return_value=False)

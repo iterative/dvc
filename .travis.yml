@@ -85,6 +85,7 @@ before_script:
   - python setup.py checkdocs
   # stop the build if there are any flake8 errors
   - flake8 dvc
+  - flake8 tests
 script:
   - bash ./scripts/ci/script.sh
 deploy:
