@@ -61,6 +61,7 @@ _dvc_destroy=(
 
 _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
+  "1:File:_files"
 )
 
 _dvc_import=(
