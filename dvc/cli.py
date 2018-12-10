@@ -293,7 +293,7 @@ def parse_args(argv=None):
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
-                        help='Command or command file to execute.')
+                        help='Command to execute.')
     run_parser.set_defaults(func=CmdRun)
 
     # Parent parser used in pull/push/status
