@@ -1,6 +1,6 @@
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdRemove(CmdBase):
@@ -32,6 +32,6 @@ class CmdRemove(CmdBase):
                 outs_only = self._is_outs_only(target)
                 self.project.remove(target, outs_only=outs_only)
             except DvcException as ex:
-                Logger.error('Failed to remove {}'.format(target), ex)
+                logger.error('Failed to remove {}'.format(target), ex)
                 return 1
         return 0

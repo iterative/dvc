@@ -3,7 +3,7 @@ import threading
 import requests
 import posixpath
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
@@ -55,7 +55,7 @@ class RemoteHTTP(RemoteBase):
 
             msg = "Downloading '{}' to '{}'".format(from_info['url'],
                                                     to_info['path'])
-            Logger.debug(msg)
+            logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -74,7 +74,7 @@ class RemoteHTTP(RemoteBase):
                 self._download_to(from_info['url'], tmp_file, callback=cb)
             except Exception as exc:
                 msg = "Failed to download '{}'".format(from_info['url'])
-                Logger.warn(msg, exc)
+                logger.warn(msg, exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])

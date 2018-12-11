@@ -7,7 +7,7 @@ except ImportError:
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdImport(CmdBase):
@@ -21,6 +21,6 @@ class CmdImport(CmdBase):
 
             self.project.imp(self.args.url, out)
         except DvcException as ex:
-            Logger.error('Failed to import {}'.format(self.args.url), ex)
+            logger.error('Failed to import {}'.format(self.args.url), ex)
             return 1
         return 0

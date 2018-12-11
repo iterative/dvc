@@ -7,7 +7,7 @@ from schema import Schema, SchemaError, Optional, Or, And
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.utils import dict_md5, fix_env
 
 
@@ -220,7 +220,7 @@ class Stage(object):
             msg = "Stage '{}' didn't change.".format(self.relpath)
             color = 'green'
 
-        log(Logger.colorize(msg, color))
+        log(logger.colorize(msg, color))
 
         return ret
 
@@ -429,7 +429,7 @@ class Stage(object):
     def _check_dvc_file(fname):
         sname = fname + Stage.STAGE_FILE_SUFFIX
         if Stage.is_stage_file(sname):
-            Logger.info("Do you mean '{}'?".format(sname))
+            logger.info("Do you mean '{}'?".format(sname))
 
     @staticmethod
     def load(project, fname):
@@ -472,7 +472,7 @@ class Stage(object):
         self._check_dvc_filename(fname)
 
         msg = "Saving information to '{}'.".format(os.path.relpath(fname))
-        Logger.info(msg)
+        logger.info(msg)
 
         with open(fname, 'w') as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)

@@ -1,7 +1,7 @@
 import os
 
 from dvc.exceptions import DvcException
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.utils import fix_env
 
 
@@ -179,7 +179,7 @@ class Git(Base):
 
         msg = "Adding '{}' to '{}'.".format(os.path.relpath(path),
                                             os.path.relpath(gitignore))
-        Logger.info(msg)
+        logger.info(msg)
 
         content = entry
         if len(ignore_list) > 0:
@@ -218,7 +218,7 @@ class Git(Base):
             msg += 'manually using \'git add\'. '
             msg += 'See \'https://github.com/iterative/dvc/issues/610\' '
             msg += 'for more details.'
-            Logger.error(msg.format(str(paths)), exc)
+            logger.error(msg.format(str(paths)), exc)
 
     def commit(self, msg):
         self.repo.index.commit(msg)

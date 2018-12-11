@@ -11,7 +11,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.remote.base import RemoteBase
 from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
@@ -84,7 +84,7 @@ class RemoteGS(RemoteBase):
         if {self.PARAM_MD5: md5} != self.save_info(cache):
             if self.exists([cache])[0]:
                 msg = 'Corrupted cache file {}'
-                Logger.warn(msg.format(self.to_string(cache)))
+                logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
             return True
 
@@ -138,22 +138,22 @@ class RemoteGS(RemoteBase):
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
-            Logger.info(msg.format(self.to_string(path_info)))
+            logger.info(msg.format(self.to_string(path_info)))
             return
 
         if self.changed_cache(md5):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            Logger.warn(msg.format(md5, self.to_string(path_info)))
+            logger.warn(msg.format(md5, self.to_string(path_info)))
             return
 
         if self.exists([path_info])[0]:
             msg = "Data '{}' exists. Removing before checkout."
-            Logger.warn(msg.format(self.to_string(path_info)))
+            logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        Logger.info(msg.format(self.to_string(path_info), md5))
+        logger.info(msg.format(self.to_string(path_info), md5))
 
         key = posixpath.join(self.prefix, md5[0:2], md5[2:])
         from_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
@@ -164,7 +164,7 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        Logger.debug("Removing gs://{}/{}".format(path_info['bucket'],
+        logger.debug("Removing gs://{}/{}".format(path_info['bucket'],
                                                   path_info['key']))
 
         blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
@@ -213,7 +213,7 @@ class RemoteGS(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
+            logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
                                                             to_info['bucket'],
                                                             to_info['key']))
 
@@ -228,7 +228,7 @@ class RemoteGS(RemoteBase):
                 blob.upload_from_filename(from_info['path'])
             except Exception as exc:
                 msg = "Failed to upload '{}' to '{}/{}'"
-                Logger.warn(msg.format(from_info['path'],
+                logger.warn(msg.format(from_info['path'],
                                        to_info['bucket'],
                                        to_info['key']), exc)
                 continue
@@ -258,7 +258,7 @@ class RemoteGS(RemoteBase):
             msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
                                                        from_info['key'],
                                                        to_info['path'])
-            Logger.debug(msg)
+            logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -277,7 +277,7 @@ class RemoteGS(RemoteBase):
                 blob.download_to_filename(tmp_file)
             except Exception as exc:
                 msg = "Failed to download '{}/{}' to '{}'"
-                Logger.warn(msg.format(from_info['bucket'],
+                logger.warn(msg.format(from_info['bucket'],
                                        from_info['key'],
                                        to_info['path']), exc)
                 continue

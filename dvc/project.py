@@ -21,7 +21,7 @@ class Project(object):
     DVC_DIR = '.dvc'
 
     def __init__(self, root_dir=None):
-        from dvc.logger import Logger
+        from dvc.logger import logger
         from dvc.config import Config
         from dvc.state import State
         from dvc.lock import Lock
@@ -45,7 +45,8 @@ class Project(object):
         self.state = State(self, self.config._config)
 
         core = self.config._config[Config.SECTION_CORE]
-        self.logger = Logger(core.get(Config.SECTION_CORE_LOGLEVEL, None))
+        self.logger = logger
+        self.logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL, None))
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
@@ -109,7 +110,7 @@ class Project(object):
         import shutil
         from dvc.scm import SCM, Base
         from dvc.config import Config
-        from dvc.logger import Logger
+        from dvc.logger import logger
 
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
@@ -133,9 +134,9 @@ class Project(object):
         if scm.ignore_file():
             scm.add([os.path.join(dvc_dir, scm.ignore_file())])
 
-        Logger.info('\nYou can now commit the changes to git.')
+        logger.info('\nYou can now commit the changes to git.')
 
-        Logger.info(
+        logger.info(
             "\n"
             "{yellow}What's next?{nc}\n"
             "{yellow}------------{nc}\n"

@@ -9,7 +9,7 @@ from operator import itemgetter
 
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.utils import remove, move, copyfile, dict_md5, to_chunks
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
@@ -95,7 +95,7 @@ class RemoteLOCAL(RemoteBase):
         if self.state.changed(cache, md5=md5):
             if os.path.exists(cache):
                 msg = 'Corrupted cache file {}.'
-                Logger.warn(msg.format(os.path.relpath(cache)))
+                logger.warn(msg.format(os.path.relpath(cache)))
                 remove(cache)
             return True
         return False
@@ -133,12 +133,8 @@ class RemoteLOCAL(RemoteBase):
         if os.path.getsize(cache) == 0:
             open(path, 'w+').close()
 
-            msg = "Created empty file: {} -> {}".format(
-                os.path.relpath(cache),
-                os.path.relpath(path),
-            )
-
-            Logger.debug(msg)
+            msg = "Created empty file: {} -> {}".format(cache, path)
+            logger.debug(msg)
             return
 
         i = len(self.cache_types)
@@ -151,16 +147,13 @@ class RemoteLOCAL(RemoteBase):
 
                 msg = "Created {}'{}': {} -> {}".format(
                     'protected ' if self.protected else '',
-                    self.cache_types[0],
-                    os.path.relpath(cache),
-                    os.path.relpath(path)
-                )
+                    self.cache_types[0], cache, path)
 
-                Logger.debug(msg)
+                logger.debug(msg)
                 return
             except DvcException as exc:
                 msg = 'Cache type \'{}\' is not supported: {}'
-                Logger.debug(msg.format(self.cache_types[0], str(exc)))
+                logger.debug(msg.format(self.cache_types[0], str(exc)))
                 del self.cache_types[0]
                 i -= 1
 
@@ -193,7 +186,7 @@ class RemoteLOCAL(RemoteBase):
             if len(files) > LARGE_DIR_SIZE:
                 msg = "Computing md5 for a large directory {}. " \
                       "This is only done once."
-                Logger.info(msg.format(os.path.relpath(root)))
+                logger.info(msg.format(os.path.relpath(root)))
                 bar = True
                 title = os.path.relpath(root)
                 processed = 0
@@ -234,12 +227,12 @@ class RemoteLOCAL(RemoteBase):
                 d = json.load(fd)
         except Exception as exc:
             msg = u'Failed to load dir cache \'{}\''
-            Logger.error(msg.format(os.path.relpath(path)), exc)
+            logger.error(msg.format(os.path.relpath(path)), exc)
             return []
 
         if not isinstance(d, list):
             msg = u'Dir cache file format error \'{}\': skipping the file'
-            Logger.error(msg.format(os.path.relpath(path)))
+            logger.error(msg.format(os.path.relpath(path)))
             return []
 
         for info in d:
@@ -275,22 +268,22 @@ class RemoteLOCAL(RemoteBase):
 
         if not cache:
             msg = 'No cache info for \'{}\'. Skipping checkout.'
-            Logger.warn(msg.format(os.path.relpath(path)))
+            logger.warn(msg.format(os.path.relpath(path)))
             return
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
-            Logger.info(msg.format(os.path.relpath(path)))
+            logger.info(msg.format(os.path.relpath(path)))
             return
 
         if self.changed_cache(md5):
             msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
-            Logger.warn(msg.format(md5, os.path.relpath(path)))
+            logger.warn(msg.format(md5, os.path.relpath(path)))
             remove(path)
             return
 
         msg = u'Checking out \'{}\' with cache \'{}\'.'
-        Logger.info(msg.format(os.path.relpath(path), md5))
+        logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
             if os.path.exists(path):
@@ -313,7 +306,7 @@ class RemoteLOCAL(RemoteBase):
         dir_size = len(dir_info)
         bar = dir_size > LARGE_DIR_SIZE
 
-        Logger.info("Linking directory '{}'.".format(dir_relpath))
+        logger.info("Linking directory '{}'.".format(dir_relpath))
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
@@ -419,7 +412,7 @@ class RemoteLOCAL(RemoteBase):
         dir_size = len(dir_info)
         bar = dir_size > LARGE_DIR_SIZE
 
-        Logger.info("Linking directory '{}'.".format(dir_relpath))
+        logger.info("Linking directory '{}'.".format(dir_relpath))
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
@@ -451,7 +444,7 @@ class RemoteLOCAL(RemoteBase):
         path = path_info['path']
 
         msg = "Saving '{}' to cache '{}'."
-        Logger.info(msg.format(os.path.relpath(path),
+        logger.info(msg.format(os.path.relpath(path),
                                os.path.relpath(self.cache_dir)))
 
         if os.path.isdir(path):
@@ -519,7 +512,7 @@ class RemoteLOCAL(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}'".format(from_info['path'],
+            logger.debug("Uploading '{}' to '{}'".format(from_info['path'],
                                                          to_info['path']))
 
             if not name:
@@ -531,7 +524,7 @@ class RemoteLOCAL(RemoteBase):
                 copyfile(from_info['path'], to_info['path'], name=name)
             except Exception as exc:
                 msg = "Failed to upload '{}' tp '{}'"
-                Logger.warn(msg.format(from_info['path'],
+                logger.warn(msg.format(from_info['path'],
                                        to_info['path']), exc)
 
     def download(self,
@@ -548,7 +541,7 @@ class RemoteLOCAL(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Downloading '{}' to '{}'".format(from_info['path'],
+            logger.debug("Downloading '{}' to '{}'".format(from_info['path'],
                                                            to_info['path']))
 
             if not name:
@@ -563,7 +556,7 @@ class RemoteLOCAL(RemoteBase):
                          name=name)
             except Exception as exc:
                 msg = "Failed to download '{}' to '{}'"
-                Logger.warn(msg.format(from_info['path'],
+                logger.warn(msg.format(from_info['path'],
                                        to_info['path']), exc)
                 continue
 
@@ -607,7 +600,7 @@ class RemoteLOCAL(RemoteBase):
         return removed
 
     def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        Logger.info("Preparing to pull data from {}".format(remote.url))
+        logger.info("Preparing to pull data from {}".format(remote.url))
         title = "Collecting information"
 
         progress.set_n_total(1)
@@ -704,7 +697,7 @@ class RemoteLOCAL(RemoteBase):
             f.result()
 
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        Logger.info("Preparing to push data to {}".format(remote.url))
+        logger.info("Preparing to push data to {}".format(remote.url))
         title = "Collecting information"
 
         progress.set_n_total(1)

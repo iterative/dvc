@@ -27,6 +27,7 @@ def visual_center(line, width):
 class Logger(object):
     FMT = '%(message)s'
     DEFAULT_LEVEL = logging.INFO
+    DEFAULT_LEVEL_NAME = 'info'
 
     LEVEL_MAP = {
         'debug': logging.DEBUG,
@@ -48,66 +49,55 @@ class Logger(object):
         'error': 'red',
     }
 
-    def __init__(self, loglevel=None):
-        if loglevel:
-            Logger.set_level(loglevel)
+    def __init__(self, loglevel=None, force=False):
+        self.logger = logging.getLogger('dvc')
+        if force or not self._already_initialized():
+            class LogLevelFilter(logging.Filter):
+                def filter(self, record):
+                    return record.levelno <= logging.WARNING
 
-    @staticmethod
-    def init():
+            sh_out = logging.StreamHandler(sys.stdout)
+            sh_out.setFormatter(logging.Formatter(self.FMT))
+            sh_out.setLevel(logging.DEBUG)
+            sh_out.addFilter(LogLevelFilter())
 
-        class LogLevelFilter(logging.Filter):
-            def filter(self, record):
-                return record.levelno <= logging.WARNING
+            sh_err = logging.StreamHandler(sys.stderr)
+            sh_err.setFormatter(logging.Formatter(self.FMT))
+            sh_err.setLevel(logging.ERROR)
 
-        if Logger._already_initialized():
-            return
+            self.logger.addHandler(sh_out)
+            self.logger.addHandler(sh_err)
 
-        sh_out = logging.StreamHandler(sys.stdout)
-        sh_out.setFormatter(logging.Formatter(Logger.FMT))
-        sh_out.setLevel(logging.DEBUG)
-        sh_out.addFilter(LogLevelFilter())
+        self.set_level(loglevel)
 
-        sh_err = logging.StreamHandler(sys.stderr)
-        sh_err.setFormatter(logging.Formatter(Logger.FMT))
-        sh_err.setLevel(logging.ERROR)
-
-        Logger.logger().addHandler(sh_out)
-        Logger.logger().addHandler(sh_err)
-        Logger.set_level()
-
-    @staticmethod
-    def logger():
-        return logging.getLogger('dvc')
-
-    @staticmethod
-    def set_level(level=None):
+    def set_level(self, level=None):
         if not level:
-            lvl = Logger.DEFAULT_LEVEL
+            lvl = self.DEFAULT_LEVEL
         else:
-            lvl = Logger.LEVEL_MAP.get(level.lower(), Logger.DEFAULT_LEVEL)
-        Logger.logger().setLevel(lvl)
+            level = level.lower()
+            lvl = self.LEVEL_MAP.get(level, self.DEFAULT_LEVEL)
+        self.logger.setLevel(lvl)
+        self.lvl = lvl
 
-    @staticmethod
-    def be_quiet():
-        Logger.logger().setLevel(logging.CRITICAL)
+    def be_quiet(self):
+        self.lvl = logging.CRITICAL
+        self.logger.setLevel(logging.CRITICAL)
 
-    @staticmethod
-    def be_verbose():
-        Logger.logger().setLevel(logging.DEBUG)
+    def be_verbose(self):
+        self.lvl = logging.DEBUG
+        self.logger.setLevel(logging.DEBUG)
 
-    @staticmethod
-    def colorize(msg, color):
+    def colorize(self, msg, color):
         header = ''
         footer = ''
 
         if sys.stdout.isatty():  # pragma: no cover
-            header = Logger.COLOR_MAP.get(color.lower(), '')
+            header = self.COLOR_MAP.get(color.lower(), '')
             footer = colorama.Style.RESET_ALL
 
         return u'{}{}{}'.format(header, msg, footer)
 
-    @staticmethod
-    def parse_exc(exc, tb=None):
+    def parse_exc(self, exc, tb=None):
         str_tb = tb if tb else None
         str_exc = str(exc) if exc else ""
         l_str_exc = []
@@ -117,91 +107,89 @@ class Logger(object):
 
         if exc and hasattr(exc, 'cause') and exc.cause:
             cause_tb = exc.cause_tb if hasattr(exc, 'cause_tb') else None
-            l_cause_str_exc, cause_str_tb = Logger.parse_exc(exc.cause,
-                                                             cause_tb)
+            l_cause_str_exc, cause_str_tb = self.parse_exc(exc.cause, cause_tb)
 
             str_tb = cause_str_tb
             l_str_exc += l_cause_str_exc
 
         return (l_str_exc, str_tb)
 
-    @staticmethod
-    def _prefix(msg, typ):
-        color = Logger.LEVEL_COLOR_MAP.get(typ.lower(), '')
-        return Logger.colorize('{}'.format(msg), color)
+    def _prefix(self, msg, typ):
+        color = self.LEVEL_COLOR_MAP.get(typ.lower(), '')
+        return self.colorize('{}'.format(msg), color)
 
-    @staticmethod
-    def error_prefix():
-        return Logger._prefix('Error', 'error')
+    def error_prefix(self):
+        return self._prefix('Error', 'error')
 
-    @staticmethod
-    def warning_prefix():
-        return Logger._prefix('Warning', 'warn')
+    def warning_prefix(self):
+        return self._prefix('Warning', 'warn')
 
-    @staticmethod
-    def debug_prefix():
-        return Logger._prefix('Debug', 'debug')
+    def debug_prefix(self):
+        return self._prefix('Debug', 'debug')
 
-    @staticmethod
-    def _with_progress(func, msg):
+    def _with_progress(self, func, msg):
         from dvc.progress import progress
         with progress:
             func(msg)
 
-    @staticmethod
-    def _with_exc(func, prefix, msg, suffix="", exc=None):
-        l_str_exc, str_tb = Logger.parse_exc(exc)
+    def _with_exc(self, func, prefix, msg, suffix="", exc=None):
+        l_str_exc, str_tb = self.parse_exc(exc)
 
-        if exc is not None and Logger.is_verbose():
+        if exc is not None and self.is_verbose():
             str_tb = str_tb if str_tb else traceback.format_exc()
-            Logger._with_progress(Logger.logger().error, str_tb)
+            self._with_progress(self.logger.error, str_tb)
 
         l_msg = [prefix]
         if msg is not None and len(msg) != 0:
             l_msg.append(msg)
         l_msg += l_str_exc
 
-        Logger._with_progress(func, ': '.join(l_msg) + suffix)
+        self._with_progress(func, ': '.join(l_msg) + suffix)
 
-    @staticmethod
-    def error(msg, exc=None):
+    def error(self, msg, exc=None):
+        if self.is_quiet():
+            return
+
         chat = "\n\nHaving any troubles? Hit us up at dvc.org/support, " \
                "we are always happy to help!"
-        Logger._with_exc(Logger.logger().error,
-                         Logger.error_prefix(),
-                         msg,
-                         suffix=chat,
-                         exc=exc)
+        self._with_exc(self.logger.error,
+                       self.error_prefix(),
+                       msg,
+                       suffix=chat,
+                       exc=exc)
 
-    @classmethod
-    def warn(cls, msg, exc=None):
-        cls._with_exc(cls.logger().warning,
-                      cls.warning_prefix(),
-                      msg,
-                      exc=exc)
+    def warn(self, msg, exc=None):
+        if self.is_quiet():
+            return
 
-    @classmethod
-    def debug(cls, msg, exc=None):
-        cls._with_exc(cls.logger().debug,
-                      cls.debug_prefix(),
-                      msg,
-                      exc=exc)
+        self._with_exc(self.logger.warning,
+                       self.warning_prefix(),
+                       msg,
+                       exc=exc)
 
-    @staticmethod
-    def info(msg):
-        Logger._with_progress(Logger.logger().info, msg)
+    def debug(self, msg, exc=None):
+        if not self.is_verbose():
+            return
 
-    @staticmethod
-    def is_quiet():
-        return Logger.logger().level == logging.CRITICAL
+        self._with_exc(self.logger.debug,
+                       self.debug_prefix(),
+                       msg,
+                       exc=exc)
 
-    @staticmethod
-    def is_verbose():
-        return Logger.logger().getEffectiveLevel() == logging.DEBUG
+    def info(self, msg):
+        if self.is_quiet():
+            return
 
-    @classmethod
-    def box(cls, msg, border_color=''):
-        if cls.is_quiet():
+        self._with_progress(self.logger.info, msg)
+
+    def is_quiet(self):
+        return self.lvl == logging.CRITICAL
+
+    def is_verbose(self):
+        return self.lvl == logging.DEBUG
+
+    def box(self, msg, border_color=''):
+        if self.is_quiet():
             return
 
         lines = msg.split('\n')
@@ -226,27 +214,29 @@ class Logger(object):
 
         padding_lines = [
             "{border}{space}{border}\n".format(
-                border=cls.colorize(chars['vertical'], border_color),
+                border=self.colorize(chars['vertical'], border_color),
                 space=chars['empty'] * box_size_horizontal,
             ) * padding_vertical
         ]
 
         content_lines = [
             "{border}{space}{content}{space}{border}\n".format(
-                border=cls.colorize(chars['vertical'], border_color),
+                border=self.colorize(chars['vertical'], border_color),
                 space=chars['empty'] * padding_horizontal,
                 content=visual_center(line, max_width),
             ) for line in lines
         ]
 
         box = "{margin}{padding}{content}{padding}{margin}".format(
-                margin=cls.colorize(margin, border_color),
+                margin=self.colorize(margin, border_color),
                 padding=''.join(padding_lines),
                 content=''.join(content_lines),
             )
 
         print(box)
 
-    @staticmethod
-    def _already_initialized():
-        return bool(Logger.logger().handlers)
+    def _already_initialized(self):
+        return bool(self.logger.handlers)
+
+
+logger = Logger()

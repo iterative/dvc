@@ -28,7 +28,7 @@ from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
 from dvc.command.daemon import CmdDaemonUpdater, CmdDaemonAnalytics
 from dvc.exceptions import DvcParserError
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc import VERSION
 
 
@@ -44,7 +44,7 @@ def _fix_subparsers(subparsers):
 
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('{}: {}\n'.format(Logger.error_prefix(), message))
+        sys.stderr.write('{}: {}\n'.format(logger.error_prefix(), message))
         self.print_help()
         raise DvcParserError()
 
@@ -293,7 +293,7 @@ def parse_args(argv=None):
     run_parser.add_argument(
                         'command',
                         nargs=argparse.REMAINDER,
-                        help='Command or command file to execute.')
+                        help='Command to execute.')
     run_parser.set_defaults(func=CmdRun)
 
     # Parent parser used in pull/push/status
