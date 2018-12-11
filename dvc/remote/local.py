@@ -133,11 +133,7 @@ class RemoteLOCAL(RemoteBase):
         if os.path.getsize(cache) == 0:
             open(path, 'w+').close()
 
-            msg = "Created empty file: {} -> {}".format(
-                os.path.relpath(cache),
-                os.path.relpath(path),
-            )
-
+            msg = "Created empty file: {} -> {}".format(cache, path)
             Logger.debug(msg)
             return
 
@@ -151,10 +147,7 @@ class RemoteLOCAL(RemoteBase):
 
                 msg = "Created {}'{}': {} -> {}".format(
                     'protected ' if self.protected else '',
-                    self.cache_types[0],
-                    os.path.relpath(cache),
-                    os.path.relpath(path)
-                )
+                    self.cache_types[0], cache, path)
 
                 Logger.debug(msg)
                 return
