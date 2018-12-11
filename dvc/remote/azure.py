@@ -8,7 +8,7 @@ try:
 except ImportError:
     BlockBlobService = None
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -129,7 +129,7 @@ class RemoteAzure(RemoteBase):
         if path_info['scheme'] != self.scheme:
             raise NotImplementedError
 
-        Logger.debug('Removing azure://{}/{}'.format(path_info['bucket'],
+        logger.debug('Removing azure://{}/{}'.format(path_info['bucket'],
                                                      path_info['key']))
 
         self.blob_service.delete_blob(path_info['bucket'], path_info['key'])
@@ -177,7 +177,7 @@ class RemoteAzure(RemoteBase):
             bucket = to_info['bucket']
             key = to_info['key']
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(
+            logger.debug("Uploading '{}' to '{}/{}'".format(
                 from_info['path'], bucket, key))
 
             if not name:
@@ -190,7 +190,7 @@ class RemoteAzure(RemoteBase):
                     bucket, key, from_info['path'], progress_callback=cb)
             except Exception as ex:
                 msg = "Failed to upload '{}'".format(from_info['path'])
-                Logger.warn(msg, ex)
+                logger.warn(msg, ex)
             else:
                 progress.finish_target(name)
 
@@ -211,7 +211,7 @@ class RemoteAzure(RemoteBase):
             bucket = from_info['bucket']
             key = from_info['key']
 
-            Logger.debug("Downloading '{}/{}' to '{}'".format(
+            logger.debug("Downloading '{}/{}' to '{}'".format(
                 bucket, key, to_info['path']))
 
             tmp_file = self.tmp_file(to_info['path'])
@@ -227,7 +227,7 @@ class RemoteAzure(RemoteBase):
                     bucket, key, tmp_file, progress_callback=cb)
             except Exception as exc:
                 msg = "Failed to download '{}/{}'".format(bucket, key)
-                Logger.warn(msg, exc)
+                logger.warn(msg, exc)
             else:
                 os.rename(tmp_file, to_info['path'])
 

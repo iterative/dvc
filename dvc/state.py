@@ -7,7 +7,7 @@ from dvc.config import Config
 from dvc.system import System
 from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class StateDuplicateError(DvcException):
@@ -88,7 +88,7 @@ class State(object):
         actual = self.update(path)
 
         msg = "File '{}', md5 '{}', actual '{}'"
-        Logger.debug(msg.format(path, md5, actual))
+        logger.debug(msg.format(path, md5, actual))
 
         if not md5 or not actual:
             return True
@@ -96,12 +96,12 @@ class State(object):
         return actual.split('.')[0] != md5.split('.')[0]
 
     def _execute(self, cmd):
-        Logger.debug(cmd)
+        logger.debug(cmd)
         return self.c.execute(cmd)
 
     def _fetchall(self):
         ret = self.c.fetchall()
-        Logger.debug("fetched: {}".format(ret))
+        logger.debug("fetched: {}".format(ret))
         return ret
 
     def _to_sqlite(self, n):
@@ -263,7 +263,7 @@ class State(object):
 
     @staticmethod
     def inode(path):
-        Logger.debug('Path {} inode {}'.format(path, System.inode(path)))
+        logger.debug('Path {} inode {}'.format(path, System.inode(path)))
         return System.inode(path)
 
     def _do_update(self, path):
@@ -299,7 +299,7 @@ class State(object):
             i = self._from_sqlite(i)
             assert i == inode
             msg = "Inode '{}', mtime '{}', actual mtime '{}'."
-            Logger.debug(msg.format(i, m, mtime))
+            logger.debug(msg.format(i, m, mtime))
             if mtime != m:
                 md5, info = self._collect(path)
                 cmd = 'UPDATE {} SET ' \
@@ -362,7 +362,7 @@ class State(object):
             mtime = self.mtime(path)
 
             if i == inode and m == mtime:
-                Logger.debug('Removing \'{}\' as unused link.'.format(path))
+                logger.debug('Removing \'{}\' as unused link.'.format(path))
                 remove(path)
                 unused.append(p)
 

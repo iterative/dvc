@@ -1,4 +1,4 @@
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdInit(object):
@@ -14,6 +14,6 @@ class CmdInit(object):
                                         force=self.args.force)
             self.config = self.project.config
         except InitError as e:
-            Logger.error('Failed to initiate dvc', e)
+            logger.error('Failed to initiate dvc', e)
             return 1
         return 0

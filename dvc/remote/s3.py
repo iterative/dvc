@@ -12,7 +12,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -144,7 +144,7 @@ class RemoteS3(RemoteBase):
         if {self.PARAM_ETAG: etag} != self.save_info(cache):
             if self.exists([cache])[0]:
                 msg = 'Corrupted cache file {}'
-                Logger.warn(msg.format(self.to_string(cache)))
+                logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
             return True
 
@@ -160,22 +160,22 @@ class RemoteS3(RemoteBase):
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
-            Logger.info(msg.format(self.to_string(path_info)))
+            logger.info(msg.format(self.to_string(path_info)))
             return
 
         if self.changed_cache(etag):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            Logger.warn(msg.format(etag, self.to_string(path_info)))
+            logger.warn(msg.format(etag, self.to_string(path_info)))
             return
 
         if self.exists([path_info])[0]:
             msg = "Data '{}' exists. Removing before checkout."
-            Logger.warn(msg.format(self.to_string(path_info)))
+            logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        Logger.info(msg.format(self.to_string(path_info), etag))
+        logger.info(msg.format(self.to_string(path_info), etag))
 
         key = posixpath.join(self.prefix, etag[0:2], etag[2:])
         from_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
@@ -186,7 +186,7 @@ class RemoteS3(RemoteBase):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        Logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
+        logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
                                                   path_info['key']))
 
         self.s3.delete_object(Bucket=path_info['bucket'],
@@ -256,7 +256,7 @@ class RemoteS3(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
+            logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
                                                             to_info['bucket'],
                                                             to_info['key']))
 
@@ -273,7 +273,7 @@ class RemoteS3(RemoteBase):
                                Callback=cb)
             except Exception as exc:
                 msg = "Failed to upload '{}'".format(from_info['path'])
-                Logger.warn(msg, exc)
+                logger.warn(msg, exc)
                 continue
 
             progress.finish_target(name)
@@ -301,7 +301,7 @@ class RemoteS3(RemoteBase):
             msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
                                                        from_info['key'],
                                                        to_info['path'])
-            Logger.debug(msg)
+            logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -325,7 +325,7 @@ class RemoteS3(RemoteBase):
             except Exception as exc:
                 msg = "Failed to download '{}/{}'".format(from_info['bucket'],
                                                           from_info['key'])
-                Logger.warn(msg, exc)
+                logger.warn(msg, exc)
                 continue
 
             os.rename(tmp_file, to_info['path'])

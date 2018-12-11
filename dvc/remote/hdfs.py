@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 from dvc.remote.local import RemoteLOCAL
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.utils import fix_env
 
 
@@ -95,7 +95,7 @@ class RemoteHDFS(RemoteBase):
         if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
             if self.exists([cache])[0]:
                 msg = 'Corrupted cache file {}'
-                Logger.warn(msg.format(self.to_string(cache)))
+                logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
             return True
 
@@ -140,22 +140,22 @@ class RemoteHDFS(RemoteBase):
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
-            Logger.info(msg.format(self.to_string(path_info)))
+            logger.info(msg.format(self.to_string(path_info)))
             return
 
         if self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            Logger.warn(msg.format(checksum, self.to_string(path_info)))
+            logger.warn(msg.format(checksum, self.to_string(path_info)))
             return
 
         if self.exists([path_info])[0]:
             msg = "Data '{}' exists. Removing before checkout."
-            Logger.warn(msg.format(self.to_string(path_info)))
+            logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        Logger.info(msg.format(self.to_string(path_info), checksum))
+        logger.info(msg.format(self.to_string(path_info), checksum))
 
         src = path_info.copy()
         src['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
@@ -168,7 +168,7 @@ class RemoteHDFS(RemoteBase):
 
         assert path_info.get('url')
 
-        Logger.debug('Removing {}'.format(path_info['url']))
+        logger.debug('Removing {}'.format(path_info['url']))
 
         self.rm(path_info)
 

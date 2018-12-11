@@ -1,7 +1,7 @@
 import os
 import sys
 from subprocess import Popen
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class Daemon(object):  # pragma: no cover
@@ -20,7 +20,7 @@ class Daemon(object):  # pragma: no cover
             if pid > 0:
                 return
         except OSError as exc:
-            Logger.error("Failed at first fork", exc)
+            logger.error("Failed at first fork", exc)
             sys.exit(1)
 
         os.setsid()
@@ -31,7 +31,7 @@ class Daemon(object):  # pragma: no cover
             if pid > 0:
                 sys.exit(0)
         except OSError as exc:
-            Logger.error("Failed at second fork", exc)
+            logger.error("Failed at second fork", exc)
             sys.exit(1)
 
         sys.stdin.close()
@@ -50,7 +50,7 @@ class Daemon(object):  # pragma: no cover
             cmd += ['-m', 'dvc']
         cmd += ['daemon', '-q'] + args
 
-        Logger.debug("Trying to spawn '{}'".format(cmd))
+        logger.debug("Trying to spawn '{}'".format(cmd))
 
         if os.name == 'nt':
             self._spawn_windows(cmd)
@@ -59,4 +59,4 @@ class Daemon(object):  # pragma: no cover
         else:
             raise NotImplementedError
 
-        Logger.debug("Spawned '{}'".format(cmd))
+        logger.debug("Spawned '{}'".format(cmd))

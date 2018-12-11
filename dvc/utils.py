@@ -11,7 +11,7 @@ import hashlib
 
 from dvc.progress import progress
 from dvc.istextfile import istextfile
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 LOCAL_CHUNK_SIZE = 1024*1024
@@ -33,7 +33,7 @@ def file_md5(fname):
         if size >= LARGE_FILE_SIZE:
             bar = True
             msg = "Computing md5 for a large file {}. This is only done once."
-            Logger.info(msg.format(os.path.relpath(fname)))
+            logger.info(msg.format(os.path.relpath(fname)))
             name = os.path.relpath(fname)
             total = 0
 
@@ -143,7 +143,7 @@ def remove(path):
     if not os.path.exists(path):
         return
 
-    Logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
+    logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
 
     def _chmod(func, p, excinfo):
         perm = os.stat(p).st_mode

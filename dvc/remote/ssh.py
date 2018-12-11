@@ -7,7 +7,7 @@ try:
 except ImportError:
     paramiko = None
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 from dvc.remote.local import RemoteLOCAL
@@ -26,7 +26,7 @@ def sizeof_fmt(num, suffix='B'):
 
 def percent_cb(name, complete, total):
     """ Callback for updating target progress """
-    Logger.debug('{}: {} transferred out of {}'.format(name,
+    logger.debug('{}: {} transferred out of {}'.format(name,
                                                        sizeof_fmt(complete),
                                                        sizeof_fmt(total)))
     progress.update_target(name, complete, total)
@@ -83,7 +83,7 @@ class RemoteSSH(RemoteBase):
     def ssh(self, host=None, user=None, port=None):
         msg = "Establishing ssh connection with '{}' " \
               "through port '{}' as user '{}'"
-        Logger.debug(msg.format(host, port, user))
+        logger.debug(msg.format(host, port, user))
 
         ssh = paramiko.SSHClient()
 
@@ -245,7 +245,7 @@ class RemoteSSH(RemoteBase):
         if {self.PARAM_MD5: md5} != self.save_info(cache):
             if self.exists([cache])[0]:
                 msg = 'Corrupted cache file {}'
-                Logger.warn(msg.format(self.to_string(cache)))
+                logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
             return True
 
@@ -286,22 +286,22 @@ class RemoteSSH(RemoteBase):
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
-            Logger.info(msg.format(self.to_string(path_info)))
+            logger.info(msg.format(self.to_string(path_info)))
             return
 
         if self.changed_cache(md5):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            Logger.warn(msg.format(md5, self.to_string(path_info)))
+            logger.warn(msg.format(md5, self.to_string(path_info)))
             return
 
         if self.exists([path_info])[0]:
             msg = "Data '{}' exists. Removing before checkout."
-            Logger.warn(msg.format(self.to_string(path_info)))
+            logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        Logger.info(msg.format(self.to_string(path_info), md5))
+        logger.info(msg.format(self.to_string(path_info), md5))
 
         src = path_info.copy()
         src['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
@@ -312,7 +312,7 @@ class RemoteSSH(RemoteBase):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError
 
-        Logger.debug('Removing ssh://{}@{}/{}'.format(path_info['user'],
+        logger.debug('Removing ssh://{}@{}/{}'.format(path_info['user'],
                                                       path_info['host'],
                                                       path_info['path']))
 
@@ -350,7 +350,7 @@ class RemoteSSH(RemoteBase):
             msg = "Downloading '{}/{}' to '{}'".format(from_info['host'],
                                                        from_info['path'],
                                                        to_info['path'])
-            Logger.debug(msg)
+            logger.debug(msg)
 
             if not name:
                 name = os.path.basename(to_info['path'])
@@ -363,7 +363,7 @@ class RemoteSSH(RemoteBase):
                                     callback=create_cb(name))
             except Exception as exc:
                 msg = "Failed to download '{}/{}' to '{}'"
-                Logger.warn(msg.format(from_info['host'],
+                logger.warn(msg.format(from_info['host'],
                                        from_info['path'],
                                        to_info['path']), exc)
                 continue
@@ -388,7 +388,7 @@ class RemoteSSH(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            Logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
+            logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
                                                             to_info['host'],
                                                             to_info['path']))
 
@@ -404,7 +404,7 @@ class RemoteSSH(RemoteBase):
                          callback=create_cb(name))
             except Exception as exc:
                 msg = "Failed to upload '{}' to '{}/{}'"
-                Logger.warn(msg.format(from_info['path'],
+                logger.warn(msg.format(from_info['path'],
                                        to_info['host'],
                                        to_info['path'], exc))
                 continue

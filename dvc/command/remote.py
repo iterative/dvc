@@ -2,7 +2,7 @@ import re
 
 from dvc.config import Config
 from dvc.command.config import CmdConfig
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdRemoteAdd(CmdConfig):
@@ -14,7 +14,7 @@ class CmdRemoteAdd(CmdConfig):
 
         if self.args.default:
             msg = 'Setting \'{}\' as a default remote.'.format(self.args.name)
-            Logger.info(msg)
+            logger.info(msg)
             ret = self._set(Config.SECTION_CORE,
                             Config.SECTION_CORE_REMOTE,
                             self.args.name)
@@ -70,5 +70,5 @@ class CmdRemoteList(CmdConfig):
                 name = r.group('name')
                 url = self.configobj[section].get(Config.SECTION_REMOTE_URL,
                                                   '')
-                Logger.info('{}\t{}'.format(name, url))
+                logger.info('{}\t{}'.format(name, url))
         return 0

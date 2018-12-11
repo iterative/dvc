@@ -3,7 +3,7 @@ import json
 import errno
 
 from dvc import VERSION
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class Analytics(object):
@@ -75,7 +75,7 @@ class Analytics(object):
                 info = json.load(fobj)
                 return info[self.PARAM_USER_ID]
             except json.JSONDecodeError as exc:
-                Logger.debug("Failed to load user_id: {}".format(exc))
+                logger.debug("Failed to load user_id: {}".format(exc))
                 return None
 
     def _get_user_id(self):
@@ -89,7 +89,7 @@ class Analytics(object):
                 return user_id
         except LockError:
             msg = "Failed to acquire '{}'"
-            Logger.debug(msg.format(self.user_id_file_lock.lock_file))
+            logger.debug(msg.format(self.user_id_file_lock.lock_file))
 
     def _collect_windows(self):
         import sys
@@ -194,7 +194,7 @@ class Analytics(object):
 
         core = config._config.get(Config.SECTION_CORE, {})
         enabled = core.get(Config.SECTION_CORE_ANALYTICS, True)
-        Logger.debug("Analytics is {}abled."
+        logger.debug("Analytics is {}abled."
                      .format('en' if enabled else 'dis'))
         return enabled
 
@@ -217,9 +217,9 @@ class Analytics(object):
 
         self.collect()
 
-        Logger.debug("Sending analytics: {}".format(self.info))
+        logger.debug("Sending analytics: {}".format(self.info))
 
         try:
             requests.post(self.URL, json=self.info, timeout=self.TIMEOUT_POST)
         except requests.exceptions.RequestException as exc:
-            Logger.debug("Failed to send analytics: {}".format(str(exc)))
+            logger.debug("Failed to send analytics: {}".format(str(exc)))
