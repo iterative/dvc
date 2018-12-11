@@ -1,4 +1,4 @@
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.cli import parse_args
 from dvc.command.base import CmdBase
 from dvc.analytics import Analytics
@@ -6,8 +6,6 @@ from dvc.exceptions import NotDvcProjectError, DvcParserError
 
 
 def main(argv=None):
-    Logger.init()
-
     args = None
     cmd = None
     try:
@@ -21,15 +19,15 @@ def main(argv=None):
 
         ret = cmd.run_cmd()
     except KeyboardInterrupt as ex:
-        Logger.error("Interrupted by the user", ex)
+        logger.error("Interrupted by the user", ex)
         ret = 252
     except NotDvcProjectError as ex:
-        Logger.error("", ex)
+        logger.error("", ex)
         ret = 253
     except DvcParserError:
         ret = 254
     except Exception as ex:
-        Logger.error('Unexpected error', ex)
+        logger.error('Unexpected error', ex)
         ret = 255
 
     Analytics().send_cmd(cmd, args, ret)

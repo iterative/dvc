@@ -1,4 +1,4 @@
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.config import Config, ConfigError
 
 from dvc.remote.s3 import RemoteS3
@@ -36,7 +36,7 @@ class DataCloud(object):
         if self._core.get(Config.SECTION_CORE_CLOUD, None):
             # backward compatibility
             msg = 'Using obsoleted config format. Consider updating.'
-            Logger.warn(msg)
+            logger.warn(msg)
             return self._init_compat()
 
         return None
@@ -87,7 +87,7 @@ class DataCloud(object):
     def _init_cloud(self, cloud_config, cloud_type):
         global_storage_path = self._core.get(Config.SECTION_CORE_STORAGEPATH)
         if global_storage_path:
-            Logger.warn('Using obsoleted config format. Consider updating.')
+            logger.warn('Using obsoleted config format. Consider updating.')
 
         cloud = cloud_type(self.project, cloud_config)
         return cloud

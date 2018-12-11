@@ -4,7 +4,7 @@ import errno
 from multiprocessing import cpu_count
 
 from dvc.config import Config
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.exceptions import DvcException
 
 
@@ -69,7 +69,7 @@ class RemoteBase(object):
                   "are still seeing this message, please report it to us " \
                   "using https://github.com/iterative/dvc/issues. Thank you!"
             msg = msg.format(url, missing, " ".join(missing), cls.scheme)
-            Logger.warn(msg)
+            logger.warn(msg)
 
         return url_ok and deps_ok
 

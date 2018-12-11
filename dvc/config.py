@@ -6,7 +6,7 @@ import errno
 import configobj
 from schema import Schema, Optional, And, Use, Regex
 
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.exceptions import DvcException
 
 
@@ -295,7 +295,7 @@ class Config(object):
                 continue
 
             try:
-                Logger.debug("Writing '{}'.".format(conf.filename))
+                logger.debug("Writing '{}'.".format(conf.filename))
                 dname = os.path.dirname(os.path.abspath(conf.filename))
                 try:
                     os.makedirs(dname)
@@ -337,7 +337,7 @@ class Config(object):
             raise ConfigError("Option '{}.{}' doesn't exist".format(section,
                                                                     opt))
 
-        Logger.info(config[section][opt])
+        logger.info(config[section][opt])
 
     @staticmethod
     def _merge(first, second):

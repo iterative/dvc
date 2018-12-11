@@ -1,4 +1,4 @@
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdBase(object):
@@ -13,10 +13,10 @@ class CmdBase(object):
     @staticmethod
     def _set_loglevel(args):
         if args.quiet:
-            Logger.be_quiet()
+            logger.be_quiet()
 
         elif args.verbose:
-            Logger.be_verbose()
+            logger.be_verbose()
 
     def run_cmd(self):
         from dvc.lock import LockError
@@ -25,7 +25,7 @@ class CmdBase(object):
             with self.project.lock:
                 return self.run()
         except LockError as ex:
-            Logger.error('Failed to lock before running a command', ex)
+            logger.error('Failed to lock before running a command', ex)
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class

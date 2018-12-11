@@ -1,6 +1,6 @@
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
-from dvc.logger import Logger
+from dvc.logger import logger
 
 
 class CmdAdd(CmdBase):
@@ -9,6 +9,6 @@ class CmdAdd(CmdBase):
             try:
                 self.project.add(target, recursive=self.args.recursive)
             except DvcException as ex:
-                Logger.error('Failed to add \'{}\''.format(target), ex)
+                logger.error('Failed to add \'{}\''.format(target), ex)
                 return 1
         return 0

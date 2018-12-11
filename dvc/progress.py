@@ -86,9 +86,9 @@ class Progress(object):
         return num + bar + percent + target_name
 
     def _print(self, *args, **kwargs):
-        from dvc.logger import Logger
+        from dvc.logger import logger
 
-        if Logger.is_quiet():
+        if logger.is_quiet():
             return
 
         print(*args, **kwargs)

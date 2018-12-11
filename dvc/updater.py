@@ -6,7 +6,7 @@ import colorama
 
 from dvc import VERSION_BASE
 from dvc.lock import Lock, LockError
-from dvc.logger import Logger
+from dvc.logger import logger
 from dvc.utils import is_binary
 
 
@@ -27,7 +27,7 @@ class Updater(object):  # pragma: no cover
         ctime = os.path.getmtime(self.updater_file)
         outdated = (time.time() - ctime >= self.TIMEOUT)
         if outdated:
-            Logger.debug("'{}' is outdated(".format(self.updater_file))
+            logger.debug("'{}' is outdated(".format(self.updater_file))
         return outdated
 
     def _with_lock(self, func, action):
@@ -36,7 +36,7 @@ class Updater(object):  # pragma: no cover
                 func()
         except LockError:
             msg = "Failed to acquire '{}' before {} updates"
-            Logger.debug(msg.format(self.lock.lock_file, action))
+            logger.debug(msg.format(self.lock.lock_file, action))
 
     def check(self):
         if os.getenv('CI') or os.getenv('DVC_TEST'):
@@ -57,7 +57,7 @@ class Updater(object):  # pragma: no cover
                 self.latest = info['version']
             except Exception as exc:
                 msg = "'{}' is not a valid json: {}"
-                Logger.debug(msg.format(self.updater_file, exc))
+                logger.debug(msg.format(self.updater_file, exc))
                 self.fetch()
                 return
 
@@ -81,7 +81,7 @@ class Updater(object):  # pragma: no cover
             info = r.json()
         except requests.exceptions.RequestException as exc:
             msg = "Failed to retrieve latest version: {}"
-            Logger.debug(msg.format(exc))
+            logger.debug(msg.format(exc))
             return
 
         with open(self.updater_file, 'w+') as fobj:
@@ -113,7 +113,7 @@ class Updater(object):  # pragma: no cover
                  latest=self.latest)
 
         if sys.stdout.isatty():
-            Logger.box(message, border_color='yellow')
+            logger.box(message, border_color='yellow')
 
     def _get_update_instructions(self):
         instructions = {

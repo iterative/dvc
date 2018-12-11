@@ -8,7 +8,6 @@ except ImportError:
 from dvc.dependency.base import DependencyBase
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dependency.base import DependencyIsNotFileOrDirError
-from dvc.logger import Logger
 from dvc.remote.local import RemoteLOCAL
 
 
@@ -73,7 +72,8 @@ class DependencyLOCAL(DependencyBase):
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
-            Logger.warn("File/directory '{}' is empty.".format(self.rel_path))
+            msg = "File/directory '{}' is empty.".format(self.rel_path)
+            self.project.logger.warn(msg)
 
         self.info = self.remote.save_info(self.path_info)
 
