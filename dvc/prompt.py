@@ -32,7 +32,7 @@ class Prompt(object):
         if not sys.stdout.isatty():
             return None
 
-        msg = 'Enter password for {}:\n'.format(msg)
+        msg = '{}:\n'.format(msg)
 
         if not progress.is_finished:
             msg = u'\n' + msg
