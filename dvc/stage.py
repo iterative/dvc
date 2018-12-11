@@ -407,7 +407,7 @@ class Stage(object):
 
         if os.path.exists(path):
             if not ignore_build_cache and stage.is_cached:
-                Logger.info('Stage is cached, skipping.')
+                project.logger.info('Stage is cached, skipping.')
                 return None
 
             msg = "'{}' already exists. Do you wish to run the command and " \
