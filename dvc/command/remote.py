@@ -62,6 +62,13 @@ class CmdRemoteModify(CmdConfig):
         return super(CmdRemoteModify, self).run()
 
 
+class CmdRemoteDefault(CmdConfig):
+    def run(self):
+        self.args.value = self.args.name
+        self.args.name = 'core.remote'
+        return super(CmdRemoteDefault, self).run()
+
+
 class CmdRemoteList(CmdConfig):
     def run(self):
         for section in self.configobj.keys():
