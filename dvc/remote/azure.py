@@ -8,6 +8,11 @@ try:
 except ImportError:
     BlockBlobService = None
 
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 from dvc.logger import logger
 from dvc.progress import progress
 from dvc.config import Config
@@ -24,9 +29,10 @@ class Callback(object):
 
 class RemoteAzure(RemoteBase):
     scheme = 'azure'
-    REGEX = (r'^azure://'
+    REGEX = (r'^azure://((?P<path>[^=;]*)|('
+             # backward compatibility
              r'(ContainerName=(?P<container_name>[^;]+);?)?'
-             r'(?P<connection_string>.+)?$')
+             r'(?P<connection_string>.+)?))$')
     REQUIRES = {'azure-storage-blob': BlockBlobService}
     PARAM_ETAG = 'etag'
     COPY_POLL_SECONDS = 5
@@ -36,17 +42,18 @@ class RemoteAzure(RemoteBase):
         self.project = project
 
         self.url = config.get(Config.SECTION_REMOTE_URL)
-        match = re.match(self.REGEX, self.url)
+        match = re.match(self.REGEX, self.url)  # backward compatibility
 
         self.bucket = (
-            match.group('container_name')
+            urlparse(self.url).netloc
+            or match.group('container_name')  # backward compatibility
             or os.getenv('AZURE_STORAGE_CONTAINER_NAME'))
 
-        # FIXME: currently Azure doesn't support prefixes
-        self.prefix = '/'
+        self.prefix = urlparse(self.url).path.lstrip('/') or '/'
 
         self.connection_string = (
-            match.group('connection_string')
+            config.get(Config.SECTION_AZURE_CONNECTION_STRING)
+            or match.group('connection_string')  # backward compatibility
             or os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
 
         if not self.bucket:
@@ -138,7 +145,7 @@ class RemoteAzure(RemoteBase):
         return [{
             'scheme': self.scheme,
             'bucket': self.bucket,
-            'key': '{}/{}'.format(md5[0:2], md5[2:])
+            'key': '{}/{}/{}'.format(self.prefix, md5[0:2], md5[2:])
         } for md5 in md5s]
 
     def _all_keys(self, bucket, prefix):
@@ -235,8 +242,8 @@ class RemoteAzure(RemoteBase):
                     progress.finish_target(name)
 
     def _path_to_etag(self, path):
-        assert len(path.split('/')) == 2
-        return posixpath.dirname(path) + posixpath.basename(path)
+        relpath = posixpath.relpath(path, self.prefix)
+        return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all(self):
         keys = self._all_keys(self.bucket, self.prefix)
@@ -253,7 +260,9 @@ class RemoteAzure(RemoteBase):
             if etag in used:
                 continue
             path_info = {'scheme': self.scheme,
-                         'key': posixpath.join(etag[0:2], etag[2:]),
+                         'key': posixpath.join(self.prefix,
+                                               etag[0:2],
+                                               etag[2:]),
                          'bucket': self.bucket}
             self.remove(path_info)
             removed = True

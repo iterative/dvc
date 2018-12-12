@@ -16,13 +16,14 @@ class CmdRepro(CmdBase):
         for target in self.args.targets:
             try:
                 stages = self.project.reproduce(
-                                       target,
-                                       recursive=recursive,
-                                       force=self.args.force,
-                                       dry=self.args.dry,
-                                       interactive=self.args.interactive,
-                                       pipeline=self.args.pipeline,
-                                       all_pipelines=self.args.all_pipelines)
+                               target,
+                               recursive=recursive,
+                               force=self.args.force,
+                               dry=self.args.dry,
+                               interactive=self.args.interactive,
+                               pipeline=self.args.pipeline,
+                               all_pipelines=self.args.all_pipelines,
+                               ignore_build_cache=self.args.ignore_build_cache)
 
                 if len(stages) == 0:
                     self.project.logger.info(CmdDataStatus.UP_TO_DATE_MSG)

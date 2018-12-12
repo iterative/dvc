@@ -19,7 +19,7 @@ from dvc.command.imp import CmdImport
 from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove
-from dvc.command.remote import CmdRemoteModify, CmdRemoteList
+from dvc.command.remote import CmdRemoteModify, CmdRemoteList, CmdRemoteDefault
 from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd
 from dvc.command.metrics import CmdMetricsRemove, CmdMetricsModify
 from dvc.command.install import CmdInstall
@@ -524,6 +524,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Reproduce all pipelines in the project.')
+    repro_parser.add_argument(
+                        '--ignore-build-cache',
+                        action='store_true',
+                        default=False,
+                        help='Reproduce all descendants of a changed stage'
+                             'even if their direct dependencies didn\'t '
+                             'change.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove
@@ -725,6 +732,40 @@ def parse_args(argv=None):
                         default=False,
                         help='Set as default remote.')
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
+
+    REMOTE_DEFAULT_HELP = 'Set/unset default remote.'
+    remote_default_parser = remote_subparsers.add_parser(
+                        'default',
+                        parents=[parent_parser],
+                        description=REMOTE_DEFAULT_HELP,
+                        help=REMOTE_DEFAULT_HELP)
+    remote_default_parser.add_argument(
+                        'name',
+                        nargs='?',
+                        help='Name of the remote.')
+    remote_default_parser.add_argument(
+                        '-u',
+                        '--unset',
+                        action='store_true',
+                        default=False,
+                        help='Unset default remote.')
+    remote_default_parser.add_argument(
+                        '--global',
+                        dest='glob',
+                        action='store_true',
+                        default=False,
+                        help='Use global config.')
+    remote_default_parser.add_argument(
+                        '--system',
+                        action='store_true',
+                        default=False,
+                        help='Use system config.')
+    remote_default_parser.add_argument(
+                        '--local',
+                        action='store_true',
+                        default=False,
+                        help='Use local config.')
+    remote_default_parser.set_defaults(func=CmdRemoteDefault)
 
     REMOTE_REMOVE_HELP = 'Remove remote.'
     remote_remove_parser = remote_subparsers.add_parser(

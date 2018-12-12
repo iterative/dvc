@@ -96,3 +96,27 @@ class TestRemoteRemove(TestDvc):
 
         ret = main(['remote', 'remove', remote])
         self.assertEqual(ret, 0)
+
+
+class TestRemoteDefault(TestDvc):
+    def test(self):
+        remote = 'mys3'
+        ret = main(['remote', 'add', 'mys3', 's3://bucket/path'])
+        self.assertEqual(ret, 0)
+
+        ret = main(['remote', 'default', 'mys3'])
+        self.assertEqual(ret, 0)
+        config_file = os.path.join(self.dvc.dvc_dir, Config.CONFIG)
+        config = configobj.ConfigObj(config_file)
+        default = config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE]
+        self.assertEqual(default, remote)
+
+        ret = main(['remote', 'default', '--unset'])
+        self.assertEqual(ret, 0)
+        config = configobj.ConfigObj(config_file)
+        core = config.get(Config.SECTION_CORE)
+        if core is not None:
+            default = core.get(Config.SECTION_CORE_REMOTE)
+        else:
+            default = None
+        self.assertEqual(default, None)
