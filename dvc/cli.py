@@ -524,6 +524,13 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Reproduce all pipelines in the project.')
+    repro_parser.add_argument(
+                        '--ignore-build-cache',
+                        action='store_true',
+                        default=False,
+                        help='Reproduce all descendants of a changed stage'
+                             'even if their direct dependencies didn\'t '
+                             'change.')
     repro_parser.set_defaults(func=CmdRepro)
 
     # Remove

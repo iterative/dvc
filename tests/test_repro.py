@@ -256,6 +256,47 @@ class TestReproChangedDeepData(TestReproChangedData):
         self.assertEqual(len(stages), 3)
 
 
+class TestReproIgnoreBuildCache(TestDvc):
+    def test(self):
+        stages = self.dvc.add(self.FOO)
+        self.assertEqual(len(stages), 1)
+        foo_stage = stages[0]
+        self.assertTrue(foo_stage is not None)
+
+        code1 = 'code1.py'
+        shutil.copyfile(self.CODE, code1)
+        file1 = 'file1'
+        file1_stage = file1 + '.dvc'
+        stage = self.dvc.run(fname=file1_stage,
+                             outs=[file1],
+                             deps=[self.FOO, code1],
+                             cmd='python {} {} {}'.format(code1,
+                                                          self.FOO,
+                                                          file1))
+        self.assertTrue(stage is not None)
+
+        code2 = 'code2.py'
+        shutil.copyfile(self.CODE, code2)
+        file2 = 'file2'
+        file2_stage = file2 + '.dvc'
+        stage = self.dvc.run(fname=file2_stage,
+                             outs=[file2],
+                             deps=[file1, code2],
+                             cmd='python {} {} {}'.format(code2,
+                                                          file1,
+                                                          file2))
+        self.assertTrue(stage is not None)
+
+        with open(code1, 'a') as fobj:
+            fobj.write('\n\n')
+
+        stages = self.dvc.reproduce(file2_stage)
+        self.assertEqual(len(stages), 1)
+
+        stages = self.dvc.reproduce(file2_stage, ignore_build_cache=True)
+        self.assertEqual(len(stages), 2)
+
+
 class TestReproPipeline(TestReproChangedDeepData):
     def test(self):
         stages = self.dvc.reproduce(self.file1_stage,

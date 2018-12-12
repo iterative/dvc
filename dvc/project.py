@@ -449,7 +449,8 @@ class Project(object):
                   dry=False,
                   interactive=False,
                   pipeline=False,
-                  all_pipelines=False):
+                  all_pipelines=False,
+                  ignore_build_cache=False):
         from dvc.stage import Stage
 
         if target is None and not all_pipelines:
@@ -485,7 +486,8 @@ class Project(object):
                                          recursive=recursive,
                                          force=force,
                                          dry=dry,
-                                         interactive=interactive)
+                                         interactive=interactive,
+                                         ignore_build_cache=ignore_build_cache)
                 ret.extend(stages)
 
         self._remind_to_git_add()
@@ -497,7 +499,8 @@ class Project(object):
                    recursive=True,
                    force=False,
                    dry=False,
-                   interactive=False):
+                   interactive=False,
+                   ignore_build_cache=False):
         import networkx as nx
         from dvc.stage import Stage
 
@@ -512,7 +515,8 @@ class Project(object):
                                          node,
                                          force,
                                          dry,
-                                         interactive)
+                                         interactive,
+                                         ignore_build_cache)
         else:
             ret = self._reproduce_stage(stages,
                                         node,
@@ -522,17 +526,34 @@ class Project(object):
 
         return ret
 
-    def _reproduce_stages(self, G, stages, node, force, dry, interactive):
+    def _reproduce_stages(self,
+                          G,
+                          stages,
+                          node,
+                          force,
+                          dry,
+                          interactive,
+                          ignore_build_cache):
         import networkx as nx
 
         result = []
         for n in nx.dfs_postorder_nodes(G, node):
             try:
-                result += self._reproduce_stage(stages,
-                                                n,
-                                                force,
-                                                dry,
-                                                interactive)
+                ret = self._reproduce_stage(stages,
+                                            n,
+                                            force,
+                                            dry,
+                                            interactive)
+
+                if len(ret) == 0 and ignore_build_cache:
+                    # NOTE: we are walking our pipeline from the top to the
+                    # bottom. If one stage is changed, it will be reproduced,
+                    # which tells us that we should force reproducing all of
+                    # the other stages down below, even if their direct
+                    # dependencies didn't change.
+                    force = True
+
+                result += ret
             except Exception as ex:
                 raise ReproductionError(stages[n].relpath, ex)
         return result
