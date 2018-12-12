@@ -42,6 +42,12 @@ class RemoteBase(object):
     def __init__(self, project, config):
         pass
 
+    def __repr__(self):
+        return "{class_name}: '{url}'".format(
+            class_name=type(self).__name__,
+            url=(self.url or 'No url')
+        )
+
     def compat_config(config):
         return config.copy()
 

@@ -59,6 +59,9 @@ class Project(object):
 
         self.updater.check()
 
+    def __repr__(self):
+        return "Project: '{root_dir}'".format(root_dir=self.root_dir)
+
     @staticmethod
     def _find_root(root=None):
         if root is None:
@@ -210,17 +213,6 @@ class Project(object):
                         stages = [o.stage.relpath, out.stage.relpath]
                         raise OutputDuplicationError(o.path, stages)
 
-    def _check_circular_dependency(self, deps, outs):
-        from dvc.exceptions import CircularDependencyError
-
-        circular_dependencies = (
-            set(file.path for file in deps) &
-            set(file.path for file in outs)
-        )
-
-        if circular_dependencies:
-            raise CircularDependencyError(circular_dependencies.pop())
-
     def add(self, fname, recursive=False):
         from dvc.stage import Stage
 
@@ -245,9 +237,9 @@ class Project(object):
         self._files_to_git_add = []
         with self.state:
             for f in fnames:
-                stage = Stage.loads(project=self,
-                                    outs=[f],
-                                    add=True)
+                stage = Stage.create(project=self,
+                                     outs=[f],
+                                     add=True)
 
                 if stage is None:
                     stages.append(stage)
@@ -379,17 +371,17 @@ class Project(object):
         from dvc.stage import Stage
 
         with self.state:
-            stage = Stage.loads(project=self,
-                                fname=fname,
-                                cmd=cmd,
-                                cwd=cwd,
-                                outs=outs,
-                                outs_no_cache=outs_no_cache,
-                                metrics_no_cache=metrics_no_cache,
-                                deps=deps,
-                                overwrite=overwrite,
-                                ignore_build_cache=ignore_build_cache,
-                                remove_outs=remove_outs)
+            stage = Stage.create(project=self,
+                                 fname=fname,
+                                 cmd=cmd,
+                                 cwd=cwd,
+                                 outs=outs,
+                                 outs_no_cache=outs_no_cache,
+                                 metrics_no_cache=metrics_no_cache,
+                                 deps=deps,
+                                 overwrite=overwrite,
+                                 ignore_build_cache=ignore_build_cache,
+                                 remove_outs=remove_outs)
 
         if stage is None:
             return None
@@ -398,7 +390,6 @@ class Project(object):
 
         self._check_cwd_specified_as_output(cwd, all_stages)
         self._check_output_duplication(stage.outs, all_stages)
-        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:
@@ -414,16 +405,15 @@ class Project(object):
     def imp(self, url, out):
         from dvc.stage import Stage
 
-        stage = Stage.loads(project=self,
-                            cmd=None,
-                            deps=[url],
-                            outs=[out])
+        stage = Stage.create(project=self,
+                             cmd=None,
+                             deps=[url],
+                             outs=[out])
 
         if stage is None:
             return None
 
         self._check_output_duplication(stage.outs, self.stages())
-        self._check_circular_dependency(stage.deps, stage.outs)
 
         self._files_to_git_add = []
         with self.state:

@@ -11,6 +11,7 @@ from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
 from dvc.exceptions import (OutputDuplicationError,
                             CircularDependencyError,
+                            ArgumentDuplicationError,
                             WorkingDirectoryAsOutputError)
 
 from tests.basic_env import TestDvc
@@ -118,6 +119,29 @@ class TestRunCircularDependency(TestDvc):
             self.dvc.run(cmd='',
                          deps=['./foo'],
                          outs=['foo'],
+                         fname='circular-dependency.dvc')
+
+
+class TestRunDuplicatedArguments(TestDvc):
+    def test(self):
+        with self.assertRaises(ArgumentDuplicationError):
+            self.dvc.run(cmd='',
+                         deps=[],
+                         outs=[self.FOO, self.FOO],
+                         fname='circular-dependency.dvc')
+
+    def test_outs_no_cache(self):
+        with self.assertRaises(ArgumentDuplicationError):
+            self.dvc.run(cmd='',
+                         outs=[self.FOO],
+                         outs_no_cache=[self.FOO],
+                         fname='circular-dependency.dvc')
+
+    def test_non_normalized_paths(self):
+        with self.assertRaises(ArgumentDuplicationError):
+            self.dvc.run(cmd='',
+                         deps=[],
+                         outs=['foo', './foo'],
                          fname='circular-dependency.dvc')
 
 

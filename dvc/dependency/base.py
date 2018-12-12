@@ -31,6 +31,12 @@ class DependencyBase(object):
         self.project = stage.project
         self.path = path
 
+    def __repr__(self):
+        return "{class_name}: '{path}'".format(
+            class_name=type(self).__name__,
+            path=(self.path or 'No path')
+        )
+
     def __str__(self):
         return self.path
 

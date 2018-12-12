@@ -74,10 +74,6 @@ class State(object):
     def __exit__(self, type, value, tb):
         self.dump()
 
-    @staticmethod
-    def init(project):
-        return State(project)
-
     def _collect(self, path):
         if os.path.isdir(path):
             return self.project.cache.local.collect_dir_cache(path)
@@ -124,7 +120,7 @@ class State(object):
         assert n >= 0
         return n
 
-    def _load(self, empty=False):
+    def _prepare_db(self, empty=False):
         from dvc import VERSION
 
         if not empty:
@@ -183,7 +179,7 @@ class State(object):
             # Try loading once to check that the file is indeed a database
             # and reformat it if it is not.
             try:
-                self._load(empty=empty)
+                self._prepare_db(empty=empty)
                 return
             except sqlite3.DatabaseError:
                 self.c.close()
@@ -268,8 +264,7 @@ class State(object):
 
     def _do_update(self, path):
         """
-        Search for the current inode on the table or update it with
-        gathered information.
+        Make sure the stored info for the given path is up to date.
         """
         if not os.path.exists(path):
             return (None, None)

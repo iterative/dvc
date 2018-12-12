@@ -33,6 +33,7 @@ class RemoteHTTP(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
+        self.url = self.cache_dir
 
     @property
     def prefix(self):
