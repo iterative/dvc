@@ -150,6 +150,8 @@ class Config(object):
         SECTION_LOCAL_STORAGEPATH: str,
     }
 
+    SECTION_AZURE_CONNECTION_STRING = 'connection_string'
+
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
     SECTION_REMOTE_URL = 'url'
@@ -177,6 +179,7 @@ class Config(object):
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
         Optional(SECTION_REMOTE_PASSWORD): str,
         Optional(SECTION_REMOTE_ASK_PASSWORD): And(str, is_bool, Use(to_bool)),
+        Optional(SECTION_AZURE_CONNECTION_STRING): str,
     }
 
     SECTION_STATE = 'state'

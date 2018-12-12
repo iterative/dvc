@@ -141,8 +141,14 @@ def get_gcp_url():
     return 'gs://' + get_gcp_storagepath()
 
 
-def get_azure_url():
+def get_azure_url_compat():
     return 'azure://'
+
+
+def get_azure_url():
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+    assert container_name is not None
+    return 'azure://{}/{}'.format(container_name, str(uuid.uuid4()))
 
 
 def sleep():
@@ -312,15 +318,20 @@ class TestRemoteGS(TestDataCloudBase):
         return RemoteGS
 
 
-class TestRemoteAzure(TestDataCloudBase):
+class TestRemoteAzureCompat(TestDataCloudBase):
     def _should_test(self):
         return _should_test_azure()
 
     def _get_url(self):
-        return get_azure_url()
+        return get_azure_url_compat()
 
     def _get_cloud_class(self):
         return RemoteAzure
+
+
+class TestRemoteAzure(TestRemoteAzureCompat):
+    def _get_url(self):
+        return get_azure_url()
 
 
 class TestRemoteLOCAL(TestDataCloudBase):
