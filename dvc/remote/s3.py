@@ -60,6 +60,8 @@ class RemoteS3(RemoteBase):
 
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
+        self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
+
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault('AWS_SHARED_CREDENTIALS_FILE', shared_creds)
@@ -84,7 +86,9 @@ class RemoteS3(RemoteBase):
         session = boto3.session.Session(profile_name=self.profile,
                                         region_name=self.region)
 
-        return session.client('s3', endpoint_url=self.endpoint_url)
+        return session.client('s3',
+                              endpoint_url=self.endpoint_url,
+                              use_ssl=self.use_ssl)
 
     def get_etag(self, bucket, key):
         try:

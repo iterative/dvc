@@ -123,12 +123,15 @@ class Config(object):
     SECTION_AWS_ENDPOINT_URL = 'endpointurl'
     SECTION_AWS_REGION = 'region'
     SECTION_AWS_PROFILE = 'profile'
+    SECTION_AWS_USE_SSL = 'use_ssl'
     SECTION_AWS_SCHEMA = {
         SECTION_AWS_STORAGEPATH: str,
         Optional(SECTION_AWS_REGION): str,
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
+        Optional(SECTION_AWS_USE_SSL,
+                 default=True): And(str, is_bool, Use(to_bool)),
     }
 
     # backward compatibility
@@ -162,6 +165,8 @@ class Config(object):
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
+        Optional(SECTION_AWS_USE_SSL,
+                 default=True): And(str, is_bool, Use(to_bool)),
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED,
