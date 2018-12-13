@@ -287,6 +287,8 @@ class TestReproIgnoreBuildCache(TestDvc):
                                                           file2))
         self.assertTrue(stage is not None)
 
+        sleep()
+        
         with open(code1, 'a') as fobj:
             fobj.write('\n\n')
 
