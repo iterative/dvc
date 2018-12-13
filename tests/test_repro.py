@@ -28,6 +28,7 @@ from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
 from tests.test_data_cloud import sleep
 from tests.utils.httpd import StaticFileServer
+from mock import patch
 
 
 class TestRepro(TestDvc):
@@ -1027,3 +1028,29 @@ class TestReproNoSCM(TestRepro):
         shutil.rmtree(self.dvc.scm.dir)
         ret = main(['repro', self.file1_stage])
         self.assertEqual(ret, 0)
+
+
+class TestReproAllPipelines(TestDvc):
+    def test(self):
+        self.dvc.run(fname='start.dvc',
+                     outs=['start.txt'],
+                     cmd='echo start > start.txt')
+
+        self.dvc.run(fname='middle.dvc',
+                     deps=['start.txt'],
+                     outs=['middle.txt'],
+                     cmd='echo middle > middle.txt')
+
+        self.dvc.run(fname='final.dvc',
+                     deps=['middle.txt'],
+                     outs=['final.txt'],
+                     cmd='echo final > final.txt')
+
+        self.dvc.run(fname='disconnected.dvc',
+                     outs=['disconnected.txt'],
+                     cmd='echo other > disconnected.txt')
+
+        with patch.object(Stage, 'reproduce') as mock_reproduce:
+            ret = main(['repro', '--all-pipelines'])
+            self.assertEqual(ret, 0)
+            self.assertEqual(mock_reproduce.call_count, 4)
