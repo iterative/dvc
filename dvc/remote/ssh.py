@@ -105,31 +105,33 @@ class RemoteSSH(RemoteBase):
 
         return ssh
 
-    def exists(self, path_infos):
-        ret = []
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'ssh'
 
-        if len(path_infos) == 0:
-            return ret
-
-        host = path_infos[0]['host']
-        user = path_infos[0]['user']
-        port = path_infos[0]['port']
-        ssh = self.ssh(host=host,
-                       user=user,
-                       port=port)
-
-        for path_info in path_infos:
-            assert host == path_info['host']
-            assert user == path_info['user']
-            assert port == path_info['port']
+        with self.ssh(path_info['host'],
+                      path_info['user'],
+                      path_info['port']) as ssh:
             try:
                 self._exec(ssh, 'test -e {}'.format(path_info['path']))
                 exists = True
             except RemoteSSHCmdError:
                 exists = False
-            ret.append(exists)
 
-        ssh.close()
+        return exists
+
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
+
+        if len(md5s) == 0:
+            return []
+
+        existing_md5s = self._all_md5s()
+        ret = len(md5s) * [False]
+        for existing_md5 in existing_md5s:
+            for i, md5 in enumerate(md5s):
+                if md5 == existing_md5:
+                    ret[i] = True
 
         return ret
 
@@ -245,7 +247,7 @@ class RemoteSSH(RemoteBase):
         cache['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
 
         if {self.PARAM_MD5: md5} != self.save_info(cache):
-            if self.exists([cache])[0]:
+            if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
@@ -254,7 +256,7 @@ class RemoteSSH(RemoteBase):
         return False
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         md5 = checksum_info.get(self.PARAM_MD5, None)
@@ -296,7 +298,7 @@ class RemoteSSH(RemoteBase):
             logger.warn(msg.format(md5, self.to_string(path_info)))
             return
 
-        if self.exists([path_info])[0]:
+        if self.exists(path_info):
             msg = "Data '{}' exists. Removing before checkout."
             logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)

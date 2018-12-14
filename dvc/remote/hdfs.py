@@ -93,7 +93,7 @@ class RemoteHDFS(RemoteBase):
         cache['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
 
         if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
-            if self.exists([cache])[0]:
+            if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
@@ -102,7 +102,7 @@ class RemoteHDFS(RemoteBase):
         return False
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
@@ -148,7 +148,7 @@ class RemoteHDFS(RemoteBase):
             logger.warn(msg.format(checksum, self.to_string(path_info)))
             return
 
-        if self.exists([path_info])[0]:
+        if self.exists(path_info):
             msg = "Data '{}' exists. Removing before checkout."
             logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
@@ -178,20 +178,28 @@ class RemoteHDFS(RemoteBase):
                  'url': posixpath.join(self.url,
                                        md5[0:2], md5[2:])} for md5 in md5s]
 
-    def exists(self, path_infos):
-        ret = []
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'hdfs'
 
-        if len(path_infos) == 0:
-            return ret
+        try:
+            self.hadoop_fs('test -e {}'.format(path_info['url']))
+            return True
+        except RemoteHDFSCmdError:
+            return False
 
-        for path_info in path_infos:
-            assert path_info['scheme'] == self.scheme
-            try:
-                self.hadoop_fs('test -e {}'.format(path_info['url']))
-                exists = True
-            except RemoteHDFSCmdError:
-                exists = False
-            ret.append(exists)
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
+
+        if len(md5s) == 0:
+            return []
+
+        existing_md5s = self._all_checksums()
+        ret = len(md5s) * [False]
+        for existing_md5 in existing_md5s:
+            for i, md5 in enumerate(md5s):
+                if md5 == existing_md5:
+                    ret[i] = True
 
         return ret
 
@@ -242,6 +250,11 @@ class RemoteHDFS(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all_checksums(self):
+        try:
+            self.hadoop_fs('test -e {}'.format(self.url))
+        except RemoteHDFSCmdError:
+            return []
+
         stdout = self.hadoop_fs('ls -R {}'.format(self.url))
         lines = stdout.split('\n')
         flist = []

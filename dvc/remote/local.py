@@ -101,6 +101,11 @@ class RemoteLOCAL(RemoteBase):
             return True
         return False
 
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'local'
+        return os.path.exists(path_info['path'])
+
     def changed_cache(self, md5):
         cache = self.get(md5)
         clist = [(cache, md5)]
@@ -465,7 +470,7 @@ class RemoteLOCAL(RemoteBase):
             - The checkusm stored in the State is different from the given one
             - There's no file in the cache
         """
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         md5 = checksum_info.get(self.PARAM_MD5, None)
@@ -494,11 +499,12 @@ class RemoteLOCAL(RemoteBase):
                  'path': os.path.join(self.prefix,
                                       md5[0:2], md5[2:])} for md5 in md5s]
 
-    def exists(self, path_infos):
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
         ret = []
-        for path_info in path_infos:
-            assert path_info['scheme'] == 'local'
-            ret.append(os.path.exists(path_info['path']))
+        for md5 in md5s:
+            path = os.path.join(self.prefix, md5[0:2], md5[2:])
+            ret.append(os.path.exists(path))
         return ret
 
     def upload(self, from_infos, to_infos, names=None):
@@ -610,13 +616,9 @@ class RemoteLOCAL(RemoteBase):
         md5s, names = self._group(checksum_infos,
                                   show_checksums=show_checksums)
 
-        progress.update_target(title, 20, 100)
-
-        path_infos = remote.md5s_to_path_infos(md5s)
-
         progress.update_target(title, 30, 100)
 
-        remote_exists = remote.exists(path_infos)
+        remote_exists = remote.cache_exists(md5s)
 
         progress.update_target(title, 90, 100)
 
@@ -663,7 +665,7 @@ class RemoteLOCAL(RemoteBase):
 
         # NOTE: dummy call to try to establish a connection
         # to see if we need to ask user for a password.
-        remote.exists(remote.md5s_to_path_infos(['000']))
+        remote.cache_exists(['000'])
 
         progress.update_target(title, 70, 100)
 
@@ -711,7 +713,7 @@ class RemoteLOCAL(RemoteBase):
 
         # NOTE: filter files that are already uploaded
         md5s = [i[self.PARAM_MD5] for i in checksum_infos]
-        exists = remote.exists(remote.md5s_to_path_infos(md5s))
+        exists = remote.cache_exists(md5s)
 
         progress.update_target(title, 30, 100)
 

@@ -49,7 +49,7 @@ class RemoteAzure(RemoteBase):
             or match.group('container_name')  # backward compatibility
             or os.getenv('AZURE_STORAGE_CONTAINER_NAME'))
 
-        self.prefix = urlparse(self.url).path.lstrip('/') or '/'
+        self.prefix = urlparse(self.url).path.lstrip('/')
 
         self.connection_string = (
             config.get(Config.SECTION_AZURE_CONNECTION_STRING)
@@ -145,29 +145,39 @@ class RemoteAzure(RemoteBase):
         return [{
             'scheme': self.scheme,
             'bucket': self.bucket,
-            'key': '{}/{}/{}'.format(self.prefix, md5[0:2], md5[2:])
+            'key': posixpath.join(self.prefix, md5[0:2], md5[2:])
         } for md5 in md5s]
 
-    def _all_keys(self, bucket, prefix):
-        return {blob.name
-                for blob in self.blob_service.list_blobs(bucket,
-                                                         prefix=prefix)}
+    def _list_keys(self, bucket, prefix):
+        blob_service = self.blob_service
+        next_marker = None
+        while True:
+            blobs = blob_service.list_blobs(bucket,
+                                            prefix=prefix,
+                                            marker=next_marker)
 
-    def exists(self, path_infos):
-        ret = []
+            for blob in blobs:
+                yield blob.name
 
-        if len(path_infos) == 0:
-            return ret
+            if not blobs.next_marker:
+                break
 
-        bucket = path_infos[0]['bucket']
-        key = path_infos[0]['key']
+            next_marker = blobs.next_marker
 
-        for path_info in path_infos:
-            assert path_info['scheme'] == self.scheme
-            assert path_info['bucket'] == bucket
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
 
-            key = path_info['key']
-            ret.append(key in self._all_keys(bucket, key))
+        if len(md5s) == 0:
+            return []
+
+        ret = len(md5s) * [False]
+        keys = [posixpath.join(self.prefix, md5[0:2], md5[2:]) for md5 in md5s]
+        for key in self._list_keys(self.bucket, self.prefix):
+            for i, k in enumerate(keys):
+                if k == key:
+                    ret[i] = True
+
+        assert len(ret) == len(keys) == len(md5s)
 
         return ret
 
@@ -246,8 +256,14 @@ class RemoteAzure(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all(self):
-        keys = self._all_keys(self.bucket, self.prefix)
-        return [self._path_to_etag(key) for key in keys]
+        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
+        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
+        # the same time, so it makes sense to use a generator to gradually
+        # iterate over it, without keeping all of it in memory.
+        return (
+            self._path_to_etag(key)
+            for key in self._list_keys(self.bucket, self.prefix)
+        )
 
     def gc(self, cinfos):
         from dvc.remote.local import RemoteLOCAL

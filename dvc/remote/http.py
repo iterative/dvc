@@ -82,11 +82,19 @@ class RemoteHTTP(RemoteBase):
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def exists(self, path_infos):
-        return [
-            bool(self._request('HEAD', path_info.get('url')))
-            for path_info in path_infos
-        ]
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] in ['http', 'https']
+        return bool(self._request('HEAD', path_info.get('url')))
+
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
+        ret = []
+        for md5 in md5s:
+            url = posixpath.join(self.prefix, md5[0:2], md5[2:])
+            exists = bool(self._request('HEAD', url))
+            ret.append(exists)
+        return ret
 
     def save_info(self, path_info):
         if path_info['scheme'] not in ['http', 'https']:

@@ -131,6 +131,9 @@ class RemoteBase(object):
     def md5s_to_path_infos(self, md5s):
         raise NotImplementedError
 
+    def cache_exists(self, md5s):
+        raise NotImplementedError
+
     def exists(self, path_infos):
         raise NotImplementedError
 

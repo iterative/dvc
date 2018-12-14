@@ -66,20 +66,16 @@ class RemoteS3(RemoteBase):
         if shared_creds:
             os.environ.setdefault('AWS_SHARED_CREDENTIALS_FILE', shared_creds)
 
+        parsed = urlparse(self.url)
+        self.bucket = parsed.netloc
+        self.prefix = parsed.path.lstrip('/')
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
         url = 's3://' + ret.pop(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
-
-    @property
-    def bucket(self):
-        return urlparse(self.url).netloc
-
-    @property
-    def prefix(self):
-        return urlparse(self.url).path.lstrip('/')
 
     @property
     def s3(self):
@@ -106,7 +102,7 @@ class RemoteS3(RemoteBase):
                                                path_info['key'])}
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         etag = checksum_info.get(self.PARAM_ETAG, None)
@@ -146,7 +142,7 @@ class RemoteS3(RemoteBase):
         cache = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
 
         if {self.PARAM_ETAG: etag} != self.save_info(cache):
-            if self.exists([cache])[0]:
+            if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
@@ -172,7 +168,7 @@ class RemoteS3(RemoteBase):
             logger.warn(msg.format(etag, self.to_string(path_info)))
             return
 
-        if self.exists([path_info])[0]:
+        if self.exists(path_info):
             msg = "Data '{}' exists. Removing before checkout."
             logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
@@ -202,10 +198,9 @@ class RemoteS3(RemoteBase):
                  'key': posixpath.join(self.prefix,
                                        md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _all_keys(self, bucket, prefix):
+    def _list_keys(self, bucket, prefix):
         s3 = self.s3
 
-        keys = []
         kwargs = {'Bucket': bucket,
                   'Prefix': prefix}
         while True:
@@ -219,7 +214,7 @@ class RemoteS3(RemoteBase):
                 break
 
             for obj in contents:
-                keys.append(obj['Key'])
+                yield obj['Key']
 
             token = resp.get('NextContinuationToken', None)
             if not token:
@@ -227,24 +222,27 @@ class RemoteS3(RemoteBase):
 
             kwargs['ContinuationToken'] = token
 
-        return keys
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 's3'
 
-    def exists(self, path_infos):
-        ret = []
+        keys = self._list_keys(path_info['bucket'], path_info['key'])
+        return any(path_info['key'] == key for key in keys)
 
-        if len(path_infos) == 0:
-            return ret
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
 
-        bucket = path_infos[0]['bucket']
+        if len(md5s) == 0:
+            return []
 
-        for path_info in path_infos:
-            assert path_info['scheme'] == self.scheme
-            assert path_info['bucket'] == bucket
-            exists = False
-            key = path_info['key']
-            if key in self._all_keys(bucket, key):
-                exists = True
-            ret.append(exists)
+        ret = len(md5s) * [False]
+        keys = [posixpath.join(self.prefix, md5[0:2], md5[2:]) for md5 in md5s]
+        for key in self._list_keys(self.bucket, self.prefix):
+            for i, k in enumerate(keys):
+                if k == key:
+                    ret[i] = True
+
+        assert len(keys) == len(ret) == len(md5s)
 
         return ret
 
@@ -342,8 +340,14 @@ class RemoteS3(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all(self):
-        keys = self._all_keys(self.bucket, self.prefix)
-        return [self._path_to_etag(key) for key in keys]
+        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
+        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
+        # the same time, so it makes sense to use a generator to gradually
+        # iterate over it, without keeping all of it in memory.
+        return (
+            self._path_to_etag(key)
+            for key in self._list_keys(self.bucket, self.prefix)
+        )
 
     def gc(self, cinfos):
         used_etags = [info[self.PARAM_ETAG] for info in cinfos['s3']]

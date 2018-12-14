@@ -33,20 +33,16 @@ class RemoteGS(RemoteBase):
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
+        parsed = urlparse(self.url)
+        self.bucket = parsed.netloc
+        self.prefix = parsed.path.lstrip('/')
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
         url = 'gs://' + ret.pop(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
-
-    @property
-    def bucket(self):
-        return urlparse(self.url).netloc
-
-    @property
-    def prefix(self):
-        return urlparse(self.url).path.lstrip('/')
 
     @property
     def gs(self):
@@ -82,7 +78,7 @@ class RemoteGS(RemoteBase):
         cache = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
 
         if {self.PARAM_MD5: md5} != self.save_info(cache):
-            if self.exists([cache])[0]:
+            if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
                 self.remove(cache)
@@ -91,7 +87,7 @@ class RemoteGS(RemoteBase):
         return False
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         md5 = checksum_info.get(self.PARAM_MD5, None)
@@ -146,7 +142,7 @@ class RemoteGS(RemoteBase):
             logger.warn(msg.format(md5, self.to_string(path_info)))
             return
 
-        if self.exists([path_info])[0]:
+        if self.exists(path_info):
             msg = "Data '{}' exists. Removing before checkout."
             logger.warn(msg.format(self.to_string(path_info)))
             self.remove(path_info)
@@ -179,26 +175,32 @@ class RemoteGS(RemoteBase):
                  'key': posixpath.join(self.prefix,
                                        md5[0:2], md5[2:])} for md5 in md5s]
 
-    def exists(self, path_infos):
-        ret = []
+    def _list_keys(self, bucket, prefix):
+        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
+            yield blob.name
 
-        if len(path_infos) == 0:
-            return ret
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'gs'
 
-        gs = self.gs
-        bucket_name = path_infos[0]['bucket']
-        bucket = gs.bucket(bucket_name)
+        keys = self._list_keys(path_info['bucket'], path_info['key'])
+        return any(path_info['key'] == key for key in keys)
 
-        for path_info in path_infos:
-            assert self.scheme == path_info['scheme']
-            assert bucket_name == path_info['bucket']
+    def cache_exists(self, md5s):
+        assert isinstance(md5s, list)
 
-            exists = False
-            key = path_info['key']
-            keys = [blob.name for blob in bucket.list_blobs(prefix=key)]
-            if key in keys:
-                exists = True
-            ret.append(exists)
+        if len(md5s) == 0:
+            return []
+
+        ret = len(md5s) * [False]
+        keys = [posixpath.join(self.prefix, md5[0:2], md5[2:]) for md5 in md5s]
+        for key in self._list_keys(self.bucket, self.prefix):
+            for i, k in enumerate(keys):
+                if k == key:
+                    ret[i] = True
+
+        assert len(ret) == len(keys) == len(md5s)
+
         return ret
 
     def upload(self, from_infos, to_infos, names=None):
@@ -292,9 +294,14 @@ class RemoteGS(RemoteBase):
         return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all_md5s(self):
-        blobs = self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix)
-        blobs = list(blobs)
-        return [self._path_to_md5(blob.name) for blob in blobs]
+        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
+        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
+        # the same time, so it makes sense to use a generator to gradually
+        # iterate over it, without keeping all of it in memory.
+        return (
+            self._path_to_md5(key)
+            for key in self._list_keys(self.bucket, self.prefix)
+        )
 
     def gc(self, cinfos):
         used = [info[self.PARAM_MD5] for info in cinfos['gs']]
