@@ -1,5 +1,6 @@
 import collections
 import os
+import dvc.prompt as prompt
 
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.exceptions import NotDvcProjectError
@@ -29,7 +30,6 @@ class Project(object):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
-        from dvc.prompt import Prompt
 
         root_dir = self._find_root(root_dir)
 
@@ -51,7 +51,6 @@ class Project(object):
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
-        self.prompt = Prompt()
 
         self._files_to_git_add = []
 
@@ -619,7 +618,7 @@ class Project(object):
             msg = "Missing cache for directory '{}'. " \
                   "Cache for files inside will be lost. " \
                   "Would you like to continue? Use '-f' to force. "
-            if not (force or self.prompt.prompt(msg, False)):
+            if not force and not prompt.confirm(msg):
                 raise DvcException("Unable to fully collect "
                                    "used cache without cache "
                                    "for directory '{}'".format(out))

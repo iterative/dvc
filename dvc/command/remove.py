@@ -1,3 +1,4 @@
+import dvc.prompt as prompt
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 from dvc.logger import logger
@@ -16,9 +17,7 @@ class CmdRemove(CmdBase):
             .format(target)
         )
 
-        confirmed = self.project.prompt.prompt(msg)
-
-        if confirmed:
+        if prompt.confirm(msg):
             return False
 
         raise DvcException(

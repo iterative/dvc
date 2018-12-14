@@ -4,6 +4,7 @@ import posixpath
 import subprocess
 from schema import Schema, SchemaError, Optional, Or, And
 
+import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
@@ -251,8 +252,8 @@ class Stage(object):
 
         msg = "Going to reproduce '{}'. Are you sure you want to continue?"
         msg = msg.format(self.relpath)
-        if interactive \
-           and not self.project.prompt.prompt(msg):
+
+        if interactive and not prompt.confirm(msg):
             raise DvcException('Reproduction aborted by the user')
 
         self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
@@ -412,7 +413,8 @@ class Stage(object):
 
             msg = "'{}' already exists. Do you wish to run the command and " \
                   "overwrite it?".format(stage.relpath)
-            if not overwrite and not project.prompt.prompt(msg, False):
+
+            if not overwrite and not prompt.confirm(msg):
                 raise StageFileAlreadyExistsError(stage.relpath)
 
         return stage

@@ -7,6 +7,7 @@ import shutil
 import posixpath
 from operator import itemgetter
 
+import dvc.prompt as prompt
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP
 from dvc.logger import logger
@@ -372,9 +373,7 @@ class RemoteLOCAL(RemoteBase):
             .format(file)
         )
 
-        confirmed = self.project.prompt.prompt(msg, False)
-
-        if not confirmed:
+        if not prompt.confirm(msg):
             raise DvcException('Unable to remove {} without a confirmation'
                                " from the user. Use '-f' to force."
                                .format(file))

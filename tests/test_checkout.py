@@ -163,11 +163,9 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 
 
 class TestCheckoutCleanWorkingDir(CheckoutBase):
-    @patch('dvc.prompt.Prompt.prompt')
+    @patch('dvc.prompt.confirm', return_value=True)
     def test(self, mock_prompt):
         from tests.test_data_cloud import sleep
-
-        mock_prompt.return_value = True
 
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
@@ -184,11 +182,9 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
         self.assertEqual(ret, 0)
         self.assertFalse(os.path.exists(working_dir_change))
 
-    @patch('dvc.prompt.Prompt.prompt')
+    @patch('dvc.prompt.confirm', return_value=False)
     def test_force(self, mock_prompt):
         from tests.test_data_cloud import sleep
-
-        mock_prompt.return_value = False
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
