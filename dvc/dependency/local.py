@@ -12,7 +12,7 @@ from dvc.remote.local import RemoteLOCAL
 
 
 class DependencyLOCAL(DependencyBase):
-    REGEX = r'^(?P<path>(/+|.:\\+)?[^:]*)$'
+    REGEX = r'^(?P<path>.*)$'
 
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError

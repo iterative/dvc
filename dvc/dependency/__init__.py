@@ -5,7 +5,6 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.exceptions import DvcException
 from dvc.config import Config
 
 from dvc.dependency.base import DependencyBase
@@ -25,9 +24,9 @@ DEPS = [
     DependencyGS,
     DependencyHDFS,
     DependencyHTTP,
-    DependencyLOCAL,
     DependencyS3,
     DependencySSH,
+    # NOTE: DependencyLOCAL is the default choice
 ]
 
 DEP_MAP = {
@@ -60,7 +59,7 @@ def _get(stage, p, info):
     for d in DEPS:
         if d.supported(p):
             return d(stage, p, info)
-    raise DvcException('Dependency \'{}\' is not supported'.format(p))
+    return DependencyLOCAL(stage, p, info)
 
 
 def loadd_from(stage, d_list):
