@@ -1,10 +1,15 @@
-from dvc.dependency import _get
-from dvc.exceptions import DvcException
+from dvc.stage import Stage
+from dvc.dependency import _get, DEP_MAP
 
-from tests.basic_env import TestDvc
+from tests.test_output import TestOutScheme
 
 
-class TestUnsupported(TestDvc):
-    def test(self):
-        with self.assertRaises(DvcException):
-            _get(None, 'unsupported://a/b', None)
+class TestDepScheme(TestOutScheme):
+    MAP = DEP_MAP
+
+    TESTS = TestOutScheme.TESTS.copy()
+    TESTS['http://example.com/path/to/file'] = 'http'
+    TESTS['https://example.com/path/to/file'] = 'https'
+
+    def _get(self, path):
+        return _get(Stage(self.dvc), path, None)

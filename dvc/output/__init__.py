@@ -1,6 +1,5 @@
 import schema
 
-from dvc.exceptions import DvcException
 from dvc.config import Config
 
 from dvc.dependency import SCHEMA, urlparse
@@ -14,7 +13,13 @@ from dvc.output.ssh import OutputSSH
 from dvc.remote import Remote
 
 
-OUTS = [OutputHDFS, OutputS3, OutputGS, OutputSSH, OutputLOCAL]
+OUTS = [
+    OutputHDFS,
+    OutputS3,
+    OutputGS,
+    OutputSSH,
+    # NOTE: OutputLOCAL is the default choice
+]
 
 OUTS_MAP = {'hdfs': OutputHDFS,
             's3': OutputS3,
@@ -42,7 +47,7 @@ def _get(stage, p, info, cache, metric):
     for o in OUTS:
         if o.supported(p):
             return o(stage, p, info, cache=cache, remote=None, metric=metric)
-    raise DvcException('Output \'{}\' is not supported'.format(p))
+    return OutputLOCAL(stage, p, info, cache=cache, remote=None, metric=metric)
 
 
 def loadd_from(stage, d_list):
