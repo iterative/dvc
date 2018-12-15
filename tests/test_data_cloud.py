@@ -2,7 +2,6 @@ from subprocess import CalledProcessError
 from subprocess import check_output, Popen
 from unittest import SkipTest
 import os
-import time
 import uuid
 import shutil
 import getpass
@@ -151,15 +150,6 @@ def get_azure_url():
     return 'azure://{}/{}'.format(container_name, str(uuid.uuid4()))
 
 
-def sleep():
-    # Sleep some time to simulate realistic behavior.
-    # Some filesystems have a bad date resolution for
-    # mtime(i.e. 1sec for HFS) that cause problems with
-    # our 'state' system not being able to distinguish
-    # files that were modified within that delta.
-    time.sleep(1)
-
-
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
         cloud = DataCloud(self.dvc, config=config)
@@ -242,7 +232,6 @@ class TestDataCloudBase(TestDvc):
 
         with self.cloud.project.state:
             # Check status
-            sleep()
             status = self.cloud.status([info], show_checksums=True)
             self.assertEqual([(md5, STATUS_NEW)], status)
 
@@ -257,7 +246,6 @@ class TestDataCloudBase(TestDvc):
             self.cloud.push([info_dir])
             self.assertTrue(os.path.isfile(cache_dir))
 
-            sleep()
             status = self.cloud.status([info], show_checksums=True)
             self.assertEqual([(md5, STATUS_OK)], status)
 
@@ -265,7 +253,6 @@ class TestDataCloudBase(TestDvc):
             self.assertTrue((md5_dir, STATUS_OK) in status_dir)
 
             # Remove and check status
-            sleep()
             shutil.rmtree(self.dvc.cache.local.cache_dir)
 
             status = self.cloud.status([info], show_checksums=True)
@@ -284,7 +271,6 @@ class TestDataCloudBase(TestDvc):
             self.cloud.pull([info_dir])
             self.assertTrue(os.path.isfile(cache_dir))
 
-            sleep()
             status = self.cloud.status([info], show_checksums=True)
             self.assertEqual([(md5, STATUS_OK)], status)
 
@@ -397,7 +383,6 @@ class TestDataCloudCLIBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache
 
         # FIXME check status output
-        sleep()
         self.main(['status', '-c', '--show-checksums'] + args)
 
         self.main(['push'] + args)
@@ -405,12 +390,10 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
-        sleep()
         self.main(['status', '-c', '--show-checksums'] + args)
 
         shutil.rmtree(self.dvc.cache.local.cache_dir)
 
-        sleep()
         self.main(['status', '-c', '--show-checksums'] + args)
 
         self.main(['fetch'] + args)
@@ -425,7 +408,6 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertTrue(os.path.isfile(self.FOO))
         self.assertTrue(os.path.isdir(self.DATA_DIR))
 
-        sleep()
         with open(cache, 'r') as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
@@ -437,10 +419,8 @@ class TestDataCloudCLIBase(TestDvc):
         shutil.move(self.dvc.cache.local.cache_dir,
                     self.dvc.cache.local.cache_dir + '.back')
 
-        sleep()
         self.main(['fetch'] + args)
 
-        sleep()
         self.main(['pull'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))

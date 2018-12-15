@@ -1,6 +1,5 @@
 import os
 import yaml
-import time
 import shutil
 import filecmp
 import collections
@@ -58,8 +57,6 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
     def test(self):
         cache = self.foo_stage.outs[0].cache
 
-        time.sleep(1)
-
         with open(cache, 'a') as fd:
             fd.write('1')
 
@@ -71,8 +68,6 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
 
 class TestCheckoutCorruptedCacheDir(TestDvc):
     def test(self):
-        time.sleep(1)
-
         # NOTE: using 'copy' so that cache and link don't have same inode
         ret = main(['config', 'cache.type', 'copy'])
         self.assertEqual(ret, 0)
@@ -165,18 +160,14 @@ class TestRemoveFilesWhenCheckout(CheckoutBase):
 class TestCheckoutCleanWorkingDir(CheckoutBase):
     @patch('dvc.prompt.confirm', return_value=True)
     def test(self, mock_prompt):
-        from tests.test_data_cloud import sleep
+        mock_prompt.return_value = True
 
         stages = self.dvc.add(self.DATA_DIR)
         stage = stages[0]
 
-        sleep()
-
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
-
-        sleep()
 
         ret = main(['checkout', stage.relpath])
         self.assertEqual(ret, 0)
@@ -184,19 +175,15 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
 
     @patch('dvc.prompt.confirm', return_value=False)
     def test_force(self, mock_prompt):
-        from tests.test_data_cloud import sleep
+        mock_prompt.return_value = False
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
 
-        sleep()
-
         working_dir_change = os.path.join(self.DATA_DIR, 'not_cached.txt')
         with open(working_dir_change, 'w') as f:
             f.write('not_cached')
-
-        sleep()
 
         ret = main(['checkout', stage.relpath])
         self.assertNotEqual(ret, 0)
@@ -208,8 +195,6 @@ class TestCheckoutCleanWorkingDir(CheckoutBase):
 
 class TestCheckoutSelectiveRemove(CheckoutBase):
     def test(self):
-        from tests.test_data_cloud import sleep
-
         # Use copy to test for changes in the inodes
         ret = main(['config', 'cache.type', 'copy'])
         self.assertEqual(ret, 0)
@@ -219,16 +204,10 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         stage = stages[0]
         staged_files = self.outs_info(stage)
 
-        sleep()
-
         os.remove(staged_files[0].path)
-
-        sleep()
 
         ret = main(['checkout', '--force', stage.relpath])
         self.assertEqual(ret, 0)
-
-        sleep()
 
         checkedout_files = self.outs_info(stage)
 
