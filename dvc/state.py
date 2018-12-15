@@ -15,22 +15,23 @@ class StateDuplicateError(DvcException):
 
 
 class State(object):
-    VERSION = 2
+    VERSION = 3
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = "inode INTEGER PRIMARY KEY, " \
-                         "mtime TEXT NOT NULL, " \
-                         "md5 TEXT NOT NULL, " \
-                         "timestamp TEXT NOT NULL"
+    STATE_TABLE_LAYOUT = ("inode INTEGER PRIMARY KEY, "
+                          "mtime TEXT NOT NULL, "
+                          "size TEXT NOT NULL, "
+                          "md5 TEXT NOT NULL, "
+                          "timestamp TEXT NOT NULL")
 
     STATE_INFO_TABLE = 'state_info'
     STATE_INFO_TABLE_LAYOUT = 'count INTEGER'
     STATE_INFO_ROW = 1
 
     LINK_STATE_TABLE = 'link_state'
-    LINK_STATE_TABLE_LAYOUT = "path TEXT PRIMARY KEY, " \
-                              "inode INTEGER NOT NULL, " \
-                              "mtime TEXT NOT NULL"
+    LINK_STATE_TABLE_LAYOUT = ("path TEXT PRIMARY KEY, "
+                               "inode INTEGER NOT NULL, "
+                               "mtime TEXT NOT NULL")
 
     STATE_ROW_LIMIT = 100000000
     STATE_ROW_CLEANUP_QUOTA = 50
@@ -245,17 +246,27 @@ class State(object):
         self.inserts = 0
 
     @staticmethod
-    def mtime(path):
+    def mtime_and_size(path):
+        size = 0
         mtime = os.path.getmtime(path)
+
         if os.path.isdir(path):
             for root, dirs, files in os.walk(path):
-                for entry in list(dirs) + list(files):
-                    p = os.path.join(root, entry)
+                for dname in dirs:
+                    p = os.path.join(root, dname)
                     m = os.path.getmtime(p)
                     if m > mtime:
                         mtime = m
 
-        return str(int(nanotime.timestamp(mtime)))
+                for fname in files:
+                    p = os.path.join(root, fname)
+                    st = os.stat(p)
+                    size += st.st_size
+                    m = st.st_mtime
+                    if m > mtime:
+                        mtime = m
+
+        return (str(int(nanotime.timestamp(mtime))), size)
 
     @staticmethod
     def inode(path):
@@ -269,7 +280,7 @@ class State(object):
         if not os.path.exists(path):
             return (None, None)
 
-        mtime = self.mtime(path)
+        mtime, size = self.mtime_and_size(path)
         inode = self.inode(path)
 
         cmd = 'SELECT * from {} WHERE inode={}'.format(self.STATE_TABLE,
@@ -279,29 +290,33 @@ class State(object):
         ret = self._fetchall()
         if len(ret) == 0:
             md5, info = self._collect(path)
-            cmd = 'INSERT INTO {}(inode, mtime, md5, timestamp) ' \
-                  'VALUES ({}, "{}", "{}", "{}")'
+            cmd = 'INSERT INTO {}(inode, mtime, size, md5, timestamp) ' \
+                  'VALUES ({}, "{}", "{}", "{}", "{}")'
             self._execute(cmd.format(self.STATE_TABLE,
                                      self._to_sqlite(inode),
                                      mtime,
+                                     size,
                                      md5,
                                      int(nanotime.timestamp(time.time()))))
             self.inserts += 1
         else:
             assert len(ret) == 1
-            assert len(ret[0]) == 4
-            i, m, md5, timestamp = ret[0]
+            assert len(ret[0]) == 5
+            i, m, s, md5, timestamp = ret[0]
             i = self._from_sqlite(i)
             assert i == inode
-            msg = "Inode '{}', mtime '{}', actual mtime '{}'."
-            logger.debug(msg.format(i, m, mtime))
-            if mtime != m:
+            msg = ("Inode '{}', mtime '{}', actual mtime '{}', "
+                   "size '{}', actual size '{}'.")
+            logger.debug(msg.format(i, m, mtime, s, size))
+            if mtime != m or size != s:
                 md5, info = self._collect(path)
-                cmd = 'UPDATE {} SET ' \
-                      'mtime = "{}", md5 = "{}", timestamp = "{}" ' \
-                      'WHERE inode = {}'
+                cmd = ('UPDATE {} SET '
+                       'mtime = "{}", size = "{}", '
+                       'md5 = "{}", timestamp = "{}" '
+                       'WHERE inode = {}')
                 self._execute(cmd.format(self.STATE_TABLE,
                                          mtime,
+                                         size,
                                          md5,
                                          int(nanotime.timestamp(time.time())),
                                          self._to_sqlite(inode)))
@@ -327,7 +342,7 @@ class State(object):
         if not os.path.exists(path):
             return
 
-        mtime = self.mtime(path)
+        mtime, _ = self.mtime_and_size(path)
         inode = self.inode(path)
         relpath = os.path.relpath(path, self.root_dir)
 
@@ -354,7 +369,7 @@ class State(object):
                 continue
 
             inode = self.inode(path)
-            mtime = self.mtime(path)
+            mtime, _ = self.mtime_and_size(path)
 
             if i == inode and m == mtime:
                 logger.debug('Removing \'{}\' as unused link.'.format(path))
