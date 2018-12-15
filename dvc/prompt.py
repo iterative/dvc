@@ -1,6 +1,5 @@
 import sys
-
-from dvc.progress import progress
+from getpass import getpass
 
 try:
     # NOTE: in Python3 raw_input() was renamed to input()
@@ -9,32 +8,29 @@ except NameError:
     pass
 
 
-class Prompt(object):
-    def __init__(self):
-        self.default = None
+def ask(prompt, limited_to=None):
+    if not sys.stdout.isatty():
+        return
 
-    def prompt(self, msg, default=False):  # pragma: no cover
-        if self.default is not None:
-            return self.default
+    while True:
+        answer = input(prompt + ' ').lower()
 
-        if not sys.stdout.isatty():
-            return default
+        if not limited_to:
+            return answer
 
-        answer = input(msg + u' (y/n)\n').lower()
-        while answer not in ['yes', 'no', 'y', 'n']:
-            answer = input('Enter \'yes\' or \'no\'.\n').lower()
+        if answer in limited_to:
+            return answer
 
-        return answer[0] == "y"
+        print("Your response must be one of: {options}. Please try again."
+              .format(options=limited_to))
 
-    def prompt_password(self, msg):  # pragma: no cover
-        import getpass
 
-        if not sys.stdout.isatty():
-            return None
+def confirm(statement):
+    prompt = '{statement} [y/n]'.format(statement=statement)
+    answer = ask(prompt, limited_to=['yes', 'no', 'y', 'n'])
+    return answer and answer.startswith('y')
 
-        msg = '{}:\n'.format(msg)
 
-        if not progress.is_finished:
-            msg = u'\n' + msg
-
-        return getpass.getpass(msg)
+def password(statement):
+    prompt = '{statement}: '.format(statement=statement)
+    return getpass(prompt)

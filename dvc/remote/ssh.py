@@ -7,6 +7,7 @@ try:
 except ImportError:
     paramiko = None
 
+import dvc.prompt as prompt
 from dvc.logger import logger
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
@@ -93,7 +94,7 @@ class RemoteSSH(RemoteBase):
         if self.ask_password and self.password is None:
             msg = ("Enter a private key passphrase or a password for "
                    "host '{}' port '{}' user '{}'").format(host, port, user)
-            self.password = self.project.prompt.prompt_password(msg)
+            self.password = prompt.password(msg)
 
         ssh.connect(host,
                     username=user,

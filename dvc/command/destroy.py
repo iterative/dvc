@@ -1,3 +1,4 @@
+import dvc.prompt as prompt
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 
@@ -9,8 +10,7 @@ class CmdDestroy(CmdBase):
                   u'all data files, as well as cache in .dvc/cache.\n' \
                   u'Are you sure you want to continue?'
 
-            if not self.args.force \
-               and not self.project.prompt.prompt(msg, False):
+            if not self.args.force and not prompt.confirm(msg):
                 msg = u'Cannot destroy without a confirmation from the ' \
                       u'user. Use \'-f\' to force.'
                 raise DvcException(msg)

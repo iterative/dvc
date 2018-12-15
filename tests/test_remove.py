@@ -69,10 +69,8 @@ class TestRemovePurge(TestDvc):
         self.assertFalse(os.path.exists(self.FOO))
         self.assertFalse(os.path.exists(dvcfile))
 
-    @patch('dvc.prompt.Prompt.prompt')
+    @patch('dvc.prompt.confirm', return_value=False)
     def test_force(self, mock_prompt):
-        mock_prompt.return_value = False
-
         dvcfile = self.dvc.add(self.FOO)[0].path
         ret = main(['remove', '--purge', dvcfile])
 

@@ -1,5 +1,6 @@
 import collections
 import os
+import dvc.prompt as prompt
 
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.exceptions import NotDvcProjectError
@@ -29,7 +30,6 @@ class Project(object):
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
-        from dvc.prompt import Prompt
 
         root_dir = self._find_root(root_dir)
 
@@ -51,7 +51,6 @@ class Project(object):
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
         self.updater = Updater(self.dvc_dir)
-        self.prompt = Prompt()
 
         self._files_to_git_add = []
 
@@ -106,7 +105,6 @@ class Project(object):
         Raises:
             KeyError: Raises an exception.
         """
-        import colorama
         import shutil
         from dvc.scm import SCM, Base
         from dvc.config import Config
@@ -136,19 +134,7 @@ class Project(object):
 
         logger.info('\nYou can now commit the changes to git.')
 
-        logger.info(
-            "\n"
-            "{yellow}What's next?{nc}\n"
-            "{yellow}------------{nc}\n"
-            "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
-            "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
-            "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
-
-            .format(yellow=colorama.Fore.YELLOW,
-                    blue=colorama.Fore.BLUE,
-                    green=colorama.Fore.GREEN,
-                    nc=colorama.Fore.RESET)
-        )
+        proj._welcome_message()
 
         return proj
 
@@ -632,7 +618,7 @@ class Project(object):
             msg = "Missing cache for directory '{}'. " \
                   "Cache for files inside will be lost. " \
                   "Would you like to continue? Use '-f' to force. "
-            if not (force or self.prompt.prompt(msg, False)):
+            if not force and not prompt.confirm(msg):
                 raise DvcException("Unable to fully collect "
                                    "used cache without cache "
                                    "for directory '{}'".format(out))
@@ -1243,3 +1229,20 @@ class Project(object):
         for G in self.pipelines():
             stages.extend(list(nx.get_node_attributes(G, 'stage').values()))
         return stages
+
+    def _welcome_message(self):
+        import colorama
+
+        self.logger.info(
+            "\n"
+            "{yellow}What's next?{nc}\n"
+            "{yellow}------------{nc}\n"
+            "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
+            "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
+            "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
+
+            .format(yellow=colorama.Fore.YELLOW,
+                    blue=colorama.Fore.BLUE,
+                    green=colorama.Fore.GREEN,
+                    nc=colorama.Fore.RESET)
+        )

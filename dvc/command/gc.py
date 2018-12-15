@@ -1,4 +1,5 @@
 import os
+import dvc.prompt as prompt
 
 from dvc.command.base import CmdBase
 
@@ -26,7 +27,7 @@ class CmdGC(CmdBase):
         self.project.logger.warn(msg)
 
         msg = 'Are you sure you want to proceed?'
-        if not self.args.force and not self.project.prompt.prompt(msg):
+        if not self.args.force and not prompt.confirm(msg):
             return 1
 
         self.project.gc(all_branches=self.args.all_branches,
