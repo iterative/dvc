@@ -213,7 +213,7 @@ class RemoteLOCAL(RemoteBase):
         dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
 
         md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
-        if self.changed_cache(md5):
+        if self.changed_cache_file(md5):
             self.dump_dir_cache(md5, dir_info)
 
         return (md5, dir_info)
