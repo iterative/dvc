@@ -1166,25 +1166,7 @@ class Project(object):
 
         G, G_active = self.graph()
 
-        if len(G.nodes()) == 0:
-            return []
-
-        # find pipeline ends aka "output stages"
-        ends = [node for node, in_degree in G.in_degree() if in_degree == 0]
-
-        # filter out subgraphs that didn't exist in original G
-        pipelines = []
-        for c in nx.weakly_connected_components(G_active):
-            H = G_active.subgraph(c)
-            found = False
-            for node in ends:
-                if node in H:
-                    found = True
-                    break
-            if found:
-                pipelines.append(H)
-
-        return pipelines
+        return list(nx.weakly_connected_component_subgraphs(G_active))
 
     def stages(self):
         """
