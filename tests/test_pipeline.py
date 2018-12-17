@@ -187,3 +187,41 @@ class TestPipelineListSingle(TestPipelineShowDeep):
     def test(self):
         ret = main(['pipeline', 'list'])
         self.assertEqual(ret, 0)
+
+
+class TestProjectPipeline(TestDvc):
+    def test_no_stages(self):
+        pipelines = self.dvc.pipelines()
+        self.assertEqual(len(pipelines), 0)
+
+    def one_pipeline(self):
+        self.dvc.add('foo')
+        self.dvc.run(deps=['foo'], outs=['bar'], cmd='')
+        self.dvc.run(deps=['bar'], outs=['baz'], cmd='echo baz > baz')
+        pipelines = self.dvc.pipelines()
+
+        self.assertEqual(len(pipelines), 1)
+        self.assertEqual(pipelines[0].nodes, 3)
+        self.assertEqual(pipelines[0].edges, 2)
+
+    def two_pipelines(self):
+        self.dvc.add('foo')
+        self.dvc.run(deps=['foo'], outs=['bar'], cmd='')
+        self.dvc.run(deps=['bar'], outs=['baz'], cmd='echo baz > baz')
+
+        self.dvc.add('code.py')
+
+        pipelines = self.dvc.pipelines()
+
+        self.assertEqual(len(pipelines), 2)
+        self.assertEqual(pipelines[0].nodes, 3)
+        self.assertEqual(pipelines[0].edges, 2)
+        self.assertEqual(pipelines[1].nodes, 1)
+        self.assertEqual(pipelines[1].edges, 0)
+
+    def locked_stage(self):
+        self.dvc.add('foo')
+        self.dvc.lock_stage('foo.dvc')
+
+        pipelines = self.dvc.pipelines()
+        self.assertEqual(len(pipelines), 0)
