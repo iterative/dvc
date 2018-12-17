@@ -177,7 +177,7 @@ def is_binary():
 
 # NOTE: Fix env variables modified by PyInstaller
 # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
-def fix_env(env):
+def fix_env(env=None):
     if env is None:
         env = os.environ.copy()
     else:

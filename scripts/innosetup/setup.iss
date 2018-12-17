@@ -2,7 +2,7 @@
 #define MyAppVersion ReadIni(".\scripts\innosetup\config.ini", "Version", "version", "unknown")
 #define MyAppPublisher "Dmitry Petrov"
 #define MyAppURL "https://dataversioncontrol.com/"
-#define MyAppDir "..\..\dist"
+#define MyAppDir "..\..\dist\dvc"
 
 [Setup]
 AppId={{8258CE8A-110E-4E0D-AE60-FEE00B15F041}

@@ -13,6 +13,7 @@ fi
 
 BUILD_DIR=build
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
+LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 print_error()
 {
@@ -40,7 +41,7 @@ fpm_build()
 {
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
-	fpm -s dir -f -t $1 $FPM_FLAGS -n dvc -v $VERSION -C $BUILD_DIR $INSTALL_DIR
+	fpm -s dir -f -t $1 $FPM_FLAGS -n dvc -v $VERSION -C $BUILD_DIR usr
 }
 
 cleanup()
@@ -78,7 +79,18 @@ install_dependencies()
 build_dvc()
 {
 	print_info "Building dvc binary..."
-	pyinstaller --onefile --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py --name dvc --distpath $BIN_DIR --specpath $BUILD_DIR
+	pyinstaller \
+            --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py \
+            --name dvc \
+            --distpath $LIB_DIR \
+            --specpath $BUILD_DIR
+
+	$LIB_DIR/dvc/dvc --help
+
+	mkdir -p $BIN_DIR
+	pushd $BIN_DIR
+	ln -s ../lib/dvc/dvc dvc
+	popd
 
 	$BIN_DIR/dvc --help
 }
