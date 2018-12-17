@@ -332,8 +332,6 @@ class TestRunUnprotectOutsHardlink(TestDvc):
 
 class TestCmdRunOverwrite(TestDvc):
     def test(self):
-        import time
-
         ret = main(['run',
                     '-d', self.FOO,
                     '-d', self.CODE,
@@ -343,8 +341,6 @@ class TestCmdRunOverwrite(TestDvc):
         self.assertEqual(ret, 0)
 
         stage_mtime = os.path.getmtime('out.dvc')
-
-        time.sleep(2)
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -357,8 +353,6 @@ class TestCmdRunOverwrite(TestDvc):
         # NOTE: check that dvcfile was NOT overwritten
         self.assertEqual(stage_mtime, os.path.getmtime('out.dvc'))
         stage_mtime = os.path.getmtime('out.dvc')
-
-        time.sleep(2)
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -373,8 +367,6 @@ class TestCmdRunOverwrite(TestDvc):
         # NOTE: check that dvcfile was overwritten
         self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
         stage_mtime = os.path.getmtime('out.dvc')
-
-        time.sleep(2)
 
         ret = main(['run',
                     '--overwrite-dvcfile',

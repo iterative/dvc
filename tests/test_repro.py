@@ -26,7 +26,6 @@ from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
-from tests.test_data_cloud import sleep
 from tests.utils.httpd import StaticFileServer
 
 
@@ -64,8 +63,6 @@ class TestReproDepUnderDir(TestDvc):
         self.dir_stage = stages[0]
         self.assertTrue(self.dir_stage is not None)
 
-        sleep()
-
         self.file1 = 'file1'
         self.file1_stage = self.file1 + '.dvc'
         self.dvc.run(fname=self.file1_stage,
@@ -80,8 +77,6 @@ class TestReproDepUnderDir(TestDvc):
         os.unlink(self.DATA)
         shutil.copyfile(self.FOO, self.DATA)
 
-        sleep()
-
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 2)
         self.assertTrue(filecmp.cmp(self.file1, self.FOO, shallow=False))
@@ -93,19 +88,13 @@ class TestReproDepDirWithOutputsUnderIt(TestDvc):
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
 
-        sleep()
-
         stages = self.dvc.add(self.DATA_SUB)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
 
-        sleep()
-
         stage = self.dvc.run(fname='Dvcfile',
                              deps=[self.DATA, self.DATA_SUB])
         self.assertTrue(stage is not None)
-
-        sleep()
 
         file1 = 'file1'
         file1_stage = file1 + '.dvc'
@@ -117,12 +106,8 @@ class TestReproDepDirWithOutputsUnderIt(TestDvc):
                                                           file1))
         self.assertTrue(stage is not None)
 
-        sleep()
-
         os.unlink(self.DATA)
         shutil.copyfile(self.FOO, self.DATA)
-
-        sleep()
 
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 2)
@@ -286,8 +271,6 @@ class TestReproIgnoreBuildCache(TestDvc):
                                                           file1,
                                                           file2))
         self.assertTrue(stage is not None)
-
-        sleep()
 
         with open(code1, 'a') as fobj:
             fobj.write('\n\n')
@@ -521,13 +504,9 @@ class TestReproChangedDirData(TestDvc):
         dir_name = 'dir'
         dir_code = 'dir_code.py'
 
-        sleep()
-
         with open(dir_code, 'w+') as fd:
             fd.write("import os; import sys; import shutil; "
                      "shutil.copytree(sys.argv[1], sys.argv[2])")
-
-        sleep()
 
         stage = self.dvc.run(outs=[dir_name],
                              deps=[self.DATA_DIR, dir_code],
@@ -539,28 +518,21 @@ class TestReproChangedDirData(TestDvc):
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 0)
 
-        sleep()
-
         with open(self.DATA_SUB, 'a') as fd:
             fd.write('add')
-
-        sleep()
 
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
-        sleep()
 
         # Check that dvc indeed registers changed output dir
         shutil.move(self.BAR, dir_name)
-        sleep()
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
 
         # Check that dvc registers mtime change for the directory.
         System.hardlink(self.DATA_SUB, self.DATA_SUB + '.lnk')
-        sleep()
         stages = self.dvc.reproduce(stage.path)
         self.assertEqual(len(stages), 1)
         self.assertTrue(stages[0] is not None)
@@ -685,8 +657,6 @@ class TestReproExternalBase(TestDvc):
 
         self.write(self.bucket, foo_key, self.FOO_CONTENTS)
 
-        sleep()
-
         import_stage = self.dvc.imp(out_foo_path, 'import')
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.FOO, shallow=False))
@@ -704,8 +674,6 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(self.dvc.status(), {})
 
         self.write(self.bucket, foo_key, self.BAR_CONTENTS)
-
-        sleep()
 
         self.assertNotEqual(self.dvc.status(), {})
 
