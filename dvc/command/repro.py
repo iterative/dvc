@@ -12,6 +12,10 @@ class CmdRepro(CmdBase):
         if self.args.cwd:
             os.chdir(self.args.cwd)
 
+        # Dirty hack so the for loop below can at least enter once
+        if self.args.all_pipelines:
+            self.args.targets = [None]
+
         ret = 0
         for target in self.args.targets:
             try:
