@@ -72,66 +72,6 @@ class RemoteAzure(RemoteBase):
             self.__blob_service.create_container(self.bucket)
         return self.__blob_service
 
-# FIXME: temporarily disabled because of the lack of test for external azure
-# dependencies/outputs/cache.
-#
-#    def _get_etag(self, bucket, key):
-#        try:
-#            blob = self.blob_service.get_blob_properties(bucket, key)
-#            return blob.properties.etag
-#        except Exception:
-#            return None
-#
-#    def save_info(self, path_info):
-#        if path_info['scheme'] != self.scheme:
-#            raise NotImplementedError
-#
-#        return {self.PARAM_ETAG: self._get_etag(
-#            path_info['bucket'], path_info['key'])}
-#
-#    def save(self, path_info):
-#        if path_info['scheme'] != self.scheme:
-#            raise NotImplementedError
-#
-#        etag = self._get_etag(path_info['bucket'], path_info['key'])
-#        dest_key = '{}/{}'.format(etag[0:2], etag[2:])
-#
-#        self._copy_blob(to_bucket=self.bucket,
-#                        to_key=dest_key,
-#                        from_bucket=path_info['bucket'],
-#                        from_key=path_info['key'])
-#
-#        return {self.PARAM_ETAG: etag}
-#
-#    def changed(self, path_info, checksum_info):
-#        return checksum_info != self.save_info(path_info)
-#
-#    def _copy_blob(self, to_bucket, to_key, from_bucket, from_key):
-#        source = self.blob_service.make_blob_url(from_bucket, from_key)
-#
-#        copy = self.blob_service.copy_blob(to_bucket, to_key, source)
-#
-#        if self.COPY_POLL_SECONDS <= 0:
-#            return
-#
-#        while copy.status != 'success':
-#            time.sleep(self.COPY_POLL_SECONDS)
-#            copy = self.blob_service.get_blob_properties(
-#                to_bucket, to_key).properties.copy
-#
-#    def checkout(self, path_info, checksum_info):
-#        if path_info['scheme'] != self.scheme:
-#            raise NotImplementedError
-#
-#        etag = checksum_info.get(self.PARAM_ETAG, None)
-#        if not etag:
-#            return
-#
-#        self._copy_blob(to_bucket=path_info['bucket'],
-#                        to_key=path_info['key'],
-#                        from_bucket=self.bucket,
-#                        from_key='{}/{}'.format(etag[0:2], etag[2:]))
-#
     def remove(self, path_info):
         if path_info['scheme'] != self.scheme:
             raise NotImplementedError
