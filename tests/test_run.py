@@ -332,6 +332,13 @@ class TestRunUnprotectOutsHardlink(TestDvc):
 
 class TestCmdRunOverwrite(TestDvc):
     def test(self):
+        # NOTE: using sleep() is a workaround  for filesystems
+        # with low mtime resolution. We have to use mtime since
+        # comparing mtime's is the only way to check that the stage
+        # file didn't change(size and inode in the first test down
+        # below don't change).
+        import time
+
         ret = main(['run',
                     '-d', self.FOO,
                     '-d', self.CODE,
@@ -341,6 +348,8 @@ class TestCmdRunOverwrite(TestDvc):
         self.assertEqual(ret, 0)
 
         stage_mtime = os.path.getmtime('out.dvc')
+
+        time.sleep(1)
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -353,6 +362,8 @@ class TestCmdRunOverwrite(TestDvc):
         # NOTE: check that dvcfile was NOT overwritten
         self.assertEqual(stage_mtime, os.path.getmtime('out.dvc'))
         stage_mtime = os.path.getmtime('out.dvc')
+
+        time.sleep(1)
 
         ret = main(['run',
                     '-d', self.FOO,
@@ -367,6 +378,8 @@ class TestCmdRunOverwrite(TestDvc):
         # NOTE: check that dvcfile was overwritten
         self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
         stage_mtime = os.path.getmtime('out.dvc')
+
+        time.sleep(1)
 
         ret = main(['run',
                     '--overwrite-dvcfile',
