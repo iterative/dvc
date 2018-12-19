@@ -19,7 +19,7 @@ call pip install -r requirements.txt || goto :error
 call pip install pyinstaller || goto :error
 
 echo ====== Building dvc binary... ======
-call pyinstaller --onefile --additional-hooks-dir scripts\hooks dvc/__main__.py --name dvc --specpath build
+call pyinstaller --additional-hooks-dir scripts\hooks dvc/__main__.py --name dvc --specpath build
 
 echo ====== Copying additional files... ======
 copy scripts\innosetup\addSymLinkPermissions.ps1 dist\ || goto :error
