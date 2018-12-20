@@ -86,11 +86,12 @@ class RemoteS3(RemoteBase):
                               endpoint_url=self.endpoint_url,
                               use_ssl=self.use_ssl)
 
-    def get_etag(self, bucket, key):
+    def get_etag(self, bucket, path):
         try:
-            obj = self.s3.head_object(Bucket=bucket, Key=key)
+            obj = self.s3.head_object(Bucket=bucket, Key=path)
         except Exception:
-            raise DvcException('s3://{}/{} does not exist'.format(bucket, key))
+            raise DvcException('s3://{}/{} does not exist'.format(bucket,
+                                                                  path))
 
         return obj['ETag'].strip('"')
 
@@ -99,7 +100,7 @@ class RemoteS3(RemoteBase):
             raise NotImplementedError
 
         return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
-                                               path_info['key'])}
+                                               path_info['path'])}
 
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
@@ -118,16 +119,16 @@ class RemoteS3(RemoteBase):
         s3 = s3 if s3 else self.s3
 
         source = {'Bucket': from_info['bucket'],
-                  'Key': from_info['key']}
-        self.s3.copy(source, to_info['bucket'], to_info['key'])
+                  'Key': from_info['path']}
+        self.s3.copy(source, to_info['bucket'], to_info['path'])
 
     def save(self, path_info):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        etag = self.get_etag(path_info['bucket'], path_info['key'])
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
-        to_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
+        etag = self.get_etag(path_info['bucket'], path_info['path'])
+        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        to_info = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         self._copy(path_info, to_info)
 
@@ -135,11 +136,11 @@ class RemoteS3(RemoteBase):
 
     @staticmethod
     def to_string(path_info):
-        return "s3://{}/{}".format(path_info['bucket'], path_info['key'])
+        return "s3://{}/{}".format(path_info['bucket'], path_info['path'])
 
     def changed_cache(self, etag):
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
-        cache = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
+        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        cache = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         if {self.PARAM_ETAG: etag} != self.save_info(cache):
             if self.exists(cache):
@@ -177,8 +178,8 @@ class RemoteS3(RemoteBase):
         msg = "Checking out '{}' with cache '{}'."
         logger.info(msg.format(self.to_string(path_info), etag))
 
-        key = posixpath.join(self.prefix, etag[0:2], etag[2:])
-        from_info = {'scheme': 's3', 'bucket': self.bucket, 'key': key}
+        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        from_info = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         self._copy(from_info, path_info)
 
@@ -187,18 +188,18 @@ class RemoteS3(RemoteBase):
             raise NotImplementedError
 
         logger.debug('Removing s3://{}/{}'.format(path_info['bucket'],
-                                                  path_info['key']))
+                                                  path_info['path']))
 
         self.s3.delete_object(Bucket=path_info['bucket'],
-                              Key=path_info['key'])
+                              Key=path_info['path'])
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': self.scheme,
                  'bucket': self.bucket,
-                 'key': posixpath.join(self.prefix,
-                                       md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': posixpath.join(self.prefix,
+                                        md5[0:2], md5[2:])} for md5 in md5s]
 
-    def _list_keys(self, bucket, prefix):
+    def _list_paths(self, bucket, prefix):
         s3 = self.s3
 
         kwargs = {'Bucket': bucket,
@@ -226,8 +227,8 @@ class RemoteS3(RemoteBase):
         assert not isinstance(path_info, list)
         assert path_info['scheme'] == 's3'
 
-        keys = self._list_keys(path_info['bucket'], path_info['key'])
-        return any(path_info['key'] == key for key in keys)
+        paths = self._list_paths(path_info['bucket'], path_info['path'])
+        return any(path_info['path'] == path for path in paths)
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
@@ -236,13 +237,15 @@ class RemoteS3(RemoteBase):
             return []
 
         ret = len(md5s) * [False]
-        keys = [posixpath.join(self.prefix, md5[0:2], md5[2:]) for md5 in md5s]
-        for key in self._list_keys(self.bucket, self.prefix):
-            for i, k in enumerate(keys):
-                if k == key:
+        paths = [posixpath.join(self.prefix,
+                                md5[0:2],
+                                md5[2:]) for md5 in md5s]
+        for path in self._list_paths(self.bucket, self.prefix):
+            for i, k in enumerate(paths):
+                if k == path:
                     ret[i] = True
 
-        assert len(keys) == len(ret) == len(md5s)
+        assert len(paths) == len(ret) == len(md5s)
 
         return ret
 
@@ -260,7 +263,7 @@ class RemoteS3(RemoteBase):
 
             logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
                                                             to_info['bucket'],
-                                                            to_info['key']))
+                                                            to_info['path']))
 
             if not name:
                 name = os.path.basename(from_info['path'])
@@ -271,7 +274,7 @@ class RemoteS3(RemoteBase):
             try:
                 s3.upload_file(from_info['path'],
                                to_info['bucket'],
-                               to_info['key'],
+                               to_info['path'],
                                Callback=cb)
             except Exception as exc:
                 msg = "Failed to upload '{}'".format(from_info['path'])
@@ -301,7 +304,7 @@ class RemoteS3(RemoteBase):
                 raise NotImplementedError
 
             msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
-                                                       from_info['key'],
+                                                       from_info['path'],
                                                        to_info['path'])
             logger.debug(msg)
 
@@ -317,16 +320,16 @@ class RemoteS3(RemoteBase):
                 else:
                     total = s3.head_object(
                                     Bucket=from_info['bucket'],
-                                    Key=from_info['key'])['ContentLength']
+                                    Key=from_info['path'])['ContentLength']
                     cb = Callback(name, total)
 
                 s3.download_file(from_info['bucket'],
-                                 from_info['key'],
+                                 from_info['path'],
                                  tmp_file,
                                  Callback=cb)
             except Exception as exc:
                 msg = "Failed to download '{}/{}'".format(from_info['bucket'],
-                                                          from_info['key'])
+                                                          from_info['path'])
                 logger.warn(msg, exc)
                 continue
 
@@ -345,8 +348,8 @@ class RemoteS3(RemoteBase):
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
         return (
-            self._path_to_etag(key)
-            for key in self._list_keys(self.bucket, self.prefix)
+            self._path_to_etag(path)
+            for path in self._list_paths(self.bucket, self.prefix)
         )
 
     def gc(self, cinfos):
@@ -358,8 +361,8 @@ class RemoteS3(RemoteBase):
             if etag in used_etags:
                 continue
             path_info = {'scheme': 's3',
-                         'key': posixpath.join(self.prefix,
-                                               etag[0:2], etag[2:]),
+                         'path': posixpath.join(self.prefix,
+                                                etag[0:2], etag[2:]),
                          'bucket': self.bucket}
             self.remove(path_info)
             removed = True

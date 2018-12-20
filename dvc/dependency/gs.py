@@ -17,9 +17,9 @@ class DependencyGS(DependencyS3):
         self.info = info
         self.remote = remote if remote else RemoteGS(stage.project, {})
         bucket = remote.bucket if remote else urlparse(path).netloc
-        key = urlparse(path).path.lstrip('/')
+        path = urlparse(path).path.lstrip('/')
         if remote:
-            key = posixpath.join(remote.prefix, key)
+            path = posixpath.join(remote.prefix, path)
         self.path_info = {'scheme': 'gs',
                           'bucket': bucket,
-                          'key': key}
+                          'path': path}

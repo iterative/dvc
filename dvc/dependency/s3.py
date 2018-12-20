@@ -18,12 +18,12 @@ class DependencyS3(DependencyBase):
         self.remote = remote or RemoteS3(stage.project, {})
 
         bucket = remote.bucket if remote else urlparse(path).netloc
-        key = urlparse(path).path.lstrip('/')
+        path = urlparse(path).path.lstrip('/')
         if remote:
-            key = posixpath.join(remote.prefix, key)
+            path = posixpath.join(remote.prefix, path)
         self.path_info = {'scheme': 's3',
                           'bucket': bucket,
-                          'key': key}
+                          'path': path}
 
     def changed(self):
         if not self.exists:

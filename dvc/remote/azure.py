@@ -77,18 +77,18 @@ class RemoteAzure(RemoteBase):
             raise NotImplementedError
 
         logger.debug('Removing azure://{}/{}'.format(path_info['bucket'],
-                                                     path_info['key']))
+                                                     path_info['path']))
 
-        self.blob_service.delete_blob(path_info['bucket'], path_info['key'])
+        self.blob_service.delete_blob(path_info['bucket'], path_info['path'])
 
     def md5s_to_path_infos(self, md5s):
         return [{
             'scheme': self.scheme,
             'bucket': self.bucket,
-            'key': posixpath.join(self.prefix, md5[0:2], md5[2:])
+            'path': posixpath.join(self.prefix, md5[0:2], md5[2:])
         } for md5 in md5s]
 
-    def _list_keys(self, bucket, prefix):
+    def _list_paths(self, bucket, prefix):
         blob_service = self.blob_service
         next_marker = None
         while True:
@@ -111,13 +111,15 @@ class RemoteAzure(RemoteBase):
             return []
 
         ret = len(md5s) * [False]
-        keys = [posixpath.join(self.prefix, md5[0:2], md5[2:]) for md5 in md5s]
-        for key in self._list_keys(self.bucket, self.prefix):
-            for i, k in enumerate(keys):
-                if k == key:
+        paths = [posixpath.join(self.prefix,
+                                md5[0:2],
+                                md5[2:]) for md5 in md5s]
+        for path in self._list_keys(self.bucket, self.prefix):
+            for i, k in enumerate(paths):
+                if k == path:
                     ret[i] = True
 
-        assert len(ret) == len(keys) == len(md5s)
+        assert len(ret) == len(paths) == len(md5s)
 
         return ret
 
@@ -132,10 +134,10 @@ class RemoteAzure(RemoteBase):
                 raise NotImplementedError
 
             bucket = to_info['bucket']
-            key = to_info['key']
+            path = to_info['path']
 
             logger.debug("Uploading '{}' to '{}/{}'".format(
-                from_info['path'], bucket, key))
+                from_info['path'], bucket, path))
 
             if not name:
                 name = os.path.basename(from_info['path'])
@@ -144,7 +146,7 @@ class RemoteAzure(RemoteBase):
 
             try:
                 self.blob_service.create_blob_from_path(
-                    bucket, key, from_info['path'], progress_callback=cb)
+                    bucket, path, from_info['path'], progress_callback=cb)
             except Exception as ex:
                 msg = "Failed to upload '{}'".format(from_info['path'])
                 logger.warn(msg, ex)
@@ -166,10 +168,10 @@ class RemoteAzure(RemoteBase):
                 raise NotImplementedError
 
             bucket = from_info['bucket']
-            key = from_info['key']
+            path = from_info['path']
 
             logger.debug("Downloading '{}/{}' to '{}'".format(
-                bucket, key, to_info['path']))
+                bucket, path, to_info['path']))
 
             tmp_file = self.tmp_file(to_info['path'])
             if not name:
@@ -181,9 +183,9 @@ class RemoteAzure(RemoteBase):
 
             try:
                 self.blob_service.get_blob_to_path(
-                    bucket, key, tmp_file, progress_callback=cb)
+                    bucket, path, tmp_file, progress_callback=cb)
             except Exception as exc:
-                msg = "Failed to download '{}/{}'".format(bucket, key)
+                msg = "Failed to download '{}/{}'".format(bucket, path)
                 logger.warn(msg, exc)
             else:
                 os.rename(tmp_file, to_info['path'])
@@ -201,8 +203,8 @@ class RemoteAzure(RemoteBase):
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
         return (
-            self._path_to_etag(key)
-            for key in self._list_keys(self.bucket, self.prefix)
+            self._path_to_etag(path)
+            for path in self._list_keys(self.bucket, self.prefix)
         )
 
     def gc(self, cinfos):
@@ -216,9 +218,9 @@ class RemoteAzure(RemoteBase):
             if etag in used:
                 continue
             path_info = {'scheme': self.scheme,
-                         'key': posixpath.join(self.prefix,
-                                               etag[0:2],
-                                               etag[2:]),
+                         'path': posixpath.join(self.prefix,
+                                                etag[0:2],
+                                                etag[2:]),
                          'bucket': self.bucket}
             self.remove(path_info)
             removed = True
