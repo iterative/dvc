@@ -4,6 +4,7 @@ import errno
 import posixpath
 from multiprocessing import cpu_count
 
+import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.logger import logger
 from dvc.exceptions import DvcException
@@ -105,9 +106,6 @@ class RemoteBase(object):
     def save(self, path_info):
         raise NotImplementedError
 
-    def checkout(self, path_info, checksum_info, force=False):
-        raise NotImplementedError
-
     def download(self, from_infos, to_infos, no_progress_bar=False, name=None):
         raise NotImplementedError
 
@@ -118,6 +116,9 @@ class RemoteBase(object):
         raise NotImplementedError
 
     def move(self, path_info):
+        raise NotImplementedError
+
+    def copy(self, from_info, to_info):
         raise NotImplementedError
 
     def _makedirs(self, fname):
@@ -200,8 +201,13 @@ class RemoteBase(object):
 
     def changed_cache(self, checksum):
         cache = self.checksum_to_path_info(checksum)
+        expected = {self.PARAM_CHECKSUM: checksum}
+        actual = self.save_info(cache)
 
-        if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
+        logger.debug("Cache '{}' actual '{}'.".format(str(expected),
+                                                      str(actual)))
+
+        if expected != actual:
             if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(str(cache)))
@@ -227,3 +233,65 @@ class RemoteBase(object):
                 if checksum == existing:
                     ret[i] = True
         return ret
+
+    def already_cached(self, path_info):
+        current = self.save_info(path_info)[self.PARAM_CHECKSUM]
+
+        if not current:
+            return False
+
+        return not self.changed_cache(current)
+
+    def safe_remove(self, path_info, force=False):
+        if not self.exists(path_info):
+            return
+
+        if not force and not self.already_cached(path_info):
+            msg = (
+                'File "{}" is going to be removed. '
+                'Are you sure you want to proceed?'
+                .format(str(path_info))
+            )
+
+            if not prompt.confirm(msg):
+                raise DvcException("Unable to remove {} without a confirmation"
+                                   " from the user. Use '-f' to force."
+                                   .format(str(path_info)))
+
+        self.remove(path_info)
+
+    def do_checkout(self, path_info, checksum, force=False):
+        if self.exists(path_info):
+            msg = "Data '{}' exists. Removing before checkout."
+            logger.warn(msg.format(str(path_info)))
+            self.safe_remove(path_info, force=force)
+
+        from_info = self.checksum_to_path_info(checksum)
+        self.copy(from_info, path_info)
+
+    def checkout(self, path_info, checksum_info, force=False):
+        scheme = path_info['scheme']
+        if scheme not in ['', 'local'] and scheme != self.scheme:
+            raise NotImplementedError
+
+        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        if not checksum:
+            msg = "No checksum info for '{}'."
+            logger.info(msg.format(str(path_info)))
+            return
+
+        if not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            logger.info(msg.format(str(path_info)))
+            return
+
+        if self.changed_cache(checksum):
+            msg = "Cache '{}' not found. File '{}' won't be created."
+            logger.warn(msg.format(checksum, str(path_info)))
+            self.safe_remove(path_info, force=force)
+            return
+
+        msg = "Checking out '{}' with cache '{}'."
+        logger.info(msg.format(str(path_info), checksum))
+
+        self.do_checkout(path_info, checksum, force=force)

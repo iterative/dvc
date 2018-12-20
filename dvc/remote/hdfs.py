@@ -65,7 +65,7 @@ class RemoteHDFS(RemoteBase):
                                 user=path_info['user'])
         return self._group(regex, stdout, 'checksum')
 
-    def cp(self, from_info, to_info):
+    def copy(self, from_info, to_info):
         dname = posixpath.dirname(to_info['path'])
         self.hadoop_fs('mkdir -p {}'.format(dname), user=to_info['user'])
         self.hadoop_fs('cp -f {} {}'.format(from_info['path'],
@@ -83,11 +83,6 @@ class RemoteHDFS(RemoteBase):
         assert path_info.get('path')
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
-
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}".format(path_info['scheme'],
-                                path_info['path'])
 
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
@@ -112,43 +107,9 @@ class RemoteHDFS(RemoteBase):
         dest = path_info.copy()
         dest['path'] = self.checksum_to_path(checksum)
 
-        self.cp(path_info, dest)
+        self.copy(path_info, dest)
 
         return {self.PARAM_CHECKSUM: checksum}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'hdfs':
-            raise NotImplementedError
-
-        assert path_info.get('path')
-
-        checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if not checksum:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(checksum):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(checksum, self.to_string(path_info)))
-            return
-
-        if self.exists(path_info):
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), checksum))
-
-        src = path_info.copy()
-        src['path'] = self.checksum_to_path(checksum)
-
-        self.cp(src, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'hdfs':
@@ -199,7 +160,7 @@ class RemoteHDFS(RemoteBase):
                 raise NotImplementedError
 
             if to_info['scheme'] == 'hdfs':
-                self.cp(from_info, to_info)
+                self.copy(from_info, to_info)
                 continue
 
             if to_info['scheme'] != 'local':

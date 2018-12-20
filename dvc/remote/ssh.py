@@ -188,7 +188,7 @@ class RemoteSSH(RemoteBase):
 
         return md5
 
-    def cp(self, from_info, to_info, ssh=None):
+    def copy(self, from_info, to_info, ssh=None):
         if from_info['scheme'] != 'ssh' or to_info['scheme'] != 'ssh':
             raise NotImplementedError
 
@@ -212,13 +212,6 @@ class RemoteSSH(RemoteBase):
 
         return {self.PARAM_CHECKSUM: self.md5(path_info)}
 
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}@{}:{}".format(path_info['scheme'],
-                                      path_info['user'],
-                                      path_info['host'],
-                                      path_info['path'])
-
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True
@@ -240,41 +233,9 @@ class RemoteSSH(RemoteBase):
         dest = path_info.copy()
         dest['path'] = self.checksum_to_path(md5)
 
-        self.cp(path_info, dest)
+        self.copy(path_info, dest)
 
         return {self.PARAM_CHECKSUM: md5}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'ssh':
-            raise NotImplementedError
-
-        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if not md5:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(md5):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(md5, self.to_string(path_info)))
-            return
-
-        if self.exists(path_info):
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), md5))
-
-        src = path_info.copy()
-        src['path'] = self.checksum_to_path(md5)
-
-        self.cp(src, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'ssh':
@@ -309,7 +270,7 @@ class RemoteSSH(RemoteBase):
                 assert from_info['host'] == to_info['host']
                 assert from_info['port'] == to_info['port']
                 assert from_info['user'] == to_info['user']
-                self.cp(from_info, to_info, ssh=ssh)
+                self.copy(from_info, to_info, ssh=ssh)
                 continue
 
             if to_info['scheme'] != 'local':

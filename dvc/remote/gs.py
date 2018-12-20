@@ -67,12 +67,6 @@ class RemoteGS(RemoteBase):
         return {self.PARAM_CHECKSUM: self.get_md5(path_info['bucket'],
                                                   path_info['path'])}
 
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}/{}".format(path_info['scheme'],
-                                   path_info['bucket'],
-                                   path_info['path'])
-
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True
@@ -86,7 +80,7 @@ class RemoteGS(RemoteBase):
 
         return checksum_info != self.save_info(path_info)
 
-    def _copy(self, from_info, to_info, gs=None):
+    def copy(self, from_info, to_info, gs=None):
         gs = gs if gs else self.gs
 
         blob = gs.bucket(from_info['bucket']).get_blob(from_info['path'])
@@ -107,41 +101,9 @@ class RemoteGS(RemoteBase):
         path = self.checksum_to_path(md5)
         to_info = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
-        self._copy(path_info, to_info)
+        self.copy(path_info, to_info)
 
         return {self.PARAM_CHECKSUM: md5}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'gs':
-            raise NotImplementedError
-
-        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if not md5:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(md5):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(md5, self.to_string(path_info)))
-            return
-
-        if self.exists(path_info):
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), md5))
-
-        path = self.checksum_to_path(md5)
-        from_info = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
-
-        self._copy(from_info, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'gs':
@@ -218,7 +180,7 @@ class RemoteGS(RemoteBase):
                 raise NotImplementedError
 
             if to_info['scheme'] == 'gs':
-                self._copy(from_info, to_info, gs=gs)
+                self.copy(from_info, to_info, gs=gs)
                 continue
 
             if to_info['scheme'] != 'local':

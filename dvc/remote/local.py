@@ -7,7 +7,6 @@ import shutil
 import posixpath
 from operator import itemgetter
 
-import dvc.prompt as prompt
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP
 from dvc.logger import logger
@@ -270,36 +269,14 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cls, cache):
         return cache.endswith(cls.MD5_DIR_SUFFIX)
 
-    def checkout(self, path_info, checksum_info, force=False):
+    def do_checkout(self, path_info, checksum, force=False):
         path = path_info['path']
-        md5 = checksum_info.get(self.PARAM_CHECKSUM)
+        md5 = checksum
         cache = self.get(md5)
-
-        if not cache:
-            msg = 'No cache info for \'{}\'. Skipping checkout.'
-            logger.warn(msg.format(os.path.relpath(path)))
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(os.path.relpath(path)))
-            return
-
-        if self.changed_cache(md5):
-            msg = u'Cache \'{}\' not found. File \'{}\' won\'t be created.'
-            logger.warn(msg.format(md5, os.path.relpath(path)))
-            remove(path)
-            return
-
-        msg = u'Checking out \'{}\' with cache \'{}\'.'
-        logger.info(msg.format(os.path.relpath(path), md5))
 
         if not self.is_dir_cache(cache):
             if os.path.exists(path):
-                if force or self._already_cached(path):
-                    remove(path)
-                else:
-                    self._safe_remove(path)
+                self.safe_remove(path_info, force=force)
 
             self.link(cache, path)
             self.state.update_link(path)
@@ -329,10 +306,7 @@ class RemoteLOCAL(RemoteBase):
 
             if self.changed(entry_info, entry_checksum_info):
                 if os.path.exists(p):
-                    if force or self._already_cached(p):
-                        remove(p)
-                    else:
-                        self._safe_remove(p)
+                    self.safe_remove(entry_info, force=force)
 
                 self.link(c, p)
 
@@ -346,8 +320,10 @@ class RemoteLOCAL(RemoteBase):
         if bar:
             progress.finish_target(dir_relpath)
 
-    def _already_cached(self, path):
-        current_md5 = self.state.update(path)
+    def already_cached(self, path_info):
+        assert path_info['scheme'] in ['', 'local']
+
+        current_md5 = self.state.update(path_info['path'])
 
         if not current_md5:
             return False
@@ -369,24 +345,7 @@ class RemoteLOCAL(RemoteBase):
         delta = working_dir_files - cached_files
 
         for file in delta:
-            if force or self._already_cached(file):
-                remove(file)
-            else:
-                self._safe_remove(file)
-
-    def _safe_remove(self, file):
-        msg = (
-            'File "{}" is going to be removed. '
-            'Are you sure you want to proceed?'
-            .format(file)
-        )
-
-        if not prompt.confirm(msg):
-            raise DvcException('Unable to remove {} without a confirmation'
-                               " from the user. Use '-f' to force."
-                               .format(file))
-
-        remove(file)
+            self.safe_remove({'scheme': 'local', 'path': file}, force=force)
 
     def _move(self, inp, outp):
         # moving in two stages to make last the move atomic in
