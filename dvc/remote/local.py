@@ -549,7 +549,7 @@ class RemoteLOCAL(RemoteBase):
         return list(by_md5.keys()), list(by_md5.values())
 
     def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        logger.info("Preparing to pull data from {}".format(remote.url))
+        logger.info("Preparing to collect status from {}".format(remote.url))
         title = "Collecting information"
 
         progress.set_n_total(1)
@@ -579,6 +579,7 @@ class RemoteLOCAL(RemoteBase):
              remote,
              jobs=None,
              show_checksums=False):
+        logger.info("Preparing to pull data from {}".format(remote.url))
         title = "Collecting information"
 
         progress.set_n_total(1)
