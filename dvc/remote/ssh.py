@@ -116,21 +116,6 @@ class RemoteSSH(RemoteBase):
 
         return exists
 
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-
-        if len(md5s) == 0:
-            return []
-
-        existing_md5s = self.all()
-        ret = len(md5s) * [False]
-        for existing_md5 in existing_md5s:
-            for i, md5 in enumerate(md5s):
-                if md5 == existing_md5:
-                    ret[i] = True
-
-        return ret
-
     def _exec(self, ssh, cmd):
         stdin, stdout, stderr = ssh.exec_command(cmd)
         channel = stdout.channel

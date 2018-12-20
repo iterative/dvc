@@ -21,7 +21,8 @@ class RemoteHDFS(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        self.prefix = config.get(Config.SECTION_REMOTE_URL, '/')
+        self.url = config.get(Config.SECTION_REMOTE_URL, '/')
+        self.prefix = self.url
         self.user = self.group('user')
         if not self.user:
             self.user = config.get(Config.SECTION_REMOTE_USER,
@@ -168,21 +169,6 @@ class RemoteHDFS(RemoteBase):
             return True
         except RemoteHDFSCmdError:
             return False
-
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-
-        if len(md5s) == 0:
-            return []
-
-        existing_md5s = self._all_checksums()
-        ret = len(md5s) * [False]
-        for existing_md5 in existing_md5s:
-            for i, md5 in enumerate(md5s):
-                if md5 == existing_md5:
-                    ret[i] = True
-
-        return ret
 
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)

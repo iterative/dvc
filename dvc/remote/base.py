@@ -129,9 +129,6 @@ class RemoteBase(object):
             if e.errno != errno.EEXIST:
                 raise
 
-    def cache_exists(self, md5s):
-        raise NotImplementedError
-
     def exists(self, path_infos):
         raise NotImplementedError
 
@@ -212,3 +209,21 @@ class RemoteBase(object):
             return True
 
         return False
+
+    def cache_exists(self, checksums):
+        # NOTE: The reason for such an odd logic is that most of the remotes
+        # take much shorter time to just retrieve everything they have under
+        # a certain prefix(e.g. s3, gs, ssh, hdfs). Other remotes that can
+        # check if particular file exists much quicker, use their own
+        # implementation of cache_exists(see http, local).
+        #
+        # Result of all() might be way too big, so we should walk through
+        # it in one pass. Also currently, cache_exists() should return
+        # a list of True/False that matches order in checksums list,
+        # so we need to use such an ugly logic.
+        ret = len(checksums) * [False]
+        for existing in self.all():
+            for i, checksum in enumerate(checksums):
+                if checksum == existing:
+                    ret[i] = True
+        return ret

@@ -101,23 +101,6 @@ class RemoteAzure(RemoteBase):
     def list_cache_paths(self):
         return self._list_paths(self.bucket, self.prefix)
 
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-
-        if len(md5s) == 0:
-            return []
-
-        ret = len(md5s) * [False]
-        paths = [self.checksum_to_path(md5) for md5 in md5s]
-        for path in self._list_keys(self.bucket, self.prefix):
-            for i, k in enumerate(paths):
-                if k == path:
-                    ret[i] = True
-
-        assert len(ret) == len(paths) == len(md5s)
-
-        return ret
-
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 

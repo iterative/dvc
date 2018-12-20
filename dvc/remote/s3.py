@@ -214,23 +214,6 @@ class RemoteS3(RemoteBase):
         paths = self._list_paths(path_info['bucket'], path_info['path'])
         return any(path_info['path'] == path for path in paths)
 
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-
-        if len(md5s) == 0:
-            return []
-
-        ret = len(md5s) * [False]
-        paths = [self.checksum_to_path(md5) for md5 in md5s]
-        for path in self._list_paths(self.bucket, self.prefix):
-            for i, k in enumerate(paths):
-                if k == path:
-                    ret[i] = True
-
-        assert len(paths) == len(ret) == len(md5s)
-
-        return ret
-
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
