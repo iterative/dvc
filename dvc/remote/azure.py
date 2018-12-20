@@ -1,7 +1,6 @@
 from __future__ import absolute_import
 import os
 import re
-import posixpath
 
 try:
     from azure.storage.blob import BlockBlobService
@@ -85,7 +84,7 @@ class RemoteAzure(RemoteBase):
         return [{
             'scheme': self.scheme,
             'bucket': self.bucket,
-            'path': posixpath.join(self.prefix, md5[0:2], md5[2:])
+            'path': self.checksum_to_path(md5[0:2]),
         } for md5 in md5s]
 
     def _list_paths(self, bucket, prefix):
@@ -111,9 +110,7 @@ class RemoteAzure(RemoteBase):
             return []
 
         ret = len(md5s) * [False]
-        paths = [posixpath.join(self.prefix,
-                                md5[0:2],
-                                md5[2:]) for md5 in md5s]
+        paths = [self.checksum_to_path(md5) for md5 in md5s]
         for path in self._list_keys(self.bucket, self.prefix):
             for i, k in enumerate(paths):
                 if k == path:
@@ -193,17 +190,13 @@ class RemoteAzure(RemoteBase):
                 if not no_progress_bar:
                     progress.finish_target(name)
 
-    def _path_to_etag(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
     def _all(self):
         # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
         return (
-            self._path_to_etag(path)
+            self.path_to_checksum(path)
             for path in self._list_keys(self.bucket, self.prefix)
         )
 
@@ -218,9 +211,7 @@ class RemoteAzure(RemoteBase):
             if etag in used:
                 continue
             path_info = {'scheme': self.scheme,
-                         'path': posixpath.join(self.prefix,
-                                                etag[0:2],
-                                                etag[2:]),
+                         'path': self.checksum_to_path(etag),
                          'bucket': self.bucket}
             self.remove(path_info)
             removed = True

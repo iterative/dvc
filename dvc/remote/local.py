@@ -77,7 +77,7 @@ class RemoteLOCAL(RemoteBase):
 
             for cache in os.listdir(subdir):
                 path = os.path.join(subdir, cache)
-                clist.append(self.path_to_md5(path))
+                clist.append(self.path_to_checksum(path))
 
         return clist
 
@@ -86,10 +86,6 @@ class RemoteLOCAL(RemoteBase):
             return None
 
         return os.path.join(self.cache_dir, md5[0:2], md5[2:])
-
-    def path_to_md5(self, path):
-        relpath = os.path.relpath(path, self.cache_dir)
-        return os.path.dirname(relpath) + os.path.basename(relpath)
 
     def changed_cache_file(self, md5):
         cache = self.get(md5)
@@ -165,8 +161,14 @@ class RemoteLOCAL(RemoteBase):
 
         raise DvcException('No possible cache types left to try out.')
 
+    @property
+    def ospath(self):
+        if os.name == 'nt':
+            return ntpath
+        return posixpath
+
     @classmethod
-    def ospath(cls, path):
+    def to_ospath(cls, path):
         if os.name == 'nt':
             return cls.ntpath(path)
         return cls.unixpath(path)
@@ -242,7 +244,7 @@ class RemoteLOCAL(RemoteBase):
             return []
 
         for info in d:
-            info['relpath'] = self.ospath(info['relpath'])
+            info['relpath'] = self.to_ospath(info['relpath'])
 
         return d
 

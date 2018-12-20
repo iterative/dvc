@@ -30,7 +30,7 @@ class DependencyLOCAL(DependencyBase):
             path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
 
         if not os.path.isabs(path):
-            path = self.remote.ospath(path)
+            path = self.remote.to_ospath(path)
             path = os.path.join(stage.cwd, path)
         self.path = os.path.abspath(os.path.normpath(path))
 

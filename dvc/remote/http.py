@@ -1,7 +1,6 @@
 import os
 import threading
 import requests
-import posixpath
 
 from dvc.logger import logger
 from dvc.progress import progress
@@ -53,7 +52,7 @@ class RemoteHTTP(RemoteBase):
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            msg = "Downloading '{}' to '{}'".format(from_info['url'],
+            msg = "Downloading '{}' to '{}'".format(from_info['path'],
                                                     to_info['path'])
             logger.debug(msg)
 
@@ -63,7 +62,7 @@ class RemoteHTTP(RemoteBase):
 
             self._makedirs(to_info['path'])
 
-            total = self._content_length(from_info['url'])
+            total = self._content_length(from_info['path'])
 
             if no_progress_bar or not total:
                 cb = None
@@ -71,9 +70,9 @@ class RemoteHTTP(RemoteBase):
                 cb = ProgressBarCallback(name, total)
 
             try:
-                self._download_to(from_info['url'], tmp_file, callback=cb)
+                self._download_to(from_info['path'], tmp_file, callback=cb)
             except Exception as exc:
-                msg = "Failed to download '{}'".format(from_info['url'])
+                msg = "Failed to download '{}'".format(from_info['path'])
                 logger.warn(msg, exc)
                 continue
 
@@ -85,13 +84,13 @@ class RemoteHTTP(RemoteBase):
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info['scheme'] in ['http', 'https']
-        return bool(self._request('HEAD', path_info.get('url')))
+        return bool(self._request('HEAD', path_info.get('path')))
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
         ret = []
         for md5 in md5s:
-            url = posixpath.join(self.prefix, md5[0:2], md5[2:])
+            url = self.checksum_to_path(md5)
             exists = bool(self._request('HEAD', url))
             ret.append(exists)
         return ret
@@ -100,13 +99,13 @@ class RemoteHTTP(RemoteBase):
         if path_info['scheme'] not in ['http', 'https']:
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self._etag(path_info['url'])}
+        return {self.PARAM_ETAG: self._etag(path_info['path'])}
 
     def md5s_to_path_infos(self, md5s):
         return [
             {
                 'scheme': 'http',
-                'url': posixpath.join(self.prefix, md5[0:2], md5[2:]),
+                'path': self.checksum_to_path(md5),
             }
             for md5 in md5s
         ]

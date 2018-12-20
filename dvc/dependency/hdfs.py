@@ -21,7 +21,7 @@ class DependencyHDFS(DependencyBase):
         user = remote.user if remote else self.group('user')
         self.path_info = {'scheme': 'hdfs',
                           'user': user,
-                          'url': path}
+                          'path': path}
 
     def changed(self):
         if not self.exists:

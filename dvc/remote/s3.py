@@ -1,6 +1,5 @@
 import os
 import threading
-import posixpath
 
 try:
     import boto3
@@ -127,7 +126,7 @@ class RemoteS3(RemoteBase):
             raise NotImplementedError
 
         etag = self.get_etag(path_info['bucket'], path_info['path'])
-        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        path = self.checksum_to_path(etag)
         to_info = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         self._copy(path_info, to_info)
@@ -139,7 +138,7 @@ class RemoteS3(RemoteBase):
         return "s3://{}/{}".format(path_info['bucket'], path_info['path'])
 
     def changed_cache(self, etag):
-        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        path = self.checksum_to_path(etag)
         cache = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         if {self.PARAM_ETAG: etag} != self.save_info(cache):
@@ -178,7 +177,7 @@ class RemoteS3(RemoteBase):
         msg = "Checking out '{}' with cache '{}'."
         logger.info(msg.format(self.to_string(path_info), etag))
 
-        path = posixpath.join(self.prefix, etag[0:2], etag[2:])
+        path = self.checksum_to_path(etag)
         from_info = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
         self._copy(from_info, path_info)
@@ -196,8 +195,7 @@ class RemoteS3(RemoteBase):
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': self.scheme,
                  'bucket': self.bucket,
-                 'path': posixpath.join(self.prefix,
-                                        md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': self.checksum_to_path(md5)} for md5 in md5s]
 
     def _list_paths(self, bucket, prefix):
         s3 = self.s3
@@ -237,9 +235,7 @@ class RemoteS3(RemoteBase):
             return []
 
         ret = len(md5s) * [False]
-        paths = [posixpath.join(self.prefix,
-                                md5[0:2],
-                                md5[2:]) for md5 in md5s]
+        paths = [self.checksum_to_path(md5) for md5 in md5s]
         for path in self._list_paths(self.bucket, self.prefix):
             for i, k in enumerate(paths):
                 if k == path:
@@ -338,17 +334,13 @@ class RemoteS3(RemoteBase):
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def _path_to_etag(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
     def _all(self):
         # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
         return (
-            self._path_to_etag(path)
+            self.path_to_checksum(path)
             for path in self._list_paths(self.bucket, self.prefix)
         )
 
@@ -361,8 +353,7 @@ class RemoteS3(RemoteBase):
             if etag in used_etags:
                 continue
             path_info = {'scheme': 's3',
-                         'path': posixpath.join(self.prefix,
-                                                etag[0:2], etag[2:]),
+                         'path': self.checksum_to_path(etag),
                          'bucket': self.bucket}
             self.remove(path_info)
             removed = True

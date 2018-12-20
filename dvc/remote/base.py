@@ -1,6 +1,7 @@
 import os
 import re
 import errno
+import posixpath
 from multiprocessing import cpu_count
 
 from dvc.config import Config
@@ -150,3 +151,14 @@ class RemoteBase(object):
             assert len(names) == len(to_infos)
 
         return names
+
+    @property
+    def ospath(self):
+        return posixpath
+
+    def checksum_to_path(self, checksum):
+        return self.ospath.join(self.prefix, checksum[0:2], checksum[2:])
+
+    def path_to_checksum(self, path):
+        relpath = self.ospath.relpath(path, self.prefix)
+        return self.ospath.dirname(relpath) + self.ospath.basename(relpath)

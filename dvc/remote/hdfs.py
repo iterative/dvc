@@ -22,7 +22,7 @@ class RemoteHDFS(RemoteBase):
 
     def __init__(self, project, config):
         self.project = project
-        self.url = config.get(Config.SECTION_REMOTE_URL, '/')
+        self.prefix = config.get(Config.SECTION_REMOTE_URL, '/')
         self.user = self.group('user')
         if not self.user:
             self.user = config.get(Config.SECTION_REMOTE_USER,
@@ -59,38 +59,39 @@ class RemoteHDFS(RemoteBase):
 
     def checksum(self, path_info):
         regex = r'.*\t.*\t(?P<checksum>.*)'
-        stdout = self.hadoop_fs('checksum {}'.format(path_info['url']),
+        stdout = self.hadoop_fs('checksum {}'.format(path_info['path']),
                                 user=path_info['user'])
         return self._group(regex, stdout, 'checksum')
 
     def cp(self, from_info, to_info):
-        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])),
-                       user=to_info['user'])
-        self.hadoop_fs('cp -f {} {}'.format(from_info['url'], to_info['url']),
+        dname = posixpath.dirname(to_info['path'])
+        self.hadoop_fs('mkdir -p {}'.format(dname), user=to_info['user'])
+        self.hadoop_fs('cp -f {} {}'.format(from_info['path'],
+                                            to_info['path']),
                        user=to_info['user'])
 
     def rm(self, path_info):
-        self.hadoop_fs('rm {}'.format(path_info['url']),
+        self.hadoop_fs('rm {}'.format(path_info['path']),
                        user=path_info['user'])
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
     @staticmethod
     def to_string(path_info):
         return "{}://{}".format(path_info['scheme'],
-                                path_info['url'])
+                                path_info['path'])
 
     def changed_cache(self, checksum):
         cache = {}
         cache['scheme'] = 'hdfs'
         cache['user'] = self.user
-        cache['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        cache['path'] = self.checksum_to_path(checksum)
 
         if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
             if self.exists(cache):
@@ -118,11 +119,11 @@ class RemoteHDFS(RemoteBase):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
         checksum = self.checksum(path_info)
         dest = path_info.copy()
-        dest['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        dest['path'] = self.checksum_to_path(checksum)
 
         self.cp(path_info, dest)
 
@@ -132,7 +133,7 @@ class RemoteHDFS(RemoteBase):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
         if not checksum:
@@ -158,7 +159,7 @@ class RemoteHDFS(RemoteBase):
         logger.info(msg.format(self.to_string(path_info), checksum))
 
         src = path_info.copy()
-        src['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        src['path'] = self.checksum_to_path(checksum)
 
         self.cp(src, path_info)
 
@@ -166,24 +167,23 @@ class RemoteHDFS(RemoteBase):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
-        logger.debug('Removing {}'.format(path_info['url']))
+        logger.debug('Removing {}'.format(path_info['path']))
 
         self.rm(path_info)
 
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'hdfs',
                  'user': self.user,
-                 'url': posixpath.join(self.url,
-                                       md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': self.checksum_to_path(md5)} for md5 in md5s]
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info['scheme'] == 'hdfs'
 
         try:
-            self.hadoop_fs('test -e {}'.format(path_info['url']))
+            self.hadoop_fs('test -e {}'.format(path_info['path']))
             return True
         except RemoteHDFSCmdError:
             return False
@@ -213,11 +213,11 @@ class RemoteHDFS(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            cmd = 'mkdir -p {}'.format(posixpath.dirname(to_info['url']))
+            cmd = 'mkdir -p {}'.format(posixpath.dirname(to_info['path']))
             self.hadoop_fs(cmd, user=to_info['user'])
 
             cmd = 'copyFromLocal {} {}'.format(from_info['path'],
-                                               to_info['url'])
+                                               to_info['path'])
             self.hadoop_fs(cmd, user=to_info['user'])
 
     def download(self,
@@ -242,27 +242,24 @@ class RemoteHDFS(RemoteBase):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            cmd = 'copyToLocal {} {}'.format(from_info['url'], to_info['path'])
+            cmd = 'copyToLocal {} {}'.format(from_info['path'],
+                                             to_info['path'])
             self.hadoop_fs(cmd, user=from_info['user'])
-
-    def _path_to_checksum(self, path):
-        relpath = posixpath.relpath(path, self.url)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
 
     def _all_checksums(self):
         try:
-            self.hadoop_fs('test -e {}'.format(self.url))
+            self.hadoop_fs('test -e {}'.format(self.prefix))
         except RemoteHDFSCmdError:
             return []
 
-        stdout = self.hadoop_fs('ls -R {}'.format(self.url))
+        stdout = self.hadoop_fs('ls -R {}'.format(self.prefix))
         lines = stdout.split('\n')
         flist = []
         for line in lines:
             if not line.startswith('-'):
                 continue
             flist.append(line.split()[-1])
-        return [self._path_to_checksum(path) for path in flist]
+        return [self.path_to_checksum(path) for path in flist]
 
     def gc(self, cinfos):
         used = [info[self.PARAM_CHECKSUM] for info in cinfos['hdfs']]
@@ -274,8 +271,7 @@ class RemoteHDFS(RemoteBase):
                 continue
             path_info = {'scheme': 'hdfs',
                          'user': self.user,
-                         'url': posixpath.join(self.url,
-                                               checksum[0:2], checksum[2:])}
+                         'path': self.checksum_to_path(checksum)}
             self.remove(path_info)
             removed = True
 

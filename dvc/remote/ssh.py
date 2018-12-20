@@ -78,8 +78,7 @@ class RemoteSSH(RemoteBase):
                  'host': self.host,
                  'user': self.user,
                  'port': self.port,
-                 'path': posixpath.join(self.prefix,
-                                        md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': self.checksum_to_path(md5)} for md5 in md5s]
 
     def ssh(self, host=None, user=None, port=None):
         msg = "Establishing ssh connection with '{}' " \
@@ -244,7 +243,7 @@ class RemoteSSH(RemoteBase):
         cache['host'] = self.host
         cache['port'] = self.port
         cache['user'] = self.user
-        cache['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        cache['path'] = self.checksum_to_path(md5)
 
         if {self.PARAM_MD5: md5} != self.save_info(cache):
             if self.exists(cache):
@@ -274,7 +273,7 @@ class RemoteSSH(RemoteBase):
 
         md5 = self.md5(path_info)
         dest = path_info.copy()
-        dest['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        dest['path'] = self.checksum_to_path(md5)
 
         self.cp(path_info, dest)
 
@@ -308,7 +307,7 @@ class RemoteSSH(RemoteBase):
         logger.info(msg.format(self.to_string(path_info), md5))
 
         src = path_info.copy()
-        src['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        src['path'] = self.checksum_to_path(md5)
 
         self.cp(src, path_info)
 
@@ -418,10 +417,6 @@ class RemoteSSH(RemoteBase):
         sftp.close()
         ssh.close()
 
-    def _path_to_md5(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
     def _all_md5s(self):
         ssh = self.ssh(host=self.host,
                        user=self.user,
@@ -431,7 +426,7 @@ class RemoteSSH(RemoteBase):
         flist = stdout.split()
         ssh.close()
 
-        return [self._path_to_md5(path) for path in flist]
+        return [self.path_to_checksum(path) for path in flist]
 
     def gc(self, cinfos):
         used = [info[self.PARAM_MD5] for info in cinfos['ssh']]
@@ -445,8 +440,7 @@ class RemoteSSH(RemoteBase):
                          'user': self.user,
                          'host': self.host,
                          'port': self.port,
-                         'path': posixpath.join(self.prefix,
-                                                md5[0:2], md5[2:])}
+                         'path': self.checksum_to_path(md5)}
             self.remove(path_info)
             removed = True
 

@@ -1,5 +1,4 @@
 import os
-import posixpath
 
 try:
     from google.cloud import storage
@@ -74,7 +73,7 @@ class RemoteGS(RemoteBase):
                                    path_info['path'])
 
     def changed_cache(self, md5):
-        path = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        path = self.checksum_to_path(md5)
         cache = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
         if {self.PARAM_MD5: md5} != self.save_info(cache):
@@ -117,7 +116,7 @@ class RemoteGS(RemoteBase):
             raise NotImplementedError
 
         md5 = self.get_md5(path_info['bucket'], path_info['path'])
-        path = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        path = self.checksum_to_path(md5)
         to_info = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
         self._copy(path_info, to_info)
@@ -151,7 +150,7 @@ class RemoteGS(RemoteBase):
         msg = "Checking out '{}' with cache '{}'."
         logger.info(msg.format(self.to_string(path_info), md5))
 
-        path = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        path = self.checksum_to_path(md5)
         from_info = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
         self._copy(from_info, path_info)
@@ -172,8 +171,7 @@ class RemoteGS(RemoteBase):
     def md5s_to_path_infos(self, md5s):
         return [{'scheme': 'gs',
                  'bucket': self.bucket,
-                 'path': posixpath.join(self.prefix,
-                                        md5[0:2], md5[2:])} for md5 in md5s]
+                 'path': self.checksum_to_path(md5)} for md5 in md5s]
 
     def _list_paths(self, bucket, prefix):
         for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
@@ -193,8 +191,7 @@ class RemoteGS(RemoteBase):
             return []
 
         ret = len(md5s) * [False]
-        paths = [posixpath.join(self.prefix,
-                                md5[0:2], md5[2:]) for md5 in md5s]
+        paths = [self.checksum_to_path(md5) for md5 in md5s]
         for path in self._list_paths(self.bucket, self.prefix):
             for i, k in enumerate(paths):
                 if k == path:
@@ -290,17 +287,13 @@ class RemoteGS(RemoteBase):
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def _path_to_md5(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
     def _all_md5s(self):
         # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
         return (
-            self._path_to_md5(path)
+            self.path_to_checksum(path)
             for path in self._list_paths(self.bucket, self.prefix)
         )
 
@@ -314,8 +307,7 @@ class RemoteGS(RemoteBase):
                 continue
             path_info = {'scheme': 'gs',
                          'bucket': self.bucket,
-                         'path': posixpath.join(self.prefix,
-                                                md5[0:2], md5[2:])}
+                         'path': self.checksum_to_path(md5)}
             self.remove(path_info)
             removed = True
 
