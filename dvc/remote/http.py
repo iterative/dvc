@@ -89,12 +89,11 @@ class RemoteHTTP(RemoteBase):
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
-        ret = []
-        for md5 in md5s:
-            url = self.checksum_to_path(md5)
-            exists = bool(self._request('HEAD', url))
-            ret.append(exists)
-        return ret
+
+        def func(md5):
+            return bool(self._request('HEAD', self.checksum_to_path(md5)))
+
+        return list(filter(func, md5s))
 
     def save_info(self, path_info):
         if path_info['scheme'] not in ['http', 'https']:

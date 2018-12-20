@@ -224,15 +224,8 @@ class RemoteBase(object):
         # implementation of cache_exists(see http, local).
         #
         # Result of all() might be way too big, so we should walk through
-        # it in one pass. Also currently, cache_exists() should return
-        # a list of True/False that matches order in checksums list,
-        # so we need to use such an ugly logic.
-        ret = len(checksums) * [False]
-        for existing in self.all():
-            for i, checksum in enumerate(checksums):
-                if checksum == existing:
-                    ret[i] = True
-        return ret
+        # it in one pass.
+        return list(filter(lambda checksum: checksum in checksums, self.all()))
 
     def already_cached(self, path_info):
         current = self.save_info(path_info)[self.PARAM_CHECKSUM]

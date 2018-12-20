@@ -8,7 +8,7 @@ import posixpath
 from operator import itemgetter
 
 from dvc.system import System
-from dvc.remote.base import RemoteBase, STATUS_MAP
+from dvc.remote.base import RemoteBase, STATUS_MAP, STATUS_NEW, STATUS_DELETED
 from dvc.logger import logger
 from dvc.utils import remove, move, copyfile, dict_md5, to_chunks
 from dvc.utils import LARGE_DIR_SIZE
@@ -458,11 +458,7 @@ class RemoteLOCAL(RemoteBase):
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
-        ret = []
-        for md5 in md5s:
-            path = os.path.join(self.prefix, md5[0:2], md5[2:])
-            ret.append(os.path.exists(path))
-        return ret
+        return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
 
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -531,7 +527,7 @@ class RemoteLOCAL(RemoteBase):
             md5 = info[self.PARAM_CHECKSUM]
 
             if show_checksums:
-                by_md5[md5] = md5
+                by_md5[md5] = {'name': md5}
                 continue
 
             name = info[self.PARAM_PATH]
@@ -540,171 +536,136 @@ class RemoteLOCAL(RemoteBase):
                 name += '({})'.format(branch)
 
             if md5 not in by_md5.keys():
-                by_md5[md5] = ''
+                by_md5[md5] = {'name': name}
             else:
-                by_md5[md5] += ' '
+                by_md5[md5]['name'] += ' ' + name
 
-            by_md5[md5] += name
-
-        return list(by_md5.keys()), list(by_md5.values())
+        return by_md5
 
     def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
         logger.info("Preparing to collect status from {}".format(remote.url))
         title = "Collecting information"
+
+        ret = {}
 
         progress.set_n_total(1)
         progress.update_target(title, 0, 100)
 
         progress.update_target(title, 10, 100)
 
-        md5s, names = self._group(checksum_infos,
-                                  show_checksums=show_checksums)
+        ret = self._group(checksum_infos, show_checksums=show_checksums)
+        md5s = list(ret.keys())
 
         progress.update_target(title, 30, 100)
 
-        remote_exists = remote.cache_exists(md5s)
+        remote_exists = list(remote.cache_exists(md5s))
 
         progress.update_target(title, 90, 100)
 
-        local_exists = [not self.changed_cache_file(md5) for md5 in md5s]
+        local_exists = self.cache_exists(md5s)
 
         progress.finish_target(title)
 
-        return [(name, STATUS_MAP[l, r]) for name, l, r in zip(names,
-                                                               local_exists,
-                                                               remote_exists)]
+        for md5, info in ret.items():
+            info['status'] = STATUS_MAP[(md5 in local_exists,
+                                         md5 in remote_exists)]
+
+        return ret
+
+    def _get_chunks(self, download, remote, status_info, status, jobs):
+        title = "Analysing status."
+
+        progress.set_n_total(1)
+        total = len(status_info)
+        current = 0
+
+        cache = []
+        path_infos = []
+        names = []
+        for md5, info in status_info.items():
+            if info['status'] == status:
+                cache.append(self.checksum_to_path_info(md5))
+                path_infos.append(remote.checksum_to_path_info(md5))
+                names.append(info['name'])
+            current += 1
+            progress.update_target(title, current, total)
+
+        progress.finish_target(title)
+
+        progress.set_n_total(len(names))
+
+        if download:
+            to_infos = cache
+            from_infos = path_infos
+        else:
+            to_infos = path_infos
+            from_infos = cache
+
+        return list(zip(to_chunks(from_infos, jobs),
+                        to_chunks(to_infos, jobs),
+                        to_chunks(names, jobs)))
+
+    def _process(self,
+                 checksum_infos,
+                 remote,
+                 jobs=None,
+                 show_checksums=False,
+                 download=False):
+        msg = "Preparing to {} data {} '{}'"
+        logger.info(msg.format('download' if download else 'upload',
+                               'from' if download else 'to',
+                               remote.url))
+
+        if download:
+            func = remote.download
+            status = STATUS_DELETED
+        else:
+            func = remote.upload
+            status = STATUS_NEW
+
+        if jobs is None:
+            jobs = remote.JOBS
+
+        status_info = self.status(checksum_infos,
+                                  remote,
+                                  jobs=jobs,
+                                  show_checksums=show_checksums)
+
+        chunks = self._get_chunks(download, remote, status_info, status, jobs)
+
+        if len(chunks) == 0:
+            return
+
+        futures = []
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            for from_infos, to_infos, names in chunks:
+                res = executor.submit(func,
+                                      from_infos,
+                                      to_infos,
+                                      names=names)
+                futures.append(res)
+
+        for f in futures:
+            f.result()
+
+    def push(self,
+             checksum_infos,
+             remote,
+             jobs=None,
+             show_checksums=False):
+        self._process(checksum_infos,
+                      remote,
+                      jobs=jobs,
+                      show_checksums=show_checksums,
+                      download=False)
 
     def pull(self,
              checksum_infos,
              remote,
              jobs=None,
              show_checksums=False):
-        logger.info("Preparing to pull data from {}".format(remote.url))
-        title = "Collecting information"
-
-        progress.set_n_total(1)
-        progress.update_target(title, 0, 100)
-
-        grouped = zip(*self._group(checksum_infos,
-                                   show_checksums=show_checksums))
-
-        progress.update_target(title, 10, 100)
-
-        md5s = []
-        names = []
-        # NOTE: filter files that are not corrupted
-        for md5, name in grouped:
-            if self.changed_cache_file(md5):
-                md5s.append(md5)
-                names.append(name)
-
-        progress.update_target(title, 30, 100)
-
-        cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
-
-        progress.update_target(title, 50, 100)
-
-        path_infos = remote.md5s_to_path_infos(md5s)
-
-        progress.update_target(title, 60, 100)
-
-        # NOTE: dummy call to try to establish a connection
-        # to see if we need to ask user for a password.
-        remote.cache_exists(['000'])
-
-        progress.update_target(title, 70, 100)
-
-        assert len(path_infos) == len(cache) == len(md5s) == len(names)
-
-        if jobs is None:
-            jobs = remote.JOBS
-
-        chunks = list(zip(to_chunks(path_infos, jobs),
-                          to_chunks(cache, jobs),
-                          to_chunks(names, jobs)))
-
-        progress.finish_target(title)
-
-        progress.set_n_total(len(names))
-
-        if len(chunks) == 0:
-            return
-
-        futures = []
-        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for from_infos, to_infos, names in chunks:
-                res = executor.submit(remote.download,
-                                      from_infos,
-                                      to_infos,
-                                      names=names)
-                futures.append(res)
-
-        for f in futures:
-            f.result()
-
-    def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        logger.info("Preparing to push data to {}".format(remote.url))
-        title = "Collecting information"
-
-        progress.set_n_total(1)
-        progress.update_target(title, 0, 100)
-
-        # NOTE: verifying that our cache is not corrupted
-        def func(info):
-            return not self.changed_cache_file(info[self.PARAM_CHECKSUM])
-        checksum_infos = list(filter(func, checksum_infos))
-
-        progress.update_target(title, 20, 100)
-
-        # NOTE: filter files that are already uploaded
-        md5s = [i[self.PARAM_CHECKSUM] for i in checksum_infos]
-        exists = remote.cache_exists(md5s)
-
-        progress.update_target(title, 30, 100)
-
-        def func(entry):
-            return not entry[0]
-
-        assert len(exists) == len(checksum_infos)
-        infos_exist = list(filter(func, zip(exists, checksum_infos)))
-        checksum_infos = [i for e, i in infos_exist]
-
-        progress.update_target(title, 70, 100)
-
-        md5s, names = self._group(checksum_infos,
-                                  show_checksums=show_checksums)
-        cache = [{'scheme': 'local', 'path': self.get(md5)} for md5 in md5s]
-
-        progress.update_target(title, 80, 100)
-
-        path_infos = remote.md5s_to_path_infos(md5s)
-
-        assert len(path_infos) == len(cache) == len(md5s) == len(names)
-
-        progress.update_target(title, 90, 100)
-
-        if jobs is None:
-            jobs = remote.JOBS
-
-        chunks = list(zip(to_chunks(path_infos, jobs),
-                          to_chunks(cache, jobs),
-                          to_chunks(names, jobs)))
-
-        progress.finish_target(title)
-
-        progress.set_n_total(len(names))
-
-        if len(chunks) == 0:
-            return
-
-        futures = []
-        with ThreadPoolExecutor(max_workers=len(chunks)) as executor:
-            for to_infos, from_infos, names in chunks:
-                res = executor.submit(remote.upload,
-                                      from_infos,
-                                      to_infos,
-                                      names=names)
-                futures.append(res)
-
-        for f in futures:
-            f.result()
+        self._process(checksum_infos,
+                      remote,
+                      jobs=jobs,
+                      show_checksums=show_checksums,
+                      download=True)

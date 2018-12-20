@@ -896,12 +896,15 @@ class Project(object):
                                 remote=remote,
                                 jobs=jobs)['local']
 
-        status = {}
-        for md5, ret in self.cloud.status(used,
-                                          jobs,
-                                          remote=remote,
-                                          show_checksums=show_checksums):
-            if ret == cloud.STATUS_OK:
+        ret = {}
+        status_info = self.cloud.status(used,
+                                        jobs,
+                                        remote=remote,
+                                        show_checksums=show_checksums)
+        for md5, info in status_info.items():
+            name = info['name']
+            status = info['status']
+            if status == cloud.STATUS_OK:
                 continue
 
             prefix_map = {
@@ -909,9 +912,9 @@ class Project(object):
                 cloud.STATUS_NEW: 'new',
             }
 
-            status[md5] = prefix_map[ret]
+            ret[name] = prefix_map[status]
 
-        return status
+        return ret
 
     def status(self,
                target=None,
