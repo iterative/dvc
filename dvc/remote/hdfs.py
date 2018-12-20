@@ -88,21 +88,6 @@ class RemoteHDFS(RemoteBase):
         return "{}://{}".format(path_info['scheme'],
                                 path_info['path'])
 
-    def changed_cache(self, checksum):
-        cache = {}
-        cache['scheme'] = 'hdfs'
-        cache['user'] = self.user
-        cache['path'] = self.checksum_to_path(checksum)
-
-        if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
-            if self.exists(cache):
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
-
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True

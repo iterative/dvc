@@ -234,23 +234,6 @@ class RemoteSSH(RemoteBase):
                                       path_info['host'],
                                       path_info['path'])
 
-    def changed_cache(self, md5):
-        cache = {}
-        cache['scheme'] = 'ssh'
-        cache['host'] = self.host
-        cache['port'] = self.port
-        cache['user'] = self.user
-        cache['path'] = self.checksum_to_path(md5)
-
-        if {self.PARAM_CHECKSUM: md5} != self.save_info(cache):
-            if self.exists(cache):
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
-
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True

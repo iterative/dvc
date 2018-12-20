@@ -73,19 +73,6 @@ class RemoteGS(RemoteBase):
                                    path_info['bucket'],
                                    path_info['path'])
 
-    def changed_cache(self, md5):
-        path = self.checksum_to_path(md5)
-        cache = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
-
-        if {self.PARAM_CHECKSUM: md5} != self.save_info(cache):
-            if self.exists(cache):
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
-
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True

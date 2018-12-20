@@ -200,3 +200,15 @@ class RemoteBase(object):
             self.remove(path_info)
             removed = True
         return removed
+
+    def changed_cache(self, checksum):
+        cache = self.checksum_to_path_info(checksum)
+
+        if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
+            if self.exists(cache):
+                msg = 'Corrupted cache file {}'
+                logger.warn(msg.format(str(cache)))
+                self.remove(cache)
+            return True
+
+        return False

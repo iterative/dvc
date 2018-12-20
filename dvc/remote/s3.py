@@ -138,19 +138,6 @@ class RemoteS3(RemoteBase):
     def to_string(path_info):
         return "s3://{}/{}".format(path_info['bucket'], path_info['path'])
 
-    def changed_cache(self, etag):
-        path = self.checksum_to_path(etag)
-        cache = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
-
-        if {self.PARAM_CHECKSUM: etag} != self.save_info(cache):
-            if self.exists(cache):
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
-
     def checkout(self, path_info, checksum_info):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
