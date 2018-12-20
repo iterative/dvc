@@ -15,7 +15,6 @@ from dvc.logger import logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
-from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException
 
 
@@ -36,7 +35,7 @@ class RemoteS3(RemoteBase):
     scheme = 's3'
     REGEX = r'^s3://(?P<path>.*)$'
     REQUIRES = {'boto3': boto3}
-    PARAM_ETAG = 'etag'
+    PARAM_CHECKSUM = 'etag'
 
     def __init__(self, project, config):
         self.project = project
@@ -69,6 +68,8 @@ class RemoteS3(RemoteBase):
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip('/')
 
+        self.path_info = {'scheme': self.scheme, 'bucket': self.bucket}
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
@@ -98,14 +99,14 @@ class RemoteS3(RemoteBase):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self.get_etag(path_info['bucket'],
-                                               path_info['path'])}
+        return {self.PARAM_CHECKSUM: self.get_etag(path_info['bucket'],
+                                                   path_info['path'])}
 
     def changed(self, path_info, checksum_info):
         if not self.exists(path_info):
             return True
 
-        etag = checksum_info.get(self.PARAM_ETAG, None)
+        etag = checksum_info.get(self.PARAM_CHECKSUM, None)
         if etag is None:
             return True
 
@@ -131,7 +132,7 @@ class RemoteS3(RemoteBase):
 
         self._copy(path_info, to_info)
 
-        return {self.PARAM_ETAG: etag}
+        return {self.PARAM_CHECKSUM: etag}
 
     @staticmethod
     def to_string(path_info):
@@ -141,7 +142,7 @@ class RemoteS3(RemoteBase):
         path = self.checksum_to_path(etag)
         cache = {'scheme': 's3', 'bucket': self.bucket, 'path': path}
 
-        if {self.PARAM_ETAG: etag} != self.save_info(cache):
+        if {self.PARAM_CHECKSUM: etag} != self.save_info(cache):
             if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
@@ -154,7 +155,7 @@ class RemoteS3(RemoteBase):
         if path_info['scheme'] != 's3':
             raise NotImplementedError
 
-        etag = checksum_info.get(self.PARAM_ETAG, None)
+        etag = checksum_info.get(self.PARAM_CHECKSUM, None)
         if not etag:
             return
 
@@ -192,11 +193,6 @@ class RemoteS3(RemoteBase):
         self.s3.delete_object(Bucket=path_info['bucket'],
                               Key=path_info['path'])
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': self.scheme,
-                 'bucket': self.bucket,
-                 'path': self.checksum_to_path(md5)} for md5 in md5s]
-
     def _list_paths(self, bucket, prefix):
         s3 = self.s3
 
@@ -220,6 +216,9 @@ class RemoteS3(RemoteBase):
                 break
 
             kwargs['ContinuationToken'] = token
+
+    def list_cache_paths(self):
+        return self._list_paths(self.bucket, self.prefix)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
@@ -333,29 +332,3 @@ class RemoteS3(RemoteBase):
 
             if not no_progress_bar:
                 progress.finish_target(name)
-
-    def _all(self):
-        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
-        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
-        # the same time, so it makes sense to use a generator to gradually
-        # iterate over it, without keeping all of it in memory.
-        return (
-            self.path_to_checksum(path)
-            for path in self._list_paths(self.bucket, self.prefix)
-        )
-
-    def gc(self, cinfos):
-        used_etags = [info[self.PARAM_ETAG] for info in cinfos['s3']]
-        used_etags += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for etag in self._all():
-            if etag in used_etags:
-                continue
-            path_info = {'scheme': 's3',
-                         'path': self.checksum_to_path(etag),
-                         'bucket': self.bucket}
-            self.remove(path_info)
-            removed = True
-
-        return removed

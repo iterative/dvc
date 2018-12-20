@@ -22,7 +22,7 @@ from concurrent.futures import ThreadPoolExecutor
 class RemoteLOCAL(RemoteBase):
     scheme = ''
     REGEX = r'^(?P<path>(/+|.:\\+).*)$'
-    PARAM_MD5 = 'md5'
+    PARAM_CHECKSUM = 'md5'
     PARAM_PATH = 'path'
     PARAM_RELPATH = 'relpath'
     MD5_DIR_SUFFIX = '.dir'
@@ -53,6 +53,8 @@ class RemoteLOCAL(RemoteBase):
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
+        self.path_info = {'scheme': 'local'}
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
@@ -68,7 +70,7 @@ class RemoteLOCAL(RemoteBase):
     def prefix(self):
         return self.cache_dir
 
-    def all(self):
+    def list_cache_paths(self):
         clist = []
         for entry in os.listdir(self.cache_dir):
             subdir = os.path.join(self.cache_dir, entry)
@@ -76,8 +78,7 @@ class RemoteLOCAL(RemoteBase):
                 continue
 
             for cache in os.listdir(subdir):
-                path = os.path.join(subdir, cache)
-                clist.append(self.path_to_checksum(path))
+                clist.append(os.path.join(subdir, cache))
 
         return clist
 
@@ -118,7 +119,7 @@ class RemoteLOCAL(RemoteBase):
                 continue
 
             for entry in self.load_dir_cache(md5):
-                md5 = entry[self.PARAM_MD5]
+                md5 = entry[self.PARAM_CHECKSUM]
                 cache = self.get(md5)
                 clist.append((cache, md5))
 
@@ -211,7 +212,7 @@ class RemoteLOCAL(RemoteBase):
 
                 md5 = self.state.update(path)
                 dir_info.append({self.PARAM_RELPATH: relpath,
-                                 self.PARAM_MD5: md5})
+                                 self.PARAM_CHECKSUM: md5})
 
             if bar:
                 progress.finish_target(title)
@@ -271,7 +272,7 @@ class RemoteLOCAL(RemoteBase):
 
     def checkout(self, path_info, checksum_info, force=False):
         path = path_info['path']
-        md5 = checksum_info.get(self.PARAM_MD5)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM)
         cache = self.get(md5)
 
         if not cache:
@@ -318,13 +319,13 @@ class RemoteLOCAL(RemoteBase):
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
-            m = entry[self.PARAM_MD5]
+            m = entry[self.PARAM_CHECKSUM]
             p = os.path.join(path, relpath)
             c = self.get(m)
 
             entry_info = {'scheme': path_info['scheme'], self.PARAM_PATH: p}
 
-            entry_checksum_info = {self.PARAM_MD5: m}
+            entry_checksum_info = {self.PARAM_CHECKSUM: m}
 
             if self.changed(entry_info, entry_checksum_info):
                 if os.path.exists(p):
@@ -409,7 +410,7 @@ class RemoteLOCAL(RemoteBase):
         self.link(cache, path)
         self.state.update_link(path)
 
-        return {self.PARAM_MD5: md5}
+        return {self.PARAM_CHECKSUM: md5}
 
     def _save_dir(self, path_info):
         path = path_info['path']
@@ -422,7 +423,7 @@ class RemoteLOCAL(RemoteBase):
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
-            m = entry[self.PARAM_MD5]
+            m = entry[self.PARAM_CHECKSUM]
             p = os.path.join(path, relpath)
             c = self.get(m)
 
@@ -441,7 +442,7 @@ class RemoteLOCAL(RemoteBase):
         if bar:
             progress.finish_target(dir_relpath)
 
-        return {self.PARAM_MD5: md5}
+        return {self.PARAM_CHECKSUM: md5}
 
     def save(self, path_info):
         if path_info['scheme'] != 'local':
@@ -462,7 +463,7 @@ class RemoteLOCAL(RemoteBase):
         if path_info['scheme'] != 'local':
             raise NotImplementedError
 
-        return {self.PARAM_MD5: self.state.update(path_info['path'])}
+        return {self.PARAM_CHECKSUM: self.state.update(path_info['path'])}
 
     def changed(self, path_info, checksum_info):
         """
@@ -475,7 +476,7 @@ class RemoteLOCAL(RemoteBase):
         if not self.exists(path_info):
             return True
 
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
         if md5 is None:
             return True
 
@@ -495,11 +496,6 @@ class RemoteLOCAL(RemoteBase):
             raise NotImplementedError
 
         move(from_info['path'], to_info['path'])
-
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'local',
-                 'path': os.path.join(self.prefix,
-                                      md5[0:2], md5[2:])} for md5 in md5s]
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
@@ -573,7 +569,7 @@ class RemoteLOCAL(RemoteBase):
         by_md5 = {}
 
         for info in checksum_infos:
-            md5 = info[self.PARAM_MD5]
+            md5 = info[self.PARAM_CHECKSUM]
 
             if show_checksums:
                 by_md5[md5] = md5
@@ -592,19 +588,6 @@ class RemoteLOCAL(RemoteBase):
             by_md5[md5] += name
 
         return list(by_md5.keys()), list(by_md5.values())
-
-    def gc(self, checksum_infos):
-        checksum_infos = checksum_infos['local']
-        used_md5s = [info[self.PARAM_MD5] for info in checksum_infos]
-
-        removed = False
-        for md5 in self.all():
-            if md5 in used_md5s:
-                continue
-            remove(self.get(md5))
-            removed = True
-
-        return removed
 
     def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
         logger.info("Preparing to pull data from {}".format(remote.url))
@@ -708,13 +691,13 @@ class RemoteLOCAL(RemoteBase):
 
         # NOTE: verifying that our cache is not corrupted
         def func(info):
-            return not self.changed_cache_file(info[self.PARAM_MD5])
+            return not self.changed_cache_file(info[self.PARAM_CHECKSUM])
         checksum_infos = list(filter(func, checksum_infos))
 
         progress.update_target(title, 20, 100)
 
         # NOTE: filter files that are already uploaded
-        md5s = [i[self.PARAM_MD5] for i in checksum_infos]
+        md5s = [i[self.PARAM_CHECKSUM] for i in checksum_infos]
         exists = remote.cache_exists(md5s)
 
         progress.update_target(title, 30, 100)

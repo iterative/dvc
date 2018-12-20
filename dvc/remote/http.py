@@ -33,6 +33,7 @@ class RemoteHTTP(RemoteBase):
         self.project = project
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
+        self.path_info = {'scheme': 'http'}
 
     @property
     def prefix(self):
@@ -101,15 +102,6 @@ class RemoteHTTP(RemoteBase):
 
         return {self.PARAM_ETAG: self._etag(path_info['path'])}
 
-    def md5s_to_path_infos(self, md5s):
-        return [
-            {
-                'scheme': 'http',
-                'path': self.checksum_to_path(md5),
-            }
-            for md5 in md5s
-        ]
-
     def _content_length(self, url):
         return self._request('HEAD', url).headers.get('Content-Length')
 
@@ -148,3 +140,6 @@ class RemoteHTTP(RemoteBase):
             return requests.request(method, url, **kwargs)
         except requests.exceptions.RequestException:
             raise DvcException('Could not perform a {} request'.format(method))
+
+    def gc(self):
+        raise NotImplementedError

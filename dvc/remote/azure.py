@@ -63,6 +63,8 @@ class RemoteAzure(RemoteBase):
 
         self.__blob_service = None
 
+        self.path_info = {'scheme': self.scheme, 'bucket': self.bucket}
+
     @property
     def blob_service(self):
         if self.__blob_service is None:
@@ -80,13 +82,6 @@ class RemoteAzure(RemoteBase):
 
         self.blob_service.delete_blob(path_info['bucket'], path_info['path'])
 
-    def md5s_to_path_infos(self, md5s):
-        return [{
-            'scheme': self.scheme,
-            'bucket': self.bucket,
-            'path': self.checksum_to_path(md5[0:2]),
-        } for md5 in md5s]
-
     def _list_paths(self, bucket, prefix):
         blob_service = self.blob_service
         next_marker = None
@@ -102,6 +97,9 @@ class RemoteAzure(RemoteBase):
                 break
 
             next_marker = blobs.next_marker
+
+    def list_cache_paths(self):
+        return self._list_paths(self.bucket, self.prefix)
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
@@ -189,31 +187,3 @@ class RemoteAzure(RemoteBase):
 
                 if not no_progress_bar:
                     progress.finish_target(name)
-
-    def _all(self):
-        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
-        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
-        # the same time, so it makes sense to use a generator to gradually
-        # iterate over it, without keeping all of it in memory.
-        return (
-            self.path_to_checksum(path)
-            for path in self._list_keys(self.bucket, self.prefix)
-        )
-
-    def gc(self, cinfos):
-        from dvc.remote.local import RemoteLOCAL
-
-        used = [info[self.PARAM_ETAG] for info in cinfos['azure']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for etag in self._all():
-            if etag in used:
-                continue
-            path_info = {'scheme': self.scheme,
-                         'path': self.checksum_to_path(etag),
-                         'bucket': self.bucket}
-            self.remove(path_info)
-            removed = True
-
-        return removed

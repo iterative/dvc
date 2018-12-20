@@ -12,7 +12,6 @@ except ImportError:
 
 from dvc.logger import logger
 from dvc.remote.base import RemoteBase
-from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.progress import progress
 from dvc.exceptions import DvcException
@@ -22,7 +21,7 @@ class RemoteGS(RemoteBase):
     scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
     REQUIRES = {'google.cloud.storage': storage}
-    PARAM_MD5 = 'md5'
+    PARAM_CHECKSUM = 'md5'
 
     def __init__(self, project, config):
         self.project = project
@@ -35,6 +34,8 @@ class RemoteGS(RemoteBase):
         parsed = urlparse(self.url)
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip('/')
+
+        self.path_info = {'scheme': 'gs', 'bucket': self.bucket}
 
     @staticmethod
     def compat_config(config):
@@ -63,8 +64,8 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        return {self.PARAM_MD5: self.get_md5(path_info['bucket'],
-                                             path_info['path'])}
+        return {self.PARAM_CHECKSUM: self.get_md5(path_info['bucket'],
+                                                  path_info['path'])}
 
     @staticmethod
     def to_string(path_info):
@@ -76,7 +77,7 @@ class RemoteGS(RemoteBase):
         path = self.checksum_to_path(md5)
         cache = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
-        if {self.PARAM_MD5: md5} != self.save_info(cache):
+        if {self.PARAM_CHECKSUM: md5} != self.save_info(cache):
             if self.exists(cache):
                 msg = 'Corrupted cache file {}'
                 logger.warn(msg.format(self.to_string(cache)))
@@ -89,7 +90,7 @@ class RemoteGS(RemoteBase):
         if not self.exists(path_info):
             return True
 
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
         if md5 is None:
             return True
 
@@ -121,13 +122,13 @@ class RemoteGS(RemoteBase):
 
         self._copy(path_info, to_info)
 
-        return {self.PARAM_MD5: md5}
+        return {self.PARAM_CHECKSUM: md5}
 
     def checkout(self, path_info, checksum_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
         if not md5:
             return
 
@@ -168,14 +169,12 @@ class RemoteGS(RemoteBase):
 
         blob.delete()
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'gs',
-                 'bucket': self.bucket,
-                 'path': self.checksum_to_path(md5)} for md5 in md5s]
-
     def _list_paths(self, bucket, prefix):
         for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
             yield blob.name
+
+    def list_cache_paths(self):
+        return self._list_paths(self.bucket, self.prefix)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
@@ -286,29 +285,3 @@ class RemoteGS(RemoteBase):
 
             if not no_progress_bar:
                 progress.finish_target(name)
-
-    def _all_md5s(self):
-        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
-        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
-        # the same time, so it makes sense to use a generator to gradually
-        # iterate over it, without keeping all of it in memory.
-        return (
-            self.path_to_checksum(path)
-            for path in self._list_paths(self.bucket, self.prefix)
-        )
-
-    def gc(self, cinfos):
-        used = [info[self.PARAM_MD5] for info in cinfos['gs']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for md5 in self._all_md5s():
-            if md5 in used:
-                continue
-            path_info = {'scheme': 'gs',
-                         'bucket': self.bucket,
-                         'path': self.checksum_to_path(md5)}
-            self.remove(path_info)
-            removed = True
-
-        return removed

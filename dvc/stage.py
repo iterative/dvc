@@ -348,8 +348,8 @@ class Stage(object):
         new_d.pop(self.PARAM_MD5, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(RemoteLOCAL.PARAM_MD5, None)
-            out.pop(RemoteS3.PARAM_ETAG, None)
+            out.pop(RemoteLOCAL.PARAM_CHECKSUM, None)
+            out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
         return old_d == new_d
 

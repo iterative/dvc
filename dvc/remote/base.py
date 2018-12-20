@@ -129,9 +129,6 @@ class RemoteBase(object):
             if e.errno != errno.EEXIST:
                 raise
 
-    def md5s_to_path_infos(self, md5s):
-        raise NotImplementedError
-
     def cache_exists(self, md5s):
         raise NotImplementedError
 
@@ -162,3 +159,44 @@ class RemoteBase(object):
     def path_to_checksum(self, path):
         relpath = self.ospath.relpath(path, self.prefix)
         return self.ospath.dirname(relpath) + self.ospath.basename(relpath)
+
+    def checksum_to_path_info(self, checksum):
+        path_info = self.path_info.copy()
+        path_info['path'] = self.checksum_to_path(checksum)
+        return path_info
+
+    def md5s_to_path_infos(self, md5s):
+        return [
+            self.checksum_to_path_info(md5)
+            for md5 in md5s
+        ]
+
+    def list_cache_paths(self):
+        raise NotImplementedError
+
+    def all(self):
+        # NOTE: The list might be way too big(e.g. 100M entries, md5 for each
+        # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
+        # the same time, so it makes sense to use a generator to gradually
+        # iterate over it, without keeping all of it in memory.
+        return (
+            self.path_to_checksum(path)
+            for path in self.list_cache_paths()
+        )
+
+    def gc(self, cinfos):
+        from dvc.remote.local import RemoteLOCAL
+
+        used = [info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos['local']]
+
+        if self.scheme != '':
+            used += [info[self.PARAM_CHECKSUM] for info in cinfos[self.scheme]]
+
+        removed = False
+        for checksum in self.all():
+            if checksum in used:
+                continue
+            path_info = self.checksum_to_path_info(checksum)
+            self.remove(path_info)
+            removed = True
+        return removed

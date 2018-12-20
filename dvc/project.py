@@ -602,7 +602,7 @@ class Project(object):
         info = out.dumpd()
         ret = [info]
         r = out.remote
-        md5 = info[r.PARAM_MD5]
+        md5 = info[r.PARAM_CHECKSUM]
 
         if self.cache.local.changed_cache_file(md5):
             try:
@@ -649,7 +649,7 @@ class Project(object):
         if out.path_info['scheme'] != 'local':
             return ret
 
-        md5 = info[out.remote.PARAM_MD5]
+        md5 = info[out.remote.PARAM_CHECKSUM]
         cache = self.cache.local.get(md5)
         if not out.remote.is_dir_cache(cache):
             return ret

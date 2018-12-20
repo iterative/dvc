@@ -6,7 +6,6 @@ from subprocess import Popen, PIPE
 
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
-from dvc.remote.local import RemoteLOCAL
 from dvc.logger import logger
 from dvc.utils import fix_env
 
@@ -27,6 +26,8 @@ class RemoteHDFS(RemoteBase):
         if not self.user:
             self.user = config.get(Config.SECTION_REMOTE_USER,
                                    getpass.getuser())
+
+        self.path_info = {'scheme': 'hdfs', 'user': self.user}
 
     def hadoop_fs(self, cmd, user=None):
         cmd = 'hadoop fs -' + cmd
@@ -173,11 +174,6 @@ class RemoteHDFS(RemoteBase):
 
         self.rm(path_info)
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'hdfs',
-                 'user': self.user,
-                 'path': self.checksum_to_path(md5)} for md5 in md5s]
-
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info['scheme'] == 'hdfs'
@@ -246,7 +242,7 @@ class RemoteHDFS(RemoteBase):
                                              to_info['path'])
             self.hadoop_fs(cmd, user=from_info['user'])
 
-    def _all_checksums(self):
+    def list_cache_paths(self):
         try:
             self.hadoop_fs('test -e {}'.format(self.prefix))
         except RemoteHDFSCmdError:
@@ -259,20 +255,4 @@ class RemoteHDFS(RemoteBase):
             if not line.startswith('-'):
                 continue
             flist.append(line.split()[-1])
-        return [self.path_to_checksum(path) for path in flist]
-
-    def gc(self, cinfos):
-        used = [info[self.PARAM_CHECKSUM] for info in cinfos['hdfs']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for checksum in self._all_checksums():
-            if checksum in used:
-                continue
-            path_info = {'scheme': 'hdfs',
-                         'user': self.user,
-                         'path': self.checksum_to_path(checksum)}
-            self.remove(path_info)
-            removed = True
-
-        return removed
+        return flist
