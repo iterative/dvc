@@ -22,10 +22,10 @@ class TestCache(TestDvc):
         self.create(self.cache2, '2')
 
     def test_all(self):
-        md5_list = Cache(self.dvc).local.all()
+        md5_list = list(Cache(self.dvc).local.all())
         self.assertEquals(len(md5_list), 2)
-        self.assertTrue(self.cache1_md5 in md5_list)
-        self.assertTrue(self.cache2_md5 in md5_list)
+        self.assertIn(self.cache1_md5, md5_list)
+        self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
         cache = Cache(self.dvc).local.get(self.cache1_md5)

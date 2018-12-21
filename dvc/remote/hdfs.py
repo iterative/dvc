@@ -6,7 +6,6 @@ from subprocess import Popen, PIPE
 
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
-from dvc.remote.local import RemoteLOCAL
 from dvc.logger import logger
 from dvc.utils import fix_env
 
@@ -23,10 +22,13 @@ class RemoteHDFS(RemoteBase):
     def __init__(self, project, config):
         self.project = project
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
+        self.prefix = self.url
         self.user = self.group('user')
         if not self.user:
             self.user = config.get(Config.SECTION_REMOTE_USER,
                                    getpass.getuser())
+
+        self.path_info = {'scheme': 'hdfs', 'user': self.user}
 
     def hadoop_fs(self, cmd, user=None):
         cmd = 'hadoop fs -' + cmd
@@ -59,50 +61,31 @@ class RemoteHDFS(RemoteBase):
 
     def checksum(self, path_info):
         regex = r'.*\t.*\t(?P<checksum>.*)'
-        stdout = self.hadoop_fs('checksum {}'.format(path_info['url']),
+        stdout = self.hadoop_fs('checksum {}'.format(path_info['path']),
                                 user=path_info['user'])
         return self._group(regex, stdout, 'checksum')
 
-    def cp(self, from_info, to_info):
-        self.hadoop_fs('mkdir -p {}'.format(posixpath.dirname(to_info['url'])),
-                       user=to_info['user'])
-        self.hadoop_fs('cp -f {} {}'.format(from_info['url'], to_info['url']),
+    def copy(self, from_info, to_info):
+        dname = posixpath.dirname(to_info['path'])
+        self.hadoop_fs('mkdir -p {}'.format(dname), user=to_info['user'])
+        self.hadoop_fs('cp -f {} {}'.format(from_info['path'],
+                                            to_info['path']),
                        user=to_info['user'])
 
     def rm(self, path_info):
-        self.hadoop_fs('rm {}'.format(path_info['url']),
+        self.hadoop_fs('rm {}'.format(path_info['path']),
                        user=path_info['user'])
 
     def save_info(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}".format(path_info['scheme'],
-                                path_info['url'])
-
-    def changed_cache(self, checksum):
-        cache = {}
-        cache['scheme'] = 'hdfs'
-        cache['user'] = self.user
-        cache['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
-
-        if {self.PARAM_CHECKSUM: checksum} != self.save_info(cache):
-            if self.exists([cache])[0]:
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
-
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
@@ -118,82 +101,35 @@ class RemoteHDFS(RemoteBase):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
         checksum = self.checksum(path_info)
         dest = path_info.copy()
-        dest['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
+        dest['path'] = self.checksum_to_path(checksum)
 
-        self.cp(path_info, dest)
+        self.copy(path_info, dest)
 
         return {self.PARAM_CHECKSUM: checksum}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'hdfs':
-            raise NotImplementedError
-
-        assert path_info.get('url')
-
-        checksum = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if not checksum:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(checksum):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(checksum, self.to_string(path_info)))
-            return
-
-        if self.exists([path_info])[0]:
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), checksum))
-
-        src = path_info.copy()
-        src['url'] = posixpath.join(self.url, checksum[0:2], checksum[2:])
-
-        self.cp(src, path_info)
 
     def remove(self, path_info):
         if path_info['scheme'] != 'hdfs':
             raise NotImplementedError
 
-        assert path_info.get('url')
+        assert path_info.get('path')
 
-        logger.debug('Removing {}'.format(path_info['url']))
+        logger.debug('Removing {}'.format(path_info['path']))
 
         self.rm(path_info)
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'hdfs',
-                 'user': self.user,
-                 'url': posixpath.join(self.url,
-                                       md5[0:2], md5[2:])} for md5 in md5s]
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'hdfs'
 
-    def exists(self, path_infos):
-        ret = []
-
-        if len(path_infos) == 0:
-            return ret
-
-        for path_info in path_infos:
-            assert path_info['scheme'] == self.scheme
-            try:
-                self.hadoop_fs('test -e {}'.format(path_info['url']))
-                exists = True
-            except RemoteHDFSCmdError:
-                exists = False
-            ret.append(exists)
-
-        return ret
+        try:
+            self.hadoop_fs('test -e {}'.format(path_info['path']))
+            return True
+        except RemoteHDFSCmdError:
+            return False
 
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -205,11 +141,11 @@ class RemoteHDFS(RemoteBase):
             if from_info['scheme'] != 'local':
                 raise NotImplementedError
 
-            cmd = 'mkdir -p {}'.format(posixpath.dirname(to_info['url']))
+            cmd = 'mkdir -p {}'.format(posixpath.dirname(to_info['path']))
             self.hadoop_fs(cmd, user=to_info['user'])
 
             cmd = 'copyFromLocal {} {}'.format(from_info['path'],
-                                               to_info['url'])
+                                               to_info['path'])
             self.hadoop_fs(cmd, user=to_info['user'])
 
     def download(self,
@@ -224,7 +160,7 @@ class RemoteHDFS(RemoteBase):
                 raise NotImplementedError
 
             if to_info['scheme'] == 'hdfs':
-                self.cp(from_info, to_info)
+                self.copy(from_info, to_info)
                 continue
 
             if to_info['scheme'] != 'local':
@@ -234,36 +170,21 @@ class RemoteHDFS(RemoteBase):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            cmd = 'copyToLocal {} {}'.format(from_info['url'], to_info['path'])
+            cmd = 'copyToLocal {} {}'.format(from_info['path'],
+                                             to_info['path'])
             self.hadoop_fs(cmd, user=from_info['user'])
 
-    def _path_to_checksum(self, path):
-        relpath = posixpath.relpath(path, self.url)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
+    def list_cache_paths(self):
+        try:
+            self.hadoop_fs('test -e {}'.format(self.prefix))
+        except RemoteHDFSCmdError:
+            return []
 
-    def _all_checksums(self):
-        stdout = self.hadoop_fs('ls -R {}'.format(self.url))
+        stdout = self.hadoop_fs('ls -R {}'.format(self.prefix))
         lines = stdout.split('\n')
         flist = []
         for line in lines:
             if not line.startswith('-'):
                 continue
             flist.append(line.split()[-1])
-        return [self._path_to_checksum(path) for path in flist]
-
-    def gc(self, cinfos):
-        used = [info[self.PARAM_CHECKSUM] for info in cinfos['hdfs']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for checksum in self._all_checksums():
-            if checksum in used:
-                continue
-            path_info = {'scheme': 'hdfs',
-                         'user': self.user,
-                         'url': posixpath.join(self.url,
-                                               checksum[0:2], checksum[2:])}
-            self.remove(path_info)
-            removed = True
-
-        return removed
+        return flist
