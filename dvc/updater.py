@@ -11,8 +11,7 @@ from dvc.utils import is_binary
 
 
 class Updater(object):  # pragma: no cover
-    URL = 'https://4ki8820rsf.execute-api.us-east-2.amazonaws.com/' \
-          'prod/latest-version'
+    URL = 'https://updater.dvc.org/'
     UPDATER_FILE = 'updater'
     TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10
