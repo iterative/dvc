@@ -81,7 +81,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
         entry = self.dvc.cache.local.load_dir_cache(out.md5)[0]
-        md5 = entry[self.dvc.cache.local.PARAM_MD5]
+        md5 = entry[self.dvc.cache.local.PARAM_CHECKSUM]
         cache = self.dvc.cache.local.get(md5)
 
         with open(cache, 'w+') as fobj:
@@ -281,8 +281,8 @@ class TestCheckoutMissingMd5InStageFile(TestRepro):
         with open(self.file1_stage, 'r') as fd:
             d = yaml.load(fd)
 
-        del(d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_MD5])
-        del(d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_MD5])
+        del(d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM])
+        del(d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM])
 
         with open(self.file1_stage, 'w') as fd:
             yaml.dump(d, fd)

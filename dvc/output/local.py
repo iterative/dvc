@@ -34,7 +34,7 @@ class OutputLOCAL(DependencyLOCAL):
 
     @property
     def md5(self):
-        return self.info.get(self.project.cache.local.PARAM_MD5, None)
+        return self.info.get(self.project.cache.local.PARAM_CHECKSUM, None)
 
     @property
     def cache(self):

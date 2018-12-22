@@ -11,7 +11,6 @@ import dvc.prompt as prompt
 from dvc.logger import logger
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
-from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.exceptions import DvcException
 
@@ -52,7 +51,7 @@ class RemoteSSH(RemoteBase):
 
     JOBS = 4
 
-    PARAM_MD5 = 'md5'
+    PARAM_CHECKSUM = 'md5'
 
     DEFAULT_PORT = 22
     TIMEOUT = 1800
@@ -73,13 +72,10 @@ class RemoteSSH(RemoteBase):
         self.ask_password = config.get(Config.SECTION_REMOTE_ASK_PASSWORD,
                                        False)
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'ssh',
-                 'host': self.host,
-                 'user': self.user,
-                 'port': self.port,
-                 'path': posixpath.join(self.prefix,
-                                        md5[0:2], md5[2:])} for md5 in md5s]
+        self.path_info = {'scheme': 'ssh',
+                          'host': self.host,
+                          'user': self.user,
+                          'port': self.port}
 
     def ssh(self, host=None, user=None, port=None):
         msg = "Establishing ssh connection with '{}' " \
@@ -105,33 +101,20 @@ class RemoteSSH(RemoteBase):
 
         return ssh
 
-    def exists(self, path_infos):
-        ret = []
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'ssh'
 
-        if len(path_infos) == 0:
-            return ret
-
-        host = path_infos[0]['host']
-        user = path_infos[0]['user']
-        port = path_infos[0]['port']
-        ssh = self.ssh(host=host,
-                       user=user,
-                       port=port)
-
-        for path_info in path_infos:
-            assert host == path_info['host']
-            assert user == path_info['user']
-            assert port == path_info['port']
+        with self.ssh(path_info['host'],
+                      path_info['user'],
+                      path_info['port']) as ssh:
             try:
                 self._exec(ssh, 'test -e {}'.format(path_info['path']))
                 exists = True
             except RemoteSSHCmdError:
                 exists = False
-            ret.append(exists)
 
-        ssh.close()
-
-        return ret
+        return exists
 
     def _exec(self, ssh, cmd):
         stdin, stdout, stderr = ssh.exec_command(cmd)
@@ -205,7 +188,7 @@ class RemoteSSH(RemoteBase):
 
         return md5
 
-    def cp(self, from_info, to_info, ssh=None):
+    def copy(self, from_info, to_info, ssh=None):
         if from_info['scheme'] != 'ssh' or to_info['scheme'] != 'ssh':
             raise NotImplementedError
 
@@ -227,37 +210,13 @@ class RemoteSSH(RemoteBase):
         if path_info['scheme'] != 'ssh':
             raise NotImplementedError
 
-        return {self.PARAM_MD5: self.md5(path_info)}
-
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}@{}:{}".format(path_info['scheme'],
-                                      path_info['user'],
-                                      path_info['host'],
-                                      path_info['path'])
-
-    def changed_cache(self, md5):
-        cache = {}
-        cache['scheme'] = 'ssh'
-        cache['host'] = self.host
-        cache['port'] = self.port
-        cache['user'] = self.user
-        cache['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
-
-        if {self.PARAM_MD5: md5} != self.save_info(cache):
-            if self.exists([cache])[0]:
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
+        return {self.PARAM_CHECKSUM: self.md5(path_info)}
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
         if md5 is None:
             return True
 
@@ -272,43 +231,11 @@ class RemoteSSH(RemoteBase):
 
         md5 = self.md5(path_info)
         dest = path_info.copy()
-        dest['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
+        dest['path'] = self.checksum_to_path(md5)
 
-        self.cp(path_info, dest)
+        self.copy(path_info, dest)
 
-        return {self.PARAM_MD5: md5}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'ssh':
-            raise NotImplementedError
-
-        md5 = checksum_info.get(self.PARAM_MD5, None)
-        if not md5:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(md5):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(md5, self.to_string(path_info)))
-            return
-
-        if self.exists([path_info])[0]:
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), md5))
-
-        src = path_info.copy()
-        src['path'] = posixpath.join(self.prefix, md5[0:2], md5[2:])
-
-        self.cp(src, path_info)
+        return {self.PARAM_CHECKSUM: md5}
 
     def remove(self, path_info):
         if path_info['scheme'] != 'ssh':
@@ -343,7 +270,7 @@ class RemoteSSH(RemoteBase):
                 assert from_info['host'] == to_info['host']
                 assert from_info['port'] == to_info['port']
                 assert from_info['user'] == to_info['user']
-                self.cp(from_info, to_info, ssh=ssh)
+                self.copy(from_info, to_info, ssh=ssh)
                 continue
 
             if to_info['scheme'] != 'local':
@@ -416,11 +343,7 @@ class RemoteSSH(RemoteBase):
         sftp.close()
         ssh.close()
 
-    def _path_to_md5(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
-    def _all_md5s(self):
+    def list_cache_paths(self):
         ssh = self.ssh(host=self.host,
                        user=self.user,
                        port=self.port)
@@ -428,24 +351,4 @@ class RemoteSSH(RemoteBase):
         stdout = self._exec(ssh, cmd)
         flist = stdout.split()
         ssh.close()
-
-        return [self._path_to_md5(path) for path in flist]
-
-    def gc(self, cinfos):
-        used = [info[self.PARAM_MD5] for info in cinfos['ssh']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for md5 in self._all_md5s():
-            if md5 in used:
-                continue
-            path_info = {'scheme': 'ssh',
-                         'user': self.user,
-                         'host': self.host,
-                         'port': self.port,
-                         'path': posixpath.join(self.prefix,
-                                                md5[0:2], md5[2:])}
-            self.remove(path_info)
-            removed = True
-
-        return removed
+        return flist

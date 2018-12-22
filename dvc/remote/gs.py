@@ -1,5 +1,4 @@
 import os
-import posixpath
 
 try:
     from google.cloud import storage
@@ -13,7 +12,6 @@ except ImportError:
 
 from dvc.logger import logger
 from dvc.remote.base import RemoteBase
-from dvc.remote.local import RemoteLOCAL
 from dvc.config import Config
 from dvc.progress import progress
 from dvc.exceptions import DvcException
@@ -23,7 +21,7 @@ class RemoteGS(RemoteBase):
     scheme = 'gs'
     REGEX = r'^gs://(?P<path>.*)$'
     REQUIRES = {'google.cloud.storage': storage}
-    PARAM_MD5 = 'md5'
+    PARAM_CHECKSUM = 'md5'
 
     def __init__(self, project, config):
         self.project = project
@@ -33,6 +31,12 @@ class RemoteGS(RemoteBase):
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
+        parsed = urlparse(self.url)
+        self.bucket = parsed.netloc
+        self.prefix = parsed.path.lstrip('/')
+
+        self.path_info = {'scheme': 'gs', 'bucket': self.bucket}
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
@@ -41,22 +45,14 @@ class RemoteGS(RemoteBase):
         return ret
 
     @property
-    def bucket(self):
-        return urlparse(self.url).netloc
-
-    @property
-    def prefix(self):
-        return urlparse(self.url).path.lstrip('/')
-
-    @property
     def gs(self):
         return storage.Client()
 
-    def get_md5(self, bucket, key):
+    def get_md5(self, bucket, path):
         import base64
         import codecs
 
-        blob = self.gs.bucket(bucket).get_blob(key)
+        blob = self.gs.bucket(bucket).get_blob(path)
         if not blob:
             return None
 
@@ -68,33 +64,14 @@ class RemoteGS(RemoteBase):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        return {self.PARAM_MD5: self.get_md5(path_info['bucket'],
-                                             path_info['key'])}
-
-    @staticmethod
-    def to_string(path_info):
-        return "{}://{}/{}".format(path_info['scheme'],
-                                   path_info['bucket'],
-                                   path_info['key'])
-
-    def changed_cache(self, md5):
-        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
-        cache = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
-
-        if {self.PARAM_MD5: md5} != self.save_info(cache):
-            if self.exists([cache])[0]:
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(self.to_string(cache)))
-                self.remove(cache)
-            return True
-
-        return False
+        return {self.PARAM_CHECKSUM: self.get_md5(path_info['bucket'],
+                                                  path_info['path'])}
 
     def changed(self, path_info, checksum_info):
-        if not self.exists([path_info])[0]:
+        if not self.exists(path_info):
             return True
 
-        md5 = checksum_info.get(self.PARAM_MD5, None)
+        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
         if md5 is None:
             return True
 
@@ -103,103 +80,57 @@ class RemoteGS(RemoteBase):
 
         return checksum_info != self.save_info(path_info)
 
-    def _copy(self, from_info, to_info, gs=None):
+    def copy(self, from_info, to_info, gs=None):
         gs = gs if gs else self.gs
 
-        blob = gs.bucket(from_info['bucket']).get_blob(from_info['key'])
+        blob = gs.bucket(from_info['bucket']).get_blob(from_info['path'])
         if not blob:
             msg = '{} doesn\'t exist in the cloud'
-            raise DvcException(msg.format(from_info['key']))
+            raise DvcException(msg.format(from_info['path']))
 
         bucket = self.gs.bucket(to_info['bucket'])
         bucket.copy_blob(blob,
                          self.gs.bucket(to_info['bucket']),
-                         new_name=to_info['key'])
+                         new_name=to_info['path'])
 
     def save(self, path_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
-        md5 = self.get_md5(path_info['bucket'], path_info['key'])
-        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
-        to_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
+        md5 = self.get_md5(path_info['bucket'], path_info['path'])
+        path = self.checksum_to_path(md5)
+        to_info = {'scheme': 'gs', 'bucket': self.bucket, 'path': path}
 
-        self._copy(path_info, to_info)
+        self.copy(path_info, to_info)
 
-        return {self.PARAM_MD5: md5}
-
-    def checkout(self, path_info, checksum_info):
-        if path_info['scheme'] != 'gs':
-            raise NotImplementedError
-
-        md5 = checksum_info.get(self.PARAM_MD5, None)
-        if not md5:
-            return
-
-        if not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.info(msg.format(self.to_string(path_info)))
-            return
-
-        if self.changed_cache(md5):
-            msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(md5, self.to_string(path_info)))
-            return
-
-        if self.exists([path_info])[0]:
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(self.to_string(path_info)))
-            self.remove(path_info)
-            return
-
-        msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(self.to_string(path_info), md5))
-
-        key = posixpath.join(self.prefix, md5[0:2], md5[2:])
-        from_info = {'scheme': 'gs', 'bucket': self.bucket, 'key': key}
-
-        self._copy(from_info, path_info)
+        return {self.PARAM_CHECKSUM: md5}
 
     def remove(self, path_info):
         if path_info['scheme'] != 'gs':
             raise NotImplementedError
 
         logger.debug("Removing gs://{}/{}".format(path_info['bucket'],
-                                                  path_info['key']))
+                                                  path_info['path']))
 
-        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['key'])
+        blob = self.gs.bucket(path_info['bucket']).get_blob(path_info['path'])
         if not blob:
             return
 
         blob.delete()
 
-    def md5s_to_path_infos(self, md5s):
-        return [{'scheme': 'gs',
-                 'bucket': self.bucket,
-                 'key': posixpath.join(self.prefix,
-                                       md5[0:2], md5[2:])} for md5 in md5s]
+    def _list_paths(self, bucket, prefix):
+        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
+            yield blob.name
 
-    def exists(self, path_infos):
-        ret = []
+    def list_cache_paths(self):
+        return self._list_paths(self.bucket, self.prefix)
 
-        if len(path_infos) == 0:
-            return ret
+    def exists(self, path_info):
+        assert not isinstance(path_info, list)
+        assert path_info['scheme'] == 'gs'
 
-        gs = self.gs
-        bucket_name = path_infos[0]['bucket']
-        bucket = gs.bucket(bucket_name)
-
-        for path_info in path_infos:
-            assert self.scheme == path_info['scheme']
-            assert bucket_name == path_info['bucket']
-
-            exists = False
-            key = path_info['key']
-            keys = [blob.name for blob in bucket.list_blobs(prefix=key)]
-            if key in keys:
-                exists = True
-            ret.append(exists)
-        return ret
+        paths = self._list_paths(path_info['bucket'], path_info['path'])
+        return any(path_info['path'] == path for path in paths)
 
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -215,7 +146,7 @@ class RemoteGS(RemoteBase):
 
             logger.debug("Uploading '{}' to '{}/{}'".format(from_info['path'],
                                                             to_info['bucket'],
-                                                            to_info['key']))
+                                                            to_info['path']))
 
             if not name:
                 name = os.path.basename(from_info['path'])
@@ -224,13 +155,13 @@ class RemoteGS(RemoteBase):
 
             try:
                 bucket = gs.bucket(to_info['bucket'])
-                blob = bucket.blob(to_info['key'])
+                blob = bucket.blob(to_info['path'])
                 blob.upload_from_filename(from_info['path'])
             except Exception as exc:
                 msg = "Failed to upload '{}' to '{}/{}'"
                 logger.warn(msg.format(from_info['path'],
                                        to_info['bucket'],
-                                       to_info['key']), exc)
+                                       to_info['path']), exc)
                 continue
 
             progress.finish_target(name)
@@ -249,14 +180,14 @@ class RemoteGS(RemoteBase):
                 raise NotImplementedError
 
             if to_info['scheme'] == 'gs':
-                self._copy(from_info, to_info, gs=gs)
+                self.copy(from_info, to_info, gs=gs)
                 continue
 
             if to_info['scheme'] != 'local':
                 raise NotImplementedError
 
             msg = "Downloading '{}/{}' to '{}'".format(from_info['bucket'],
-                                                       from_info['key'],
+                                                       from_info['path'],
                                                        to_info['path'])
             logger.debug(msg)
 
@@ -266,19 +197,19 @@ class RemoteGS(RemoteBase):
 
             if not no_progress_bar:
                 # percent_cb is not available for download_to_filename, so
-                # lets at least update progress at keypoints(start, finish)
+                # lets at least update progress at pathpoints(start, finish)
                 progress.update_target(name, 0, None)
 
             self._makedirs(to_info['path'])
 
             try:
                 bucket = gs.bucket(from_info['bucket'])
-                blob = bucket.get_blob(from_info['key'])
+                blob = bucket.get_blob(from_info['path'])
                 blob.download_to_filename(tmp_file)
             except Exception as exc:
                 msg = "Failed to download '{}/{}' to '{}'"
                 logger.warn(msg.format(from_info['bucket'],
-                                       from_info['key'],
+                                       from_info['path'],
                                        to_info['path']), exc)
                 continue
 
@@ -286,29 +217,3 @@ class RemoteGS(RemoteBase):
 
             if not no_progress_bar:
                 progress.finish_target(name)
-
-    def _path_to_md5(self, path):
-        relpath = posixpath.relpath(path, self.prefix)
-        return posixpath.dirname(relpath) + posixpath.basename(relpath)
-
-    def _all_md5s(self):
-        blobs = self.gs.bucket(self.bucket).list_blobs(prefix=self.prefix)
-        blobs = list(blobs)
-        return [self._path_to_md5(blob.name) for blob in blobs]
-
-    def gc(self, cinfos):
-        used = [info[self.PARAM_MD5] for info in cinfos['gs']]
-        used += [info[RemoteLOCAL.PARAM_MD5] for info in cinfos['local']]
-
-        removed = False
-        for md5 in self._all_md5s():
-            if md5 in used:
-                continue
-            path_info = {'scheme': 'gs',
-                         'bucket': self.bucket,
-                         'key': posixpath.join(self.prefix,
-                                               md5[0:2], md5[2:])}
-            self.remove(path_info)
-            removed = True
-
-        return removed

@@ -233,10 +233,12 @@ class TestDataCloudBase(TestDvc):
         with self.cloud.project.state:
             # Check status
             status = self.cloud.status([info], show_checksums=True)
-            self.assertEqual([(md5, STATUS_NEW)], status)
+            expected = {md5: {'name': md5, 'status': STATUS_NEW}}
+            self.assertEqual(status, expected)
 
             status_dir = self.cloud.status([info_dir], show_checksums=True)
-            self.assertTrue((md5_dir, STATUS_NEW) in status_dir)
+            expected = {md5_dir: {'name': md5_dir, 'status': STATUS_NEW}}
+            self.assertEqual(status_dir, expected)
 
             # Push and check status
             self.cloud.push([info])
@@ -247,19 +249,23 @@ class TestDataCloudBase(TestDvc):
             self.assertTrue(os.path.isfile(cache_dir))
 
             status = self.cloud.status([info], show_checksums=True)
-            self.assertEqual([(md5, STATUS_OK)], status)
+            expected = {md5: {'name': md5, 'status': STATUS_OK}}
+            self.assertEqual(status, expected)
 
             status_dir = self.cloud.status([info_dir], show_checksums=True)
-            self.assertTrue((md5_dir, STATUS_OK) in status_dir)
+            expected = {md5_dir: {'name': md5_dir, 'status': STATUS_OK}}
+            self.assertEqual(status_dir, expected)
 
             # Remove and check status
             shutil.rmtree(self.dvc.cache.local.cache_dir)
 
             status = self.cloud.status([info], show_checksums=True)
-            self.assertEqual([(md5, STATUS_DELETED)], status)
+            expected = {md5: {'name': md5, 'status': STATUS_DELETED}}
+            self.assertEqual(status, expected)
 
             status_dir = self.cloud.status([info_dir], show_checksums=True)
-            self.assertEqual([(md5_dir, STATUS_DELETED)], status_dir)
+            expected = {md5_dir: {'name': md5_dir, 'status': STATUS_DELETED}}
+            self.assertEqual(status_dir, expected)
 
             # Pull and check status
             self.cloud.pull([info])
@@ -272,10 +278,12 @@ class TestDataCloudBase(TestDvc):
             self.assertTrue(os.path.isfile(cache_dir))
 
             status = self.cloud.status([info], show_checksums=True)
-            self.assertEqual([(md5, STATUS_OK)], status)
+            expected = {md5: {'name': md5, 'status': STATUS_OK}}
+            self.assertEqual(status, expected)
 
             status_dir = self.cloud.status([info_dir], show_checksums=True)
-            self.assertTrue((md5_dir, STATUS_OK) in status_dir)
+            expected = {md5_dir: {'name': md5_dir, 'status': STATUS_OK}}
+            self.assertTrue(status_dir, expected)
 
     def test(self):
         self._ensure_should_run()
@@ -421,7 +429,7 @@ class TestDataCloudCLIBase(TestDvc):
 
         self.main(['fetch'] + args)
 
-        self.main(['pull'] + args)
+        self.main(['pull', '-f'] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))

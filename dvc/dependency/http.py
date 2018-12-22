@@ -21,7 +21,7 @@ class DependencyHTTP(DependencyBase):
 
         self.path_info = {
             'scheme': urlparse(path).scheme,
-            'url': path,
+            'path': path,
         }
 
     def save(self):
