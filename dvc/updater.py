@@ -11,7 +11,7 @@ from dvc.utils import is_binary
 
 
 class Updater(object):  # pragma: no cover
-    URL = 'https://updater.dvc.org/'
+    URL = 'https://updater.dvc.org'
     UPDATER_FILE = 'updater'
     TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10

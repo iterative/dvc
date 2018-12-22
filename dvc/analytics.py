@@ -7,7 +7,7 @@ from dvc.logger import logger
 
 
 class Analytics(object):
-    URL = 'https://analytics.dvc.org/'
+    URL = 'https://analytics.dvc.org'
     TIMEOUT_POST = 5
 
     USER_ID_FILE = 'user_id'
