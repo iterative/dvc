@@ -42,6 +42,9 @@ def _should_test_gcp():
     if os.getenv("DVC_TEST_GCP") == "true":
         return True
 
+    if not os.path.exists(TestDvc.GCP_CREDS_FILE):
+        return False
+
     creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     if creds and os.getenv("GCP_CREDS"):
         if os.path.exists(creds):

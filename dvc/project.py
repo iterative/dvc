@@ -1220,6 +1220,10 @@ class Project(object):
 
         self.logger.info(
             "\n"
+            "DVC has enabled anonymous aggregate usage analytics.\n"
+            "Read the analytics documentation (and how to opt-out) here:\n"
+            "{blue}https://dvc.org/doc/user-guide/analytics{nc}\n"
+            "\n"
             "{yellow}What's next?{nc}\n"
             "{yellow}------------{nc}\n"
             "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"

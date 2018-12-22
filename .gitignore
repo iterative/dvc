@@ -3,6 +3,7 @@ neatlynx/__pycache__
 .idea
 cache
 *.pyc
+.env/
 
 cache
 .dvc.conf.lock

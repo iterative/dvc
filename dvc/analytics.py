@@ -7,7 +7,7 @@ from dvc.logger import logger
 
 
 class Analytics(object):
-    URL = 'https://dddc07bh9f.execute-api.us-east-2.amazonaws.com/production'
+    URL = 'https://analytics.dvc.org'
     TIMEOUT_POST = 5
 
     USER_ID_FILE = 'user_id'
