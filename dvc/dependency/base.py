@@ -3,22 +3,16 @@ import re
 from dvc.exceptions import DvcException
 
 
-class DependencyError(DvcException):
-    def __init__(self, path, msg):
-        msg = 'Dependency \'{}\' error: {}'.format(path, msg)
-        super(DependencyError, self).__init__(msg)
-
-
-class DependencyDoesNotExistError(DependencyError):
+class DependencyDoesNotExistError(DvcException):
     def __init__(self, path):
-        msg = 'does not exist'
-        super(DependencyDoesNotExistError, self).__init__(path, msg)
+        msg = "dependency '{}' does not exist".format(path)
+        super(DependencyDoesNotExistError, self).__init__(msg)
 
 
-class DependencyIsNotFileOrDirError(DependencyError):
+class DependencyIsNotFileOrDirError(DvcException):
     def __init__(self, path):
-        msg = 'not a file or directory'
-        super(DependencyIsNotFileOrDirError, self).__init__(path, msg)
+        msg = "dependency '{}' is not a file or directory".format(path)
+        super(DependencyIsNotFileOrDirError, self).__init__(msg)
 
 
 class DependencyBase(object):

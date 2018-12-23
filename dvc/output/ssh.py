@@ -17,7 +17,7 @@ class OutputSSH(DependencySSH):
         self.use_cache = cache
         self.metric = metric
         if cache and self.project.cache.ssh is None:
-            raise DvcException("No cache location setup for \'ssh\' outputs.")
+            raise DvcException("no cache location setup for 'ssh' outputs.")
 
     def dumpd(self):
         ret = super(OutputSSH, self).dumpd()

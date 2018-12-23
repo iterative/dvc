@@ -1,5 +1,6 @@
 import os
 
+import dvc.logger as logger
 from dvc.command.base import CmdBase
 
 
@@ -8,5 +9,5 @@ class CmdRoot(CmdBase):
         return self.run()
 
     def run(self):
-        self.project.logger.info(os.path.relpath(self.project.root_dir))
+        logger.info(os.path.relpath(self.project.root_dir))
         return 0

@@ -1,4 +1,4 @@
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.config import Config, ConfigError
 
 from dvc.remote.s3 import RemoteS3
@@ -35,8 +35,8 @@ class DataCloud(object):
 
         if self._core.get(Config.SECTION_CORE_CLOUD, None):
             # backward compatibility
-            msg = 'Using obsoleted config format. Consider updating.'
-            logger.warn(msg)
+            msg = 'using obsoleted config format. Consider updating.'
+            logger.warning(msg)
             return self._init_compat()
 
         return None
@@ -52,12 +52,12 @@ class DataCloud(object):
         section = Config.SECTION_REMOTE_FMT.format(remote)
         cloud_config = self._config.get(section, None)
         if not cloud_config:
-            msg = "Can't find remote section '{}' in config"
+            msg = "can't find remote section '{}' in config"
             raise ConfigError(msg.format(section))
 
         cloud_type = self.supported(cloud_config)
         if not cloud_type:
-            raise ConfigError("Unsupported cloud '{}'".format(cloud_config))
+            raise ConfigError("unsupported cloud '{}'".format(cloud_config))
 
         return self._init_cloud(cloud_config, cloud_type)
 
@@ -69,25 +69,25 @@ class DataCloud(object):
 
         cloud_type = self.CLOUD_MAP.get(name, None)
         if not cloud_type:
-            msg = "Wrong cloud type {} specified"
-            raise ConfigError(msg.format(name))
+            msg = "wrong cloud type '{}' specified".format(name)
+            raise ConfigError(msg)
 
         cloud_config = self._config.get(name, None)
         if not cloud_config:
-            msg = "Can't find cloud section '{}' in config"
-            raise ConfigError(msg.format(name))
+            msg = "can't find cloud section '{}' in config".format(name)
+            raise ConfigError(msg)
 
         # NOTE: check if the class itself has everything needed for operation.
         # E.g. all the imported packages.
         if not cloud_type.supported(cloud_type.compat_config(cloud_config)):
-            raise ConfigError("Unsupported cloud '{}'".format(name))
+            raise ConfigError("unsupported cloud '{}'".format(name))
 
         return self._init_cloud(cloud_config, cloud_type)
 
     def _init_cloud(self, cloud_config, cloud_type):
         global_storage_path = self._core.get(Config.SECTION_CORE_STORAGEPATH)
         if global_storage_path:
-            logger.warn('Using obsoleted config format. Consider updating.')
+            logger.warning('using obsoleted config format. Consider updating.')
 
         cloud = cloud_type(self.project, cloud_config)
         return cloud
@@ -99,17 +99,16 @@ class DataCloud(object):
         if self._cloud:
             return self._cloud
 
-        msg = "No remote repository specified. Setup default " \
-              "repository with\n"\
-              "    dvc config core.remote <name>\n" \
-              "or use:\n" \
-              "    dvc {} -r <name>".format(cmd)
-        raise ConfigError(msg)
+        raise ConfigError(
+            'No remote repository specified. Setup default repository with\n'
+            '    dvc config core.remote <name>\n'
+            'or use:\n'
+            '    dvc {} -r <name>\n'
+            .format(cmd)
+        )
 
     def push(self, targets, jobs=1, remote=None, show_checksums=False):
-        """
-        Push data items in a cloud-agnostic way.
-        """
+        """Push data items in a cloud-agnostic way."""
         return self.project.cache.local.push(targets,
                                              jobs=jobs,
                                              remote=self._get_cloud(remote,
@@ -117,9 +116,7 @@ class DataCloud(object):
                                              show_checksums=show_checksums)
 
     def pull(self, targets, jobs=1, remote=None, show_checksums=False):
-        """
-        Pull data items in a cloud-agnostic way.
-        """
+        """Pull data items in a cloud-agnostic way."""
         return self.project.cache.local.pull(targets,
                                              jobs=jobs,
                                              remote=self._get_cloud(remote,
@@ -127,9 +124,7 @@ class DataCloud(object):
                                              show_checksums=show_checksums)
 
     def status(self, targets, jobs=1, remote=None, show_checksums=False):
-        """
-        Check status of data items in a cloud-agnostic way.
-        """
+        """Check status of data items in a cloud-agnostic way."""
         cloud = self._get_cloud(remote, 'status')
         return self.project.cache.local.status(targets,
                                                jobs=jobs,

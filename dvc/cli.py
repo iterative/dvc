@@ -4,6 +4,7 @@ import os
 import sys
 import argparse
 
+import dvc.logger as logger
 from dvc.command.init import CmdInit
 from dvc.command.destroy import CmdDestroy
 from dvc.command.remove import CmdRemove
@@ -28,7 +29,6 @@ from dvc.command.lock import CmdLock, CmdUnlock
 from dvc.command.pipeline import CmdPipelineShow, CmdPipelineList
 from dvc.command.daemon import CmdDaemonUpdater, CmdDaemonAnalytics
 from dvc.exceptions import DvcParserError
-from dvc.logger import logger
 from dvc import VERSION
 
 
@@ -44,7 +44,7 @@ def _fix_subparsers(subparsers):
 
 class DvcParser(argparse.ArgumentParser):
     def error(self, message):
-        sys.stderr.write('{}: {}\n'.format(logger.error_prefix(), message))
+        logger.error(message)
         self.print_help()
         raise DvcParserError()
 
@@ -86,7 +86,7 @@ def parse_args(argv=None):
                         '--version',
                         action=VersionAction,
                         nargs=0,
-                        help='Show program\'s version.')
+                        help="Show program's version.")
 
     # Sub commands
     subparsers = parser.add_subparsers(
@@ -462,7 +462,7 @@ def parse_args(argv=None):
     status_parser.set_defaults(func=CmdDataStatus)
 
     # Repro
-    REPRO_HELP = 'Reproduce DVC file. Default file name - \'Dvcfile\'.'
+    REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'."
     repro_parser = subparsers.add_parser(
                         'repro',
                         parents=[parent_parser],
@@ -529,7 +529,7 @@ def parse_args(argv=None):
                         action='store_true',
                         default=False,
                         help='Reproduce all descendants of a changed stage'
-                             'even if their direct dependencies didn\'t '
+                             "even if their direct dependencies didn't "
                              'change.')
     repro_parser.set_defaults(func=CmdRepro)
 
@@ -897,18 +897,16 @@ def parse_args(argv=None):
                         help='JSON path.')
     metrics_show_group.add_argument(
                         '--tsv-path',
-                        help='TSV path \'row,column\'(e.g. \'1,2\').')
+                        help="TSV path 'row,column' (e.g. '1,2').")
     metrics_show_group.add_argument(
                         '--htsv-path',
-                        help='Headed TSV path \'row,column\''
-                             '(e.g. \'Name,3\').')
+                        help="Headed TSV path 'row,column (e.g. 'Name,3').")
     metrics_show_group.add_argument(
                         '--csv-path',
-                        help='CSV path \'row,column\'(e.g. \'1,2\').')
+                        help="CSV path 'row,column' (e.g. '1,2').")
     metrics_show_group.add_argument(
                         '--hcsv-path',
-                        help='Headed CSV path \'row,column\''
-                             '(e.g. \'Name,3\').')
+                        help="Headed CSV path 'row,column' (e.g. 'Name,3').")
     metrics_show_parser.add_argument(
                         '-a',
                         '--all-branches',
@@ -982,7 +980,7 @@ def parse_args(argv=None):
     install_parser.set_defaults(func=CmdInstall)
 
     # Root
-    ROOT_HELP = 'Relative path to project\'s directory.'
+    ROOT_HELP = "Relative path to project's directory."
     root_parser = subparsers.add_parser(
                         'root',
                         parents=[parent_parser],

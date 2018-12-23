@@ -1,4 +1,5 @@
 from mock import patch
+from unittest import TestCase
 
 try:
     from StringIO import StringIO
@@ -6,160 +7,121 @@ except ImportError:
     from io import StringIO
 
 import logging
-
+import dvc.logger as logger
 from dvc.command.base import CmdBase
-from dvc.logger import Logger, logger
-
-from tests.basic_env import TestDvc
 
 
-class StringContaining(str):
-    def __eq__(self, other):
-        return self in other
+class TestLogger(TestCase):
+    handlers = logger.logger.handlers
+    color_patch = patch.object(logger, 'colorize', new=lambda x, color='': x)
 
+    def setUp(self):
+        logger.logger.handlers[0].stream = StringIO()
+        logger.logger.handlers[1].stream = StringIO()
+        logger._set_default_level()
+        self.color_patch.start()
 
-class TestLogger(TestDvc):
-    def test_config(self):
-        logger.set_level()
-        logger.set_level('debug')
-        self.assertEqual(logger.logger.getEffectiveLevel(), logging.DEBUG)
-
-        logger.set_level('error')
-        self.assertEqual(logger.logger.getEffectiveLevel(), logging.ERROR)
-
-    def test_set_level(self):
-        logger.set_level()
-        logger.set_level('debug')
-        self.assertEqual(logger.logger.getEffectiveLevel(), logging.DEBUG)
-
-    def test_be_quiet(self):
-        logger.set_level()
-        logger.be_quiet()
-        self.assertEqual(logger.logger.getEffectiveLevel(), logging.CRITICAL)
-
-    def test_be_verbose(self):
-        logger.set_level()
+    def tearDown(self):
+        logger.logger.handlers = self.handlers
         logger.be_verbose()
-        self.assertEqual(logger.logger.getEffectiveLevel(), logging.DEBUG)
+        self.color_patch.stop()
 
-    def test_colorize(self):
-        for name, color in logger.COLOR_MAP.items():
-            msg = logger.colorize(name, name)
-            # This is not a tty, so it should not colorize anything
-            self.assertEqual(msg, name)
+    @property
+    def stdout(self):
+        return logger.logger.handlers[0].stream.getvalue()
 
-    def test_handlers(self):
-        Logger()
-        Logger()
-        self.assertEqual(len(logger.logger.handlers), 2)
+    @property
+    def stderr(self):
+        return logger.logger.handlers[1].stream.getvalue()
 
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_stderr(self, mock_stdout, mock_stderr):
-        logger = Logger(force=True)
-        error_message = 'error msg'
-        logger.error(error_message)
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('Error: {}\n\nHaving any troubles? '
-                         'Hit us up at dvc.org/support, we '
-                         'are always happy to help!\n'.format(error_message),
-                         mock_stderr.getvalue())
+    def test_info(self):
+        logger.info('message')
 
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_stdout(self, mock_stdout, mock_stderr):
-        logger = Logger(force=True)
-        non_error_message = 'non-error message'
-        logger.info(non_error_message)
-        self.assertEqual('', mock_stderr.getvalue())
-        self.assertEqual('{}\n'.format(non_error_message),
-                         mock_stdout.getvalue())
+        self.assertEqual(self.stdout, 'message\n')
 
+    def test_debug(self):
+        with logger.verbose():
+            logger.debug('message')
 
-class TestLoggerException(TestDvc):
-    def setUp(self):
-        super(TestLoggerException, self).setUp()
+        self.assertEqual(self.stdout, 'Debug: message\n')
 
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_empty_err_msg(self, mock_stdout, mock_stderr):
-        from dvc.exceptions import DvcException
+    def test_warning(self):
+        logger.warning('message')
 
-        logger = Logger(force=True)
+        self.assertEqual(self.stdout, 'Warning: message\n')
 
-        exc_msg = 'msg'
-        logger.error("", exc=DvcException(exc_msg))
+    def test_error(self):
+        logger.error('message')
 
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('Error: {}\n\nHaving any troubles? '
-                         'Hit us up at dvc.org/support, we '
-                         'are always happy to help!\n'.format(exc_msg),
-                         mock_stderr.getvalue())
+        output = (
+            'Error: message\n'
+            '\n'
+            'Having any troubles? Hit us up at https://dvc.org/support,'
+            ' we are always happy to help!\n'
+        )
 
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_empty_exc_msg(self, mock_stdout, mock_stderr):
-        from dvc.exceptions import DvcException
+        self.assertEqual(self.stderr, output)
 
-        logger = Logger(force=True)
+    def test_error_with_exception(self):
+        try:
+            raise Exception('exception description')
+        except Exception:
+            logger.error('')
 
-        err_msg = 'msg'
-        logger.error(err_msg, exc=DvcException(""))
+        output = (
+            'Error: exception description\n'
+            '\n'
+            'Having any troubles? Hit us up at https://dvc.org/support,'
+            ' we are always happy to help!\n'
+        )
 
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('Error: {}\n\nHaving any troubles? '
-                         'Hit us up at dvc.org/support, we '
-                         'are always happy to help!\n'.format(err_msg),
-                         mock_stderr.getvalue())
+        self.assertEqual(self.stderr, output)
 
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_msg_and_exc(self, mock_stdout, mock_stderr):
-        from dvc.exceptions import DvcException
+    def test_error_with_exception_and_message(self):
+        try:
+            raise Exception('exception description')
+        except Exception:
+            logger.error('message')
 
-        logger = Logger(force=True)
+        output = (
+            'Error: message - exception description\n'
+            '\n'
+            'Having any troubles? Hit us up at https://dvc.org/support,'
+            ' we are always happy to help!\n'
+        )
 
-        err_msg = 'error'
-        exc_msg = 'exception'
-        logger.error(err_msg, exc=DvcException(exc_msg))
+        self.assertEqual(self.stderr, output)
 
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('Error: {}: {}\n\nHaving any troubles? '
-                         'Hit us up at dvc.org/support, we are always '
-                         'happy to help!\n'.format(err_msg, exc_msg),
-                         mock_stderr.getvalue())
-
-
-class TestLoggerQuiet(TestDvc):
-    def setUp(self):
-        super(TestLoggerQuiet, self).setUp()
-
-        class A(object):
-            quiet = True
-            verbose = False
-
-        CmdBase._set_loglevel(A())
-
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_progress(self, mock_stdout, mock_stderr):
-        from dvc.progress import progress
-        progress.update_target('target', 50, 100)
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('', mock_stderr.getvalue())
-
-    @patch('sys.stderr', new_callable=StringIO)
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_box(self, mock_stdout, mock_stderr):
+    def test_box(self):
         logger.box('message')
-        self.assertEqual('', mock_stdout.getvalue())
-        self.assertEqual('', mock_stderr.getvalue())
 
+        output = (
+            '+-----------------+\n'
+            '|                 |\n'
+            '|     message     |\n'
+            '|                 |\n'
+            '+-----------------+\n'
+            '\n'
+        )
 
-class TestLoggerCLI(TestDvc):
-    def test(self):
-        from dvc.logger import logger
+        self.assertEqual(self.stdout, output)
 
+    def test_level(self):
+        self.assertEqual(logger.level(), logging.INFO)
+
+    def test_is_verbose(self):
+        self.assertFalse(logger.is_verbose())
+
+        with logger.verbose():
+            self.assertTrue(logger.is_verbose())
+
+    def test_is_quiet(self):
+        self.assertFalse(logger.is_quiet())
+
+        with logger.quiet():
+            self.assertFalse(logger.is_verbose())
+
+    def test_cli(self):
         class A(object):
             quiet = True
             verbose = False

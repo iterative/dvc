@@ -642,7 +642,6 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
 
         self.dvc = Project('.')
-        self.dvc.logger.be_verbose()
 
         foo_key = remote_key + self.sep + self.FOO
         bar_key = remote_key + self.sep + self.BAR

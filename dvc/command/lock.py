@@ -1,3 +1,4 @@
+import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 
@@ -7,10 +8,12 @@ class CmdLockBase(CmdBase):
         for target in self.args.targets:
             try:
                 self.project.lock_stage(target, unlock=unlock)
-            except DvcException as ex:
-                msg = 'Failed to {}lock \'{}\''
-                msg = msg.format('un' if unlock else '', target)
-                self.project.logger.error(msg, ex)
+            except DvcException:
+                logger.error(
+                    "failed to {}lock '{}'"
+                    .format('un' if unlock else '', target)
+                )
+
                 return 1
         return 0
 

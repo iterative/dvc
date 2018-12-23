@@ -77,7 +77,7 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        self.assertEquals(os.path.abspath('directory.dvc'), stage.path)
+        self.assertEqual(os.path.abspath('directory.dvc'), stage.path)
 
 
 class TestAddTrackedFile(TestDvc):

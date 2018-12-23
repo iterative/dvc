@@ -1,7 +1,7 @@
 import os
 
+import dvc.logger as logger
 from dvc.command.base import CmdBase
-from dvc.logger import logger
 from dvc.config import Config
 from dvc.exceptions import DvcException
 
@@ -43,16 +43,16 @@ class CmdConfig(CmdBase):
         try:
             self.config.unset(configobj, section, opt)
             self.config.save(configobj)
-        except DvcException as exc:
-            logger.error("Failed to unset '{}'".format(self.args.name), exc)
+        except DvcException:
+            logger.error("failed to unset '{}'".format(self.args.name))
             return 1
         return 0
 
     def _show(self, section, opt):
         try:
             self.config.show(self.configobj, section, opt)
-        except DvcException as exc:
-            logger.error("Failed to show '{}'".format(self.args.name), exc)
+        except DvcException:
+            logger.error("failed to show '{}'".format(self.args.name))
             return 1
         return 0
 
@@ -60,11 +60,9 @@ class CmdConfig(CmdBase):
         try:
             self.config.set(self.configobj, section, opt, value)
             self.config.save(self.configobj)
-        except DvcException as exc:
-            logger.error("Failed to set '{}.{}' to '{}'".format(section,
-                                                                opt,
-                                                                value),
-                         exc)
+        except DvcException:
+            logger.error("failed to set '{}.{}' to '{}'"
+                         .format(section, opt, value))
             return 1
         return 0
 

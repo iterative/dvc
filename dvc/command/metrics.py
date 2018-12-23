@@ -1,3 +1,4 @@
+import dvc.logger as logger
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 
@@ -30,8 +31,8 @@ class CmdMetricsShow(CmdBase):
                                       xpath=xpath,
                                       all_branches=self.args.all_branches,
                                       all_tags=self.args.all_tags)
-        except DvcException as exc:
-            self.project.logger.error('Failed to show metrics', exc)
+        except DvcException:
+            logger.error('failed to show metrics')
             return 1
 
         return 0
@@ -43,8 +44,8 @@ class CmdMetricsModify(CmdBase):
             self.project.metrics_modify(self.args.path,
                                         typ=self.args.type,
                                         xpath=self.args.xpath)
-        except DvcException as exc:
-            self.project.logger.error('Failed to modify metrics', exc)
+        except DvcException:
+            logger.error('failed to modify metrics')
             return 1
 
         return 0
@@ -56,9 +57,9 @@ class CmdMetricsAdd(CmdBase):
             self.project.metrics_add(self.args.path,
                                      self.args.type,
                                      self.args.xpath)
-        except DvcException as exc:
-            msg = 'Failed to add metric file \'{}\''.format(self.args.path)
-            self.project.logger.error(msg, exc)
+        except DvcException:
+            msg = "failed to add metric file '{}'".format(self.args.path)
+            logger.error(msg)
             return 1
 
         return 0
@@ -68,9 +69,9 @@ class CmdMetricsRemove(CmdBase):
     def run(self):
         try:
             self.project.metrics_remove(self.args.path)
-        except DvcException as exc:
-            msg = 'Failed to remove metric file \'{}\''.format(self.args.path)
-            self.project.logger.error(msg, exc)
+        except DvcException:
+            msg = "failed to remove metric file '{}'".format(self.args.path)
+            logger.error(msg)
             return 1
 
         return 0

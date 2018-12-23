@@ -4,6 +4,7 @@ import tempfile
 from git import Repo
 from unittest import TestCase
 
+import dvc.logger as logger
 from dvc.project import Project
 
 
@@ -84,4 +85,4 @@ class TestDvc(TestGit):
     def setUp(self):
         super(TestDvc, self).setUp()
         self.dvc = Project.init(self._root_dir)
-        self.dvc.logger.be_verbose()
+        logger.be_verbose()

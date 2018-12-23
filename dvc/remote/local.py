@@ -7,9 +7,9 @@ import shutil
 import posixpath
 from operator import itemgetter
 
+import dvc.logger as logger
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP, STATUS_NEW, STATUS_DELETED
-from dvc.logger import logger
 from dvc.utils import remove, move, copyfile, dict_md5, to_chunks
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
@@ -92,7 +92,7 @@ class RemoteLOCAL(RemoteBase):
         if self.state.changed(cache, md5=md5):
             if os.path.exists(cache):
                 msg = 'Corrupted cache file {}.'
-                logger.warn(msg.format(os.path.relpath(cache)))
+                logger.warning(msg.format(os.path.relpath(cache)))
                 remove(cache)
             return True
         return False
@@ -153,13 +153,14 @@ class RemoteLOCAL(RemoteBase):
 
                 logger.debug(msg)
                 return
+
             except DvcException as exc:
-                msg = 'Cache type \'{}\' is not supported: {}'
+                msg = "Cache type '{}' is not supported: {}"
                 logger.debug(msg.format(self.cache_types[0], str(exc)))
                 del self.cache_types[0]
                 i -= 1
 
-        raise DvcException('No possible cache types left to try out.')
+        raise DvcException('no possible cache types left to try out.')
 
     @property
     def ospath(self):
@@ -233,13 +234,13 @@ class RemoteLOCAL(RemoteBase):
         try:
             with open(path, 'r') as fd:
                 d = json.load(fd)
-        except Exception as exc:
-            msg = u'Failed to load dir cache \'{}\''
-            logger.error(msg.format(os.path.relpath(path)), exc)
+        except Exception:
+            msg = u"Failed to load dir cache '{}'"
+            logger.error(msg.format(os.path.relpath(path)))
             return []
 
         if not isinstance(d, list):
-            msg = u'Dir cache file format error \'{}\': skipping the file'
+            msg = u"dir cache file format error '{}' [skipping the file]"
             logger.error(msg.format(os.path.relpath(path)))
             return []
 
@@ -480,10 +481,11 @@ class RemoteLOCAL(RemoteBase):
 
             try:
                 copyfile(from_info['path'], to_info['path'], name=name)
-            except Exception as exc:
-                msg = "Failed to upload '{}' tp '{}'"
-                logger.warn(msg.format(from_info['path'],
-                                       to_info['path']), exc)
+            except Exception:
+                logger.error(
+                    "failed to upload '{}' to '{}'"
+                    .format(from_info['path'], to_info['path'])
+                )
 
     def download(self,
                  from_infos,
@@ -512,10 +514,12 @@ class RemoteLOCAL(RemoteBase):
                          tmp_file,
                          no_progress_bar=no_progress_bar,
                          name=name)
-            except Exception as exc:
-                msg = "Failed to download '{}' to '{}'"
-                logger.warn(msg.format(from_info['path'],
-                                       to_info['path']), exc)
+            except Exception:
+                logger.error(
+                    "failed to download '{}' to '{}'"
+                    .format(from_info['path'], to_info['path'])
+                )
+
                 continue
 
             os.rename(tmp_file, to_info['path'])

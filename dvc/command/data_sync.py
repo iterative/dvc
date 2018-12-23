@@ -1,4 +1,5 @@
 from dvc.command.base import CmdBase
+import dvc.logger as logger
 
 
 class CmdDataBase(CmdBase):
@@ -27,9 +28,8 @@ class CmdDataPull(CmdDataBase):
                               all_tags=self.args.all_tags,
                               with_deps=self.args.with_deps,
                               force=self.args.force)
-        except Exception as exc:
-            self.project.logger.error('Failed to pull data from the cloud',
-                                      exc)
+        except Exception:
+            logger.error('failed to pull data from the cloud')
             return 1
         return 0
 
@@ -44,8 +44,8 @@ class CmdDataPush(CmdDataBase):
                               all_branches=self.args.all_branches,
                               all_tags=self.args.all_tags,
                               with_deps=self.args.with_deps)
-        except Exception as exc:
-            self.project.logger.error('Failed to push data to the cloud', exc)
+        except Exception:
+            logger.error('failed to push data to the cloud')
             return 1
         return 0
 
@@ -60,8 +60,7 @@ class CmdDataFetch(CmdDataBase):
                                all_branches=self.args.all_branches,
                                all_tags=self.args.all_tags,
                                with_deps=self.args.with_deps)
-        except Exception as exc:
-            self.project.logger.error('Failed to fetch data from the cloud',
-                                      exc)
+        except Exception:
+            logger.error('failed to fetch data from the cloud')
             return 1
         return 0

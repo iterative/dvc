@@ -1,6 +1,7 @@
 import collections
 import os
 import dvc.prompt as prompt
+import dvc.logger as logger
 
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.exceptions import NotDvcProjectError
@@ -14,7 +15,7 @@ class InitError(DvcException):
 class ReproductionError(DvcException):
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
-        msg = 'Failed to reproduce \'{}\''.format(dvc_file_name)
+        msg = "failed to reproduce '{}'".format(dvc_file_name)
         super(ReproductionError, self).__init__(msg, cause=ex)
 
 
@@ -22,7 +23,6 @@ class Project(object):
     DVC_DIR = '.dvc'
 
     def __init__(self, root_dir=None):
-        from dvc.logger import logger
         from dvc.config import Config
         from dvc.state import State
         from dvc.lock import Lock
@@ -45,8 +45,8 @@ class Project(object):
         self.state = State(self, self.config._config)
 
         core = self.config._config[Config.SECTION_CORE]
-        self.logger = logger
-        self.logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL, None))
+
+        logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL))
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config._config)
@@ -89,7 +89,7 @@ class Project(object):
         msg = '\nTo track the changes with git run:\n\n'
         msg += '\tgit add ' + " ".join(self._files_to_git_add)
 
-        self.logger.info(msg)
+        logger.info(msg)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -108,7 +108,6 @@ class Project(object):
         import shutil
         from dvc.scm import SCM, Base
         from dvc.config import Config
-        from dvc.logger import logger
 
         root_dir = os.path.abspath(root_dir)
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
@@ -302,7 +301,7 @@ class Project(object):
         self._remind_to_git_add()
 
         if not found:
-            msg = 'Unable to find dvcfile with output \'{}\''
+            msg = "unable to find dvcfile with output '{}'"
             raise DvcException(msg.format(from_path))
 
     def _unprotect_file(self, path):
@@ -312,7 +311,7 @@ class Project(object):
         from dvc.utils import copyfile, move, remove
 
         if System.is_symlink(path) or System.is_hardlink(path):
-            self.logger.debug("Unprotecting '{}'".format(path))
+            logger.debug("Unprotecting '{}'".format(path))
 
             tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
             move(path, tmp)
@@ -321,8 +320,8 @@ class Project(object):
 
             remove(tmp)
         else:
-            self.logger.debug("Skipping copying for '{}', since it is not "
-                              "a symlink or a hardlink.".format(path))
+            logger.debug("Skipping copying for '{}', since it is not "
+                         "a symlink or a hardlink.".format(path))
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
@@ -334,8 +333,10 @@ class Project(object):
 
     def unprotect(self, path):
         if not os.path.exists(path):
-            raise DvcException("Can't unprotect non-existing "
-                               "data '{}'".format(path))
+            raise DvcException(
+                "can't unprotect non-existing data '{}'"
+                .format(path)
+            )
 
         if os.path.isdir(path):
             self._unprotect_dir(path)
@@ -415,9 +416,11 @@ class Project(object):
         stage = stages[node]
 
         if stage.locked:
-            msg = 'DVC file \'{}\' is locked. Its dependencies are not ' \
-                  'going to be reproduced.'
-            self.logger.warn(msg.format(stage.relpath))
+            logger.warning(
+                "DVC file '{path}' is locked. Its dependencies are"
+                " not going to be reproduced."
+                .format(path=stage.relpath)
+            )
 
         stage = stage.reproduce(force=force, dry=dry, interactive=interactive)
         if not stage:
@@ -563,9 +566,11 @@ class Project(object):
 
             for stage in stages:
                 if stage.locked:
-                    msg = 'DVC file \'{}\' is locked. Its dependencies are ' \
-                          'not going to be checked out.'
-                    self.logger.warn(msg.format(stage.relpath))
+                    logger.warning(
+                        "DVC file '{path}' is locked. Its dependencies are"
+                        " not going to be checked out."
+                        .format(path=stage.relpath)
+                    )
 
                 stage.checkout(force=force)
 
@@ -612,16 +617,18 @@ class Project(object):
                                 show_checksums=False)
             except DvcException as exc:
                 msg = "Failed to pull cache for '{}': {}"
-                self.logger.debug(msg.format(out, exc))
+                logger.debug(msg.format(out, exc))
 
         if self.cache.local.changed_cache_file(md5):
             msg = "Missing cache for directory '{}'. " \
                   "Cache for files inside will be lost. " \
                   "Would you like to continue? Use '-f' to force. "
             if not force and not prompt.confirm(msg):
-                raise DvcException("Unable to fully collect "
-                                   "used cache without cache "
-                                   "for directory '{}'".format(out))
+                raise DvcException(
+                    "unable to fully collect used cache"
+                    " without cache for directory '{}'"
+                    .format(out)
+                )
             else:
                 return ret
 
@@ -689,9 +696,11 @@ class Project(object):
 
             for stage in stages:
                 if active and not target and stage.locked:
-                    msg = 'DVC file \'{}\' is locked. Its dependencies are ' \
-                          'not going to be pushed/pulled/fetched.'
-                    self.logger.warn(msg.format(stage.relpath))
+                    logger.warning(
+                        "DVC file '{path}' is locked. Its dependencies are"
+                        " not going to be pushed/pulled/fetched."
+                        .format(path=stage.relpath)
+                    )
 
                 for out in stage.outs:
                     scheme = out.path_info['scheme']
@@ -745,7 +754,7 @@ class Project(object):
     def _do_gc(self, typ, func, clist):
         removed = func(clist)
         if not removed:
-            self.logger.info("No unused {} cache to remove.".format(typ))
+            logger.info("No unused {} cache to remove.".format(typ))
 
     def gc(self,
            all_branches=False,
@@ -870,9 +879,11 @@ class Project(object):
 
         for stage in stages:
             if stage.locked:
-                msg = 'DVC file \'{}\' is locked. Its dependencies are not ' \
-                      'going to be shown in the status output.'
-                self.logger.warn(msg.format(stage.relpath))
+                logger.warning(
+                    "DVC file '{path}' is locked. Its dependencies are"
+                    " not going to be shown in the status output."
+                    .format(path=stage.relpath)
+                )
 
             status.update(stage.status())
 
@@ -990,9 +1001,8 @@ class Project(object):
                     ret = self._read_metric_hxsv(fd, xpath, '\t')
                 else:
                     ret = fd.read()
-        except Exception as exc:
-            self.logger.error('Unable to read metric in \'{}\''.format(path),
-                              exc)
+        except Exception:
+            logger.error("unable to read metric in '{}'".format(path))
 
         return ret
 
@@ -1065,32 +1075,35 @@ class Project(object):
 
         for branch, val in res.items():
             if all_branches or all_tags:
-                self.logger.info('{}:'.format(branch))
+                logger.info('{}:'.format(branch))
             for fname, metric in val.items():
-                self.logger.info('\t{}: {}'.format(fname, metric))
+                logger.info('\t{}: {}'.format(fname, metric))
 
         if res:
             return res
 
         if path:
-            msg = 'File \'{}\' does not exist'.format(path)
+            msg = "file '{}' does not exist".format(path)
         else:
-            msg = 'No metric files in this repository. ' \
-                  'Use \'dvc metrics add\' to add a metric file to track.'
+            msg = (
+                "no metric files in this repository."
+                " use 'dvc metrics add' to add a metric file to track."
+            )
+
         raise DvcException(msg)
 
     def _metrics_modify(self, path, typ=None, xpath=None, delete=False):
         out = self._find_output_by_path(path)
         if not out:
-            msg = 'Unable to find file \'{}\' in the pipeline'.format(path)
+            msg = "unable to find file '{}' in the pipeline".format(path)
             raise DvcException(msg)
 
         if out.path_info['scheme'] != 'local':
-            msg = 'Output \'{}\' scheme \'{}\' is not supported for metrics'
+            msg = "output '{}' scheme '{}' is not supported for metrics"
             raise DvcException(msg.format(out.path, out.path_info['scheme']))
 
         if out.use_cache:
-            msg = 'Cached output \'{}\' is not supported for metrics'
+            msg = "cached output '{}' is not supported for metrics"
             raise DvcException(msg.format(out.rel_path))
 
         if typ:
@@ -1169,7 +1182,10 @@ class Project(object):
 
         G, G_active = self.graph()
 
-        return list(nx.weakly_connected_component_subgraphs(G_active))
+        return [
+            G.subgraph(c).copy()
+            for c in nx.weakly_connected_components(G)
+        ]
 
     def stages(self):
         """
@@ -1218,7 +1234,7 @@ class Project(object):
     def _welcome_message(self):
         import colorama
 
-        self.logger.info(
+        logger.info(
             "\n"
             "DVC has enabled anonymous aggregate usage analytics.\n"
             "Read the analytics documentation (and how to opt-out) here:\n"

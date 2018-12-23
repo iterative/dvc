@@ -21,7 +21,7 @@ class Lock(object):
         try:
             self._lock = zc.lockfile.LockFile(self.lock_file)
         except zc.lockfile.LockError:
-            raise LockError('Cannot perform the cmd since DVC is busy and '
+            raise LockError('cannot perform the cmd since DVC is busy and '
                             'locked. Please retry the cmd later.')
 
     def lock(self):

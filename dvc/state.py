@@ -3,11 +3,11 @@ import time
 import sqlite3
 import nanotime
 
+import dvc.logger as logger
 from dvc.config import Config
 from dvc.system import System
 from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
-from dvc.logger import logger
 
 
 class StateDuplicateError(DvcException):
@@ -134,17 +134,15 @@ class State(object):
             version = ret[0][0]
 
             if version > self.VERSION:
-                msg = "You are using an old version '{}' of dvc that is " \
+                msg = "you are using an old version '{}' of dvc that is " \
                       "using state file version '{}' which is not " \
                       "compatible with the state file version '{}' that " \
                       "is used in this projet. Please upgrade right now!"
-                raise DvcException(msg.format(VERSION,
-                                              self.VERSION,
-                                              version))
+                raise DvcException(msg.format(VERSION, self.VERSION, version))
             elif version < self.VERSION:
                 msg = "State file version '{}' is too old. " \
                       "Reformatting to the current version '{}'."
-                self.project.logger.warn(msg.format(version, self.VERSION))
+                logger.warning(msg.format(version, self.VERSION))
                 cmd = "DROP TABLE IF EXISTS {};"
                 self._execute(cmd.format(self.STATE_TABLE))
                 self._execute(cmd.format(self.STATE_INFO_TABLE))
@@ -212,8 +210,8 @@ class State(object):
         count = self._from_sqlite(ret[0][0]) + self.inserts
 
         if count > self.row_limit:
-            msg = "Cleaning up state. This might take a while."
-            self.project.logger.warn(msg)
+            msg = "cleaning up state, this might take a while."
+            logger.warning(msg)
 
             delete = (count - self.row_limit)
             delete += int(self.row_limit * (self.row_cleanup_quota/100.))
@@ -372,7 +370,7 @@ class State(object):
             mtime, _ = self.mtime_and_size(path)
 
             if i == inode and m == mtime:
-                logger.debug('Removing \'{}\' as unused link.'.format(path))
+                logger.debug("Removing '{}' as unused link.".format(path))
                 remove(path)
                 unused.append(p)
 

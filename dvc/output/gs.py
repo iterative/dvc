@@ -17,7 +17,7 @@ class OutputGS(DependencyGS):
         self.use_cache = cache
         self.metric = metric
         if cache and self.project.cache.gs is None:
-            raise DvcException("No cache location setup for \'gs\' outputs.")
+            raise DvcException("no cache location setup for 'gs' outputs.")
 
     def dumpd(self):
         ret = super(OutputGS, self).dumpd()

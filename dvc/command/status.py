@@ -1,3 +1,4 @@
+import dvc.logger as logger
 from dvc.command.data_sync import CmdDataBase
 
 
@@ -16,11 +17,11 @@ class CmdDataStatus(CmdDataBase):
 
         for key, value in status.items():
             if isinstance(value, dict):
-                self.project.logger.info('{}{}'.format(ind, key))
+                logger.info('{}{}'.format(ind, key))
                 self._show(value, indent+1)
             else:
                 msg = '{}{}{}'.format(ind, self._normalize(value), key)
-                self.project.logger.info(msg)
+                logger.info(msg)
 
     def do_run(self, target=None):
         indent = 1 if self.args.cloud else 0
@@ -36,9 +37,9 @@ class CmdDataStatus(CmdDataBase):
             if st:
                 self._show(st, indent)
             else:
-                self.project.logger.info(self.UP_TO_DATE_MSG)
+                logger.info(self.UP_TO_DATE_MSG)
 
-        except Exception as exc:
-            self.project.logger.error('Failed to obtain data status', exc)
+        except Exception:
+            logger.error('failed to obtain data status')
             return 1
         return 0

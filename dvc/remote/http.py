@@ -2,7 +2,7 @@ import os
 import threading
 import requests
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
@@ -72,9 +72,9 @@ class RemoteHTTP(RemoteBase):
 
             try:
                 self._download_to(from_info['path'], tmp_file, callback=cb)
-            except Exception as exc:
-                msg = "Failed to download '{}'".format(from_info['path'])
-                logger.warn(msg, exc)
+            except Exception:
+                msg = "failed to download '{}'".format(from_info['path'])
+                logger.error(msg)
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -108,7 +108,7 @@ class RemoteHTTP(RemoteBase):
         etag = self._request('HEAD', url).headers.get('ETag')
 
         if not etag:
-            raise DvcException("Could not find an ETag for '{}'".format(url))
+            raise DvcException("could not find an ETag for '{}'".format(url))
 
         if etag.startswith('W/'):
             raise DvcException(
@@ -138,7 +138,7 @@ class RemoteHTTP(RemoteBase):
         try:
             return requests.request(method, url, **kwargs)
         except requests.exceptions.RequestException:
-            raise DvcException('Could not perform a {} request'.format(method))
+            raise DvcException('could not perform a {} request'.format(method))
 
     def gc(self):
         raise NotImplementedError

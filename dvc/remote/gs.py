@@ -10,7 +10,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
 from dvc.progress import progress
@@ -85,8 +85,8 @@ class RemoteGS(RemoteBase):
 
         blob = gs.bucket(from_info['bucket']).get_blob(from_info['path'])
         if not blob:
-            msg = '{} doesn\'t exist in the cloud'
-            raise DvcException(msg.format(from_info['path']))
+            msg = "'{}' doesn't exist in the cloud".format(from_info['path'])
+            raise DvcException(msg)
 
         bucket = self.gs.bucket(to_info['bucket'])
         bucket.copy_blob(blob,
@@ -157,11 +157,11 @@ class RemoteGS(RemoteBase):
                 bucket = gs.bucket(to_info['bucket'])
                 blob = bucket.blob(to_info['path'])
                 blob.upload_from_filename(from_info['path'])
-            except Exception as exc:
-                msg = "Failed to upload '{}' to '{}/{}'"
-                logger.warn(msg.format(from_info['path'],
-                                       to_info['bucket'],
-                                       to_info['path']), exc)
+            except Exception:
+                msg = "failed to upload '{}' to '{}/{}'"
+                logger.error(msg.format(from_info['path'],
+                                        to_info['bucket'],
+                                        to_info['path']))
                 continue
 
             progress.finish_target(name)
@@ -206,11 +206,11 @@ class RemoteGS(RemoteBase):
                 bucket = gs.bucket(from_info['bucket'])
                 blob = bucket.get_blob(from_info['path'])
                 blob.download_to_filename(tmp_file)
-            except Exception as exc:
-                msg = "Failed to download '{}/{}' to '{}'"
-                logger.warn(msg.format(from_info['bucket'],
-                                       from_info['path'],
-                                       to_info['path']), exc)
+            except Exception:
+                msg = "failed to download '{}/{}' to '{}'"
+                logger.error(msg.format(from_info['bucket'],
+                                        from_info['path'],
+                                        to_info['path']))
                 continue
 
             os.rename(tmp_file, to_info['path'])

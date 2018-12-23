@@ -1,24 +1,19 @@
 from dvc.exceptions import DvcException
 
 
-class OutputError(DvcException):
-    def __init__(self, path, msg):
-        msg = 'Output \'{}\' error: {}'.format(path, msg)
-        super(OutputError, self).__init__(msg)
-
-
-class OutputDoesNotExistError(OutputError):
+class OutputDoesNotExistError(DvcException):
     def __init__(self, path):
-        super(OutputDoesNotExistError, self).__init__(path, 'does not exist')
+        msg = "output '{}' does not exists".format(path)
+        super(OutputDoesNotExistError, self).__init__(msg)
 
 
-class OutputIsNotFileOrDirError(OutputError):
+class OutputIsNotFileOrDirError(DvcException):
     def __init__(self, path):
-        msg = 'not a file or directory'
-        super(OutputIsNotFileOrDirError, self).__init__(path, msg)
+        msg = "output '{}' is not a file or directory".format(path)
+        super(OutputIsNotFileOrDirError, self).__init__(msg)
 
 
-class OutputAlreadyTrackedError(OutputError):
+class OutputAlreadyTrackedError(DvcException):
     def __init__(self, path):
-        msg = 'already tracked by scm(e.g. git)'
-        super(OutputAlreadyTrackedError, self).__init__(path, msg)
+        msg = "output '{}' is already tracked by scm (e.g. git)".format(path)
+        super(OutputAlreadyTrackedError, self).__init__(msg)

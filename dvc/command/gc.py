@@ -1,12 +1,13 @@
 import os
 import dvc.prompt as prompt
+import dvc.logger as logger
 
 from dvc.command.base import CmdBase
 
 
 class CmdGC(CmdBase):
     def run(self):
-        msg = 'This will remove all cache except the cache that is used in '
+        msg = 'this will remove all cache except the cache that is used in '
         if not self.args.all_branches and not self.args.all_tags:
             msg += 'the current git branch'
         elif self.args.all_branches and not self.args.all_tags:
@@ -24,7 +25,7 @@ class CmdGC(CmdBase):
         else:
             msg += ' of the current project.'
 
-        self.project.logger.warn(msg)
+        logger.warning(msg)
 
         msg = 'Are you sure you want to proceed?'
         if not self.args.force and not prompt.confirm(msg):
