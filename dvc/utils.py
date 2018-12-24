@@ -9,9 +9,9 @@ import json
 import shutil
 import hashlib
 
+import dvc.logger as logger
 from dvc.progress import progress
 from dvc.istextfile import istextfile
-from dvc.logger import logger
 
 
 LOCAL_CHUNK_SIZE = 1024*1024
@@ -143,7 +143,7 @@ def remove(path):
     if not os.path.exists(path):
         return
 
-    logger.debug(u'Removing \'{}\''.format(os.path.relpath(path)))
+    logger.debug(u"Removing '{}'".format(os.path.relpath(path)))
 
     def _chmod(func, p, excinfo):
         perm = os.stat(p).st_mode

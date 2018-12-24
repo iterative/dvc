@@ -4,9 +4,9 @@ import getpass
 import posixpath
 from subprocess import Popen, PIPE
 
+import dvc.logger as logger
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
-from dvc.logger import logger
 from dvc.utils import fix_env
 
 

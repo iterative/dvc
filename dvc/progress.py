@@ -1,6 +1,7 @@
 from __future__ import print_function
 import sys
 import threading
+import dvc.logger as logger
 
 
 class Progress(object):
@@ -86,8 +87,6 @@ class Progress(object):
         return num + bar + percent + target_name
 
     def _print(self, *args, **kwargs):
-        from dvc.logger import logger
-
         if logger.is_quiet():
             return
 

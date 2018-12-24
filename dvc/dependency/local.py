@@ -5,6 +5,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+import dvc.logger as logger
 from dvc.dependency.base import DependencyBase
 from dvc.dependency.base import DependencyDoesNotExistError
 from dvc.dependency.base import DependencyIsNotFileOrDirError
@@ -72,8 +73,8 @@ class DependencyLOCAL(DependencyBase):
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
-            msg = "File/directory '{}' is empty.".format(self.rel_path)
-            self.project.logger.warn(msg)
+            msg = "file/directory '{}' is empty.".format(self.rel_path)
+            logger.warning(msg)
 
         self.info = self.remote.save_info(self.path_info)
 

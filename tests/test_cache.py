@@ -23,13 +23,13 @@ class TestCache(TestDvc):
 
     def test_all(self):
         md5_list = list(Cache(self.dvc).local.all())
-        self.assertEquals(len(md5_list), 2)
+        self.assertEqual(len(md5_list), 2)
         self.assertIn(self.cache1_md5, md5_list)
         self.assertIn(self.cache2_md5, md5_list)
 
     def test_get(self):
         cache = Cache(self.dvc).local.get(self.cache1_md5)
-        self.assertEquals(cache, self.cache1)
+        self.assertEqual(cache, self.cache1)
 
 
 class TestCacheLoadBadDirCache(TestDvc):
@@ -63,7 +63,7 @@ class TestExternalCacheDir(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.path.exists('.dvc/cache'))
-        self.assertNotEquals(len(os.listdir(cache_dir)), 0)
+        self.assertNotEqual(len(os.listdir(cache_dir)), 0)
 
 
 class TestSharedCacheDir(TestDir):

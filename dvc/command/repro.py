@@ -1,5 +1,6 @@
 import os
 
+import dvc.logger as logger
 from dvc.command.base import CmdBase
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
@@ -30,13 +31,12 @@ class CmdRepro(CmdBase):
                                ignore_build_cache=self.args.ignore_build_cache)
 
                 if len(stages) == 0:
-                    self.project.logger.info(CmdDataStatus.UP_TO_DATE_MSG)
+                    logger.info(CmdDataStatus.UP_TO_DATE_MSG)
 
                 if self.args.metrics:
                     self.project.metrics_show()
-            except DvcException as ex:
-                msg = 'Failed to reproduce \'{}\''.format(target)
-                self.project.logger.error(msg, ex)
+            except DvcException:
+                logger.error()
                 ret = 1
                 break
 

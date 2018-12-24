@@ -1,4 +1,4 @@
-from dvc.logger import logger
+import dvc.logger as logger
 
 
 class CmdBase(object):
@@ -24,8 +24,8 @@ class CmdBase(object):
         try:
             with self.project.lock:
                 return self.run()
-        except LockError as ex:
-            logger.error('Failed to lock before running a command', ex)
+        except LockError:
+            logger.error('failed to lock before running a command')
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class

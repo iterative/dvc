@@ -4,9 +4,9 @@ import time
 import requests
 import colorama
 
+import dvc.logger as logger
 from dvc import VERSION_BASE
 from dvc.lock import Lock, LockError
-from dvc.logger import logger
 from dvc.utils import is_binary
 
 
@@ -99,6 +99,9 @@ class Updater(object):  # pragma: no cover
         return l_patch > c_patch
 
     def _notify(self):
+        if not sys.stdout.isatty():
+            return
+
         message = (
             'Update available {red}{current}{reset} -> {green}{latest}{reset}'
             + '\n'
@@ -111,8 +114,7 @@ class Updater(object):  # pragma: no cover
                  current=self.current,
                  latest=self.latest)
 
-        if sys.stdout.isatty():
-            logger.box(message, border_color='yellow')
+        logger.box(message, border_color='yellow')
 
     def _get_update_instructions(self):
         instructions = {
@@ -186,6 +188,6 @@ class Updater(object):  # pragma: no cover
         system = platform.system()
         func = m.get(system)
         if func is None:
-            raise DvcException("Not supported system '{}'".format(system))
+            raise DvcException("not supported system '{}'".format(system))
 
         return func()

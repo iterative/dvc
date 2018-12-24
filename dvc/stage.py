@@ -5,16 +5,16 @@ import subprocess
 from schema import Schema, SchemaError, Optional, Or, And
 
 import dvc.prompt as prompt
+import dvc.logger as logger
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.logger import logger
 from dvc.utils import dict_md5, fix_env
 
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = u'Stage \'{}\' cmd {} failed'.format(stage.relpath, stage.cmd)
+        msg = u"Stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 
@@ -125,9 +125,7 @@ class Stage(object):
 
     @property
     def is_data_source(self):
-        """
-        Whether the stage file was created with `dvc add`.
-        """
+        """Whether the stage file was created with `dvc add`."""
         return self.cmd is None
 
     @staticmethod
@@ -149,10 +147,7 @@ class Stage(object):
         md5 = self._get_md5()
         assert md5 is not None
 
-        if self.md5 == md5:
-            return False
-
-        return True
+        return self.md5 != md5
 
     @property
     def is_callback(self):
@@ -164,55 +159,50 @@ class Stage(object):
 
     @property
     def is_import(self):
-        """
-        Whether the stage file was created with `dvc import`.
-        """
+        """Whether the stage file was created with `dvc import`."""
         return (not self.cmd
                 and len(self.deps) == 1
                 and len(self.outs) == 1)
 
-    def _changed_deps(self, log):
+    def _changed_deps(self):
         if self.locked:
             return False
 
         if self.is_callback:
             msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
                   "no dependencies) and thus always considered as changed."
-            self.project.logger.warn(msg.format(self.relpath))
+            logger.warning(msg.format(self.relpath))
             return True
 
         for dep in self.deps:
             if not dep.changed():
                 continue
-            log("Dependency '{}' of '{}' changed.".format(dep, self.relpath))
+            msg = "Dependency '{}' of '{}' changed.".format(dep, self.relpath)
+            logger.warning(msg)
             return True
 
         return False
 
-    def _changed_outs(self, log):
+    def _changed_outs(self):
         for out in self.outs:
             if not out.changed():
                 continue
-            log("Output '{}' of '{}' changed.".format(out, self.relpath))
+            msg = "Output '{}' of '{}' changed.".format(out, self.relpath)
+            logger.warning(msg)
             return True
 
         return False
 
-    def _changed_md5(self, log):
+    def _changed_md5(self):
         if self.changed_md5():
-            log("Dvc file '{}' changed.".format(self.relpath))
+            logger.warning("Dvc file '{}' changed.".format(self.relpath))
             return True
         return False
 
-    def changed(self, print_info=False):
-        if print_info:
-            log = self.project.logger.info
-        else:
-            log = self.project.logger.debug
-
-        ret = any([self._changed_deps(log),
-                   self._changed_outs(log),
-                   self._changed_md5(log)])
+    def changed(self):
+        ret = any([self._changed_deps(),
+                   self._changed_outs(),
+                   self._changed_md5()])
 
         if ret:
             msg = "Stage '{}' changed.".format(self.relpath)
@@ -221,7 +211,7 @@ class Stage(object):
             msg = "Stage '{}' didn't change.".format(self.relpath)
             color = 'green'
 
-        log(logger.colorize(msg, color))
+        logger.info(logger.colorize(msg, color))
 
         return ret
 
@@ -243,7 +233,7 @@ class Stage(object):
         os.unlink(self.path)
 
     def reproduce(self, force=False, dry=False, interactive=False):
-        if not self.changed(print_info=True) and not force:
+        if not self.changed() and not force:
             return None
 
         if (self.cmd or self.is_import) and not self.locked and not dry:
@@ -254,14 +244,14 @@ class Stage(object):
         msg = msg.format(self.relpath)
 
         if interactive and not prompt.confirm(msg):
-            raise DvcException('Reproduction aborted by the user')
+            raise DvcException('reproduction aborted by the user')
 
-        self.project.logger.info(u'Reproducing \'{}\''.format(self.relpath))
+        logger.info(u"Reproducing '{}'".format(self.relpath))
 
         self.run(dry=dry)
 
-        msg = u'\'{}\' was reproduced'.format(self.relpath)
-        self.project.logger.debug(msg)
+        msg = u"'{}' was reproduced".format(self.relpath)
+        logger.debug(msg)
 
         return self
 
@@ -331,7 +321,7 @@ class Stage(object):
         from dvc.remote.s3 import RemoteS3
 
         old = Stage.load(self.project, self.path)
-        if old._changed_outs(log=self.project.logger.debug):
+        if old._changed_outs():
             return False
 
         # NOTE: need to save checksums for deps in order to compare them
@@ -383,7 +373,7 @@ class Stage(object):
         stage._check_duplicated_arguments()
 
         if fname is not None and os.path.basename(fname) != fname:
-            msg = "Stage file name '{}' should not contain subdirectories. " \
+            msg = "stage file name '{}' should not contain subdirectories. " \
                   "Use '-c|--cwd' to change location of the stage file."
             raise StageFileBadNameError(msg.format(fname))
 
@@ -400,15 +390,14 @@ class Stage(object):
         # NOTE: remove outs before we check build cache
         if remove_outs:
             stage.remove_outs(ignore_remove=False)
-            project.logger.warn("Build cache is ignored when using "
-                                "--remove-outs.")
+            logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True
         else:
             stage.unprotect_outs()
 
         if os.path.exists(path):
             if not ignore_build_cache and stage.is_cached:
-                project.logger.info('Stage is cached, skipping.')
+                logger.info('Stage is cached, skipping.')
                 return None
 
             msg = "'{}' already exists. Do you wish to run the command and " \
@@ -422,7 +411,7 @@ class Stage(object):
     @staticmethod
     def _check_dvc_filename(fname):
         if not Stage.is_stage_filename(fname):
-            msg = "Bad stage filename '{}'. Stage files should be named " \
+            msg = "bad stage filename '{}'. Stage files should be named " \
                   "'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
             raise StageFileBadNameError(msg.format(os.path.relpath(fname),
                                                    os.path.basename(fname)))
@@ -521,12 +510,13 @@ class Stage(object):
            or os.path.basename(os.path.realpath(executable)) != 'fish':
             return
 
-        msg = "DVC detected that you are using fish as your default " \
-              "shell. Be aware that it might cause problems by overwriting " \
-              "your current environment variables with values defined " \
-              "in '.fishrc', which might affect your command. See " \
-              "https://github.com/iterative/dvc/issues/1307. "
-        self.project.logger.warn(msg)
+        logger.warning(
+            "DVC detected that you are using fish as your default "
+            "shell. Be aware that it might cause problems by overwriting "
+            "your current environment variables with values defined "
+            "in '.fishrc', which might affect your command. See "
+            "https://github.com/iterative/dvc/issues/1307. "
+        )
 
     def _check_circular_dependency(self):
         from dvc.exceptions import CircularDependencyError
@@ -566,25 +556,24 @@ class Stage(object):
 
     def run(self, dry=False):
         if self.locked:
-            msg = u'Verifying outputs in locked stage \'{}\''
-            self.project.logger.info(msg.format(self.relpath))
+            msg = u"Verifying outputs in locked stage '{}'"
+            logger.info(msg.format(self.relpath))
             if not dry:
                 self.check_missing_outputs()
         elif self.is_import:
-            msg = u'Importing \'{}\' -> \'{}\''
-            self.project.logger.info(msg.format(self.deps[0].path,
-                                                self.outs[0].path))
+            msg = u"Importing '{}' -> '{}'"
+            logger.info(msg.format(self.deps[0].path, self.outs[0].path))
 
             if not dry:
                 self.deps[0].download(self.outs[0].path_info)
         elif self.is_data_source:
-            msg = u'Verifying data sources in \'{}\''.format(self.relpath)
-            self.project.logger.info(msg)
+            msg = u"Verifying data sources in '{}'".format(self.relpath)
+            logger.info(msg)
             if not dry:
                 self.check_missing_outputs()
         else:
             msg = u'Running command:\n\t{}'.format(self.cmd)
-            self.project.logger.info(msg)
+            logger.info(msg)
 
             if not dry:
                 self._run()

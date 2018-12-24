@@ -1,3 +1,4 @@
+import dvc.logger as logger
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 
@@ -33,8 +34,8 @@ class CmdRun(CmdBase):
                              overwrite=overwrite,
                              ignore_build_cache=self.args.ignore_build_cache,
                              remove_outs=self.args.remove_outs)
-        except DvcException as ex:
-            self.project.logger.error('Failed to run command', ex)
+        except DvcException:
+            logger.error('failed to run command')
             return 1
 
         return 0

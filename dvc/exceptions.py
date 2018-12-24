@@ -15,7 +15,7 @@ class DvcException(Exception):
 
 class UnsupportedRemoteError(DvcException):
     def __init__(self, config):
-        msg = "Remote '{}' is not supported.".format(config)
+        msg = "remote '{}' is not supported.".format(config)
         super(UnsupportedRemoteError, self).__init__(msg)
 
 
@@ -24,7 +24,7 @@ class OutputDuplicationError(DvcException):
         assert isinstance(output, str)
         assert isinstance(stages, list)
         assert all(isinstance(stage, str) for stage in stages)
-        msg = "File '{}' is specified as an output in more than one stage:{}"
+        msg = "file '{}' is specified as an output in more than one stage:{}"
         s = ""
         for stage in stages:
             s += "\n    " + stage
@@ -36,7 +36,7 @@ class WorkingDirectoryAsOutputError(DvcException):
         assert isinstance(cwd, str)
         assert isinstance(fname, str)
         msg = (
-            "Current working directory '{cwd}' is specified as an output in"
+            "current working directory '{cwd}' is specified as an output in"
             " '{fname}'. Use another CWD to prevent any data removal."
             .format(cwd=cwd, fname=fname)
         )
@@ -46,20 +46,20 @@ class WorkingDirectoryAsOutputError(DvcException):
 class CircularDependencyError(DvcException):
     def __init__(self, dependency):
         assert isinstance(dependency, str)
-        msg = "File '{}' is specified as an output and as a dependency."
+        msg = "file '{}' is specified as an output and as a dependency."
         super(CircularDependencyError, self).__init__(msg.format(dependency))
 
 
 class ArgumentDuplicationError(DvcException):
     def __init__(self, path):
         assert isinstance(path, str)
-        msg = "File '{}' is specified more than once."
+        msg = "file '{}' is specified more than once."
         super(ArgumentDuplicationError, self).__init__(msg.format(path))
 
 
 class MoveNotDataSourceError(DvcException):
     def __init__(self, path):
-        msg = "Move is not permitted for stages that are not data sources. " \
+        msg = "move is not permitted for stages that are not data sources. " \
               "You need to either move '{path}' to a new location and edit " \
               "it by hand, or remove '{path}' and create a new one at the " \
               "desired location."
@@ -68,10 +68,10 @@ class MoveNotDataSourceError(DvcException):
 
 class NotDvcProjectError(DvcException):
     def __init__(self, root):
-        msg = "Not a dvc repository (checked up to mount point {})"
+        msg = "not a dvc repository (checked up to mount point '{}')"
         super(NotDvcProjectError, self).__init__(msg.format(root))
 
 
 class DvcParserError(DvcException):
     def __init__(self):
-        super(DvcException, self).__init__("Parser error")
+        super(DvcException, self).__init__("parser error")

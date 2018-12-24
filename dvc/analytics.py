@@ -2,8 +2,8 @@ import os
 import json
 import errno
 
+import dvc.logger as logger
 from dvc import VERSION
-from dvc.logger import logger
 
 
 class Analytics(object):

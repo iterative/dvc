@@ -5,8 +5,8 @@ import posixpath
 from multiprocessing import cpu_count
 
 import dvc.prompt as prompt
+import dvc.logger as logger
 from dvc.config import Config
-from dvc.logger import logger
 from dvc.exceptions import DvcException
 
 
@@ -60,24 +60,25 @@ class RemoteBase(object):
         deps_ok = all(cls.REQUIRES.values())
         if url_ok and not deps_ok:
             missing = [k for k, v in cls.REQUIRES.items() if v is None]
-            msg = "URL \'{}\' is supported but requires these missing " \
-                  "dependencies: {}. If you have installed dvc using pip, " \
-                  "choose one of these options to proceed: \n" \
-                  "\n" \
-                  "    1) Install specific missing dependencies:\n" \
-                  "        pip install {}\n" \
-                  "    2) Install dvc package that includes those missing " \
-                  "dependencies: \n" \
-                  "        pip install dvc[{}]\n" \
-                  "    3) Install dvc package with all possible " \
-                  "dependencies included: \n" \
-                  "        pip install dvc[all]\n" \
-                  "\n" \
-                  "If you have installed dvc from a binary package and you " \
-                  "are still seeing this message, please report it to us " \
-                  "using https://github.com/iterative/dvc/issues. Thank you!"
-            msg = msg.format(url, missing, " ".join(missing), cls.scheme)
-            logger.warn(msg)
+            logger.warning(
+                "URL '{}' is supported but requires these missing "
+                "dependencies: {}. If you have installed dvc using pip, "
+                "choose one of these options to proceed: \n"
+                "\n"
+                "    1) Install specific missing dependencies:\n"
+                "        pip install {}\n"
+                "    2) Install dvc package that includes those missing "
+                "dependencies: \n"
+                "        pip install dvc[{}]\n"
+                "    3) Install dvc package with all possible "
+                "dependencies included: \n"
+                "        pip install dvc[all]\n"
+                "\n"
+                "If you have installed dvc from a binary package and you "
+                "are still seeing this message, please report it to us "
+                "using https://github.com/iterative/dvc/issues. Thank you!"
+                .format(url, missing, " ".join(missing), cls.scheme)
+            )
 
         return url_ok and deps_ok
 
@@ -209,8 +210,8 @@ class RemoteBase(object):
 
         if expected != actual:
             if self.exists(cache):
-                msg = 'Corrupted cache file {}'
-                logger.warn(msg.format(str(cache)))
+                msg = 'corrupted cache file {}'
+                logger.warning(msg.format(str(cache)))
                 self.remove(cache)
             return True
 
@@ -241,22 +242,24 @@ class RemoteBase(object):
 
         if not force and not self.already_cached(path_info):
             msg = (
-                'File "{}" is going to be removed. '
-                'Are you sure you want to proceed?'
+                "file '{}' is going to be removed."
+                ' Are you sure you want to proceed?'
                 .format(str(path_info))
             )
 
             if not prompt.confirm(msg):
-                raise DvcException("Unable to remove {} without a confirmation"
-                                   " from the user. Use '-f' to force."
-                                   .format(str(path_info)))
+                raise DvcException(
+                    "unable to remove '{}' without a confirmation"
+                    " from the user. Use '-f' to force."
+                    .format(str(path_info))
+                )
 
         self.remove(path_info)
 
     def do_checkout(self, path_info, checksum, force=False):
         if self.exists(path_info):
-            msg = "Data '{}' exists. Removing before checkout."
-            logger.warn(msg.format(str(path_info)))
+            msg = "data '{}' exists. Removing before checkout."
+            logger.warning(msg.format(str(path_info)))
             self.safe_remove(path_info, force=force)
 
         from_info = self.checksum_to_path_info(checksum)
@@ -280,7 +283,7 @@ class RemoteBase(object):
 
         if self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warn(msg.format(checksum, str(path_info)))
+            logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
             return
 

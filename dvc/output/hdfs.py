@@ -17,7 +17,7 @@ class OutputHDFS(DependencyHDFS):
         self.use_cache = cache
         self.metric = metric
         if cache and self.project.cache.hdfs is None:
-            raise DvcException("No cache location setup for \'hdfs\' outputs.")
+            raise DvcException("no cache location setup for 'hdfs' outputs.")
 
     def dumpd(self):
         ret = super(OutputHDFS, self).dumpd()

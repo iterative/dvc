@@ -1,5 +1,6 @@
 import os
 
+import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 
@@ -16,12 +17,12 @@ class CmdPipelineShow(CmdBase):
 
         for n in networkx.dfs_postorder_nodes(G, node):
             if commands:
-                self.project.logger.info(stages[n].cmd)
+                logger.info(stages[n].cmd)
             elif outs:
                 for out in stages[n].outs:
-                    self.project.logger.info(str(out))
+                    logger.info(str(out))
             else:
-                self.project.logger.info(n)
+                logger.info(n)
 
     def __build_graph(self, target, commands, outs):
         import networkx
@@ -106,9 +107,9 @@ class CmdPipelineShow(CmdBase):
                     self._show(target,
                                self.args.commands,
                                self.args.outs)
-            except DvcException as ex:
-                msg = 'Failed to show pipeline for \'{}\''.format(target)
-                self.project.logger.error(msg, ex)
+            except DvcException:
+                msg = "failed to show pipeline for '{}'".format(target)
+                logger.error(msg)
                 return 1
         return 0
 
@@ -121,9 +122,9 @@ class CmdPipelineList(CmdBase):
         for p in pipelines:
             stages = networkx.get_node_attributes(p, 'stage')
             for stage in stages:
-                self.project.logger.info(stage)
+                logger.info(stage)
             if len(stages) != 0:
-                self.project.logger.info("="*80)
-        self.project.logger.info("{} pipeline(s) total".format(len(pipelines)))
+                logger.info('=' * 80)
+        logger.info('{} pipeline(s) total'.format(len(pipelines)))
 
         return 0

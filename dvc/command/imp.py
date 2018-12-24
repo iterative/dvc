@@ -5,9 +5,9 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
-from dvc.logger import logger
 
 
 class CmdImport(CmdBase):
@@ -20,7 +20,7 @@ class CmdImport(CmdBase):
             out = self.args.out or default_out
 
             self.project.imp(self.args.url, out)
-        except DvcException as ex:
-            logger.error('Failed to import {}'.format(self.args.url), ex)
+        except DvcException:
+            logger.error('failed to import {}'.format(self.args.url))
             return 1
         return 0

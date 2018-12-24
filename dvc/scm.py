@@ -1,7 +1,7 @@
 import os
 
+import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.logger import logger
 from dvc.utils import fix_env
 
 
@@ -213,12 +213,16 @@ class Git(Base):
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
             self.repo.index.add(paths)
-        except AssertionError as exc:
-            msg = 'Failed to add \'{}\' to git. You can add those files '
-            msg += 'manually using \'git add\'. '
-            msg += 'See \'https://github.com/iterative/dvc/issues/610\' '
-            msg += 'for more details.'
-            logger.error(msg.format(str(paths)), exc)
+        except AssertionError:
+            msg = (
+                "failed to add '{}' to git. You can add those files"
+                " manually using 'git add'."
+                " See 'https://github.com/iterative/dvc/issues/610'"
+                " for more details."
+                .format(str(paths))
+            )
+
+            logger.error(msg)
 
     def commit(self, msg):
         self.repo.index.commit(msg)
@@ -257,7 +261,7 @@ class Git(Base):
                             'hooks',
                             name)
         if os.path.isfile(hook):
-            msg = 'Git hook \'{}\' already exists.'
+            msg = "git hook '{}' already exists."
             raise SCMError(msg.format(os.path.relpath(hook)))
         with open(hook, 'w+') as fd:
             fd.write('#!/bin/sh\nexec dvc {}\n'.format(cmd))

@@ -1,6 +1,7 @@
 import os
 from schema import Optional, Or
 
+import dvc.logger as logger
 from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.dependency.local import DependencyLOCAL
@@ -76,36 +77,35 @@ class OutputLOCAL(DependencyLOCAL):
             return
 
         if os.path.isdir(self.path):
-            msg = 'Directory \'{}\' cannot be used as metrics.'
+            msg = "directory '{}' cannot be used as metrics."
             raise DvcException(msg.format(self.rel_path))
 
         if not istextfile(self.path):
-            msg = 'Binary file \'{}\' cannot be used as metrics.'
+            msg = "binary file '{}' cannot be used as metrics."
             raise DvcException(msg.format(self.rel_path))
 
     def save(self):
         if not self.use_cache:
             super(OutputLOCAL, self).save()
             self._verify_metric()
-            msg = 'Output \'{}\' doesn\'t use cache. Skipping saving.'
-            self.project.logger.info(msg.format(self.rel_path))
+            msg = "Output '{}' doesn't use cache. Skipping saving."
+            logger.info(msg.format(self.rel_path))
             return
 
         if not os.path.exists(self.path):
             raise self.DoesNotExistError(self.rel_path)
 
-        if not os.path.isfile(self.path) \
-           and not os.path.isdir(self.path):  # pragma: no cover
+        if (not os.path.isfile(self.path) and not os.path.isdir(self.path)):
             raise self.IsNotFileOrDirError(self.rel_path)
 
         if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
-            msg = "File/directory '{}' is empty.".format(self.rel_path)
-            self.project.logger.warn(msg)
+            msg = "file/directory '{}' is empty.".format(self.rel_path)
+            logger.warning(msg)
 
         if not self.changed():
-            msg = 'Output \'{}\' didn\'t change. Skipping saving.'
-            self.project.logger.info(msg.format(self.rel_path))
+            msg = "Output '{}' didn't change. Skipping saving."
+            logger.info(msg.format(self.rel_path))
             return
 
         if self.is_local:

@@ -8,7 +8,7 @@ except ImportError:
     paramiko = None
 
 import dvc.prompt as prompt
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.progress import progress
 from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 from dvc.config import Config
@@ -177,7 +177,7 @@ class RemoteSSH(RemoteBase):
             md5cmd = 'md5sum'
             index = 0
         else:
-            msg = '\'{}\' is not supported as a remote'.format(stdout)
+            msg = "'{}' is not supported as a remote".format(stdout)
             raise DvcException(msg)
 
         stdout = self._exec(ssh, '{} {}'.format(md5cmd, path_info['path']))
@@ -290,11 +290,11 @@ class RemoteSSH(RemoteBase):
                 ssh.open_sftp().get(from_info['path'],
                                     tmp_file,
                                     callback=create_cb(name))
-            except Exception as exc:
-                msg = "Failed to download '{}/{}' to '{}'"
-                logger.warn(msg.format(from_info['host'],
-                                       from_info['path'],
-                                       to_info['path']), exc)
+            except Exception:
+                msg = "failed to download '{}/{}' to '{}'"
+                logger.error(msg.format(from_info['host'],
+                                        from_info['path'],
+                                        to_info['path']))
                 continue
 
             os.rename(tmp_file, to_info['path'])
@@ -331,11 +331,11 @@ class RemoteSSH(RemoteBase):
                 sftp.put(from_info['path'],
                          to_info['path'],
                          callback=create_cb(name))
-            except Exception as exc:
-                msg = "Failed to upload '{}' to '{}/{}'"
-                logger.warn(msg.format(from_info['path'],
-                                       to_info['host'],
-                                       to_info['path'], exc))
+            except Exception:
+                msg = "failed to upload '{}' to '{}/{}'"
+                logger.error(msg.format(from_info['path'],
+                                        to_info['host'],
+                                        to_info['path']))
                 continue
 
             progress.finish_target(name)

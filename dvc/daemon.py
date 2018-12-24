@@ -2,7 +2,7 @@ import os
 import sys
 from subprocess import Popen
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.utils import is_binary, fix_env
 
 
@@ -34,8 +34,8 @@ class Daemon(object):  # pragma: no cover
             pid = os.fork()
             if pid > 0:
                 return
-        except OSError as exc:
-            logger.error("Failed at first fork", exc)
+        except OSError:
+            logger.error("failed at first fork")
             os._exit(1)
 
         os.setsid()
@@ -45,8 +45,8 @@ class Daemon(object):  # pragma: no cover
             pid = os.fork()
             if pid > 0:
                 os._exit(0)
-        except OSError as exc:
-            logger.error("Failed at second fork", exc)
+        except OSError:
+            logger.error("failed at second fork")
             os._exit(1)
 
         sys.stdin.close()

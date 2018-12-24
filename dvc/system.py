@@ -38,7 +38,7 @@ class System(object):
                 os.symlink(source, link_name)
                 return
             except Exception as exc:
-                msg = "Failed to symlink '{}' -> '{}': {}"
+                msg = "failed to symlink '{}' -> '{}': {}"
                 raise DvcException(msg.format(source, link_name, str(exc)))
 
         flags = 0
@@ -119,7 +119,7 @@ class System(object):
             ret = -1
 
         if ret != 0:
-            raise DvcException('Reflink is not supported')
+            raise DvcException('reflink is not supported')
 
     @staticmethod
     def getdirinfo(path):

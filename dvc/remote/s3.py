@@ -11,7 +11,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -205,9 +205,9 @@ class RemoteS3(RemoteBase):
                                to_info['bucket'],
                                to_info['path'],
                                Callback=cb)
-            except Exception as exc:
-                msg = "Failed to upload '{}'".format(from_info['path'])
-                logger.warn(msg, exc)
+            except Exception:
+                msg = "failed to upload '{}'".format(from_info['path'])
+                logger.error(msg)
                 continue
 
             progress.finish_target(name)
@@ -256,10 +256,10 @@ class RemoteS3(RemoteBase):
                                  from_info['path'],
                                  tmp_file,
                                  Callback=cb)
-            except Exception as exc:
-                msg = "Failed to download '{}/{}'".format(from_info['bucket'],
+            except Exception:
+                msg = "failed to download '{}/{}'".format(from_info['bucket'],
                                                           from_info['path'])
-                logger.warn(msg, exc)
+                logger.error(msg)
                 continue
 
             os.rename(tmp_file, to_info['path'])

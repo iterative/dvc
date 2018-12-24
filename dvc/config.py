@@ -6,14 +6,14 @@ import errno
 import configobj
 from schema import Schema, Optional, And, Use, Regex
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.exceptions import DvcException
 
 
 class ConfigError(DvcException):
     """ DVC config exception """
     def __init__(self, msg, ex=None):
-        super(ConfigError, self).__init__('Config file error: {}'.format(msg),
+        super(ConfigError, self).__init__('config file error: {}'.format(msg),
                                           ex)
 
 
@@ -312,19 +312,19 @@ class Config(object):
                         raise
                 conf.write()
             except Exception as exc:
-                msg = "Failed to write config '{}'".format(conf.filename)
+                msg = "failed to write config '{}'".format(conf.filename)
                 raise ConfigError(msg, exc)
 
     def unset(self, config, section, opt=None):
         if section not in config.keys():
-            raise ConfigError("Section '{}' doesn't exist".format(section))
+            raise ConfigError("section '{}' doesn't exist".format(section))
 
         if opt is None:
             del config[section]
             return
 
         if opt not in config[section].keys():
-            raise ConfigError("Option '{}.{}' doesn't exist".format(section,
+            raise ConfigError("option '{}.{}' doesn't exist".format(section,
                                                                     opt))
         del config[section][opt]
 
@@ -339,10 +339,10 @@ class Config(object):
 
     def show(self, config, section, opt):
         if section not in config.keys():
-            raise ConfigError("Section '{}' doesn't exist".format(section))
+            raise ConfigError("section '{}' doesn't exist".format(section))
 
         if opt not in config[section].keys():
-            raise ConfigError("Option '{}.{}' doesn't exist".format(section,
+            raise ConfigError("option '{}.{}' doesn't exist".format(section,
                                                                     opt))
 
         logger.info(config[section][opt])

@@ -12,7 +12,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from dvc.logger import logger
+import dvc.logger as logger
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -56,10 +56,10 @@ class RemoteAzure(RemoteBase):
             or os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
 
         if not self.bucket:
-            raise ValueError('Azure Storage container name missing')
+            raise ValueError('azure storage container name missing')
 
         if not self.connection_string:
-            raise ValueError('Azure Storage connection string missing')
+            raise ValueError('azure storage connection string missing')
 
         self.__blob_service = None
 
@@ -125,9 +125,9 @@ class RemoteAzure(RemoteBase):
             try:
                 self.blob_service.create_blob_from_path(
                     bucket, path, from_info['path'], progress_callback=cb)
-            except Exception as ex:
-                msg = "Failed to upload '{}'".format(from_info['path'])
-                logger.warn(msg, ex)
+            except Exception:
+                msg = "failed to upload '{}'".format(from_info['path'])
+                logger.warning(msg)
             else:
                 progress.finish_target(name)
 
@@ -162,9 +162,9 @@ class RemoteAzure(RemoteBase):
             try:
                 self.blob_service.get_blob_to_path(
                     bucket, path, tmp_file, progress_callback=cb)
-            except Exception as exc:
-                msg = "Failed to download '{}/{}'".format(bucket, path)
-                logger.warn(msg, exc)
+            except Exception:
+                msg = "failed to download '{}/{}'".format(bucket, path)
+                logger.warning(msg)
             else:
                 os.rename(tmp_file, to_info['path'])
 

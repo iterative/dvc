@@ -17,7 +17,7 @@ class OutputS3(DependencyS3):
         self.use_cache = cache
         self.metric = metric
         if cache and self.project.cache.s3 is None:
-            raise DvcException("No cache location setup for \'s3\' outputs.")
+            raise DvcException("no cache location setup for 's3' outputs.")
 
     def dumpd(self):
         ret = super(OutputS3, self).dumpd()
