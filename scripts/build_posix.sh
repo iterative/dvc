@@ -12,7 +12,6 @@ else
 fi
 
 BUILD_DIR=build
-BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 print_error()
@@ -41,7 +40,15 @@ fpm_build()
 {
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
-	fpm -s dir -f -t $1 $FPM_FLAGS -n dvc -v $VERSION -C $BUILD_DIR usr
+	fpm -s dir \
+	    -f \
+	    -t $1 \
+	    $FPM_FLAGS \
+	    -n dvc \
+	    -v $VERSION \
+	    --after-install scripts/fpm/after-install.sh \
+	    --after-remove scripts/fpm/after-remove.sh \
+	    -C $BUILD_DIR usr
 }
 
 cleanup()
@@ -67,7 +74,7 @@ install_dependencies()
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
 
-	gem install --no-document fpm
+	sudo gem install --no-document fpm
 
 	print_info "Installing requirements..."
 	pip install -r requirements.txt
@@ -86,13 +93,6 @@ build_dvc()
             --specpath $BUILD_DIR
 
 	$LIB_DIR/dvc/dvc --help
-
-	mkdir -p $BIN_DIR
-	pushd $BIN_DIR
-	ln -s ../lib/dvc/dvc dvc
-	popd
-
-	$BIN_DIR/dvc --help
 }
 
 cleanup
