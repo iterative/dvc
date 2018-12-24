@@ -74,7 +74,7 @@ install_dependencies()
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
 
-	sudo gem install --no-document fpm
+	gem install --no-document fpm
 
 	print_info "Installing requirements..."
 	pip install -r requirements.txt
