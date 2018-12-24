@@ -8,10 +8,13 @@ if [[ "$(uname)" == 'Linux' ]]; then
 	FPM_FLAGS=
 else
 	INSTALL_DIR=usr/local
-	FPM_FLAGS='--osxpkg-identifier-prefix com.dataversioncontrol'
+	FPM_FLAGS='--osxpkg-identifier-prefix com.iterative'
+	FPM_FLAGS+=' --after-install scripts/fpm/after-install.sh'
+	FPM_FLAGS+=' --after-remove scripts/fpm/after-remove.sh'
 fi
 
 BUILD_DIR=build
+BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 print_error()
@@ -46,8 +49,6 @@ fpm_build()
 	    $FPM_FLAGS \
 	    -n dvc \
 	    -v $VERSION \
-	    --after-install scripts/fpm/after-install.sh \
-	    --after-remove scripts/fpm/after-remove.sh \
 	    -C $BUILD_DIR usr
 }
 
@@ -93,6 +94,17 @@ build_dvc()
             --specpath $BUILD_DIR
 
 	$LIB_DIR/dvc/dvc --help
+
+	# NOTE: in osxpkg fpm replaces symlinks with actual file that it
+	# points to, so we need to use after-install hook. See FPM_FLAGS
+	# above.
+	if [[ "$(uname)" == 'Linux' ]]; then
+		mkdir -p $BIN_DIR
+		pushd $BIN_DIR
+		ln -s ../lib/dvc/dvc dvc
+		popd
+		$BIN_DIR/dvc --help
+	fi
 }
 
 cleanup
