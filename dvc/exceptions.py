@@ -3,6 +3,8 @@ import traceback
 
 class DvcException(Exception):
     def __init__(self, msg, cause=None):
+        # NOTE: unlike python 3, python 2 doesn't have built-in support
+        # for chained exceptions, so we are using our own implementation.
         self.cause = cause
         self.cause_tb = None
         if cause:
