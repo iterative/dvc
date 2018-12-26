@@ -1,3 +1,4 @@
+import traceback
 from mock import patch
 from unittest import TestCase
 
@@ -9,6 +10,7 @@ except ImportError:
 import logging
 import dvc.logger as logger
 from dvc.command.base import CmdBase
+from dvc.exceptions import DvcException
 
 
 class TestLogger(TestCase):
@@ -89,6 +91,55 @@ class TestLogger(TestCase):
             'Having any troubles? Hit us up at https://dvc.org/support,'
             ' we are always happy to help!\n'
         )
+
+        self.assertEqual(self.stderr, output)
+
+    def test_error_with_chained_exception_and_message(self):
+        try:
+            raise DvcException('exception', cause=Exception('cause'))
+        except Exception:
+            logger.error('message')
+
+        output = (
+            'Error: message - exception: cause\n'
+            '\n'
+            'Having any troubles? Hit us up at https://dvc.org/support,'
+            ' we are always happy to help!\n'
+        )
+
+        self.assertEqual(self.stderr, output)
+
+    def test_traceback(self):
+        stack_trace1 = 'stack_trace1\n'
+        stack_trace2 = 'stack_trace2\n'
+        try:
+            exc1 = Exception('exception1')
+            exc2 = DvcException('exception2', cause=exc1)
+            exc2.cause_tb = stack_trace1
+            exc3 = DvcException('exception3', cause=exc2)
+            exc3.cause_tb = stack_trace2
+            raise exc3
+        except Exception:
+            stack_trace3 = traceback.format_exc()
+            with logger.verbose():
+                logger.error('message')
+
+        output = (
+            'Error: message - exception3: exception2: exception1\n'
+            '{line}\n'
+            '{stack_trace1}'
+            '\n'
+            '{stack_trace2}'
+            '\n'
+            '{stack_trace3}'
+            '{line}\n'
+            '\n'
+            'Having any troubles? Hit us up at https://dvc.org/support,'
+            ' we are always happy to help!\n'
+        ).format(line='-' * 60,
+                 stack_trace1=stack_trace1,
+                 stack_trace2=stack_trace2,
+                 stack_trace3=stack_trace3)
 
         self.assertEqual(self.stderr, output)
 

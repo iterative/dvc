@@ -30,6 +30,8 @@ def warning(message):
 def error(message=None):
     prefix = colorize('Error', color='red')
 
+    exception, stack_trace = _parse_exc()
+
     out = (
         '{prefix}: {description}'
         '\n'
@@ -37,8 +39,8 @@ def error(message=None):
         '\n'
         '{footer}'.format(
             prefix=prefix,
-            description=_description(message),
-            stack_trace=_stack_trace(),
+            description=_description(message, exception),
+            stack_trace=stack_trace,
             footer=_footer(),
         )
     )
@@ -188,21 +190,41 @@ def _add_handlers():
     logger.addHandler(sh_err)
 
 
-def _stack_trace():
-    trace = sys.exc_info()[2]
+def _walk_exc(exc):
+    exc_list = [str(exc)]
+    tb_list = [traceback.format_exc()]
 
-    if not is_verbose() or not trace:
-        return ''
+    # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info.
+    while hasattr(exc, 'cause') and exc.cause is not None:
+        exc_list.append(str(exc.cause))
+        if hasattr(exc, 'cause_tb') and exc.cause_tb is not None:
+            tb_list.insert(0, str(exc.cause_tb))
+        exc = exc.cause
 
-    return '{line}\n{stack_trace}{line}\n'.format(
-        line=colorize('-' * 60, color='red'),
-        stack_trace=traceback.format_exc(),
-    )
+    return (exc_list, tb_list)
 
 
-def _description(message):
-    exception = sys.exc_info()[1]
+def _parse_exc():
+    exc = sys.exc_info()[1]
+    if not exc:
+        return (None, '')
 
+    exc_list, tb_list = _walk_exc(exc)
+
+    exception = ': '.join(exc_list)
+
+    if is_verbose():
+        stack_trace = '{line}\n{stack_trace}{line}\n'.format(
+            line=colorize('-' * 60, color='red'),
+            stack_trace='\n'.join(tb_list),
+        )
+    else:
+        stack_trace = ''
+
+    return (exception, stack_trace)
+
+
+def _description(message, exception):
     if exception and message:
         description = '{message} - {exception}'
     elif exception:
@@ -210,7 +232,7 @@ def _description(message):
     elif message:
         description = '{message}'
 
-    return description.format(message=message, exception=str(exception))
+    return description.format(message=message, exception=exception)
 
 
 def _footer():
