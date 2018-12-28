@@ -1234,20 +1234,24 @@ class Project(object):
     def _welcome_message(self):
         import colorama
 
-        logger.info(
-            "\n"
+        logger.box(
             "DVC has enabled anonymous aggregate usage analytics.\n"
             "Read the analytics documentation (and how to opt-out) here:\n"
-            "{blue}https://dvc.org/doc/user-guide/analytics{nc}\n"
-            "\n"
+            "{blue}https://dvc.org/doc/user-guide/analytics{nc}"
+            .format(
+                blue=colorama.Fore.BLUE,
+                nc=colorama.Fore.RESET
+            ),
+            border_color='red'
+        )
+
+        logger.info(
             "{yellow}What's next?{nc}\n"
             "{yellow}------------{nc}\n"
             "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
             "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
             "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
-
             .format(yellow=colorama.Fore.YELLOW,
                     blue=colorama.Fore.BLUE,
-                    green=colorama.Fore.GREEN,
                     nc=colorama.Fore.RESET)
         )
