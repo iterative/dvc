@@ -28,10 +28,10 @@ class Callback(object):
 
 class RemoteAzure(RemoteBase):
     scheme = 'azure'
-    REGEX = (r'^azure://((?P<path>[^=;]*)|('
+    REGEX = (r'azure://((?P<path>[^=;]*)?|('
              # backward compatibility
              r'(ContainerName=(?P<container_name>[^;]+);?)?'
-             r'(?P<connection_string>.+)?))$')
+             r'(?P<connection_string>.+)?)?)$')
     REQUIRES = {'azure-storage-blob': BlockBlobService}
     PARAM_ETAG = 'etag'
     COPY_POLL_SECONDS = 5
@@ -43,8 +43,9 @@ class RemoteAzure(RemoteBase):
         self.url = config.get(Config.SECTION_REMOTE_URL)
         match = re.match(self.REGEX, self.url)  # backward compatibility
 
+        path = match.group('path')
         self.bucket = (
-            urlparse(self.url).netloc
+            urlparse(self.url if path else '').netloc
             or match.group('container_name')  # backward compatibility
             or os.getenv('AZURE_STORAGE_CONTAINER_NAME'))
 
@@ -68,8 +69,11 @@ class RemoteAzure(RemoteBase):
     @property
     def blob_service(self):
         if self.__blob_service is None:
+            logger.debug('URL {}'.format(self.url))
+            logger.debug('Connection string {}'.format(self.connection_string))
             self.__blob_service = BlockBlobService(
                 connection_string=self.connection_string)
+            logger.debug('Container name {}'.format(self.bucket))
             self.__blob_service.create_container(self.bucket)
         return self.__blob_service
 
