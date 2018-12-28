@@ -128,10 +128,10 @@ class Project(object):
         proj = Project(root_dir)
 
         scm.add([config.config_file])
+
         if scm.ignore_file():
             scm.add([os.path.join(dvc_dir, scm.ignore_file())])
-
-        logger.info('\nYou can now commit the changes to git.')
+            logger.info('\nYou can now commit the changes to git.\n')
 
         proj._welcome_message()
 
