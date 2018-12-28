@@ -144,7 +144,11 @@ def get_gcp_url():
 
 
 def get_azure_url_compat():
-    return 'azure://'
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    assert container_name is not None
+    return 'azure://ContainerName={};{}'.format(container_name,
+                                                connection_string)
 
 
 def get_azure_url():
@@ -165,10 +169,8 @@ class TestDataCloud(TestDvc):
                  ('gs://mybucket/', RemoteGS),
                  ('ssh://user@localhost:/', RemoteSSH),
                  ('http://localhost:8000/', RemoteHTTP),
+                 ('azure://ContainerName=mybucket;conn_string;', RemoteAzure),
                  (TestDvc.mkdtemp(), RemoteLOCAL)]
-
-        if _should_test_azure():
-            clist.append(('azure://ContainerName=', RemoteAzure))
 
         for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
