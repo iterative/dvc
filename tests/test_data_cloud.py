@@ -565,3 +565,29 @@ class TestDataCloudErrorCLI(TestDvc):
         self.main_fail(['push', f])
         self.main_fail(['pull', f])
         self.main_fail(['fetch', f])
+
+class TestWarnOnOutdatedStage(TestDvc):
+    def main(self, args):
+        ret = main(args)
+        self.assertEqual(ret, 0)
+
+    def _should_test(self):
+        return True
+
+    def _test(self):
+        self.dvc.add(self.FOO)
+        stage = self.dvc.run(deps=['foo'], outs=['bar'], cmd='echo bar > bar')
+        stage_file_path = stage.relpath
+        with open(stage_file_path, 'r') as stage_file:
+            stage_file_content = stage_file.read()
+        import re
+
+        # print(re.sub('md5:.*\n.*path: bar','path: bar', stage_file_content))
+        print()
+        print(stage.outs[0])
+        print(stage.outs[0].md5)
+        print(stage_file_content)
+
+    def test(self):
+        if self._should_test():
+            self._test()
