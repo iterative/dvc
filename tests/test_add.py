@@ -1,4 +1,5 @@
 import os
+import yaml
 import time
 import shutil
 import filecmp
@@ -8,6 +9,7 @@ from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.exceptions import DvcException
 from dvc.output.base import OutputAlreadyTrackedError
+from dvc.project import Project
 
 from tests.basic_env import TestDvc
 
@@ -147,6 +149,36 @@ class TestAddExternalLocalFile(TestDvc):
         self.assertEqual(len(os.listdir(dname)), 1)
         self.assertTrue(os.path.isfile(fname))
         self.assertTrue(filecmp.cmp(fname, 'foo', shallow=False))
+
+
+class TestAddLocalRemoteFile(TestDvc):
+    def test(self):
+        """
+        Making sure that 'remote' syntax is handled properly for local outs.
+        """
+        cwd = os.getcwd()
+        remote = 'myremote'
+
+        ret = main(['remote', 'add', remote, cwd])
+        self.assertEqual(ret, 0)
+
+        self.dvc = Project()
+
+        foo = 'remote://{}/{}'.format(remote, self.FOO)
+        ret = main(['add', foo])
+        self.assertEqual(ret, 0)
+
+        with open('foo.dvc', 'r') as fobj:
+            d = yaml.safe_load(fobj)
+            self.assertEqual(d['outs'][0]['path'], foo)
+
+        bar = os.path.join(cwd, self.BAR)
+        ret = main(['add', bar])
+        self.assertEqual(ret, 0)
+
+        with open('bar.dvc', 'r') as fobj:
+            d = yaml.safe_load(fobj)
+            self.assertEqual(d['outs'][0]['path'], bar)
 
 
 class TestCmdAdd(TestDvc):

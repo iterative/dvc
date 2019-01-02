@@ -45,9 +45,8 @@ class DependencyLOCAL(DependencyBase):
 
     @property
     def is_local(self):
-        assert os.path.isabs(self.path)
-        assert os.path.isabs(self.project.root_dir)
-        return self.path.startswith(self.project.root_dir)
+        return (urlparse(self.url).scheme != 'remote'
+                and not os.path.isabs(self.url))
 
     @property
     def sep(self):
@@ -85,7 +84,7 @@ class DependencyLOCAL(DependencyBase):
             path = self.remote.unixpath(os.path.relpath(self.path,
                                                         self.stage.cwd))
         else:
-            path = self.path
+            path = self.url
 
         info = self.info.copy()
         info[self.PARAM_PATH] = path
