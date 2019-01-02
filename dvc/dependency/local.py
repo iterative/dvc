@@ -19,8 +19,7 @@ class DependencyLOCAL(DependencyBase):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyLOCAL, self).__init__(stage, path)
-        self.info = info
+        super(DependencyLOCAL, self).__init__(stage, path, info)
         if remote is not None:
             self.remote = remote
         else:

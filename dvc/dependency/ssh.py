@@ -13,8 +13,7 @@ class DependencySSH(DependencyBase):
     REGEX = RemoteSSH.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencySSH, self).__init__(stage, path)
-        self.info = info
+        super(DependencySSH, self).__init__(stage, path, info=info)
         self.remote = remote if remote else RemoteSSH(stage.project, {})
 
         host = remote.host if remote else self.group('host')
@@ -40,8 +39,3 @@ class DependencySSH(DependencyBase):
 
     def save(self):
         self.info = self.remote.save_info(self.path_info)
-
-    def dumpd(self):
-        ret = self.info
-        ret[self.PARAM_PATH] = self.path
-        return ret

@@ -20,10 +20,11 @@ class DependencyBase(object):
 
     PARAM_PATH = 'path'
 
-    def __init__(self, stage, path):
+    def __init__(self, stage, path, info=None):
         self.stage = stage
         self.project = stage.project
         self.url = path
+        self.info = info
 
     def __repr__(self):
         return "{class_name}: '{url}'".format(
@@ -77,7 +78,9 @@ class DependencyBase(object):
         raise NotImplementedError
 
     def dumpd(self):
-        return {self.PARAM_PATH: self.url}
+        ret = self.info.copy()
+        ret[self.PARAM_PATH] = self.url
+        return ret
 
     def download(self, to_info):
         self.remote.download([self.path_info], [to_info])
