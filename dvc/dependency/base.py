@@ -23,23 +23,23 @@ class DependencyBase(object):
     def __init__(self, stage, path):
         self.stage = stage
         self.project = stage.project
-        self.path = path
+        self.url = path
 
     def __repr__(self):
-        return "{class_name}: '{path}'".format(
+        return "{class_name}: '{url}'".format(
             class_name=type(self).__name__,
-            path=(self.path or 'No path')
+            url=(self.url or 'No url')
         )
 
     def __str__(self):
-        return self.path
+        return self.url
 
     @classmethod
     def match(cls, url):
         return re.match(cls.REGEX, url)
 
     def group(self, name):
-        match = self.match(self.path)
+        match = self.match(self.url)
         if not match:
             return None
         return match.group(name)
@@ -47,6 +47,14 @@ class DependencyBase(object):
     @classmethod
     def supported(cls, url):
         return cls.match(url) is not None
+
+    @property
+    def scheme(self):
+        return self.path_info['scheme']
+
+    @property
+    def path(self):
+        return self.path_info['path']
 
     @property
     def sep(self):
@@ -62,18 +70,14 @@ class DependencyBase(object):
     def status(self):
         if self.changed():
             # FIXME better msgs
-            if self.path_info['scheme'] == 'local':
-                p = self.rel_path
-            else:
-                p = self.path
-            return {p: 'changed'}
+            return {str(self): 'changed'}
         return {}
 
     def save(self):
         raise NotImplementedError
 
     def dumpd(self):
-        return {self.PARAM_PATH: self.path}
+        return {self.PARAM_PATH: self.url}
 
     def download(self, to_info):
         self.remote.download([self.path_info], [to_info])

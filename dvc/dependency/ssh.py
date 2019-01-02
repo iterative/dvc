@@ -24,7 +24,7 @@ class DependencySSH(DependencyBase):
             path = posixpath.join(remote.prefix,
                                   urlparse(path).path.lstrip('/'))
         else:
-            path = self.match(self.path).group('path')
+            path = self.match(self.url).group('path')
 
         self.path_info = {'scheme': 'ssh',
                           'host': host,

@@ -19,8 +19,7 @@ class DependencyLOCAL(DependencyBase):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
     def __init__(self, stage, path, info=None, remote=None):
-        self.stage = stage
-        self.project = stage.project
+        super(DependencyLOCAL, self).__init__(stage, path)
         self.info = info
         if remote is not None:
             self.remote = remote
@@ -28,15 +27,18 @@ class DependencyLOCAL(DependencyBase):
             self.remote = RemoteLOCAL(stage.project, {})
 
         if remote:
-            path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
+            p = os.path.join(remote.prefix,
+                             urlparse(self.url).path.lstrip('/'))
+        else:
+            p = path
 
-        if not os.path.isabs(path):
-            path = self.remote.to_ospath(path)
-            path = os.path.join(stage.cwd, path)
-        self.path = os.path.abspath(os.path.normpath(path))
+        if not os.path.isabs(p):
+            p = self.remote.to_ospath(p)
+            p = os.path.join(stage.cwd, p)
+        p = os.path.abspath(os.path.normpath(p))
 
         self.path_info = {'scheme': 'local',
-                          'path': self.path}
+                          'path': p}
 
     def __str__(self):
         return self.rel_path
