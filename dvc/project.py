@@ -653,7 +653,7 @@ class Project(object):
         info['branch'] = branch
         ret = [info]
 
-        if out.path_info['scheme'] != 'local':
+        if out.scheme != 'local':
             return ret
 
         md5 = info[out.remote.PARAM_CHECKSUM]
@@ -1098,7 +1098,7 @@ class Project(object):
             msg = "unable to find file '{}' in the pipeline".format(path)
             raise DvcException(msg)
 
-        if out.path_info['scheme'] != 'local':
+        if out.scheme != 'local':
             msg = "output '{}' scheme '{}' is not supported for metrics"
             raise DvcException(msg.format(out.path, out.path_info['scheme']))
 
