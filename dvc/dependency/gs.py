@@ -13,8 +13,7 @@ class DependencyGS(DependencyS3):
     REGEX = RemoteGS.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyGS, self).__init__(stage, path)
-        self.info = info
+        super(DependencyGS, self).__init__(stage, path, info=info)
         self.remote = remote if remote else RemoteGS(stage.project, {})
         bucket = remote.bucket if remote else urlparse(path).netloc
         path = urlparse(path).path.lstrip('/')

@@ -127,7 +127,7 @@ class OutputLOCAL(DependencyLOCAL):
             self.project.scm.ignore_remove(self.path)
 
         self.remote.move(self.path_info, out.path_info)
-        self.path = out.path
+        self.url = out.url
         self.path_info = out.path_info
         self.save()
 

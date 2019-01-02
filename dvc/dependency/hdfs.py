@@ -13,8 +13,7 @@ class DependencyHDFS(DependencyBase):
     REGEX = RemoteHDFS.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyHDFS, self).__init__(stage, path)
-        self.info = info
+        super(DependencyHDFS, self).__init__(stage, path, info=info)
         self.remote = remote if remote else RemoteHDFS(stage.project, {})
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip('/'))
@@ -31,8 +30,3 @@ class DependencyHDFS(DependencyBase):
 
     def save(self):
         self.info = self.remote.save_info(self.path_info)
-
-    def dumpd(self):
-        ret = self.info
-        ret[self.PARAM_PATH] = self.path
-        return ret
