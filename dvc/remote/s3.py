@@ -38,7 +38,7 @@ class RemoteS3(RemoteBase):
     PARAM_CHECKSUM = 'etag'
 
     def __init__(self, project, config):
-        self.project = project
+        super(RemoteS3, self).__init__(project, config)
 
         storagepath = 's3://{}'.format(
             config.get(Config.SECTION_AWS_STORAGEPATH, '').lstrip('/')

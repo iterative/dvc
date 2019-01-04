@@ -30,7 +30,7 @@ class RemoteHTTP(RemoteBase):
     PARAM_ETAG = 'etag'
 
     def __init__(self, project, config):
-        self.project = project
+        super(RemoteHTTP, self).__init__(project, config)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
         self.path_info = {'scheme': 'http'}

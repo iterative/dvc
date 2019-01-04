@@ -1,6 +1,7 @@
 import dvc.logger as logger
 from dvc.config import Config, ConfigError
 
+from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
 from dvc.remote.azure import RemoteAzure
@@ -41,13 +42,6 @@ class DataCloud(object):
 
         return None
 
-    @staticmethod
-    def supported(config):
-        for cloud in DataCloud.CLOUD_MAP.values():
-            if cloud.supported(config):
-                return cloud
-        return None
-
     def _init_remote(self, remote):
         section = Config.SECTION_REMOTE_FMT.format(remote)
         cloud_config = self._config.get(section, None)
@@ -55,11 +49,7 @@ class DataCloud(object):
             msg = "can't find remote section '{}' in config"
             raise ConfigError(msg.format(section))
 
-        cloud_type = self.supported(cloud_config)
-        if not cloud_type:
-            raise ConfigError("unsupported cloud '{}'".format(cloud_config))
-
-        return self._init_cloud(cloud_config, cloud_type)
+        return Remote(self.project, cloud_config)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, '').strip().lower()

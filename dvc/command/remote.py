@@ -1,12 +1,37 @@
+import os
 import re
 
 import dvc.logger as logger
 from dvc.config import Config
+from dvc.remote import _get, RemoteLOCAL
 from dvc.command.config import CmdConfig
 
 
 class CmdRemoteAdd(CmdConfig):
+    @staticmethod
+    def resolve_path(path, config_file):
+        """Resolve path relative to config file location.
+
+        Args:
+            path: Path to be resolved.
+            config_file: Path to config file, which `path` is specified
+                relative to.
+
+        Returns:
+            Path relative to the `config_file` location. If `path` is an
+            absolute path then it will be returned without change.
+
+        """
+        if os.path.isabs(path):
+            return path
+        return os.path.relpath(path, os.path.dirname(config_file))
+
     def run(self):
+        remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
+        if remote == RemoteLOCAL:
+            self.args.url = self.resolve_path(self.args.url,
+                                              self.configobj.filename)
+
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
         ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
         if ret != 0:

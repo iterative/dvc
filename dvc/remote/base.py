@@ -36,31 +36,24 @@ class RemoteBaseCmdError(DvcException):
         super(RemoteBaseCmdError, self).__init__(m.format(cmd, ret, err))
 
 
+class RemoteMissingDepsError(DvcException):
+    pass
+
+
 class RemoteBase(object):
+    scheme = None
     REGEX = None
     REQUIRES = {}
     JOBS = 4 * cpu_count()
 
     def __init__(self, project, config):
-        pass
-
-    def __repr__(self):
-        return "{class_name}: '{url}'".format(
-            class_name=type(self).__name__,
-            url=(self.url or 'No url')
-        )
-
-    def compat_config(config):
-        return config.copy()
-
-    @classmethod
-    def supported(cls, config):
-        url = config[Config.SECTION_REMOTE_URL]
-        url_ok = cls.match(url) is not None
-        deps_ok = all(cls.REQUIRES.values())
-        if url_ok and not deps_ok:
-            missing = [k for k, v in cls.REQUIRES.items() if v is None]
-            logger.warning(
+        self.project = project
+        deps_ok = all(self.REQUIRES.values())
+        if not deps_ok:
+            missing = [k for k, v in self.REQUIRES.items() if v is None]
+            url = config.get(Config.SECTION_REMOTE_URL,
+                             '{}://'.format(self.scheme))
+            msg = (
                 "URL '{}' is supported but requires these missing "
                 "dependencies: {}. If you have installed dvc using pip, "
                 "choose one of these options to proceed: \n"
@@ -77,10 +70,23 @@ class RemoteBase(object):
                 "If you have installed dvc from a binary package and you "
                 "are still seeing this message, please report it to us "
                 "using https://github.com/iterative/dvc/issues. Thank you!"
-                .format(url, missing, " ".join(missing), cls.scheme)
+                .format(url, missing, " ".join(missing), self.scheme)
             )
+            raise RemoteMissingDepsError(msg)
 
-        return url_ok and deps_ok
+    def __repr__(self):
+        return "{class_name}: '{url}'".format(
+            class_name=type(self).__name__,
+            url=(self.url or 'No url')
+        )
+
+    def compat_config(config):
+        return config.copy()
+
+    @classmethod
+    def supported(cls, config):
+        url = config[Config.SECTION_REMOTE_URL]
+        return cls.match(url) is not None
 
     @classmethod
     def match(cls, url):

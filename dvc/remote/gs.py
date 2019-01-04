@@ -24,7 +24,7 @@ class RemoteGS(RemoteBase):
     PARAM_CHECKSUM = 'md5'
 
     def __init__(self, project, config):
-        self.project = project
+        super(RemoteGS, self).__init__(project, config)
         storagepath = 'gs://'
         storagepath += config.get(Config.SECTION_AWS_STORAGEPATH, '/')
         storagepath.lstrip('/')

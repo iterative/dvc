@@ -57,7 +57,7 @@ class RemoteSSH(RemoteBase):
     TIMEOUT = 1800
 
     def __init__(self, project, config):
-        self.project = project
+        super(RemoteSSH, self).__init__(project, config)
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
         self.host = self.group('host')
         self.user = self.group('user')
