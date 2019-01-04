@@ -21,6 +21,7 @@ from dvc.command.config import CmdConfig
 from dvc.command.checkout import CmdCheckout
 from dvc.command.remote import CmdRemoteAdd, CmdRemoteRemove
 from dvc.command.remote import CmdRemoteModify, CmdRemoteList, CmdRemoteDefault
+from dvc.command.cache import CmdCacheDir
 from dvc.command.metrics import CmdMetricsShow, CmdMetricsAdd
 from dvc.command.metrics import CmdMetricsRemove, CmdMetricsModify
 from dvc.command.install import CmdInstall
@@ -782,6 +783,46 @@ def parse_args(argv=None):
                         description=REMOTE_LIST_HELP,
                         help=REMOTE_LIST_HELP)
     remote_list_parser.set_defaults(func=CmdRemoteList)
+
+    # Cache
+    CACHE_HELP = 'Manage cache settings.'
+    cache_parser = subparsers.add_parser(
+                        'cache',
+                        parents=[parent_parser],
+                        description=CACHE_HELP,
+                        help=CACHE_HELP)
+
+    cache_subparsers = cache_parser.add_subparsers(
+                        dest='cmd',
+                        help='Use dvc cache CMD --help for '
+                             'command-specific help.')
+
+    _fix_subparsers(cache_subparsers)
+
+    parent_cache_config_parser = argparse.ArgumentParser(
+                        add_help=False,
+                        parents=[parent_config_parser])
+    CACHE_DIR_HELP = 'Configure cache directory location.'
+    cache_dir_parser = cache_subparsers.add_parser(
+                        'dir',
+                        parents=[parent_cache_config_parser],
+                        description=CACHE_DIR_HELP,
+                        help=CACHE_DIR_HELP)
+    cache_dir_parser.add_argument(
+                        '-u',
+                        '--unset',
+                        default=False,
+                        action='store_true',
+                        help='Unset option.')
+    cache_dir_parser.add_argument(
+                        'value',
+                        nargs='?',
+                        default=None,
+                        help='Path to cache directory. Relative paths are '
+                             'resolved relative to the current directory and '
+                             'saved to config relative to the config file '
+                             'location.')
+    cache_dir_parser.set_defaults(func=CmdCacheDir)
 
     # Metrics
     METRICS_HELP = 'Get metrics from all branches.'

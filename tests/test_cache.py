@@ -1,5 +1,6 @@
 import os
 import shutil
+import configobj
 
 from dvc.cache import Cache
 from dvc.main import main
@@ -114,3 +115,24 @@ class TestCacheLinkType(TestDvc):
 
         ret = main(['add', self.FOO])
         self.assertEqual(ret, 0)
+
+
+class TestCmdCacheDir(TestDvc):
+    def test_abs_path(self):
+        dname = os.path.join(os.path.dirname(self._root_dir), 'dir')
+        ret = main(['cache', 'dir', dname])
+        self.assertEqual(ret, 0)
+
+        config = configobj.ConfigObj(self.dvc.config.config_file)
+        self.assertEqual(config['cache']['dir'], dname)
+
+    def test_relative_path(self):
+        dname = os.path.join('..', 'path', 'to', 'dir')
+        ret = main(['cache', 'dir', dname])
+        self.assertEqual(ret, 0)
+
+        # NOTE: we are in the project's root and config is in .dvc/, so
+        # dir path written to config should be just one level above.
+        rel = os.path.join('..', dname)
+        config = configobj.ConfigObj(self.dvc.config.config_file)
+        self.assertEqual(config['cache']['dir'], rel)
