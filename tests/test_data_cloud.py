@@ -601,8 +601,9 @@ class TestWarnOnOutdatedStage(TestDvc):
 
         logger.logger.handlers[0].stream = StringIO()
         self.main(['status', '-c'])
-        self.assertIn('Warning: Local out: bar has no info attached. It will not be validated against remote '
-                      'counterpart.', logger.logger.handlers[0].stream.getvalue())
+        self.assertIn('Warning: Local out: bar has no info attached. It will '
+                      'not be validated against remote counterpart.',
+                      logger.logger.handlers[0].stream.getvalue())
 
     def test(self):
         if self._should_test():
