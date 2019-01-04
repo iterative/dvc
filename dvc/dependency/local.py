@@ -19,33 +19,33 @@ class DependencyLOCAL(DependencyBase):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
     def __init__(self, stage, path, info=None, remote=None):
-        self.stage = stage
-        self.project = stage.project
-        self.info = info
+        super(DependencyLOCAL, self).__init__(stage, path, info)
         if remote is not None:
             self.remote = remote
         else:
             self.remote = RemoteLOCAL(stage.project, {})
 
         if remote:
-            path = os.path.join(remote.prefix, urlparse(path).path.lstrip('/'))
+            p = os.path.join(remote.prefix,
+                             urlparse(self.url).path.lstrip('/'))
+        else:
+            p = path
 
-        if not os.path.isabs(path):
-            path = self.remote.to_ospath(path)
-            path = os.path.join(stage.cwd, path)
-        self.path = os.path.abspath(os.path.normpath(path))
+        if not os.path.isabs(p):
+            p = self.remote.to_ospath(p)
+            p = os.path.join(stage.cwd, p)
+        p = os.path.abspath(os.path.normpath(p))
 
         self.path_info = {'scheme': 'local',
-                          'path': self.path}
+                          'path': p}
 
     def __str__(self):
         return self.rel_path
 
     @property
     def is_local(self):
-        assert os.path.isabs(self.path)
-        assert os.path.isabs(self.project.root_dir)
-        return self.path.startswith(self.project.root_dir)
+        return (urlparse(self.url).scheme != 'remote'
+                and not os.path.isabs(self.url))
 
     @property
     def sep(self):
@@ -83,7 +83,7 @@ class DependencyLOCAL(DependencyBase):
             path = self.remote.unixpath(os.path.relpath(self.path,
                                                         self.stage.cwd))
         else:
-            path = self.path
+            path = self.url
 
         info = self.info.copy()
         info[self.PARAM_PATH] = path

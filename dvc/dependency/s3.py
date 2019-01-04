@@ -13,8 +13,7 @@ class DependencyS3(DependencyBase):
     REGEX = RemoteS3.REGEX
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyS3, self).__init__(stage, path)
-        self.info = info
+        super(DependencyS3, self).__init__(stage, path, info=info)
         self.remote = remote or RemoteS3(stage.project, {})
 
         bucket = remote.bucket if remote else urlparse(path).netloc
@@ -33,8 +32,3 @@ class DependencyS3(DependencyBase):
 
     def save(self):
         self.info = self.remote.save_info(self.path_info)
-
-    def dumpd(self):
-        ret = self.info
-        ret[self.PARAM_PATH] = self.path
-        return ret

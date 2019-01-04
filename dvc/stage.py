@@ -224,7 +224,7 @@ class Stage(object):
 
     def unprotect_outs(self):
         for out in self.outs:
-            if out.path_info['scheme'] != 'local' or not out.exists:
+            if out.scheme != 'local' or not out.exists:
                 continue
             self.project.unprotect(out.path)
 
@@ -292,7 +292,7 @@ class Stage(object):
             return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
 
         out = outs[0]
-        if out.path_info['scheme'] == 'local':
+        if out.scheme == 'local':
             path = os.path
         else:
             path = posixpath
@@ -583,7 +583,7 @@ class Stage(object):
 
     def check_missing_outputs(self):
         outs = [out for out in self.outs if not out.exists]
-        paths = [out.path if out.path_info['scheme'] != 'local' else
+        paths = [out.path if out.scheme != 'local' else
                  out.rel_path for out in outs]
         if paths:
             raise MissingDataSource(paths)
