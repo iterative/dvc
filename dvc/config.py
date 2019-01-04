@@ -253,19 +253,39 @@ class Config(object):
 
         self._config = None
 
+    def _load_config(self, path):
+        config = configobj.ConfigObj(path)
+        config = self._lower(config)
+        self._resolve_paths(config, path)
+        return config
+
+    def _resolve_paths(self, config, fname):
+        cache = config.get(self.SECTION_CACHE)
+        if cache is None:
+            return
+
+        cache_dir = cache.get(self.SECTION_CACHE_DIR)
+        if cache_dir is None:
+            return
+
+        if os.path.isabs(cache_dir):
+            return
+
+        config_dir = os.path.dirname(fname)
+        cache_dir = os.path.abspath(os.path.join(config_dir, cache_dir))
+        cache[self.SECTION_CACHE_DIR] = cache_dir
+
     def load(self, validate=True):
         self._load()
         try:
-            self._config = configobj.ConfigObj(self.system_config_file)
-            user = configobj.ConfigObj(self.global_config_file)
-            config = configobj.ConfigObj(self.config_file)
-            local = configobj.ConfigObj(self.config_local_file)
+            self._config = self._load_config(self.system_config_file)
+            user = self._load_config(self.global_config_file)
+            config = self._load_config(self.config_file)
+            local = self._load_config(self.config_local_file)
 
             # NOTE: schema doesn't support ConfigObj.Section validation, so we
             # need to convert our config to dict before passing it to
-            self._config = self._lower(self._config)
             for c in [user, config, local]:
-                c = self._lower(c)
                 self._config = self._merge(self._config, c)
 
             if validate:
@@ -275,6 +295,7 @@ class Config(object):
             self._config = configobj.ConfigObj(self._config,
                                                write_empty_values=True)
             self._config.filename = self.config_file
+            self._resolve_paths(self._config, self.config_file)
         except Exception as ex:
             raise ConfigError(ex)
 

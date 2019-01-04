@@ -127,7 +127,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(config['cache']['dir'], dname)
 
     def test_relative_path(self):
-        dname = os.path.join('..', 'path', 'to', 'dir')
+        tmpdir = self.mkdtemp()
+        dname = os.path.relpath(tmpdir)
         ret = main(['cache', 'dir', dname])
         self.assertEqual(ret, 0)
 
@@ -136,3 +137,11 @@ class TestCmdCacheDir(TestDvc):
         rel = os.path.join('..', dname)
         config = configobj.ConfigObj(self.dvc.config.config_file)
         self.assertEqual(config['cache']['dir'], rel)
+
+        ret = main(['add', self.FOO])
+        self.assertEqual(ret, 0)
+
+        subdirs = os.listdir(tmpdir)
+        self.assertEqual(len(subdirs), 1)
+        files = os.listdir(os.path.join(tmpdir, subdirs[0]))
+        self.assertEqual(len(files), 1)
