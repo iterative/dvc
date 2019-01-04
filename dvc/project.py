@@ -647,6 +647,9 @@ class Project(object):
                             force=False,
                             jobs=None):
         if not out.use_cache or not out.info:
+            if not out.info:
+                logger.warning("Local out: {} has no info attached. It will not be validated against remote "
+                               "counterpart.".format(out))
             return []
 
         info = out.dumpd()
