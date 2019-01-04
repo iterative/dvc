@@ -17,11 +17,6 @@ class ConfigError(DvcException):
                                           ex)
 
 
-def supported_url(url):
-    from dvc.remote import supported_url as supported
-    return supported(url)
-
-
 def supported_cache_type(types):
     if isinstance(types, str):
         types = [t.strip() for t in types.split(',')]
@@ -59,6 +54,10 @@ class Config(object):
     APPNAME = 'dvc'
     APPAUTHOR = 'iterative'
 
+    # NOTE: used internally in RemoteLOCAL to know config
+    # location, that url should resolved relative to.
+    PRIVATE_CWD = '_cwd'
+
     CONFIG = 'config'
     CONFIG_LOCAL = 'config.local'
 
@@ -90,10 +89,12 @@ class Config(object):
         Optional(SECTION_CACHE_SSH): str,
         Optional(SECTION_CACHE_AZURE): str,
 
-        Optional(SECTION_CACHE_DIR, default='cache'): str,
+        Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED,
                  default=False): And(str, is_bool, Use(to_bool)),
+
+        Optional(PRIVATE_CWD): str,
     }
 
     # backward compatibility
@@ -162,7 +163,7 @@ class Config(object):
     SECTION_REMOTE_PASSWORD = 'password'
     SECTION_REMOTE_ASK_PASSWORD = 'ask_password'
     SECTION_REMOTE_SCHEMA = {
-        SECTION_REMOTE_URL: And(supported_url, error="Unsupported URL"),
+        SECTION_REMOTE_URL: str,
         Optional(SECTION_AWS_REGION): str,
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
@@ -180,6 +181,8 @@ class Config(object):
         Optional(SECTION_REMOTE_PASSWORD): str,
         Optional(SECTION_REMOTE_ASK_PASSWORD): And(str, is_bool, Use(to_bool)),
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
+
+        Optional(PRIVATE_CWD): str,
     }
 
     SECTION_STATE = 'state'
@@ -259,7 +262,13 @@ class Config(object):
         self._resolve_paths(config, path)
         return config
 
-    def _resolve_paths(self, config, fname):
+    @staticmethod
+    def _resolve_path(path, config_file):
+        assert os.path.isabs(config_file)
+        config_dir = os.path.dirname(config_file)
+        return os.path.abspath(os.path.join(config_dir, path))
+
+    def _resolve_cache_path(self, config, fname):
         cache = config.get(self.SECTION_CACHE)
         if cache is None:
             return
@@ -268,12 +277,15 @@ class Config(object):
         if cache_dir is None:
             return
 
-        if os.path.isabs(cache_dir):
-            return
+        cache[self.PRIVATE_CWD] = os.path.dirname(fname)
 
-        config_dir = os.path.dirname(fname)
-        cache_dir = os.path.abspath(os.path.join(config_dir, cache_dir))
-        cache[self.SECTION_CACHE_DIR] = cache_dir
+    def _resolve_paths(self, config, fname):
+        self._resolve_cache_path(config, fname)
+        for name, section in config.items():
+            if self.SECTION_REMOTE_URL not in section.keys():
+                continue
+
+            section[self.PRIVATE_CWD] = os.path.dirname(fname)
 
     def load(self, validate=True):
         self._load()

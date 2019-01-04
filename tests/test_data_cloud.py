@@ -8,7 +8,7 @@ import getpass
 import platform
 
 from dvc.main import main
-from dvc.config import Config, ConfigError
+from dvc.config import Config
 from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
                             RemoteLOCAL, RemoteSSH, RemoteHDFS, RemoteHTTP)
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
@@ -176,17 +176,6 @@ class TestDataCloud(TestDvc):
             remote_url = scheme + str(uuid.uuid4())
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
             self._test_cloud(config, cl)
-
-    def test_unsupported(self):
-        remote_url = 'notsupportedscheme://a/b'
-        config = TEST_CONFIG
-        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
-
-        # NOTE: making sure that error doesn't raise too early
-        cloud = DataCloud(self.dvc, config=config)
-
-        with self.assertRaises(ConfigError):
-            cloud._cloud
 
 
 class TestDataCloudBase(TestDvc):

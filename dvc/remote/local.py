@@ -20,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 class RemoteLOCAL(RemoteBase):
     scheme = ''
-    REGEX = r'^(?P<path>(/+|.:\\+).*)$'
+    REGEX = r'^(?P<path>.*)$'
     PARAM_CHECKSUM = 'md5'
     PARAM_PATH = 'path'
     PARAM_RELPATH = 'relpath'
@@ -35,11 +35,15 @@ class RemoteLOCAL(RemoteBase):
     }
 
     def __init__(self, project, config):
-        self.project = project
-        self.state = self.project.state
+        super(RemoteLOCAL, self).__init__(project, config)
+        self.state = self.project.state if self.project else None
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
+
+        if self.cache_dir is not None and not os.path.isabs(self.cache_dir):
+            cwd = config[Config.PRIVATE_CWD]
+            self.cache_dir = os.path.abspath(os.path.join(cwd, self.cache_dir))
 
         types = config.get(Config.SECTION_CACHE_TYPE, None)
         if types:

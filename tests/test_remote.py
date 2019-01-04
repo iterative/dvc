@@ -3,8 +3,6 @@ import configobj
 
 from dvc.main import main
 from dvc.command.remote import CmdRemoteAdd
-from dvc.exceptions import UnsupportedRemoteError
-from dvc.remote import Remote
 from dvc.config import Config
 
 from tests.basic_env import TestDvc
@@ -45,9 +43,16 @@ class TestRemote(TestDvc):
         ret = cmd.run()
         self.assertNotEqual(ret, 0)
 
-    def test_unsupported(self):
-        with self.assertRaises(UnsupportedRemoteError):
-            Remote(self.dvc, {Config.SECTION_REMOTE_URL: 'unsupported://url'})
+    def test_relative_path(self):
+        dname = os.path.join('..', 'path', 'to', 'dir')
+        ret = main(['remote', 'add', 'mylocal', dname])
+        self.assertEqual(ret, 0)
+
+        # NOTE: we are in the project's root and config is in .dvc/, so
+        # dir path written to config should be just one level above.
+        rel = os.path.join('..', dname)
+        config = configobj.ConfigObj(self.dvc.config.config_file)
+        self.assertEqual(config['remote "mylocal"']['url'], rel)
 
 
 class TestRemoteRemoveDefault(TestDvc):

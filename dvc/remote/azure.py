@@ -38,9 +38,8 @@ class RemoteAzure(RemoteBase):
 
     def __init__(self, project, config):
         super(RemoteAzure, self).__init__(project, config)
-        self.project = project
 
-        self.url = config.get(Config.SECTION_REMOTE_URL)
+        self.url = config.get(Config.SECTION_REMOTE_URL, 'azure://')
         match = re.match(self.REGEX, self.url)  # backward compatibility
 
         path = match.group('path')
@@ -49,7 +48,7 @@ class RemoteAzure(RemoteBase):
             or match.group('container_name')  # backward compatibility
             or os.getenv('AZURE_STORAGE_CONTAINER_NAME'))
 
-        self.prefix = urlparse(self.url).path.lstrip('/')
+        self.prefix = urlparse(self.url).path.lstrip('/') if path else ''
 
         self.connection_string = (
             config.get(Config.SECTION_AZURE_CONNECTION_STRING)

@@ -24,6 +24,8 @@ class Cache(object):
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
 
             sect = {
+                Config.PRIVATE_CWD: config.get(Config.PRIVATE_CWD,
+                                               project.dvc_dir),
                 Config.SECTION_REMOTE_URL: cache_dir,
                 Config.SECTION_CACHE_TYPE: cache_type,
                 Config.SECTION_CACHE_PROTECTED: protected

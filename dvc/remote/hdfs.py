@@ -20,7 +20,7 @@ class RemoteHDFS(RemoteBase):
     PARAM_CHECKSUM = 'checksum'
 
     def __init__(self, project, config):
-        self.project = project
+        super(RemoteHDFS, self).__init__(project, config)
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
         self.prefix = self.url
         self.user = self.group('user')

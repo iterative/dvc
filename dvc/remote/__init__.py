@@ -6,28 +6,24 @@ from dvc.remote.s3 import RemoteS3
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.http import RemoteHTTP
 
-from dvc.config import Config
-from dvc.exceptions import UnsupportedRemoteError
-
 
 REMOTES = [
     RemoteAzure,
     RemoteGS,
     RemoteHDFS,
     RemoteHTTP,
-    RemoteLOCAL,
     RemoteS3,
     RemoteSSH,
+    # NOTE: RemoteLOCAL is the default
 ]
 
 
-def supported_url(url):
-    config = {Config.SECTION_REMOTE_URL: url}
-    return any(remote.supported(config) for remote in REMOTES)
+def _get(config):
+    for remote in REMOTES:
+        if remote.supported(config):
+            return remote
+    return RemoteLOCAL
 
 
 def Remote(project, config):
-    for remote in REMOTES:
-        if remote.supported(config):
-            return remote(project, config)
-    raise UnsupportedRemoteError(str(config))
+    return _get(config)(project, config)
