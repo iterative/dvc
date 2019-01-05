@@ -581,9 +581,6 @@ class TestWarnOnOutdatedStage(TestDvc):
         ret = main(args)
         self.assertEqual(ret, 0)
 
-    def _should_test(self):
-        return True
-
     def _test(self):
         url = get_local_url()
         self.main(['remote', 'add', '-d', TEST_REMOTE, url])
@@ -601,12 +598,13 @@ class TestWarnOnOutdatedStage(TestDvc):
 
         logger.logger.handlers[0].stream = StringIO()
         self.main(['status', '-c'])
-        self.assertIn('Warning: Local out: bar has no info attached. It will '
-                      'not be validated against remote counterpart.',
+        self.assertIn('Warning: Output \'bar\'(Stage: \'bar.dvc\') is '
+                      'missing version info. Cache for it will not be '
+                      'collected. Use dvc repro to get your pipeline up to '
+                      'date.',
                       logger.logger.handlers[0].stream.getvalue())
 
     def test(self):
-        if self._should_test():
-            self.color_patch.start()
-            self._test()
-            self.color_patch.stop()
+        self.color_patch.start()
+        self._test()
+        self.color_patch.stop()
