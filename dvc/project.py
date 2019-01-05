@@ -647,6 +647,11 @@ class Project(object):
                             force=False,
                             jobs=None):
         if not out.use_cache or not out.info:
+            if not out.info:
+                logger.warning("Output '{}'({}) is missing version "
+                               "info. Cache for it will not be collected. "
+                               "Use dvc repro to get your pipeline up to "
+                               "date.".format(out, out.stage))
             return []
 
         info = out.dumpd()

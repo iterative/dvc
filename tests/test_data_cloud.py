@@ -6,7 +6,10 @@ import uuid
 import shutil
 import getpass
 import platform
+import yaml
+from mock import patch
 
+import dvc.logger as logger
 from dvc.main import main
 from dvc.config import Config
 from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
@@ -15,6 +18,10 @@ from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 
 from tests.basic_env import TestDvc
 
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 TEST_REMOTE = 'upstream'
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
@@ -286,7 +293,7 @@ class TestDataCloudBase(TestDvc):
 
 class TestRemoteS3(TestDataCloudBase):
     def _should_test(self):
-            return _should_test_aws()
+        return _should_test_aws()
 
     def _get_url(self):
         return get_aws_url()
@@ -554,3 +561,39 @@ class TestDataCloudErrorCLI(TestDvc):
         self.main_fail(['push', f])
         self.main_fail(['pull', f])
         self.main_fail(['fetch', f])
+
+
+class TestWarnOnOutdatedStage(TestDvc):
+    color_patch = patch.object(logger, 'colorize', new=lambda x, color='': x)
+
+    def main(self, args):
+        ret = main(args)
+        self.assertEqual(ret, 0)
+
+    def _test(self):
+        url = get_local_url()
+        self.main(['remote', 'add', '-d', TEST_REMOTE, url])
+
+        self.dvc.add(self.FOO)
+        stage = self.dvc.run(deps=['foo'], outs=['bar'], cmd='echo bar > bar')
+        self.main(['push'])
+
+        stage_file_path = stage.relpath
+        with open(stage_file_path, 'r') as stage_file:
+            content = yaml.safe_load(stage_file)
+        del (content['outs'][0]['md5'])
+        with open(stage_file_path, 'w') as stage_file:
+            yaml.dump(content, stage_file)
+
+        logger.logger.handlers[0].stream = StringIO()
+        self.main(['status', '-c'])
+        self.assertIn('Warning: Output \'bar\'(Stage: \'bar.dvc\') is '
+                      'missing version info. Cache for it will not be '
+                      'collected. Use dvc repro to get your pipeline up to '
+                      'date.',
+                      logger.logger.handlers[0].stream.getvalue())
+
+    def test(self):
+        self.color_patch.start()
+        self._test()
+        self.color_patch.stop()
