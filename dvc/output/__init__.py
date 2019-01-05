@@ -1,9 +1,9 @@
 import schema
 
 from dvc.config import Config
+from dvc.utils import urlparse
 
-from dvc.dependency import SCHEMA, urlparse
-from dvc.dependency.base import DependencyBase
+from dvc.output.base import OutputBase
 from dvc.output.s3 import OutputS3
 from dvc.output.gs import OutputGS
 from dvc.output.local import OutputLOCAL
@@ -11,7 +11,9 @@ from dvc.output.hdfs import OutputHDFS
 from dvc.output.ssh import OutputSSH
 
 from dvc.remote import Remote
-
+from dvc.remote.s3 import RemoteS3
+from dvc.remote.hdfs import RemoteHDFS
+from dvc.remote.local import RemoteLOCAL
 
 OUTS = [
     OutputHDFS,
@@ -25,10 +27,17 @@ OUTS_MAP = {'hdfs': OutputHDFS,
             's3': OutputS3,
             'gs': OutputGS,
             'ssh': OutputSSH,
-            '': OutputLOCAL}
+            'local': OutputLOCAL}
 
-SCHEMA[schema.Optional(OutputLOCAL.PARAM_CACHE)] = bool
-SCHEMA[schema.Optional(OutputLOCAL.PARAM_METRIC)] = OutputLOCAL.METRIC_SCHEMA
+# We are skipping RemoteHTTP.PARAM_CHECKSUM because is the same as RemoteS3
+SCHEMA = {
+        OutputBase.PARAM_PATH: str,
+        schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
+        schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
+        schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
+        schema.Optional(OutputBase.PARAM_CACHE): bool,
+        schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
+}
 
 
 def _get(stage, p, info, cache, metric):
@@ -53,9 +62,9 @@ def _get(stage, p, info, cache, metric):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d.pop(DependencyBase.PARAM_PATH)
-        cache = d.pop(OutputLOCAL.PARAM_CACHE, True)
-        metric = d.pop(OutputLOCAL.PARAM_METRIC, False)
+        p = d.pop(OutputBase.PARAM_PATH)
+        cache = d.pop(OutputBase.PARAM_CACHE, True)
+        metric = d.pop(OutputBase.PARAM_METRIC, False)
         ret.append(_get(stage, p, info=d, cache=cache, metric=metric))
     return ret
 

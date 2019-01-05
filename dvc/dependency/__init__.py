@@ -1,13 +1,10 @@
 import schema
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 from dvc.config import Config
+from dvc.utils import urlparse
 
-from dvc.dependency.base import DependencyBase
+import dvc.output as output
+from dvc.output.base import OutputBase
 from dvc.dependency.s3 import DependencyS3
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.local import DependencyLOCAL
@@ -16,9 +13,6 @@ from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
 
 from dvc.remote import Remote
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.hdfs import RemoteHDFS
 
 DEPS = [
     DependencyGS,
@@ -30,7 +24,7 @@ DEPS = [
 ]
 
 DEP_MAP = {
-    '': DependencyLOCAL,
+    'local': DependencyLOCAL,
     'ssh': DependencySSH,
     's3': DependencyS3,
     'gs': DependencyGS,
@@ -39,13 +33,9 @@ DEP_MAP = {
     'https': DependencyHTTP,
 }
 
-# We are skipping RemoteHTTP.PARAM_CHECKSUM because is the same as RemoteS3
-SCHEMA = {
-    DependencyBase.PARAM_PATH: str,
-    schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
-}
+SCHEMA = output.SCHEMA.copy()
+del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
+del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
 
 
 def _get(stage, p, info):
@@ -65,7 +55,7 @@ def _get(stage, p, info):
 def loadd_from(stage, d_list):
     ret = []
     for d in d_list:
-        p = d.pop(DependencyBase.PARAM_PATH)
+        p = d.pop(OutputBase.PARAM_PATH)
         ret.append(_get(stage, p, d))
     return ret
 

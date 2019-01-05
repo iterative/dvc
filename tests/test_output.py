@@ -12,14 +12,14 @@ class TestOutScheme(TestDvc):
         'gs://bucket/path': 'gs',
         'ssh://example.com:/dir/path': 'ssh',
         'hdfs://example.com/dir/path': 'hdfs',
-        'path/to/file': '',
-        'path\\to\\file': '',
-        'file': '',
-        './file': '',
-        '.\\file': '',
-        '../file': '',
-        '..\\file': '',
-        'unknown://path': '',
+        'path/to/file': 'local',
+        'path\\to\\file': 'local',
+        'file': 'local',
+        './file': 'local',
+        '.\\file': 'local',
+        '../file': 'local',
+        '..\\file': 'local',
+        'unknown://path': 'local',
     }
 
     def _get(self, path):

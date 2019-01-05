@@ -1,26 +1,15 @@
 import os
-from schema import Optional, Or
 
 import dvc.logger as logger
-from dvc.output.base import OutputDoesNotExistError, OutputIsNotFileOrDirError
-from dvc.output.base import OutputAlreadyTrackedError
-from dvc.dependency.local import DependencyLOCAL
-from dvc.exceptions import DvcException
+from dvc.utils import urlparse
 from dvc.istextfile import istextfile
+from dvc.exceptions import DvcException
+from dvc.remote.local import RemoteLOCAL
+from dvc.output.base import OutputBase, OutputAlreadyTrackedError
 
 
-class OutputLOCAL(DependencyLOCAL):
-    PARAM_CACHE = 'cache'
-    PARAM_METRIC = 'metric'
-    PARAM_METRIC_TYPE = 'type'
-    PARAM_METRIC_XPATH = 'xpath'
-
-    METRIC_SCHEMA = Or(None, bool,
-                       {Optional(PARAM_METRIC_TYPE): Or(str, None),
-                        Optional(PARAM_METRIC_XPATH): Or(str, None)})
-
-    DoesNotExistError = OutputDoesNotExistError
-    IsNotFileOrDirError = OutputIsNotFileOrDirError
+class OutputLOCAL(OutputBase):
+    REMOTE = RemoteLOCAL
 
     def __init__(self,
                  stage,
@@ -29,9 +18,41 @@ class OutputLOCAL(DependencyLOCAL):
                  remote=None,
                  cache=True,
                  metric=False):
-        super(OutputLOCAL, self).__init__(stage, path, info, remote=remote)
-        self.use_cache = cache
-        self.metric = metric
+        super(OutputLOCAL, self).__init__(stage,
+                                          path,
+                                          info,
+                                          remote=remote,
+                                          cache=cache,
+                                          metric=metric)
+        if remote:
+            p = os.path.join(remote.prefix,
+                             urlparse(self.url).path.lstrip('/'))
+        else:
+            p = path
+
+        if not os.path.isabs(p):
+            p = self.remote.to_ospath(p)
+            p = os.path.join(stage.cwd, p)
+        p = os.path.abspath(os.path.normpath(p))
+
+        self.path_info = {'scheme': 'local',
+                          'path': p}
+
+    def __str__(self):
+        return self.rel_path
+
+    @property
+    def is_local(self):
+        return (urlparse(self.url).scheme != 'remote'
+                and not os.path.isabs(self.url))
+
+    @property
+    def sep(self):
+        return os.sep
+
+    @property
+    def rel_path(self):
+        return os.path.relpath(self.path)
 
     @property
     def md5(self):
@@ -43,31 +64,15 @@ class OutputLOCAL(DependencyLOCAL):
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
-        ret[self.PARAM_CACHE] = self.use_cache
+        if self.is_local:
+            path = self.remote.unixpath(os.path.relpath(self.path,
+                                                        self.stage.cwd))
+        else:
+            path = self.url
 
-        if isinstance(self.metric, dict):
-            if self.PARAM_METRIC_XPATH in self.metric and \
-               not self.metric[self.PARAM_METRIC_XPATH]:
-                del self.metric[self.PARAM_METRIC_XPATH]
-
-        if self.metric:
-            ret[self.PARAM_METRIC] = self.metric
+        ret[self.PARAM_PATH] = path
 
         return ret
-
-    def changed(self):
-        if not self.use_cache:
-            return super(OutputLOCAL, self).changed()
-
-        return self.project.cache.local.changed(self.path_info, self.info)
-
-    def checkout(self, force=False):
-        if not self.use_cache:
-            return
-
-        self.project.cache.local.checkout(self.path_info,
-                                          self.info,
-                                          force=force)
 
     def _verify_metric(self):
         if not self.metric:
@@ -85,13 +90,6 @@ class OutputLOCAL(DependencyLOCAL):
             raise DvcException(msg.format(self.rel_path))
 
     def save(self):
-        if not self.use_cache:
-            super(OutputLOCAL, self).save()
-            self._verify_metric()
-            msg = "Output '{}' doesn't use cache. Skipping saving."
-            logger.info(msg.format(self.rel_path))
-            return
-
         if not os.path.exists(self.path):
             raise self.DoesNotExistError(self.rel_path)
 
@@ -102,6 +100,16 @@ class OutputLOCAL(DependencyLOCAL):
            (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
             msg = "file/directory '{}' is empty.".format(self.rel_path)
             logger.warning(msg)
+
+        if not self.use_cache:
+            self.info = self.remote.save_info(self.path_info)
+            self._verify_metric()
+            if not self.IS_DEPENDENCY:
+                msg = "Output '{}' doesn't use cache. Skipping saving."
+                logger.info(msg.format(self.rel_path))
+            return
+
+        assert not self.IS_DEPENDENCY
 
         if not self.changed():
             msg = "Output '{}' didn't change. Skipping saving."
@@ -116,20 +124,3 @@ class OutputLOCAL(DependencyLOCAL):
                 self.project.scm.ignore(self.path)
 
         self.info = self.project.cache.local.save(self.path_info)
-
-    def remove(self, ignore_remove=False):
-        self.remote.remove(self.path_info)
-        if ignore_remove and self.use_cache and self.is_local:
-            self.project.scm.ignore_remove(self.path)
-
-    def move(self, out):
-        if self.use_cache and self.is_local:
-            self.project.scm.ignore_remove(self.path)
-
-        self.remote.move(self.path_info, out.path_info)
-        self.url = out.url
-        self.path_info = out.path_info
-        self.save()
-
-        if self.use_cache and self.is_local:
-            self.project.scm.ignore(self.path)

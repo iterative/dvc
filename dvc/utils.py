@@ -9,6 +9,11 @@ import json
 import shutil
 import hashlib
 
+try:
+    from urlparse import urlparse, urljoin  # noqa: F401
+except ImportError:
+    from urllib.parse import urlparse, urljoin  # noqa: F401
+
 import dvc.logger as logger
 from dvc.progress import progress
 from dvc.istextfile import istextfile

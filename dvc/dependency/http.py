@@ -1,20 +1,17 @@
-try:
-    from urlparse import urlparse, urljoin
-except ImportError:
-    from urllib.parse import urlparse, urljoin
-
-from dvc.dependency.base import DependencyBase
+from dvc.utils import urlparse, urljoin
+from dvc.output.base import OutputBase
 from dvc.remote.http import RemoteHTTP
+from dvc.dependency.base import DependencyBase
 
 
-class DependencyHTTP(DependencyBase):
-    REGEX = RemoteHTTP.REGEX
+class DependencyHTTP(DependencyBase, OutputBase):
+    REMOTE = RemoteHTTP
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyHTTP, self).__init__(stage, path, info=info)
-
-        self.remote = remote or RemoteHTTP(stage.project, {})
-
+        super(DependencyHTTP, self).__init__(stage,
+                                             path,
+                                             info=info,
+                                             remote=remote)
         if path.startswith('remote'):
             path = urljoin(self.remote.cache_dir, urlparse(path).path)
 
@@ -22,12 +19,3 @@ class DependencyHTTP(DependencyBase):
             'scheme': urlparse(path).scheme,
             'path': path,
         }
-
-    def save(self):
-        self.info = self.remote.save_info(self.path_info)
-
-    def changed(self):
-        if not self.exists:
-            return True
-
-        return self.info != self.remote.save_info(self.path_info)
