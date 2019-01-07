@@ -6,11 +6,6 @@ import getpass
 import posixpath
 from subprocess import Popen, PIPE
 
-try:
-    from urlparse import urljoin
-except ImportError:
-    from urllib.parse import urljoin
-
 import boto3
 import uuid
 from google.cloud import storage as gc
@@ -18,6 +13,7 @@ from google.cloud import storage as gc
 from dvc.main import main
 from dvc.project import Project, ReproductionError
 from dvc.utils import file_md5
+from dvc.utils.compat import urljoin
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System

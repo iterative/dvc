@@ -1,7 +1,7 @@
 import schema
 
 from dvc.config import Config
-from dvc.utils import urlparse
+from dvc.utils.compat import urlparse
 
 from dvc.output.base import OutputBase
 from dvc.output.s3 import OutputS3

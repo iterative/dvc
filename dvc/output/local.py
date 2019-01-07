@@ -1,7 +1,7 @@
 import os
 
 import dvc.logger as logger
-from dvc.utils import urlparse
+from dvc.utils.compat import urlparse
 from dvc.istextfile import istextfile
 from dvc.exceptions import DvcException
 from dvc.remote.local import RemoteLOCAL

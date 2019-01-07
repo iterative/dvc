@@ -8,7 +8,7 @@ except ImportError:
     BlockBlobService = None
 
 import dvc.logger as logger
-from dvc.utils import urlparse
+from dvc.utils.compat import urlparse
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase

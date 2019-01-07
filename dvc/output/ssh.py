@@ -1,6 +1,6 @@
 import posixpath
 
-from dvc.utils import urlparse
+from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
 from dvc.remote.ssh import RemoteSSH
 

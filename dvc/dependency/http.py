@@ -1,4 +1,4 @@
-from dvc.utils import urlparse, urljoin
+from dvc.utils.compat import urlparse, urljoin
 from dvc.output.base import OutputBase
 from dvc.remote.http import RemoteHTTP
 from dvc.dependency.base import DependencyBase

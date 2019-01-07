@@ -1,7 +1,7 @@
 import posixpath
 
-from dvc.utils import urlparse
 from dvc.remote.s3 import RemoteS3
+from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
 
 

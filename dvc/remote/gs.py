@@ -6,7 +6,7 @@ except ImportError:
     storage = None
 
 import dvc.logger as logger
-from dvc.utils import urlparse
+from dvc.utils.compat import urlparse
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
 from dvc.progress import progress
