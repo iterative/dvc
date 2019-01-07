@@ -1,11 +1,7 @@
 import os
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 import dvc.logger as logger
+from dvc.utils.compat import urlparse
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 

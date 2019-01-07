@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 class RemoteLOCAL(RemoteBase):
-    scheme = ''
+    scheme = 'local'
     REGEX = r'^(?P<path>.*)$'
     PARAM_CHECKSUM = 'md5'
     PARAM_PATH = 'path'

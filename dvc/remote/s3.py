@@ -6,12 +6,8 @@ try:
 except ImportError:
     boto3 = None
 
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-
 import dvc.logger as logger
+from dvc.utils.compat import urlparse
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
