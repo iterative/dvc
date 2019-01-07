@@ -60,10 +60,9 @@ class RemoteSSH(RemoteBase):
         super(RemoteSSH, self).__init__(project, config)
         self.url = config.get(Config.SECTION_REMOTE_URL, '/')
         self.host = self.group('host')
-        self.user = self.group('user')
-        if not self.user:
-            self.user = config.get(Config.SECTION_REMOTE_USER,
-                                   getpass.getuser())
+        self.user = (config.get(Config.SECTION_REMOTE_USER)
+                     or self.group('user')
+                     or getpass.getuser())
         self.prefix = self.group('path')
         self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
