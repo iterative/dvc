@@ -29,12 +29,21 @@ OUTS_MAP = {'hdfs': OutputHDFS,
             'ssh': OutputSSH,
             'local': OutputLOCAL}
 
-# We are skipping RemoteHTTP.PARAM_CHECKSUM because is the same as RemoteS3
 SCHEMA = {
         OutputBase.PARAM_PATH: str,
+
+        # NOTE: currently there are only 3 possible checksum names:
+        #
+        #    1) md5 (LOCAL, SSH, GS);
+        #    2) etag (S3);
+        #    3) checksum (HDFS);
+        #
+        # so when a few types of outputs share the same name, we only need
+        # specify it once.
         schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
         schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
         schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
+
         schema.Optional(OutputBase.PARAM_CACHE): bool,
         schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
 }

@@ -33,6 +33,11 @@ DEP_MAP = {
     'https': DependencyHTTP,
 }
 
+
+# NOTE: schema for dependencies is basically the same as for outputs, but
+# without output-specific entries like 'cache' (whether or not output is
+# cached, see -o and -O flags for `dvc run`) and 'metric' (whether or not
+# output is a metric file and how to parse it, see `-M` flag for `dvc run`).
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
 del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
