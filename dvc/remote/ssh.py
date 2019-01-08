@@ -9,10 +9,12 @@ except ImportError:
 
 import dvc.prompt as prompt
 import dvc.logger as logger
-from dvc.progress import progress
-from dvc.remote.base import RemoteBase, RemoteBaseCmdError
+
 from dvc.config import Config
+from dvc.progress import progress
+from dvc.utils.compat import urlparse
 from dvc.exceptions import DvcException
+from dvc.remote.base import RemoteBase, RemoteBaseCmdError
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -44,8 +46,9 @@ class RemoteSSHCmdError(RemoteBaseCmdError):
 class RemoteSSH(RemoteBase):
     scheme = 'ssh'
 
-    # NOTE: temporarily only absolute paths are allowed
-    REGEX = r'^ssh://((?P<user>.*)@)?(?P<host>[^/]*):(?P<path>/.*)$'
+    # NOTE: we support both URL-like (ssh://[user@]host.xz[:port]/path) and
+    # SCP-like (ssh://[user@]host.xz:path) urls.
+    REGEX = r'^ssh://.*$'
 
     REQUIRES = {'paramiko': paramiko}
 
@@ -58,14 +61,17 @@ class RemoteSSH(RemoteBase):
 
     def __init__(self, project, config):
         super(RemoteSSH, self).__init__(project, config)
-        self.url = config.get(Config.SECTION_REMOTE_URL, '/')
-        self.host = self.group('host')
-        self.user = self.group('user')
-        if not self.user:
-            self.user = config.get(Config.SECTION_REMOTE_USER,
-                                   getpass.getuser())
-        self.prefix = self.group('path')
-        self.port = config.get(Config.SECTION_REMOTE_PORT, self.DEFAULT_PORT)
+        self.url = config.get(Config.SECTION_REMOTE_URL, 'ssh://')
+
+        parsed = urlparse(self.url)
+        self.host = parsed.hostname
+        self.user = (config.get(Config.SECTION_REMOTE_USER)
+                     or parsed.username
+                     or getpass.getuser())
+        self.prefix = parsed.path
+        self.port = (config.get(Config.SECTION_REMOTE_PORT)
+                     or parsed.port
+                     or self.DEFAULT_PORT)
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
         self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
         self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
