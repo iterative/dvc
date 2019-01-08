@@ -15,6 +15,7 @@ from dvc.config import Config
 from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
                             RemoteLOCAL, RemoteSSH, RemoteHDFS, RemoteHTTP)
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
+from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc
 
@@ -597,3 +598,89 @@ class TestWarnOnOutdatedStage(TestDvc):
         self.color_patch.start()
         self._test()
         self.color_patch.stop()
+
+
+class TestRecursiveSyncOperations(TestDataCloudBase):
+    def main(self, args):
+        ret = main(args)
+        self.assertEqual(ret, 0)
+
+    def _get_url(self):
+        self.dname = get_local_url()
+        return self.dname
+
+    def _should_test(self):
+        return True
+
+    def _get_cloud_class(self):
+        return RemoteLOCAL
+
+    def _prepare_repo(self):
+        self.main(['remote',
+                   'add',
+                   '-d',
+                   TEST_REMOTE,
+                   self.cloud._cloud.cache_dir])
+        self.create(self.DATA, self.DATA_CONTENTS)
+        self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
+
+        self.dvc.add(self.DATA)
+        self.dvc.add(self.DATA_SUB_CONTENTS)
+
+    def _remove_local_data_files(self):
+        os.remove(self.DATA)
+        os.remove(self.DATA_SUB)
+
+    def _test_recursive_pull(self):
+        self._remove_local_data_files()
+        self._clear_local_cache()
+
+        self.assertFalse(os.path.exists(self.DATA))
+        self.assertFalse(os.path.exists(self.DATA_SUB))
+
+        self.main(['pull', '-R', self.DATA_DIR])
+
+        self.assertTrue(os.path.exists(self.DATA))
+        self.assertTrue(os.path.exists(self.DATA_SUB))
+
+    def _clear_local_cache(self):
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
+
+    def _test_recursive_fetch(self, data_md5, data_sub_md5):
+        self._clear_local_cache()
+
+        local_cache_data_path = self.dvc.cache.local.get(data_md5)
+        local_cache_data_sub_path = self.dvc.cache.local.get(data_sub_md5)
+
+        self.assertFalse(os.path.exists(local_cache_data_path))
+        self.assertFalse(os.path.exists(local_cache_data_sub_path))
+
+        self.main(['fetch', '-R', self.DATA_DIR])
+
+        self.assertTrue(os.path.exists(local_cache_data_path))
+        self.assertTrue(os.path.exists(local_cache_data_sub_path))
+
+    def _test_recursive_push(self, data_md5, data_sub_md5):
+        cloud_data_path = self.cloud._cloud.get(data_md5)
+        cloud_data_sub_path = self.cloud._cloud.get(data_sub_md5)
+
+        self.assertFalse(os.path.exists(cloud_data_path))
+        self.assertFalse(os.path.exists(cloud_data_sub_path))
+
+        self.main(['push', '-R', self.DATA_DIR])
+
+        self.assertTrue(os.path.exists(cloud_data_path))
+        self.assertTrue(os.path.exists(cloud_data_sub_path))
+
+    def test(self):
+        self._setup_cloud()
+        self._prepare_repo()
+
+        data_md5 = file_md5(self.DATA)[0]
+        data_sub_md5 = file_md5(self.DATA_SUB)[0]
+
+        self._test_recursive_push(data_md5, data_sub_md5)
+
+        self._test_recursive_fetch(data_md5, data_sub_md5)
+
+        self._test_recursive_pull()

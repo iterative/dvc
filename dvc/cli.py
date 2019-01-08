@@ -355,6 +355,11 @@ def parse_args(argv=None):
                         default=False,
                         help='Do not prompt when removing '
                              'working directory files.')
+    pull_parser.add_argument(
+                        '-R',
+                        '--recursive',
+                        help='Pull cache for subdirectories of the specified '
+                             'directory.')
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
@@ -387,6 +392,11 @@ def parse_args(argv=None):
                         default=False,
                         help='Push cache for all dependencies of the '
                              'specified target.')
+    push_parser.add_argument(
+                        '-R',
+                        '--recursive',
+                        help='Push cache from subdirectories of specified '
+                             'directory.')
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
@@ -419,6 +429,11 @@ def parse_args(argv=None):
                         default=False,
                         help='Fetch cache for all dependencies of the '
                              'specified target.')
+    fetch_parser.add_argument(
+                        '-R',
+                        '--recursive',
+                        help='Fetch cache for subdirectories of specified '
+                             'directory.')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
