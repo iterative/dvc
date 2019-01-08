@@ -714,7 +714,8 @@ def parse_args(argv=None):
                         help='Name.')
     remote_add_parser.add_argument(
                         'url',
-                        help='URL.')
+                        help='URL. See full list of supported urls at '
+                             'https://dvc.org/doc/commands-reference/remote')
     remote_add_parser.add_argument(
                         '-d',
                         '--default',

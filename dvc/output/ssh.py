@@ -1,3 +1,4 @@
+import getpass
 import posixpath
 
 from dvc.utils.compat import urlparse
@@ -21,15 +22,18 @@ class OutputSSH(OutputBase):
                                         remote=remote,
                                         cache=cache,
                                         metric=metric)
-        host = remote.host if remote else self.group('host')
-        port = remote.port if remote else RemoteSSH.DEFAULT_PORT
-        user = remote.user if remote else self.group('user')
+        parsed = urlparse(path)
+        host = remote.host if remote else parsed.hostname
+        port = remote.port if remote else (parsed.port
+                                           or RemoteSSH.DEFAULT_PORT)
+        user = remote.user if remote else (parsed.username
+                                           or getpass.getuser())
 
         if remote:
             path = posixpath.join(remote.prefix,
                                   urlparse(path).path.lstrip('/'))
         else:
-            path = self.match(self.url).group('path')
+            path = parsed.path
 
         self.path_info = {'scheme': 'ssh',
                           'host': host,
