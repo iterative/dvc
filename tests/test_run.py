@@ -7,6 +7,7 @@ import subprocess
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.system import System
+from dvc.stage import Stage
 from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
 from dvc.exceptions import (OutputDuplicationError,
@@ -173,33 +174,30 @@ class TestCmdRun(TestDvc):
                     '-o', 'out',
                     '-f', 'out.dvc',
                     'python', self.CODE, self.FOO, 'out'])
+
+        stage = Stage.load(self.dvc, fname='out.dvc')
+
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile('out'))
         self.assertTrue(os.path.isfile('out.dvc'))
         self.assertTrue(filecmp.cmp(self.FOO, 'out', shallow=False))
+        self.assertEqual(stage.cmd, 'python code.py foo out')
+
+    def test_run_args_from_cli(self):
+        ret = main(['run', 'echo', 'foo'])
+        stage = Stage.load(self.dvc, fname='Dvcfile')
+        self.assertEqual(ret, 0)
+        self.assertEqual(stage.cmd, 'echo foo')
 
     def test_run_bad_command(self):
-        ret = main(['run',
-                    'non-existing-command'])
+        ret = main(['run', 'non-existing-command'])
         self.assertNotEqual(ret, 0)
 
     def test_run_args_with_spaces(self):
-        with open(self.CODE, 'w') as fobj:
-            fobj.write(
-                "import sys\nopen(sys.argv[1], 'w+').write(sys.argv[2])")
-
-        arg = 'arg1 arg2'
-        log = 'log'
-        ret = main(['run',
-                    'python',
-                    self.CODE,
-                    log,
-                    'arg1 arg2'])
-
+        ret = main(['run', 'echo', 'foo bar'])
+        stage = Stage.load(self.dvc, fname='Dvcfile')
         self.assertEqual(ret, 0)
-
-        with open(log, 'r') as fobj:
-            self.assertEqual(fobj.read(), arg)
+        self.assertEqual(stage.cmd, 'echo "foo bar"')
 
     @mock.patch.object(subprocess, 'Popen', side_effect=KeyboardInterrupt)
     def test_keyboard_interrupt(self, mock_popen):
