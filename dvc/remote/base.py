@@ -108,7 +108,47 @@ class RemoteBase(object):
         raise NotImplementedError
 
     def changed(self, path_info, checksum_info):
-        raise NotImplementedError
+        """Checks if data has changed.
+
+        A file is considered changed if:
+            - It doesn't exist on the working directory (was unlinked)
+            - Checksum is not computed (saving a new file)
+            - The checkusm stored in the State is different from the given one
+            - There's no file in the cache
+
+        Args:
+            path_info: dict with path information.
+            checksum: expected checksum for this data.
+
+        Returns:
+            bool: True if data has changed, False otherwise.
+        """
+
+        logger.debug("checking if '{}'('{}') has changed."
+                     .format(path_info, checksum_info))
+
+        if not self.exists(path_info):
+            logger.debug("'{}' doesn't exist.".format(path_info))
+            return True
+
+        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        if checksum is None:
+            logger.debug("checksum for '{}' is missing.".format(path_info))
+            return True
+
+        if self.changed_cache(checksum):
+            logger.debug("cache for '{}'('{}') has changed."
+                         .format(path_info, checksum))
+            return True
+
+        actual = self.save_info(path_info)[self.PARAM_CHECKSUM]
+        if checksum != actual:
+            logger.debug("checksum '{}'(actual '{}') for '{}' has changed."
+                         .format(checksum, actual, path_info))
+            return True
+
+        logger.debug("'{}' hasn't changed.".format(path_info))
+        return False
 
     def save(self, path_info):
         raise NotImplementedError

@@ -63,19 +63,6 @@ class RemoteGS(RemoteBase):
         return {self.PARAM_CHECKSUM: self.get_md5(path_info['bucket'],
                                                   path_info['path'])}
 
-    def changed(self, path_info, checksum_info):
-        if not self.exists(path_info):
-            return True
-
-        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if md5 is None:
-            return True
-
-        if self.changed_cache(md5):
-            return True
-
-        return checksum_info != self.save_info(path_info)
-
     def copy(self, from_info, to_info, gs=None):
         gs = gs if gs else self.gs
 
