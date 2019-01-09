@@ -429,26 +429,6 @@ class RemoteLOCAL(RemoteBase):
 
         return {self.PARAM_CHECKSUM: self.state.update(path_info['path'])}
 
-    def changed(self, path_info, checksum_info):
-        """
-        A file is considered changed if:
-            - It doesn't exist on the working directory (was unlinked)
-            - Checksum is not computed (saving a new file)
-            - The checkusm stored in the State is different from the given one
-            - There's no file in the cache
-        """
-        if not self.exists(path_info):
-            return True
-
-        md5 = checksum_info.get(self.PARAM_CHECKSUM, None)
-        if md5 is None:
-            return True
-
-        if self.changed_cache(md5):
-            return True
-
-        return checksum_info != self.save_info(path_info)
-
     def remove(self, path_info):
         if path_info['scheme'] != 'local':
             raise NotImplementedError
