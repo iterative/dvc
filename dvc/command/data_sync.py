@@ -27,7 +27,8 @@ class CmdDataPull(CmdDataBase):
                               all_branches=self.args.all_branches,
                               all_tags=self.args.all_tags,
                               with_deps=self.args.with_deps,
-                              force=self.args.force)
+                              force=self.args.force,
+                              from_directory=self.args.recursive)
         except Exception:
             logger.error('failed to pull data from the cloud')
             return 1
@@ -43,7 +44,8 @@ class CmdDataPush(CmdDataBase):
                               show_checksums=self.args.show_checksums,
                               all_branches=self.args.all_branches,
                               all_tags=self.args.all_tags,
-                              with_deps=self.args.with_deps)
+                              with_deps=self.args.with_deps,
+                              from_directory=self.args.recursive)
         except Exception:
             logger.error('failed to push data to the cloud')
             return 1
@@ -59,7 +61,8 @@ class CmdDataFetch(CmdDataBase):
                                show_checksums=self.args.show_checksums,
                                all_branches=self.args.all_branches,
                                all_tags=self.args.all_tags,
-                               with_deps=self.args.with_deps)
+                               with_deps=self.args.with_deps,
+                               from_directory=self.args.recursive)
         except Exception:
             logger.error('failed to fetch data from the cloud')
             return 1

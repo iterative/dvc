@@ -554,8 +554,12 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None, with_deps=False, force=False):
-        all_stages = self.active_stages()
+    def checkout(self,
+                 target=None,
+                 with_deps=False,
+                 force=False,
+                 from_directory=None):
+        all_stages = self.active_stages(from_directory)
         stages = all_stages
 
         if target:
@@ -680,7 +684,8 @@ class Project(object):
                     all_tags=False,
                     remote=None,
                     force=False,
-                    jobs=None):
+                    jobs=None,
+                    from_directory=None):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
@@ -695,9 +700,9 @@ class Project(object):
                 stages = self._collect(target,
                                        with_deps=with_deps)
             elif active:
-                stages = self.active_stages()
+                stages = self.active_stages(from_directory)
             else:
-                stages = self.stages()
+                stages = self.stages(from_directory)
 
             for stage in stages:
                 if active and not target and stage.locked:
@@ -820,7 +825,8 @@ class Project(object):
              all_branches=False,
              show_checksums=False,
              with_deps=False,
-             all_tags=False):
+             all_tags=False,
+             from_directory=None):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
@@ -828,7 +834,8 @@ class Project(object):
                                     with_deps=with_deps,
                                     force=True,
                                     remote=remote,
-                                    jobs=jobs)['local']
+                                    jobs=jobs,
+                                    from_directory=from_directory)['local']
             self.cloud.push(used,
                             jobs,
                             remote=remote,
@@ -841,7 +848,8 @@ class Project(object):
               all_branches=False,
               show_checksums=False,
               with_deps=False,
-              all_tags=False):
+              all_tags=False,
+              from_directory=None):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
@@ -849,7 +857,8 @@ class Project(object):
                                     with_deps=with_deps,
                                     force=True,
                                     remote=remote,
-                                    jobs=jobs)['local']
+                                    jobs=jobs,
+                                    from_directory=from_directory)['local']
             self.cloud.pull(used,
                             jobs,
                             remote=remote,
@@ -863,15 +872,20 @@ class Project(object):
              show_checksums=False,
              with_deps=False,
              all_tags=False,
-             force=False):
+             force=False,
+             from_directory=None):
         self.fetch(target,
                    jobs,
                    remote=remote,
                    all_branches=all_branches,
                    all_tags=all_tags,
                    show_checksums=show_checksums,
-                   with_deps=with_deps)
-        self.checkout(target=target, with_deps=with_deps, force=force)
+                   with_deps=with_deps,
+                   from_directory=from_directory)
+        self.checkout(target=target,
+                      with_deps=with_deps,
+                      force=force,
+                      from_directory=from_directory)
 
     def _local_status(self, target=None, with_deps=False):
         status = {}
@@ -1139,13 +1153,13 @@ class Project(object):
     def metrics_remove(self, path):
         self._metrics_modify(path, delete=True)
 
-    def graph(self):
+    def graph(self, from_directory=None):
         import networkx as nx
         from dvc.exceptions import OutputDuplicationError
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
-        stages = self.stages()
+        stages = self.stages(from_directory)
 
         outs = []
         outs_by_path = {}
@@ -1182,17 +1196,17 @@ class Project(object):
 
         return G, G_active
 
-    def pipelines(self):
+    def pipelines(self, from_directory=None):
         import networkx as nx
 
-        G, G_active = self.graph()
+        G, G_active = self.graph(from_directory)
 
         return [
             G.subgraph(c).copy()
             for c in nx.weakly_connected_components(G)
         ]
 
-    def stages(self):
+    def stages(self, from_directory=None):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -1203,9 +1217,12 @@ class Project(object):
         """
         from dvc.stage import Stage
 
+        if not from_directory:
+            from_directory = self.root_dir
+
         stages = []
         outs = []
-        for root, dirs, files in os.walk(self.root_dir):
+        for root, dirs, files in os.walk(from_directory):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_stage_file(path):
@@ -1228,11 +1245,11 @@ class Project(object):
 
         return stages
 
-    def active_stages(self):
+    def active_stages(self, from_directory=None):
         import networkx as nx
 
         stages = []
-        for G in self.pipelines():
+        for G in self.pipelines(from_directory):
             stages.extend(list(nx.get_node_attributes(G, 'stage').values()))
         return stages
 
