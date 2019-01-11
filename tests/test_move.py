@@ -57,3 +57,22 @@ class TestMoveNotDataSource(TestRepro):
 
         ret = main(['move', self.file1, 'dst'])
         self.assertNotEqual(ret, 0)
+
+
+class TestMoveFileWithExtension(TestDvc):
+    def test(self):
+        with open(os.path.join(self.dvc.root_dir, 'file.csv'), 'w') as fd:
+            fd.write('1,2,3\n')
+
+        self.dvc.add('file.csv')
+
+        self.assertTrue(os.path.exists('file.csv'))
+        self.assertTrue(os.path.exists('file.csv.dvc'))
+
+        ret = main(['move', 'file.csv', 'other_name.csv'])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists('file.csv'))
+        self.assertFalse(os.path.exists('file.csv.dvc'))
+        self.assertTrue(os.path.exists('other_name.csv'))
+        self.assertTrue(os.path.exists('other_name.csv.dvc'))
