@@ -64,10 +64,10 @@ class Updater(object):  # pragma: no cover
             self._notify()
 
     def fetch(self, detach=True):
-        from dvc.daemon import Daemon
+        from dvc.daemon import daemon
 
         if detach:
-            Daemon()(['updater'])
+            daemon(['updater'])
             return
 
         self._with_lock(self._get_latest_version, 'fetching')

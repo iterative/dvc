@@ -13,3 +13,17 @@ class CmdUnprotect(CmdBase):
                 logger.error(msg)
                 return 1
         return 0
+
+
+def add_parser(subparsers, parent_parser):
+    UNPROTECT_HELP = 'Unprotect data file/directory.'
+    unprotect_parser = subparsers.add_parser(
+        'unprotect',
+        parents=[parent_parser],
+        description=UNPROTECT_HELP,
+        help=UNPROTECT_HELP)
+    unprotect_parser.add_argument(
+        'targets',
+        nargs='+',
+        help='Data files/directory.')
+    unprotect_parser.set_defaults(func=CmdUnprotect)

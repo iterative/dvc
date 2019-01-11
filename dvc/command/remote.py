@@ -2,6 +2,7 @@ import os
 import re
 
 import dvc.logger as logger
+from dvc.command.base import fix_subparsers
 from dvc.config import Config
 from dvc.remote import _get, RemoteLOCAL
 from dvc.command.config import CmdConfig
@@ -104,3 +105,103 @@ class CmdRemoteList(CmdConfig):
                                                   '')
                 logger.info('{}\t{}'.format(name, url))
         return 0
+
+
+def add_parser(subparsers, parent_parser):
+    from dvc.command.config import parent_config_parser
+
+    REMOTE_HELP = 'Manage set of tracked repositories.'
+    remote_parser = subparsers.add_parser(
+        'remote',
+        parents=[parent_parser],
+        description=REMOTE_HELP,
+        help=REMOTE_HELP)
+
+    remote_subparsers = remote_parser.add_subparsers(
+        dest='cmd',
+        help='Use dvc remote CMD --help for '
+        'command-specific help.')
+
+    fix_subparsers(remote_subparsers)
+
+    REMOTE_ADD_HELP = 'Add remote.'
+    remote_add_parser = remote_subparsers.add_parser(
+        'add',
+        parents=[parent_config_parser, parent_parser],
+        description=REMOTE_ADD_HELP,
+        help=REMOTE_ADD_HELP)
+    remote_add_parser.add_argument(
+        'name',
+        help='Name.')
+    remote_add_parser.add_argument(
+        'url',
+        help='URL. See full list of supported urls at '
+        'https://dvc.org/doc/commands-reference/remote')
+    remote_add_parser.add_argument(
+        '-d',
+        '--default',
+        action='store_true',
+        default=False,
+        help='Set as default remote.')
+    remote_add_parser.set_defaults(func=CmdRemoteAdd)
+
+    REMOTE_DEFAULT_HELP = 'Set/unset default remote.'
+    remote_default_parser = remote_subparsers.add_parser(
+        'default',
+        parents=[parent_config_parser, parent_parser],
+        description=REMOTE_DEFAULT_HELP,
+        help=REMOTE_DEFAULT_HELP)
+    remote_default_parser.add_argument(
+        'name',
+        nargs='?',
+        help='Name of the remote.')
+    remote_default_parser.add_argument(
+        '-u',
+        '--unset',
+        action='store_true',
+        default=False,
+        help='Unset default remote.')
+    remote_default_parser.set_defaults(func=CmdRemoteDefault)
+
+    REMOTE_REMOVE_HELP = 'Remove remote.'
+    remote_remove_parser = remote_subparsers.add_parser(
+        'remove',
+        parents=[parent_config_parser, parent_parser],
+        description=REMOTE_REMOVE_HELP,
+        help=REMOTE_REMOVE_HELP)
+    remote_remove_parser.add_argument(
+        'name',
+        help='Name')
+    remote_remove_parser.set_defaults(func=CmdRemoteRemove)
+
+    REMOTE_MODIFY_HELP = 'Modify remote.'
+    remote_modify_parser = remote_subparsers.add_parser(
+        'modify',
+        parents=[parent_config_parser, parent_parser],
+        description=REMOTE_MODIFY_HELP,
+        help=REMOTE_MODIFY_HELP)
+    remote_modify_parser.add_argument(
+        'name',
+        help='Name.')
+    remote_modify_parser.add_argument(
+        'option',
+        help='Option.')
+    remote_modify_parser.add_argument(
+        'value',
+        nargs='?',
+        help='Value.')
+    remote_modify_parser.add_argument(
+        '-u',
+        '--unset',
+        default=False,
+        action='store_true',
+        help='Unset option.')
+    remote_modify_parser.set_defaults(func=CmdRemoteModify)
+
+    REMOTE_LIST_HELP = 'List remotes.'
+    remote_list_parser = remote_subparsers.add_parser(
+        'list',
+        parents=[parent_config_parser, parent_parser],
+        description=REMOTE_LIST_HELP,
+        help=REMOTE_LIST_HELP)
+    remote_list_parser.set_defaults(func=CmdRemoteList)

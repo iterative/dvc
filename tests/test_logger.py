@@ -20,7 +20,7 @@ class TestLogger(TestCase):
     def setUp(self):
         logger.logger.handlers[0].stream = StringIO()
         logger.logger.handlers[1].stream = StringIO()
-        logger._set_default_level()
+        logger.set_default_level()
         self.color_patch.start()
 
     def tearDown(self):
@@ -178,10 +178,10 @@ class TestLogger(TestCase):
             verbose = False
 
         args = A()
-        CmdBase._set_loglevel(args)
+        CmdBase.set_loglevel(args)
         self.assertEqual(logger.logger.getEffectiveLevel(), logging.CRITICAL)
 
         args.quiet = False
         args.verbose = True
-        CmdBase._set_loglevel(args)
+        CmdBase.set_loglevel(args)
         self.assertEqual(logger.logger.getEffectiveLevel(), logging.DEBUG)

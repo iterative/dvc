@@ -1,3 +1,5 @@
+"""Main entry point for dvc CLI."""
+
 import dvc.logger as logger
 from dvc.cli import parse_args
 from dvc.command.base import CmdBase
@@ -6,6 +8,14 @@ from dvc.exceptions import NotDvcProjectError, DvcParserError
 
 
 def main(argv=None):
+    """Run dvc CLI command.
+
+    Args:
+        argv: optional list of arguments to parse. sys.argv is used by default.
+
+    Returns:
+        int: command's return code.
+    """
     args = None
     cmd = None
     try:
@@ -13,7 +23,7 @@ def main(argv=None):
 
         # Init loglevel early in case we'll run
         # into errors before setting it properly
-        CmdBase._set_loglevel(args)
+        CmdBase.set_loglevel(args)
 
         cmd = args.func(args)
 
@@ -26,7 +36,7 @@ def main(argv=None):
         ret = 253
     except DvcParserError:
         ret = 254
-    except Exception:
+    except Exception:  # pylint: disable=broad-except
         logger.error('unexpected error')
         ret = 255
 

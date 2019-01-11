@@ -39,3 +39,54 @@ class CmdGC(CmdBase):
                         jobs=self.args.jobs,
                         projects=self.args.projects)
         return 0
+
+
+def add_parser(subparsers, parent_parser):
+    GC_HELP = 'Collect garbage.'
+    gc_parser = subparsers.add_parser(
+        'gc',
+        parents=[parent_parser],
+        description=GC_HELP,
+        help=GC_HELP)
+    gc_parser.add_argument(
+        '-a',
+        '--all-branches',
+        action='store_true',
+        default=False,
+        help='Collect garbage for all branches.')
+    gc_parser.add_argument(
+        '-T',
+        '--all-tags',
+        action='store_true',
+        default=False,
+        help='Collect garbage for all tags.')
+    gc_parser.add_argument(
+        '-c',
+        '--cloud',
+        action='store_true',
+        default=False,
+        help='Collect garbage in remote repository.')
+    gc_parser.add_argument(
+        '-r',
+        '--remote',
+        help='Remote repository to collect garbage in.')
+    gc_parser.add_argument(
+        '-f',
+        '--force',
+        action='store_true',
+        default=False,
+        help='Force garbage collection.')
+    gc_parser.add_argument(
+        '-j',
+        '--jobs',
+        type=int,
+        default=None,
+        help='Number of jobs to run simultaneously.')
+    gc_parser.add_argument(
+        '-p',
+        '--projects',
+        type=str,
+        nargs='*',
+        default=None,
+        help='Collect garbage for all given projects.')
+    gc_parser.set_defaults(func=CmdGC)

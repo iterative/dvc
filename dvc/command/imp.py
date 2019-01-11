@@ -22,3 +22,29 @@ class CmdImport(CmdBase):
                          .format(self.args.url))
             return 1
         return 0
+
+
+def add_parser(subparsers, parent_parser):
+    IMPORT_HELP = 'Import files from URL.'
+    import_parser = subparsers.add_parser(
+        'import',
+        parents=[parent_parser],
+        description=IMPORT_HELP,
+        help=IMPORT_HELP)
+    import_parser.add_argument(
+        'url',
+        help="URL. Supported urls: "
+        "'/path/to/file', "
+        "'C:\\\\path\\to\\file', "
+        "'https://example.com/path/to/file', "
+        "'s3://bucket/path/to/file', "
+        "'gs://bucket/path/to/file', "
+        "'hdfs://example.com/path/to/file', "
+        "'ssh://example.com:/path/to/file', "
+        "'remote://myremote/path/to/file'(see "
+        "`dvc remote` commands). ")
+    import_parser.add_argument(
+        'out',
+        nargs='?',
+        help='Output.')
+    import_parser.set_defaults(func=CmdImport)

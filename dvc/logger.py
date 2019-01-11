@@ -1,17 +1,22 @@
+"""Manages logger for dvc project."""
+
+import re
 import sys
 import logging
-import colorama
 import traceback
-import re
 
 from contextlib import contextmanager
 
+import colorama
+
 
 def info(message):
+    """Prints an info message."""
     logger.info(message)
 
 
 def debug(message):
+    """Prints a debug message."""
     prefix = colorize('Debug', color='blue')
 
     out = '{prefix}: {message}'.format(prefix=prefix, message=message)
@@ -20,6 +25,7 @@ def debug(message):
 
 
 def warning(message):
+    """Prints a warning message."""
     prefix = colorize('Warning', color='yellow')
 
     out = '{prefix}: {message}'.format(prefix=prefix, message=message)
@@ -28,6 +34,7 @@ def warning(message):
 
 
 def error(message=None):
+    """Prints an error message."""
     prefix = colorize('Error', color='red')
 
     exception, stack_trace = _parse_exc()
@@ -49,6 +56,12 @@ def error(message=None):
 
 
 def box(message, border_color=None):
+    """Prints a message in a box.
+
+    Args:
+        message (str): message to print.
+        border_color (str): name of a color to outline the box with.
+    """
     lines = message.split('\n')
     max_width = max(_visual_width(line) for line in lines)
 
@@ -84,20 +97,27 @@ def box(message, border_color=None):
         ) for line in lines
     ]
 
-    box = "{margin}{padding}{content}{padding}{margin}".format(
-            margin=colorize(margin, color=border_color),
-            padding=''.join(padding_lines),
-            content=''.join(content_lines),
-        )
+    box_str = "{margin}{padding}{content}{padding}{margin}".format(
+        margin=colorize(margin, color=border_color),
+        padding=''.join(padding_lines),
+        content=''.join(content_lines),
+    )
 
-    logger.info(box)
+    logger.info(box_str)
 
 
 def level():
+    """Returns current log level."""
     return logger.getEffectiveLevel()
 
 
 def set_level(level_name):
+    """Sets log level.
+
+    Args:
+        level_name (str): log level name. E.g. info, debug, warning, error,
+            critical.
+    """
     if not level_name:
         return
 
@@ -113,15 +133,18 @@ def set_level(level_name):
 
 
 def be_quiet():
+    """Disables all messages except critical ones."""
     logger.setLevel(logging.CRITICAL)
 
 
 def be_verbose():
+    """Enables all messages."""
     logger.setLevel(logging.DEBUG)
 
 
 @contextmanager
 def verbose():
+    """Enables verbose mode for the context."""
     previous_level = level()
     be_verbose()
     yield
@@ -130,6 +153,7 @@ def verbose():
 
 @contextmanager
 def quiet():
+    """Enables quiet mode for the context."""
     previous_level = level()
     be_quiet()
     yield
@@ -137,14 +161,19 @@ def quiet():
 
 
 def is_quiet():
+    """Returns whether or not all messages except critical ones are
+    disabled.
+    """
     return level() == logging.CRITICAL
 
 
 def is_verbose():
+    """Returns whether or not all messages are enabled."""
     return level() == logging.DEBUG
 
 
 def colorize(message, color=None):
+    """Returns a message in a specified color."""
     if not color:
         return message
 
@@ -166,21 +195,23 @@ def _init_colorama():
     colorama.init()
 
 
-def _set_default_level():
+def set_default_level():
+    """Sets default log level."""
     logger.setLevel(logging.INFO)
 
 
 def _add_handlers():
     formatter = '%(message)s'
 
-    class LogLevelFilter(logging.Filter):
+    class _LogLevelFilter(logging.Filter):
+        # pylint: disable=too-few-public-methods
         def filter(self, record):
             return record.levelno <= logging.WARNING
 
     sh_out = logging.StreamHandler(sys.stdout)
     sh_out.setFormatter(logging.Formatter(formatter))
     sh_out.setLevel(logging.DEBUG)
-    sh_out.addFilter(LogLevelFilter())
+    sh_out.addFilter(_LogLevelFilter())
 
     sh_err = logging.StreamHandler(sys.stderr)
     sh_err.setFormatter(logging.Formatter(formatter))
@@ -258,8 +289,8 @@ def _visual_center(line, width):
     return (left_padding * ' ') + line + (right_padding * ' ')
 
 
-logger = logging.getLogger('dvc')
+logger = logging.getLogger('dvc')  # pylint: disable=invalid-name
 
-_set_default_level()
+set_default_level()
 _add_handlers()
 _init_colorama()

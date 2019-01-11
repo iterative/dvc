@@ -1,6 +1,6 @@
 import dvc.logger as logger
-from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
+from dvc.command.base import CmdBase, fix_subparsers
 
 
 class CmdMetricsShow(CmdBase):
@@ -75,3 +75,115 @@ class CmdMetricsRemove(CmdBase):
             return 1
 
         return 0
+
+
+def add_parser(subparsers, parent_parser):
+    METRICS_HELP = 'Get metrics from all branches.'
+    metrics_parser = subparsers.add_parser(
+        'metrics',
+        parents=[parent_parser],
+        description=METRICS_HELP,
+        help=METRICS_HELP)
+
+    metrics_subparsers = metrics_parser.add_subparsers(
+        dest='cmd',
+        help="Use dvc metrics CMD --help for command-specific help.")
+
+    fix_subparsers(metrics_subparsers)
+
+    METRICS_SHOW_HELP = 'Show metrics.'
+    metrics_show_parser = metrics_subparsers.add_parser(
+        'show',
+        parents=[parent_parser],
+        description=METRICS_SHOW_HELP,
+        help=METRICS_SHOW_HELP)
+    metrics_show_parser.add_argument(
+        'path',
+        nargs='?',
+        help='Path to metrics file.')
+    metrics_show_parser.add_argument(
+        '-t',
+        '--type',
+        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
+    metrics_show_parser.add_argument(
+        '-x',
+        '--xpath',
+        help='JSON/TSV/HTSV/CSV/HCSV path.')
+    metrics_show_group = metrics_show_parser.add_mutually_exclusive_group()
+    metrics_show_group.add_argument(
+        '--json-path',
+        help='JSON path.')
+    metrics_show_group.add_argument(
+        '--tsv-path',
+        help="TSV path 'row,column' (e.g. '1,2').")
+    metrics_show_group.add_argument(
+        '--htsv-path',
+        help="Headed TSV path 'row,column (e.g. 'Name,3').")
+    metrics_show_group.add_argument(
+        '--csv-path',
+        help="CSV path 'row,column' (e.g. '1,2').")
+    metrics_show_group.add_argument(
+        '--hcsv-path',
+        help="Headed CSV path 'row,column' (e.g. 'Name,3').")
+    metrics_show_parser.add_argument(
+        '-a',
+        '--all-branches',
+        action='store_true',
+        default=False,
+        help='Show metrics for all branches.')
+    metrics_show_parser.add_argument(
+        '-T',
+        '--all-tags',
+        action='store_true',
+        default=False,
+        help='Show metrics for all tags.')
+    metrics_show_parser.set_defaults(func=CmdMetricsShow)
+
+    METRICS_ADD_HELP = 'Add metrics.'
+    metrics_add_parser = metrics_subparsers.add_parser(
+        'add',
+        parents=[parent_parser],
+        description=METRICS_ADD_HELP,
+        help=METRICS_ADD_HELP)
+    metrics_add_parser.add_argument(
+        '-t',
+        '--type',
+        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
+    metrics_add_parser.add_argument(
+        '-x',
+        '--xpath',
+        help='JSON/TSV/HTSV/CSV/HCSV path.')
+    metrics_add_parser.add_argument(
+        'path',
+        help='Path to metrics file.')
+    metrics_add_parser.set_defaults(func=CmdMetricsAdd)
+
+    METRICS_MODIFY_HELP = 'Modify metrics.'
+    metrics_modify_parser = metrics_subparsers.add_parser(
+        'modify',
+        parents=[parent_parser],
+        description=METRICS_MODIFY_HELP,
+        help=METRICS_MODIFY_HELP)
+    metrics_modify_parser.add_argument(
+        '-t',
+        '--type',
+        help='Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV).')
+    metrics_modify_parser.add_argument(
+        '-x',
+        '--xpath',
+        help='JSON/TSV/HTSV/CSV/HCSV path.')
+    metrics_modify_parser.add_argument(
+        'path',
+        help='Metrics file.')
+    metrics_modify_parser.set_defaults(func=CmdMetricsModify)
+
+    METRICS_REMOVE_HELP = 'Remove metrics.'
+    metrics_remove_parser = metrics_subparsers.add_parser(
+        'remove',
+        parents=[parent_parser],
+        description=METRICS_REMOVE_HELP,
+        help=METRICS_REMOVE_HELP)
+    metrics_remove_parser.add_argument(
+        'path',
+        help='Path to metrics file.')
+    metrics_remove_parser.set_defaults(func=CmdMetricsRemove)

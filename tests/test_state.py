@@ -12,7 +12,7 @@ class TestState(TestDvc):
         path = os.path.join(self.dvc.root_dir, self.FOO)
         md5 = file_md5(path)[0]
 
-        state = State(self.dvc, self.dvc.config._config)
+        state = State(self.dvc, self.dvc.config.config)
 
         with state:
             entry_md5 = state.update(path)

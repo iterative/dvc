@@ -1,3 +1,5 @@
+"""Manages progress bars for dvc project."""
+
 from __future__ import print_function
 import sys
 import threading
@@ -15,11 +17,13 @@ class Progress(object):
         self._line = None
 
     def set_n_total(self, total):
+        """Sets total number of targets."""
         self._n_total = total
         self._n_finished = 0
 
     @property
     def is_finished(self):
+        """Returns if all targets have finished."""
         return self._n_total == self._n_finished
 
     def _clearln(self):
@@ -31,6 +35,7 @@ class Progress(object):
         sys.stdout.flush()
 
     def refresh(self, line=None):
+        """Refreshes progress bar."""
         # Just go away if it is locked. Will update next time
         if not self._lock.acquire(False):
             return
@@ -45,17 +50,19 @@ class Progress(object):
         self._lock.release()
 
     def update_target(self, name, current, total):
+        """Updates progress bar for a specified target."""
         self.refresh(self._bar(name, current, total))
 
     def finish_target(self, name):
+        """Finishes progress bar for a specified target."""
         # We have to write a msg about finished target
         with self._lock:
-            bar = self._bar(name, 100, 100)
+            pbar = self._bar(name, 100, 100)
 
             if sys.stdout.isatty():
                 self._clearln()
 
-            self._print(bar)
+            self._print(pbar)
 
             self._n_finished += 1
             self._line = None
@@ -68,25 +75,26 @@ class Progress(object):
         bar_len = 30
 
         if total is None:
-            progress = 0
+            state = 0
             percent = "?% "
         else:
             total = int(total)
-            progress = int((100 * current)/total) if current < total else 100
-            percent = str(progress) + "% "
+            state = int((100 * current)/total) if current < total else 100
+            percent = str(state) + "% "
 
         if self._n_total > 1:
             num = "({}/{}): ".format(self._n_finished + 1, self._n_total)
         else:
             num = ""
 
-        n_sh = int((progress * bar_len)/100)
+        n_sh = int((state * bar_len)/100)
         n_sp = bar_len - n_sh
-        bar = "[" + '#'*n_sh + ' '*n_sp + "] "
+        pbar = "[" + '#'*n_sh + ' '*n_sp + "] "
 
-        return num + bar + percent + target_name
+        return num + pbar + percent + target_name
 
-    def _print(self, *args, **kwargs):
+    @staticmethod
+    def _print(*args, **kwargs):
         if logger.is_quiet():
             return
 
@@ -97,10 +105,10 @@ class Progress(object):
         if self._line is not None:
             self._clearln()
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, typ, value, tbck):
         if self._line is not None:
             self.refresh()
         self._lock.release()
 
 
-progress = Progress()
+progress = Progress()  # pylint: disable=invalid-name
