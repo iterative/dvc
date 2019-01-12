@@ -264,7 +264,7 @@ class State(object):
                     if m > mtime:
                         mtime = m
 
-        return (str(int(nanotime.timestamp(mtime))), size)
+        return (str(int(nanotime.timestamp(mtime))), str(size))
 
     @staticmethod
     def inode(path):
