@@ -117,3 +117,17 @@ class DvcParserError(DvcException):
     """Base class for CLI parser errors."""
     def __init__(self):
         super(DvcParserError, self).__init__("parser error")
+
+
+class CyclicGraphError(DvcException):
+    def __init__(self, stages):
+        assert isinstance(stages, list)
+        stages = '\n'.join('\t- {}'.format(stage) for stage in stages)
+        msg = (
+            "you've introduced a cycle in your pipeline that involves"
+            ' the following stages:'
+            '\n'
+            '{stages}'
+            .format(stages=stages)
+        )
+        super(CyclicGraphError, self).__init__(msg)

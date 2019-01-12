@@ -176,25 +176,15 @@ class Project(object):
     def install(self):
         self.scm.install()
 
-    def _check_cwd_specified_as_output(self, cwd, stages):
-        from dvc.exceptions import WorkingDirectoryAsOutputError
+    @staticmethod
+    def _check_cyclic_graph(graph):
+        import networkx as nx
+        from dvc.exceptions import CyclicGraphError
 
-        cwd_path = os.path.abspath(os.path.normpath(cwd))
+        cycles = list(nx.simple_cycles(graph))
 
-        for stage in stages:
-            for output in stage.outs:
-                if os.path.isdir(output.path) and output.path == cwd_path:
-                    raise WorkingDirectoryAsOutputError(cwd, stage.relpath)
-
-    def _check_output_duplication(self, outs, stages):
-        from dvc.exceptions import OutputDuplicationError
-
-        for stage in stages:
-            for o in stage.outs:
-                for out in outs:
-                    if o.path == out.path and o.stage.path != out.stage.path:
-                        stages = [o.stage.relpath, out.stage.relpath]
-                        raise OutputDuplicationError(o.path, stages)
+        if cycles:
+            raise CyclicGraphError(cycles[0])
 
     def add(self, fname, recursive=False):
         from dvc.stage import Stage
@@ -215,7 +205,6 @@ class Project(object):
         else:
             fnames = [fname]
 
-        all_stages = self.stages()
         stages = []
         self._files_to_git_add = []
         with self.state:
@@ -228,15 +217,21 @@ class Project(object):
                     stages.append(stage)
                     continue
 
-                self._check_output_duplication(stage.outs, all_stages)
-
                 stage.save()
-                stage.dump()
                 stages.append(stage)
+
+        self._check_dag(self.stages() + stages)
+
+        for stage in stages:
+            stage.dump()
 
         self._remind_to_git_add()
 
         return stages
+
+    def _check_dag(self, stages):
+        """Generate graph including the new stage to check for errors"""
+        self.graph(stages=stages)
 
     def remove(self, target, outs_only=False):
         from dvc.stage import Stage
@@ -389,10 +384,7 @@ class Project(object):
         if stage is None:
             return None
 
-        all_stages = self.stages()
-
-        self._check_cwd_specified_as_output(cwd, all_stages)
-        self._check_output_duplication(stage.outs, all_stages)
+        self._check_dag(self.stages() + [stage])
 
         self._files_to_git_add = []
         with self.state:
@@ -416,7 +408,7 @@ class Project(object):
         if stage is None:
             return None
 
-        self._check_output_duplication(stage.outs, self.stages())
+        self._check_dag(self.stages() + [stage])
 
         self._files_to_git_add = []
         with self.state:
@@ -1174,24 +1166,35 @@ class Project(object):
     def metrics_remove(self, path):
         self._metrics_modify(path, delete=True)
 
-    def graph(self, from_directory=None):
+    def graph(self, stages=None, from_directory=None):
         import networkx as nx
-        from dvc.exceptions import OutputDuplicationError
+        from dvc.exceptions import (OutputDuplicationError,
+                                    WorkingDirectoryAsOutputError)
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
-        stages = self.stages(from_directory)
-
+        stages = stages or self.stages(from_directory)
+        stages = [stage for stage in stages if stage]
         outs = []
-        outs_by_path = {}
+
         for stage in stages:
-            for o in stage.outs:
-                existing = outs_by_path.get(o.path, None)
-                if existing is not None:
-                    stages = [o.stage.relpath, existing.stage.relpath]
-                    raise OutputDuplicationError(o.path, stages)
-                outs.append(o)
-                outs_by_path[o.path] = o
+            for out in stage.outs:
+                existing = [o.stage for o in outs if o.path == out.path]
+
+                if existing:
+                    stages = [stage.relpath, existing[0].relpath]
+                    raise OutputDuplicationError(out.path, stages)
+
+                outs.append(out)
+
+        for stage in stages:
+            for out in outs:
+                overlaps = (stage.cwd == out.path
+                            or stage.cwd.startswith(out.path + os.sep))
+
+                if overlaps:
+                    raise WorkingDirectoryAsOutputError(stage.cwd,
+                                                        stage.relpath)
 
         # collect the whole DAG
         for stage in stages:
@@ -1215,12 +1218,14 @@ class Project(object):
                         G_active.add_node(dep_node, stage=dep_stage)
                         G_active.add_edge(node, dep_node)
 
+        self._check_cyclic_graph(G)
+
         return G, G_active
 
     def pipelines(self, from_directory=None):
         import networkx as nx
 
-        G, G_active = self.graph(from_directory)
+        G, G_active = self.graph(from_directory=from_directory)
 
         return [
             G.subgraph(c).copy()

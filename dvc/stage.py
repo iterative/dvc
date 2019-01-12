@@ -391,6 +391,8 @@ class Stage(object):
             if not overwrite and not prompt.confirm(msg):
                 raise StageFileAlreadyExistsError(stage.relpath)
 
+            os.unlink(path)
+
         return stage
 
     @staticmethod
