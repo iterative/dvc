@@ -7,6 +7,7 @@ import shutil
 import getpass
 import platform
 import yaml
+from dvc.state import State
 from mock import patch
 
 import dvc.logger as logger
@@ -18,6 +19,7 @@ from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc
+from tests.utils import spy
 
 try:
     from StringIO import StringIO
@@ -684,3 +686,16 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         self._test_recursive_fetch(data_md5, data_sub_md5)
 
         self._test_recursive_pull()
+
+
+class TestCheckSumRecalculation(TestDvc):
+
+    def test(self):
+        test_collect = spy(State._collect)
+        with patch.object(State, '_collect', test_collect):
+            url = get_local_url()
+            main(['remote', 'add', '-d', TEST_REMOTE, url])
+            main(['add', self.FOO])
+            main(['push'])
+            main(['run', '-d', self.FOO, 'echo foo'])
+        self.assertEqual(test_collect.mock.call_count, 1)

@@ -263,8 +263,9 @@ class State(object):
                     m = st.st_mtime
                     if m > mtime:
                         mtime = m
-
-        return (str(int(nanotime.timestamp(mtime))), size)
+        # State of files handled by dvc is stored in db as TEXT.
+        # We cast results to string for later comparisons with stored values.
+        return str(int(nanotime.timestamp(mtime))), str(size)
 
     @staticmethod
     def inode(path):
