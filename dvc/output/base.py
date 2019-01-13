@@ -6,7 +6,7 @@ from dvc.exceptions import DvcException
 
 class OutputDoesNotExistError(DvcException):
     def __init__(self, path):
-        msg = "output '{}' does not exists".format(path)
+        msg = "output '{}' does not exist".format(path)
         super(OutputDoesNotExistError, self).__init__(msg)
 
 
