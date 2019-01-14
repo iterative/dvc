@@ -21,7 +21,16 @@ class TestDir(TestCase):
     FOO = 'foo'
     FOO_CONTENTS = FOO
     BAR = 'bar'
-    BAR_CONTENTS = BAR
+    # NOTE: len(FOO_CONTENTS) must be != len(BAR_CONTENTS)
+    #
+    # Our state database relies on file mtime and file size to determine
+    # that a file has changed. Usually, mtime is enough by itself but on
+    # some filesystems like APFS on macOS mtime resolution is so bad,
+    # that our tests can overwrite a file in that time window without dvc
+    # being able to detect that, thus causing tests to fail. Usually,
+    # in tests, we replace foo with bar, so we need to make sure that when we
+    # modify a file in our tests, its content length changes.
+    BAR_CONTENTS = BAR + 'r'
     CODE = 'code.py'
     CODE_CONTENTS = ('import sys\nimport shutil\n'
                      'shutil.copyfile(sys.argv[1], sys.argv[2])')
