@@ -308,7 +308,7 @@ class Project(object):
             os.unlink(stage.path)
 
             stage.path = os.path.join(
-                os.path.dirname(stage.path),
+                os.path.dirname(to_out.path),
                 os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX
             )
 

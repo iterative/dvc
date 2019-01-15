@@ -2,6 +2,7 @@ import os
 
 from dvc.main import main
 from dvc.exceptions import DvcException, MoveNotDataSourceError
+from dvc.stage import Stage
 
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
@@ -76,3 +77,21 @@ class TestMoveFileWithExtension(TestDvc):
         self.assertFalse(os.path.exists('file.csv.dvc'))
         self.assertTrue(os.path.exists('other_name.csv'))
         self.assertTrue(os.path.exists('other_name.csv.dvc'))
+
+
+class TestMoveFileToDirectory(TestDvc):
+    def test(self):
+        foo_dvc_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.exists(foo_dvc_file))
+
+        new_foo_path = self.DATA_DIR+"/"+self.FOO
+        new_foo_dvc_path = new_foo_path + Stage.STAGE_FILE_SUFFIX
+        ret = main(["move", self.FOO, new_foo_path])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists(self.FOO))
+        self.assertFalse(os.path.exists(foo_dvc_file))
+        self.assertTrue(os.path.exists(new_foo_path))
+        self.assertTrue(os.path.exists(new_foo_dvc_path))
