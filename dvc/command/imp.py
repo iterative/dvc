@@ -17,8 +17,8 @@ class CmdImport(CmdBase):
 
             self.project.imp(self.args.url, out)
         except DvcException:
-            logger.error('failed to import {}. Download it '
-                         'manually and add it with `dvc add` '
-                         'command'.format(self.args.url))
+            logger.error('failed to import {}. You could also try downloading '
+                         'it manually and adding it with `dvc add` command.'
+                         .format(self.args.url))
             return 1
         return 0

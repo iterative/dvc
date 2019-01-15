@@ -61,6 +61,7 @@ class TestFailedImportMessage(TestDvc):
         imp_urlparse_patch.side_effect = dvc_exception
         main(['import', page_address])
         self.assertIn('Error: failed to import '
-                      'http://somesite.com/file_name. Download it '
-                      'manually and add it with `dvc add` command',
+                      'http://somesite.com/file_name. You could also try '
+                      'downloading it manually and adding it with `dvc add` '
+                      'command.',
                       logger.logger.handlers[1].stream.getvalue())
