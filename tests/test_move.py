@@ -6,6 +6,7 @@ from dvc.stage import Stage
 
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
+from tests.utils import load_stage_file
 
 
 class TestMove(TestDvc):
@@ -86,7 +87,7 @@ class TestMoveFileToDirectory(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(foo_dvc_file))
 
-        new_foo_path = self.DATA_DIR+"/"+self.FOO
+        new_foo_path = os.path.join(self.DATA_DIR, self.FOO)
         new_foo_dvc_path = new_foo_path + Stage.STAGE_FILE_SUFFIX
         ret = main(["move", self.FOO, new_foo_path])
         self.assertEqual(ret, 0)
@@ -95,3 +96,74 @@ class TestMoveFileToDirectory(TestDvc):
         self.assertFalse(os.path.exists(foo_dvc_file))
         self.assertTrue(os.path.exists(new_foo_path))
         self.assertTrue(os.path.exists(new_foo_dvc_path))
+
+
+class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
+    def test(self):
+        foo_stage_file_path = self.FOO + Stage.STAGE_FILE_SUFFIX
+        ret = main(['add', self.FOO])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.exists(foo_stage_file_path))
+
+        target_foo_path = os.path.join(self.DATA_DIR, self.FOO)
+        target_foo_stage_file_path = target_foo_path + Stage.STAGE_FILE_SUFFIX
+
+        ret = main(['move', self.FOO, self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists(self.FOO))
+        self.assertFalse(os.path.exists(foo_stage_file_path))
+
+        self.assertTrue(os.path.exists(target_foo_path))
+        self.assertTrue(os.path.exists(target_foo_stage_file_path))
+
+        new_stage = load_stage_file(target_foo_stage_file_path)
+        self.assertEqual(self.FOO, new_stage['outs'][0]['path'])
+
+
+class TestMoveDirectoryShouldNotOverwriteExisting(TestDvc):
+    def test(self):
+        new_dir_name = 'data_dir2'
+        os.mkdir(new_dir_name)
+        ret = main(['add', self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        ret = main(['move', self.DATA_DIR, new_dir_name])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists(self.DATA_DIR))
+        self.assertFalse(
+            os.path.exists(self.DATA_DIR + Stage.STAGE_FILE_SUFFIX))
+
+        self.assertTrue(os.path.exists(new_dir_name))
+        self.assertTrue(os.path.isfile(new_dir_name + Stage.STAGE_FILE_SUFFIX))
+
+        self.assertEqual(os.listdir(new_dir_name),
+                         [self.DATA_DIR])
+
+
+class TestMoveFileBetweenDirectories(TestDvc):
+    def test(self):
+        data_stage_file = self.DATA + Stage.STAGE_FILE_SUFFIX
+        ret = main(['add', self.DATA])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.exists(data_stage_file))
+
+        new_data_dir = 'data_dir2'
+        os.makedirs(new_data_dir)
+
+        ret = main(['move', self.DATA, new_data_dir])
+        self.assertEqual(ret, 0)
+
+        new_data_path = os.path.join(new_data_dir, os.path.basename(self.DATA))
+        new_data_stage_file = new_data_path + Stage.STAGE_FILE_SUFFIX
+
+        self.assertFalse(os.path.exists(self.DATA))
+        self.assertFalse(os.path.exists(data_stage_file))
+
+        self.assertTrue(os.path.exists(new_data_path))
+        self.assertTrue(os.path.exists(new_data_stage_file))
+
+        new_stage_file = load_stage_file(new_data_stage_file)
+        self.assertEqual(os.path.basename(self.DATA),
+                         new_stage_file['outs'][0]['path'])
