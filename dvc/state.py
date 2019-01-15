@@ -245,10 +245,10 @@ class State(object):
 
     @staticmethod
     def mtime_and_size(path):
-        size = 0
         mtime = os.path.getmtime(path)
 
         if os.path.isdir(path):
+            size = 0
             for root, dirs, files in os.walk(path):
                 for dname in dirs:
                     p = os.path.join(root, dname)
@@ -263,6 +263,9 @@ class State(object):
                     m = st.st_mtime
                     if m > mtime:
                         mtime = m
+        else:
+            size = os.path.getsize(path)
+
         # State of files handled by dvc is stored in db as TEXT.
         # We cast results to string for later comparisons with stored values.
         return str(int(nanotime.timestamp(mtime))), str(size)
