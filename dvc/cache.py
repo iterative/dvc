@@ -1,9 +1,17 @@
+"""Manages cache of a dvc project."""
+
 import os
 
 from dvc.config import Config
 
 
 class Cache(object):
+    """Class that manages cache locations of a dvc project.
+
+    Args:
+        project (dvc.project.Project): project instance that this cache
+            belongs to.
+    """
     CACHE_DIR = 'cache'
 
     def __init__(self, project):
@@ -11,12 +19,12 @@ class Cache(object):
 
         self.project = project
 
-        config = project.config._config[Config.SECTION_CACHE]
+        config = project.config.config[Config.SECTION_CACHE]
         local = config.get(Config.SECTION_CACHE_LOCAL)
 
         if local:
             name = Config.SECTION_REMOTE_FMT.format(local)
-            sect = project.config._config[name]
+            sect = project.config.config[name]
         else:
             default_cache_dir = os.path.join(project.dvc_dir, self.CACHE_DIR)
             cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
@@ -31,13 +39,43 @@ class Cache(object):
                 Config.SECTION_CACHE_PROTECTED: protected
             }
 
-        self.local = Remote(project, sect)
+        self._local = Remote(project, sect)
 
-        self.s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
-        self.gs = self._get_remote(config, Config.SECTION_CACHE_GS)
-        self.ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
-        self.hdfs = self._get_remote(config, Config.SECTION_CACHE_HDFS)
-        self.azure = self._get_remote(config, Config.SECTION_CACHE_AZURE)
+        self._s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
+        self._gs = self._get_remote(config, Config.SECTION_CACHE_GS)
+        self._ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
+        self._hdfs = self._get_remote(config, Config.SECTION_CACHE_HDFS)
+        self._azure = self._get_remote(config, Config.SECTION_CACHE_AZURE)
+
+    @property
+    def local(self):
+        """Remote instance for local cache."""
+        return self._local
+
+    @property
+    def s3(self):
+        """Remote instance for AWS S3 cache."""
+        return self._s3
+
+    @property
+    def gs(self):
+        """Remote instance for Google Cloud Storage cache."""
+        return self._gs
+
+    @property
+    def ssh(self):
+        """Remote instance for SSH cache."""
+        return self._ssh
+
+    @property
+    def hdfs(self):
+        """Remote instance for HDFS cache."""
+        return self._hdfs
+
+    @property
+    def azure(self):
+        """Remote instance for azure cache."""
+        return self._azure
 
     def _get_remote(self, config, name):
         from dvc.remote import Remote
@@ -47,5 +85,5 @@ class Cache(object):
             return None
 
         name = Config.SECTION_REMOTE_FMT.format(remote)
-        sect = self.project.config._config[name]
+        sect = self.project.config.config[name]
         return Remote(self.project, sect)

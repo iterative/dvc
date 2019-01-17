@@ -31,7 +31,7 @@ class Project(object):
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
 
-        root_dir = self._find_root(root_dir)
+        root_dir = self.find_root(root_dir)
 
         self.root_dir = os.path.abspath(os.path.realpath(root_dir))
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
@@ -42,14 +42,14 @@ class Project(object):
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
-        self.state = State(self, self.config._config)
+        self.state = State(self, self.config.config)
 
-        core = self.config._config[Config.SECTION_CORE]
+        core = self.config.config[Config.SECTION_CORE]
 
         logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL))
 
         self.cache = Cache(self)
-        self.cloud = DataCloud(self, config=self.config._config)
+        self.cloud = DataCloud(self, config=self.config.config)
         self.updater = Updater(self.dvc_dir)
 
         self._files_to_git_add = []
@@ -62,7 +62,7 @@ class Project(object):
         return "Project: '{root_dir}'".format(root_dir=self.root_dir)
 
     @staticmethod
-    def _find_root(root=None):
+    def find_root(root=None):
         if root is None:
             root = os.getcwd()
         else:
@@ -78,8 +78,8 @@ class Project(object):
         raise NotDvcProjectError(root)
 
     @staticmethod
-    def _find_dvc_dir(root=None):
-        root_dir = Project._find_root(root)
+    def find_dvc_dir(root=None):
+        root_dir = Project.find_root(root)
         return os.path.join(root_dir, Project.DVC_DIR)
 
     def _remind_to_git_add(self):
@@ -459,7 +459,7 @@ class Project(object):
 
         if not interactive:
             config = self.config
-            core = config._config[config.SECTION_CORE]
+            core = config.config[config.SECTION_CORE]
             interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
 
         targets = []
@@ -1244,9 +1244,9 @@ class Project(object):
                     outs.append(out.path + out.sep)
                 stages.append(stage)
 
-            def filter_dirs(dname):
+            def filter_dirs(dname, root=root):
                 path = os.path.join(root, dname)
-                if path == self.dvc_dir or path == self.scm.dir:
+                if path in (self.dvc_dir, self.scm.dir):
                     return False
                 for out in outs:
                     if path == os.path.normpath(out) or path.startswith(out):

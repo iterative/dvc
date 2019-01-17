@@ -1,19 +1,23 @@
+"""Use heuristics to guess if it is a text file or a binary file."""
+
 # Based on https://eli.thegreenplace.net/2011/10/19/
 # perls-guess-if-file-is-text-or-binary-implemented-in-python
 
 import sys
 PY3 = sys.version_info[0] == 3
 
+
 # A function that takes an integer in the 8-bit range and returns
 # a single-character byte object in py3 / a single-character string
 # in py2.
 #
-int2byte = (lambda x: bytes((x,))) if PY3 else chr
+def _int2byte(i):
+    if PY3:
+        return bytes((i,))
+    return chr(i)
 
 
-_text_characters = (
-        b''.join(int2byte(i) for i in range(32, 127)) +
-        b'\n\r\t\f\b')
+TEXT_CHARS = (b''.join(_int2byte(i) for i in range(32, 127)) + b'\n\r\t\f\b')
 
 
 def istextfile(fname, blocksize=512):
@@ -22,17 +26,18 @@ def istextfile(fname, blocksize=512):
         If more than 30% of the chars in the block are non-text, or there
         are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
-    with open(fname, 'rb') as fd:
-        block = fd.read(blocksize)
+    with open(fname, 'rb') as fobj:
+        block = fobj.read(blocksize)
+
+    if not block:
+        # An empty file is considered a valid text file
+        return True
 
     if b'\x00' in block:
         # Files with null bytes are binary
         return False
-    elif not block:
-        # An empty file is considered a valid text file
-        return True
 
     # Use translate's 'deletechars' argument to efficiently remove all
-    # occurrences of _text_characters from the block
-    nontext = block.translate(None, _text_characters)
+    # occurrences of TEXT_CHARS from the block
+    nontext = block.translate(None, TEXT_CHARS)
     return float(len(nontext)) / len(block) <= 0.30

@@ -1,3 +1,5 @@
+"""Manages dvc lock file."""
+
 import os
 import time
 import zc.lockfile
@@ -6,10 +8,17 @@ from dvc.exceptions import DvcException
 
 
 class LockError(DvcException):
-    pass
+    """Thrown when unable to acquire the lock for dvc project."""
 
 
 class Lock(object):
+    """Class for dvc project lock.
+
+    Args:
+        dvc_dir (str): path to the directory that the lock should be created
+            in.
+        name (str): name of the lock file.
+    """
     LOCK_FILE = 'lock'
     TIMEOUT = 5
 
@@ -25,6 +34,7 @@ class Lock(object):
                             'locked. Please retry the cmd later.')
 
     def lock(self):
+        """Acquire lock for dvc project."""
         try:
             self._do_lock()
             return
@@ -34,11 +44,12 @@ class Lock(object):
         self._do_lock()
 
     def unlock(self):
+        """Release lock for dvc project."""
         self._lock.close()
         self._lock = None
 
     def __enter__(self):
         self.lock()
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, typ, value, tbck):
         self.unlock()

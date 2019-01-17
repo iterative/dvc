@@ -11,46 +11,111 @@ from dvc.exceptions import DvcException
 
 
 class ConfigError(DvcException):
-    """ DVC config exception """
+    """DVC config exception.
+
+    Args:
+        msg (str): error message.
+        ex (Exception): optional exception that has caused this error.
+    """
     def __init__(self, msg, ex=None):
         super(ConfigError, self).__init__('config file error: {}'.format(msg),
                                           ex)
 
 
 def supported_cache_type(types):
+    """Checks if link type config option has a valid value.
+
+    Args:
+        types (list/string): type(s) of links that dvc should try out.
+    """
     if isinstance(types, str):
-        types = [t.strip() for t in types.split(',')]
-    for t in types:
-        if t not in ['reflink', 'hardlink', 'symlink', 'copy']:
+        types = [typ.strip() for typ in types.split(',')]
+    for typ in types:
+        if typ not in ['reflink', 'hardlink', 'symlink', 'copy']:
             return False
     return True
 
 
 def supported_loglevel(level):
+    """Checks if log level config option has a valid value.
+
+    Args:
+        level (str): log level name.
+    """
     return level in ['info', 'debug', 'warning', 'error']
 
 
 def supported_cloud(cloud):
+    """Checks if obsoleted cloud option has a valid value.
+
+    Args:
+        cloud (str): cloud type name.
+    """
     return cloud in ['aws', 'gcp', 'local', '']
 
 
 def is_bool(val):
+    """Checks that value is a boolean.
+
+    Args:
+        val (str): string value verify.
+
+    Returns:
+        bool: True if value stands for boolean, False otherwise.
+    """
     return val.lower() in ['true', 'false']
 
 
 def to_bool(val):
+    """Converts value to boolean.
+
+    Args:
+        val (str): string to convert to boolean.
+
+    Returns:
+        bool: True if value.lower() == 'true', False otherwise.
+    """
     return val.lower() == 'true'
 
 
 def is_whole(val):
+    """Checks that value is a whole integer.
+
+    Args:
+        val (str): number string to verify.
+
+    Returns:
+        bool: True if val is a whole number, False otherwise.
+    """
     return int(val) >= 0
 
 
 def is_percent(val):
+    """Checks that value is a percent.
+
+    Args:
+        val (str): number string to verify.
+
+    Returns:
+        bool: True if 0<=value<=100, False otherwise.
+    """
     return int(val) >= 0 and int(val) <= 100
 
 
-class Config(object):
+class Config(object):  # pylint: disable=too-many-instance-attributes
+    """Class that manages configuration files for a dvc project.
+
+    Args:
+        dvc_dir (str): optional path to `.dvc` directory, that is used to
+            access project-specific configs like .dvc/config and
+            .dvc/config.local.
+        validate (bool): optional flag to tell dvc if it should validate the
+            config or just load it as is. 'True' by default.
+
+
+    Raises:
+        ConfigError: thrown when config has an invalid format.
+    """
     APPNAME = 'dvc'
     APPAUTHOR = 'iterative'
 
@@ -220,22 +285,47 @@ class Config(object):
             self.config_file = None
             self.config_local_file = None
 
+        self._system_config = None
+        self._global_config = None
+        self._project_config = None
+        self._local_config = None
+
+        self.config = None
+
         self.load(validate=validate)
 
     @staticmethod
     def get_global_config_dir():
+        """Returns global config location. E.g. ~/.config/dvc/config.
+
+        Returns:
+            str: path to the global config directory.
+        """
         from appdirs import user_config_dir
         return user_config_dir(appname=Config.APPNAME,
                                appauthor=Config.APPAUTHOR)
 
     @staticmethod
     def get_system_config_dir():
+        """Returns system config location. E.g. /etc/dvc.conf.
+
+        Returns:
+            str: path to the system config directory.
+        """
         from appdirs import site_config_dir
         return site_config_dir(appname=Config.APPNAME,
                                appauthor=Config.APPAUTHOR)
 
     @staticmethod
     def init(dvc_dir):
+        """Initializes dvc config.
+
+        Args:
+            dvc_dir (str): path to .dvc directory.
+
+        Returns:
+            dvc.config.Config: config object.
+        """
         config_file = os.path.join(dvc_dir, Config.CONFIG)
         open(config_file, 'w+').close()
         return Config(dvc_dir)
@@ -254,7 +344,7 @@ class Config(object):
         else:
             self._local_config = configobj.ConfigObj()
 
-        self._config = None
+        self.config = None
 
     def _load_config(self, path):
         config = configobj.ConfigObj(path)
@@ -281,48 +371,67 @@ class Config(object):
 
     def _resolve_paths(self, config, fname):
         self._resolve_cache_path(config, fname)
-        for name, section in config.items():
+        for section in config.values():
             if self.SECTION_REMOTE_URL not in section.keys():
                 continue
 
             section[self.PRIVATE_CWD] = os.path.dirname(fname)
 
     def load(self, validate=True):
+        """Loads config from all the config files.
+
+        Args:
+            validate (bool): optional flag to tell dvc if it should validate
+                the config or just load it as is. 'True' by default.
+
+
+        Raises:
+            dvc.config.ConfigError: thrown if config has invalid format.
+        """
         self._load()
         try:
-            self._config = self._load_config(self.system_config_file)
+            self.config = self._load_config(self.system_config_file)
             user = self._load_config(self.global_config_file)
             config = self._load_config(self.config_file)
             local = self._load_config(self.config_local_file)
 
             # NOTE: schema doesn't support ConfigObj.Section validation, so we
             # need to convert our config to dict before passing it to
-            for c in [user, config, local]:
-                self._config = self._merge(self._config, c)
+            for conf in [user, config, local]:
+                self.config = self._merge(self.config, conf)
 
             if validate:
-                self._config = Schema(self.SCHEMA).validate(self._config)
+                self.config = Schema(self.SCHEMA).validate(self.config)
 
             # NOTE: now converting back to ConfigObj
-            self._config = configobj.ConfigObj(self._config,
-                                               write_empty_values=True)
-            self._config.filename = self.config_file
-            self._resolve_paths(self._config, self.config_file)
+            self.config = configobj.ConfigObj(self.config,
+                                              write_empty_values=True)
+            self.config.filename = self.config_file
+            self._resolve_paths(self.config, self.config_file)
         except Exception as ex:
             raise ConfigError(ex)
 
-    def _get_key(self, d, name, add=False):
-        for k in d.keys():
+    @staticmethod
+    def _get_key(conf, name, add=False):
+        for k in conf.keys():
             if k.lower() == name.lower():
                 return k
 
         if add:
-            d[name] = {}
+            conf[name] = {}
             return name
 
         return None
 
     def save(self, config=None):
+        """Saves config to config files.
+
+        Args:
+            config (configobj.ConfigObj): optional config object to save.
+
+        Raises:
+            dvc.config.ConfigError: thrown if failed to write config file.
+        """
         if config is not None:
             clist = [config]
         else:
@@ -348,7 +457,15 @@ class Config(object):
                 msg = "failed to write config '{}'".format(conf.filename)
                 raise ConfigError(msg, exc)
 
-    def unset(self, config, section, opt=None):
+    @staticmethod
+    def unset(config, section, opt=None):
+        """Unsets specified option and/or section in the config.
+
+        Args:
+            config (configobj.ConfigObj): config to work on.
+            section (str): section name.
+            opt (str): optional option name.
+        """
         if section not in config.keys():
             raise ConfigError("section '{}' doesn't exist".format(section))
 
@@ -361,16 +478,33 @@ class Config(object):
                                                                     opt))
         del config[section][opt]
 
-        if len(config[section]) == 0:
+        if not config[section]:
             del config[section]
 
-    def set(self, config, section, opt, value):
+    @staticmethod
+    def set(config, section, opt, value):
+        """Sets specified option in the config.
+
+        Args:
+            config (configobj.ConfigObj): config to work on.
+            section (str): section name.
+            opt (str): option name.
+            value: value to set option to.
+        """
         if section not in config.keys():
             config[section] = {}
 
         config[section][opt] = value
 
-    def show(self, config, section, opt):
+    @staticmethod
+    def show(config, section, opt):
+        """Prints option value from the config.
+
+        Args:
+            config (configobj.ConfigObj): config to work on.
+            section (str): section name.
+            opt (str): option name.
+        """
         if section not in config.keys():
             raise ConfigError("section '{}' doesn't exist".format(section))
 
@@ -385,10 +519,10 @@ class Config(object):
         res = {}
         sections = list(first.keys()) + list(second.keys())
         for section in sections:
-            f = first.get(section, {}).copy()
-            s = second.get(section, {}).copy()
-            f.update(s)
-            res[section] = f
+            first_copy = first.get(section, {}).copy()
+            second_copy = second.get(section, {}).copy()
+            first_copy.update(second_copy)
+            res[section] = first_copy
         return res
 
     @staticmethod

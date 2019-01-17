@@ -1,4 +1,19 @@
+import sys
+
 import dvc.logger as logger
+
+
+def fix_subparsers(subparsers):
+    """Workaround for bug in Python 3. See more info at:
+        https://bugs.python.org/issue16308
+        https://github.com/iterative/dvc/issues/769
+
+        Args:
+            subparsers: subparsers to fix.
+    """
+    if sys.version_info[0] == 3:  # pragma: no cover
+        subparsers.required = True
+        subparsers.dest = 'cmd'
 
 
 class CmdBase(object):
@@ -8,10 +23,19 @@ class CmdBase(object):
         self.project = Project()
         self.config = self.project.config
         self.args = args
-        self._set_loglevel(args)
+        self.set_loglevel(args)
+
+    @property
+    def default_targets(self):
+        """Default targets for `dvc repro` and `dvc pipeline`."""
+        from dvc.stage import Stage
+        msg = "assuming default target '{}'.".format(Stage.STAGE_FILE)
+        logger.warning(msg)
+        return [Stage.STAGE_FILE]
 
     @staticmethod
-    def _set_loglevel(args):
+    def set_loglevel(args):
+        """Sets log level from CLI arguments."""
         if args.quiet:
             logger.be_quiet()
 

@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import dvc.logger as logger
 from dvc.command.base import CmdBase
@@ -13,7 +14,7 @@ class CmdConfig(CmdBase):
         self.args = args
 
         try:
-            dvc_dir = os.path.join(Project._find_root(), Project.DVC_DIR)
+            dvc_dir = os.path.join(Project.find_root(), Project.DVC_DIR)
             saved_exc = None
         except NotDvcProjectError as exc:
             dvc_dir = None
@@ -75,3 +76,46 @@ class CmdConfig(CmdBase):
             return self._show(section, opt)
         else:
             return self._set(section, opt, self.args.value)
+
+
+parent_config_parser = argparse.ArgumentParser(add_help=False)
+parent_config_parser.add_argument(
+   '--global',
+   dest='glob',
+   action='store_true',
+   default=False,
+   help='Use global config.')
+parent_config_parser.add_argument(
+   '--system',
+   action='store_true',
+   default=False,
+   help='Use system config.')
+parent_config_parser.add_argument(
+   '--local',
+   action='store_true',
+   default=False,
+   help='Use local config.')
+
+
+def add_parser(subparsers, parent_parser):
+    CONFIG_HELP = 'Get or set config options.'
+    config_parser = subparsers.add_parser(
+        'config',
+        parents=[parent_config_parser, parent_parser],
+        description=CONFIG_HELP,
+        help=CONFIG_HELP)
+    config_parser.add_argument(
+        '-u',
+        '--unset',
+        default=False,
+        action='store_true',
+        help='Unset option.')
+    config_parser.add_argument(
+        'name',
+        help='Option name.')
+    config_parser.add_argument(
+        'value',
+        nargs='?',
+        default=None,
+        help='Option value.')
+    config_parser.set_defaults(func=CmdConfig)

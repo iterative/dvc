@@ -53,7 +53,7 @@ def _get(stage, p, info, cache, metric):
     parsed = urlparse(p)
     if parsed.scheme == 'remote':
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.project.config._config[name]
+        sect = stage.project.config.config[name]
         remote = Remote(stage.project, sect)
         return OUTS_MAP[remote.scheme](stage,
                                        p,

@@ -1,3 +1,5 @@
+"""Manages dvc remotes that user can use with push/pull/status comamnds."""
+
 import dvc.logger as logger
 from dvc.config import Config, ConfigError
 
@@ -12,6 +14,16 @@ from dvc.remote.http import RemoteHTTP
 
 
 class DataCloud(object):
+    """Class that manages dvc remotes.
+
+    Args:
+        project (dvc.project.Project): project instance that belongs to the
+            project that we are working on.
+        config (dict): config of the project.
+
+    Raises:
+        config.ConfigError: thrown when config has invalid format.
+    """
     CLOUD_MAP = {
         'aws': RemoteS3,
         'gcp': RemoteGS,
@@ -55,7 +67,7 @@ class DataCloud(object):
         name = self._core.get(Config.SECTION_CORE_CLOUD, '').strip().lower()
         if name == '':
             self._cloud = None
-            return
+            return None
 
         cloud_type = self.CLOUD_MAP.get(name, None)
         if not cloud_type:
@@ -97,24 +109,52 @@ class DataCloud(object):
             .format(cmd)
         )
 
-    def push(self, targets, jobs=1, remote=None, show_checksums=False):
-        """Push data items in a cloud-agnostic way."""
+    def push(self, targets, jobs=None, remote=None, show_checksums=False):
+        """Push data items in a cloud-agnostic way.
+
+        Args:
+            targets (list): list of targets to push to the cloud.
+            jobs (int): number of jobs that can be running simultaneously.
+            remote (dvc.remote.base.RemoteBase): optional remote to push to.
+                By default remote from core.remote config option is used.
+            show_checksums (bool): show checksums instead of file names in
+                information messages.
+        """
         return self.project.cache.local.push(targets,
                                              jobs=jobs,
                                              remote=self._get_cloud(remote,
                                                                     'push'),
                                              show_checksums=show_checksums)
 
-    def pull(self, targets, jobs=1, remote=None, show_checksums=False):
-        """Pull data items in a cloud-agnostic way."""
+    def pull(self, targets, jobs=None, remote=None, show_checksums=False):
+        """Pull data items in a cloud-agnostic way.
+
+        Args:
+            targets (list): list of targets to pull from the cloud.
+            jobs (int): number of jobs that can be running simultaneously.
+            remote (dvc.remote.base.RemoteBase): optional remote to pull from.
+                By default remote from core.remote config option is used.
+            show_checksums (bool): show checksums instead of file names in
+                information messages.
+        """
         return self.project.cache.local.pull(targets,
                                              jobs=jobs,
                                              remote=self._get_cloud(remote,
                                                                     'pull'),
                                              show_checksums=show_checksums)
 
-    def status(self, targets, jobs=1, remote=None, show_checksums=False):
-        """Check status of data items in a cloud-agnostic way."""
+    def status(self, targets, jobs=None, remote=None, show_checksums=False):
+        """Check status of data items in a cloud-agnostic way.
+
+        Args:
+            targets (list): list of targets to check status for.
+            jobs (int): number of jobs that can be running simultaneously.
+            remote (dvc.remote.base.RemoteBase): optional remote to compare
+                targets to. By default remote from core.remote config option
+                is used.
+            show_checksums (bool): show checksums instead of file names in
+                information messages.
+        """
         cloud = self._get_cloud(remote, 'status')
         return self.project.cache.local.status(targets,
                                                jobs=jobs,

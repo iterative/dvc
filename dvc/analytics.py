@@ -1,3 +1,5 @@
+"""Collect and send usage analytics"""
+
 import os
 import json
 import errno
@@ -7,6 +9,11 @@ from dvc import VERSION
 
 
 class Analytics(object):
+    """Class for collecting and sending usage analytics.
+
+    Args:
+        info (dict): optional existing analytics report.
+    """
     URL = 'https://analytics.dvc.org'
     TIMEOUT_POST = 5
 
@@ -34,17 +41,20 @@ class Analytics(object):
     PARAM_CMD_CLASS = 'cmd_class'
     PARAM_CMD_RETURN_CODE = 'cmd_return_code'
 
-    def __init__(self, info={}):
+    def __init__(self, info=None):
         from dvc.config import Config
         from dvc.lock import Lock
+
+        if info is None:
+            info = {}
 
         self.info = info
 
         cdir = Config.get_global_config_dir()
         try:
             os.makedirs(cdir)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
+        except OSError as exc:
+            if exc.errno != errno.EEXIST:
                 raise
 
         self.user_id_file = os.path.join(cdir, self.USER_ID_FILE)
@@ -52,10 +62,15 @@ class Analytics(object):
 
     @staticmethod
     def load(path):
+        """Loads analytics report from json file specified by path.
+
+        Args:
+            path (str): path to json file with analytics report.
+        """
         with open(path, 'r') as fobj:
-            a = Analytics(info=json.load(fobj))
+            analytics = Analytics(info=json.load(fobj))
         os.unlink(path)
-        return a
+        return analytics
 
     def _write_user_id(self):
         import uuid
@@ -93,7 +108,7 @@ class Analytics(object):
 
     def _collect_windows(self):
         import sys
-        version = sys.getwindowsversion()
+        version = sys.getwindowsversion()  # pylint: disable=no-member
         info = {}
         info[self.PARAM_OS] = 'windows'
         info[self.PARAM_WINDOWS_VERSION_MAJOR] = version.major
@@ -121,16 +136,20 @@ class Analytics(object):
     def _collect_system_info(self):
         import platform
         system = platform.system()
+
         if system == 'Windows':
             return self._collect_windows()
-        elif system == 'Darwin':
+
+        if system == 'Darwin':
             return self._collect_darwin()
-        elif system == 'Linux':
+
+        if system == 'Linux':
             return self._collect_linux()
-        else:
-            raise NotImplementedError
+
+        raise NotImplementedError
 
     def collect(self):
+        """Collect analytics report."""
         from dvc.scm import SCM
         from dvc.utils import is_binary
         from dvc.project import Project
@@ -143,12 +162,13 @@ class Analytics(object):
         self.info[self.PARAM_SYSTEM_INFO] = self._collect_system_info()
 
         try:
-            scm = SCM(root_dir=Project._find_root())
+            scm = SCM(root_dir=Project.find_root())
             self.info[self.PARAM_SCM_CLASS] = type(scm).__name__
         except NotDvcProjectError:
             pass
 
     def collect_cmd(self, args, ret):
+        """Collect analytics info from a CLI command."""
         from dvc.command.daemon import CmdDaemonAnalytics
 
         assert isinstance(ret, int) or ret is None
@@ -161,6 +181,11 @@ class Analytics(object):
             self.info[self.PARAM_CMD_CLASS] = args.func.__name__
 
     def dump(self):
+        """Save analytics report to a temporary file.
+
+        Returns:
+            str: path to the temporary file that contains the analytics report.
+        """
         import tempfile
 
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as fobj:
@@ -182,7 +207,7 @@ class Analytics(object):
 
         if cmd is None or not hasattr(cmd, 'config'):
             try:
-                dvc_dir = Project._find_dvc_dir()
+                dvc_dir = Project.find_dvc_dir()
                 config = Config(dvc_dir)
                 assert config is not None
             except NotDvcProjectError:
@@ -192,7 +217,7 @@ class Analytics(object):
             config = cmd.config
             assert config is not None
 
-        core = config._config.get(Config.SECTION_CORE, {})
+        core = config.config.get(Config.SECTION_CORE, {})
         enabled = core.get(Config.SECTION_CORE_ANALYTICS, True)
         logger.debug("Analytics is {}abled."
                      .format('en' if enabled else 'dis'))
@@ -200,16 +225,23 @@ class Analytics(object):
 
     @staticmethod
     def send_cmd(cmd, args, ret):
-        from dvc.daemon import Daemon
+        """Collect and send analytics for CLI command.
+
+        Args:
+            args (list): parsed args for the CLI command.
+            ret (int): return value of the CLI command.
+        """
+        from dvc.daemon import daemon
 
         if not Analytics._is_enabled(cmd):
             return
 
-        a = Analytics()
-        a.collect_cmd(args, ret)
-        Daemon()(['analytics', a.dump()])
+        analytics = Analytics()
+        analytics.collect_cmd(args, ret)
+        daemon(['analytics', analytics.dump()])
 
     def send(self):
+        """Collect and send analytics."""
         import requests
 
         if not self._is_enabled():
