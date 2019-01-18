@@ -568,12 +568,14 @@ class Project(object):
                  target=None,
                  with_deps=False,
                  force=False,
-                 from_directory=None):
-        all_stages = self.active_stages(from_directory)
-        stages = all_stages
+                 recursive=False):
 
-        if target:
+        if target and not recursive:
+            all_stages = self.active_stages()
             stages = self._collect(target, with_deps=with_deps)
+        else:
+            all_stages = self.active_stages(target)
+            stages = all_stages
 
         with self.state:
             self._cleanup_unused_links(all_stages)
@@ -695,7 +697,7 @@ class Project(object):
                     remote=None,
                     force=False,
                     jobs=None,
-                    from_directory=None):
+                    recursive=False):
         cache = {}
         cache['local'] = []
         cache['s3'] = []
@@ -707,12 +709,15 @@ class Project(object):
         for branch in self.scm.brancher(all_branches=all_branches,
                                         all_tags=all_tags):
             if target:
-                stages = self._collect(target,
-                                       with_deps=with_deps)
+                if recursive:
+                    stages = self.stages(target)
+                else:
+                    stages = self._collect(target,
+                                           with_deps=with_deps)
             elif active:
-                stages = self.active_stages(from_directory)
+                stages = self.active_stages()
             else:
-                stages = self.stages(from_directory)
+                stages = self.stages()
 
             for stage in stages:
                 if active and not target and stage.locked:
@@ -836,7 +841,7 @@ class Project(object):
              show_checksums=False,
              with_deps=False,
              all_tags=False,
-             from_directory=None):
+             recursive=False):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
@@ -845,7 +850,7 @@ class Project(object):
                                     force=True,
                                     remote=remote,
                                     jobs=jobs,
-                                    from_directory=from_directory)['local']
+                                    recursive=recursive)['local']
             self.cloud.push(used,
                             jobs,
                             remote=remote,
@@ -859,7 +864,7 @@ class Project(object):
               show_checksums=False,
               with_deps=False,
               all_tags=False,
-              from_directory=None):
+              recursive=False):
         with self.state:
             used = self._used_cache(target,
                                     all_branches=all_branches,
@@ -868,7 +873,7 @@ class Project(object):
                                     force=True,
                                     remote=remote,
                                     jobs=jobs,
-                                    from_directory=from_directory)['local']
+                                    recursive=recursive)['local']
             self.cloud.pull(used,
                             jobs,
                             remote=remote,
@@ -883,7 +888,7 @@ class Project(object):
              with_deps=False,
              all_tags=False,
              force=False,
-             from_directory=None):
+             recursive=False):
         self.fetch(target,
                    jobs,
                    remote=remote,
@@ -891,11 +896,11 @@ class Project(object):
                    all_tags=all_tags,
                    show_checksums=show_checksums,
                    with_deps=with_deps,
-                   from_directory=from_directory)
+                   recursive=recursive)
         self.checkout(target=target,
                       with_deps=with_deps,
                       force=force,
-                      from_directory=from_directory)
+                      recursive=recursive)
 
     def _local_status(self, target=None, with_deps=False):
         status = {}

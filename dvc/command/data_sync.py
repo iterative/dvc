@@ -30,7 +30,7 @@ class CmdDataPull(CmdDataBase):
                               all_tags=self.args.all_tags,
                               with_deps=self.args.with_deps,
                               force=self.args.force,
-                              from_directory=self.args.recursive)
+                              recursive=self.args.recursive)
         except Exception:
             logger.error('failed to pull data from the cloud')
             return 1
@@ -47,7 +47,7 @@ class CmdDataPush(CmdDataBase):
                               all_branches=self.args.all_branches,
                               all_tags=self.args.all_tags,
                               with_deps=self.args.with_deps,
-                              from_directory=self.args.recursive)
+                              recursive=self.args.recursive)
         except Exception:
             logger.error('failed to push data to the cloud')
             return 1
@@ -64,7 +64,7 @@ class CmdDataFetch(CmdDataBase):
                                all_branches=self.args.all_branches,
                                all_tags=self.args.all_tags,
                                with_deps=self.args.with_deps,
-                               from_directory=self.args.recursive)
+                               recursive=self.args.recursive)
         except Exception:
             logger.error('failed to fetch data from the cloud')
             return 1
@@ -133,6 +133,8 @@ def add_parser(subparsers, parent_parser):
     pull_parser.add_argument(
         '-R',
         '--recursive',
+        action='store_true',
+        default=False,
         help='Pull cache for subdirectories of the specified directory.')
     pull_parser.set_defaults(func=CmdDataPull)
 
@@ -168,6 +170,8 @@ def add_parser(subparsers, parent_parser):
     push_parser.add_argument(
         '-R',
         '--recursive',
+        action='store_true',
+        default=False,
         help='Push cache from subdirectories of specified directory.')
     push_parser.set_defaults(func=CmdDataPush)
 
@@ -204,6 +208,8 @@ def add_parser(subparsers, parent_parser):
     fetch_parser.add_argument(
         '-R',
         '--recursive',
+        action='store_true',
+        default=False,
         help='Fetch cache for subdirectories of specified directory.')
     fetch_parser.set_defaults(func=CmdDataFetch)
 
