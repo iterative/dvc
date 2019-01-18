@@ -1,16 +1,18 @@
+"""Manages user prompts."""
+
 import sys
 from getpass import getpass
 
 try:
     # NOTE: in Python3 raw_input() was renamed to input()
-    input = raw_input
+    input = raw_input  # pylint: disable=redefined-builtin, invalid-name
 except NameError:
     pass
 
 
-def ask(prompt, limited_to=None):
+def _ask(prompt, limited_to=None):
     if not sys.stdout.isatty():
-        return
+        return None
 
     while True:
         answer = input(prompt + ' ').lower()
@@ -26,11 +28,27 @@ def ask(prompt, limited_to=None):
 
 
 def confirm(statement):
+    """Ask the user for confirmation about the specified statement.
+
+    Args:
+        statement (str): statement to ask the user confirmation about.
+
+    Returns:
+        bool: whether or not specified statement was confirmed.
+    """
     prompt = '{statement} [y/n]'.format(statement=statement)
-    answer = ask(prompt, limited_to=['yes', 'no', 'y', 'n'])
+    answer = _ask(prompt, limited_to=['yes', 'no', 'y', 'n'])
     return answer and answer.startswith('y')
 
 
 def password(statement):
+    """Ask the user for a password.
+
+    Args:
+        statement (str): string to prompt the user with.
+
+    Returns:
+        str: password entered by the user.
+    """
     prompt = '{statement}: '.format(statement=statement)
     return getpass(prompt)
