@@ -1,3 +1,5 @@
+"""Manages state database used for checksum caching."""
+
 import os
 import time
 import sqlite3
@@ -10,11 +12,31 @@ from dvc.utils import file_md5, remove
 from dvc.exceptions import DvcException
 
 
-class StateDuplicateError(DvcException):
-    pass
+class StateVersionTooNewError(DvcException):
+    """Thrown when dvc version is older than the state database version."""
+    def __init__(self, dvc_version, expected, actual):
+        super(StateVersionTooNewError, self).__init__(
+            "you are using an old version '{dvc_version}' of dvc that is "
+            "using state file version '{expected}' which is not compatible "
+            "with the state file version '{actual}' that is used in this "
+            "projet. Please upgrade right now!"
+            .format(dvc_version=dvc_version,
+                    expected=expected,
+                    actual=actual))
 
 
-class State(object):
+class State(object):  # pylint: disable=too-many-instance-attributes
+    """Class for the state database.
+
+    Args:
+        project (dvc.project.Project): project instance that this state
+            belongs to.
+        config (configobj.ConfigObj): config for the state.
+
+    Raises:
+        StateVersionTooNewError: thrown when dvc version is older than the
+            state database version.
+    """
     VERSION = 3
     STATE_FILE = 'state'
     STATE_TABLE = 'state'
@@ -47,11 +69,12 @@ class State(object):
         self.row_limit = 100
         self.row_cleanup_quota = 50
 
-        c = config.get(Config.SECTION_STATE, {})
-        self.row_limit = c.get(Config.SECTION_STATE_ROW_LIMIT,
-                               self.STATE_ROW_LIMIT)
-        self.row_cleanup_quota = c.get(Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
-                                       self.STATE_ROW_CLEANUP_QUOTA)
+        state_config = config.get(Config.SECTION_STATE, {})
+        self.row_limit = state_config.get(Config.SECTION_STATE_ROW_LIMIT,
+                                          self.STATE_ROW_LIMIT)
+        self.row_cleanup_quota = state_config.get(
+            Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
+            self.STATE_ROW_CLEANUP_QUOTA)
 
         if not self.dvc_dir:
             self.state_file = None
@@ -65,23 +88,31 @@ class State(object):
             self.state_file + '-wal',
         ]
 
-        self.db = None
-        self.c = None
+        self.database = None
+        self.cursor = None
         self.inserts = 0
 
     def __enter__(self):
         self.load()
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, typ, value, tbck):
         self.dump()
 
     def _collect(self, path):
         if os.path.isdir(path):
             return self.project.cache.local.collect_dir_cache(path)
-        else:
-            return (file_md5(path)[0], None)
+        return (file_md5(path)[0], None)
 
     def changed(self, path, md5):
+        """Check if file/directory has the expected md5.
+
+        Args:
+            path (str): path to the file/directory to check.
+            md5 (str): expected md5.
+
+        Returns:
+            bool: True if path has the expected md5, False otherwise.
+        """
         actual = self.update(path)
 
         msg = "File '{}', md5 '{}', actual '{}'"
@@ -94,32 +125,32 @@ class State(object):
 
     def _execute(self, cmd):
         logger.debug(cmd)
-        return self.c.execute(cmd)
+        return self.cursor.execute(cmd)
 
     def _fetchall(self):
-        ret = self.c.fetchall()
+        ret = self.cursor.fetchall()
         logger.debug("fetched: {}".format(ret))
         return ret
 
-    def _to_sqlite(self, n):
-        assert n >= 0
-        assert n < self.MAX_UINT
+    def _to_sqlite(self, num):
+        assert num >= 0
+        assert num < self.MAX_UINT
         # NOTE: sqlite stores unit as signed ints, so maximum uint is 2^63-1
         # see http://jakegoulding.com/blog/2011/02/06/sqlite-64-bit-integers/
-        if n > self.MAX_INT:
-            ret = -(n - self.MAX_INT)
+        if num > self.MAX_INT:
+            ret = -(num - self.MAX_INT)
         else:
-            ret = n
-        assert self._from_sqlite(ret) == n
+            ret = num
+        assert self._from_sqlite(ret) == num
         return ret
 
-    def _from_sqlite(self, n):
-        assert abs(n) <= self.MAX_INT
-        if n < 0:
-            return abs(n) + self.MAX_INT
-        assert n < self.MAX_UINT
-        assert n >= 0
-        return n
+    def _from_sqlite(self, num):
+        assert abs(num) <= self.MAX_INT
+        if num < 0:
+            return abs(num) + self.MAX_INT
+        assert num < self.MAX_UINT
+        assert num >= 0
+        return num
 
     def _prepare_db(self, empty=False):
         from dvc import VERSION
@@ -134,11 +165,7 @@ class State(object):
             version = ret[0][0]
 
             if version > self.VERSION:
-                msg = "you are using an old version '{}' of dvc that is " \
-                      "using state file version '{}' which is not " \
-                      "compatible with the state file version '{}' that " \
-                      "is used in this projet. Please upgrade right now!"
-                raise DvcException(msg.format(VERSION, self.VERSION, version))
+                raise StateVersionTooNewError(VERSION, self.VERSION, version)
             elif version < self.VERSION:
                 msg = "State file version '{}' is too old. " \
                       "Reformatting to the current version '{}'."
@@ -166,14 +193,15 @@ class State(object):
         self._execute(cmd.format(self.VERSION))
 
     def load(self):
+        """Loads state database."""
         retries = 1
         while True:
-            assert self.db is None
-            assert self.c is None
+            assert self.database is None
+            assert self.cursor is None
             assert self.inserts == 0
             empty = not os.path.exists(self.state_file)
-            self.db = sqlite3.connect(self.state_file)
-            self.c = self.db.cursor()
+            self.database = sqlite3.connect(self.state_file)
+            self.cursor = self.database.cursor()
 
             # Try loading once to check that the file is indeed a database
             # and reformat it if it is not.
@@ -181,10 +209,10 @@ class State(object):
                 self._prepare_db(empty=empty)
                 return
             except sqlite3.DatabaseError:
-                self.c.close()
-                self.db.close()
-                self.db = None
-                self.c = None
+                self.cursor.close()
+                self.database.close()
+                self.database = None
+                self.cursor = None
                 self.inserts = 0
                 if retries > 0:
                     os.unlink(self.state_file)
@@ -194,12 +222,13 @@ class State(object):
 
     def _vacuum(self):
         # NOTE: see https://bugs.python.org/issue28518
-        self.db.isolation_level = None
+        self.database.isolation_level = None
         self._execute("VACUUM")
-        self.db.isolation_level = ''
+        self.database.isolation_level = ''
 
     def dump(self):
-        assert self.db is not None
+        """Saves state database."""
+        assert self.database is not None
 
         cmd = "SELECT count from {} WHERE rowid={}"
         self._execute(cmd.format(self.STATE_INFO_TABLE,
@@ -236,34 +265,34 @@ class State(object):
                                  self._to_sqlite(count),
                                  self.STATE_INFO_ROW))
 
-        self.db.commit()
-        self.c.close()
-        self.db.close()
-        self.db = None
-        self.c = None
+        self.database.commit()
+        self.cursor.close()
+        self.database.close()
+        self.database = None
+        self.cursor = None
         self.inserts = 0
 
     @staticmethod
-    def mtime_and_size(path):
+    def _mtime_and_size(path):
         size = os.path.getsize(path)
         mtime = os.path.getmtime(path)
 
         if os.path.isdir(path):
             for root, dirs, files in os.walk(path):
                 for name in dirs + files:
-                    p = os.path.join(root, name)
-                    st = os.stat(p)
-                    size += st.st_size
-                    m = st.st_mtime
-                    if m > mtime:
-                        mtime = m
+                    entry = os.path.join(root, name)
+                    stat = os.stat(entry)
+                    size += stat.st_size
+                    entry_mtime = stat.st_mtime
+                    if entry_mtime > mtime:
+                        mtime = entry_mtime
 
         # State of files handled by dvc is stored in db as TEXT.
         # We cast results to string for later comparisons with stored values.
         return str(int(nanotime.timestamp(mtime))), str(size)
 
     @staticmethod
-    def inode(path):
+    def _inode(path):
         logger.debug('Path {} inode {}'.format(path, System.inode(path)))
         return System.inode(path)
 
@@ -274,70 +303,98 @@ class State(object):
         if not os.path.exists(path):
             return (None, None)
 
-        mtime, size = self.mtime_and_size(path)
-        inode = self.inode(path)
+        actual_mtime, actual_size = self._mtime_and_size(path)
+        actual_inode = self._inode(path)
 
-        cmd = 'SELECT * from {} WHERE inode={}'.format(self.STATE_TABLE,
-                                                       self._to_sqlite(inode))
+        cmd = ('SELECT * from {} WHERE inode={}'
+               .format(self.STATE_TABLE, self._to_sqlite(actual_inode)))
 
         self._execute(cmd)
         ret = self._fetchall()
-        if len(ret) == 0:
+        if not ret:
             md5, info = self._collect(path)
             cmd = 'INSERT INTO {}(inode, mtime, size, md5, timestamp) ' \
                   'VALUES ({}, "{}", "{}", "{}", "{}")'
             self._execute(cmd.format(self.STATE_TABLE,
-                                     self._to_sqlite(inode),
-                                     mtime,
-                                     size,
+                                     self._to_sqlite(actual_inode),
+                                     actual_mtime,
+                                     actual_size,
                                      md5,
                                      int(nanotime.timestamp(time.time()))))
             self.inserts += 1
         else:
             assert len(ret) == 1
             assert len(ret[0]) == 5
-            i, m, s, md5, timestamp = ret[0]
-            i = self._from_sqlite(i)
-            assert i == inode
-            msg = ("Inode '{}', mtime '{}', actual mtime '{}', "
-                   "size '{}', actual size '{}'.")
-            logger.debug(msg.format(i, m, mtime, s, size))
-            if mtime != m or size != s:
+            inode, mtime, size, md5, _ = ret[0]
+            inode = self._from_sqlite(inode)
+            assert inode == actual_inode
+            logger.debug(
+                "Inode '{}', mtime '{}', actual mtime '{}', size '{}', "
+                "actual size '{}'."
+                .format(inode, mtime, actual_mtime, size, actual_size))
+            if actual_mtime != mtime or actual_size != size:
                 md5, info = self._collect(path)
                 cmd = ('UPDATE {} SET '
                        'mtime = "{}", size = "{}", '
                        'md5 = "{}", timestamp = "{}" '
                        'WHERE inode = {}')
                 self._execute(cmd.format(self.STATE_TABLE,
-                                         mtime,
-                                         size,
+                                         actual_mtime,
+                                         actual_size,
                                          md5,
                                          int(nanotime.timestamp(time.time())),
-                                         self._to_sqlite(inode)))
+                                         self._to_sqlite(actual_inode)))
             else:
                 info = None
                 cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
                 self._execute(cmd.format(self.STATE_TABLE,
                                          int(nanotime.timestamp(time.time())),
-                                         self._to_sqlite(inode)))
+                                         self._to_sqlite(actual_inode)))
 
         return (md5, info)
 
     def update(self, path):
+        """Gets the checksum for the specified path. Checksum will be
+        retrieved from the state database if available, otherwise it will be
+        computed and cached in the state database for the further use.
+
+        Args:
+            path (str): path to get the checksum for.
+
+        Returns:
+            str: checksum for the specified path.
+        """
         return self._do_update(path)[0]
 
     def update_info(self, path):
+        """Gets the checksum and the directory info (if applicable) for the
+        specified path.
+
+        Args:
+            path (str): path to get the checksum and the directory info for.
+
+        Returns:
+            tuple: checksum for the specified path along with a directory info
+            (list of {relative_path: checksum} entries for each file in the
+            directory) if applicable, otherwise None.
+        """
         md5, info = self._do_update(path)
         if not info:
             info = self.project.cache.local.load_dir_cache(md5)
         return (md5, info)
 
     def update_link(self, path):
+        """Adds the specified path to the list of links created by dvc. This
+        list is later used on `dvc checkout` to cleanup old links.
+
+        Args:
+            path (str): path to add to the list of links.
+        """
         if not os.path.exists(path):
             return
 
-        mtime, _ = self.mtime_and_size(path)
-        inode = self.inode(path)
+        mtime, _ = self._mtime_and_size(path)
+        inode = self._inode(path)
         relpath = os.path.relpath(path, self.root_dir)
 
         cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
@@ -348,13 +405,18 @@ class State(object):
         self._execute(cmd)
 
     def remove_unused_links(self, used):
+        """Removes all saved links except the ones that are used.
+
+        Args:
+            used (list): list of used links that should not be removed.
+        """
         unused = []
 
         self._execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
-        for row in self.c:
-            p, i, m = row
-            i = self._from_sqlite(i)
-            path = os.path.join(self.root_dir, p)
+        for row in self.cursor:
+            relpath, inode, mtime = row
+            inode = self._from_sqlite(inode)
+            path = os.path.join(self.root_dir, relpath)
 
             if path in used:
                 continue
@@ -362,14 +424,14 @@ class State(object):
             if not os.path.exists(path):
                 continue
 
-            inode = self.inode(path)
-            mtime, _ = self.mtime_and_size(path)
+            actual_inode = self._inode(path)
+            actual_mtime, _ = self._mtime_and_size(path)
 
-            if i == inode and m == mtime:
+            if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))
                 remove(path)
-                unused.append(p)
+                unused.append(relpath)
 
-        for p in unused:
+        for relpath in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
-            self._execute(cmd.format(self.LINK_STATE_TABLE, p))
+            self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
