@@ -458,7 +458,7 @@ class Stage(object):
         with open(fname, 'w') as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
-        self.project._files_to_git_add.append(os.path.relpath(fname))
+        self.project.files_to_git_add.append(os.path.relpath(fname))
 
     def _compute_md5(self):
         from dvc.output.local import OutputLOCAL

@@ -1,121 +1,18 @@
+"""Manages Git."""
+
+# NOTE: need this one because python 2 would re-import this module
+# (called git.py) instead of importing gitpython's git module.
+from __future__ import absolute_import
+
 import os
 
 import dvc.logger as logger
-from dvc.exceptions import DvcException
 from dvc.utils import fix_env
-
-
-class SCMError(DvcException):
-    pass
-
-
-class FileNotInRepoError(DvcException):
-    pass
-
-
-class Base(object):
-    def __init__(self, root_dir=os.curdir, project=None):
-        self.project = project
-        self.root_dir = root_dir
-
-    def __repr__(self):
-        return "{class_name}: '{directory}'".format(
-            class_name=type(self).__name__,
-            directory=self.dir
-        )
-
-    @property
-    def dir(self):
-        return None
-
-    @staticmethod
-    def is_repo(root_dir):
-        return True
-
-    @staticmethod
-    def is_submodule(root_dir):
-        return True
-
-    def ignore(self, path):
-        pass
-
-    def ignore_remove(self, path):
-        pass
-
-    def ignore_file(self):
-        pass
-
-    def ignore_list(self, p_list):
-        return [self.ignore(path) for path in p_list]
-
-    def add(self, paths):
-        pass
-
-    def commit(self, msg):
-        pass
-
-    def checkout(self, branch):
-        pass
-
-    def branch(self, branch):
-        pass
-
-    def tag(self, tag):
-        pass
-
-    def brancher(self,
-                 branches=None,
-                 all_branches=False,
-                 tags=None,
-                 all_tags=False):
-        if not branches and not all_branches \
-           and not tags and not all_tags:
-            yield ''
-            return
-
-        saved = self.active_branch()
-        revs = []
-
-        if all_branches:
-            branches = self.list_branches()
-
-        if all_tags:
-            tags = self.list_tags()
-
-        if branches is None:
-            revs.extend([saved])
-        else:
-            revs.extend(branches)
-
-        if tags is not None:
-            revs.extend(tags)
-
-        for rev in revs:
-            self.checkout(rev)
-            yield rev
-
-        self.checkout(saved)
-
-    def untracked_files(self):
-        pass
-
-    def is_tracked(self, path):
-        pass
-
-    def active_branch(self):
-        pass
-
-    def list_branches(self):
-        pass
-
-    def list_tags(self):
-        pass
-
-    def install(self):
-        pass
+from dvc.scm.base import Base, SCMError, FileNotInRepoError
 
 
 class Git(Base):
+    """Class for managing Git."""
     GITIGNORE = '.gitignore'
     GIT_DIR = '.git'
 
@@ -133,8 +30,8 @@ class Git(Base):
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
-        lp = env.get('LD_LIBRARY_PATH', None)
-        self.repo.git.update_environment(LD_LIBRARY_PATH=lp)
+        libpath = env.get('LD_LIBRARY_PATH', None)
+        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
 
     @staticmethod
     def is_repo(root_dir):
@@ -152,6 +49,7 @@ class Git(Base):
     def dir(self):
         return self.repo.git_dir
 
+    @property
     def ignore_file(self):
         return self.GITIGNORE
 
@@ -174,7 +72,7 @@ class Git(Base):
             ignore_list = open(gitignore, 'r').readlines()
             filtered = list(filter(lambda x: x.strip() == entry.strip(),
                                    ignore_list))
-            if len(filtered) != 0:
+            if filtered:
                 return
 
         msg = "Adding '{}' to '{}'.".format(os.path.relpath(path),
@@ -182,14 +80,14 @@ class Git(Base):
         logger.info(msg)
 
         content = entry
-        if len(ignore_list) > 0:
+        if ignore_list:
             content = '\n' + content
 
-        with open(gitignore, 'a') as fd:
-            fd.write(content)
+        with open(gitignore, 'a') as fobj:
+            fobj.write(content)
 
         if self.project is not None:
-            self.project._files_to_git_add.append(os.path.relpath(gitignore))
+            self.project.files_to_git_add.append(os.path.relpath(gitignore))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -197,16 +95,16 @@ class Git(Base):
         if not os.path.exists(gitignore):
             return
 
-        with open(gitignore, 'r') as fd:
-            lines = fd.readlines()
+        with open(gitignore, 'r') as fobj:
+            lines = fobj.readlines()
 
         filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
 
-        with open(gitignore, 'w') as fd:
-            fd.writelines(filtered)
+        with open(gitignore, 'w') as fobj:
+            fobj.writelines(filtered)
 
         if self.project is not None:
-            self.project._files_to_git_add.append(os.path.relpath(gitignore))
+            self.project.files_to_git_add.append(os.path.relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
@@ -263,17 +161,10 @@ class Git(Base):
         if os.path.isfile(hook):
             msg = "git hook '{}' already exists."
             raise SCMError(msg.format(os.path.relpath(hook)))
-        with open(hook, 'w+') as fd:
-            fd.write('#!/bin/sh\nexec dvc {}\n'.format(cmd))
+        with open(hook, 'w+') as fobj:
+            fobj.write('#!/bin/sh\nexec dvc {}\n'.format(cmd))
         os.chmod(hook, 0o777)
 
     def install(self):
         self._install_hook('post-checkout', 'checkout')
         self._install_hook('pre-commit', 'status')
-
-
-def SCM(root_dir, no_scm=False, project=None):
-    if Git.is_repo(root_dir) or Git.is_submodule(root_dir):
-        return Git(root_dir, project=project)
-
-    return Base(root_dir, project=project)
