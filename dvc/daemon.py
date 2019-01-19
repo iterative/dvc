@@ -28,7 +28,6 @@ def _spawn_windows(cmd):
           startupinfo=startupinfo).communicate()
 
 
-@staticmethod
 def _spawn_posix(cmd):
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exeption and throws
