@@ -96,6 +96,10 @@ class OutputBase(object):
         return '/'
 
     @property
+    def checksum(self):
+        return self.info.get(self.remote.PARAM_CHECKSUM)
+
+    @property
     def exists(self):
         return self.remote.exists(self.path_info)
 

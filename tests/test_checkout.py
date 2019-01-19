@@ -80,9 +80,9 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
 
         # NOTE: modifying cache file for one of the files inside the directory
         # to check if dvc will detect that the cache is corrupted.
-        entry = self.dvc.cache.local.load_dir_cache(out.md5)[0]
-        md5 = entry[self.dvc.cache.local.PARAM_CHECKSUM]
-        cache = self.dvc.cache.local.get(md5)
+        entry = self.dvc.cache.local.load_dir_cache(out.checksum)[0]
+        checksum = entry[self.dvc.cache.local.PARAM_CHECKSUM]
+        cache = self.dvc.cache.local.get(checksum)
 
         with open(cache, 'w+') as fobj:
             fobj.write('1')

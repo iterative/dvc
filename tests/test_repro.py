@@ -464,7 +464,7 @@ class TestReproDataSource(TestReproChangedData):
         stages = self.dvc.reproduce(self.foo_stage.path)
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(stages[0].outs[0].md5, file_md5(self.BAR)[0])
+        self.assertEqual(stages[0].outs[0].checksum, file_md5(self.BAR)[0])
 
 
 class TestReproChangedDir(TestDvc):

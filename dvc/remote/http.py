@@ -27,7 +27,7 @@ class RemoteHTTP(RemoteBase):
     REGEX = r'^https?://.*$'
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 1000000  # Megabyte
-    PARAM_ETAG = 'etag'
+    PARAM_CHECKSUM = 'etag'
 
     def __init__(self, project, config):
         super(RemoteHTTP, self).__init__(project, config)
@@ -99,7 +99,7 @@ class RemoteHTTP(RemoteBase):
         if path_info['scheme'] not in ['http', 'https']:
             raise NotImplementedError
 
-        return {self.PARAM_ETAG: self._etag(path_info['path'])}
+        return {self.PARAM_CHECKSUM: self._etag(path_info['path'])}
 
     def _content_length(self, url):
         return self._request('HEAD', url).headers.get('Content-Length')
