@@ -1,4 +1,4 @@
-"""Handle impor compatibility between Python 2 and Python 3"""
+"""Handle import compatibility between Python 2 and Python 3"""
 
 try:
     from urlparse import urlparse, urljoin  # noqa: F401

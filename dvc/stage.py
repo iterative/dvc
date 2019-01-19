@@ -14,31 +14,41 @@ from dvc.utils import dict_md5, fix_env
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = u"Stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
+        msg = u"stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 
 class StageFileFormatError(DvcException):
     def __init__(self, fname, e):
-        msg = "Stage file '{}' format error: {}".format(fname, str(e))
+        msg = "stage file '{}' format error: {}".format(fname, str(e))
         super(StageFileFormatError, self).__init__(msg)
 
 
 class StageFileDoesNotExistError(DvcException):
     def __init__(self, fname):
         msg = "'{}' does not exist.".format(fname)
+
+        sname = fname + Stage.STAGE_FILE_SUFFIX
+        if Stage.is_stage_file(sname):
+            msg += " Do you mean '{}'?".format(sname)
+
         super(StageFileDoesNotExistError, self).__init__(msg)
 
 
 class StageFileAlreadyExistsError(DvcException):
     def __init__(self, relpath):
-        msg = "Stage '{}' already exists".format(relpath)
+        msg = "stage '{}' already exists".format(relpath)
         super(StageFileAlreadyExistsError, self).__init__(msg)
 
 
 class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
         msg = "'{}' is not a dvc file".format(fname)
+
+        sname = fname + Stage.STAGE_FILE_SUFFIX
+        if Stage.is_stage_file(sname):
+            msg += " Do you mean '{}'?".format(sname)
+
         super(StageFileIsNotDvcFileError, self).__init__(msg)
 
 
@@ -49,7 +59,7 @@ class StageFileBadNameError(DvcException):
 
 class StageBadCwdError(DvcException):
     def __init__(self, cwd):
-        msg = "Stage cwd '{}' is outside of the current dvc project"
+        msg = "stage cwd '{}' is outside of the current dvc project"
         super(StageBadCwdError, self).__init__(msg.format(cwd))
 
 
@@ -125,29 +135,20 @@ class Stage(object):
 
     @property
     def is_data_source(self):
-        """Whether the stage file was created with `dvc add`."""
+        """Whether the stage file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
 
     @staticmethod
-    def is_stage_filename(path):
-        if not path.endswith(Stage.STAGE_FILE_SUFFIX) \
-           and os.path.basename(path) != Stage.STAGE_FILE:
-            return False
-
-        return True
+    def is_valid_filename(path):
+        return (path.endswith(Stage.STAGE_FILE_SUFFIX)
+                or os.path.basename(path) == Stage.STAGE_FILE)
 
     @staticmethod
     def is_stage_file(path):
-        if not os.path.isfile(path):
-            return False
-
-        return Stage.is_stage_filename(path)
+        return os.path.isfile(path) and Stage.is_valid_filename(path)
 
     def changed_md5(self):
-        md5 = self._get_md5()
-        assert md5 is not None
-
-        return self.md5 != md5
+        return self.md5 != self._compute_md5()
 
     @property
     def is_callback(self):
@@ -169,27 +170,29 @@ class Stage(object):
             return False
 
         if self.is_callback:
-            msg = "Dvc file '{}' is a 'callback' stage (has a command and " \
-                  "no dependencies) and thus always considered as changed."
-            logger.warning(msg.format(self.relpath))
+            logger.warning(
+                "Dvc file '{fname}' is a 'callback' stage (has a command and"
+                " no dependencies) and thus always considered as changed."
+                .format(fname=self.relpath)
+            )
             return True
 
         for dep in self.deps:
-            if not dep.changed():
-                continue
-            msg = "Dependency '{}' of '{}' changed.".format(dep, self.relpath)
-            logger.warning(msg)
-            return True
+            if dep.changed():
+                logger.warning("Dependency '{dep}' of '{stage}' changed."
+                               .format(dep=dep, stage=self.relpath))
+                return True
 
         return False
 
     def _changed_outs(self):
         for out in self.outs:
-            if not out.changed():
-                continue
-            msg = "Output '{}' of '{}' changed.".format(out, self.relpath)
-            logger.warning(msg)
-            return True
+            if out.changed():
+                logger.warning(
+                    "Output '{out}' of '{stage}' changed."
+                    .format(out=out, stage=self.relpath)
+                )
+                return True
 
         return False
 
@@ -240,18 +243,19 @@ class Stage(object):
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
-        msg = "Going to reproduce '{}'. Are you sure you want to continue?"
-        msg = msg.format(self.relpath)
+        msg = (
+            "Going to reproduce '{stage}'. Are you sure you want to continue?"
+            .format(stage=self.relpath)
+        )
 
         if interactive and not prompt.confirm(msg):
             raise DvcException('reproduction aborted by the user')
 
-        logger.info(u"Reproducing '{}'".format(self.relpath))
+        logger.info(u"Reproducing '{stage}'".format(stage=self.relpath))
 
         self.run(dry=dry)
 
-        msg = u"'{}' was reproduced".format(self.relpath)
-        logger.debug(msg)
+        logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
         return self
 
@@ -261,27 +265,6 @@ class Stage(object):
             Schema(Stage.SCHEMA).validate(d)
         except SchemaError as exc:
             raise StageFileFormatError(fname, exc)
-
-    @staticmethod
-    def _loadd(project, d, path):
-        Stage.validate(d, fname=os.path.relpath(path))
-        path = os.path.abspath(path)
-        cwd = os.path.dirname(path)
-        cmd = d.get(Stage.PARAM_CMD, None)
-        md5 = d.get(Stage.PARAM_MD5, None)
-        locked = d.get(Stage.PARAM_LOCKED, False)
-
-        stage = Stage(project=project,
-                      path=path,
-                      cmd=cmd,
-                      cwd=cwd,
-                      md5=md5,
-                      locked=locked)
-
-        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
-        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
-
-        return stage
 
     @classmethod
     def _stage_fname_cwd(cls, fname, cwd, outs, add):
@@ -373,9 +356,11 @@ class Stage(object):
         stage._check_duplicated_arguments()
 
         if fname is not None and os.path.basename(fname) != fname:
-            msg = "stage file name '{}' should not contain subdirectories. " \
-                  "Use '-c|--cwd' to change location of the stage file."
-            raise StageFileBadNameError(msg.format(fname))
+            raise StageFileBadNameError(
+                "stage file name '{fname}' should not contain subdirectories."
+                " Use '-c|--cwd' to change location of the stage file."
+                .format(fname=fname)
+            )
 
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
 
@@ -410,82 +395,80 @@ class Stage(object):
 
     @staticmethod
     def _check_dvc_filename(fname):
-        if not Stage.is_stage_filename(fname):
-            msg = "bad stage filename '{}'. Stage files should be named " \
-                  "'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
-            raise StageFileBadNameError(msg.format(os.path.relpath(fname),
-                                                   os.path.basename(fname)))
+        if not Stage.is_valid_filename(fname):
+            raise StageFileBadNameError(
+                "bad stage filename '{}'. Stage files should be named"
+                " 'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
+                .format(os.path.relpath(fname), os.path.basename(fname))
+            )
 
     @staticmethod
-    def _check_dvc_file(fname):
-        sname = fname + Stage.STAGE_FILE_SUFFIX
-        if Stage.is_stage_file(sname):
-            logger.info("Do you mean '{}'?".format(sname))
+    def _check_file_exists(fname):
+        if not os.path.exists(fname):
+            raise StageFileDoesNotExistError(fname)
 
     @staticmethod
     def load(project, fname):
-        if not os.path.exists(fname):
-            Stage._check_dvc_file(fname)
-            raise StageFileDoesNotExistError(fname)
-
+        Stage._check_file_exists(fname)
         Stage._check_dvc_filename(fname)
 
         if not Stage.is_stage_file(fname):
-            Stage._check_dvc_file(fname)
             raise StageFileIsNotDvcFileError(fname)
 
         with open(fname, 'r') as fd:
-            return Stage._loadd(project, yaml.safe_load(fd) or dict(), fname)
+            d = yaml.safe_load(fd) or {}
+
+        Stage.validate(d, fname=os.path.relpath(fname))
+
+        stage = Stage(project=project,
+                      path=os.path.abspath(fname),
+                      cwd=os.path.dirname(os.path.abspath(fname)),
+                      cmd=d.get(Stage.PARAM_CMD),
+                      md5=d.get(Stage.PARAM_MD5),
+                      locked=d.get(Stage.PARAM_LOCKED, False))
+
+        stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
+        stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
+
+        return stage
 
     def dumpd(self):
-        ret = {}
-
-        if self.cmd is not None:
-            ret[Stage.PARAM_CMD] = self.cmd
-
-        if len(self.deps):
-            ret[Stage.PARAM_DEPS] = [d.dumpd() for d in self.deps]
-
-        if len(self.outs):
-            ret[Stage.PARAM_OUTS] = [o.dumpd() for o in self.outs]
-
-        ret[Stage.PARAM_MD5] = self.md5
-
-        if self.locked:
-            ret[Stage.PARAM_LOCKED] = self.locked
-
-        return ret
+        return {
+            key: value
+            for key, value in {
+                Stage.PARAM_MD5: self.md5,
+                Stage.PARAM_CMD: self.cmd,
+                Stage.PARAM_LOCKED: self.locked,
+                Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
+                Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
+            }.items()
+            if value
+        }
 
     def dump(self, fname=None):
-        if not fname:
-            fname = self.path
+        fname = fname or self.path
 
         self._check_dvc_filename(fname)
 
-        msg = "Saving information to '{}'.".format(os.path.relpath(fname))
-        logger.info(msg)
+        logger.info("Saving information to '{file}'."
+                    .format(file=os.path.relpath(fname)))
 
         with open(fname, 'w') as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
         self.project._files_to_git_add.append(os.path.relpath(fname))
 
-    def _get_md5(self):
+    def _compute_md5(self):
         from dvc.output.local import OutputLOCAL
-
-        # NOTE: excluding parameters that don't affect the state of the
-        # pipeline. Not excluding OutputLOCAL.PARAM_CACHE, because if
-        # it has changed, we might not have that output in our cache.
-        exclude = [self.PARAM_LOCKED,
-                   OutputLOCAL.PARAM_METRIC]
 
         d = self.dumpd()
 
-        # NOTE: removing md5 manually in order to not affect md5s in deps/outs
-        if self.PARAM_MD5 in d.keys():
-            del d[self.PARAM_MD5]
-
-        return dict_md5(d, exclude)
+        # NOTE: excluding parameters that don't affect the state of the
+        # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
+        # it has changed, we might not have that output in our cache.
+        return dict_md5(d, exclude=[self.PARAM_MD5,
+                                    self.PARAM_LOCKED,
+                                    OutputLOCAL.PARAM_METRIC])
 
     def save(self):
         for dep in self.deps:
@@ -494,18 +477,15 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-        self.md5 = self._get_md5()
+        self.md5 = self._compute_md5()
 
     def _check_missing_deps(self):
-        missing = []
-        for dep in self.deps:
-            if not dep.exists:
-                missing.append(dep)
+        missing = [dep for dep in self.deps if not dep.exists]
 
-        if len(missing) > 0:
+        if any(missing):
             raise MissingDep(missing)
 
-    def _check_if_fish(self, executable):  # pragma: no cover
+    def _warn_if_fish(self, executable):  # pragma: no cover
         if executable is None \
            or os.path.basename(os.path.realpath(executable)) != 'fish':
             return
@@ -542,7 +522,7 @@ class Stage(object):
     def _run(self):
         self._check_missing_deps()
         executable = os.getenv('SHELL') if os.name != 'nt' else None
-        self._check_if_fish(executable)
+        self._warn_if_fish(executable)
 
         p = subprocess.Popen(self.cmd,
                              cwd=self.cwd,
@@ -556,25 +536,25 @@ class Stage(object):
 
     def run(self, dry=False):
         if self.locked:
-            msg = u"Verifying outputs in locked stage '{}'"
-            logger.info(msg.format(self.relpath))
+            logger.info("Verifying outputs in locked stage '{stage}'"
+                        .format(stage=self.relpath))
             if not dry:
                 self.check_missing_outputs()
-        elif self.is_import:
-            msg = u"Importing '{}' -> '{}'"
-            logger.info(msg.format(self.deps[0].path, self.outs[0].path))
 
+        elif self.is_import:
+            logger.info("Importing '{dep}' -> '{out}'"
+                        .format(dep=self.deps[0].path, out=self.outs[0].path))
             if not dry:
                 self.deps[0].download(self.outs[0].path_info)
+
         elif self.is_data_source:
             msg = u"Verifying data sources in '{}'".format(self.relpath)
             logger.info(msg)
             if not dry:
                 self.check_missing_outputs()
-        else:
-            msg = u'Running command:\n\t{}'.format(self.cmd)
-            logger.info(msg)
 
+        else:
+            logger.info('Running command:\n\t{}'.format(self.cmd))
             if not dry:
                 self._run()
 
@@ -582,9 +562,12 @@ class Stage(object):
             self.save()
 
     def check_missing_outputs(self):
-        outs = [out for out in self.outs if not out.exists]
-        paths = [out.path if out.scheme != 'local' else
-                 out.rel_path for out in outs]
+        paths = [
+            out.path if out.scheme != 'local' else out.rel_path
+            for out in self.outs
+            if not out.exists
+        ]
+
         if paths:
             raise MissingDataSource(paths)
 

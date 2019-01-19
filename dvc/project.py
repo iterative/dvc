@@ -3,8 +3,9 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-from dvc.exceptions import DvcException, MoveNotDataSourceError
-from dvc.exceptions import NotDvcProjectError
+from dvc.exceptions import (DvcException,
+                            MoveNotDataSourceError,
+                            NotDvcProjectError)
 
 
 class InitError(DvcException):
@@ -83,18 +84,25 @@ class Project(object):
         return os.path.join(root_dir, Project.DVC_DIR)
 
     def _remind_to_git_add(self):
-        if len(self._files_to_git_add) == 0:
+        if not self._files_to_git_add:
             return
 
-        msg = '\nTo track the changes with git run:\n\n'
-        msg += '\tgit add ' + " ".join(self._files_to_git_add)
-
-        logger.info(msg)
+        logger.info('\n'
+                    'To track the changes with git run:\n'
+                    '\n'
+                    '\tgit add {files}'
+                    .format(files=' '.join(self._files_to_git_add)))
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
         """
-        Initiate dvc project in directory.
+        Creates an empty project on the given directory -- basically a
+        `.dvc` directory with subdirectories for configuration and cache.
+
+        It should be tracked by a SCM or use the `--no-scm` flag.
+
+        If the given directory is not empty, you must use the `--force`
+        flag to override it.
 
         Args:
             root_dir: Path to project's root directory.
@@ -113,13 +121,19 @@ class Project(object):
         dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
         scm = SCM(root_dir)
         if type(scm) == Base and not no_scm:
-            msg = "{} is not tracked by any supported scm tool(e.g. git)."
-            raise InitError(msg.format(root_dir))
+            raise InitError(
+                "{project} is not tracked by any supported scm tool"
+                " (e.g. git). Use '--no-scm' if you don't want to use any scm."
+                .format(project=root_dir)
+            )
 
         if os.path.isdir(dvc_dir):
             if not force:
-                msg = "'{}' exists. Use '-f' to force."
-                raise InitError(msg.format(os.path.relpath(dvc_dir)))
+                raise InitError(
+                    "'{project}' exists. Use '-f' to force."
+                    .format(project=os.path.relpath(dvc_dir))
+                )
+
             shutil.rmtree(dvc_dir)
 
         os.mkdir(dvc_dir)
@@ -136,19 +150,6 @@ class Project(object):
         proj._welcome_message()
 
         return proj
-
-    @staticmethod
-    def load_all(projects_paths):
-        """
-        Instantiate all projects in the given list of paths.
-
-        Args:
-            projects_paths: List of paths to projects.
-
-        Returns:
-            List of Project instances in the same order of the given paths.
-        """
-        return [Project(path) for path in projects_paths]
 
     def destroy(self):
         import shutil
@@ -174,9 +175,6 @@ class Project(object):
 
     def install(self):
         self.scm.install()
-
-    def to_dvc_path(self, path):
-        return os.path.relpath(path, self.root_dir)
 
     def _check_cwd_specified_as_output(self, cwd, stages):
         from dvc.exceptions import WorkingDirectoryAsOutputError
@@ -454,7 +452,7 @@ class Project(object):
                   ignore_build_cache=False):
         from dvc.stage import Stage
 
-        if target is None and not all_pipelines:
+        if not target and not all_pipelines:
             raise ValueError()
 
         if not interactive:
@@ -790,8 +788,8 @@ class Project(object):
 
         all_projects = [self]
 
-        if projects is not None and len(projects) > 0:
-            all_projects.extend(Project.load_all(projects))
+        if projects:
+            all_projects.extend(Project(path) for path in projects)
 
         all_clists = Project.load_all_used_cache(all_projects,
                                                  target=None,
@@ -1222,10 +1220,11 @@ class Project(object):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
-        any SCM (e.g. `.git`) or DVC itself (`.dvc`).
+        any SCM (e.g. `.git`), DVC itself (`.dvc`), or directories
+        tracked by DVC (e.g. `dvc add data` would skip `data/`)
 
         NOTE: For large projects, this could be an expensive
-              operation.  Consider using some memorization.
+              operation. Consider using some memoization.
         """
         from dvc.stage import Stage
 
