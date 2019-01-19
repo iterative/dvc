@@ -617,7 +617,57 @@ class TestReproExternalBase(TestDvc):
     def sep(self):
         return '/'
 
-    def test(self):
+    def check_already_cached(self, stage):
+        stage.outs[0].remove()
+
+        patch_download = patch.object(stage.deps[0],
+                                      'download',
+                                      wraps=stage.deps[0].download)
+
+        patch_checkout = patch.object(stage.outs[0],
+                                      'checkout',
+                                      wraps=stage.outs[0].checkout)
+
+        patch_run = patch.object(stage, '_run', wraps=stage._run)
+
+        with self.dvc.state, \
+                patch_download as mock_download, \
+                patch_checkout as mock_checkout, \
+                patch_run as mock_run:
+
+            stage.run()
+
+            mock_run.assert_not_called()
+            mock_download.assert_not_called()
+            mock_checkout.assert_called_once()
+
+    def corrupted_cache(self):
+        os.unlink('bar.dvc')
+
+        stage = self.dvc.run(deps=[self.FOO],
+                             outs=[self.BAR],
+                             cmd='echo bar > bar')
+
+        with open(self.BAR, 'w') as fd:
+            fd.write('corrupting the cache')
+
+        patch_checkout = patch.object(stage.outs[0],
+                                      'checkout',
+                                      wraps=stage.outs[0].checkout)
+
+        patch_run = patch.object(stage, '_run', wraps=stage._run)
+
+        with self.dvc.state, \
+                patch_checkout as mock_checkout, \
+                patch_run as mock_run:
+
+            stage.run()
+
+            mock_run.assert_called_once()
+            mock_checkout.assert_not_called()
+
+    @patch('dvc.prompt.confirm', return_value=True)
+    def test(self, mock_prompt):
         if not self.should_test():
             return
 
@@ -654,9 +704,11 @@ class TestReproExternalBase(TestDvc):
         self.write(self.bucket, foo_key, self.FOO_CONTENTS)
 
         import_stage = self.dvc.imp(out_foo_path, 'import')
+
         self.assertTrue(os.path.exists('import'))
         self.assertTrue(filecmp.cmp('import', self.FOO, shallow=False))
         self.assertEqual(self.dvc.status(import_stage.path), {})
+        self.check_already_cached(import_stage)
 
         import_remote_stage = self.dvc.imp(out_foo_path,
                                            out_foo_path + '_imported')
@@ -665,9 +717,10 @@ class TestReproExternalBase(TestDvc):
         cmd_stage = self.dvc.run(outs=[out_bar_path],
                                  deps=[out_foo_path],
                                  cmd=self.cmd(foo_path, bar_path))
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
 
+        self.assertEqual(self.dvc.status(cmd_stage.path), {})
         self.assertEqual(self.dvc.status(), {})
+        self.check_already_cached(cmd_stage)
 
         self.write(self.bucket, foo_key, self.BAR_CONTENTS)
 
@@ -696,6 +749,8 @@ class TestReproExternalBase(TestDvc):
 
         self.dvc.checkout(cmd_stage.path, force=True)
         self.assertEqual(self.dvc.status(cmd_stage.path), {})
+
+        self.corrupted_cache()
 
 
 class TestReproExternalS3(TestReproExternalBase):
