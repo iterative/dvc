@@ -282,6 +282,8 @@ class Project(object):
         from_out = Output.loads_from(Stage(self, cwd=os.curdir),
                                      [from_path])[0]
 
+        to_path = self._expand_target_path(from_path, to_path)
+
         try:
             stage, out = next((stage, out)
                               for stage in self.stages()
@@ -294,21 +296,25 @@ class Project(object):
         if not stage.is_data_source:
             raise MoveNotDataSourceError(stage.relpath)
 
-        to_out = Output.loads_from(stage, [to_path], out.cache, out.metric)[0]
-
-        with self.state:
-            out.move(to_out)
-
         stage_name = os.path.splitext(os.path.basename(stage.path))[0]
         from_name = os.path.basename(from_out.path)
-
         if stage_name == from_name:
             os.unlink(stage.path)
 
             stage.path = os.path.join(
-                os.path.dirname(to_out.path),
+                os.path.dirname(to_path),
                 os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX
             )
+
+            stage.cwd = os.path.join(self.root_dir, os.path.dirname(to_path))
+
+        to_out = Output.loads_from(stage,
+                                   [os.path.basename(to_path)],
+                                   out.cache,
+                                   out.metric)[0]
+
+        with self.state:
+            out.move(to_out)
 
         stage.dump()
 
@@ -1293,3 +1299,8 @@ class Project(object):
                     blue=colorama.Fore.BLUE,
                     nc=colorama.Fore.RESET)
         )
+
+    def _expand_target_path(self, from_path, to_path):
+        if os.path.isdir(to_path) and not os.path.isdir(from_path):
+            return os.path.join(to_path, os.path.basename(from_path))
+        return to_path
