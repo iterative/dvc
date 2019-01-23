@@ -56,8 +56,11 @@ if os.path.exists(os.path.join(HOMEPATH, 'setup.py')):
 else:  # pragma: no cover
     # dvc was installed with pip or something. Hopefully we have our
     # auto-generated version.py to help us provide a true version
-    from dvc.version import version
-    __version__ = version
+    try:
+        from dvc.version import version
+        __version__ = version
+    except Exception:
+        pass
 
 VERSION = __version__
 
