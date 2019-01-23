@@ -17,6 +17,7 @@ from dvc.utils.compat import urljoin
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
+from dvc.exceptions import CyclicGraphError, WorkingDirectoryAsOutputError
 
 from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
@@ -51,6 +52,145 @@ class TestReproFail(TestRepro):
 
         ret = main(['repro', self.file1_stage])
         self.assertNotEqual(ret, 0)
+
+
+class TestReproCyclicGraph(TestDvc):
+    def test(self):
+        self.dvc.run(deps=[self.FOO],
+                     outs=['bar.txt'],
+                     cmd='echo bar > bar.txt')
+
+        self.dvc.run(deps=['bar.txt'],
+                     outs=['baz.txt'],
+                     cmd='echo baz > baz.txt')
+
+        with open('cycle.dvc', 'w') as fd:
+            stage_dump = {
+                'cmd': 'echo baz > foo',
+                'deps': [{'path': 'baz.txt'}],
+                'outs': [{'path': self.FOO}],
+            }
+
+            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+
+        with self.assertRaises(CyclicGraphError):
+            self.dvc.reproduce('cycle.dvc')
+
+
+class TestReproWorkingDirectoryAsOutput(TestDvc):
+    """
+    |  stage.cwd  |  out.path | cwd as output |
+    |:-----------:|:---------:|:-------------:|
+    |     dir     |    dir    |      True     |
+    | dir/subdir/ |    dir    |      True     |
+    |     dir     |   dir-1   |     False     |
+    |      .      | something |     False     |
+    """
+    def test(self):
+        # File structure:
+        #       .
+        #       |-- dir1
+        #       |  |__ dir2.dvc         (out.path == ../dir2)
+        #       |__ dir2
+        #           |__ something.dvc    (stage.cwd == ./dir2)
+
+        os.mkdir(os.path.join(self.dvc.root_dir, 'dir1'))
+
+        self.dvc.run(
+            cwd='dir1',
+            outs=['../dir2'],
+            cmd='mkdir {path}'.format(path=os.path.join('..', 'dir2'))
+        )
+
+        faulty_stage_path = os.path.join('dir2', 'something.dvc')
+
+        with open(faulty_stage_path, 'w') as fd:
+            stage_dump = {
+                'cmd': 'echo something > something',
+                'outs': [{'path': 'something'}],
+            }
+
+            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+
+        with self.assertRaises(WorkingDirectoryAsOutputError):
+            self.dvc.reproduce(faulty_stage_path)
+
+    def test_nested(self):
+        from dvc.stage import Stage
+        #
+        #       .
+        #       |-- a
+        #       |  |__ nested
+        #       |     |__ dir
+        #       |       |__ error.dvc     (stage.cwd == 'a/nested/dir')
+        #       |__ b
+        #          |__ nested.dvc         (stage.out == 'a/nested')
+        dir1 = 'b'
+        dir2 = 'a'
+
+        os.mkdir(dir1)
+        os.mkdir(dir2)
+
+        nested_dir = os.path.join(dir2, 'nested')
+        out_dir = os.path.relpath(nested_dir, dir1)
+
+        nested_stage = self.dvc.run(
+            cwd=dir1,          # b
+            outs=[out_dir],    # ../a/nested
+            cmd='mkdir {path}'.format(path=out_dir)
+        )
+
+        os.mkdir(os.path.join(nested_dir, 'dir'))
+
+        error_stage_path = os.path.join(nested_dir, 'dir', 'error.dvc')
+
+        with open(error_stage_path, 'w') as fd:
+            stage_dump = {
+                'cmd': 'echo something > something',
+                'outs': [{'path': 'something'}],
+            }
+
+            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+
+        # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
+        # be processed before dir1 to load error.dvc first.
+        with patch.object(Project, 'stages') as mock_stages:
+            mock_stages.return_value = [
+                nested_stage,
+                Stage.load(self.dvc, error_stage_path)
+            ]
+
+            with self.assertRaises(WorkingDirectoryAsOutputError):
+                self.dvc.reproduce(error_stage_path)
+
+    def test_similar_paths(self):
+        # File structure:
+        #
+        #       .
+        #       |-- something.dvc   (out.path == something)
+        #       |-- something
+        #       |__ something-1
+        #          |-- a
+        #          |__ a.dvc        (stage.cwd == something-1)
+
+        self.dvc.run(outs=['something'], cmd='mkdir something')
+
+        os.mkdir('something-1')
+
+        stage = os.path.join('something-1', 'a.dvc')
+
+        with open(stage, 'w') as fd:
+            stage_dump = {
+                'cmd': 'echo a > a',
+                'outs': [{'path': 'a'}],
+            }
+
+            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+
+        try:
+            self.dvc.reproduce(stage)
+        except WorkingDirectoryAsOutputError:
+            self.fail('should not raise WorkingDirectoryAsOutputError')
 
 
 class TestReproDepUnderDir(TestDvc):

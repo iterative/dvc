@@ -12,6 +12,7 @@ from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
 from dvc.exceptions import (OutputDuplicationError,
                             CircularDependencyError,
+                            CyclicGraphError,
                             ArgumentDuplicationError,
                             WorkingDirectoryAsOutputError)
 
@@ -121,6 +122,20 @@ class TestRunCircularDependency(TestDvc):
                          deps=['./foo'],
                          outs=['foo'],
                          fname='circular-dependency.dvc')
+
+    def test_graph(self):
+        self.dvc.run(deps=[self.FOO],
+                     outs=['bar.txt'],
+                     cmd='echo bar > bar.txt')
+
+        self.dvc.run(deps=['bar.txt'],
+                     outs=['baz.txt'],
+                     cmd='echo baz > baz.txt')
+
+        with self.assertRaises(CyclicGraphError):
+            self.dvc.run(deps=['baz.txt'],
+                         outs=[self.FOO],
+                         cmd='echo baz > foo')
 
 
 class TestRunDuplicatedArguments(TestDvc):
