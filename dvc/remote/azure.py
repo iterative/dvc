@@ -29,7 +29,7 @@ class RemoteAzure(RemoteBase):
              r'(ContainerName=(?P<container_name>[^;]+);?)?'
              r'(?P<connection_string>.+)?)?)$')
     REQUIRES = {'azure-storage-blob': BlockBlobService}
-    PARAM_ETAG = 'etag'
+    PARAM_CHECKSUM = 'etag'
     COPY_POLL_SECONDS = 5
 
     def __init__(self, project, config):

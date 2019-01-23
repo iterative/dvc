@@ -547,7 +547,10 @@ class Stage(object):
             logger.info("Importing '{dep}' -> '{out}'"
                         .format(dep=self.deps[0].path, out=self.outs[0].path))
             if not dry:
-                self.deps[0].download(self.outs[0].path_info)
+                if self._already_cached():
+                    self.outs[0].checkout()
+                else:
+                    self.deps[0].download(self.outs[0].path_info)
 
         elif self.is_data_source:
             msg = u"Verifying data sources in '{}'".format(self.relpath)
@@ -558,7 +561,10 @@ class Stage(object):
         else:
             logger.info('Running command:\n\t{}'.format(self.cmd))
             if not dry:
-                self._run()
+                if self._already_cached():
+                    self.checkout()
+                else:
+                    self._run()
 
         if not dry:
             self.save()
@@ -600,3 +606,11 @@ class Stage(object):
             return {self.relpath: ret}
 
         return {}
+
+    def _already_cached(self):
+        return (not self.changed_md5()
+                and all(not dep.changed() for dep in self.deps)
+                and all(not out.changed_cache()
+                        if out.use_cache
+                        else not out.changed()
+                        for out in self.outs))

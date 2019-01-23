@@ -96,6 +96,10 @@ class OutputBase(object):
         return '/'
 
     @property
+    def checksum(self):
+        return self.info.get(self.remote.PARAM_CHECKSUM)
+
+    @property
     def exists(self):
         return self.remote.exists(self.path_info)
 
@@ -108,6 +112,14 @@ class OutputBase(object):
 
         return getattr(self.project.cache, self.scheme).changed(self.path_info,
                                                                 self.info)
+
+    def changed_cache(self):
+        if not self.use_cache or not self.checksum:
+            return True
+
+        cache = self.project.cache.__getattribute__(self.scheme)
+
+        return cache.changed_cache(self.checksum)
 
     def status(self):
         if self.changed():

@@ -42,7 +42,7 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].path, outs[0])
-        self.assertEqual(stage.outs[0].md5, file_md5(self.FOO)[0])
+        self.assertEqual(stage.outs[0].checksum, file_md5(self.FOO)[0])
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):

@@ -55,12 +55,8 @@ class OutputLOCAL(OutputBase):
         return os.path.relpath(self.path)
 
     @property
-    def md5(self):
-        return self.info.get(self.project.cache.local.PARAM_CHECKSUM, None)
-
-    @property
     def cache(self):
-        return self.project.cache.local.get(self.md5)
+        return self.project.cache.local.get(self.checksum)
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
