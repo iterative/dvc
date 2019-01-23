@@ -53,7 +53,7 @@ class Project(object):
         self.cloud = DataCloud(self, config=self.config.config)
         self.updater = Updater(self.dvc_dir)
 
-        self._files_to_git_add = []
+        self.files_to_git_add = []
 
         self._ignore()
 
@@ -84,14 +84,14 @@ class Project(object):
         return os.path.join(root_dir, Project.DVC_DIR)
 
     def _remind_to_git_add(self):
-        if not self._files_to_git_add:
+        if not self.files_to_git_add:
             return
 
         logger.info('\n'
                     'To track the changes with git run:\n'
                     '\n'
                     '\tgit add {files}'
-                    .format(files=' '.join(self._files_to_git_add)))
+                    .format(files=' '.join(self.files_to_git_add)))
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -143,8 +143,8 @@ class Project(object):
 
         scm.add([config.config_file])
 
-        if scm.ignore_file():
-            scm.add([os.path.join(dvc_dir, scm.ignore_file())])
+        if scm.ignore_file:
+            scm.add([os.path.join(dvc_dir, scm.ignore_file)])
             logger.info('\nYou can now commit the changes to git.\n')
 
         proj._welcome_message()
@@ -197,7 +197,7 @@ class Project(object):
                     path = os.path.join(root, f)
                     if Stage.is_stage_file(path):
                         continue
-                    if os.path.basename(path) == self.scm.ignore_file():
+                    if os.path.basename(path) == self.scm.ignore_file:
                         continue
                     if self.scm.is_tracked(path):
                         continue
@@ -206,7 +206,7 @@ class Project(object):
             fnames = [fname]
 
         stages = []
-        self._files_to_git_add = []
+        self.files_to_git_add = []
         with self.state:
             for f in fnames:
                 stage = Stage.create(project=self,
@@ -386,7 +386,7 @@ class Project(object):
 
         self._check_dag(self.stages() + [stage])
 
-        self._files_to_git_add = []
+        self.files_to_git_add = []
         with self.state:
             if not no_exec:
                 stage.run()
@@ -410,7 +410,7 @@ class Project(object):
 
         self._check_dag(self.stages() + [stage])
 
-        self._files_to_git_add = []
+        self.files_to_git_add = []
         with self.state:
             stage.run()
 
@@ -474,7 +474,7 @@ class Project(object):
         else:
             targets.append(target)
 
-        self._files_to_git_add = []
+        self.files_to_git_add = []
 
         ret = []
         with self.state:
