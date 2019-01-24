@@ -465,11 +465,14 @@ class Stage(object):
 
         d = self.dumpd()
 
+        # NOTE: removing md5 manually in order to not affect md5s in deps/outs
+        if self.PARAM_MD5 in d.keys():
+            del d[self.PARAM_MD5]
+
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        return dict_md5(d, exclude=[self.PARAM_MD5,
-                                    self.PARAM_LOCKED,
+        return dict_md5(d, exclude=[self.PARAM_LOCKED,
                                     OutputLOCAL.PARAM_METRIC])
 
     def save(self):
