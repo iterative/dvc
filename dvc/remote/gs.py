@@ -42,7 +42,7 @@ class RemoteGS(RemoteBase):
 
     @property
     def gs(self):
-        return storage.Client()
+        return storage.Client(self.projectname)
 
     def get_md5(self, bucket, path):
         import base64
