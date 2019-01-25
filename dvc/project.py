@@ -7,17 +7,17 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-from dvc.exceptions import DvcException, MoveNotDataSourceError, NotDvcProjectError
+from dvc.exceptions import (DvcException,
+                            MoveNotDataSourceError,
+                            NotDvcProjectError)
 
 
 class InitError(DvcException):
-
     def __init__(self, msg):
         super(InitError, self).__init__(msg)
 
 
 class ReproductionError(DvcException):
-
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
         msg = "failed to reproduce '{}'".format(dvc_file_name)
@@ -25,7 +25,7 @@ class ReproductionError(DvcException):
 
 
 class Project(object):
-    DVC_DIR = ".dvc"
+    DVC_DIR = '.dvc'
 
     def __init__(self, root_dir=None):
         from dvc.config import Config
@@ -91,12 +91,11 @@ class Project(object):
         if not self.files_to_git_add:
             return
 
-        logger.info(
-            "\n"
-            "To track the changes with git run:\n"
-            "\n"
-            "\tgit add {files}".format(files=" ".join(self.files_to_git_add))
-        )
+        logger.info('\n'
+                    'To track the changes with git run:\n'
+                    '\n'
+                    '\tgit add {files}'
+                    .format(files=' '.join(self.files_to_git_add)))
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -128,17 +127,15 @@ class Project(object):
         if type(scm) == Base and not no_scm:
             raise InitError(
                 "{project} is not tracked by any supported scm tool"
-                " (e.g. git). Use '--no-scm' if you don't want to use any scm.".format(
-                    project=root_dir
-                )
+                " (e.g. git). Use '--no-scm' if you don't want to use any scm."
+                .format(project=root_dir)
             )
 
         if os.path.isdir(dvc_dir):
             if not force:
                 raise InitError(
-                    "'{project}' exists. Use '-f' to force.".format(
-                        project=os.path.relpath(dvc_dir)
-                    )
+                    "'{project}' exists. Use '-f' to force."
+                    .format(project=os.path.relpath(dvc_dir))
                 )
 
             shutil.rmtree(dvc_dir)
@@ -152,7 +149,7 @@ class Project(object):
 
         if scm.ignore_file:
             scm.add([os.path.join(dvc_dir, scm.ignore_file)])
-            logger.info("\nYou can now commit the changes to git.\n")
+            logger.info('\nYou can now commit the changes to git.\n')
 
         proj._welcome_message()
 
@@ -215,7 +212,9 @@ class Project(object):
         self.files_to_git_add = []
         with self.state:
             for f in fnames:
-                stage = Stage.create(project=self, outs=[f], add=True)
+                stage = Stage.create(project=self,
+                                     outs=[f],
+                                     add=True)
 
                 if stage is None:
                     stages.append(stage)
@@ -278,21 +277,19 @@ class Project(object):
         import dvc.output as Output
         from dvc.stage import Stage
 
-        from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
+        from_out = Output.loads_from(Stage(self, cwd=os.curdir),
+                                     [from_path])[0]
 
         to_path = self._expand_target_path(from_path, to_path)
 
         try:
-            stage, out = next(
-                (stage, out)
-                for stage in self.stages()
-                for out in stage.outs
-                if from_out.path == out.path
-            )
+            stage, out = next((stage, out)
+                              for stage in self.stages()
+                              for out in stage.outs
+                              if from_out.path == out.path)
         except StopIteration:
-            raise DvcException(
-                "unable to find stage file with output '{path}'".format(path=from_path)
-            )
+            raise DvcException("unable to find stage file with output '{path}'"
+                               .format(path=from_path))
 
         if not stage.is_data_source:
             raise MoveNotDataSourceError(stage.relpath)
@@ -304,14 +301,15 @@ class Project(object):
 
             stage.path = os.path.join(
                 os.path.dirname(to_path),
-                os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX,
+                os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX
             )
 
             stage.cwd = os.path.join(self.root_dir, os.path.dirname(to_path))
 
-        to_out = Output.loads_from(
-            stage, [os.path.basename(to_path)], out.cache, out.metric
-        )[0]
+        to_out = Output.loads_from(stage,
+                                   [os.path.basename(to_path)],
+                                   out.cache,
+                                   out.metric)[0]
 
         with self.state:
             out.move(to_out)
@@ -329,17 +327,15 @@ class Project(object):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug("Unprotecting '{}'".format(path))
 
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid.uuid4()))
+            tmp = os.path.join(os.path.dirname(path), '.' + str(uuid.uuid4()))
             move(path, tmp)
 
             copyfile(tmp, path)
 
             remove(tmp)
         else:
-            logger.debug(
-                "Skipping copying for '{}', since it is not "
-                "a symlink or a hardlink.".format(path)
-            )
+            logger.debug("Skipping copying for '{}', since it is not "
+                         "a symlink or a hardlink.".format(path))
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
@@ -351,43 +347,42 @@ class Project(object):
 
     def unprotect(self, path):
         if not os.path.exists(path):
-            raise DvcException("can't unprotect non-existing data '{}'".format(path))
+            raise DvcException(
+                "can't unprotect non-existing data '{}'"
+                .format(path)
+            )
 
         if os.path.isdir(path):
             self._unprotect_dir(path)
         else:
             self._unprotect_file(path)
 
-    def run(
-        self,
-        cmd=None,
-        deps=[],
-        outs=[],
-        outs_no_cache=[],
-        metrics_no_cache=[],
-        fname=None,
-        cwd=os.curdir,
-        no_exec=False,
-        overwrite=False,
-        ignore_build_cache=False,
-        remove_outs=False,
-    ):
+    def run(self,
+            cmd=None,
+            deps=[],
+            outs=[],
+            outs_no_cache=[],
+            metrics_no_cache=[],
+            fname=None,
+            cwd=os.curdir,
+            no_exec=False,
+            overwrite=False,
+            ignore_build_cache=False,
+            remove_outs=False):
         from dvc.stage import Stage
 
         with self.state:
-            stage = Stage.create(
-                project=self,
-                fname=fname,
-                cmd=cmd,
-                cwd=cwd,
-                outs=outs,
-                outs_no_cache=outs_no_cache,
-                metrics_no_cache=metrics_no_cache,
-                deps=deps,
-                overwrite=overwrite,
-                ignore_build_cache=ignore_build_cache,
-                remove_outs=remove_outs,
-            )
+            stage = Stage.create(project=self,
+                                 fname=fname,
+                                 cmd=cmd,
+                                 cwd=cwd,
+                                 outs=outs,
+                                 outs_no_cache=outs_no_cache,
+                                 metrics_no_cache=metrics_no_cache,
+                                 deps=deps,
+                                 overwrite=overwrite,
+                                 ignore_build_cache=ignore_build_cache,
+                                 remove_outs=remove_outs)
 
         if stage is None:
             return None
@@ -408,7 +403,10 @@ class Project(object):
     def imp(self, url, out):
         from dvc.stage import Stage
 
-        stage = Stage.create(project=self, cmd=None, deps=[url], outs=[out])
+        stage = Stage.create(project=self,
+                             cmd=None,
+                             deps=[url],
+                             outs=[out])
 
         if stage is None:
             return None
@@ -431,7 +429,8 @@ class Project(object):
         if stage.locked:
             logger.warning(
                 "DVC file '{path}' is locked. Its dependencies are"
-                " not going to be reproduced.".format(path=stage.relpath)
+                " not going to be reproduced."
+                .format(path=stage.relpath)
             )
 
         stage = stage.reproduce(force=force, dry=dry, interactive=interactive)
@@ -443,17 +442,15 @@ class Project(object):
 
         return [stage]
 
-    def reproduce(
-        self,
-        target=None,
-        recursive=True,
-        force=False,
-        dry=False,
-        interactive=False,
-        pipeline=False,
-        all_pipelines=False,
-        ignore_build_cache=False,
-    ):
+    def reproduce(self,
+                  target=None,
+                  recursive=True,
+                  force=False,
+                  dry=False,
+                  interactive=False,
+                  pipeline=False,
+                  all_pipelines=False,
+                  ignore_build_cache=False):
         from dvc.stage import Stage
 
         if not target and not all_pipelines:
@@ -485,55 +482,68 @@ class Project(object):
         ret = []
         with self.state:
             for target in targets:
-                stages = self._reproduce(
-                    target,
-                    recursive=recursive,
-                    force=force,
-                    dry=dry,
-                    interactive=interactive,
-                    ignore_build_cache=ignore_build_cache,
-                )
+                stages = self._reproduce(target,
+                                         recursive=recursive,
+                                         force=force,
+                                         dry=dry,
+                                         interactive=interactive,
+                                         ignore_build_cache=ignore_build_cache)
                 ret.extend(stages)
 
         self._remind_to_git_add()
 
         return ret
 
-    def _reproduce(
-        self,
-        target,
-        recursive=True,
-        force=False,
-        dry=False,
-        interactive=False,
-        ignore_build_cache=False,
-    ):
+    def _reproduce(self,
+                   target,
+                   recursive=True,
+                   force=False,
+                   dry=False,
+                   interactive=False,
+                   ignore_build_cache=False):
         import networkx as nx
         from dvc.stage import Stage
 
         stage = Stage.load(self, target)
         G = self.graph()[1]
-        stages = nx.get_node_attributes(G, "stage")
+        stages = nx.get_node_attributes(G, 'stage')
         node = os.path.relpath(stage.path, self.root_dir)
 
         if recursive:
-            ret = self._reproduce_stages(
-                G, stages, node, force, dry, interactive, ignore_build_cache
-            )
+            ret = self._reproduce_stages(G,
+                                         stages,
+                                         node,
+                                         force,
+                                         dry,
+                                         interactive,
+                                         ignore_build_cache)
         else:
-            ret = self._reproduce_stage(stages, node, force, dry, interactive)
+            ret = self._reproduce_stage(stages,
+                                        node,
+                                        force,
+                                        dry,
+                                        interactive)
 
         return ret
 
-    def _reproduce_stages(
-        self, G, stages, node, force, dry, interactive, ignore_build_cache
-    ):
+    def _reproduce_stages(self,
+                          G,
+                          stages,
+                          node,
+                          force,
+                          dry,
+                          interactive,
+                          ignore_build_cache):
         import networkx as nx
 
         result = []
         for n in nx.dfs_postorder_nodes(G, node):
             try:
-                ret = self._reproduce_stage(stages, n, force, dry, interactive)
+                ret = self._reproduce_stage(stages,
+                                            n,
+                                            force,
+                                            dry,
+                                            interactive)
 
                 if len(ret) == 0 and ignore_build_cache:
                     # NOTE: we are walking our pipeline from the top to the
@@ -555,7 +565,11 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None, with_deps=False, force=False, recursive=False):
+    def checkout(self,
+                 target=None,
+                 with_deps=False,
+                 force=False,
+                 recursive=False):
 
         if target and not recursive:
             all_stages = self.active_stages()
@@ -571,13 +585,15 @@ class Project(object):
                 if stage.locked:
                     logger.warning(
                         "DVC file '{path}' is locked. Its dependencies are"
-                        " not going to be checked out.".format(path=stage.relpath)
+                        " not going to be checked out."
+                        .format(path=stage.relpath)
                     )
 
                 stage.checkout(force=force)
 
     def _get_pipeline(self, node):
-        pipelines = list(filter(lambda g: node in g.nodes(), self.pipelines()))
+        pipelines = list(filter(lambda g: node in g.nodes(),
+                                self.pipelines()))
         assert len(pipelines) == 1
         return pipelines[0]
 
@@ -591,7 +607,7 @@ class Project(object):
 
         node = os.path.relpath(stage.path, self.root_dir)
         G = self._get_pipeline(node)
-        stages = nx.get_node_attributes(G, "stage")
+        stages = nx.get_node_attributes(G, 'stage')
 
         ret = [stage]
         for n in nx.dfs_postorder_nodes(G, node):
@@ -599,7 +615,12 @@ class Project(object):
 
         return ret
 
-    def _collect_dir_cache(self, out, branch=None, remote=None, force=False, jobs=None):
+    def _collect_dir_cache(self,
+                           out,
+                           branch=None,
+                           remote=None,
+                           force=False,
+                           jobs=None):
         info = out.dumpd()
         ret = [info]
         r = out.remote
@@ -607,7 +628,10 @@ class Project(object):
 
         if self.cache.local.changed_cache_file(md5):
             try:
-                self.cloud.pull(ret, jobs=jobs, remote=remote, show_checksums=False)
+                self.cloud.pull(ret,
+                                jobs=jobs,
+                                remote=remote,
+                                show_checksums=False)
             except DvcException as exc:
                 msg = "Failed to pull cache for '{}': {}"
                 logger.debug(msg.format(out, exc))
@@ -621,36 +645,39 @@ class Project(object):
             if not force and not prompt.confirm(msg):
                 raise DvcException(
                     "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(out)
+                    " without cache for directory '{}'"
+                    .format(out)
                 )
             else:
                 return ret
 
         for i in self.cache.local.load_dir_cache(md5):
-            i["branch"] = branch
-            i[r.PARAM_PATH] = os.path.join(info[r.PARAM_PATH], i[r.PARAM_RELPATH])
+            i['branch'] = branch
+            i[r.PARAM_PATH] = os.path.join(info[r.PARAM_PATH],
+                                           i[r.PARAM_RELPATH])
             ret.append(i)
 
         return ret
 
-    def _collect_used_cache(
-        self, out, branch=None, remote=None, force=False, jobs=None
-    ):
+    def _collect_used_cache(self,
+                            out,
+                            branch=None,
+                            remote=None,
+                            force=False,
+                            jobs=None):
         if not out.use_cache or not out.info:
             if not out.info:
-                logger.warning(
-                    "Output '{}'({}) is missing version "
-                    "info. Cache for it will not be collected. "
-                    "Use dvc repro to get your pipeline up to "
-                    "date.".format(out, out.stage)
-                )
+                logger.warning("Output '{}'({}) is missing version "
+                               "info. Cache for it will not be collected. "
+                               "Use dvc repro to get your pipeline up to "
+                               "date.".format(out, out.stage))
             return []
 
         info = out.dumpd()
-        info["branch"] = branch
+        info['branch'] = branch
         ret = [info]
 
-        if out.scheme != "local":
+        if out.scheme != 'local':
             return ret
 
         md5 = info[out.remote.PARAM_CHECKSUM]
@@ -658,36 +685,38 @@ class Project(object):
         if not out.remote.is_dir_cache(cache):
             return ret
 
-        return self._collect_dir_cache(
-            out, branch=branch, remote=remote, force=force, jobs=jobs
-        )
+        return self._collect_dir_cache(out,
+                                       branch=branch,
+                                       remote=remote,
+                                       force=force,
+                                       jobs=jobs)
 
-    def _used_cache(
-        self,
-        target=None,
-        all_branches=False,
-        active=True,
-        with_deps=False,
-        all_tags=False,
-        remote=None,
-        force=False,
-        jobs=None,
-        recursive=False,
-    ):
+    def _used_cache(self,
+                    target=None,
+                    all_branches=False,
+                    active=True,
+                    with_deps=False,
+                    all_tags=False,
+                    remote=None,
+                    force=False,
+                    jobs=None,
+                    recursive=False):
         cache = {}
-        cache["local"] = []
-        cache["s3"] = []
-        cache["gs"] = []
-        cache["hdfs"] = []
-        cache["ssh"] = []
-        cache["azure"] = []
+        cache['local'] = []
+        cache['s3'] = []
+        cache['gs'] = []
+        cache['hdfs'] = []
+        cache['ssh'] = []
+        cache['azure'] = []
 
-        for branch in self.scm.brancher(all_branches=all_branches, all_tags=all_tags):
+        for branch in self.scm.brancher(all_branches=all_branches,
+                                        all_tags=all_tags):
             if target:
                 if recursive:
                     stages = self.stages(target)
                 else:
-                    stages = self._collect(target, with_deps=with_deps)
+                    stages = self._collect(target,
+                                           with_deps=with_deps)
             elif active:
                 stages = self.active_stages()
             else:
@@ -697,16 +726,17 @@ class Project(object):
                 if active and not target and stage.locked:
                     logger.warning(
                         "DVC file '{path}' is locked. Its dependencies are"
-                        " not going to be pushed/pulled/fetched.".format(
-                            path=stage.relpath
-                        )
+                        " not going to be pushed/pulled/fetched."
+                        .format(path=stage.relpath)
                     )
 
                 for out in stage.outs:
-                    scheme = out.path_info["scheme"]
-                    cache[scheme] += self._collect_used_cache(
-                        out, branch=branch, remote=remote, force=force, jobs=jobs
-                    )
+                    scheme = out.path_info['scheme']
+                    cache[scheme] += self._collect_used_cache(out,
+                                                              branch=branch,
+                                                              remote=remote,
+                                                              force=force,
+                                                              jobs=jobs)
 
         return cache
 
@@ -723,31 +753,27 @@ class Project(object):
         return merged_cache
 
     @staticmethod
-    def load_all_used_cache(
-        projects,
-        target=None,
-        all_branches=False,
-        active=True,
-        with_deps=False,
-        all_tags=False,
-        remote=None,
-        force=False,
-        jobs=None,
-    ):
+    def load_all_used_cache(projects,
+                            target=None,
+                            all_branches=False,
+                            active=True,
+                            with_deps=False,
+                            all_tags=False,
+                            remote=None,
+                            force=False,
+                            jobs=None):
         clists = []
 
         for project in projects:
             with project.state:
-                project_clist = project._used_cache(
-                    target=None,
-                    all_branches=all_branches,
-                    active=False,
-                    with_deps=with_deps,
-                    all_tags=all_tags,
-                    remote=remote,
-                    force=force,
-                    jobs=jobs,
-                )
+                project_clist = project._used_cache(target=None,
+                                                    all_branches=all_branches,
+                                                    active=False,
+                                                    with_deps=with_deps,
+                                                    all_tags=all_tags,
+                                                    remote=remote,
+                                                    force=force,
+                                                    jobs=jobs)
 
                 clists.append(project_clist)
 
@@ -758,34 +784,30 @@ class Project(object):
         if not removed:
             logger.info("No unused {} cache to remove.".format(typ))
 
-    def gc(
-        self,
-        all_branches=False,
-        cloud=False,
-        remote=None,
-        with_deps=False,
-        all_tags=False,
-        force=False,
-        jobs=None,
-        projects=None,
-    ):
+    def gc(self,
+           all_branches=False,
+           cloud=False,
+           remote=None,
+           with_deps=False,
+           all_tags=False,
+           force=False,
+           jobs=None,
+           projects=None):
 
         all_projects = [self]
 
         if projects:
             all_projects.extend(Project(path) for path in projects)
 
-        all_clists = Project.load_all_used_cache(
-            all_projects,
-            target=None,
-            all_branches=all_branches,
-            active=False,
-            with_deps=with_deps,
-            all_tags=all_tags,
-            remote=remote,
-            force=force,
-            jobs=jobs,
-        )
+        all_clists = Project.load_all_used_cache(all_projects,
+                                                 target=None,
+                                                 all_branches=all_branches,
+                                                 active=False,
+                                                 with_deps=with_deps,
+                                                 all_tags=all_tags,
+                                                 remote=remote,
+                                                 force=force,
+                                                 jobs=jobs)
 
         if len(all_clists) > 1:
             clist = Project.merge_cache_lists(all_clists)
@@ -793,105 +815,102 @@ class Project(object):
             clist = all_clists[0]
 
         with self.state:
-            self._do_gc("local", self.cache.local.gc, clist)
+            self._do_gc('local', self.cache.local.gc, clist)
 
             if self.cache.s3:
-                self._do_gc("s3", self.cache.s3.gc, clist)
+                self._do_gc('s3', self.cache.s3.gc, clist)
 
             if self.cache.gs:
-                self._do_gc("gs", self.cache.gs.gc, clist)
+                self._do_gc('gs', self.cache.gs.gc, clist)
 
             if self.cache.ssh:
-                self._do_gc("ssh", self.cache.ssh.gc, clist)
+                self._do_gc('ssh', self.cache.ssh.gc, clist)
 
             if self.cache.hdfs:
-                self._do_gc("hdfs", self.cache.hdfs.gc, clist)
+                self._do_gc('hdfs', self.cache.hdfs.gc, clist)
 
             if self.cache.azure:
-                self._do_gc("azure", self.cache.azure.gc, clist)
+                self._do_gc('azure', self.cache.azure.gc, clist)
 
             if cloud:
-                self._do_gc("remote", self.cloud._get_cloud(remote, "gc -c").gc, clist)
+                self._do_gc('remote', self.cloud._get_cloud(remote,
+                                                            'gc -c').gc, clist)
 
-    def push(
-        self,
-        target=None,
-        jobs=1,
-        remote=None,
-        all_branches=False,
-        show_checksums=False,
-        with_deps=False,
-        all_tags=False,
-        recursive=False,
-    ):
+    def push(self,
+             target=None,
+             jobs=1,
+             remote=None,
+             all_branches=False,
+             show_checksums=False,
+             with_deps=False,
+             all_tags=False,
+             recursive=False):
         with self.state:
-            used = self._used_cache(
-                target,
-                all_branches=all_branches,
-                all_tags=all_tags,
-                with_deps=with_deps,
-                force=True,
-                remote=remote,
-                jobs=jobs,
-                recursive=recursive,
-            )["local"]
-            self.cloud.push(used, jobs, remote=remote, show_checksums=show_checksums)
+            used = self._used_cache(target,
+                                    all_branches=all_branches,
+                                    all_tags=all_tags,
+                                    with_deps=with_deps,
+                                    force=True,
+                                    remote=remote,
+                                    jobs=jobs,
+                                    recursive=recursive)['local']
+            self.cloud.push(used,
+                            jobs,
+                            remote=remote,
+                            show_checksums=show_checksums)
 
-    def fetch(
-        self,
-        target=None,
-        jobs=1,
-        remote=None,
-        all_branches=False,
-        show_checksums=False,
-        with_deps=False,
-        all_tags=False,
-        recursive=False,
-    ):
+    def fetch(self,
+              target=None,
+              jobs=1,
+              remote=None,
+              all_branches=False,
+              show_checksums=False,
+              with_deps=False,
+              all_tags=False,
+              recursive=False):
         with self.state:
-            used = self._used_cache(
-                target,
-                all_branches=all_branches,
-                all_tags=all_tags,
-                with_deps=with_deps,
-                force=True,
-                remote=remote,
-                jobs=jobs,
-                recursive=recursive,
-            )["local"]
-            self.cloud.pull(used, jobs, remote=remote, show_checksums=show_checksums)
+            used = self._used_cache(target,
+                                    all_branches=all_branches,
+                                    all_tags=all_tags,
+                                    with_deps=with_deps,
+                                    force=True,
+                                    remote=remote,
+                                    jobs=jobs,
+                                    recursive=recursive)['local']
+            self.cloud.pull(used,
+                            jobs,
+                            remote=remote,
+                            show_checksums=show_checksums)
 
-    def pull(
-        self,
-        target=None,
-        jobs=1,
-        remote=None,
-        all_branches=False,
-        show_checksums=False,
-        with_deps=False,
-        all_tags=False,
-        force=False,
-        recursive=False,
-    ):
-        self.fetch(
-            target,
-            jobs,
-            remote=remote,
-            all_branches=all_branches,
-            all_tags=all_tags,
-            show_checksums=show_checksums,
-            with_deps=with_deps,
-            recursive=recursive,
-        )
-        self.checkout(
-            target=target, with_deps=with_deps, force=force, recursive=recursive
-        )
+    def pull(self,
+             target=None,
+             jobs=1,
+             remote=None,
+             all_branches=False,
+             show_checksums=False,
+             with_deps=False,
+             all_tags=False,
+             force=False,
+             recursive=False):
+        self.fetch(target,
+                   jobs,
+                   remote=remote,
+                   all_branches=all_branches,
+                   all_tags=all_tags,
+                   show_checksums=show_checksums,
+                   with_deps=with_deps,
+                   recursive=recursive)
+        self.checkout(target=target,
+                      with_deps=with_deps,
+                      force=force,
+                      recursive=recursive)
 
     def _local_status(self, target=None, with_deps=False):
         status = {}
 
         if target:
-            stages = self._collect(target, with_deps=with_deps)
+            stages = self._collect(target,
+                                   with_deps=with_deps)
         else:
             stages = self.active_stages()
 
@@ -899,76 +918,72 @@ class Project(object):
             if stage.locked:
                 logger.warning(
                     "DVC file '{path}' is locked. Its dependencies are"
-                    " not going to be shown in the status output.".format(
-                        path=stage.relpath
-                    )
+                    " not going to be shown in the status output."
+                    .format(path=stage.relpath)
                 )
 
             status.update(stage.status())
 
         return status
 
-    def _cloud_status(
-        self,
-        target=None,
-        jobs=1,
-        remote=None,
-        show_checksums=False,
-        all_branches=False,
-        with_deps=False,
-        all_tags=False,
-    ):
+    def _cloud_status(self,
+                      target=None,
+                      jobs=1,
+                      remote=None,
+                      show_checksums=False,
+                      all_branches=False,
+                      with_deps=False,
+                      all_tags=False):
         import dvc.remote.base as cloud
 
-        used = self._used_cache(
-            target,
-            all_branches=all_branches,
-            all_tags=all_tags,
-            with_deps=with_deps,
-            force=True,
-            remote=remote,
-            jobs=jobs,
-        )["local"]
+        used = self._used_cache(target,
+                                all_branches=all_branches,
+                                all_tags=all_tags,
+                                with_deps=with_deps,
+                                force=True,
+                                remote=remote,
+                                jobs=jobs)['local']
 
         ret = {}
-        status_info = self.cloud.status(
-            used, jobs, remote=remote, show_checksums=show_checksums
-        )
+        status_info = self.cloud.status(used,
+                                        jobs,
+                                        remote=remote,
+                                        show_checksums=show_checksums)
         for md5, info in status_info.items():
-            name = info["name"]
-            status = info["status"]
+            name = info['name']
+            status = info['status']
             if status == cloud.STATUS_OK:
                 continue
 
-            prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}
+            prefix_map = {
+                cloud.STATUS_DELETED: 'deleted',
+                cloud.STATUS_NEW: 'new',
+            }
 
             ret[name] = prefix_map[status]
 
         return ret
 
-    def status(
-        self,
-        target=None,
-        jobs=1,
-        cloud=False,
-        remote=None,
-        show_checksums=False,
-        all_branches=False,
-        with_deps=False,
-        all_tags=False,
-    ):
+    def status(self,
+               target=None,
+               jobs=1,
+               cloud=False,
+               remote=None,
+               show_checksums=False,
+               all_branches=False,
+               with_deps=False,
+               all_tags=False):
         with self.state:
             if cloud:
-                return self._cloud_status(
-                    target,
-                    jobs,
-                    remote=remote,
-                    show_checksums=show_checksums,
-                    all_branches=all_branches,
-                    with_deps=with_deps,
-                    all_tags=all_tags,
-                )
-            return self._local_status(target, with_deps=with_deps)
+                return self._cloud_status(target,
+                                          jobs,
+                                          remote=remote,
+                                          show_checksums=show_checksums,
+                                          all_branches=all_branches,
+                                          with_deps=with_deps,
+                                          all_tags=all_tags)
+            return self._local_status(target,
+                                      with_deps=with_deps)
 
     def _read_metric_json(self, fd, json_path):
         import json
@@ -989,7 +1004,7 @@ class Project(object):
     def _read_metric_hxsv(self, fd, hxsv_path, delimiter):
         import csv
 
-        col, row = hxsv_path.split(",")
+        col, row = hxsv_path.split(',')
         row = int(row)
         reader = list(csv.DictReader(fd, delimiter=builtin_str(delimiter)))
         return self._do_read_metric_xsv(reader, row, col)
@@ -997,7 +1012,7 @@ class Project(object):
     def _read_metric_xsv(self, fd, xsv_path, delimiter):
         import csv
 
-        col, row = xsv_path.split(",")
+        col, row = xsv_path.split(',')
         row = int(row)
         col = int(col)
         reader = list(csv.reader(fd, delimiter=builtin_str(delimiter)))
@@ -1010,17 +1025,17 @@ class Project(object):
             return ret
 
         try:
-            with open(path, "r") as fd:
-                if typ == "json":
+            with open(path, 'r') as fd:
+                if typ == 'json':
                     ret = self._read_metric_json(fd, xpath)
-                elif typ == "csv":
-                    ret = self._read_metric_xsv(fd, xpath, ",")
-                elif typ == "tsv":
-                    ret = self._read_metric_xsv(fd, xpath, "\t")
-                elif typ == "hcsv":
-                    ret = self._read_metric_hxsv(fd, xpath, ",")
-                elif typ == "htsv":
-                    ret = self._read_metric_hxsv(fd, xpath, "\t")
+                elif typ == 'csv':
+                    ret = self._read_metric_xsv(fd, xpath, ',')
+                elif typ == 'tsv':
+                    ret = self._read_metric_xsv(fd, xpath, '\t')
+                elif typ == 'hcsv':
+                    ret = self._read_metric_hxsv(fd, xpath, ',')
+                elif typ == 'htsv':
+                    ret = self._read_metric_hxsv(fd, xpath, '\t')
                 else:
                     ret = fd.read()
         except Exception:
@@ -1037,10 +1052,10 @@ class Project(object):
 
         abs_path = os.path.abspath(path)
         if os.path.isdir(abs_path):
-            matched = [
-                out for out in outs if os.path.abspath(out.path).startswith(abs_path)
-            ]
-            stages = [out.stage.relpath for out in matched if out.path == abs_path]
+            matched = [out for out in outs
+                       if os.path.abspath(out.path).startswith(abs_path)]
+            stages = [out.stage.relpath for out in matched
+                      if out.path == abs_path]
             if len(stages) > 1:
                 raise OutputDuplicationError(path, stages)
         else:
@@ -1051,17 +1066,16 @@ class Project(object):
 
         return matched if matched else None
 
-    def metrics_show(
-        self,
-        path=None,
-        typ=None,
-        xpath=None,
-        all_branches=False,
-        all_tags=False,
-        recursive=False,
-    ):
+    def metrics_show(self,
+                     path=None,
+                     typ=None,
+                     xpath=None,
+                     all_branches=False,
+                     all_tags=False,
+                     recursive=False):
         res = {}
-        for branch in self.scm.brancher(all_branches=all_branches, all_tags=all_tags):
+        for branch in self.scm.brancher(all_branches=all_branches,
+                                        all_tags=all_tags):
             astages = self.active_stages()
             outs = [out for stage in astages for out in stage.outs]
 
@@ -1071,14 +1085,14 @@ class Project(object):
                 entries = []
                 if outs:
                     for out in outs:
-                        if all([out.metric, not typ, isinstance(out.metric, dict)]):
-                            entries += [
-                                (
-                                    out.path,
-                                    out.metric.get(out.PARAM_METRIC_TYPE, None),
-                                    out.metric.get(out.PARAM_METRIC_XPATH, None),
-                                )
-                            ]
+                        if all([out.metric,
+                                not typ,
+                                isinstance(out.metric, dict)]):
+                            entries += [(out.path,
+                                         out.metric.get(out.PARAM_METRIC_TYPE,
+                                                        None),
+                                         out.metric.get(out.PARAM_METRIC_XPATH,
+                                                        None))]
                         else:
                             entries += [(out.path, typ, xpath)]
 
@@ -1101,7 +1115,9 @@ class Project(object):
                         self.checkout(stage, force=True)
 
                 rel = os.path.relpath(fname)
-                metric = self._read_metric(fname, typ=t, xpath=x)
+                metric = self._read_metric(fname,
+                                           typ=t,
+                                           xpath=x)
                 if not metric:
                     continue
 
@@ -1112,9 +1128,9 @@ class Project(object):
 
         for branch, val in res.items():
             if all_branches or all_tags:
-                logger.info("{}:".format(branch))
+                logger.info('{}:'.format(branch))
             for fname, metric in val.items():
-                logger.info("\t{}: {}".format(fname, metric))
+                logger.info('\t{}: {}'.format(fname, metric))
 
         if res:
             return res
@@ -1135,9 +1151,9 @@ class Project(object):
             msg = "unable to find file '{}' in the pipeline".format(path)
             raise DvcException(msg)
 
-        if out.scheme != "local":
+        if out.scheme != 'local':
             msg = "output '{}' scheme '{}' is not supported for metrics"
-            raise DvcException(msg.format(out.path, out.path_info["scheme"]))
+            raise DvcException(msg.format(out.path, out.path_info['scheme']))
 
         if out.use_cache:
             msg = "cached output '{}' is not supported for metrics"
@@ -1165,7 +1181,7 @@ class Project(object):
 
     def metrics_add(self, path, typ=None, xpath=None):
         if not typ:
-            typ = "raw"
+            typ = 'raw'
         self._metrics_modify(path, typ, xpath)
 
     def metrics_remove(self, path):
@@ -1173,7 +1189,8 @@ class Project(object):
 
     def graph(self, stages=None, from_directory=None):
         import networkx as nx
-        from dvc.exceptions import OutputDuplicationError, WorkingDirectoryAsOutputError
+        from dvc.exceptions import (OutputDuplicationError,
+                                    WorkingDirectoryAsOutputError)
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
@@ -1193,12 +1210,12 @@ class Project(object):
 
         for stage in stages:
             for out in outs:
-                overlaps = stage.cwd == out.path or stage.cwd.startswith(
-                    out.path + os.sep
-                )
+                overlaps = (stage.cwd == out.path
+                            or stage.cwd.startswith(out.path + os.sep))
 
                 if overlaps:
-                    raise WorkingDirectoryAsOutputError(stage.cwd, stage.relpath)
+                    raise WorkingDirectoryAsOutputError(stage.cwd,
+                                                        stage.relpath)
 
         # collect the whole DAG
         for stage in stages:
@@ -1209,11 +1226,9 @@ class Project(object):
 
             for dep in stage.deps:
                 for out in outs:
-                    if (
-                        out.path != dep.path
-                        and not dep.path.startswith(out.path + out.sep)
-                        and not out.path.startswith(dep.path + dep.sep)
-                    ):
+                    if out.path != dep.path \
+                       and not dep.path.startswith(out.path + out.sep) \
+                       and not out.path.startswith(dep.path + dep.sep):
                         continue
 
                     dep_stage = out.stage
@@ -1233,7 +1248,10 @@ class Project(object):
 
         G, G_active = self.graph(from_directory=from_directory)
 
-        return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
+        return [
+            G.subgraph(c).copy()
+            for c in nx.weakly_connected_components(G)
+        ]
 
     def stages(self, from_directory=None):
         """
@@ -1280,7 +1298,7 @@ class Project(object):
 
         stages = []
         for G in self.pipelines(from_directory):
-            stages.extend(list(nx.get_node_attributes(G, "stage").values()))
+            stages.extend(list(nx.get_node_attributes(G, 'stage').values()))
         return stages
 
     def _welcome_message(self):
@@ -1289,10 +1307,12 @@ class Project(object):
         logger.box(
             "DVC has enabled anonymous aggregate usage analytics.\n"
             "Read the analytics documentation (and how to opt-out) here:\n"
-            "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
-                blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
+            "{blue}https://dvc.org/doc/user-guide/analytics{nc}"
+            .format(
+                blue=colorama.Fore.BLUE,
+                nc=colorama.Fore.RESET
             ),
-            border_color="red",
+            border_color='red'
         )
 
         logger.info(
@@ -1300,11 +1320,10 @@ class Project(object):
             "{yellow}------------{nc}\n"
             "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
             "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
-            "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}".format(
-                yellow=colorama.Fore.YELLOW,
-                blue=colorama.Fore.BLUE,
-                nc=colorama.Fore.RESET,
-            )
+            "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
+            .format(yellow=colorama.Fore.YELLOW,
+                    blue=colorama.Fore.BLUE,
+                    nc=colorama.Fore.RESET)
         )
 
     def _expand_target_path(self, from_path, to_path):
