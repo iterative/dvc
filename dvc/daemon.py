@@ -2,6 +2,7 @@
 
 import os
 import sys
+import inspect
 from subprocess import Popen
 
 import dvc.logger as logger
@@ -12,7 +13,7 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
 
 
-def _spawn_windows(cmd):
+def _spawn_windows(cmd, env):
     from subprocess import STARTUPINFO, STARTF_USESHOWWINDOW
 
     creationflags = CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS
@@ -21,14 +22,14 @@ def _spawn_windows(cmd):
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
     Popen(cmd,
-          env=fix_env(),
+          env=env,
           close_fds=True,
           shell=False,
           creationflags=creationflags,
           startupinfo=startupinfo).communicate()
 
 
-def _spawn_posix(cmd):
+def _spawn_posix(cmd, env):
     # NOTE: using os._exit instead of sys.exit, because dvc built
     # with PyInstaller has trouble with SystemExit exeption and throws
     # errors such as "[26338] Failed to execute script __main__"
@@ -55,7 +56,7 @@ def _spawn_posix(cmd):
     sys.stdout.close()
     sys.stderr.close()
 
-    Popen(cmd, env=fix_env(), close_fds=True, shell=False).communicate()
+    Popen(cmd, env=env, close_fds=True, shell=False).communicate()
 
     os._exit(0)  # pylint: disable=protected-access
 
@@ -71,12 +72,16 @@ def daemon(args):
         cmd += ['-m', 'dvc']
     cmd += ['daemon', '-q'] + args
 
-    logger.debug("Trying to spawn '{}'".format(cmd))
+    env = fix_env()
+    file_path = os.path.abspath(inspect.stack()[0][1])
+    env['PYTHONPATH'] = os.path.dirname(os.path.dirname(file_path))
+
+    logger.debug("Trying to spawn '{}' with env '{}'".format(cmd, env))
 
     if os.name == 'nt':
-        _spawn_windows(cmd)
+        _spawn_windows(cmd, env)
     elif os.name == 'posix':
-        _spawn_posix(cmd)
+        _spawn_posix(cmd, env)
     else:
         raise NotImplementedError
 
