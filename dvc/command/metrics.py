@@ -34,6 +34,7 @@ class CmdMetricsShow(CmdBase):
                 xpath=xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                recursive=self.args.recursive,
             )
         except DvcException:
             logger.error("failed to show metrics")
@@ -132,6 +133,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show metrics for all tags.",
+    )
+    metrics_show_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Show metrics recursively.",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 

@@ -11,11 +11,13 @@ from dvc.exceptions import DvcException, MoveNotDataSourceError, NotDvcProjectEr
 
 
 class InitError(DvcException):
+
     def __init__(self, msg):
         super(InitError, self).__init__(msg)
 
 
 class ReproductionError(DvcException):
+
     def __init__(self, dvc_file_name, ex):
         self.path = dvc_file_name
         msg = "failed to reproduce '{}'".format(dvc_file_name)
@@ -1034,15 +1036,29 @@ class Project(object):
             outs = [out for stage in astages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
-        matched = [out for out in outs if out.path == abs_path]
-        stages = [out.stage.relpath for out in matched]
-        if len(stages) > 1:
-            raise OutputDuplicationError(path, stages)
+        if os.path.isdir(abs_path):
+            matched = [
+                out for out in outs if os.path.abspath(out.path).startswith(abs_path)
+            ]
+            stages = [out.stage.relpath for out in matched if out.path == abs_path]
+            if len(stages) > 1:
+                raise OutputDuplicationError(path, stages)
+        else:
+            matched = [out for out in outs if out.path == abs_path]
+            stages = [out.stage.relpath for out in matched]
+            if len(stages) > 1:
+                raise OutputDuplicationError(path, stages)
 
-        return matched[0] if matched else None
+        return matched if matched else None
 
     def metrics_show(
-        self, path=None, typ=None, xpath=None, all_branches=False, all_tags=False
+        self,
+        path=None,
+        typ=None,
+        xpath=None,
+        all_branches=False,
+        all_tags=False,
+        recursive=False,
     ):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches, all_tags=all_tags):
@@ -1050,21 +1066,25 @@ class Project(object):
             outs = [out for stage in astages for out in stage.outs]
 
             if path:
-                out = self._find_output_by_path(path, outs=outs)
-                stage = out.stage.path if out else None
-                if out and all([out.metric, not typ, isinstance(out.metric, dict)]):
-                    entries = [
-                        (
-                            path,
-                            out.metric.get(out.PARAM_METRIC_TYPE, None),
-                            out.metric.get(out.PARAM_METRIC_XPATH, None),
-                        )
-                    ]
-                else:
-                    entries = [(path, typ, xpath)]
+                outs = self._find_output_by_path(path, outs=outs)
+                stages = [out.stage.path for out in outs] if outs else None
+                entries = []
+                if outs:
+                    for out in outs:
+                        if all([out.metric, not typ, isinstance(out.metric, dict)]):
+                            entries += [
+                                (
+                                    out.path,
+                                    out.metric.get(out.PARAM_METRIC_TYPE, None),
+                                    out.metric.get(out.PARAM_METRIC_XPATH, None),
+                                )
+                            ]
+                        else:
+                            entries += [(out.path, typ, xpath)]
+
             else:
                 metrics = filter(lambda o: o.metric, outs)
-                stage = None
+                stages = None
                 entries = []
                 for o in metrics:
                     if not typ and isinstance(o.metric, dict):
@@ -1076,8 +1096,9 @@ class Project(object):
                     entries.append((o.path, t, x))
 
             for fname, t, x in entries:
-                if stage:
-                    self.checkout(stage, force=True)
+                if stages:
+                    for stage in stages:
+                        self.checkout(stage, force=True)
 
                 rel = os.path.relpath(fname)
                 metric = self._read_metric(fname, typ=t, xpath=x)
