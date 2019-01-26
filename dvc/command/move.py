@@ -25,6 +25,7 @@ def add_parser(subparsers, parent_parser):
         parents=[parent_parser],
         description=description,
         help=help)
-    move_parser.add_argument('src', help='Source path to a data file or directory.')
+    move_parser.add_argument('src',
+                             help='Source path to a data file or directory.')
     move_parser.add_argument('dst', help='Destination path.')
     move_parser.set_defaults(func=CmdMove)
