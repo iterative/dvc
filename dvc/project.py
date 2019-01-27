@@ -191,7 +191,6 @@ class Project(object):
 
         fnames = []
         if recursive and os.path.isdir(fname):
-            fnames = []
             for root, dirs, files in os.walk(fname):
                 for f in files:
                     path = os.path.join(root, f)
