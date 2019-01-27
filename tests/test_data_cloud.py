@@ -11,6 +11,7 @@ from dvc.state import State
 from mock import patch
 
 import dvc.logger as logger
+from dvc.utils.compat import str
 from dvc.main import main
 from dvc.config import Config
 from dvc.data_cloud import (DataCloud, RemoteS3, RemoteGS, RemoteAzure,
@@ -21,10 +22,7 @@ from dvc.utils import file_md5
 from tests.basic_env import TestDvc
 from tests.utils import spy
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from dvc.utils.compat import StringIO
 
 TEST_REMOTE = 'upstream'
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)

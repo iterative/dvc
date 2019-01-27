@@ -1,7 +1,9 @@
+from __future__ import unicode_literals
+
 import schema
 
 from dvc.config import Config
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
 from dvc.output.s3 import OutputS3

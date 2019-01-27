@@ -1,5 +1,7 @@
 """Launch `dvc daemon` command in a separate detached process."""
 
+from __future__ import unicode_literals
+
 import os
 import sys
 import inspect

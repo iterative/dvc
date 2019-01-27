@@ -1,5 +1,9 @@
 """Exceptions raised by the dvc."""
 
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str, builtin_str
+
 import traceback
 
 
@@ -32,9 +36,12 @@ class OutputDuplicationError(DvcException):
         stages (list): list of paths to stages.
     """
     def __init__(self, output, stages):
-        assert isinstance(output, str)
+        assert isinstance(output, str) or isinstance(output, builtin_str)
         assert isinstance(stages, list)
-        assert all(isinstance(stage, str) for stage in stages)
+        assert all(
+            isinstance(stage, str) or isinstance(stage, builtin_str)
+            for stage in stages
+        )
         msg = ("file/directory '{}' is specified as an output in more than one"
                "stage: {}").format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
@@ -50,8 +57,8 @@ class WorkingDirectoryAsOutputError(DvcException):
             output.
     """
     def __init__(self, cwd, fname):
-        assert isinstance(cwd, str)
-        assert isinstance(fname, str)
+        assert isinstance(cwd, str) or isinstance(cwd, builtin_str)
+        assert isinstance(fname, str) or isinstance(fname, builtin_str)
         msg = (
             "current working directory '{cwd}' is specified as an output in"
             " '{fname}'. Use another CWD to prevent any data removal."
@@ -68,7 +75,9 @@ class CircularDependencyError(DvcException):
         dependency (str): path to the dependency.
     """
     def __init__(self, dependency):
-        assert isinstance(dependency, str)
+        assert (isinstance(dependency, str) or
+                isinstance(dependency, builtin_str))
+
         msg = ("file/directory '{}' is specified as an output and as a "
                "dependency.")
         super(CircularDependencyError, self).__init__(msg.format(dependency))
@@ -82,7 +91,7 @@ class ArgumentDuplicationError(DvcException):
         path (str): path to the file/directory.
     """
     def __init__(self, path):
-        assert isinstance(path, str)
+        assert isinstance(path, str) or isinstance(path, builtin_str)
         msg = "file '{}' is specified more than once."
         super(ArgumentDuplicationError, self).__init__(msg.format(path))
 

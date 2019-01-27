@@ -2,15 +2,11 @@ import traceback
 from mock import patch
 from unittest import TestCase
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
 import logging
 import dvc.logger as logger
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
+from dvc.utils.compat import StringIO
 
 
 class TestLogger(TestCase):

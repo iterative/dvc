@@ -2,11 +2,7 @@ import hashlib
 import os
 import threading
 
-try:
-    from http.server import HTTPServer, SimpleHTTPRequestHandler
-except ImportError:
-    from BaseHTTPServer import HTTPServer
-    from SimpleHTTPServer import SimpleHTTPRequestHandler
+from dvc.utils.compat import HTTPServer, SimpleHTTPRequestHandler
 
 
 class ETagHandler(SimpleHTTPRequestHandler):

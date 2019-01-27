@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from dvc.utils.compat import urlparse, urljoin
 from dvc.output.base import OutputBase
 from dvc.remote.http import RemoteHTTP

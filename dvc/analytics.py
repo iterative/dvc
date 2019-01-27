@@ -1,5 +1,9 @@
 """Collect and send usage analytics"""
 
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import os
 import json
 import errno

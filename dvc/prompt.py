@@ -1,13 +1,12 @@
 """Manages user prompts."""
 
+from __future__ import unicode_literals
+from __future__ import print_function
+
 import sys
 from getpass import getpass
 
-try:
-    # NOTE: in Python3 raw_input() was renamed to input()
-    input = raw_input  # pylint: disable=redefined-builtin, invalid-name
-except NameError:
-    pass
+from dvc.utils.compat import input
 
 
 def _ask(prompt, limited_to=None):

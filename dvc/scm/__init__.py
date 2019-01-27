@@ -1,5 +1,7 @@
 """Manages source control systems(e.g. Git)."""
 
+from __future__ import unicode_literals
+
 from dvc.scm.base import Base
 from dvc.scm.git import Git
 

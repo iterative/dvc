@@ -1,6 +1,9 @@
-"""
-DVC config objects.
-"""
+"""DVC config objects."""
+
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import os
 import errno
 import configobj
@@ -18,8 +21,9 @@ class ConfigError(DvcException):
         ex (Exception): optional exception that has caused this error.
     """
     def __init__(self, msg, ex=None):
-        super(ConfigError, self).__init__('config file error: {}'.format(msg),
-                                          ex)
+        super(ConfigError, self).__init__(
+            'config file error: {}'.format(msg), ex
+        )
 
 
 def supported_cache_type(types):
@@ -531,6 +535,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         for s_key, s_value in config.items():
             new_s = {}
             for key, value in s_value.items():
-                new_s[key.lower()] = value
+                new_s[key.lower()] = str(value)
             new_config[s_key.lower()] = new_s
         return new_config

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from dvc.remote.azure import RemoteAzure
 from dvc.remote.gs import RemoteGS
 from dvc.remote.hdfs import RemoteHDFS

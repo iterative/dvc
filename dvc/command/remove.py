@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import dvc.prompt as prompt
 import dvc.logger as logger
 from dvc.exceptions import DvcException
@@ -13,7 +15,7 @@ class CmdRemove(CmdBase):
             return False
 
         msg = (
-            u'Are you sure you want to remove {} with its outputs?'
+            'Are you sure you want to remove {} with its outputs?'
             .format(target)
         )
 
@@ -21,8 +23,8 @@ class CmdRemove(CmdBase):
             return False
 
         raise DvcException(
-            u'Cannot purge without a confirmation from the user.'
-            u" Use '-f' to force."
+            'Cannot purge without a confirmation from the user.'
+            " Use '-f' to force."
         )
 
     def run(self):

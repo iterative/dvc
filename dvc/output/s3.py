@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import posixpath
 
 from dvc.remote.s3 import RemoteS3

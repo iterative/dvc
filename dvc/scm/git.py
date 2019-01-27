@@ -1,8 +1,12 @@
 """Manages Git."""
 
+from __future__ import unicode_literals
+
 # NOTE: need this one because python 2 would re-import this module
 # (called git.py) instead of importing gitpython's git module.
 from __future__ import absolute_import
+
+from dvc.utils.compat import str
 
 import os
 

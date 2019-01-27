@@ -1,5 +1,7 @@
 """Manages source control systems(e.g. Git) in dvc."""
 
+from __future__ import unicode_literals
+
 import os
 
 from dvc.exceptions import DvcException

@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import argparse
 
 from dvc.command.base import fix_subparsers
