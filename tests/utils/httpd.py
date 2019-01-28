@@ -17,8 +17,11 @@ class ETagHandler(SimpleHTTPRequestHandler):
         SimpleHTTPRequestHandler.end_headers(self)
 
 
-class StaticFileServer():
+class StaticFileServer:
+    __server_lock = threading.Lock()
+
     def __init__(self):
+        self.__server_lock.acquire()
         self.httpd = HTTPServer(('localhost', 8000), ETagHandler)
 
     def __enter__(self):
@@ -29,3 +32,4 @@ class StaticFileServer():
     def __exit__(self, *args):
         self.httpd.shutdown()
         self.httpd.server_close()
+        self.__server_lock.release()
