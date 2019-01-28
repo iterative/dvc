@@ -37,7 +37,10 @@ class CmdDataStatus(CmdDataBase):
                                      all_tags=self.args.all_tags,
                                      with_deps=self.args.with_deps)
             if st:
-                self._show(st, indent)
+                if self.args.quiet:
+                    return 1
+                else:
+                    self._show(st, indent)
             else:
                 logger.info(self.UP_TO_DATE_MSG)
 
