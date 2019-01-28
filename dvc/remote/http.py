@@ -107,10 +107,14 @@ class RemoteHTTP(RemoteBase):
         return self._request('HEAD', url).headers.get('Content-Length')
 
     def _etag(self, url):
-        etag = self._request('HEAD', url).headers.get('ETag')
+        etag = (self._request('HEAD', url).headers.get('ETag')
+                or self._request('HEAD', url).headers.get('Content-MD5'))
 
         if not etag:
-            raise DvcException("could not find an ETag for '{}'".format(url))
+            raise DvcException(
+                "could not find an ETag or Content-MD5 header for '{url}'"
+                .format(url=url)
+            )
 
         if etag.startswith('W/'):
             raise DvcException(
