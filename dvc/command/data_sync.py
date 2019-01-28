@@ -79,35 +79,41 @@ class CmdDataFetch(CmdDataBase):
         return 0
 
 
-def add_parser(subparsers, parent_parser):
-    from dvc.command.status import CmdDataStatus
+def shared_parent_parser():
+    from dvc.cli import get_parent_parser
 
     # Parent parser used in pull/push/status
-    parent_cache_parser = argparse.ArgumentParser(
-        add_help=False, parents=[parent_parser]
+    shared_parent_parser = argparse.ArgumentParser(
+        add_help=False, parents=[get_parent_parser()]
     )
-    parent_cache_parser.add_argument(
+    shared_parent_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
         default=None,
         help="Number of jobs to run simultaneously.",
     )
-    parent_cache_parser.add_argument(
+    shared_parent_parser.add_argument(
         "--show-checksums",
         action="store_true",
         default=False,
         help="Show checksums instead of file names.",
     )
-    parent_cache_parser.add_argument(
+    shared_parent_parser.add_argument(
         "targets", nargs="*", default=None, help="DVC files."
     )
+
+    return shared_parent_parser
+
+
+def add_parser(subparsers, _parent_parser):
+    from dvc.command.status import CmdDataStatus
 
     # Pull
     PULL_HELP = "Pull data files from the cloud."
     pull_parser = subparsers.add_parser(
         "pull",
-        parents=[parent_cache_parser],
+        parents=[shared_parent_parser()],
         description=PULL_HELP,
         help=PULL_HELP,
     )
@@ -155,7 +161,7 @@ def add_parser(subparsers, parent_parser):
     PUSH_HELP = "Push data files to the cloud."
     push_parser = subparsers.add_parser(
         "push",
-        parents=[parent_cache_parser],
+        parents=[shared_parent_parser()],
         description=PUSH_HELP,
         help=PUSH_HELP,
     )
@@ -196,7 +202,7 @@ def add_parser(subparsers, parent_parser):
     FETCH_HELP = "Fetch data files from the cloud."
     fetch_parser = subparsers.add_parser(
         "fetch",
-        parents=[parent_cache_parser],
+        parents=[shared_parent_parser()],
         description=FETCH_HELP,
         help=FETCH_HELP,
     )
@@ -237,9 +243,20 @@ def add_parser(subparsers, parent_parser):
     STATUS_HELP = "Show the project status."
     status_parser = subparsers.add_parser(
         "status",
-        parents=[parent_cache_parser],
+        parents=[shared_parent_parser()],
         description=STATUS_HELP,
         help=STATUS_HELP,
+        conflict_handler="resolve",
+    )
+    status_parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        default=False,
+        help=(
+            "Suppresses all output."
+            " Exit with 0 if pipeline is up to date, otherwise 1."
+        ),
     )
     status_parser.add_argument(
         "-c",

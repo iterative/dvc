@@ -84,16 +84,13 @@ class VersionAction(argparse.Action):  # pragma: no cover
         sys.exit(0)
 
 
-def parse_args(argv=None):
-    """Parses CLI arguments.
+def get_parent_parser():
+    """Create instances of a parser containing common arguments shared among
+    all the commands.
 
-    Args:
-        argv: optional list of arguments to parse. sys.argv is used by default.
-
-    Raises:
-        dvc.exceptions.DvcParserError: raised for argument parsing errors.
+    When overwritting `-q` or `-v`, you need to instantiate a new object
+    in order to prevent some weird behavior.
     """
-    # Common args
     parent_parser = argparse.ArgumentParser(add_help=False)
 
     log_level_group = parent_parser.add_mutually_exclusive_group()
@@ -107,6 +104,20 @@ def parse_args(argv=None):
         default=False,
         help="Be verbose.",
     )
+
+    return parent_parser
+
+
+def parse_args(argv=None):
+    """Parses CLI arguments.
+
+    Args:
+        argv: optional list of arguments to parse. sys.argv is used by default.
+
+    Raises:
+        dvc.exceptions.DvcParserError: raised for argument parsing errors.
+    """
+    parent_parser = get_parent_parser()
 
     # Main parser
     desc = "Data Version Control"
