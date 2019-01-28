@@ -1,3 +1,5 @@
+from dvc.utils.compat import str
+
 import os
 from uuid import uuid4
 
@@ -7,10 +9,7 @@ from dvc.main import main
 from mock import patch
 from tests.basic_env import TestDvc
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from dvc.utils.compat import StringIO
 
 
 class TestCmdImport(TestDvc):

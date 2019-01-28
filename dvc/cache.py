@@ -1,5 +1,7 @@
 """Manages cache of a dvc project."""
 
+from __future__ import unicode_literals
+
 import os
 
 from dvc.config import Config

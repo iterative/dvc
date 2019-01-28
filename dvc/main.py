@@ -1,5 +1,7 @@
 """Main entry point for dvc CLI."""
 
+from __future__ import unicode_literals
+
 import dvc.logger as logger
 from dvc.cli import parse_args
 from dvc.command.base import CmdBase

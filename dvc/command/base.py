@@ -1,4 +1,4 @@
-import sys
+from __future__ import unicode_literals
 
 import dvc.logger as logger
 
@@ -11,7 +11,9 @@ def fix_subparsers(subparsers):
         Args:
             subparsers: subparsers to fix.
     """
-    if sys.version_info[0] == 3:  # pragma: no cover
+    from dvc.utils.compat import is_py3
+
+    if is_py3:  # pragma: no cover
         subparsers.required = True
         subparsers.dest = 'cmd'
 

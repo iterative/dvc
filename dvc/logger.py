@@ -1,5 +1,9 @@
 """Manages logger for dvc project."""
 
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import re
 import sys
 import logging
@@ -184,7 +188,7 @@ def colorize(message, color=None):
         'red': colorama.Fore.RED,
     }
 
-    return u'{color}{message}{nc}'.format(
+    return '{color}{message}{nc}'.format(
         color=colors.get(color, ''),
         message=message,
         nc=colorama.Fore.RESET,

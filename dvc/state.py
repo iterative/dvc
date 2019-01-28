@@ -1,5 +1,9 @@
 """Manages state database used for checksum caching."""
 
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import os
 import time
 import sqlite3

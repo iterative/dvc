@@ -1,3 +1,7 @@
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str, builtin_str
+
 import collections
 import os
 import dvc.prompt as prompt
@@ -1000,7 +1004,7 @@ class Project(object):
 
         col, row = hxsv_path.split(',')
         row = int(row)
-        reader = list(csv.DictReader(fd, delimiter=delimiter))
+        reader = list(csv.DictReader(fd, delimiter=builtin_str(delimiter)))
         return self._do_read_metric_xsv(reader, row, col)
 
     def _read_metric_xsv(self, fd, xsv_path, delimiter):
@@ -1009,7 +1013,7 @@ class Project(object):
         col, row = xsv_path.split(',')
         row = int(row)
         col = int(col)
-        reader = list(csv.reader(fd, delimiter=delimiter))
+        reader = list(csv.reader(fd, delimiter=builtin_str(delimiter)))
         return self._do_read_metric_xsv(reader, row, col)
 
     def _read_metric(self, path, typ=None, xpath=None):

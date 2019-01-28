@@ -1,3 +1,7 @@
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import os
 import stat
 import uuid
@@ -239,12 +243,12 @@ class RemoteLOCAL(RemoteBase):
             with open(path, 'r') as fd:
                 d = json.load(fd)
         except Exception:
-            msg = u"Failed to load dir cache '{}'"
+            msg = "Failed to load dir cache '{}'"
             logger.error(msg.format(os.path.relpath(path)))
             return []
 
         if not isinstance(d, list):
-            msg = u"dir cache file format error '{}' [skipping the file]"
+            msg = "dir cache file format error '{}' [skipping the file]"
             logger.error(msg.format(os.path.relpath(path)))
             return []
 

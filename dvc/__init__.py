@@ -3,6 +3,9 @@ DVC
 ----
 Make your data science projects reproducible and shareable.
 """
+
+from __future__ import unicode_literals
+
 import os
 import warnings
 

@@ -1,6 +1,10 @@
 """Manages progress bars for dvc project."""
 
 from __future__ import print_function
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import sys
 import threading
 import dvc.logger as logger

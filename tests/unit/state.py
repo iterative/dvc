@@ -1,3 +1,5 @@
+from dvc.utils.compat import str
+
 import os
 
 from dvc.state import State

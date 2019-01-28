@@ -1,5 +1,7 @@
 import os
 
+from dvc.utils.compat import str
+
 from dvc.state import State
 from dvc.utils import file_md5
 from dvc.main import main

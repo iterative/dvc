@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import dvc.prompt as prompt
 import dvc.logger as logger

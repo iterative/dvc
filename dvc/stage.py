@@ -1,3 +1,7 @@
+from __future__ import unicode_literals
+
+from dvc.utils.compat import str
+
 import os
 import yaml
 import posixpath
@@ -14,7 +18,7 @@ from dvc.utils import dict_md5, fix_env
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = u"stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
+        msg = "stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 
@@ -72,7 +76,7 @@ class MissingDep(DvcException):
         else:
             dep = 'dependency'
 
-        msg = u'missing {}: {}'.format(dep, ', '.join(map(str, deps)))
+        msg = 'missing {}: {}'.format(dep, ', '.join(map(str, deps)))
         super(MissingDep, self).__init__(msg)
 
 
@@ -84,7 +88,7 @@ class MissingDataSource(DvcException):
         if len(missing_files) > 1:
             source += 's'
 
-        msg = u'missing data {}: {}'.format(source, ', '.join(missing_files))
+        msg = 'missing data {}: {}'.format(source, ', '.join(missing_files))
         super(MissingDataSource, self).__init__(msg)
 
 
@@ -251,7 +255,7 @@ class Stage(object):
         if interactive and not prompt.confirm(msg):
             raise DvcException('reproduction aborted by the user')
 
-        logger.info(u"Reproducing '{stage}'".format(stage=self.relpath))
+        logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
         self.run(dry=dry)
 
@@ -261,8 +265,10 @@ class Stage(object):
 
     @staticmethod
     def validate(d, fname=None):
+        from dvc.utils import convert_to_unicode
+
         try:
-            Schema(Stage.SCHEMA).validate(d)
+            Schema(Stage.SCHEMA).validate(convert_to_unicode(d))
         except SchemaError as exc:
             raise StageFileFormatError(fname, exc)
 
@@ -556,7 +562,7 @@ class Stage(object):
                     self.deps[0].download(self.outs[0].path_info)
 
         elif self.is_data_source:
-            msg = u"Verifying data sources in '{}'".format(self.relpath)
+            msg = "Verifying data sources in '{}'".format(self.relpath)
             logger.info(msg)
             if not dry:
                 self.check_missing_outputs()

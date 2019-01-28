@@ -1,6 +1,8 @@
-"""
-Helpers for other modules.
-"""
+"""Helpers for other modules."""
+
+from __future__ import unicode_literals
+from dvc.utils.compat import str, builtin_str
+
 import os
 import sys
 import stat
@@ -8,11 +10,6 @@ import math
 import json
 import shutil
 import hashlib
-
-import dvc.logger as logger
-from dvc.progress import progress
-from dvc.istextfile import istextfile
-
 
 LOCAL_CHUNK_SIZE = 1024*1024
 LARGE_FILE_SIZE = 1024*1024*1024
@@ -25,6 +22,10 @@ def dos2unix(data):
 
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
+    import dvc.logger as logger
+    from dvc.progress import progress
+    from dvc.istextfile import istextfile
+
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
         binary = not istextfile(fname)
@@ -81,6 +82,9 @@ def dict_filter(d, exclude=[]):
     elif isinstance(d, dict):
         ret = {}
         for k, v in d.items():
+            if isinstance(k, builtin_str):
+                k = str(k)
+
             assert isinstance(k, str)
             if k in exclude:
                 continue
@@ -97,7 +101,9 @@ def dict_md5(d, exclude=[]):
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
-    '''Copy file with progress bar'''
+    """Copy file with progress bar"""
+    from dvc.progress import progress
+
     copied = 0
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
@@ -140,10 +146,12 @@ def move(src, dst):
 
 
 def remove(path):
+    import dvc.logger as logger
+
     if not os.path.exists(path):
         return
 
-    logger.debug(u"Removing '{}'".format(os.path.relpath(path)))
+    logger.debug("Removing '{}'".format(os.path.relpath(path)))
 
     def _chmod(func, p, excinfo):
         perm = os.stat(p).st_mode
@@ -192,3 +200,14 @@ def fix_env(env=None):
             env.pop(lp_key, None)
 
     return env
+
+
+def convert_to_unicode(data):
+    if isinstance(data, builtin_str):
+        return str(data)
+    elif isinstance(data, dict):
+        return dict(map(convert_to_unicode, data.items()))
+    elif isinstance(data, list) or isinstance(data, tuple):
+        return type(data)(map(convert_to_unicode, data))
+    else:
+        return data
