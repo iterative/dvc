@@ -1131,6 +1131,16 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
+        self.dvc.remove('imported_file.dvc')
+
+        with StaticFileServer(handler='Content-MD5'):
+            import_url = urljoin(self.remote, self.FOO)
+            import_output = 'imported_file'
+            import_stage = self.dvc.imp(import_url, import_output)
+
+        self.assertTrue(os.path.exists(import_output))
+        self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
+
         # Run --deps
         with StaticFileServer():
             run_dependency = urljoin(self.remote, self.BAR)
