@@ -97,6 +97,63 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["baz"]["metric_hcsv"] == ["baz"])
 
 
+class TestMetricsRecursive(TestDvc):
+    def setUp(self):
+        super(TestMetricsRecursive, self).setUp()
+        self.dvc.scm.commit("init")
+
+        self.dvc.scm.checkout("nested", create_new=True)
+
+        os.mkdir("metrics_nested")
+        os.mkdir("metrics_nested/metrics_subnested")
+
+        main(
+            [
+                "run",
+                "-M",
+                "metrics_nested/metric_nested",
+                "echo",
+                "-n",
+                "nested",
+                ">>",
+                "metrics_nested/metric_nested",
+            ]
+        )
+
+        main(
+            [
+                "run",
+                "-M",
+                "metrics_nested/metrics_subnested/metric_subnested",
+                "echo",
+                "-n",
+                "subnested",
+                ">>",
+                "metrics_nested/metrics_subnested/metric_subnested",
+            ]
+        )
+
+        self.dvc.scm.add(["metrics_nested"])
+        self.dvc.scm.commit("nested metrics")
+
+        self.dvc.scm.checkout("master")
+
+    def test(self):
+
+        ret = self.dvc.metrics_show(
+            "metrics_nested", all_branches=True, recursive=False
+        )
+        self.assertEqual(len(ret), 0)
+
+        ret = self.dvc.metrics_show("metrics_nested", all_branches=True, recursive=True)
+        self.assertEqual(len(ret), 1)
+        self.assertTrue(
+            ret["nested"]["metrics_nested/metrics_subnested/metric_subnested"]
+            == "subnested"
+        )
+        self.assertTrue(ret["nested"]["metrics_nested/metric_nested"] == "nested")
+
+
 class TestMetricsReproCLI(TestDvc):
     def test(self):
         stage = self.dvc.run(

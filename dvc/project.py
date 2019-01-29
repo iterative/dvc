@@ -1043,7 +1043,7 @@ class Project(object):
 
         return ret
 
-    def _find_output_by_path(self, path, outs=None):
+    def _find_output_by_path(self, path, outs=None, recursive=False):
         from dvc.exceptions import OutputDuplicationError
 
         if not outs:
@@ -1051,7 +1051,7 @@ class Project(object):
             outs = [out for stage in astages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
-        if os.path.isdir(abs_path):
+        if os.path.isdir(abs_path) and recursive:
             matched = [out for out in outs
                        if os.path.abspath(out.path).startswith(abs_path)]
             stages = [out.stage.relpath for out in matched
@@ -1076,11 +1076,12 @@ class Project(object):
         res = {}
         for branch in self.scm.brancher(all_branches=all_branches,
                                         all_tags=all_tags):
+
             astages = self.active_stages()
             outs = [out for stage in astages for out in stage.outs]
 
             if path:
-                outs = self._find_output_by_path(path, outs=outs)
+                outs = self._find_output_by_path(path, outs=outs, recursive=recursive)
                 stages = [out.stage.path for out in outs] if outs else None
                 entries = []
                 if outs:
@@ -1094,9 +1095,18 @@ class Project(object):
                                          out.metric.get(out.PARAM_METRIC_XPATH,
                                                         None))]
                         else:
-                            entries += [(path, typ, xpath)]
+                            entries += [(out.path, typ, xpath)]
                 else:
-                    entries += [(path, typ, xpath)]
+                    if os.path.isdir(path):
+                        logger.warning(
+                                        "Path '{path}' is a directory. "
+                                        "Consider runnig with '-R'."
+                                        .format(path=path)
+                                    )
+                        return {}
+
+                    else:
+                        entries += [(path, typ, xpath)]
 
             else:
                 metrics = filter(lambda o: o.metric, outs)
@@ -1137,6 +1147,10 @@ class Project(object):
         if res:
             return res
 
+        if path and os.path.isdir(path):
+            msg = "file '{}' does not exist".format(path)
+            return res
+
         if path:
             msg = "file '{}' does not exist".format(path)
         else:
@@ -1149,10 +1163,12 @@ class Project(object):
 
     def _metrics_modify(self, path, typ=None, xpath=None, delete=False):
         outs = self._find_output_by_path(path)
+
+        if not outs:
+            msg = "unable to find file '{}' in the pipeline".format(path)
+            raise DvcException(msg)
+
         for out in outs:
-            if not out:
-                msg = "unable to find file '{}' in the pipeline".format(path)
-                raise DvcException(msg)
 
             if out.scheme != 'local':
                 msg = "output '{}' scheme '{}' is not supported for metrics"
