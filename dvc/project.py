@@ -1081,7 +1081,9 @@ class Project(object):
             outs = [out for stage in astages for out in stage.outs]
 
             if path:
-                outs = self._find_output_by_path(path, outs=outs, recursive=recursive)
+                outs = self._find_output_by_path(path,
+                                                 outs=outs,
+                                                 recursive=recursive)
                 stages = [out.stage.path for out in outs] if outs else None
                 entries = []
                 if outs:
@@ -1098,11 +1100,9 @@ class Project(object):
                             entries += [(out.path, typ, xpath)]
                 else:
                     if os.path.isdir(path):
-                        logger.warning(
-                                        "Path '{path}' is a directory. "
-                                        "Consider runnig with '-R'."
-                                        .format(path=path)
-                                    )
+                        logger.warning("Path '{path}' is a directory. "
+                                       "Consider runnig with '-R'."
+                                       .format(path=path))
                         return {}
 
                     else:
@@ -1172,7 +1172,8 @@ class Project(object):
 
             if out.scheme != 'local':
                 msg = "output '{}' scheme '{}' is not supported for metrics"
-                raise DvcException(msg.format(out.path, out.path_info['scheme']))
+                raise DvcException(msg.format(out.path,
+                                              out.path_info['scheme']))
 
             if out.use_cache:
                 msg = "cached output '{}' is not supported for metrics"
