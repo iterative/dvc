@@ -1094,7 +1094,9 @@ class Project(object):
                                          out.metric.get(out.PARAM_METRIC_XPATH,
                                                         None))]
                         else:
-                            entries += [(out.path, typ, xpath)]
+                            entries += [(path, typ, xpath)]
+                else:
+                    entries += [(path, typ, xpath)]
 
             else:
                 metrics = filter(lambda o: o.metric, outs)
@@ -1146,35 +1148,36 @@ class Project(object):
         raise DvcException(msg)
 
     def _metrics_modify(self, path, typ=None, xpath=None, delete=False):
-        out = self._find_output_by_path(path)
-        if not out:
-            msg = "unable to find file '{}' in the pipeline".format(path)
-            raise DvcException(msg)
+        outs = self._find_output_by_path(path)
+        for out in outs:
+            if not out:
+                msg = "unable to find file '{}' in the pipeline".format(path)
+                raise DvcException(msg)
 
-        if out.scheme != 'local':
-            msg = "output '{}' scheme '{}' is not supported for metrics"
-            raise DvcException(msg.format(out.path, out.path_info['scheme']))
+            if out.scheme != 'local':
+                msg = "output '{}' scheme '{}' is not supported for metrics"
+                raise DvcException(msg.format(out.path, out.path_info['scheme']))
 
-        if out.use_cache:
-            msg = "cached output '{}' is not supported for metrics"
-            raise DvcException(msg.format(out.rel_path))
+            if out.use_cache:
+                msg = "cached output '{}' is not supported for metrics"
+                raise DvcException(msg.format(out.rel_path))
 
-        if typ:
-            if not isinstance(out.metric, dict):
-                out.metric = {}
-            out.metric[out.PARAM_METRIC_TYPE] = typ
+            if typ:
+                if not isinstance(out.metric, dict):
+                    out.metric = {}
+                out.metric[out.PARAM_METRIC_TYPE] = typ
 
-        if xpath:
-            if not isinstance(out.metric, dict):
-                out.metric = {}
-            out.metric[out.PARAM_METRIC_XPATH] = xpath
+            if xpath:
+                if not isinstance(out.metric, dict):
+                    out.metric = {}
+                out.metric[out.PARAM_METRIC_XPATH] = xpath
 
-        if delete:
-            out.metric = None
+            if delete:
+                out.metric = None
 
-        out._verify_metric()
+            out._verify_metric()
 
-        out.stage.dump()
+            out.stage.dump()
 
     def metrics_modify(self, path=None, typ=None, xpath=None):
         self._metrics_modify(path, typ, xpath)
