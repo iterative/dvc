@@ -39,7 +39,7 @@ def main(argv=None):
     except DvcParserError:
         ret = 254
     except Exception:  # pylint: disable=broad-except
-        logger.error('unexpected error')
+        logger.error("unexpected error")
         ret = 255
 
     Analytics().send_cmd(cmd, args, ret)

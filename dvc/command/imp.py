@@ -11,30 +11,29 @@ from dvc.command.base import CmdBase
 class CmdImport(CmdBase):
     def run(self):
         try:
-            default_out = os.path.basename(
-                urlparse(self.args.url).path
-            )
+            default_out = os.path.basename(urlparse(self.args.url).path)
 
             out = self.args.out or default_out
 
             self.project.imp(self.args.url, out)
         except DvcException:
-            logger.error('failed to import {}. You could also try downloading '
-                         'it manually and adding it with `dvc add` command.'
-                         .format(self.args.url))
+            logger.error(
+                "failed to import {}. You could also try downloading "
+                "it manually and adding it with `dvc add` command.".format(
+                    self.args.url
+                )
+            )
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    IMPORT_HELP = 'Import files from URL.'
+    IMPORT_HELP = "Import files from URL."
     import_parser = subparsers.add_parser(
-        'import',
-        parents=[parent_parser],
-        description=IMPORT_HELP,
-        help=IMPORT_HELP)
+        "import", parents=[parent_parser], description=IMPORT_HELP, help=IMPORT_HELP
+    )
     import_parser.add_argument(
-        'url',
+        "url",
         help="URL. Supported urls: "
         "'/path/to/file', "
         "'C:\\\\path\\to\\file', "
@@ -44,9 +43,7 @@ def add_parser(subparsers, parent_parser):
         "'hdfs://example.com/path/to/file', "
         "'ssh://example.com:/path/to/file', "
         "'remote://myremote/path/to/file'(see "
-        "`dvc remote` commands). ")
-    import_parser.add_argument(
-        'out',
-        nargs='?',
-        help='Output.')
+        "`dvc remote` commands). ",
+    )
+    import_parser.add_argument("out", nargs="?", help="Output.")
     import_parser.set_defaults(func=CmdImport)

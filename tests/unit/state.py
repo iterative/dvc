@@ -12,10 +12,12 @@ class TestMtimeAndSize(TestDvc):
         dir_time, dir_size = State._mtime_and_size(self.DATA_DIR)
 
         actual_file_size = os.path.getsize(self.DATA)
-        actual_dir_size = (os.path.getsize(self.DATA_DIR)
-                           + os.path.getsize(self.DATA)
-                           + os.path.getsize(self.DATA_SUB_DIR)
-                           + os.path.getsize(self.DATA_SUB))
+        actual_dir_size = (
+            os.path.getsize(self.DATA_DIR)
+            + os.path.getsize(self.DATA)
+            + os.path.getsize(self.DATA_SUB_DIR)
+            + os.path.getsize(self.DATA_SUB)
+        )
 
         self.assertIs(type(file_time), str)
         self.assertIs(type(file_size), str)

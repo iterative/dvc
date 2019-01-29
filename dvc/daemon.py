@@ -23,12 +23,14 @@ def _spawn_windows(cmd, env):
     startupinfo = STARTUPINFO()
     startupinfo.dwFlags |= STARTF_USESHOWWINDOW
 
-    Popen(cmd,
-          env=env,
-          close_fds=True,
-          shell=False,
-          creationflags=creationflags,
-          startupinfo=startupinfo).communicate()
+    Popen(
+        cmd,
+        env=env,
+        close_fds=True,
+        shell=False,
+        creationflags=creationflags,
+        startupinfo=startupinfo,
+    ).communicate()
 
 
 def _spawn_posix(cmd, env):
@@ -71,18 +73,18 @@ def daemon(args):
     """
     cmd = [sys.executable]
     if not is_binary():
-        cmd += ['-m', 'dvc']
-    cmd += ['daemon', '-q'] + args
+        cmd += ["-m", "dvc"]
+    cmd += ["daemon", "-q"] + args
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])
-    env['PYTHONPATH'] = os.path.dirname(os.path.dirname(file_path))
+    env["PYTHONPATH"] = os.path.dirname(os.path.dirname(file_path))
 
     logger.debug("Trying to spawn '{}' with env '{}'".format(cmd, env))
 
-    if os.name == 'nt':
+    if os.name == "nt":
         _spawn_windows(cmd, env)
-    elif os.name == 'posix':
+    elif os.name == "posix":
         _spawn_posix(cmd, env)
     else:
         raise NotImplementedError

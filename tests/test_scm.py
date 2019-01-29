@@ -22,9 +22,9 @@ class TestSCMGit(TestGit):
 
     def test_commit(self):
         G = Git(self._root_dir)
-        G.add(['foo'])
-        G.commit('add')
-        self.assertTrue('foo' in self.git.git.ls_files())
+        G.add(["foo"])
+        G.commit("add")
+        self.assertTrue("foo" in self.git.git.ls_files())
 
 
 class TestSCMGitSubmodule(TestGitSubmodule):
@@ -36,17 +36,16 @@ class TestSCMGitSubmodule(TestGitSubmodule):
 
     def test_commit_in_submodule(self):
         G = Git(self._root_dir)
-        G.add(['foo'])
-        G.commit('add')
-        self.assertTrue('foo' in self.git.git.ls_files())
+        G.add(["foo"])
+        G.commit("add")
+        self.assertTrue("foo" in self.git.git.ls_files())
 
 
 class TestIgnore(TestGit):
     def _count_gitignore(self):
-        with open(Git.GITIGNORE, 'r') as fd:
+        with open(Git.GITIGNORE, "r") as fd:
             lines = fd.readlines()
-            return len(list(filter(lambda x: x.strip() == '/' + self.FOO,
-                                   lines)))
+            return len(list(filter(lambda x: x.strip() == "/" + self.FOO, lines)))
 
     def test(self):
         git = Git(self._root_dir)

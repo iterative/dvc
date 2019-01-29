@@ -18,15 +18,16 @@ from dvc.exceptions import DvcException
 
 class StateVersionTooNewError(DvcException):
     """Thrown when dvc version is older than the state database version."""
+
     def __init__(self, dvc_version, expected, actual):
         super(StateVersionTooNewError, self).__init__(
             "you are using an old version '{dvc_version}' of dvc that is "
             "using state file version '{expected}' which is not compatible "
             "with the state file version '{actual}' that is used in this "
-            "projet. Please upgrade right now!"
-            .format(dvc_version=dvc_version,
-                    expected=expected,
-                    actual=actual))
+            "projet. Please upgrade right now!".format(
+                dvc_version=dvc_version, expected=expected, actual=actual
+            )
+        )
 
 
 class State(object):  # pylint: disable=too-many-instance-attributes
@@ -41,29 +42,32 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         StateVersionTooNewError: thrown when dvc version is older than the
             state database version.
     """
-    VERSION = 3
-    STATE_FILE = 'state'
-    STATE_TABLE = 'state'
-    STATE_TABLE_LAYOUT = ("inode INTEGER PRIMARY KEY, "
-                          "mtime TEXT NOT NULL, "
-                          "size TEXT NOT NULL, "
-                          "md5 TEXT NOT NULL, "
-                          "timestamp TEXT NOT NULL")
 
-    STATE_INFO_TABLE = 'state_info'
-    STATE_INFO_TABLE_LAYOUT = 'count INTEGER'
+    VERSION = 3
+    STATE_FILE = "state"
+    STATE_TABLE = "state"
+    STATE_TABLE_LAYOUT = (
+        "inode INTEGER PRIMARY KEY, "
+        "mtime TEXT NOT NULL, "
+        "size TEXT NOT NULL, "
+        "md5 TEXT NOT NULL, "
+        "timestamp TEXT NOT NULL"
+    )
+
+    STATE_INFO_TABLE = "state_info"
+    STATE_INFO_TABLE_LAYOUT = "count INTEGER"
     STATE_INFO_ROW = 1
 
-    LINK_STATE_TABLE = 'link_state'
-    LINK_STATE_TABLE_LAYOUT = ("path TEXT PRIMARY KEY, "
-                               "inode INTEGER NOT NULL, "
-                               "mtime TEXT NOT NULL")
+    LINK_STATE_TABLE = "link_state"
+    LINK_STATE_TABLE_LAYOUT = (
+        "path TEXT PRIMARY KEY, " "inode INTEGER NOT NULL, " "mtime TEXT NOT NULL"
+    )
 
     STATE_ROW_LIMIT = 100000000
     STATE_ROW_CLEANUP_QUOTA = 50
 
-    MAX_INT = 2**63 - 1
-    MAX_UINT = 2**64 - 2
+    MAX_INT = 2 ** 63 - 1
+    MAX_UINT = 2 ** 64 - 2
 
     def __init__(self, project, config):
         self.project = project
@@ -74,11 +78,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self.row_cleanup_quota = 50
 
         state_config = config.get(Config.SECTION_STATE, {})
-        self.row_limit = state_config.get(Config.SECTION_STATE_ROW_LIMIT,
-                                          self.STATE_ROW_LIMIT)
+        self.row_limit = state_config.get(
+            Config.SECTION_STATE_ROW_LIMIT, self.STATE_ROW_LIMIT
+        )
         self.row_cleanup_quota = state_config.get(
-            Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
-            self.STATE_ROW_CLEANUP_QUOTA)
+            Config.SECTION_STATE_ROW_CLEANUP_QUOTA, self.STATE_ROW_CLEANUP_QUOTA
+        )
 
         if not self.dvc_dir:
             self.state_file = None
@@ -87,10 +92,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
 
         # https://www.sqlite.org/tempfiles.html
-        self.temp_files = [
-            self.state_file + '-journal',
-            self.state_file + '-wal',
-        ]
+        self.temp_files = [self.state_file + "-journal", self.state_file + "-wal"]
 
         self.database = None
         self.cursor = None
@@ -125,7 +127,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         if not md5 or not actual:
             return True
 
-        return actual.split('.')[0] != md5.split('.')[0]
+        return actual.split(".")[0] != md5.split(".")[0]
 
     def _execute(self, cmd):
         logger.debug(cmd)
@@ -171,8 +173,10 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             if version > self.VERSION:
                 raise StateVersionTooNewError(VERSION, self.VERSION, version)
             elif version < self.VERSION:
-                msg = "State file version '{}' is too old. " \
-                      "Reformatting to the current version '{}'."
+                msg = (
+                    "State file version '{}' is too old. "
+                    "Reformatting to the current version '{}'."
+                )
                 logger.warning(msg.format(version, self.VERSION))
                 cmd = "DROP TABLE IF EXISTS {};"
                 self._execute(cmd.format(self.STATE_TABLE))
@@ -181,17 +185,15 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
-        self._execute(cmd.format(self.STATE_TABLE,
-                                 self.STATE_TABLE_LAYOUT))
-        self._execute(cmd.format(self.STATE_INFO_TABLE,
-                                 self.STATE_INFO_TABLE_LAYOUT))
-        self._execute(cmd.format(self.LINK_STATE_TABLE,
-                                 self.LINK_STATE_TABLE_LAYOUT))
+        self._execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE_LAYOUT))
+        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_TABLE_LAYOUT))
+        self._execute(cmd.format(self.LINK_STATE_TABLE, self.LINK_STATE_TABLE_LAYOUT))
 
-        cmd = "INSERT OR IGNORE INTO {} (count) SELECT 0 " \
-              "WHERE NOT EXISTS (SELECT * FROM {})"
-        self._execute(cmd.format(self.STATE_INFO_TABLE,
-                                 self.STATE_INFO_TABLE))
+        cmd = (
+            "INSERT OR IGNORE INTO {} (count) SELECT 0 "
+            "WHERE NOT EXISTS (SELECT * FROM {})"
+        )
+        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_TABLE))
 
         cmd = "PRAGMA user_version = {};"
         self._execute(cmd.format(self.VERSION))
@@ -228,15 +230,14 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         # NOTE: see https://bugs.python.org/issue28518
         self.database.isolation_level = None
         self._execute("VACUUM")
-        self.database.isolation_level = ''
+        self.database.isolation_level = ""
 
     def dump(self):
         """Saves state database."""
         assert self.database is not None
 
         cmd = "SELECT count from {} WHERE rowid={}"
-        self._execute(cmd.format(self.STATE_INFO_TABLE,
-                                 self.STATE_INFO_ROW))
+        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_ROW))
         ret = self._fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
@@ -246,13 +247,13 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             msg = "cleaning up state, this might take a while."
             logger.warning(msg)
 
-            delete = (count - self.row_limit)
-            delete += int(self.row_limit * (self.row_cleanup_quota/100.))
-            cmd = "DELETE FROM {} WHERE timestamp IN (" \
-                  "SELECT timestamp FROM {} ORDER BY timestamp ASC LIMIT {});"
-            self._execute(cmd.format(self.STATE_TABLE,
-                                     self.STATE_TABLE,
-                                     delete))
+            delete = count - self.row_limit
+            delete += int(self.row_limit * (self.row_cleanup_quota / 100.0))
+            cmd = (
+                "DELETE FROM {} WHERE timestamp IN ("
+                "SELECT timestamp FROM {} ORDER BY timestamp ASC LIMIT {});"
+            )
+            self._execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE, delete))
 
             self._vacuum()
 
@@ -265,9 +266,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             count = ret[0][0]
 
         cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
-        self._execute(cmd.format(self.STATE_INFO_TABLE,
-                                 self._to_sqlite(count),
-                                 self.STATE_INFO_ROW))
+        self._execute(
+            cmd.format(
+                self.STATE_INFO_TABLE, self._to_sqlite(count), self.STATE_INFO_ROW
+            )
+        )
 
         self.database.commit()
         self.cursor.close()
@@ -297,7 +300,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def _inode(path):
-        logger.debug('Path {} inode {}'.format(path, System.inode(path)))
+        logger.debug("Path {} inode {}".format(path, System.inode(path)))
         return System.inode(path)
 
     def _do_update(self, path):
@@ -310,21 +313,28 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         actual_mtime, actual_size = self._mtime_and_size(path)
         actual_inode = self._inode(path)
 
-        cmd = ('SELECT * from {} WHERE inode={}'
-               .format(self.STATE_TABLE, self._to_sqlite(actual_inode)))
+        cmd = "SELECT * from {} WHERE inode={}".format(
+            self.STATE_TABLE, self._to_sqlite(actual_inode)
+        )
 
         self._execute(cmd)
         ret = self._fetchall()
         if not ret:
             md5, info = self._collect(path)
-            cmd = 'INSERT INTO {}(inode, mtime, size, md5, timestamp) ' \
-                  'VALUES ({}, "{}", "{}", "{}", "{}")'
-            self._execute(cmd.format(self.STATE_TABLE,
-                                     self._to_sqlite(actual_inode),
-                                     actual_mtime,
-                                     actual_size,
-                                     md5,
-                                     int(nanotime.timestamp(time.time()))))
+            cmd = (
+                "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
+                'VALUES ({}, "{}", "{}", "{}", "{}")'
+            )
+            self._execute(
+                cmd.format(
+                    self.STATE_TABLE,
+                    self._to_sqlite(actual_inode),
+                    actual_mtime,
+                    actual_size,
+                    md5,
+                    int(nanotime.timestamp(time.time())),
+                )
+            )
             self.inserts += 1
         else:
             assert len(ret) == 1
@@ -334,26 +344,38 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             assert inode == actual_inode
             logger.debug(
                 "Inode '{}', mtime '{}', actual mtime '{}', size '{}', "
-                "actual size '{}'."
-                .format(inode, mtime, actual_mtime, size, actual_size))
+                "actual size '{}'.".format(
+                    inode, mtime, actual_mtime, size, actual_size
+                )
+            )
             if actual_mtime != mtime or actual_size != size:
                 md5, info = self._collect(path)
-                cmd = ('UPDATE {} SET '
-                       'mtime = "{}", size = "{}", '
-                       'md5 = "{}", timestamp = "{}" '
-                       'WHERE inode = {}')
-                self._execute(cmd.format(self.STATE_TABLE,
-                                         actual_mtime,
-                                         actual_size,
-                                         md5,
-                                         int(nanotime.timestamp(time.time())),
-                                         self._to_sqlite(actual_inode)))
+                cmd = (
+                    "UPDATE {} SET "
+                    'mtime = "{}", size = "{}", '
+                    'md5 = "{}", timestamp = "{}" '
+                    "WHERE inode = {}"
+                )
+                self._execute(
+                    cmd.format(
+                        self.STATE_TABLE,
+                        actual_mtime,
+                        actual_size,
+                        md5,
+                        int(nanotime.timestamp(time.time())),
+                        self._to_sqlite(actual_inode),
+                    )
+                )
             else:
                 info = None
                 cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
-                self._execute(cmd.format(self.STATE_TABLE,
-                                         int(nanotime.timestamp(time.time())),
-                                         self._to_sqlite(actual_inode)))
+                self._execute(
+                    cmd.format(
+                        self.STATE_TABLE,
+                        int(nanotime.timestamp(time.time())),
+                        self._to_sqlite(actual_inode),
+                    )
+                )
 
         return (md5, info)
 
@@ -401,11 +423,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         inode = self._inode(path)
         relpath = os.path.relpath(path, self.root_dir)
 
-        cmd = 'REPLACE INTO {}(path, inode, mtime) ' \
-              'VALUES ("{}", {}, "{}")'.format(self.LINK_STATE_TABLE,
-                                               relpath,
-                                               self._to_sqlite(inode),
-                                               mtime)
+        cmd = "REPLACE INTO {}(path, inode, mtime) " 'VALUES ("{}", {}, "{}")'.format(
+            self.LINK_STATE_TABLE, relpath, self._to_sqlite(inode), mtime
+        )
         self._execute(cmd)
 
     def remove_unused_links(self, used):
@@ -416,7 +436,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         unused = []
 
-        self._execute('SELECT * FROM {}'.format(self.LINK_STATE_TABLE))
+        self._execute("SELECT * FROM {}".format(self.LINK_STATE_TABLE))
         for row in self.cursor:
             relpath, inode, mtime = row
             inode = self._from_sqlite(inode)

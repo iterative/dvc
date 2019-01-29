@@ -14,5 +14,5 @@ def spy(method_to_decorate):
 
 
 def load_stage_file(path):
-    with open(path, 'r') as fobj:
+    with open(path, "r") as fobj:
         return yaml.safe_load(fobj)

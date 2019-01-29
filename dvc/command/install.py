@@ -9,16 +9,14 @@ class CmdInstall(CmdBase):
         try:
             self.project.install()
         except Exception:
-            logger.error('failed to install dvc hooks')
+            logger.error("failed to install dvc hooks")
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    INSTALL_HELP = 'Install dvc hooks into the repository.'
+    INSTALL_HELP = "Install dvc hooks into the repository."
     install_parser = subparsers.add_parser(
-        'install',
-        parents=[parent_parser],
-        description=INSTALL_HELP,
-        help=INSTALL_HELP)
+        "install", parents=[parent_parser], description=INSTALL_HELP, help=INSTALL_HELP
+    )
     install_parser.set_defaults(func=CmdInstall)

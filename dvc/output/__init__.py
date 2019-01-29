@@ -25,44 +25,41 @@ OUTS = [
     # NOTE: OutputLOCAL is the default choice
 ]
 
-OUTS_MAP = {'hdfs': OutputHDFS,
-            's3': OutputS3,
-            'gs': OutputGS,
-            'ssh': OutputSSH,
-            'local': OutputLOCAL}
+OUTS_MAP = {
+    "hdfs": OutputHDFS,
+    "s3": OutputS3,
+    "gs": OutputGS,
+    "ssh": OutputSSH,
+    "local": OutputLOCAL,
+}
 
 SCHEMA = {
-        OutputBase.PARAM_PATH: str,
-
-        # NOTE: currently there are only 3 possible checksum names:
-        #
-        #    1) md5 (LOCAL, SSH, GS);
-        #    2) etag (S3);
-        #    3) checksum (HDFS);
-        #
-        # so when a few types of outputs share the same name, we only need
-        # specify it once.
-        schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
-        schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
-        schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
-
-        schema.Optional(OutputBase.PARAM_CACHE): bool,
-        schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
+    OutputBase.PARAM_PATH: str,
+    # NOTE: currently there are only 3 possible checksum names:
+    #
+    #    1) md5 (LOCAL, SSH, GS);
+    #    2) etag (S3);
+    #    3) checksum (HDFS);
+    #
+    # so when a few types of outputs share the same name, we only need
+    # specify it once.
+    schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
+    schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
+    schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
+    schema.Optional(OutputBase.PARAM_CACHE): bool,
+    schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
 }
 
 
 def _get(stage, p, info, cache, metric):
     parsed = urlparse(p)
-    if parsed.scheme == 'remote':
+    if parsed.scheme == "remote":
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
         sect = stage.project.config.config[name]
         remote = Remote(stage.project, sect)
-        return OUTS_MAP[remote.scheme](stage,
-                                       p,
-                                       info,
-                                       cache=cache,
-                                       remote=remote,
-                                       metric=metric)
+        return OUTS_MAP[remote.scheme](
+            stage, p, info, cache=cache, remote=remote, metric=metric
+        )
 
     for o in OUTS:
         if o.supported(p):

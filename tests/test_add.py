@@ -30,20 +30,20 @@ class TestAdd(TestDvc):
         self.assertEqual(len(stage.outs), 1)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(stage.cmd, None)
-        self.assertEqual(stage.outs[0].info['md5'], md5)
+        self.assertEqual(stage.outs[0].info["md5"], md5)
 
 
 class TestAddUnupportedFile(TestDvc):
     def test(self):
         with self.assertRaises(DvcException):
-            self.dvc.add('unsupported://unsupported')
+            self.dvc.add("unsupported://unsupported")
 
 
 class TestAddDirectory(TestDvc):
     def test(self):
-        dname = 'directory'
+        dname = "directory"
         os.mkdir(dname)
-        self.create(os.path.join(dname, 'file'), 'file')
+        self.create(os.path.join(dname, "file"), "file")
         stages = self.dvc.add(dname)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
@@ -51,11 +51,11 @@ class TestAddDirectory(TestDvc):
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
 
-        md5 = stage.outs[0].info['md5']
+        md5 = stage.outs[0].info["md5"]
 
         dir_info = self.dvc.cache.local.load_dir_cache(md5)
         for info in dir_info:
-            self.assertTrue('\\' not in info['relpath'])
+            self.assertTrue("\\" not in info["relpath"])
 
 
 class TestAddDirectoryRecursive(TestDvc):
@@ -66,30 +66,28 @@ class TestAddDirectoryRecursive(TestDvc):
 
 class TestAddCmdDirectoryRecursive(TestDvc):
     def test(self):
-        ret = main(['add',
-                    '--recursive',
-                    self.DATA_DIR])
+        ret = main(["add", "--recursive", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
     def test(self):
-        dname = 'directory/'
+        dname = "directory/"
         os.mkdir(dname)
-        self.create(os.path.join(dname, 'file'), 'file')
+        self.create(os.path.join(dname, "file"), "file")
         stages = self.dvc.add(dname)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        self.assertEqual(os.path.abspath('directory.dvc'), stage.path)
+        self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
 class TestAddTrackedFile(TestDvc):
     def test(self):
-        fname = 'tracked_file'
-        self.create(fname, 'tracked file contents')
+        fname = "tracked_file"
+        self.create(fname, "tracked file contents")
         self.dvc.scm.add([fname])
-        self.dvc.scm.commit('add {}'.format(fname))
+        self.dvc.scm.commit("add {}".format(fname))
 
         with self.assertRaises(OutputAlreadyTrackedError):
             self.dvc.add(fname)
@@ -97,8 +95,8 @@ class TestAddTrackedFile(TestDvc):
 
 class TestAddDirWithExistingCache(TestDvc):
     def test(self):
-        dname = 'a'
-        fname = os.path.join(dname, 'b')
+        dname = "a"
+        fname = os.path.join(dname, "b")
         os.mkdir(dname)
         shutil.copyfile(self.FOO, fname)
 
@@ -132,13 +130,13 @@ class TestAddFileInDir(TestDvc):
         self.assertNotEqual(stage, None)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, self.DATA_SUB + '.dvc')
+        self.assertEqual(stage.relpath, self.DATA_SUB + ".dvc")
 
 
 class TestAddExternalLocalFile(TestDvc):
     def test(self):
         dname = TestDvc.mkdtemp()
-        fname = os.path.join(dname, 'foo')
+        fname = os.path.join(dname, "foo")
         shutil.copyfile(self.FOO, fname)
 
         stages = self.dvc.add(fname)
@@ -147,10 +145,10 @@ class TestAddExternalLocalFile(TestDvc):
         self.assertNotEqual(stage, None)
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, 'foo.dvc')
+        self.assertEqual(stage.relpath, "foo.dvc")
         self.assertEqual(len(os.listdir(dname)), 1)
         self.assertTrue(os.path.isfile(fname))
-        self.assertTrue(filecmp.cmp(fname, 'foo', shallow=False))
+        self.assertTrue(filecmp.cmp(fname, "foo", shallow=False))
 
 
 class TestAddLocalRemoteFile(TestDvc):
@@ -159,36 +157,34 @@ class TestAddLocalRemoteFile(TestDvc):
         Making sure that 'remote' syntax is handled properly for local outs.
         """
         cwd = os.getcwd()
-        remote = 'myremote'
+        remote = "myremote"
 
-        ret = main(['remote', 'add', remote, cwd])
+        ret = main(["remote", "add", remote, cwd])
         self.assertEqual(ret, 0)
 
         self.dvc = Project()
 
-        foo = 'remote://{}/{}'.format(remote, self.FOO)
-        ret = main(['add', foo])
+        foo = "remote://{}/{}".format(remote, self.FOO)
+        ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
-        with open('foo.dvc', 'r') as fobj:
+        with open("foo.dvc", "r") as fobj:
             d = yaml.safe_load(fobj)
-            self.assertEqual(d['outs'][0]['path'], foo)
+            self.assertEqual(d["outs"][0]["path"], foo)
 
         bar = os.path.join(cwd, self.BAR)
-        ret = main(['add', bar])
+        ret = main(["add", bar])
         self.assertEqual(ret, 0)
 
-        with open('bar.dvc', 'r') as fobj:
+        with open("bar.dvc", "r") as fobj:
             d = yaml.safe_load(fobj)
-            self.assertEqual(d['outs'][0]['path'], bar)
+            self.assertEqual(d["outs"][0]["path"], bar)
 
 
 class TestCmdAdd(TestDvc):
     def test(self):
-        ret = main(['add',
-                    self.FOO])
+        ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
 
-        ret = main(['add',
-                    'non-existing-file'])
+        ret = main(["add", "non-existing-file"])
         self.assertNotEqual(ret, 0)

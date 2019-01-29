@@ -14,17 +14,13 @@ class CmdRemove(CmdBase):
         if self.args.force:
             return False
 
-        msg = (
-            'Are you sure you want to remove {} with its outputs?'
-            .format(target)
-        )
+        msg = "Are you sure you want to remove {} with its outputs?".format(target)
 
         if prompt.confirm(msg):
             return False
 
         raise DvcException(
-            'Cannot purge without a confirmation from the user.'
-            " Use '-f' to force."
+            "Cannot purge without a confirmation from the user." " Use '-f' to force."
         )
 
     def run(self):
@@ -33,39 +29,33 @@ class CmdRemove(CmdBase):
                 outs_only = self._is_outs_only(target)
                 self.project.remove(target, outs_only=outs_only)
             except DvcException:
-                logger.error('failed to remove {}'.format(target))
+                logger.error("failed to remove {}".format(target))
                 return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = 'Remove outputs of DVC file.'
+    REMOVE_HELP = "Remove outputs of DVC file."
     remove_parser = subparsers.add_parser(
-        'remove',
-        parents=[parent_parser],
-        description=REMOVE_HELP,
-        help=REMOVE_HELP)
+        "remove", parents=[parent_parser], description=REMOVE_HELP, help=REMOVE_HELP
+    )
     remove_parser_group = remove_parser.add_mutually_exclusive_group()
     remove_parser_group.add_argument(
-        '-o',
-        '--outs',
-        action='store_true',
+        "-o",
+        "--outs",
+        action="store_true",
         default=True,
-        help='Only remove DVC file outputs.(default)')
+        help="Only remove DVC file outputs.(default)",
+    )
     remove_parser_group.add_argument(
-        '-p',
-        '--purge',
-        action='store_true',
+        "-p",
+        "--purge",
+        action="store_true",
         default=False,
-        help='Remove DVC file and all its outputs.')
+        help="Remove DVC file and all its outputs.",
+    )
     remove_parser.add_argument(
-        '-f',
-        '--force',
-        action='store_true',
-        default=False,
-        help='Force purge.')
-    remove_parser.add_argument(
-        'targets',
-        nargs='+',
-        help='DVC files.')
+        "-f", "--force", action="store_true", default=False, help="Force purge."
+    )
+    remove_parser.add_argument("targets", nargs="+", help="DVC files.")
     remove_parser.set_defaults(func=CmdRemove)

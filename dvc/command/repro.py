@@ -25,14 +25,15 @@ class CmdRepro(CmdBase):
         for target in self.args.targets:
             try:
                 stages = self.project.reproduce(
-                               target,
-                               recursive=recursive,
-                               force=self.args.force,
-                               dry=self.args.dry,
-                               interactive=self.args.interactive,
-                               pipeline=self.args.pipeline,
-                               all_pipelines=self.args.all_pipelines,
-                               ignore_build_cache=self.args.ignore_build_cache)
+                    target,
+                    recursive=recursive,
+                    force=self.args.force,
+                    dry=self.args.dry,
+                    interactive=self.args.interactive,
+                    pipeline=self.args.pipeline,
+                    all_pipelines=self.args.all_pipelines,
+                    ignore_build_cache=self.args.ignore_build_cache,
+                )
 
                 if len(stages) == 0:
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
@@ -51,67 +52,70 @@ class CmdRepro(CmdBase):
 def add_parser(subparsers, parent_parser):
     REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'."
     repro_parser = subparsers.add_parser(
-        'repro',
-        parents=[parent_parser],
-        description=REPRO_HELP,
-        help=REPRO_HELP)
+        "repro", parents=[parent_parser], description=REPRO_HELP, help=REPRO_HELP
+    )
+    repro_parser.add_argument("targets", nargs="*", help="DVC file to reproduce.")
     repro_parser.add_argument(
-        'targets',
-        nargs='*',
-        help='DVC file to reproduce.')
-    repro_parser.add_argument(
-        '-f',
-        '--force',
-        action='store_true',
+        "-f",
+        "--force",
+        action="store_true",
         default=False,
-        help='Reproduce even if dependencies were not changed.')
+        help="Reproduce even if dependencies were not changed.",
+    )
     repro_parser.add_argument(
-        '-s',
-        '--single-item',
-        action='store_true',
+        "-s",
+        "--single-item",
+        action="store_true",
         default=False,
-        help='Reproduce only single data item without recursive dependencies '
-             'check.')
+        help="Reproduce only single data item without recursive dependencies " "check.",
+    )
     repro_parser.add_argument(
-        '-c',
-        '--cwd',
+        "-c",
+        "--cwd",
         default=os.path.curdir,
-        help='Directory within your project to reroduce from.')
+        help="Directory within your project to reroduce from.",
+    )
     repro_parser.add_argument(
-        '-m',
-        '--metrics',
-        action='store_true',
+        "-m",
+        "--metrics",
+        action="store_true",
         default=False,
-        help='Show metrics after reproduction.')
+        help="Show metrics after reproduction.",
+    )
     repro_parser.add_argument(
-        '--dry',
-        action='store_true',
+        "--dry",
+        action="store_true",
         default=False,
-        help='Only print the commands that would be executed without '
-             'actually executing.')
+        help="Only print the commands that would be executed without "
+        "actually executing.",
+    )
     repro_parser.add_argument(
-        '-i',
-        '--interactive',
-        action='store_true',
+        "-i",
+        "--interactive",
+        action="store_true",
         default=False,
-        help='Ask for confirmation before reproducing each stage.')
+        help="Ask for confirmation before reproducing each stage.",
+    )
     repro_parser.add_argument(
-        '-p',
-        '--pipeline',
-        action='store_true',
+        "-p",
+        "--pipeline",
+        action="store_true",
         default=False,
-        help='Reproduce the whole pipeline that the specified stage file '
-             'belongs to.')
+        help="Reproduce the whole pipeline that the specified stage file "
+        "belongs to.",
+    )
     repro_parser.add_argument(
-        '-P',
-        '--all-pipelines',
-        action='store_true',
+        "-P",
+        "--all-pipelines",
+        action="store_true",
         default=False,
-        help='Reproduce all pipelines in the project.')
+        help="Reproduce all pipelines in the project.",
+    )
     repro_parser.add_argument(
-        '--ignore-build-cache',
-        action='store_true',
+        "--ignore-build-cache",
+        action="store_true",
         default=False,
         help="Reproduce all descendants of a changed stage even if their "
-             "direct dependencies didn't change.")
+        "direct dependencies didn't change.",
+    )
     repro_parser.set_defaults(func=CmdRepro)

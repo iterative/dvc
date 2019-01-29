@@ -14,7 +14,8 @@ class Cache(object):
         project (dvc.project.Project): project instance that this cache
             belongs to.
     """
-    CACHE_DIR = 'cache'
+
+    CACHE_DIR = "cache"
 
     def __init__(self, project):
         from dvc.remote import Remote
@@ -34,11 +35,10 @@ class Cache(object):
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
 
             sect = {
-                Config.PRIVATE_CWD: config.get(Config.PRIVATE_CWD,
-                                               project.dvc_dir),
+                Config.PRIVATE_CWD: config.get(Config.PRIVATE_CWD, project.dvc_dir),
                 Config.SECTION_REMOTE_URL: cache_dir,
                 Config.SECTION_CACHE_TYPE: cache_type,
-                Config.SECTION_CACHE_PROTECTED: protected
+                Config.SECTION_CACHE_PROTECTED: protected,
             }
 
         self._local = Remote(project, sect)

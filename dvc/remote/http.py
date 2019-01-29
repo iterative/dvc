@@ -25,47 +25,42 @@ class ProgressBarCallback(object):
 
 
 class RemoteHTTP(RemoteBase):
-    scheme = 'http'
-    REGEX = r'^https?://.*$'
+    scheme = "http"
+    REGEX = r"^https?://.*$"
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 1000000  # Megabyte
-    PARAM_CHECKSUM = 'etag'
+    PARAM_CHECKSUM = "etag"
 
     def __init__(self, project, config):
         super(RemoteHTTP, self).__init__(project, config)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
-        self.path_info = {'scheme': 'http'}
+        self.path_info = {"scheme": "http"}
 
     @property
     def prefix(self):
         return self.cache_dir
 
-    def download(self,
-                 from_infos,
-                 to_infos,
-                 no_progress_bar=False,
-                 names=None):
+    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info['scheme'] not in ['http', 'https']:
+            if from_info["scheme"] not in ["http", "https"]:
                 raise NotImplementedError
 
-            if to_info['scheme'] != 'local':
+            if to_info["scheme"] != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}' to '{}'".format(from_info['path'],
-                                                    to_info['path'])
+            msg = "Downloading '{}' to '{}'".format(from_info["path"], to_info["path"])
             logger.debug(msg)
 
-            tmp_file = self.tmp_file(to_info['path'])
+            tmp_file = self.tmp_file(to_info["path"])
             if not name:
-                name = os.path.basename(to_info['path'])
+                name = os.path.basename(to_info["path"])
 
-            self._makedirs(to_info['path'])
+            self._makedirs(to_info["path"])
 
-            total = self._content_length(from_info['path'])
+            total = self._content_length(from_info["path"])
 
             if no_progress_bar or not total:
                 cb = None
@@ -73,50 +68,52 @@ class RemoteHTTP(RemoteBase):
                 cb = ProgressBarCallback(name, total)
 
             try:
-                self._download_to(from_info['path'], tmp_file, callback=cb)
+                self._download_to(from_info["path"], tmp_file, callback=cb)
             except Exception:
-                msg = "failed to download '{}'".format(from_info['path'])
+                msg = "failed to download '{}'".format(from_info["path"])
                 logger.error(msg)
                 continue
 
-            os.rename(tmp_file, to_info['path'])
+            os.rename(tmp_file, to_info["path"])
 
             if not no_progress_bar:
                 progress.finish_target(name)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
-        assert path_info['scheme'] in ['http', 'https']
-        return bool(self._request('HEAD', path_info.get('path')))
+        assert path_info["scheme"] in ["http", "https"]
+        return bool(self._request("HEAD", path_info.get("path")))
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
 
         def func(md5):
-            return bool(self._request('HEAD', self.checksum_to_path(md5)))
+            return bool(self._request("HEAD", self.checksum_to_path(md5)))
 
         return list(filter(func, md5s))
 
     def save_info(self, path_info):
-        if path_info['scheme'] not in ['http', 'https']:
+        if path_info["scheme"] not in ["http", "https"]:
             raise NotImplementedError
 
-        return {self.PARAM_CHECKSUM: self._etag(path_info['path'])}
+        return {self.PARAM_CHECKSUM: self._etag(path_info["path"])}
 
     def _content_length(self, url):
-        return self._request('HEAD', url).headers.get('Content-Length')
+        return self._request("HEAD", url).headers.get("Content-Length")
 
     def _etag(self, url):
-        etag = (self._request('HEAD', url).headers.get('ETag')
-                or self._request('HEAD', url).headers.get('Content-MD5'))
+        etag = self._request("HEAD", url).headers.get("ETag") or self._request(
+            "HEAD", url
+        ).headers.get("Content-MD5")
 
         if not etag:
             raise DvcException(
-                "could not find an ETag or Content-MD5 header for '{url}'"
-                .format(url=url)
+                "could not find an ETag or Content-MD5 header for '{url}'".format(
+                    url=url
+                )
             )
 
-        if etag.startswith('W/'):
+        if etag.startswith("W/"):
             raise DvcException(
                 "Weak ETags are not supported."
                 " (Etag: '{etag}', URL: '{url}')".format(etag=etag, url=url)
@@ -125,9 +122,9 @@ class RemoteHTTP(RemoteBase):
         return etag
 
     def _download_to(self, url, file, callback=None):
-        r = self._request('GET', url, stream=True)
+        r = self._request("GET", url, stream=True)
 
-        with open(file, 'wb') as fd:
+        with open(file, "wb") as fd:
             bytes_transfered = 0
 
             for chunk in r.iter_content(chunk_size=self.CHUNK_SIZE):
@@ -138,13 +135,13 @@ class RemoteHTTP(RemoteBase):
                     callback(bytes_transfered)
 
     def _request(self, method, url, **kwargs):
-        kwargs.setdefault('allow_redirects', True)
-        kwargs.setdefault('timeout', self.REQUEST_TIMEOUT)
+        kwargs.setdefault("allow_redirects", True)
+        kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 
         try:
             return requests.request(method, url, **kwargs)
         except requests.exceptions.RequestException:
-            raise DvcException('could not perform a {} request'.format(method))
+            raise DvcException("could not perform a {} request".format(method))
 
     def gc(self):
         raise NotImplementedError

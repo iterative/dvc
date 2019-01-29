@@ -7,13 +7,13 @@ from tests.test_repro import TestRepro
 
 class TestDestroyNoConfirmation(TestRepro):
     def test(self):
-        ret = main(['destroy'])
+        ret = main(["destroy"])
         self.assertNotEqual(ret, 0)
 
 
 class TestDestroyForce(TestRepro):
     def test(self):
-        ret = main(['destroy', '-f'])
+        ret = main(["destroy", "-f"])
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.path.exists(self.dvc.dvc_dir))

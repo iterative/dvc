@@ -11,7 +11,7 @@ def _clean_getenv(key, default=None):
     """
     Remove env vars that affect dvc behavior in tests
     """
-    if key in ['DVC_TEST', 'CI']:
+    if key in ["DVC_TEST", "CI"]:
         return None
     return os.environ.get(key, default)
 
@@ -26,19 +26,20 @@ class TestAnalytics(TestDir):
         self.assertTrue(a.PARAM_SYSTEM_INFO in a.info.keys())
         self.assertNotEqual(a.info[a.PARAM_SYSTEM_INFO], {})
 
-    @mock.patch.object(os, 'getenv', new=_clean_getenv)
-    @mock.patch('requests.post')
+    @mock.patch.object(os, "getenv", new=_clean_getenv)
+    @mock.patch("requests.post")
     def test_send(self, mockpost):
-        ret = main(['daemon', 'analytics', Analytics().dump(), '-v'])
+        ret = main(["daemon", "analytics", Analytics().dump(), "-v"])
         self.assertEqual(ret, 0)
 
         self.assertTrue(mockpost.called)
 
-    @mock.patch.object(os, 'getenv', new=_clean_getenv)
-    @mock.patch.object(requests, 'post',
-                       side_effect=requests.exceptions.RequestException())
+    @mock.patch.object(os, "getenv", new=_clean_getenv)
+    @mock.patch.object(
+        requests, "post", side_effect=requests.exceptions.RequestException()
+    )
     def test_send_failed(self, mockpost):
-        ret = main(['daemon', 'analytics', Analytics().dump(), '-v'])
+        ret = main(["daemon", "analytics", Analytics().dump(), "-v"])
         self.assertEqual(ret, 0)
 
         self.assertTrue(mockpost.called)
@@ -49,13 +50,13 @@ class TestAnalyticsGit(TestAnalytics, TestGit):
 
 
 class TestAnalyticsDvc(TestAnalytics, TestDvc):
-    @mock.patch('requests.post')
+    @mock.patch("requests.post")
     def test_send_disabled(self, mockpost):
-        ret = main(['config', 'core.analytics', 'false'])
+        ret = main(["config", "core.analytics", "false"])
         self.assertEqual(ret, 0)
 
-        with mock.patch.object(os, 'getenv', new=_clean_getenv):
-            ret = main(['daemon', 'analytics', Analytics().dump(), '-v'])
+        with mock.patch.object(os, "getenv", new=_clean_getenv):
+            ret = main(["daemon", "analytics", Analytics().dump(), "-v"])
         self.assertEqual(ret, 0)
 
         self.assertFalse(mockpost.called)

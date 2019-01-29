@@ -1,13 +1,13 @@
 language: python
 cache: pip
-sudo: required
-dist: trusty
-group: deprecated-2017Q4
-python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
-  - "3.6"
+sudo: true
+dist: xenial
+python: "3.7"
+env:
+  - |
+    PYENV_ROOT="$HOME/.pyenv"
+    PATH="$PYENV_ROOT/bin:$PATH"
+    PYTHON_CONFIGURE_OPTS="--enable-framework"
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
@@ -16,10 +16,22 @@ python:
 # version, that causes fpm to crash.
 matrix:
   include:
-  # 3.7 needs Xenial image because of https://github.com/travis-ci/travis-ci/issues/9069
-  - python: "3.7"
-    dist: xenial
-    sudo: true
+  - name: "2.7"
+    env:
+    - PYTHON_VER=2.7.13
+  - name: "3.4"
+    env:
+    - PYTHON_VER=3.4.6
+  - name: "3.5"
+    env:
+    - PYTHON_VER=3.5.3
+  - name: "3.6"
+    env:
+    - PYTHON_VER=3.6.2
+  - name: "3.7"
+    env:
+    # NOTE: using default python
+    - PYTHON_VER=
   - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
@@ -27,8 +39,6 @@ matrix:
     rvm: 2.4.0
     env:
     - PYTHON_VER=2.7.10
-    - PYENV_ROOT="$HOME/.pyenv"
-    - PATH="$PYENV_ROOT/bin:$PATH"
     - CPPFLAGS="-I/usr/local/opt/openssl/include $CPPFLAGS"
     - LDFLAGS="-L/usr/local/opt/openssl/lib $LDFLAGS"
   - if: type = cron OR tag is present
@@ -38,8 +48,6 @@ matrix:
     rvm: 2.4.0
     env:
     - PYTHON_VER=3.4.3
-    - PYENV_ROOT="$HOME/.pyenv"
-    - PATH="$PYENV_ROOT/bin:$PATH"
   - if: type = cron OR tag is present
     os: osx
     osx_image: xcode7.3
@@ -47,19 +55,23 @@ matrix:
     rvm: 2.4.0
     env:
     - PYTHON_VER=3.5.0
-    - PYENV_ROOT="$HOME/.pyenv"
-    - PATH="$PYENV_ROOT/bin:$PATH"
 before_install:
+  - pip install -r scripts/ci/requirements.txt
+  # stop the build if there are any readme formatting errors
+  - python setup.py checkdocs
+  # stop the build if there are any black errors
+  - black dvc --check
+  - black tests --check
   - bash ./scripts/ci/before_install.sh
-  - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+  - if [[ -n "$PYTHON_VER" ]]; then
       eval "$(pyenv init -)";
-      PYTHON_CONFIGURE_OPTS="--enable-framework" pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
+      pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
       pyenv shell "$PYTHON_VER";
+    fi
+  - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       brew install openssl;
       brew cask install google-cloud-sdk;
     fi
-  - which python
-  - which pip
   - python --version
   - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
       bash ./scripts/ci/install_hadoop.sh;
@@ -79,13 +91,6 @@ before_install:
     fi
 install:
   - bash ./scripts/ci/install.sh
-  - pip install flake8
-before_script:
-  # stop the build if there are any readme formatting errors
-  - python setup.py checkdocs
-  # stop the build if there are any flake8 errors
-  - flake8 dvc
-  - flake8 tests
 script:
   - bash ./scripts/ci/script.sh
 deploy:

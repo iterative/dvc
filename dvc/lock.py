@@ -21,7 +21,8 @@ class Lock(object):
             in.
         name (str): name of the lock file.
     """
-    LOCK_FILE = 'lock'
+
+    LOCK_FILE = "lock"
     TIMEOUT = 5
 
     def __init__(self, dvc_dir, name=LOCK_FILE):
@@ -32,8 +33,10 @@ class Lock(object):
         try:
             self._lock = zc.lockfile.LockFile(self.lock_file)
         except zc.lockfile.LockError:
-            raise LockError('cannot perform the cmd since DVC is busy and '
-                            'locked. Please retry the cmd later.')
+            raise LockError(
+                "cannot perform the cmd since DVC is busy and "
+                "locked. Please retry the cmd later."
+            )
 
     def lock(self):
         """Acquire lock for dvc project."""

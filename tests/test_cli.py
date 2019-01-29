@@ -19,38 +19,53 @@ from tests.basic_env import TestDvc
 
 class TestArgParse(TestDvc):
     def test(self):
-        args = parse_args(['init'])
+        args = parse_args(["init"])
         self.assertIsInstance(args.func(args), CmdInit)
 
 
 class TestRun(TestDvc):
     def test(self):
-        dep1 = 'dep1'
-        dep2 = 'dep2'
+        dep1 = "dep1"
+        dep2 = "dep2"
 
-        out1 = 'out1'
-        out2 = 'out2'
+        out1 = "out1"
+        out2 = "out2"
 
-        out_no_cache1 = 'out_no_cache1'
-        out_no_cache2 = 'out_no_cache2'
+        out_no_cache1 = "out_no_cache1"
+        out_no_cache2 = "out_no_cache2"
 
-        fname = 'dvc.dvc'
+        fname = "dvc.dvc"
         cwd = os.curdir
-        cmd = 'cmd'
-        arg1 = 'arg1'
-        arg2 = 'arg2'
+        cmd = "cmd"
+        arg1 = "arg1"
+        arg2 = "arg2"
 
-        args = parse_args(['run',
-                           '-d', dep1,
-                           '--deps', dep2,
-                           '-o', out1,
-                           '--outs', out2,
-                           '-O', out_no_cache1,
-                           '--outs-no-cache', out_no_cache2,
-                           '-f', fname,
-                           '--file', fname,
-                           '-c', cwd,
-                           cmd, arg1, arg2])
+        args = parse_args(
+            [
+                "run",
+                "-d",
+                dep1,
+                "--deps",
+                dep2,
+                "-o",
+                out1,
+                "--outs",
+                out2,
+                "-O",
+                out_no_cache1,
+                "--outs-no-cache",
+                out_no_cache2,
+                "-f",
+                fname,
+                "--file",
+                fname,
+                "-c",
+                cwd,
+                cmd,
+                arg1,
+                arg2,
+            ]
+        )
 
         self.assertIsInstance(args.func(args), CmdRun)
         self.assertEqual(args.deps, [dep1, dep2])
@@ -63,32 +78,30 @@ class TestRun(TestDvc):
 
 class TestPull(TestDvc):
     def test(self):
-        args = parse_args(['pull'])
+        args = parse_args(["pull"])
         self.assertIsInstance(args.func(args), CmdDataPull)
 
 
 class TestPush(TestDvc):
     def test(self):
-        args = parse_args(['push'])
+        args = parse_args(["push"])
         self.assertIsInstance(args.func(args), CmdDataPush)
 
 
 class TestStatus(TestDvc):
     def test(self):
-        args = parse_args(['status'])
+        args = parse_args(["status"])
         self.assertIsInstance(args.func(args), CmdDataStatus)
 
 
 class TestRepro(TestDvc):
     def test(self):
-        target1 = '1'
-        target2 = '2'
+        target1 = "1"
+        target2 = "2"
 
-        args = parse_args(['repro',
-                           target1,
-                           target2,
-                           '-f', '--force',
-                           '-s', '--single-item'])
+        args = parse_args(
+            ["repro", target1, target2, "-f", "--force", "-s", "--single-item"]
+        )
 
         self.assertIsInstance(args.func(args), CmdRepro)
         self.assertEqual(args.targets, [target1, target2])
@@ -98,12 +111,10 @@ class TestRepro(TestDvc):
 
 class TestRemove(TestDvc):
     def test(self):
-        target1 = '1'
-        target2 = '2'
+        target1 = "1"
+        target2 = "2"
 
-        args = parse_args(['remove',
-                           target1,
-                           target2])
+        args = parse_args(["remove", target1, target2])
 
         self.assertIsInstance(args.func(args), CmdRemove)
         self.assertEqual(args.targets, [target1, target2])
@@ -111,12 +122,10 @@ class TestRemove(TestDvc):
 
 class TestAdd(TestDvc):
     def test(self):
-        target1 = '1'
-        target2 = '2'
+        target1 = "1"
+        target2 = "2"
 
-        args = parse_args(['add',
-                           target1,
-                           target2])
+        args = parse_args(["add", target1, target2])
 
         self.assertIsInstance(args.func(args), CmdAdd)
         self.assertEqual(args.targets, [target1, target2])
@@ -124,33 +133,25 @@ class TestAdd(TestDvc):
 
 class TestGC(TestDvc):
     def test(self):
-        args = parse_args(['gc'])
+        args = parse_args(["gc"])
         self.assertIsInstance(args.func(args), CmdGC)
 
 
 class TestGCMultipleProjects(TestDvc):
     def test(self):
-        args = parse_args([
-            'gc',
-            '-p',
-            '/tmp/asdf',
-            '/tmp/xyz'
-        ])
+        args = parse_args(["gc", "-p", "/tmp/asdf", "/tmp/xyz"])
 
         self.assertIsInstance(args.func(args), CmdGC)
 
-        self.assertEqual(args.projects, ['/tmp/asdf', '/tmp/xyz'])
+        self.assertEqual(args.projects, ["/tmp/asdf", "/tmp/xyz"])
 
 
 class TestConfig(TestDvc):
     def test(self):
-        name = 'param'
-        value = '1'
+        name = "param"
+        value = "1"
 
-        args = parse_args(['config',
-                           '-u', '--unset',
-                           name,
-                           value])
+        args = parse_args(["config", "-u", "--unset", name, value])
 
         self.assertIsInstance(args.func(args), CmdConfig)
         self.assertEqual(args.unset, True)
@@ -160,7 +161,7 @@ class TestConfig(TestDvc):
 
 class TestCheckout(TestDvc):
     def test(self):
-        args = parse_args(['checkout'])
+        args = parse_args(["checkout"])
         self.assertIsInstance(args.func(args), CmdCheckout)
 
 

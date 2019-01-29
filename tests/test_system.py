@@ -6,11 +6,11 @@ from tests.basic_env import TestDir
 
 class TestSystem(TestDir):
     def test_getdirinfo(self):
-        if os.name != 'nt':
+        if os.name != "nt":
             return
 
         # simulate someone holding an exclussive access
-        locked = 'locked'
+        locked = "locked"
         fd = os.open(locked, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
 
         # should not raise WinError

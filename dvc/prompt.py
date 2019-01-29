@@ -14,7 +14,7 @@ def _ask(prompt, limited_to=None):
         return None
 
     while True:
-        answer = input(prompt + ' ').lower()
+        answer = input(prompt + " ").lower()
 
         if not limited_to:
             return answer
@@ -22,8 +22,11 @@ def _ask(prompt, limited_to=None):
         if answer in limited_to:
             return answer
 
-        print("Your response must be one of: {options}. Please try again."
-              .format(options=limited_to))
+        print(
+            "Your response must be one of: {options}. Please try again.".format(
+                options=limited_to
+            )
+        )
 
 
 def confirm(statement):
@@ -35,9 +38,9 @@ def confirm(statement):
     Returns:
         bool: whether or not specified statement was confirmed.
     """
-    prompt = '{statement} [y/n]'.format(statement=statement)
-    answer = _ask(prompt, limited_to=['yes', 'no', 'y', 'n'])
-    return answer and answer.startswith('y')
+    prompt = "{statement} [y/n]".format(statement=statement)
+    answer = _ask(prompt, limited_to=["yes", "no", "y", "n"])
+    return answer and answer.startswith("y")
 
 
 def password(statement):
@@ -49,5 +52,5 @@ def password(statement):
     Returns:
         str: password entered by the user.
     """
-    prompt = '{statement}: '.format(statement=statement)
+    prompt = "{statement}: ".format(statement=statement)
     return getpass(prompt)

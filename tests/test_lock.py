@@ -17,5 +17,5 @@ class TestLock(TestDvc):
     def test_cli(self):
         lock = Lock(self.dvc.dvc_dir)
         with lock:
-            ret = main(['add', self.FOO])
+            ret = main(["add", self.FOO])
             self.assertEqual(ret, 1)

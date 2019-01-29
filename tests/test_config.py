@@ -25,24 +25,24 @@ class TestConfigCLI(TestDvc):
         return True
 
     def test_root(self):
-        ret = main(['root'])
+        ret = main(["root"])
         self.assertEqual(ret, 0)
 
         # NOTE: check that `dvc root` is not blocked with dvc lock
         with self.dvc.lock:
-            ret = main(['root'])
+            ret = main(["root"])
         self.assertEqual(ret, 0)
 
     def _do_test(self, local=False):
-        section = 'setsection'
-        field = 'setfield'
-        section_field = '{}.{}'.format(section, field)
-        value = 'setvalue'
-        newvalue = 'setnewvalue'
+        section = "setsection"
+        field = "setfield"
+        section_field = "{}.{}".format(section, field)
+        value = "setvalue"
+        newvalue = "setnewvalue"
 
-        base = ['config']
+        base = ["config"]
         if local:
-            base.append('--local')
+            base.append("--local")
 
         ret = main(base + [section_field, value])
         self.assertEqual(ret, 0)
@@ -56,7 +56,7 @@ class TestConfigCLI(TestDvc):
         self.assertTrue(self._contains(section, field, newvalue, local))
         self.assertFalse(self._contains(section, field, value, local))
 
-        ret = main(base + [section_field, '--unset'])
+        ret = main(base + [section_field, "--unset"])
         self.assertEqual(ret, 0)
         self.assertFalse(self._contains(section, field, value, local))
 
@@ -69,22 +69,22 @@ class TestConfigCLI(TestDvc):
     def test_non_existing(self):
         # FIXME check stdout/err
 
-        ret = main(['config', 'non_existing_section.field'])
+        ret = main(["config", "non_existing_section.field"])
         self.assertEqual(ret, 1)
 
-        ret = main(['config', 'global.non_existing_field'])
+        ret = main(["config", "global.non_existing_field"])
         self.assertEqual(ret, 1)
 
-        ret = main(['config', 'non_existing_section.field', '-u'])
+        ret = main(["config", "non_existing_section.field", "-u"])
         self.assertEqual(ret, 1)
 
-        ret = main(['config', 'global.non_existing_field', '-u'])
+        ret = main(["config", "global.non_existing_field", "-u"])
         self.assertEqual(ret, 1)
 
-        ret = main(['config', 'core.remote', 'myremote'])
+        ret = main(["config", "core.remote", "myremote"])
         self.assertEqual(ret, 0)
 
-        ret = main(['config', 'core.non_existing_field', '-u'])
+        ret = main(["config", "core.non_existing_field", "-u"])
         self.assertEqual(ret, 1)
 
     def test_failed_write(self):
@@ -92,8 +92,8 @@ class TestConfigCLI(TestDvc):
             system = False
             glob = False
             local = False
-            name = 'core.remote'
-            value = 'myremote'
+            name = "core.remote"
+            value = "myremote"
             unset = False
 
         args = A()

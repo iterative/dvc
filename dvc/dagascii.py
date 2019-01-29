@@ -18,6 +18,7 @@ class VertexViewer(object):
     Args:
         name (str): name of the vertex.
     """
+
     HEIGHT = 3  # top and bottom box edges + text
 
     def __init__(self, name):
@@ -43,6 +44,7 @@ class AsciiCanvas(object):
         cols (int): number of columns in the canvas. Should be > 1.
         lines (int): number of lines in the canvas. Should be > 1.
     """
+
     TIMEOUT = 10
 
     def __init__(self, cols, lines):
@@ -52,16 +54,17 @@ class AsciiCanvas(object):
         self.cols = cols
         self.lines = lines
 
-        self.canvas = [[' '] * cols for l in range(lines)]
+        self.canvas = [[" "] * cols for l in range(lines)]
 
     def draw(self):
         """Draws ASCII canvas on the screen."""
         if sys.stdout.isatty():  # pragma: no cover
             from asciimatics.screen import Screen
+
             Screen.wrapper(self._do_draw)
         else:
             for line in self.canvas:
-                print(''.join(line))
+                print("".join(line))
 
     def _do_draw(self, screen):  # pragma: no cover
         # pylint: disable=too-many-locals
@@ -93,13 +96,15 @@ class AsciiCanvas(object):
                 line = []
                 for x in range(smaxcol + 1):
                     x_index = offset_x + x
-                    if len(self.canvas) > y_index \
-                       and len(self.canvas[y_index]) > x_index:
+                    if (
+                        len(self.canvas) > y_index
+                        and len(self.canvas[y_index]) > x_index
+                    ):
                         line.append(self.canvas[y_index][x_index])
                     else:
-                        line.append(' ')
+                        line.append(" ")
                 assert len(line) == (smaxcol + 1)
-                screen.print_at(''.join(line), 0, y)
+                screen.print_at("".join(line), 0, y)
 
             screen.refresh()
 
@@ -118,23 +123,23 @@ class AsciiCanvas(object):
                 continue
 
             k = event.key_code
-            if k == screen.KEY_DOWN or k == ord('s'):
+            if k == screen.KEY_DOWN or k == ord("s"):
                 offset_y += 1
-            elif k == screen.KEY_PAGE_DOWN or k == ord('S'):
+            elif k == screen.KEY_PAGE_DOWN or k == ord("S"):
                 offset_y += smaxrow
-            elif k == screen.KEY_UP or k == ord('w'):
+            elif k == screen.KEY_UP or k == ord("w"):
                 offset_y -= 1
-            elif k == screen.KEY_PAGE_UP or k == ord('W'):
+            elif k == screen.KEY_PAGE_UP or k == ord("W"):
                 offset_y -= smaxrow
-            elif k == screen.KEY_RIGHT or k == ord('d'):
+            elif k == screen.KEY_RIGHT or k == ord("d"):
                 offset_x += 1
-            elif k == ord('D'):
+            elif k == ord("D"):
                 offset_x += smaxcol
-            elif k == screen.KEY_LEFT or k == ord('a'):
+            elif k == screen.KEY_LEFT or k == ord("a"):
                 offset_x -= 1
-            elif k == ord('A'):
+            elif k == ord("A"):
                 offset_x -= smaxcol
-            elif k == ord('q') or k == ord('Q'):
+            elif k == ord("q") or k == ord("Q"):
                 break
 
             if offset_y > max_y:
@@ -235,17 +240,17 @@ class AsciiCanvas(object):
         height -= 1
 
         for x in range(x0, x0 + width):
-            self.point(x, y0, '-')
-            self.point(x, y0 + height, '-')
+            self.point(x, y0, "-")
+            self.point(x, y0 + height, "-")
 
         for y in range(y0, y0 + height):
-            self.point(x0, y, '|')
-            self.point(x0 + width, y, '|')
+            self.point(x0, y, "|")
+            self.point(x0 + width, y, "|")
 
-        self.point(x0, y0, '+')
-        self.point(x0 + width, y0, '+')
-        self.point(x0, y0 + height, '+')
-        self.point(x0 + width, y0 + height, '+')
+        self.point(x0, y0, "+")
+        self.point(x0 + width, y0, "+")
+        self.point(x0, y0 + height, "+")
+        self.point(x0 + width, y0 + height, "+")
 
 
 def _build_sugiyama_layout(vertexes, edges):
@@ -306,8 +311,8 @@ def draw(vertexes, edges):
 
     for vertex in sug.g.sV:
         # NOTE: moving boxes w/2 to the left
-        Xs.append(vertex.view.xy[0] - vertex.view.w/2.0)
-        Xs.append(vertex.view.xy[0] + vertex.view.w/2.0)
+        Xs.append(vertex.view.xy[0] - vertex.view.w / 2.0)
+        Xs.append(vertex.view.xy[0] + vertex.view.w / 2.0)
         Ys.append(vertex.view.xy[1])
         Ys.append(vertex.view.xy[1] + vertex.view.h)
 
@@ -344,22 +349,17 @@ def draw(vertexes, edges):
             assert end_x >= 0
             assert end_y >= 0
 
-            canvas.line(start_x, start_y,
-                        end_x, end_y,
-                        '*')
+            canvas.line(start_x, start_y, end_x, end_y, "*")
 
     for vertex in sug.g.sV:
         # NOTE: moving boxes w/2 to the left
-        x = vertex.view.xy[0] - vertex.view.w/2.0
+        x = vertex.view.xy[0] - vertex.view.w / 2.0
         y = vertex.view.xy[1]
 
-        canvas.box(int(round(x - minx)),
-                   int(round(y - miny)),
-                   vertex.view.w,
-                   vertex.view.h)
+        canvas.box(
+            int(round(x - minx)), int(round(y - miny)), vertex.view.w, vertex.view.h
+        )
 
-        canvas.text(int(round(x - minx)) + 1,
-                    int(round(y - miny)) + 1,
-                    vertex.data)
+        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
 
     canvas.draw()

@@ -26,15 +26,16 @@ class DataCloud(object):
     Raises:
         config.ConfigError: thrown when config has invalid format.
     """
+
     CLOUD_MAP = {
-        'aws': RemoteS3,
-        'gcp': RemoteGS,
-        'azure': RemoteAzure,
-        'ssh': RemoteSSH,
-        'hdfs': RemoteHDFS,
-        'local': RemoteLOCAL,
-        'http': RemoteHTTP,
-        'https': RemoteHTTP,
+        "aws": RemoteS3,
+        "gcp": RemoteGS,
+        "azure": RemoteAzure,
+        "ssh": RemoteSSH,
+        "hdfs": RemoteHDFS,
+        "local": RemoteLOCAL,
+        "http": RemoteHTTP,
+        "https": RemoteHTTP,
     }
 
     def __init__(self, project, config=None):
@@ -44,13 +45,13 @@ class DataCloud(object):
 
     @property
     def _cloud(self):
-        remote = self._core.get(Config.SECTION_CORE_REMOTE, '')
-        if remote != '':
+        remote = self._core.get(Config.SECTION_CORE_REMOTE, "")
+        if remote != "":
             return self._init_remote(remote)
 
         if self._core.get(Config.SECTION_CORE_CLOUD, None):
             # backward compatibility
-            msg = 'using obsoleted config format. Consider updating.'
+            msg = "using obsoleted config format. Consider updating."
             logger.warning(msg)
             return self._init_compat()
 
@@ -66,8 +67,8 @@ class DataCloud(object):
         return Remote(self.project, cloud_config)
 
     def _init_compat(self):
-        name = self._core.get(Config.SECTION_CORE_CLOUD, '').strip().lower()
-        if name == '':
+        name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()
+        if name == "":
             self._cloud = None
             return None
 
@@ -91,7 +92,7 @@ class DataCloud(object):
     def _init_cloud(self, cloud_config, cloud_type):
         global_storage_path = self._core.get(Config.SECTION_CORE_STORAGEPATH)
         if global_storage_path:
-            logger.warning('using obsoleted config format. Consider updating.')
+            logger.warning("using obsoleted config format. Consider updating.")
 
         cloud = cloud_type(self.project, cloud_config)
         return cloud
@@ -104,11 +105,10 @@ class DataCloud(object):
             return self._cloud
 
         raise ConfigError(
-            'No remote repository specified. Setup default repository with\n'
-            '    dvc config core.remote <name>\n'
-            'or use:\n'
-            '    dvc {} -r <name>\n'
-            .format(cmd)
+            "No remote repository specified. Setup default repository with\n"
+            "    dvc config core.remote <name>\n"
+            "or use:\n"
+            "    dvc {} -r <name>\n".format(cmd)
         )
 
     def push(self, targets, jobs=None, remote=None, show_checksums=False):
@@ -122,11 +122,12 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.project.cache.local.push(targets,
-                                             jobs=jobs,
-                                             remote=self._get_cloud(remote,
-                                                                    'push'),
-                                             show_checksums=show_checksums)
+        return self.project.cache.local.push(
+            targets,
+            jobs=jobs,
+            remote=self._get_cloud(remote, "push"),
+            show_checksums=show_checksums,
+        )
 
     def pull(self, targets, jobs=None, remote=None, show_checksums=False):
         """Pull data items in a cloud-agnostic way.
@@ -139,11 +140,12 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.project.cache.local.pull(targets,
-                                             jobs=jobs,
-                                             remote=self._get_cloud(remote,
-                                                                    'pull'),
-                                             show_checksums=show_checksums)
+        return self.project.cache.local.pull(
+            targets,
+            jobs=jobs,
+            remote=self._get_cloud(remote, "pull"),
+            show_checksums=show_checksums,
+        )
 
     def status(self, targets, jobs=None, remote=None, show_checksums=False):
         """Check status of data items in a cloud-agnostic way.
@@ -157,8 +159,7 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        cloud = self._get_cloud(remote, 'status')
-        return self.project.cache.local.status(targets,
-                                               jobs=jobs,
-                                               remote=cloud,
-                                               show_checksums=show_checksums)
+        cloud = self._get_cloud(remote, "status")
+        return self.project.cache.local.status(
+            targets, jobs=jobs, remote=cloud, show_checksums=show_checksums
+        )
