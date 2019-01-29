@@ -357,8 +357,9 @@ class RemoteLOCAL(RemoteBase):
             self.safe_remove({'scheme': 'local', 'path': file}, force=force)
 
     def _move(self, inp, outp):
-        # moving in two stages to make last the move atomic in
-        # case inp and outp are in different filesystems
+        # moving in two stages to make the whole operation atomic in
+        # case inp and outp are in different filesystems and actual
+        # physical copying of data is happening
         tmp = '{}.{}'.format(outp, str(uuid.uuid4()))
         move(inp, tmp)
         move(tmp, outp)
