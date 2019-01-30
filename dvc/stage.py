@@ -564,7 +564,7 @@ class Stage(object):
         if p.returncode != 0:
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False):
+    def run(self, dry=False, resume=False):
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
@@ -584,7 +584,9 @@ class Stage(object):
                 if self._already_cached():
                     self.outs[0].checkout()
                 else:
-                    self.deps[0].download(self.outs[0].path_info)
+                    self.deps[0].download(
+                        self.outs[0].path_info, resume=resume
+                    )
 
         elif self.is_data_source:
             msg = "Verifying data sources in '{}'".format(self.relpath)

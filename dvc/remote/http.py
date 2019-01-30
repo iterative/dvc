@@ -28,7 +28,7 @@ class RemoteHTTP(RemoteBase):
     scheme = "http"
     REGEX = r"^https?://.*$"
     REQUEST_TIMEOUT = 10
-    CHUNK_SIZE = 1000000  # Megabyte
+    CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, project, config):
@@ -42,7 +42,12 @@ class RemoteHTTP(RemoteBase):
         return self.cache_dir
 
     def download(
-        self, from_infos, to_infos, no_progress_bar=False, names=None
+        self,
+        from_infos,
+        to_infos,
+        no_progress_bar=False,
+        names=None,
+        resume=False,
     ):
         names = self._verify_path_args(to_infos, from_infos, names)
 
@@ -58,7 +63,6 @@ class RemoteHTTP(RemoteBase):
             )
             logger.debug(msg)
 
-            tmp_file = self.tmp_file(to_info["path"])
             if not name:
                 name = os.path.basename(to_info["path"])
 
@@ -72,13 +76,17 @@ class RemoteHTTP(RemoteBase):
                 cb = ProgressBarCallback(name, total)
 
             try:
-                self._download_to(from_info["path"], tmp_file, callback=cb)
+                self._download_to(
+                    from_info["path"],
+                    to_info["path"],
+                    callback=cb,
+                    resume=resume,
+                )
+
             except Exception:
                 msg = "failed to download '{}'".format(from_info["path"])
                 logger.error(msg)
                 continue
-
-            os.rename(tmp_file, to_info["path"])
 
             if not no_progress_bar:
                 progress.finish_target(name)
@@ -125,18 +133,54 @@ class RemoteHTTP(RemoteBase):
 
         return etag
 
-    def _download_to(self, url, file, callback=None):
-        r = self._request("GET", url, stream=True)
+    def _download_to(self, url, target_file, callback=None, resume=False):
+        request = self._request("GET", url, stream=True)
+        partial_file = target_file + ".part"
 
-        with open(file, "wb") as fd:
-            bytes_transfered = 0
+        mode, transferred_bytes = self._determine_mode_get_transferred_bytes(
+            partial_file, resume
+        )
 
-            for chunk in r.iter_content(chunk_size=self.CHUNK_SIZE):
-                fd.write(chunk)
+        self._validate_existing_file_size(transferred_bytes, partial_file)
+
+        self._write_request_content(
+            mode, partial_file, request, transferred_bytes, callback
+        )
+
+        os.rename(partial_file, target_file)
+
+    def _write_request_content(
+        self, mode, partial_file, request, transferred_bytes, callback=None
+    ):
+        with open(partial_file, mode) as fd:
+
+            for index, chunk in enumerate(
+                request.iter_content(chunk_size=self.CHUNK_SIZE)
+            ):
+                chunk_number = index + 1
+                if chunk_number * self.CHUNK_SIZE > transferred_bytes:
+                    fd.write(chunk)
+                    fd.flush()
+                    transferred_bytes += len(chunk)
 
                 if callback:
-                    bytes_transfered += len(chunk)
-                    callback(bytes_transfered)
+                    callback(transferred_bytes)
+
+    def _validate_existing_file_size(self, bytes_transferred, partial_file):
+        if bytes_transferred % self.CHUNK_SIZE != 0:
+            raise DvcException(
+                "File {}, might be corrupted, please remove "
+                "it and retry importing".format(partial_file)
+            )
+
+    def _determine_mode_get_transferred_bytes(self, partial_file, resume):
+        if os.path.exists(partial_file) and resume:
+            mode = "ab"
+            bytes_transfered = os.path.getsize(partial_file)
+        else:
+            mode = "wb"
+            bytes_transfered = 0
+        return mode, bytes_transfered
 
     def _request(self, method, url, **kwargs):
         kwargs.setdefault("allow_redirects", True)

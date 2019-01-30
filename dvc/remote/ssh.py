@@ -279,7 +279,12 @@ class RemoteSSH(RemoteBase):
         ssh.close()
 
     def download(
-        self, from_infos, to_infos, no_progress_bar=False, names=None
+        self,
+        from_infos,
+        to_infos,
+        no_progress_bar=False,
+        names=None,
+        resume=False,
     ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
