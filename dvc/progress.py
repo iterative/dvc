@@ -14,6 +14,7 @@ class Progress(object):
     """
     Simple multi-target progress bar.
     """
+
     def __init__(self):
         self._n_total = 0
         self._n_finished = 0
@@ -31,11 +32,11 @@ class Progress(object):
         return self._n_total == self._n_finished
 
     def _clearln(self):
-        self._print('\r\x1b[K', end='')
+        self._print("\r\x1b[K", end="")
 
     def _writeln(self, line):
         self._clearln()
-        self._print(line, end='')
+        self._print(line, end="")
         sys.stdout.flush()
 
     def refresh(self, line=None):
@@ -83,7 +84,7 @@ class Progress(object):
             percent = "?% "
         else:
             total = int(total)
-            state = int((100 * current)/total) if current < total else 100
+            state = int((100 * current) / total) if current < total else 100
             percent = str(state) + "% "
 
         if self._n_total > 1:
@@ -91,9 +92,9 @@ class Progress(object):
         else:
             num = ""
 
-        n_sh = int((state * bar_len)/100)
+        n_sh = int((state * bar_len) / 100)
         n_sp = bar_len - n_sh
-        pbar = "[" + '#'*n_sh + ' '*n_sp + "] "
+        pbar = "[" + "#" * n_sh + " " * n_sp + "] "
 
         return num + pbar + percent + target_name
 

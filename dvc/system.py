@@ -8,7 +8,7 @@ import os
 class System(object):
     @staticmethod
     def is_unix():
-        return os.name != 'nt'
+        return os.name != "nt"
 
     @staticmethod
     def hardlink(source, link_name):
@@ -20,17 +20,15 @@ class System(object):
                 os.link(source, link_name)
                 return
             except Exception as exc:
-                raise DvcException('link', cause=exc)
+                raise DvcException("link", cause=exc)
 
         CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
-        CreateHardLink.argtypes = [ctypes.c_wchar_p,
-                                   ctypes.c_wchar_p,
-                                   ctypes.c_void_p]
+        CreateHardLink.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_void_p]
         CreateHardLink.restype = ctypes.wintypes.BOOL
 
         res = CreateHardLink(link_name, source, None)
         if res == 0:
-            raise DvcException('CreateHardLinkW', cause=ctypes.WinError())
+            raise DvcException("CreateHardLinkW", cause=ctypes.WinError())
 
     @staticmethod
     def symlink(source, link_name):
@@ -54,25 +52,25 @@ class System(object):
         func.restype = ctypes.c_ubyte
 
         if func(link_name, source, flags) == 0:
-            raise DvcException('CreateSymbolicLinkW', cause=ctypes.WinError())
+            raise DvcException("CreateSymbolicLinkW", cause=ctypes.WinError())
 
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
 
-        clib = ctypes.CDLL('libc.dylib')
-        if not hasattr(clib, 'clonefile'):
+        clib = ctypes.CDLL("libc.dylib")
+        if not hasattr(clib, "clonefile"):
             return -1
 
         clonefile = clib.clonefile
-        clonefile.argtypes = [ctypes.c_char_p,
-                              ctypes.c_char_p,
-                              ctypes.c_int]
+        clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
         clonefile.restype = ctypes.c_int
 
-        return clonefile(ctypes.c_char_p(src.encode('utf-8')),
-                         ctypes.c_char_p(dst.encode('utf-8')),
-                         ctypes.c_int(0))
+        return clonefile(
+            ctypes.c_char_p(src.encode("utf-8")),
+            ctypes.c_char_p(dst.encode("utf-8")),
+            ctypes.c_int(0),
+        )
 
     @staticmethod
     def _reflink_windows(src, dst):
@@ -85,8 +83,8 @@ class System(object):
 
         FICLONE = 0x40049409
 
-        s = open(src, 'r')
-        d = open(dst, 'w+')
+        s = open(src, "r")
+        d = open(dst, "w+")
 
         try:
             ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
@@ -111,11 +109,11 @@ class System(object):
 
         system = platform.system()
         try:
-            if system == 'Windows':
+            if system == "Windows":
                 ret = System._reflink_windows(source, link_name)
-            elif system == 'Darwin':
+            elif system == "Darwin":
                 ret = System._reflink_darwin(source, link_name)
-            elif system == 'Linux':
+            elif system == "Linux":
                 ret = System._reflink_linux(source, link_name)
             else:
                 ret = -1
@@ -123,7 +121,7 @@ class System(object):
             ret = -1
 
         if ret != 0:
-            raise DvcException('reflink is not supported')
+            raise DvcException("reflink is not supported")
 
     @staticmethod
     def getdirinfo(path):
@@ -141,40 +139,29 @@ class System(object):
         OPEN_EXISTING = 3
 
         class FILETIME(Structure):
-            _fields_ = [("dwLowDateTime", DWORD),
-                        ("dwHighDateTime", DWORD)]
+            _fields_ = [("dwLowDateTime", DWORD), ("dwHighDateTime", DWORD)]
 
         class BY_HANDLE_FILE_INFORMATION(Structure):
-            _fields_ = [("dwFileAttributes", DWORD),
-                        ("ftCreationTime", FILETIME),
-                        ("ftLastAccessTime", FILETIME),
-                        ("ftLastWriteTime", FILETIME),
-                        ("dwVolumeSerialNumber", DWORD),
-                        ("nFileSizeHigh", DWORD),
-                        ("nFileSizeLow", DWORD),
-                        ("nNumberOfLinks", DWORD),
-                        ("nFileIndexHigh", DWORD),
-                        ("nFileIndexLow", DWORD)]
+            _fields_ = [
+                ("dwFileAttributes", DWORD),
+                ("ftCreationTime", FILETIME),
+                ("ftLastAccessTime", FILETIME),
+                ("ftLastWriteTime", FILETIME),
+                ("dwVolumeSerialNumber", DWORD),
+                ("nFileSizeHigh", DWORD),
+                ("nFileSizeLow", DWORD),
+                ("nNumberOfLinks", DWORD),
+                ("nFileIndexHigh", DWORD),
+                ("nFileIndexLow", DWORD),
+            ]
 
         flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT
 
         func = ctypes.windll.kernel32.CreateFileW
-        func.argtypes = [c_wchar_p,
-                         DWORD,
-                         DWORD,
-                         c_void_p,
-                         DWORD,
-                         DWORD,
-                         HANDLE]
+        func.argtypes = [c_wchar_p, DWORD, DWORD, c_void_p, DWORD, DWORD, HANDLE]
         func.restype = HANDLE
 
-        hfile = func(path,
-                     0,
-                     FILE_SHARE_READ,
-                     None,
-                     OPEN_EXISTING,
-                     flags,
-                     None)
+        hfile = func(path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None)
         if hfile is None:
             raise WinError()
 
@@ -200,6 +187,7 @@ class System(object):
     def inode(path):
         if System.is_unix():
             import ctypes
+
             inode = os.lstat(path).st_ino
             # NOTE: See https://bugs.python.org/issue29619 and
             # https://stackoverflow.com/questions/34643289/
@@ -208,11 +196,13 @@ class System(object):
         else:
             # getdirinfo from ntfsutils works on both files and dirs
             info = System.getdirinfo(path)
-            inode = abs(hash((info.dwVolumeSerialNumber,
-                              info.nFileIndexHigh,
-                              info.nFileIndexLow)))
+            inode = abs(
+                hash(
+                    (info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow)
+                )
+            )
         assert inode >= 0
-        assert inode < 2**64
+        assert inode < 2 ** 64
         return inode
 
     @staticmethod
@@ -238,6 +228,7 @@ class System(object):
     def _wait_for_input_posix(timeout):
         import sys
         import select
+
         try:
             select.select([sys.stdin], [], [], timeout)
         except select.error:

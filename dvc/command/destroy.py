@@ -10,10 +10,10 @@ class CmdDestroy(CmdBase):
     def run_cmd(self):
         try:
             statement = (
-                'This will destroy all information about your pipelines,'
-                ' all data files, as well as cache in .dvc/cache.'
-                '\n'
-                'Are you sure you want to continue?'
+                "This will destroy all information about your pipelines,"
+                " all data files, as well as cache in .dvc/cache."
+                "\n"
+                "Are you sure you want to continue?"
             )
 
             if not self.args.force and not prompt.confirm(statement):
@@ -24,23 +24,19 @@ class CmdDestroy(CmdBase):
 
             self.project.destroy()
         except Exception:
-            logger.error('failed to destroy DVC')
+            logger.error("failed to destroy DVC")
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    DESTROY_HELP = "Destroy dvc. Will remove all project's information, " \
-                   "data files and cache."
+    DESTROY_HELP = (
+        "Destroy dvc. Will remove all project's information, " "data files and cache."
+    )
     destroy_parser = subparsers.add_parser(
-        'destroy',
-        parents=[parent_parser],
-        description=DESTROY_HELP,
-        help=DESTROY_HELP)
+        "destroy", parents=[parent_parser], description=DESTROY_HELP, help=DESTROY_HELP
+    )
     destroy_parser.add_argument(
-        '-f',
-        '--force',
-        action='store_true',
-        default=False,
-        help='Force destruction.')
+        "-f", "--force", action="store_true", default=False, help="Force destruction."
+    )
     destroy_parser.set_defaults(func=CmdDestroy)

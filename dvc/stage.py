@@ -72,11 +72,11 @@ class MissingDep(DvcException):
         assert len(deps) > 0
 
         if len(deps) > 1:
-            dep = 'dependencies'
+            dep = "dependencies"
         else:
-            dep = 'dependency'
+            dep = "dependency"
 
-        msg = 'missing {}: {}'.format(dep, ', '.join(map(str, deps)))
+        msg = "missing {}: {}".format(dep, ", ".join(map(str, deps)))
         super(MissingDep, self).__init__(msg)
 
 
@@ -84,23 +84,23 @@ class MissingDataSource(DvcException):
     def __init__(self, missing_files):
         assert len(missing_files) > 0
 
-        source = 'source'
+        source = "source"
         if len(missing_files) > 1:
-            source += 's'
+            source += "s"
 
-        msg = 'missing data {}: {}'.format(source, ', '.join(missing_files))
+        msg = "missing data {}: {}".format(source, ", ".join(missing_files))
         super(MissingDataSource, self).__init__(msg)
 
 
 class Stage(object):
-    STAGE_FILE = 'Dvcfile'
-    STAGE_FILE_SUFFIX = '.dvc'
+    STAGE_FILE = "Dvcfile"
+    STAGE_FILE_SUFFIX = ".dvc"
 
-    PARAM_MD5 = 'md5'
-    PARAM_CMD = 'cmd'
-    PARAM_DEPS = 'deps'
-    PARAM_OUTS = 'outs'
-    PARAM_LOCKED = 'locked'
+    PARAM_MD5 = "md5"
+    PARAM_CMD = "cmd"
+    PARAM_DEPS = "deps"
+    PARAM_OUTS = "outs"
+    PARAM_LOCKED = "locked"
 
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
@@ -110,15 +110,17 @@ class Stage(object):
         Optional(PARAM_LOCKED): bool,
     }
 
-    def __init__(self,
-                 project,
-                 path=None,
-                 cmd=None,
-                 cwd=os.curdir,
-                 deps=[],
-                 outs=[],
-                 md5=None,
-                 locked=False):
+    def __init__(
+        self,
+        project,
+        path=None,
+        cmd=None,
+        cwd=os.curdir,
+        deps=[],
+        outs=[],
+        md5=None,
+        locked=False,
+    ):
         self.project = project
         self.path = path
         self.cmd = cmd
@@ -129,9 +131,7 @@ class Stage(object):
         self.locked = locked
 
     def __repr__(self):
-        return "Stage: '{path}'".format(
-            path=self.relpath if self.path else 'No path'
-        )
+        return "Stage: '{path}'".format(path=self.relpath if self.path else "No path")
 
     @property
     def relpath(self):
@@ -144,8 +144,10 @@ class Stage(object):
 
     @staticmethod
     def is_valid_filename(path):
-        return (path.endswith(Stage.STAGE_FILE_SUFFIX)
-                or os.path.basename(path) == Stage.STAGE_FILE)
+        return (
+            path.endswith(Stage.STAGE_FILE_SUFFIX)
+            or os.path.basename(path) == Stage.STAGE_FILE
+        )
 
     @staticmethod
     def is_stage_file(path):
@@ -165,9 +167,7 @@ class Stage(object):
     @property
     def is_import(self):
         """Whether the stage file was created with `dvc import`."""
-        return (not self.cmd
-                and len(self.deps) == 1
-                and len(self.outs) == 1)
+        return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
     def _changed_deps(self):
         if self.locked:
@@ -176,15 +176,19 @@ class Stage(object):
         if self.is_callback:
             logger.warning(
                 "Dvc file '{fname}' is a 'callback' stage (has a command and"
-                " no dependencies) and thus always considered as changed."
-                .format(fname=self.relpath)
+                " no dependencies) and thus always considered as changed.".format(
+                    fname=self.relpath
+                )
             )
             return True
 
         for dep in self.deps:
             if dep.changed():
-                logger.warning("Dependency '{dep}' of '{stage}' changed."
-                               .format(dep=dep, stage=self.relpath))
+                logger.warning(
+                    "Dependency '{dep}' of '{stage}' changed.".format(
+                        dep=dep, stage=self.relpath
+                    )
+                )
                 return True
 
         return False
@@ -193,8 +197,9 @@ class Stage(object):
         for out in self.outs:
             if out.changed():
                 logger.warning(
-                    "Output '{out}' of '{stage}' changed."
-                    .format(out=out, stage=self.relpath)
+                    "Output '{out}' of '{stage}' changed.".format(
+                        out=out, stage=self.relpath
+                    )
                 )
                 return True
 
@@ -207,16 +212,14 @@ class Stage(object):
         return False
 
     def changed(self):
-        ret = any([self._changed_deps(),
-                   self._changed_outs(),
-                   self._changed_md5()])
+        ret = any([self._changed_deps(), self._changed_outs(), self._changed_md5()])
 
         if ret:
             msg = "Stage '{}' changed.".format(self.relpath)
-            color = 'yellow'
+            color = "yellow"
         else:
             msg = "Stage '{}' didn't change.".format(self.relpath)
-            color = 'green'
+            color = "green"
 
         logger.info(logger.colorize(msg, color))
 
@@ -231,7 +234,7 @@ class Stage(object):
 
     def unprotect_outs(self):
         for out in self.outs:
-            if out.scheme != 'local' or not out.exists:
+            if out.scheme != "local" or not out.exists:
                 continue
             self.project.unprotect(out.path)
 
@@ -247,13 +250,12 @@ class Stage(object):
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
-        msg = (
-            "Going to reproduce '{stage}'. Are you sure you want to continue?"
-            .format(stage=self.relpath)
+        msg = "Going to reproduce '{stage}'. Are you sure you want to continue?".format(
+            stage=self.relpath
         )
 
         if interactive and not prompt.confirm(msg):
-            raise DvcException('reproduction aborted by the user')
+            raise DvcException("reproduction aborted by the user")
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
@@ -281,7 +283,7 @@ class Stage(object):
             return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
 
         out = outs[0]
-        if out.scheme == 'local':
+        if out.scheme == "local":
             path = os.path
         else:
             path = posixpath
@@ -333,29 +335,29 @@ class Stage(object):
         return old_d == new_d
 
     @staticmethod
-    def create(project=None,
-               cmd=None,
-               deps=[],
-               outs=[],
-               outs_no_cache=[],
-               metrics_no_cache=[],
-               fname=None,
-               cwd=os.curdir,
-               locked=False,
-               add=False,
-               overwrite=True,
-               ignore_build_cache=False,
-               remove_outs=False):
+    def create(
+        project=None,
+        cmd=None,
+        deps=[],
+        outs=[],
+        outs_no_cache=[],
+        metrics_no_cache=[],
+        fname=None,
+        cwd=os.curdir,
+        locked=False,
+        add=False,
+        overwrite=True,
+        ignore_build_cache=False,
+        remove_outs=False,
+    ):
 
-        stage = Stage(project=project,
-                      cwd=cwd,
-                      cmd=cmd,
-                      locked=locked)
+        stage = Stage(project=project, cwd=cwd, cmd=cmd, locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.outs += output.loads_from(stage, metrics_no_cache,
-                                        use_cache=False, metric=True)
+        stage.outs += output.loads_from(
+            stage, metrics_no_cache, use_cache=False, metric=True
+        )
         stage.deps = dependency.loads_from(stage, deps)
 
         stage._check_circular_dependency()
@@ -364,8 +366,9 @@ class Stage(object):
         if fname is not None and os.path.basename(fname) != fname:
             raise StageFileBadNameError(
                 "stage file name '{fname}' should not contain subdirectories."
-                " Use '-c|--cwd' to change location of the stage file."
-                .format(fname=fname)
+                " Use '-c|--cwd' to change location of the stage file.".format(
+                    fname=fname
+                )
             )
 
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
@@ -388,11 +391,13 @@ class Stage(object):
 
         if os.path.exists(path):
             if not ignore_build_cache and stage.is_cached:
-                logger.info('Stage is cached, skipping.')
+                logger.info("Stage is cached, skipping.")
                 return None
 
-            msg = "'{}' already exists. Do you wish to run the command and " \
-                  "overwrite it?".format(stage.relpath)
+            msg = (
+                "'{}' already exists. Do you wish to run the command and "
+                "overwrite it?".format(stage.relpath)
+            )
 
             if not overwrite and not prompt.confirm(msg):
                 raise StageFileAlreadyExistsError(stage.relpath)
@@ -406,8 +411,9 @@ class Stage(object):
         if not Stage.is_valid_filename(fname):
             raise StageFileBadNameError(
                 "bad stage filename '{}'. Stage files should be named"
-                " 'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc')."
-                .format(os.path.relpath(fname), os.path.basename(fname))
+                " 'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc').".format(
+                    os.path.relpath(fname), os.path.basename(fname)
+                )
             )
 
     @staticmethod
@@ -423,17 +429,19 @@ class Stage(object):
         if not Stage.is_stage_file(fname):
             raise StageFileIsNotDvcFileError(fname)
 
-        with open(fname, 'r') as fd:
+        with open(fname, "r") as fd:
             d = yaml.safe_load(fd) or {}
 
         Stage.validate(d, fname=os.path.relpath(fname))
 
-        stage = Stage(project=project,
-                      path=os.path.abspath(fname),
-                      cwd=os.path.dirname(os.path.abspath(fname)),
-                      cmd=d.get(Stage.PARAM_CMD),
-                      md5=d.get(Stage.PARAM_MD5),
-                      locked=d.get(Stage.PARAM_LOCKED, False))
+        stage = Stage(
+            project=project,
+            path=os.path.abspath(fname),
+            cwd=os.path.dirname(os.path.abspath(fname)),
+            cmd=d.get(Stage.PARAM_CMD),
+            md5=d.get(Stage.PARAM_MD5),
+            locked=d.get(Stage.PARAM_LOCKED, False),
+        )
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
         stage.outs = output.loadd_from(stage, d.get(Stage.PARAM_OUTS, []))
@@ -458,10 +466,11 @@ class Stage(object):
 
         self._check_dvc_filename(fname)
 
-        logger.info("Saving information to '{file}'."
-                    .format(file=os.path.relpath(fname)))
+        logger.info(
+            "Saving information to '{file}'.".format(file=os.path.relpath(fname))
+        )
 
-        with open(fname, 'w') as fd:
+        with open(fname, "w") as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
         self.project.files_to_git_add.append(os.path.relpath(fname))
@@ -478,8 +487,7 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        return dict_md5(d, exclude=[self.PARAM_LOCKED,
-                                    OutputLOCAL.PARAM_METRIC])
+        return dict_md5(d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC])
 
     def save(self):
         for dep in self.deps:
@@ -497,8 +505,10 @@ class Stage(object):
             raise MissingDep(missing)
 
     def _warn_if_fish(self, executable):  # pragma: no cover
-        if executable is None \
-           or os.path.basename(os.path.realpath(executable)) != 'fish':
+        if (
+            executable is None
+            or os.path.basename(os.path.realpath(executable)) != "fish"
+        ):
             return
 
         logger.warning(
@@ -512,9 +522,8 @@ class Stage(object):
     def _check_circular_dependency(self):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = (
-            set(file.path for file in self.deps) &
-            set(file.path for file in self.outs)
+        circular_dependencies = set(file.path for file in self.deps) & set(
+            file.path for file in self.outs
         )
 
         if circular_dependencies:
@@ -532,14 +541,16 @@ class Stage(object):
 
     def _run(self):
         self._check_missing_deps()
-        executable = os.getenv('SHELL') if os.name != 'nt' else None
+        executable = os.getenv("SHELL") if os.name != "nt" else None
         self._warn_if_fish(executable)
 
-        p = subprocess.Popen(self.cmd,
-                             cwd=self.cwd,
-                             shell=True,
-                             env=fix_env(os.environ),
-                             executable=executable)
+        p = subprocess.Popen(
+            self.cmd,
+            cwd=self.cwd,
+            shell=True,
+            env=fix_env(os.environ),
+            executable=executable,
+        )
         p.communicate()
 
         if p.returncode != 0:
@@ -547,14 +558,18 @@ class Stage(object):
 
     def run(self, dry=False):
         if self.locked:
-            logger.info("Verifying outputs in locked stage '{stage}'"
-                        .format(stage=self.relpath))
+            logger.info(
+                "Verifying outputs in locked stage '{stage}'".format(stage=self.relpath)
+            )
             if not dry:
                 self.check_missing_outputs()
 
         elif self.is_import:
-            logger.info("Importing '{dep}' -> '{out}'"
-                        .format(dep=self.deps[0].path, out=self.outs[0].path))
+            logger.info(
+                "Importing '{dep}' -> '{out}'".format(
+                    dep=self.deps[0].path, out=self.outs[0].path
+                )
+            )
             if not dry:
                 if self._already_cached():
                     self.outs[0].checkout()
@@ -568,7 +583,7 @@ class Stage(object):
                 self.check_missing_outputs()
 
         else:
-            logger.info('Running command:\n\t{}'.format(self.cmd))
+            logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
                 if self._already_cached():
                     self.checkout()
@@ -580,7 +595,7 @@ class Stage(object):
 
     def check_missing_outputs(self):
         paths = [
-            out.path if out.scheme != 'local' else out.rel_path
+            out.path if out.scheme != "local" else out.rel_path
             for out in self.outs
             if not out.exists
         ]
@@ -607,9 +622,9 @@ class Stage(object):
         ret = {}
 
         if not self.locked:
-            ret.update(self._status(self.deps, 'deps'))
+            ret.update(self._status(self.deps, "deps"))
 
-        ret.update(self._status(self.outs, 'outs'))
+        ret.update(self._status(self.outs, "outs"))
 
         if ret or self.changed_md5() or self.is_callback:
             return {self.relpath: ret}
@@ -617,9 +632,11 @@ class Stage(object):
         return {}
 
     def _already_cached(self):
-        return (not self.changed_md5()
-                and all(not dep.changed() for dep in self.deps)
-                and all(not out.changed_cache()
-                        if out.use_cache
-                        else not out.changed()
-                        for out in self.outs))
+        return (
+            not self.changed_md5()
+            and all(not dep.changed() for dep in self.deps)
+            and all(
+                not out.changed_cache() if out.use_cache else not out.changed()
+                for out in self.outs
+            )
+        )

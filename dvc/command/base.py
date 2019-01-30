@@ -15,7 +15,7 @@ def fix_subparsers(subparsers):
 
     if is_py3:  # pragma: no cover
         subparsers.required = True
-        subparsers.dest = 'cmd'
+        subparsers.dest = "cmd"
 
 
 class CmdBase(object):
@@ -31,6 +31,7 @@ class CmdBase(object):
     def default_targets(self):
         """Default targets for `dvc repro` and `dvc pipeline`."""
         from dvc.stage import Stage
+
         msg = "assuming default target '{}'.".format(Stage.STAGE_FILE)
         logger.warning(msg)
         return [Stage.STAGE_FILE]
@@ -51,7 +52,7 @@ class CmdBase(object):
             with self.project.lock:
                 return self.run()
         except LockError:
-            logger.error('failed to lock before running a command')
+            logger.error("failed to lock before running a command")
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class

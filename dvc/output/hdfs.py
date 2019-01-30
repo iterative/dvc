@@ -10,22 +10,11 @@ from dvc.remote.hdfs import RemoteHDFS
 class OutputHDFS(OutputBase):
     REMOTE = RemoteHDFS
 
-    def __init__(self,
-                 stage,
-                 path,
-                 info=None,
-                 remote=None,
-                 cache=True,
-                 metric=False):
-        super(OutputHDFS, self).__init__(stage,
-                                         path,
-                                         info=info,
-                                         remote=remote,
-                                         cache=cache,
-                                         metric=metric)
+    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+        super(OutputHDFS, self).__init__(
+            stage, path, info=info, remote=remote, cache=cache, metric=metric
+        )
         if remote:
-            path = posixpath.join(remote.url, urlparse(path).path.lstrip('/'))
-        user = remote.user if remote else self.group('user')
-        self.path_info = {'scheme': 'hdfs',
-                          'user': user,
-                          'path': path}
+            path = posixpath.join(remote.url, urlparse(path).path.lstrip("/"))
+        user = remote.user if remote else self.group("user")
+        self.path_info = {"scheme": "hdfs", "user": user, "path": path}

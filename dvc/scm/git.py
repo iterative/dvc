@@ -17,24 +17,26 @@ from dvc.scm.base import Base, SCMError, FileNotInRepoError
 
 class Git(Base):
     """Class for managing Git."""
-    GITIGNORE = '.gitignore'
-    GIT_DIR = '.git'
+
+    GITIGNORE = ".gitignore"
+    GIT_DIR = ".git"
 
     def __init__(self, root_dir=os.curdir, project=None):
         super(Git, self).__init__(root_dir, project=project)
 
         import git
         from git.exc import InvalidGitRepositoryError
+
         try:
             self.repo = git.Repo(root_dir)
         except InvalidGitRepositoryError:
-            msg = '{} is not a git repository'
+            msg = "{} is not a git repository"
             raise SCMError(msg.format(root_dir))
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
-        libpath = env.get('LD_LIBRARY_PATH', None)
+        libpath = env.get("LD_LIBRARY_PATH", None)
         self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
 
     @staticmethod
@@ -60,7 +62,7 @@ class Git(Base):
     def _get_gitignore(self, path):
         assert os.path.isabs(path)
         # NOTE: using '/' prefix to make path unambiguous
-        entry = '/' + os.path.basename(path)
+        entry = "/" + os.path.basename(path)
         gitignore = os.path.join(os.path.dirname(path), self.GITIGNORE)
 
         if not gitignore.startswith(self.root_dir):
@@ -73,21 +75,21 @@ class Git(Base):
 
         ignore_list = []
         if os.path.exists(gitignore):
-            ignore_list = open(gitignore, 'r').readlines()
-            filtered = list(filter(lambda x: x.strip() == entry.strip(),
-                                   ignore_list))
+            ignore_list = open(gitignore, "r").readlines()
+            filtered = list(filter(lambda x: x.strip() == entry.strip(), ignore_list))
             if filtered:
                 return
 
-        msg = "Adding '{}' to '{}'.".format(os.path.relpath(path),
-                                            os.path.relpath(gitignore))
+        msg = "Adding '{}' to '{}'.".format(
+            os.path.relpath(path), os.path.relpath(gitignore)
+        )
         logger.info(msg)
 
         content = entry
         if ignore_list:
-            content = '\n' + content
+            content = "\n" + content
 
-        with open(gitignore, 'a') as fobj:
+        with open(gitignore, "a") as fobj:
             fobj.write(content)
 
         if self.project is not None:
@@ -99,12 +101,12 @@ class Git(Base):
         if not os.path.exists(gitignore):
             return
 
-        with open(gitignore, 'r') as fobj:
+        with open(gitignore, "r") as fobj:
             lines = fobj.readlines()
 
         filtered = list(filter(lambda x: x.strip() != entry.strip(), lines))
 
-        with open(gitignore, 'w') as fobj:
+        with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 
         if self.project is not None:
@@ -120,8 +122,7 @@ class Git(Base):
                 "failed to add '{}' to git. You can add those files"
                 " manually using 'git add'."
                 " See 'https://github.com/iterative/dvc/issues/610'"
-                " for more details."
-                .format(str(paths))
+                " for more details.".format(str(paths))
             )
 
             logger.error(msg)
@@ -131,7 +132,7 @@ class Git(Base):
 
     def checkout(self, branch, create_new=False):
         if create_new:
-            self.repo.git.checkout('HEAD', b=branch)
+            self.repo.git.checkout("HEAD", b=branch)
         else:
             self.repo.git.checkout(branch)
 
@@ -158,17 +159,14 @@ class Git(Base):
         return [t.name for t in self.repo.tags]
 
     def _install_hook(self, name, cmd):
-        hook = os.path.join(self.root_dir,
-                            self.GIT_DIR,
-                            'hooks',
-                            name)
+        hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
         if os.path.isfile(hook):
             msg = "git hook '{}' already exists."
             raise SCMError(msg.format(os.path.relpath(hook)))
-        with open(hook, 'w+') as fobj:
-            fobj.write('#!/bin/sh\nexec dvc {}\n'.format(cmd))
+        with open(hook, "w+") as fobj:
+            fobj.write("#!/bin/sh\nexec dvc {}\n".format(cmd))
         os.chmod(hook, 0o777)
 
     def install(self):
-        self._install_hook('post-checkout', 'checkout')
-        self._install_hook('pre-commit', 'status')
+        self._install_hook("post-checkout", "checkout")
+        self._install_hook("pre-commit", "status")

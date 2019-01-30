@@ -16,7 +16,7 @@ class CmdPipelineShow(CmdBase):
 
         stage = Stage.load(self.project, target)
         G = self.project.graph()[0]
-        stages = networkx.get_node_attributes(G, 'stage')
+        stages = networkx.get_node_attributes(G, "stage")
         node = os.path.relpath(stage.path, self.project.root_dir)
 
         for n in networkx.dfs_postorder_nodes(G, node):
@@ -35,12 +35,11 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.project, target)
         node = os.path.relpath(stage.path, self.project.root_dir)
 
-        pipelines = list(filter(lambda g: node in g.nodes(),
-                                self.project.pipelines()))
+        pipelines = list(filter(lambda g: node in g.nodes(), self.project.pipelines()))
 
         assert len(pipelines) == 1
         G = pipelines[0]
-        stages = networkx.get_node_attributes(G, 'stage')
+        stages = networkx.get_node_attributes(G, "stage")
 
         nodes = []
         for n in G.nodes():
@@ -66,8 +65,7 @@ class CmdPipelineShow(CmdBase):
             elif outs:
                 for from_out in from_stage.outs:
                     for to_out in to_stage.outs:
-                        edges.append((str(from_out),
-                                      str(to_out)))
+                        edges.append((str(from_out), str(to_out)))
             else:
                 edges.append((from_stage.relpath, to_stage.relpath))
 
@@ -101,18 +99,13 @@ class CmdPipelineShow(CmdBase):
         for target in self.args.targets:
             try:
                 if self.args.ascii:
-                    self._show_ascii(target,
-                                     self.args.commands,
-                                     self.args.outs)
+                    self._show_ascii(target, self.args.commands, self.args.outs)
                 elif self.args.dot:
-                    self.__write_dot(target,
-                                     self.args.commands,
-                                     self.args.outs,
-                                     self.args.dot)
+                    self.__write_dot(
+                        target, self.args.commands, self.args.outs, self.args.dot
+                    )
                 else:
-                    self._show(target,
-                               self.args.commands,
-                               self.args.outs)
+                    self._show(target, self.args.commands, self.args.outs)
             except DvcException:
                 msg = "failed to show pipeline for '{}'".format(target)
                 logger.error(msg)
@@ -126,67 +119,67 @@ class CmdPipelineList(CmdBase):
 
         pipelines = self.project.pipelines()
         for p in pipelines:
-            stages = networkx.get_node_attributes(p, 'stage')
+            stages = networkx.get_node_attributes(p, "stage")
             for stage in stages:
                 logger.info(stage)
             if len(stages) != 0:
-                logger.info('=' * 80)
-        logger.info('{} pipeline(s) total'.format(len(pipelines)))
+                logger.info("=" * 80)
+        logger.info("{} pipeline(s) total".format(len(pipelines)))
 
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    PIPELINE_HELP = 'Manage pipeline.'
+    PIPELINE_HELP = "Manage pipeline."
     pipeline_parser = subparsers.add_parser(
-        'pipeline',
+        "pipeline",
         parents=[parent_parser],
         description=PIPELINE_HELP,
-        help=PIPELINE_HELP)
+        help=PIPELINE_HELP,
+    )
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
-        dest='cmd',
-        help="Use dvc pipeline CMD --help for command-specific help.")
+        dest="cmd", help="Use dvc pipeline CMD --help for command-specific help."
+    )
 
     fix_subparsers(pipeline_subparsers)
 
-    PIPELINE_SHOW_HELP = 'Show pipeline.'
+    PIPELINE_SHOW_HELP = "Show pipeline."
     pipeline_show_parser = pipeline_subparsers.add_parser(
-        'show',
+        "show",
         parents=[parent_parser],
         description=PIPELINE_SHOW_HELP,
-        help=PIPELINE_SHOW_HELP)
+        help=PIPELINE_SHOW_HELP,
+    )
     pipeline_show_group = pipeline_show_parser.add_mutually_exclusive_group()
     pipeline_show_group.add_argument(
-        '-c',
-        '--commands',
-        action='store_true',
+        "-c",
+        "--commands",
+        action="store_true",
         default=False,
-        help='Print commands instead of paths to DVC files.')
+        help="Print commands instead of paths to DVC files.",
+    )
     pipeline_show_group.add_argument(
-        '-o',
-        '--outs',
-        action='store_true',
+        "-o",
+        "--outs",
+        action="store_true",
         default=False,
-        help='Print output files instead of paths to DVC files.')
+        help="Print output files instead of paths to DVC files.",
+    )
     pipeline_show_parser.add_argument(
-        '--ascii',
-        action='store_true',
-        default=False,
-        help='Output DAG as ASCII.')
+        "--ascii", action="store_true", default=False, help="Output DAG as ASCII."
+    )
+    pipeline_show_parser.add_argument("--dot", help="Write DAG in .dot format.")
     pipeline_show_parser.add_argument(
-        '--dot',
-        help='Write DAG in .dot format.')
-    pipeline_show_parser.add_argument(
-        'targets',
-        nargs='*',
-        help="DVC files. 'Dvcfile' by default.")
+        "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
+    )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 
-    PIPELINE_LIST_HELP = 'List pipelines.'
+    PIPELINE_LIST_HELP = "List pipelines."
     pipeline_list_parser = pipeline_subparsers.add_parser(
-        'list',
+        "list",
         parents=[parent_parser],
         description=PIPELINE_LIST_HELP,
-        help=PIPELINE_LIST_HELP)
+        help=PIPELINE_LIST_HELP,
+    )
     pipeline_list_parser.set_defaults(func=CmdPipelineList)

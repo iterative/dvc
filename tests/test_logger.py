@@ -11,7 +11,7 @@ from dvc.utils.compat import StringIO
 
 class TestLogger(TestCase):
     handlers = logger.logger.handlers
-    color_patch = patch.object(logger, 'colorize', new=lambda x, color='': x)
+    color_patch = patch.object(logger, "colorize", new=lambda x, color="": x)
 
     def setUp(self):
         logger.logger.handlers[0].stream = StringIO()
@@ -33,122 +33,124 @@ class TestLogger(TestCase):
         return logger.logger.handlers[1].stream.getvalue()
 
     def test_info(self):
-        logger.info('message')
+        logger.info("message")
 
-        self.assertEqual(self.stdout, 'message\n')
+        self.assertEqual(self.stdout, "message\n")
 
     def test_debug(self):
         with logger.verbose():
-            logger.debug('message')
+            logger.debug("message")
 
-        self.assertEqual(self.stdout, 'Debug: message\n')
+        self.assertEqual(self.stdout, "Debug: message\n")
 
     def test_warning(self):
-        logger.warning('message')
+        logger.warning("message")
 
-        self.assertEqual(self.stdout, 'Warning: message\n')
+        self.assertEqual(self.stdout, "Warning: message\n")
 
     def test_error(self):
-        logger.error('message')
+        logger.error("message")
 
         output = (
-            'Error: message\n'
-            '\n'
-            'Having any troubles? Hit us up at https://dvc.org/support,'
-            ' we are always happy to help!\n'
+            "Error: message\n"
+            "\n"
+            "Having any troubles? Hit us up at https://dvc.org/support,"
+            " we are always happy to help!\n"
         )
 
         self.assertEqual(self.stderr, output)
 
     def test_error_with_exception(self):
         try:
-            raise Exception('exception description')
+            raise Exception("exception description")
         except Exception:
-            logger.error('')
+            logger.error("")
 
         output = (
-            'Error: exception description\n'
-            '\n'
-            'Having any troubles? Hit us up at https://dvc.org/support,'
-            ' we are always happy to help!\n'
+            "Error: exception description\n"
+            "\n"
+            "Having any troubles? Hit us up at https://dvc.org/support,"
+            " we are always happy to help!\n"
         )
 
         self.assertEqual(self.stderr, output)
 
     def test_error_with_exception_and_message(self):
         try:
-            raise Exception('exception description')
+            raise Exception("exception description")
         except Exception:
-            logger.error('message')
+            logger.error("message")
 
         output = (
-            'Error: message - exception description\n'
-            '\n'
-            'Having any troubles? Hit us up at https://dvc.org/support,'
-            ' we are always happy to help!\n'
+            "Error: message - exception description\n"
+            "\n"
+            "Having any troubles? Hit us up at https://dvc.org/support,"
+            " we are always happy to help!\n"
         )
 
         self.assertEqual(self.stderr, output)
 
     def test_error_with_chained_exception_and_message(self):
         try:
-            raise DvcException('exception', cause=Exception('cause'))
+            raise DvcException("exception", cause=Exception("cause"))
         except Exception:
-            logger.error('message')
+            logger.error("message")
 
         output = (
-            'Error: message - exception: cause\n'
-            '\n'
-            'Having any troubles? Hit us up at https://dvc.org/support,'
-            ' we are always happy to help!\n'
+            "Error: message - exception: cause\n"
+            "\n"
+            "Having any troubles? Hit us up at https://dvc.org/support,"
+            " we are always happy to help!\n"
         )
 
         self.assertEqual(self.stderr, output)
 
     def test_traceback(self):
-        stack_trace1 = 'stack_trace1\n'
-        stack_trace2 = 'stack_trace2\n'
+        stack_trace1 = "stack_trace1\n"
+        stack_trace2 = "stack_trace2\n"
         try:
-            exc1 = Exception('exception1')
-            exc2 = DvcException('exception2', cause=exc1)
+            exc1 = Exception("exception1")
+            exc2 = DvcException("exception2", cause=exc1)
             exc2.cause_tb = stack_trace1
-            exc3 = DvcException('exception3', cause=exc2)
+            exc3 = DvcException("exception3", cause=exc2)
             exc3.cause_tb = stack_trace2
             raise exc3
         except Exception:
             stack_trace3 = traceback.format_exc()
             with logger.verbose():
-                logger.error('message')
+                logger.error("message")
 
         output = (
-            'Error: message - exception3: exception2: exception1\n'
-            '{line}\n'
-            '{stack_trace1}'
-            '\n'
-            '{stack_trace2}'
-            '\n'
-            '{stack_trace3}'
-            '{line}\n'
-            '\n'
-            'Having any troubles? Hit us up at https://dvc.org/support,'
-            ' we are always happy to help!\n'
-        ).format(line='-' * 60,
-                 stack_trace1=stack_trace1,
-                 stack_trace2=stack_trace2,
-                 stack_trace3=stack_trace3)
+            "Error: message - exception3: exception2: exception1\n"
+            "{line}\n"
+            "{stack_trace1}"
+            "\n"
+            "{stack_trace2}"
+            "\n"
+            "{stack_trace3}"
+            "{line}\n"
+            "\n"
+            "Having any troubles? Hit us up at https://dvc.org/support,"
+            " we are always happy to help!\n"
+        ).format(
+            line="-" * 60,
+            stack_trace1=stack_trace1,
+            stack_trace2=stack_trace2,
+            stack_trace3=stack_trace3,
+        )
 
         self.assertEqual(self.stderr, output)
 
     def test_box(self):
-        logger.box('message')
+        logger.box("message")
 
         output = (
-            '+-----------------+\n'
-            '|                 |\n'
-            '|     message     |\n'
-            '|                 |\n'
-            '+-----------------+\n'
-            '\n'
+            "+-----------------+\n"
+            "|                 |\n"
+            "|     message     |\n"
+            "|                 |\n"
+            "+-----------------+\n"
+            "\n"
         )
 
         self.assertEqual(self.stdout, output)

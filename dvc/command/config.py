@@ -64,13 +64,12 @@ class CmdConfig(CmdBase):
             self.config.set(self.configobj, section, opt, value)
             self.config.save(self.configobj)
         except DvcException:
-            logger.error("failed to set '{}.{}' to '{}'"
-                         .format(section, opt, value))
+            logger.error("failed to set '{}.{}' to '{}'".format(section, opt, value))
             return 1
         return 0
 
     def run(self):
-        section, opt = self.args.name.lower().strip().split('.', 1)
+        section, opt = self.args.name.lower().strip().split(".", 1)
 
         if self.args.unset:
             return self._unset(section, opt)
@@ -82,42 +81,31 @@ class CmdConfig(CmdBase):
 
 parent_config_parser = argparse.ArgumentParser(add_help=False)
 parent_config_parser.add_argument(
-   '--global',
-   dest='glob',
-   action='store_true',
-   default=False,
-   help='Use global config.')
+    "--global",
+    dest="glob",
+    action="store_true",
+    default=False,
+    help="Use global config.",
+)
 parent_config_parser.add_argument(
-   '--system',
-   action='store_true',
-   default=False,
-   help='Use system config.')
+    "--system", action="store_true", default=False, help="Use system config."
+)
 parent_config_parser.add_argument(
-   '--local',
-   action='store_true',
-   default=False,
-   help='Use local config.')
+    "--local", action="store_true", default=False, help="Use local config."
+)
 
 
 def add_parser(subparsers, parent_parser):
-    CONFIG_HELP = 'Get or set config options.'
+    CONFIG_HELP = "Get or set config options."
     config_parser = subparsers.add_parser(
-        'config',
+        "config",
         parents=[parent_config_parser, parent_parser],
         description=CONFIG_HELP,
-        help=CONFIG_HELP)
+        help=CONFIG_HELP,
+    )
     config_parser.add_argument(
-        '-u',
-        '--unset',
-        default=False,
-        action='store_true',
-        help='Unset option.')
-    config_parser.add_argument(
-        'name',
-        help='Option name.')
-    config_parser.add_argument(
-        'value',
-        nargs='?',
-        default=None,
-        help='Option value.')
+        "-u", "--unset", default=False, action="store_true", help="Unset option."
+    )
+    config_parser.add_argument("name", help="Option name.")
+    config_parser.add_argument("value", nargs="?", default=None, help="Option value.")
     config_parser.set_defaults(func=CmdConfig)

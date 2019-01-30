@@ -16,11 +16,12 @@ class TestGC(TestDvc):
 
         self.dvc.add(self.FOO)
         self.dvc.add(self.DATA_DIR)
-        self.good_cache = [self.dvc.cache.local.get(
-            md5) for md5 in self.dvc.cache.local.all()]
+        self.good_cache = [
+            self.dvc.cache.local.get(md5) for md5 in self.dvc.cache.local.all()
+        ]
 
         self.bad_cache = []
-        for i in ['123', '234', '345']:
+        for i in ["123", "234", "345"]:
             path = os.path.join(self.dvc.cache.local.cache_dir, i[0:2], i[2:])
             self.create(path, i)
             self.bad_cache.append(path)
@@ -30,7 +31,7 @@ class TestGC(TestDvc):
         self._test_gc()
 
     def test_cli(self):
-        ret = main(['gc', '-f'])
+        ret = main(["gc", "-f"])
         self.assertEqual(ret, 0)
         self._test_gc()
 
@@ -46,47 +47,47 @@ class TestGC(TestDvc):
 class TestGCBranchesTags(TestDvc):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join('.dvc', 'cache')):
+        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
     def test(self):
-        fname = 'file'
+        fname = "file"
 
-        with open(fname, 'w+') as fobj:
-            fobj.write('v1.0')
+        with open(fname, "w+") as fobj:
+            fobj.write("v1.0")
 
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
-        self.dvc.scm.add(['.gitignore', stages[0].relpath])
-        self.dvc.scm.commit('v1.0')
-        self.dvc.scm.tag('v1.0')
+        self.dvc.scm.add([".gitignore", stages[0].relpath])
+        self.dvc.scm.commit("v1.0")
+        self.dvc.scm.tag("v1.0")
 
-        self.dvc.scm.checkout('test', create_new=True)
+        self.dvc.scm.checkout("test", create_new=True)
         self.dvc.remove(stages[0].relpath, outs_only=True)
-        with open(fname, 'w+') as fobj:
-            fobj.write('test')
+        with open(fname, "w+") as fobj:
+            fobj.write("test")
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
-        self.dvc.scm.add(['.gitignore', stages[0].relpath])
-        self.dvc.scm.commit('test')
+        self.dvc.scm.add([".gitignore", stages[0].relpath])
+        self.dvc.scm.commit("test")
 
-        self.dvc.scm.checkout('master')
+        self.dvc.scm.checkout("master")
         self.dvc.remove(stages[0].relpath, outs_only=True)
-        with open(fname, 'w+') as fobj:
-            fobj.write('trash')
+        with open(fname, "w+") as fobj:
+            fobj.write("trash")
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
-        self.dvc.scm.add(['.gitignore', stages[0].relpath])
-        self.dvc.scm.commit('trash')
+        self.dvc.scm.add([".gitignore", stages[0].relpath])
+        self.dvc.scm.commit("trash")
 
         self.dvc.remove(stages[0].relpath, outs_only=True)
-        with open(fname, 'w+') as fobj:
-            fobj.write('master')
+        with open(fname, "w+") as fobj:
+            fobj.write("master")
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
-        self.dvc.scm.add(['.gitignore', stages[0].relpath])
-        self.dvc.scm.commit('master')
+        self.dvc.scm.add([".gitignore", stages[0].relpath])
+        self.dvc.scm.commit("master")
 
         self._check_cache(4)
 
@@ -106,7 +107,7 @@ class TestGCBranchesTags(TestDvc):
 class TestGCMultipleProjects(TestDvc):
     def _check_cache(self, num):
         total = 0
-        for root, dirs, files in os.walk(os.path.join('.dvc', 'cache')):
+        for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
             total += len(files)
         self.assertEqual(total, num)
 
@@ -116,14 +117,11 @@ class TestGCMultipleProjects(TestDvc):
         self.additional_git = Repo.init(self.additional_path)
         self.additional_dvc = Project.init(self.additional_path)
 
-        cache_path = os.path.join(self._root_dir, '.dvc', 'cache')
-        config_path = os.path.join(self.additional_path, '.dvc',
-                                   'config.local')
+        cache_path = os.path.join(self._root_dir, ".dvc", "cache")
+        config_path = os.path.join(self.additional_path, ".dvc", "config.local")
         cfg = configobj.ConfigObj()
         cfg.filename = config_path
-        cfg['cache'] = {
-            'dir': cache_path
-        }
+        cfg["cache"] = {"dir": cache_path}
         cfg.write()
 
         self.additional_dvc = Project(self.additional_path)
@@ -131,17 +129,17 @@ class TestGCMultipleProjects(TestDvc):
     def test(self):
 
         # ADD FILE ONLY IN MAIN PROJECT
-        fname = 'only_in_first'
-        with open(fname, 'w+') as fobj:
-            fobj.write('only in main project')
+        fname = "only_in_first"
+        with open(fname, "w+") as fobj:
+            fobj.write("only in main project")
 
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
 
         # ADD FILE IN MAIN PROJECT THAT IS ALSO IN SECOND PROJECT
-        fname = 'in_both'
-        with open(fname, 'w+') as fobj:
-            fobj.write('in both projects')
+        fname = "in_both"
+        with open(fname, "w+") as fobj:
+            fobj.write("in both projects")
 
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -149,17 +147,17 @@ class TestGCMultipleProjects(TestDvc):
         cwd = os.getcwd()
         os.chdir(self.additional_path)
         # ADD FILE ONLY IN SECOND PROJECT
-        fname = os.path.join(self.additional_path, 'only_in_second')
-        with open(fname, 'w+') as fobj:
-            fobj.write('only in additional project')
+        fname = os.path.join(self.additional_path, "only_in_second")
+        with open(fname, "w+") as fobj:
+            fobj.write("only in additional project")
 
         stages = self.additional_dvc.add(fname)
         self.assertEqual(len(stages), 1)
 
         # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
-        fname = os.path.join(self.additional_path, 'in_both')
-        with open(fname, 'w+') as fobj:
-            fobj.write('in both projects')
+        fname = os.path.join(self.additional_path, "in_both")
+        with open(fname, "w+") as fobj:
+            fobj.write("in both projects")
 
         stages = self.additional_dvc.add(fname)
         self.assertEqual(len(stages), 1)

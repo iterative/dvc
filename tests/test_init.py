@@ -17,7 +17,7 @@ class TestInit(TestGit):
         self._test_init()
 
     def test_cli(self):
-        ret = main(['init'])
+        ret = main(["init"])
         self.assertEqual(ret, 0)
 
         self._test_init()
@@ -25,15 +25,15 @@ class TestInit(TestGit):
 
 class TestDoubleInit(TestInit):
     def test(self):
-        ret = main(['init'])
+        ret = main(["init"])
         self.assertEqual(ret, 0)
         self._test_init()
 
-        ret = main(['init'])
+        ret = main(["init"])
         self.assertNotEqual(ret, 0)
         self._test_init()
 
-        ret = main(['init', '--force'])
+        ret = main(["init", "--force"])
         self.assertEqual(ret, 0)
         self._test_init()
 
@@ -44,7 +44,7 @@ class TestInitNoSCMFail(TestDir):
             Project.init()
 
     def test_cli(self):
-        ret = main(['init'])
+        ret = main(["init"])
         self.assertNotEqual(ret, 0)
 
 
@@ -59,7 +59,7 @@ class TestInitNoSCM(TestDir):
         self._test_init()
 
     def test_cli(self):
-        ret = main(['init', '--no-scm'])
+        ret = main(["init", "--no-scm"])
         self.assertEqual(ret, 0)
 
         self._test_init()

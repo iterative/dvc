@@ -19,14 +19,14 @@ class FileNotInRepoError(DvcException):
 
 class Base(object):
     """Base class for source control management driver implementations."""
+
     def __init__(self, root_dir=os.curdir, project=None):
         self.project = project
         self.root_dir = root_dir
 
     def __repr__(self):
         return "{class_name}: '{directory}'".format(
-            class_name=type(self).__name__,
-            directory=self.dir
+            class_name=type(self).__name__, directory=self.dir
         )
 
     @property
@@ -76,11 +76,7 @@ class Base(object):
     def tag(self, tag):
         """Makes SCM create a tag with a specified name."""
 
-    def brancher(self,
-                 branches=None,
-                 all_branches=False,
-                 tags=None,
-                 all_tags=False):
+    def brancher(self, branches=None, all_branches=False, tags=None, all_tags=False):
         """Generator that iterates over specified revisions.
 
         Args:
@@ -92,9 +88,8 @@ class Base(object):
         Yields:
             str: the current revision.
         """
-        if not branches and not all_branches \
-           and not tags and not all_tags:
-            yield ''
+        if not branches and not all_branches and not tags and not all_tags:
+            yield ""
             return
 
         saved = self.active_branch()
@@ -130,7 +125,7 @@ class Base(object):
 
     def active_branch(self):  # pylint: disable=no-self-use
         """Returns current branch in the project."""
-        return ''
+        return ""
 
     def list_branches(self):  # pylint: disable=no-self-use
         """Returns a list of available branches in the project."""

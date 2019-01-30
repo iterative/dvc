@@ -26,13 +26,13 @@ DEPS = [
 ]
 
 DEP_MAP = {
-    'local': DependencyLOCAL,
-    'ssh': DependencySSH,
-    's3': DependencyS3,
-    'gs': DependencyGS,
-    'hdfs': DependencyHDFS,
-    'http': DependencyHTTP,
-    'https': DependencyHTTP,
+    "local": DependencyLOCAL,
+    "ssh": DependencySSH,
+    "s3": DependencyS3,
+    "gs": DependencyGS,
+    "hdfs": DependencyHDFS,
+    "http": DependencyHTTP,
+    "https": DependencyHTTP,
 }
 
 
@@ -47,7 +47,7 @@ del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
 
 def _get(stage, p, info):
     parsed = urlparse(p)
-    if parsed.scheme == 'remote':
+    if parsed.scheme == "remote":
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
         sect = stage.project.config.config[name]
         remote = Remote(stage.project, sect)

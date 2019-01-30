@@ -18,7 +18,7 @@ def _int2byte(i):
     return chr(i)
 
 
-TEXT_CHARS = (b''.join(_int2byte(i) for i in range(32, 127)) + b'\n\r\t\f\b')
+TEXT_CHARS = b"".join(_int2byte(i) for i in range(32, 127)) + b"\n\r\t\f\b"
 
 
 def istextfile(fname, blocksize=512):
@@ -27,14 +27,14 @@ def istextfile(fname, blocksize=512):
         If more than 30% of the chars in the block are non-text, or there
         are NUL ('\x00') bytes in the block, assume this is a binary file.
     """
-    with open(fname, 'rb') as fobj:
+    with open(fname, "rb") as fobj:
         block = fobj.read(blocksize)
 
     if not block:
         # An empty file is considered a valid text file
         return True
 
-    if b'\x00' in block:
+    if b"\x00" in block:
         # Files with null bytes are binary
         return False
 

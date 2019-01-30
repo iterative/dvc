@@ -18,32 +18,33 @@ class Analytics(object):
     Args:
         info (dict): optional existing analytics report.
     """
-    URL = 'https://analytics.dvc.org'
+
+    URL = "https://analytics.dvc.org"
     TIMEOUT_POST = 5
 
-    USER_ID_FILE = 'user_id'
+    USER_ID_FILE = "user_id"
 
-    PARAM_DVC_VERSION = 'dvc_version'
-    PARAM_USER_ID = 'user_id'
-    PARAM_SYSTEM_INFO = 'system_info'
+    PARAM_DVC_VERSION = "dvc_version"
+    PARAM_USER_ID = "user_id"
+    PARAM_SYSTEM_INFO = "system_info"
 
-    PARAM_OS = 'os'
+    PARAM_OS = "os"
 
-    PARAM_WINDOWS_VERSION_MAJOR = 'windows_version_major'
-    PARAM_WINDOWS_VERSION_MINOR = 'windows_version_minor'
-    PARAM_WINDOWS_VERSION_BUILD = 'windows_version_build'
-    PARAM_WINDOWS_VERSION_SERVICE_PACK = 'windows_version_service_pack'
+    PARAM_WINDOWS_VERSION_MAJOR = "windows_version_major"
+    PARAM_WINDOWS_VERSION_MINOR = "windows_version_minor"
+    PARAM_WINDOWS_VERSION_BUILD = "windows_version_build"
+    PARAM_WINDOWS_VERSION_SERVICE_PACK = "windows_version_service_pack"
 
-    PARAM_MAC_VERSION = 'mac_version'
+    PARAM_MAC_VERSION = "mac_version"
 
-    PARAM_LINUX_DISTRO = 'linux_distro'
-    PARAM_LINUX_DISTRO_VERSION = 'linux_distro_version'
-    PARAM_LINUX_DISTRO_LIKE = 'linux_distro_like'
+    PARAM_LINUX_DISTRO = "linux_distro"
+    PARAM_LINUX_DISTRO_VERSION = "linux_distro_version"
+    PARAM_LINUX_DISTRO_LIKE = "linux_distro_like"
 
-    PARAM_SCM_CLASS = 'scm_class'
-    PARAM_IS_BINARY = 'is_binary'
-    PARAM_CMD_CLASS = 'cmd_class'
-    PARAM_CMD_RETURN_CODE = 'cmd_return_code'
+    PARAM_SCM_CLASS = "scm_class"
+    PARAM_IS_BINARY = "is_binary"
+    PARAM_CMD_CLASS = "cmd_class"
+    PARAM_CMD_RETURN_CODE = "cmd_return_code"
 
     def __init__(self, info=None):
         from dvc.config import Config
@@ -62,7 +63,7 @@ class Analytics(object):
                 raise
 
         self.user_id_file = os.path.join(cdir, self.USER_ID_FILE)
-        self.user_id_file_lock = Lock(cdir, self.USER_ID_FILE + '.lock')
+        self.user_id_file_lock = Lock(cdir, self.USER_ID_FILE + ".lock")
 
     @staticmethod
     def load(path):
@@ -71,7 +72,7 @@ class Analytics(object):
         Args:
             path (str): path to json file with analytics report.
         """
-        with open(path, 'r') as fobj:
+        with open(path, "r") as fobj:
             analytics = Analytics(info=json.load(fobj))
         os.unlink(path)
         return analytics
@@ -79,7 +80,7 @@ class Analytics(object):
     def _write_user_id(self):
         import uuid
 
-        with open(self.user_id_file, 'w+') as fobj:
+        with open(self.user_id_file, "w+") as fobj:
             user_id = str(uuid.uuid4())
             info = {self.PARAM_USER_ID: user_id}
             json.dump(info, fobj)
@@ -89,7 +90,7 @@ class Analytics(object):
         if not os.path.exists(self.user_id_file):
             return None
 
-        with open(self.user_id_file, 'r') as fobj:
+        with open(self.user_id_file, "r") as fobj:
             try:
                 info = json.load(fobj)
                 return info[self.PARAM_USER_ID]
@@ -112,9 +113,10 @@ class Analytics(object):
 
     def _collect_windows(self):
         import sys
+
         version = sys.getwindowsversion()  # pylint: disable=no-member
         info = {}
-        info[self.PARAM_OS] = 'windows'
+        info[self.PARAM_OS] = "windows"
         info[self.PARAM_WINDOWS_VERSION_MAJOR] = version.major
         info[self.PARAM_WINDOWS_VERSION_MINOR] = version.minor
         info[self.PARAM_WINDOWS_VERSION_BUILD] = version.build
@@ -123,15 +125,17 @@ class Analytics(object):
 
     def _collect_darwin(self):
         import platform
+
         info = {}
-        info[self.PARAM_OS] = 'mac'
+        info[self.PARAM_OS] = "mac"
         info[self.PARAM_MAC_VERSION] = platform.mac_ver()[0]
         return info
 
     def _collect_linux(self):
         import distro
+
         info = {}
-        info[self.PARAM_OS] = 'linux'
+        info[self.PARAM_OS] = "linux"
         info[self.PARAM_LINUX_DISTRO] = distro.id()
         info[self.PARAM_LINUX_DISTRO_VERSION] = distro.version()
         info[self.PARAM_LINUX_DISTRO_LIKE] = distro.like()
@@ -139,15 +143,16 @@ class Analytics(object):
 
     def _collect_system_info(self):
         import platform
+
         system = platform.system()
 
-        if system == 'Windows':
+        if system == "Windows":
             return self._collect_windows()
 
-        if system == 'Darwin':
+        if system == "Darwin":
             return self._collect_darwin()
 
-        if system == 'Linux':
+        if system == "Linux":
             return self._collect_linux()
 
         raise NotImplementedError
@@ -180,7 +185,7 @@ class Analytics(object):
         if ret is not None:
             self.info[self.PARAM_CMD_RETURN_CODE] = ret
 
-        if args is not None and hasattr(args, 'func'):
+        if args is not None and hasattr(args, "func"):
             assert args.func != CmdDaemonAnalytics
             self.info[self.PARAM_CMD_CLASS] = args.func.__name__
 
@@ -192,7 +197,7 @@ class Analytics(object):
         """
         import tempfile
 
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as fobj:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
             json.dump(self.info, fobj)
             return fobj.name
 
@@ -203,13 +208,13 @@ class Analytics(object):
         from dvc.exceptions import NotDvcProjectError
         from dvc.command.daemon import CmdDaemonBase
 
-        if os.getenv('DVC_TEST'):
+        if os.getenv("DVC_TEST"):
             return False
 
         if isinstance(cmd, CmdDaemonBase):
             return False
 
-        if cmd is None or not hasattr(cmd, 'config'):
+        if cmd is None or not hasattr(cmd, "config"):
             try:
                 dvc_dir = Project.find_dvc_dir()
                 config = Config(dvc_dir)
@@ -223,8 +228,7 @@ class Analytics(object):
 
         core = config.config.get(Config.SECTION_CORE, {})
         enabled = core.get(Config.SECTION_CORE_ANALYTICS, True)
-        logger.debug("Analytics is {}abled."
-                     .format('en' if enabled else 'dis'))
+        logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
         return enabled
 
     @staticmethod
@@ -242,7 +246,7 @@ class Analytics(object):
 
         analytics = Analytics()
         analytics.collect_cmd(args, ret)
-        daemon(['analytics', analytics.dump()])
+        daemon(["analytics", analytics.dump()])
 
     def send(self):
         """Collect and send analytics."""

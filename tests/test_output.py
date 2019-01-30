@@ -8,18 +8,18 @@ class TestOutScheme(TestDvc):
     MAP = OUTS_MAP
 
     TESTS = {
-        's3://bucket/path': 's3',
-        'gs://bucket/path': 'gs',
-        'ssh://example.com:/dir/path': 'ssh',
-        'hdfs://example.com/dir/path': 'hdfs',
-        'path/to/file': 'local',
-        'path\\to\\file': 'local',
-        'file': 'local',
-        './file': 'local',
-        '.\\file': 'local',
-        '../file': 'local',
-        '..\\file': 'local',
-        'unknown://path': 'local',
+        "s3://bucket/path": "s3",
+        "gs://bucket/path": "gs",
+        "ssh://example.com:/dir/path": "ssh",
+        "hdfs://example.com/dir/path": "hdfs",
+        "path/to/file": "local",
+        "path\\to\\file": "local",
+        "file": "local",
+        "./file": "local",
+        ".\\file": "local",
+        "../file": "local",
+        "..\\file": "local",
+        "unknown://path": "local",
     }
 
     def _get(self, path):

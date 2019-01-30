@@ -10,33 +10,37 @@ from dvc.system import System
 from dvc.stage import Stage
 from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
-from dvc.exceptions import (OutputDuplicationError,
-                            CircularDependencyError,
-                            CyclicGraphError,
-                            ArgumentDuplicationError,
-                            WorkingDirectoryAsOutputError)
+from dvc.exceptions import (
+    OutputDuplicationError,
+    CircularDependencyError,
+    CyclicGraphError,
+    ArgumentDuplicationError,
+    WorkingDirectoryAsOutputError,
+)
 
 from tests.basic_env import TestDvc
 
 
 class TestRun(TestDvc):
     def test(self):
-        cmd = 'python {} {} {}'.format(self.CODE, self.FOO, 'out')
+        cmd = "python {} {} {}".format(self.CODE, self.FOO, "out")
         deps = [self.FOO, self.CODE]
-        outs = [os.path.join(self.dvc.root_dir, 'out')]
+        outs = [os.path.join(self.dvc.root_dir, "out")]
         outs_no_cache = []
-        fname = 'out.dvc'
+        fname = "out.dvc"
         cwd = os.curdir
 
         self.dvc.add(self.FOO)
-        stage = self.dvc.run(cmd=cmd,
-                             deps=deps,
-                             outs=outs,
-                             outs_no_cache=outs_no_cache,
-                             fname=fname,
-                             cwd=cwd)
+        stage = self.dvc.run(
+            cmd=cmd,
+            deps=deps,
+            outs=outs,
+            outs_no_cache=outs_no_cache,
+            fname=fname,
+            cwd=cwd,
+        )
 
-        self.assertTrue(filecmp.cmp(self.FOO, 'out', shallow=False))
+        self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
         self.assertTrue(os.path.isfile(stage.path))
         self.assertEqual(stage.cmd, cmd)
         self.assertEqual(len(stage.deps), len(deps))
@@ -46,301 +50,338 @@ class TestRun(TestDvc):
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):
-            stage = self.dvc.run(cmd=cmd,
-                                 deps=deps,
-                                 outs=outs,
-                                 outs_no_cache=outs_no_cache,
-                                 fname='duplicate' + fname,
-                                 cwd=cwd)
+            stage = self.dvc.run(
+                cmd=cmd,
+                deps=deps,
+                outs=outs,
+                outs_no_cache=outs_no_cache,
+                fname="duplicate" + fname,
+                cwd=cwd,
+            )
 
 
 class TestRunEmpty(TestDvc):
     def test(self):
-        self.dvc.run(cmd='',
-                     deps=[],
-                     outs=[],
-                     outs_no_cache=[],
-                     fname='empty.dvc',
-                     cwd=os.curdir)
+        self.dvc.run(
+            cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty.dvc", cwd=os.curdir
+        )
 
 
 class TestRunMissingDep(TestDvc):
     def test(self):
         with self.assertRaises(MissingDep):
-            self.dvc.run(cmd='',
-                         deps=['non-existing-dep'],
-                         outs=[],
-                         outs_no_cache=[],
-                         fname='empty.dvc',
-                         cwd=os.curdir)
+            self.dvc.run(
+                cmd="",
+                deps=["non-existing-dep"],
+                outs=[],
+                outs_no_cache=[],
+                fname="empty.dvc",
+                cwd=os.curdir,
+            )
 
 
 class TestRunBadStageFilename(TestDvc):
     def test(self):
         with self.assertRaises(StageFileBadNameError):
-            self.dvc.run(cmd='',
-                         deps=[],
-                         outs=[],
-                         outs_no_cache=[],
-                         fname='empty',
-                         cwd=os.curdir)
+            self.dvc.run(
+                cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty", cwd=os.curdir
+            )
 
         with self.assertRaises(StageFileBadNameError):
-            self.dvc.run(cmd='',
-                         deps=[],
-                         outs=[],
-                         outs_no_cache=[],
-                         fname=os.path.join(self.DATA_DIR, 'empty.dvc'),
-                         cwd=os.curdir)
+            self.dvc.run(
+                cmd="",
+                deps=[],
+                outs=[],
+                outs_no_cache=[],
+                fname=os.path.join(self.DATA_DIR, "empty.dvc"),
+                cwd=os.curdir,
+            )
 
 
 class TestRunNoExec(TestDvc):
     def test(self):
-        self.dvc.run(cmd='python {} {} {}'.format(self.CODE, self.FOO, 'out'),
-                     no_exec=True)
-        self.assertFalse(os.path.exists('out'))
+        self.dvc.run(
+            cmd="python {} {} {}".format(self.CODE, self.FOO, "out"), no_exec=True
+        )
+        self.assertFalse(os.path.exists("out"))
 
 
 class TestRunCircularDependency(TestDvc):
     def test(self):
         with self.assertRaises(CircularDependencyError):
-            self.dvc.run(cmd='',
-                         deps=[self.FOO],
-                         outs=[self.FOO],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="",
+                deps=[self.FOO],
+                outs=[self.FOO],
+                fname="circular-dependency.dvc",
+            )
 
     def test_outs_no_cache(self):
         with self.assertRaises(CircularDependencyError):
-            self.dvc.run(cmd='',
-                         deps=[self.FOO],
-                         outs_no_cache=[self.FOO],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="",
+                deps=[self.FOO],
+                outs_no_cache=[self.FOO],
+                fname="circular-dependency.dvc",
+            )
 
     def test_non_normalized_paths(self):
         with self.assertRaises(CircularDependencyError):
-            self.dvc.run(cmd='',
-                         deps=['./foo'],
-                         outs=['foo'],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="", deps=["./foo"], outs=["foo"], fname="circular-dependency.dvc"
+            )
 
     def test_graph(self):
-        self.dvc.run(deps=[self.FOO],
-                     outs=['bar.txt'],
-                     cmd='echo bar > bar.txt')
+        self.dvc.run(deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt")
 
-        self.dvc.run(deps=['bar.txt'],
-                     outs=['baz.txt'],
-                     cmd='echo baz > baz.txt')
+        self.dvc.run(deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt")
 
         with self.assertRaises(CyclicGraphError):
-            self.dvc.run(deps=['baz.txt'],
-                         outs=[self.FOO],
-                         cmd='echo baz > foo')
+            self.dvc.run(deps=["baz.txt"], outs=[self.FOO], cmd="echo baz > foo")
 
 
 class TestRunDuplicatedArguments(TestDvc):
     def test(self):
         with self.assertRaises(ArgumentDuplicationError):
-            self.dvc.run(cmd='',
-                         deps=[],
-                         outs=[self.FOO, self.FOO],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="",
+                deps=[],
+                outs=[self.FOO, self.FOO],
+                fname="circular-dependency.dvc",
+            )
 
     def test_outs_no_cache(self):
         with self.assertRaises(ArgumentDuplicationError):
-            self.dvc.run(cmd='',
-                         outs=[self.FOO],
-                         outs_no_cache=[self.FOO],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="",
+                outs=[self.FOO],
+                outs_no_cache=[self.FOO],
+                fname="circular-dependency.dvc",
+            )
 
     def test_non_normalized_paths(self):
         with self.assertRaises(ArgumentDuplicationError):
-            self.dvc.run(cmd='',
-                         deps=[],
-                         outs=['foo', './foo'],
-                         fname='circular-dependency.dvc')
+            self.dvc.run(
+                cmd="", deps=[], outs=["foo", "./foo"], fname="circular-dependency.dvc"
+            )
 
 
 class TestRunWorkingDirectoryAsOutput(TestDvc):
     def test(self):
-        self.dvc.run(cmd='',
-                     deps=[],
-                     outs=[self.DATA_DIR])
+        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
 
         with self.assertRaises(WorkingDirectoryAsOutputError):
-            self.dvc.run(cmd='',
-                         cwd=self.DATA_DIR,
-                         outs=[self.FOO],
-                         fname='inside-cwd.dvc')
+            self.dvc.run(
+                cmd="", cwd=self.DATA_DIR, outs=[self.FOO], fname="inside-cwd.dvc"
+            )
 
 
 class TestRunBadCwd(TestDvc):
     def test(self):
         with self.assertRaises(StageBadCwdError):
-            self.dvc.run(cmd='',
-                         cwd=self.mkdtemp())
+            self.dvc.run(cmd="", cwd=self.mkdtemp())
 
 
 class TestCmdRun(TestDvc):
     def test_run(self):
-        ret = main(['run',
-                    '-d', self.FOO,
-                    '-d', self.CODE,
-                    '-o', 'out',
-                    '-f', 'out.dvc',
-                    'python', self.CODE, self.FOO, 'out'])
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
 
-        stage = Stage.load(self.dvc, fname='out.dvc')
+        stage = Stage.load(self.dvc, fname="out.dvc")
 
         self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile('out'))
-        self.assertTrue(os.path.isfile('out.dvc'))
-        self.assertTrue(filecmp.cmp(self.FOO, 'out', shallow=False))
-        self.assertEqual(stage.cmd, 'python code.py foo out')
+        self.assertTrue(os.path.isfile("out"))
+        self.assertTrue(os.path.isfile("out.dvc"))
+        self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
+        self.assertEqual(stage.cmd, "python code.py foo out")
 
     def test_run_args_from_cli(self):
-        ret = main(['run', 'echo', 'foo'])
-        stage = Stage.load(self.dvc, fname='Dvcfile')
+        ret = main(["run", "echo", "foo"])
+        stage = Stage.load(self.dvc, fname="Dvcfile")
         self.assertEqual(ret, 0)
-        self.assertEqual(stage.cmd, 'echo foo')
+        self.assertEqual(stage.cmd, "echo foo")
 
     def test_run_bad_command(self):
-        ret = main(['run', 'non-existing-command'])
+        ret = main(["run", "non-existing-command"])
         self.assertNotEqual(ret, 0)
 
     def test_run_args_with_spaces(self):
-        ret = main(['run', 'echo', 'foo bar'])
-        stage = Stage.load(self.dvc, fname='Dvcfile')
+        ret = main(["run", "echo", "foo bar"])
+        stage = Stage.load(self.dvc, fname="Dvcfile")
         self.assertEqual(ret, 0)
         self.assertEqual(stage.cmd, 'echo "foo bar"')
 
-    @mock.patch.object(subprocess, 'Popen', side_effect=KeyboardInterrupt)
+    @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
     def test_keyboard_interrupt(self, mock_popen):
-        ret = main(['run', 'mycmd'])
+        ret = main(["run", "mycmd"])
         self.assertEqual(ret, 252)
 
 
 class TestRunRemoveOuts(TestDvc):
     def test(self):
-        with open(self.CODE, 'w+') as fobj:
+        with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("if os.path.exists(sys.argv[1]):\n")
             fobj.write("    sys.exit(1)\n")
             fobj.write("open(sys.argv[1], 'w+').close()\n")
 
-        ret = main(['run',
-                    '--remove-outs',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            [
+                "run",
+                "--remove-outs",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
+        )
         self.assertEqual(ret, 0)
 
 
 class TestRunUnprotectOutsCopy(TestDvc):
     def test(self):
-        with open(self.CODE, 'w+') as fobj:
+        with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
-        ret = main(['config', 'cache.protected', 'true'])
+        ret = main(["config", "cache.protected", "true"])
         self.assertEqual(ret, 0)
 
-        ret = main(['config', 'cache.type', 'copy'])
+        ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        ret = main(['run',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
 
-        ret = main(['run',
-                    '--overwrite-dvcfile',
-                    '--ignore-build-cache',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            [
+                "run",
+                "--overwrite-dvcfile",
+                "--ignore-build-cache",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
 
 
 class TestRunUnprotectOutsSymlink(TestDvc):
     def test(self):
-        with open(self.CODE, 'w+') as fobj:
+        with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("assert os.path.exists(sys.argv[1])\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
-        ret = main(['config', 'cache.protected', 'true'])
+        ret = main(["config", "cache.protected", "true"])
         self.assertEqual(ret, 0)
 
-        ret = main(['config', 'cache.type', 'symlink'])
+        ret = main(["config", "cache.type", "symlink"])
         self.assertEqual(ret, 0)
 
         self.assertEqual(ret, 0)
-        ret = main(['run',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
 
-        ret = main(['run',
-                    '--overwrite-dvcfile',
-                    '--ignore-build-cache',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            [
+                "run",
+                "--overwrite-dvcfile",
+                "--ignore-build-cache",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
 
 
 class TestRunUnprotectOutsHardlink(TestDvc):
     def test(self):
-        with open(self.CODE, 'w+') as fobj:
+        with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
             fobj.write("assert os.path.exists(sys.argv[1])\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
-        ret = main(['config', 'cache.protected', 'true'])
+        ret = main(["config", "cache.protected", "true"])
         self.assertEqual(ret, 0)
 
-        ret = main(['config', 'cache.type', 'hardlink'])
+        ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
 
         self.assertEqual(ret, 0)
-        ret = main(['run',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
 
-        ret = main(['run',
-                    '--overwrite-dvcfile',
-                    '--ignore-build-cache',
-                    '-d', self.CODE,
-                    '-o', self.FOO,
-                    'python', self.CODE, self.FOO])
+        ret = main(
+            [
+                "run",
+                "--overwrite-dvcfile",
+                "--ignore-build-cache",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
+        )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, 'r').read(), 'foofoofoo')
+        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
 
 
 class TestCmdRunOverwrite(TestDvc):
@@ -352,64 +393,94 @@ class TestCmdRunOverwrite(TestDvc):
         # below don't change).
         import time
 
-        ret = main(['run',
-                    '-d', self.FOO,
-                    '-d', self.CODE,
-                    '-o', 'out',
-                    '-f', 'out.dvc',
-                    'python', self.CODE, self.FOO, 'out'])
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
         self.assertEqual(ret, 0)
 
-        stage_mtime = os.path.getmtime('out.dvc')
+        stage_mtime = os.path.getmtime("out.dvc")
 
         time.sleep(1)
 
-        ret = main(['run',
-                    '-d', self.FOO,
-                    '-d', self.CODE,
-                    '-o', 'out',
-                    '-f', 'out.dvc',
-                    'python', self.CODE, self.FOO, 'out'])
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
         self.assertEqual(ret, 0)
 
         # NOTE: check that dvcfile was NOT overwritten
-        self.assertEqual(stage_mtime, os.path.getmtime('out.dvc'))
-        stage_mtime = os.path.getmtime('out.dvc')
+        self.assertEqual(stage_mtime, os.path.getmtime("out.dvc"))
+        stage_mtime = os.path.getmtime("out.dvc")
 
         time.sleep(1)
 
-        ret = main(['run',
-                    '-d', self.FOO,
-                    '-d', self.CODE,
-                    '--overwrite-dvcfile',
-                    '--ignore-build-cache',
-                    '-o', 'out',
-                    '-f', 'out.dvc',
-                    'python', self.CODE, self.FOO, 'out'])
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "--overwrite-dvcfile",
+                "--ignore-build-cache",
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
         self.assertEqual(ret, 0)
 
         # NOTE: check that dvcfile was overwritten
-        self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
-        stage_mtime = os.path.getmtime('out.dvc')
+        self.assertNotEqual(stage_mtime, os.path.getmtime("out.dvc"))
+        stage_mtime = os.path.getmtime("out.dvc")
 
         time.sleep(1)
 
-        ret = main(['run',
-                    '--overwrite-dvcfile',
-                    '-f', 'out.dvc',
-                    '-d', self.BAR])
+        ret = main(["run", "--overwrite-dvcfile", "-f", "out.dvc", "-d", self.BAR])
         self.assertEqual(ret, 0)
 
         # NOTE: check that dvcfile was overwritten
-        self.assertNotEqual(stage_mtime, os.path.getmtime('out.dvc'))
+        self.assertNotEqual(stage_mtime, os.path.getmtime("out.dvc"))
 
 
 class TestRunDeterministicBase(TestDvc):
     def setUp(self):
         super(TestRunDeterministicBase, self).setUp()
-        self.out_file = 'out'
-        self.stage_file = self.out_file + '.dvc'
-        self.cmd = 'python {} {} {}'.format(self.CODE, self.FOO, self.out_file)
+        self.out_file = "out"
+        self.stage_file = self.out_file + ".dvc"
+        self.cmd = "python {} {} {}".format(self.CODE, self.FOO, self.out_file)
         self.deps = [self.FOO, self.CODE]
         self.outs = [self.out_file]
         self.overwrite = False
@@ -418,12 +489,14 @@ class TestRunDeterministicBase(TestDvc):
         self._run()
 
     def _run(self):
-        self.stage = self.dvc.run(cmd=self.cmd,
-                                  fname=self.stage_file,
-                                  overwrite=self.overwrite,
-                                  ignore_build_cache=self.ignore_build_cache,
-                                  deps=self.deps,
-                                  outs=self.outs)
+        self.stage = self.dvc.run(
+            cmd=self.cmd,
+            fname=self.stage_file,
+            overwrite=self.overwrite,
+            ignore_build_cache=self.ignore_build_cache,
+            deps=self.deps,
+            outs=self.outs,
+        )
 
 
 class TestRunDeterministic(TestRunDeterministicBase):
@@ -485,6 +558,6 @@ class TestRunDeterministicChangedOut(TestRunDeterministicBase):
 
 class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
     def test(self):
-        self.cmd += ' arg'
+        self.cmd += " arg"
         with self.assertRaises(StageFileAlreadyExistsError):
             self._run()

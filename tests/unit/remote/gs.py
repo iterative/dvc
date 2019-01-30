@@ -5,11 +5,11 @@ from dvc.remote.gs import RemoteGS
 
 
 class TestRemoteGS(TestCase):
-    BUCKET = 'bucket'
-    PREFIX = 'prefix'
-    URL = 'gs://{}/{}'.format(BUCKET, PREFIX)
-    PROJECT = 'PROJECT'
-    CONFIG = {'projectname': PROJECT, 'url': URL}
+    BUCKET = "bucket"
+    PREFIX = "prefix"
+    URL = "gs://{}/{}".format(BUCKET, PREFIX)
+    PROJECT = "PROJECT"
+    CONFIG = {"projectname": PROJECT, "url": URL}
 
     def test_init(self):
         remote = RemoteGS(None, self.CONFIG)
@@ -18,7 +18,7 @@ class TestRemoteGS(TestCase):
         self.assertEqual(remote.bucket, self.BUCKET)
         self.assertEqual(remote.projectname, self.PROJECT)
 
-    @mock.patch('google.cloud.storage.Client')
+    @mock.patch("google.cloud.storage.Client")
     def test_gs(self, mock_client):
         remote = RemoteGS(None, self.CONFIG)
         remote.gs()

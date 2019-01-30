@@ -8,184 +8,184 @@ import os
 class TestPipelineShowSingle(TestDvc):
     def setUp(self):
         super(TestPipelineShowSingle, self).setUp()
-        self.stage = 'foo.dvc'
-        self.dotFile = 'graph.dot'
-        ret = main(['add', self.FOO])
+        self.stage = "foo.dvc"
+        self.dotFile = "graph.dot"
+        ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
 
     def test(self):
-        ret = main(['pipeline', 'show', self.stage])
+        ret = main(["pipeline", "show", self.stage])
         self.assertEqual(ret, 0)
 
     def test_commands(self):
-        ret = main(['pipeline', 'show', self.stage, '--commands'])
+        ret = main(["pipeline", "show", self.stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_outs(self):
-        ret = main(['pipeline', 'show', self.stage, '--outs'])
+        ret = main(["pipeline", "show", self.stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_ascii(self):
-        ret = main(['pipeline', 'show', '--ascii', self.stage])
+        ret = main(["pipeline", "show", "--ascii", self.stage])
         self.assertEqual(ret, 0)
 
     def test_dot(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage])
+        ret = main(["pipeline", "show", "--dot", self.dotFile, self.stage])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_ascii_commands(self):
-        ret = main(['pipeline', 'show', '--ascii', self.stage, '--commands'])
+        ret = main(["pipeline", "show", "--ascii", self.stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_ascii_outs(self):
-        ret = main(['pipeline', 'show', '--ascii', self.stage, '--outs'])
+        ret = main(["pipeline", "show", "--ascii", self.stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage,
-                    '--commands'])
+        ret = main(
+            ["pipeline", "show", "--dot", self.dotFile, self.stage, "--commands"]
+        )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile, self.stage,
-                    '--outs'])
+        ret = main(["pipeline", "show", "--dot", self.dotFile, self.stage, "--outs"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_not_dvc_file(self):
-        ret = main(['pipeline', 'show', self.FOO])
+        ret = main(["pipeline", "show", self.FOO])
         self.assertNotEqual(ret, 0)
 
     def test_non_existing(self):
-        ret = main(['pipeline', 'show', 'non-existing'])
+        ret = main(["pipeline", "show", "non-existing"])
         self.assertNotEqual(ret, 0)
 
 
 class TestPipelineShow(TestRepro):
     def setUp(self):
         super(TestPipelineShow, self).setUp()
-        self.dotFile = 'graph.dot'
+        self.dotFile = "graph.dot"
 
     def test(self):
-        ret = main(['pipeline', 'show', self.file1_stage])
+        ret = main(["pipeline", "show", self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_commands(self):
-        ret = main(['pipeline', 'show', self.file1_stage, '--commands'])
+        ret = main(["pipeline", "show", self.file1_stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_outs(self):
-        ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
+        ret = main(["pipeline", "show", self.file1_stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_ascii(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_dot(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage])
+        ret = main(["pipeline", "show", "--dot", self.dotFile, self.file1_stage])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_ascii_commands(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage,
-                    '--commands'])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_ascii_outs(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--outs'])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage, '--commands'])
+        ret = main(
+            ["pipeline", "show", "--dot", self.dotFile, self.file1_stage, "--commands"]
+        )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage, '--outs'])
+        ret = main(
+            ["pipeline", "show", "--dot", self.dotFile, self.file1_stage, "--outs"]
+        )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_not_dvc_file(self):
-        ret = main(['pipeline', 'show', self.file1])
+        ret = main(["pipeline", "show", self.file1])
         self.assertNotEqual(ret, 0)
 
     def test_non_existing(self):
-        ret = main(['pipeline', 'show', 'non-existing'])
+        ret = main(["pipeline", "show", "non-existing"])
         self.assertNotEqual(ret, 0)
 
 
 class TestPipelineShowDeep(TestReproChangedDeepData):
     def setUp(self):
         super(TestPipelineShowDeep, self).setUp()
-        self.dotFile = 'graph.dot'
+        self.dotFile = "graph.dot"
 
     def test(self):
-        ret = main(['pipeline', 'show', self.file1_stage])
+        ret = main(["pipeline", "show", self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_commands(self):
-        ret = main(['pipeline', 'show', self.file1_stage, '--commands'])
+        ret = main(["pipeline", "show", self.file1_stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_outs(self):
-        ret = main(['pipeline', 'show', self.file1_stage, '--outs'])
+        ret = main(["pipeline", "show", self.file1_stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_ascii(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage])
         self.assertEqual(ret, 0)
 
     def test_dot(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage])
+        ret = main(["pipeline", "show", "--dot", self.dotFile, self.file1_stage])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_ascii_commands(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage,
-                    '--commands'])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage, "--commands"])
         self.assertEqual(ret, 0)
 
     def test_ascii_outs(self):
-        ret = main(['pipeline', 'show', '--ascii', self.file1_stage, '--outs'])
+        ret = main(["pipeline", "show", "--ascii", self.file1_stage, "--outs"])
         self.assertEqual(ret, 0)
 
     def test_dot_commands(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage, '--commands'])
+        ret = main(
+            ["pipeline", "show", "--dot", self.dotFile, self.file1_stage, "--commands"]
+        )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_dot_outs(self):
-        ret = main(['pipeline', 'show', '--dot', self.dotFile,
-                    self.file1_stage, '--outs'])
+        ret = main(
+            ["pipeline", "show", "--dot", self.dotFile, self.file1_stage, "--outs"]
+        )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
     def test_not_dvc_file(self):
-        ret = main(['pipeline', 'show', self.file1])
+        ret = main(["pipeline", "show", self.file1])
         self.assertNotEqual(ret, 0)
 
     def test_non_existing(self):
-        ret = main(['pipeline', 'show', 'non-existing'])
+        ret = main(["pipeline", "show", "non-existing"])
         self.assertNotEqual(ret, 0)
 
 
 class TestPipelineListEmpty(TestDvc):
     def test(self):
-        ret = main(['pipeline', 'list'])
+        ret = main(["pipeline", "list"])
         self.assertEqual(ret, 0)
 
 
 class TestPipelineListSingle(TestPipelineShowDeep):
     def test(self):
-        ret = main(['pipeline', 'list'])
+        ret = main(["pipeline", "list"])
         self.assertEqual(ret, 0)
 
 
@@ -195,9 +195,9 @@ class TestProjectPipeline(TestDvc):
         self.assertEqual(len(pipelines), 0)
 
     def one_pipeline(self):
-        self.dvc.add('foo')
-        self.dvc.run(deps=['foo'], outs=['bar'], cmd='')
-        self.dvc.run(deps=['bar'], outs=['baz'], cmd='echo baz > baz')
+        self.dvc.add("foo")
+        self.dvc.run(deps=["foo"], outs=["bar"], cmd="")
+        self.dvc.run(deps=["bar"], outs=["baz"], cmd="echo baz > baz")
         pipelines = self.dvc.pipelines()
 
         self.assertEqual(len(pipelines), 1)
@@ -205,11 +205,11 @@ class TestProjectPipeline(TestDvc):
         self.assertEqual(pipelines[0].edges, 2)
 
     def two_pipelines(self):
-        self.dvc.add('foo')
-        self.dvc.run(deps=['foo'], outs=['bar'], cmd='')
-        self.dvc.run(deps=['bar'], outs=['baz'], cmd='echo baz > baz')
+        self.dvc.add("foo")
+        self.dvc.run(deps=["foo"], outs=["bar"], cmd="")
+        self.dvc.run(deps=["bar"], outs=["baz"], cmd="echo baz > baz")
 
-        self.dvc.add('code.py')
+        self.dvc.add("code.py")
 
         pipelines = self.dvc.pipelines()
 
@@ -220,8 +220,8 @@ class TestProjectPipeline(TestDvc):
         self.assertEqual(pipelines[1].edges, 0)
 
     def locked_stage(self):
-        self.dvc.add('foo')
-        self.dvc.lock_stage('foo.dvc')
+        self.dvc.add("foo")
+        self.dvc.lock_stage("foo.dvc")
 
         pipelines = self.dvc.pipelines()
         self.assertEqual(len(pipelines), 0)

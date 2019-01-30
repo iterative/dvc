@@ -10,14 +10,8 @@ class DependencyHTTP(DependencyBase, OutputBase):
     REMOTE = RemoteHTTP
 
     def __init__(self, stage, path, info=None, remote=None):
-        super(DependencyHTTP, self).__init__(stage,
-                                             path,
-                                             info=info,
-                                             remote=remote)
-        if path.startswith('remote'):
+        super(DependencyHTTP, self).__init__(stage, path, info=info, remote=remote)
+        if path.startswith("remote"):
             path = urljoin(self.remote.cache_dir, urlparse(path).path)
 
-        self.path_info = {
-            'scheme': urlparse(path).scheme,
-            'path': path,
-        }
+        self.path_info = {"scheme": urlparse(path).scheme, "path": path}

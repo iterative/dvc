@@ -11,13 +11,13 @@ import json
 import shutil
 import hashlib
 
-LOCAL_CHUNK_SIZE = 1024*1024
-LARGE_FILE_SIZE = 1024*1024*1024
+LOCAL_CHUNK_SIZE = 1024 * 1024
+LARGE_FILE_SIZE = 1024 * 1024 * 1024
 LARGE_DIR_SIZE = 100
 
 
 def dos2unix(data):
-    return data.replace(b'\r\n', b'\n')
+    return data.replace(b"\r\n", b"\n")
 
 
 def file_md5(fname):
@@ -38,7 +38,7 @@ def file_md5(fname):
             name = os.path.relpath(fname)
             total = 0
 
-        with open(fname, 'rb') as fobj:
+        with open(fname, "rb") as fobj:
             while True:
                 data = fobj.read(LOCAL_CHUNK_SIZE)
                 if not data:
@@ -96,7 +96,7 @@ def dict_filter(d, exclude=[]):
 
 def dict_md5(d, exclude=[]):
     filtered = dict_filter(d, exclude)
-    byts = json.dumps(filtered, sort_keys=True).encode('utf-8')
+    byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
     return bytes_md5(byts)
 
 
@@ -108,12 +108,12 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
-    fsrc = open(src, 'rb')
+    fsrc = open(src, "rb")
 
     if os.path.isdir(dest):
-        fdest = open(os.path.join(dest, os.path.basename(src)), 'wb+')
+        fdest = open(os.path.join(dest, os.path.basename(src)), "wb+")
     else:
-        fdest = open(dest, 'wb+')
+        fdest = open(dest, "wb+")
 
     while True:
         buf = fsrc.read(LOCAL_CHUNK_SIZE)
@@ -174,13 +174,13 @@ def to_chunks(l, jobs):
     if n == 0:
         n = 1
 
-    return [l[x:x+n] for x in range(0, len(l), n)]
+    return [l[x : x + n] for x in range(0, len(l), n)]
 
 
 # NOTE: Check if we are in a bundle
 # https://pythonhosted.org/PyInstaller/runtime-information.html
 def is_binary():
-    return getattr(sys, 'frozen', False)
+    return getattr(sys, "frozen", False)
 
 
 # NOTE: Fix env variables modified by PyInstaller
@@ -192,8 +192,8 @@ def fix_env(env=None):
         env = env.copy()
 
     if is_binary():
-        lp_key = 'LD_LIBRARY_PATH'
-        lp_orig = env.get(lp_key + '_ORIG', None)
+        lp_key = "LD_LIBRARY_PATH"
+        lp_orig = env.get(lp_key + "_ORIG", None)
         if lp_orig is not None:
             env[lp_key] = lp_orig
         else:

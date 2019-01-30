@@ -13,22 +13,12 @@ from dvc.output.base import OutputBase, OutputAlreadyTrackedError
 class OutputLOCAL(OutputBase):
     REMOTE = RemoteLOCAL
 
-    def __init__(self,
-                 stage,
-                 path,
-                 info=None,
-                 remote=None,
-                 cache=True,
-                 metric=False):
-        super(OutputLOCAL, self).__init__(stage,
-                                          path,
-                                          info,
-                                          remote=remote,
-                                          cache=cache,
-                                          metric=metric)
+    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+        super(OutputLOCAL, self).__init__(
+            stage, path, info, remote=remote, cache=cache, metric=metric
+        )
         if remote:
-            p = os.path.join(remote.prefix,
-                             urlparse(self.url).path.lstrip('/'))
+            p = os.path.join(remote.prefix, urlparse(self.url).path.lstrip("/"))
         else:
             p = path
 
@@ -37,16 +27,14 @@ class OutputLOCAL(OutputBase):
             p = os.path.join(stage.cwd, p)
         p = os.path.abspath(os.path.normpath(p))
 
-        self.path_info = {'scheme': 'local',
-                          'path': p}
+        self.path_info = {"scheme": "local", "path": p}
 
     def __str__(self):
         return self.rel_path
 
     @property
     def is_local(self):
-        return (urlparse(self.url).scheme != 'remote'
-                and not os.path.isabs(self.url))
+        return urlparse(self.url).scheme != "remote" and not os.path.isabs(self.url)
 
     @property
     def sep(self):
@@ -63,8 +51,7 @@ class OutputLOCAL(OutputBase):
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         if self.is_local:
-            path = self.remote.unixpath(os.path.relpath(self.path,
-                                                        self.stage.cwd))
+            path = self.remote.unixpath(os.path.relpath(self.path, self.stage.cwd))
         else:
             path = self.url
 
@@ -91,11 +78,12 @@ class OutputLOCAL(OutputBase):
         if not os.path.exists(self.path):
             raise self.DoesNotExistError(self.rel_path)
 
-        if (not os.path.isfile(self.path) and not os.path.isdir(self.path)):
+        if not os.path.isfile(self.path) and not os.path.isdir(self.path):
             raise self.IsNotFileOrDirError(self.rel_path)
 
-        if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or \
-           (os.path.isdir(self.path) and len(os.listdir(self.path)) == 0):
+        if (os.path.isfile(self.path) and os.path.getsize(self.path) == 0) or (
+            os.path.isdir(self.path) and len(os.listdir(self.path)) == 0
+        ):
             msg = "file/directory '{}' is empty.".format(self.rel_path)
             logger.warning(msg)
 

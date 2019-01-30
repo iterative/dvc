@@ -9,18 +9,16 @@ from dvc.project import Project
 
 
 class TestDir(TestCase):
-    GCP_CREDS_FILE = os.path.abspath(os.path.join('scripts',
-                                                  'ci',
-                                                  'gcp-creds.json'))
-    DATA_DIR = 'data_dir'
-    DATA_SUB_DIR = os.path.join(DATA_DIR, 'data_sub_dir')
-    DATA = os.path.join(DATA_DIR, 'data')
-    DATA_SUB = os.path.join(DATA_SUB_DIR, 'data_sub')
+    GCP_CREDS_FILE = os.path.abspath(os.path.join("scripts", "ci", "gcp-creds.json"))
+    DATA_DIR = "data_dir"
+    DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
+    DATA = os.path.join(DATA_DIR, "data")
+    DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub")
     DATA_CONTENTS = DATA
     DATA_SUB_CONTENTS = DATA_SUB
-    FOO = 'foo'
+    FOO = "foo"
     FOO_CONTENTS = FOO
-    BAR = 'bar'
+    BAR = "bar"
     # NOTE: len(FOO_CONTENTS) must be != len(BAR_CONTENTS)
     #
     # Our state database relies on file mtime and file size to determine
@@ -30,10 +28,11 @@ class TestDir(TestCase):
     # being able to detect that, thus causing tests to fail. Usually,
     # in tests, we replace foo with bar, so we need to make sure that when we
     # modify a file in our tests, its content length changes.
-    BAR_CONTENTS = BAR + 'r'
-    CODE = 'code.py'
-    CODE_CONTENTS = ('import sys\nimport shutil\n'
-                     'shutil.copyfile(sys.argv[1], sys.argv[2])')
+    BAR_CONTENTS = BAR + "r"
+    CODE = "code.py"
+    CODE_CONTENTS = (
+        "import sys\nimport shutil\n" "shutil.copyfile(sys.argv[1], sys.argv[2])"
+    )
 
     def _pushd(self, d):
         self._saved_dir = os.path.realpath(os.curdir)
@@ -48,13 +47,13 @@ class TestDir(TestCase):
         if len(dname) > 0 and not os.path.isdir(dname):
             os.makedirs(dname)
 
-        with open(name, 'a') as f:
+        with open(name, "a") as f:
             f.write(contents)
 
     @staticmethod
     def mkdtemp():
-        prefix = 'dvc-test.{}.'.format(os.getpid())
-        suffix = '.{}'.format(uuid.uuid4())
+        prefix = "dvc-test.{}.".format(os.getpid())
+        suffix = ".{}".format(uuid.uuid4())
         return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
 
     def setUp(self):
@@ -78,14 +77,14 @@ class TestGit(TestDir):
         super(TestGit, self).setUp()
         self.git = Repo.init()
         self.git.index.add([self.CODE])
-        self.git.index.commit('add code')
+        self.git.index.commit("add code")
 
 
 class TestGitSubmodule(TestGit):
     def setUp(self):
         super(TestGitSubmodule, self).setUp()
         subrepo = Repo.init()
-        subrepo_path = 'subrepo'
+        subrepo_path = "subrepo"
         self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
         self._pushd(subrepo_path)
 
