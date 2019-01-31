@@ -63,7 +63,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         "path TEXT PRIMARY KEY, " "inode INTEGER NOT NULL, " "mtime TEXT NOT NULL"
     )
 
-    STATE_ROW_LIMIT = 100_000_000
+    STATE_ROW_LIMIT = 100000000
     STATE_ROW_CLEANUP_QUOTA = 50
 
     MAX_INT = 2 ** 63 - 1
