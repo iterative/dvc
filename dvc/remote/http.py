@@ -28,7 +28,7 @@ class RemoteHTTP(RemoteBase):
     scheme = "http"
     REGEX = r"^https?://.*$"
     REQUEST_TIMEOUT = 10
-    CHUNK_SIZE = 1000000  # Megabyte
+    CHUNK_SIZE = 1_000_000  # Megabyte
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, project, config):
