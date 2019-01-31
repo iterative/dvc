@@ -37,7 +37,7 @@ scriptdir="$(dirname $0)"
 
 echo > env.sh
 if [ -n "$TRAVIS_OS_NAME" ] && [ "$TRAVIS_OS_NAME" != "osx" ] \
-   && [ "$TRAVIS_EVENT_TYPE" == "cron" ]; then
+   && [ "$TRAVIS_PULL_REQUEST" == "false" ]; then
   bash "$scriptdir/install_azurite.sh"
   bash "$scriptdir/install_hadoop.sh"
 fi
