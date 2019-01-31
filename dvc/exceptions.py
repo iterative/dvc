@@ -148,3 +148,11 @@ class CyclicGraphError(DvcException):
             "{stages}".format(stages=stages)
         )
         super(CyclicGraphError, self).__init__(msg)
+
+
+class ConfirmRemoveError(DvcException):
+    def __init__(self, path):
+        super(ConfirmRemoveError, self).__init__(
+            "unable to remove '{}' without a confirmation from the user. Use "
+            "'-f' to force.".format(path)
+        )

@@ -1,4 +1,5 @@
 import os
+import mock
 import yaml
 import shutil
 import filecmp
@@ -11,7 +12,7 @@ from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, ConfirmRemoveError
 
 from mock import patch
 
@@ -345,3 +346,21 @@ class TestCheckoutDirectory(TestRepro):
         self.assertEqual(ret, 0)
 
         self.assertTrue(os.path.exists(self.DATA_DIR))
+
+
+class TestCheckoutHook(TestDvc):
+    @mock.patch("sys.stdout.isatty", return_value=True)
+    @mock.patch("dvc.utils.compat.input", side_effect=EOFError)
+    def test(self, mock_input, mock_isatty):
+        """ Test that dvc checkout handles EOFError gracefully, which is what
+        it will experience when running in a git hook.
+        """
+        stages = self.dvc.add(self.DATA_DIR)
+        self.assertEqual(len(stages), 1)
+        stage = stages[0]
+        self.assertNotEqual(stage, None)
+
+        self.create(os.path.join(self.DATA_DIR, "test"), "test")
+
+        with self.assertRaises(ConfirmRemoveError):
+            self.dvc.checkout()
