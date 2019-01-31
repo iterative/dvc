@@ -13,5 +13,5 @@ sudo apt-get install -y docker-ce
 sudo docker run --restart always -e executable=blob -p 10000:10000 --tmpfs /opt/azurite/folder -d arafato/azurite:2.6.5
 
 # save secrets
-echo "export AZURE_STORAGE_CONTAINER_NAME='travis-tests'" >> ~/.bashrc
-echo "export AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;'" >> ~/.bashrc
+echo "export AZURE_STORAGE_CONTAINER_NAME='travis-tests'" >> env.sh
+echo "export AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;'" >> env.sh

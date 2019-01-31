@@ -59,44 +59,13 @@ matrix:
     env:
     - PYTHON_VER=3.5.0
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew update;
-        brew upgrade python;
-        python --version;
-    fi
-  - pip install -r scripts/ci/requirements.txt
-  # stop the build if there are any readme formatting errors
-  - python setup.py checkdocs
-  # stop the build if there are any black errors
-  - black dvc --check
-  - black tests --check
   - bash ./scripts/ci/before_install.sh
   - if [[ -n "$PYTHON_VER" ]]; then
       eval "$(pyenv init -)";
       pyenv install --skip-existing --keep --verbose "$PYTHON_VER";
       pyenv shell "$PYTHON_VER";
     fi
-  - if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew install openssl;
-      brew cask install google-cloud-sdk;
-    fi
-  - python --version
-  - if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then
-      bash ./scripts/ci/install_hadoop.sh;
-      source ~/.bashrc;
-      hadoop fs -help;
-      pushd ~;
-      sudo mkdir -p /home/hadoop/hadoopinfra/hdfs/namenode/;
-      sudo chmod 777 /home/hadoop/hadoopinfra/hdfs/namenode/;
-      sudo chmod 777 -R /usr/local/hadoop;
-      hdfs namenode -format;
-      start-dfs.sh;
-      jps;
-      hadoop fs -ls /;
-      hadoop fs -ls hdfs://127.0.0.1/;
-      hadoop fs -mkdir hdfs://127.0.0.1/ololo;
-      popd;
-    fi
+  - source env.sh
 install:
   - bash ./scripts/ci/install.sh
 script:
