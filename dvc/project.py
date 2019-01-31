@@ -1038,16 +1038,13 @@ class Project(object):
             matched = [
                 out for out in outs if os.path.abspath(out.path).startswith(abs_path)
             ]
-            stages = [out.stage.relpath for out in matched if out.path == abs_path]
-            if len(stages) > 1:
-                raise OutputDuplicationError(path, stages)
         else:
             matched = [out for out in outs if out.path == abs_path]
             stages = [out.stage.relpath for out in matched]
             if len(stages) > 1:
                 raise OutputDuplicationError(path, stages)
 
-        return matched if matched else None
+        return matched if matched else []
 
     def metrics_show(
         self,
@@ -1066,7 +1063,7 @@ class Project(object):
 
             if path:
                 outs = self._find_output_by_path(path, outs=outs, recursive=recursive)
-                stages = [out.stage.path for out in outs] if outs else None
+                stages = [out.stage.path for out in outs]
                 entries = []
                 if outs:
                     for out in outs:

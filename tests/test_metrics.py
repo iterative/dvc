@@ -111,12 +111,12 @@ class TestMetricsRecursive(TestDvc):
             [
                 "run",
                 "-M",
-                "metrics_nested/metric_nested",
+                "nested/metric_nested",
                 "echo",
                 "-n",
                 "nested",
                 ">>",
-                "metrics_nested/metric_nested",
+                "nested/metric_nested",
             ]
         )
 
@@ -124,12 +124,12 @@ class TestMetricsRecursive(TestDvc):
             [
                 "run",
                 "-M",
-                "metrics_nested/metrics_subnested/metric_subnested",
+                "nested/subnested/metric_subnested",
                 "echo",
                 "-n",
                 "subnested",
                 ">>",
-                "metrics_nested/metrics_subnested/metric_subnested",
+                "nested/subnested/metric_subnested",
             ]
         )
 
@@ -143,13 +143,12 @@ class TestMetricsRecursive(TestDvc):
         ret = self.dvc.metrics_show("nested", all_branches=True, recursive=False)
         self.assertEqual(len(ret), 0)
 
-        ret = self.dvc.metrics_show("metrics_nested", all_branches=True, recursive=True)
+        ret = self.dvc.metrics_show("nested", all_branches=True, recursive=True)
         self.assertEqual(len(ret), 1)
         self.assertTrue(
-            ret["nested"]["metrics_nested/metrics_subnested/metric_subnested"]
-            == "subnested"
+            ret["nested"]["nested/subnested/metric_subnested"] == "subnested"
         )
-        self.assertTrue(ret["nested"]["metrics_nested/metric_nested"] == "nested")
+        self.assertTrue(ret["nested"]["nested/metric_nested"] == "nested")
 
 
 class TestMetricsReproCLI(TestDvc):
