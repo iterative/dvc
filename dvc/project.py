@@ -1065,19 +1065,18 @@ class Project(object):
                 outs = self._find_output_by_path(path, outs=outs, recursive=recursive)
                 stages = [out.stage.path for out in outs]
                 entries = []
-                if outs:
-                    for out in outs:
-                        if all([out.metric, not typ, isinstance(out.metric, dict)]):
-                            entries += [
-                                (
-                                    out.path,
-                                    out.metric.get(out.PARAM_METRIC_TYPE, None),
-                                    out.metric.get(out.PARAM_METRIC_XPATH, None),
-                                )
-                            ]
-                        else:
-                            entries += [(out.path, typ, xpath)]
-                else:
+                for out in outs:
+                    if all([out.metric, not typ, isinstance(out.metric, dict)]):
+                        entries += [
+                            (
+                                out.path,
+                                out.metric.get(out.PARAM_METRIC_TYPE, None),
+                                out.metric.get(out.PARAM_METRIC_XPATH, None),
+                            )
+                        ]
+                    else:
+                        entries += [(out.path, typ, xpath)]
+                if not entries:
                     if os.path.isdir(path):
                         logger.warning(
                             "Path '{path}' is a directory. "
