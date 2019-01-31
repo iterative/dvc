@@ -1,5 +1,8 @@
 language: python
-cache: pip
+cache:
+  - pip
+  - directories:
+    - /opt/python
 sudo: true
 dist: xenial
 python: "3.7"
