@@ -57,7 +57,8 @@ matrix:
     - PYTHON_VER=3.5.0
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-        brew install python;
+        brew update;
+        brew upgrade python3;
     fi
   - pip install -r scripts/ci/requirements.txt
   # stop the build if there are any readme formatting errors
