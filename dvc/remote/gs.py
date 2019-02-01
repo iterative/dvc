@@ -29,6 +29,10 @@ class RemoteGS(RemoteBase):
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
 
+        shared_creds = config.get(Config.SECTION_GCP_CREDENTIALPATH)
+        if shared_creds:
+            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", shared_creds)
+
         parsed = urlparse(self.url)
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip("/")

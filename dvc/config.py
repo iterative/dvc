@@ -210,6 +210,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # backward compatibility
     SECTION_GCP = "gcp"
     SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
+    SECTION_GCP_CREDENTIALPATH = "credentialpath"
     SECTION_GCP_PROJECTNAME = "projectname"
     SECTION_GCP_SCHEMA = {
         SECTION_GCP_STORAGEPATH: str,
