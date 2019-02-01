@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 import dvc.prompt as prompt
 import dvc.logger as logger
 from dvc.config import Config
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, ConfirmRemoveError
 
 
 STATUS_OK = 1
@@ -296,10 +296,7 @@ class RemoteBase(object):
             )
 
             if not prompt.confirm(msg):
-                raise DvcException(
-                    "unable to remove '{}' without a confirmation"
-                    " from the user. Use '-f' to force.".format(str(path_info))
-                )
+                raise ConfirmRemoveError(str(path_info))
 
         self.remove(path_info)
 

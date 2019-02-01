@@ -14,7 +14,10 @@ def _ask(prompt, limited_to=None):
         return None
 
     while True:
-        answer = input(prompt + " ").lower()
+        try:
+            answer = input(prompt + " ").lower()
+        except EOFError:
+            return None
 
         if not limited_to:
             return answer
