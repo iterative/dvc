@@ -4,8 +4,11 @@ set -x
 set -e
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    brew update
-    brew upgrade python
+    # NOTE: used to install and run our style checking tools
+    osx_python_ver=3.6.2
+    eval "$(pyenv init -)"
+    pyenv install --skip-existing --keep --verbose $osx_python_ver
+    pyenv shell $osx_python_ver
     python --version
 fi
 
