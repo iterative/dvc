@@ -10,7 +10,6 @@ environment:
     secure: veTfhOrd4wUpG7NlRsvS3tufuaFfST8i7SZa2HVH6Vc=
   aws_secret_access_key:
     secure: nCQcN/Mzce0erwcNOU3yAuWgF6ZuTvPBEqTF3XFp1poGcDbSIg+s67eVxsxWCXQj
-  GOOGLE_APPLICATION_CREDENTIALS: gcp-creds.json
   GCP_CREDS:
     secure: 96fJ3r2i2GohbXHwnSs5N4EplQ7q8YmLpPWM0AC+f4s=
   CODECOV_TOKEN:
