@@ -1146,8 +1146,10 @@ class Project(object):
             raise DvcException(msg)
 
         if len(outs) != 1:
-            msg = ("-R not yet supported for metrics modify. "
-                   "Make sure only one metric is referred to by '{}'".format(path))
+            msg = (
+                "-R not yet supported for metrics modify. "
+                "Make sure only one metric is referred to by '{}'".format(path)
+            )
             raise DvcException(msg)
 
         out = outs[0]
