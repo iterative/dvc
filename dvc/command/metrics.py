@@ -34,6 +34,7 @@ class CmdMetricsShow(CmdBase):
                 xpath=xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
+                recursive=self.args.recursive,
             )
         except DvcException:
             logger.error("failed to show metrics")
@@ -98,7 +99,9 @@ def add_parser(subparsers, parent_parser):
         description=METRICS_SHOW_HELP,
         help=METRICS_SHOW_HELP,
     )
-    metrics_show_parser.add_argument("path", nargs="?", help="Path to metrics file.")
+    metrics_show_parser.add_argument(
+        "path", nargs="?", help="Path to metrics file or directory"
+    )
     metrics_show_parser.add_argument(
         "-t", "--type", help="Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)."
     )
@@ -132,6 +135,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Show metrics for all tags.",
+    )
+    metrics_show_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="If path is a directory, recursively search and process metric files in path.",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
