@@ -100,7 +100,7 @@ def add_parser(subparsers, parent_parser):
         help=METRICS_SHOW_HELP,
     )
     metrics_show_parser.add_argument(
-        "path", nargs="?", help="Path to metrics file or folder"
+        "path", nargs="?", help="Path to metrics file or directory"
     )
     metrics_show_parser.add_argument(
         "-t", "--type", help="Type of metrics(RAW/JSON/TSV/HTSV/CSV/HCSV)."
@@ -141,7 +141,7 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="If path is a folder, recursively search and process metric files in path.",
+        help="If path is a directory, recursively search and process metric files in path.",
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
