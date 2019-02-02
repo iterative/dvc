@@ -1020,7 +1020,7 @@ class Project(object):
                 elif typ == "htsv":
                     ret = self._read_metric_hxsv(fd, xpath, "\t")
                 else:
-                    ret = fd.read()
+                    ret = fd.read().strip()
         except Exception:
             logger.error("unable to read metric in '{}'".format(path))
 
