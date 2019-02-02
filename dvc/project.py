@@ -1145,32 +1145,37 @@ class Project(object):
             msg = "unable to find file '{}' in the pipeline".format(path)
             raise DvcException(msg)
 
-        for out in outs:
+        if len(outs) != 1:
+            msg = ("-R not yet supported for metrics modify. "
+                   "Make sure only one metric is referred to by '{}'".format(path))
+            raise DvcException(msg)
 
-            if out.scheme != "local":
-                msg = "output '{}' scheme '{}' is not supported for metrics"
-                raise DvcException(msg.format(out.path, out.path_info["scheme"]))
+        out = outs[0]
 
-            if out.use_cache:
-                msg = "cached output '{}' is not supported for metrics"
-                raise DvcException(msg.format(out.rel_path))
+        if out.scheme != "local":
+            msg = "output '{}' scheme '{}' is not supported for metrics"
+            raise DvcException(msg.format(out.path, out.path_info["scheme"]))
 
-            if typ:
-                if not isinstance(out.metric, dict):
-                    out.metric = {}
-                out.metric[out.PARAM_METRIC_TYPE] = typ
+        if out.use_cache:
+            msg = "cached output '{}' is not supported for metrics"
+            raise DvcException(msg.format(out.rel_path))
 
-            if xpath:
-                if not isinstance(out.metric, dict):
-                    out.metric = {}
-                out.metric[out.PARAM_METRIC_XPATH] = xpath
+        if typ:
+            if not isinstance(out.metric, dict):
+                out.metric = {}
+            out.metric[out.PARAM_METRIC_TYPE] = typ
 
-            if delete:
-                out.metric = None
+        if xpath:
+            if not isinstance(out.metric, dict):
+                out.metric = {}
+            out.metric[out.PARAM_METRIC_XPATH] = xpath
 
-            out._verify_metric()
+        if delete:
+            out.metric = None
 
-            out.stage.dump()
+        out._verify_metric()
+
+        out.stage.dump()
 
     def metrics_modify(self, path=None, typ=None, xpath=None):
         self._metrics_modify(path, typ, xpath)

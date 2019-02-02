@@ -105,33 +105,37 @@ class TestMetricsRecursive(TestDvc):
         self.dvc.scm.checkout("nested", create_new=True)
 
         os.mkdir("nested")
-        os.mkdir("nested/subnested")
+        os.mkdir(os.path.join("nested", "subnested"))
 
-        main(
+        ret = main(
             [
                 "run",
                 "-M",
-                "nested/metric_nested",
+                os.path.join("nested", "metric_nested"),
                 "echo",
                 "-n",
                 "nested",
                 ">>",
-                "nested/metric_nested",
+                os.path.join("nested", "metric_nested"),
             ]
         )
 
-        main(
+        self.assertEqual(ret, 0)
+
+        ret = main(
             [
                 "run",
                 "-M",
-                "nested/subnested/metric_subnested",
+                os.path.join("nested", "subnested", "metric_subnested"),
                 "echo",
                 "-n",
                 "subnested",
                 ">>",
-                "nested/subnested/metric_subnested",
+                os.path.join("nested", "subnested", "metric_subnested"),
             ]
         )
+
+        self.assertEqual(ret, 0)
 
         self.dvc.scm.add(["nested"])
         self.dvc.scm.commit("nested metrics")
