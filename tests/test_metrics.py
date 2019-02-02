@@ -149,12 +149,12 @@ class TestMetricsRecursive(TestDvc):
 
         ret = self.dvc.metrics_show("nested", all_branches=True, recursive=True)
         self.assertEqual(len(ret), 1)
-        self.assertTrue(
-            ret["nested"][os.path.join("nested", "subnested", "metric_subnested")]
-            == "subnested"
+        self.assertEqual(
+            ret["nested"][os.path.join("nested", "subnested", "metric_subnested")],
+            "subnested",
         )
-        self.assertTrue(
-            ret["nested"][os.path.join("nested", "metric_nested")] == "nested"
+        self.assertEqual(
+            ret["nested"][os.path.join("nested", "metric_nested")], "nested"
         )
 
 
