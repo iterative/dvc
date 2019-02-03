@@ -24,7 +24,7 @@ class StateVersionTooNewError(DvcException):
             "you are using an old version '{dvc_version}' of dvc that is "
             "using state file version '{expected}' which is not compatible "
             "with the state file version '{actual}' that is used in this "
-            "projet. Please upgrade right now!".format(
+            "project. Please upgrade right now!".format(
                 dvc_version=dvc_version, expected=expected, actual=actual
             )
         )
