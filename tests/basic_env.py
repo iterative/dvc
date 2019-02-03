@@ -2,6 +2,7 @@ import os
 import uuid
 import tempfile
 from git import Repo
+from git.exc import GitCommandNotFound
 from unittest import TestCase
 
 import dvc.logger as logger
