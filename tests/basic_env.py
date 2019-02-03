@@ -74,6 +74,7 @@ class TestDir(TestCase):
 
 class TestGit(TestDir):
     N_RETRIES = 5
+
     def setUp(self):
         super(TestGit, self).setUp()
         # NOTE: handles EAGAIN error on BSD systems (osx in our case).
@@ -89,7 +90,7 @@ class TestGit(TestDir):
                 retries -= 1
                 continue
             break
-            
+
         self.git.index.add([self.CODE])
         self.git.index.commit("add code")
 
