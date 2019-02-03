@@ -101,7 +101,11 @@ def parse_args(argv=None):
         "-q", "--quiet", action="store_true", default=False, help="Be quiet."
     )
     log_level_group.add_argument(
-        "-v", "--verbose", action="store_true", default=False, help="Be verbose."
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Be verbose.",
     )
 
     # Main parser
@@ -116,7 +120,11 @@ def parse_args(argv=None):
     # NOTE: On some python versions action='version' prints to stderr
     # instead of stdout https://bugs.python.org/issue18920
     parser.add_argument(
-        "-V", "--version", action=VersionAction, nargs=0, help="Show program's version."
+        "-V",
+        "--version",
+        action=VersionAction,
+        nargs=0,
+        help="Show program's version.",
     )
 
     # Sub commands

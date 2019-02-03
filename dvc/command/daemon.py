@@ -40,7 +40,10 @@ class CmdDaemonAnalytics(CmdDaemonBase):
 def add_parser(subparsers, parent_parser):
     DAEMON_HELP = "Service daemon."
     daemon_parser = subparsers.add_parser(
-        "daemon", parents=[parent_parser], description=DAEMON_HELP, help=DAEMON_HELP
+        "daemon",
+        parents=[parent_parser],
+        description=DAEMON_HELP,
+        help=DAEMON_HELP,
     )
 
     daemon_subparsers = daemon_parser.add_subparsers(

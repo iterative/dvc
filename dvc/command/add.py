@@ -28,5 +28,7 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Recursively add each file under the directory.",
     )
-    add_parser.add_argument("targets", nargs="+", help="Input files/directories.")
+    add_parser.add_argument(
+        "targets", nargs="+", help="Input files/directories."
+    )
     add_parser.set_defaults(func=CmdAdd)

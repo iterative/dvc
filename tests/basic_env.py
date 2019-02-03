@@ -10,7 +10,9 @@ from dvc.project import Project
 
 
 class TestDir(TestCase):
-    GCP_CREDS_FILE = os.path.abspath(os.path.join("scripts", "ci", "gcp-creds.json"))
+    GCP_CREDS_FILE = os.path.abspath(
+        os.path.join("scripts", "ci", "gcp-creds.json")
+    )
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
     DATA = os.path.join(DATA_DIR, "data")
@@ -32,7 +34,8 @@ class TestDir(TestCase):
     BAR_CONTENTS = BAR + "r"
     CODE = "code.py"
     CODE_CONTENTS = (
-        "import sys\nimport shutil\n" "shutil.copyfile(sys.argv[1], sys.argv[2])"
+        "import sys\nimport shutil\n"
+        "shutil.copyfile(sys.argv[1], sys.argv[2])"
     )
 
     def _pushd(self, d):
@@ -87,7 +90,7 @@ class TestGit(TestDir):
         while retries:
             try:
                 self.git = Repo.init()
-            except GitCommandNotFound as exc:
+            except GitCommandNotFound:
                 retries -= 1
                 continue
             break

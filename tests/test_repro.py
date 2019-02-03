@@ -58,9 +58,13 @@ class TestReproFail(TestRepro):
 
 class TestReproCyclicGraph(TestDvc):
     def test(self):
-        self.dvc.run(deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt")
+        self.dvc.run(
+            deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt"
+        )
 
-        self.dvc.run(deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt")
+        self.dvc.run(
+            deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt"
+        )
 
         with open("cycle.dvc", "w") as fd:
             stage_dump = {
@@ -257,7 +261,9 @@ class TestReproNoDeps(TestRepro):
         )
         with open(code_file, "w+") as fd:
             fd.write(code)
-        self.dvc.run(fname=stage_file, outs=[out], cmd="python {}".format(code_file))
+        self.dvc.run(
+            fname=stage_file, outs=[out], cmd="python {}".format(code_file)
+        )
 
         stages = self.dvc.reproduce(stage_file)
         self.assertEqual(len(stages), 1)
@@ -281,7 +287,9 @@ class TestReproChangedCode(TestRepro):
     def swap_code(self):
         os.unlink(self.CODE)
         new_contents = self.CODE_CONTENTS
-        new_contents += "\nshutil.copyfile('{}', " "sys.argv[2])\n".format(self.BAR)
+        new_contents += "\nshutil.copyfile('{}', " "sys.argv[2])\n".format(
+            self.BAR
+        )
         self.create(self.CODE, new_contents)
 
 
@@ -422,7 +430,9 @@ class TestReproIgnoreBuildCache(TestDvc):
 
 class TestReproPipeline(TestReproChangedDeepData):
     def test(self):
-        stages = self.dvc.reproduce(self.file1_stage, force=True, pipeline=True)
+        stages = self.dvc.reproduce(
+            self.file1_stage, force=True, pipeline=True
+        )
         self.assertEqual(len(stages), 3)
 
     def test_cli(self):
@@ -793,7 +803,9 @@ class TestReproExternalBase(TestDvc):
     def corrupted_cache(self):
         os.unlink("bar.dvc")
 
-        stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd="echo bar > bar")
+        stage = self.dvc.run(
+            deps=[self.FOO], outs=[self.BAR], cmd="echo bar > bar"
+        )
 
         with open(self.BAR, "w") as fd:
             fd.write("corrupting the cache")
@@ -817,7 +829,11 @@ class TestReproExternalBase(TestDvc):
             return
 
         cache = (
-            self.scheme + self.scheme_sep + self.bucket + self.sep + str(uuid.uuid4())
+            self.scheme
+            + self.scheme_sep
+            + self.bucket
+            + self.sep
+            + str(uuid.uuid4())
         )
 
         ret = main(["config", "cache." + self.cache_scheme, "myrepo"])
@@ -827,7 +843,9 @@ class TestReproExternalBase(TestDvc):
 
         remote_name = "myremote"
         remote_key = str(uuid.uuid4())
-        remote = self.scheme + self.scheme_sep + self.bucket + self.sep + remote_key
+        remote = (
+            self.scheme + self.scheme_sep + self.bucket + self.sep + remote_key
+        )
 
         ret = main(["remote", "add", remote_name, remote])
         self.assertEqual(ret, 0)
@@ -837,8 +855,12 @@ class TestReproExternalBase(TestDvc):
         foo_key = remote_key + self.sep + self.FOO
         bar_key = remote_key + self.sep + self.BAR
 
-        foo_path = self.scheme + self.scheme_sep + self.bucket + self.sep + foo_key
-        bar_path = self.scheme + self.scheme_sep + self.bucket + self.sep + bar_key
+        foo_path = (
+            self.scheme + self.scheme_sep + self.bucket + self.sep + foo_key
+        )
+        bar_path = (
+            self.scheme + self.scheme_sep + self.bucket + self.sep + bar_key
+        )
 
         # Using both plain and remote notation
         out_foo_path = "remote://" + remote_name + "/" + self.FOO
@@ -853,11 +875,15 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(self.dvc.status(import_stage.path), {})
         self.check_already_cached(import_stage)
 
-        import_remote_stage = self.dvc.imp(out_foo_path, out_foo_path + "_imported")
+        import_remote_stage = self.dvc.imp(
+            out_foo_path, out_foo_path + "_imported"
+        )
         self.assertEqual(self.dvc.status(import_remote_stage.path), {})
 
         cmd_stage = self.dvc.run(
-            outs=[out_bar_path], deps=[out_foo_path], cmd=self.cmd(foo_path, bar_path)
+            outs=[out_bar_path],
+            deps=[out_foo_path],
+            cmd=self.cmd(foo_path, bar_path),
         )
 
         self.assertEqual(self.dvc.status(cmd_stage.path), {})
@@ -1161,7 +1187,9 @@ class TestReproExternalHTTP(TestReproExternalBase):
                 fd.write(cmd)
 
             run_stage = self.dvc.run(
-                deps=[run_dependency], outs=[run_output], cmd="python create-output.py"
+                deps=[run_dependency],
+                outs=[run_output],
+                cmd="python create-output.py",
             )
             self.assertTrue(run_stage is not None)
 
@@ -1188,7 +1216,9 @@ class TestReproShell(TestDvc):
         fname = "shell.txt"
         stage = fname + ".dvc"
 
-        self.dvc.run(fname=stage, outs=[fname], cmd="echo $SHELL > {}".format(fname))
+        self.dvc.run(
+            fname=stage, outs=[fname], cmd="echo $SHELL > {}".format(fname)
+        )
 
         with open(fname, "r") as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())

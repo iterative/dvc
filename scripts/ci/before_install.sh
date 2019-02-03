@@ -20,9 +20,9 @@ pip install -r scripts/ci/requirements.txt
 # stop the build if there are any readme formatting errors
 python setup.py checkdocs
 
-# stop the build if there are any black errors
-black dvc --check
-black tests --check
+# stop the build if there are any black or flake8 errors
+black ./ --check
+flake8 ./
 
 #NOTE: ssh keys for ssh test to be able to ssh to the localhost
 ls -la ~/.ssh/

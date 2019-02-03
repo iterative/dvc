@@ -56,7 +56,9 @@ class RemoteBase(object):
         deps_ok = all(self.REQUIRES.values())
         if not deps_ok:
             missing = [k for k, v in self.REQUIRES.items() if v is None]
-            url = config.get(Config.SECTION_REMOTE_URL, "{}://".format(self.scheme))
+            url = config.get(
+                Config.SECTION_REMOTE_URL, "{}://".format(self.scheme)
+            )
             msg = (
                 "URL '{}' is supported but requires these missing "
                 "dependencies: {}. If you have installed dvc using pip, "
@@ -130,7 +132,9 @@ class RemoteBase(object):
         """
 
         logger.debug(
-            "checking if '{}'('{}') has changed.".format(path_info, checksum_info)
+            "checking if '{}'('{}') has changed.".format(
+                path_info, checksum_info
+            )
         )
 
         if not self.exists(path_info):
@@ -231,7 +235,9 @@ class RemoteBase(object):
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
-        return (self.path_to_checksum(path) for path in self.list_cache_paths())
+        return (
+            self.path_to_checksum(path) for path in self.list_cache_paths()
+        )
 
     def gc(self, cinfos):
         from dvc.remote.local import RemoteLOCAL
@@ -255,7 +261,9 @@ class RemoteBase(object):
         expected = {self.PARAM_CHECKSUM: checksum}
         actual = self.save_info(cache)
 
-        logger.debug("Cache '{}' actual '{}'.".format(str(expected), str(actual)))
+        logger.debug(
+            "Cache '{}' actual '{}'.".format(str(expected), str(actual))
+        )
 
         if expected != actual:
             if self.exists(cache):

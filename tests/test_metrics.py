@@ -142,13 +142,19 @@ class TestMetricsRecursive(TestDvc):
 
     def test(self):
 
-        ret = self.dvc.metrics_show("nested", all_branches=True, recursive=False)
+        ret = self.dvc.metrics_show(
+            "nested", all_branches=True, recursive=False
+        )
         self.assertEqual(len(ret), 0)
 
-        ret = self.dvc.metrics_show("nested", all_branches=True, recursive=True)
+        ret = self.dvc.metrics_show(
+            "nested", all_branches=True, recursive=True
+        )
         self.assertEqual(len(ret), 1)
         self.assertEqual(
-            ret["nested"][os.path.join("nested", "subnested", "metric_subnested")],
+            ret["nested"][
+                os.path.join("nested", "subnested", "metric_subnested")
+            ],
             "subnested",
         )
         self.assertEqual(
@@ -214,7 +220,14 @@ class TestMetricsCLICompat(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "--all-branches", "metric_tsv", "--tsv-path", "0,0"]
+            [
+                "metrics",
+                "show",
+                "--all-branches",
+                "metric_tsv",
+                "--tsv-path",
+                "0,0",
+            ]
         )
         self.assertEqual(ret, 0)
 
@@ -231,7 +244,14 @@ class TestMetricsCLICompat(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "--all-branches", "metric_csv", "--csv-path", "0,0"]
+            [
+                "metrics",
+                "show",
+                "--all-branches",
+                "metric_csv",
+                "--csv-path",
+                "0,0",
+            ]
         )
         self.assertEqual(ret, 0)
 
@@ -255,23 +275,54 @@ class TestMetricsCLI(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "-a", "metric_json", "-t", "json", "-x", "branch"]
+            [
+                "metrics",
+                "show",
+                "-a",
+                "metric_json",
+                "-t",
+                "json",
+                "-x",
+                "branch",
+            ]
         )
         self.assertEqual(ret, 0)
 
-        ret = main(["metrics", "show", "-a", "metric_tsv", "-t", "tsv", "-x", "0,0"])
-        self.assertEqual(ret, 0)
-
         ret = main(
-            ["metrics", "show", "-a", "metric_htsv", "-t", "htsv", "-x", "branch,0"]
+            ["metrics", "show", "-a", "metric_tsv", "-t", "tsv", "-x", "0,0"]
         )
         self.assertEqual(ret, 0)
 
-        ret = main(["metrics", "show", "-a", "metric_csv", "-t", "csv", "-x", "0,0"])
+        ret = main(
+            [
+                "metrics",
+                "show",
+                "-a",
+                "metric_htsv",
+                "-t",
+                "htsv",
+                "-x",
+                "branch,0",
+            ]
+        )
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "-a", "metric_hcsv", "-t", "hcsv", "-x", "branch,0"]
+            ["metrics", "show", "-a", "metric_csv", "-t", "csv", "-x", "0,0"]
+        )
+        self.assertEqual(ret, 0)
+
+        ret = main(
+            [
+                "metrics",
+                "show",
+                "-a",
+                "metric_hcsv",
+                "-t",
+                "hcsv",
+                "-x",
+                "branch,0",
+            ]
         )
         self.assertEqual(ret, 0)
 

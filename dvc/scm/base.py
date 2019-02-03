@@ -76,7 +76,9 @@ class Base(object):
     def tag(self, tag):
         """Makes SCM create a tag with a specified name."""
 
-    def brancher(self, branches=None, all_branches=False, tags=None, all_tags=False):
+    def brancher(
+        self, branches=None, all_branches=False, tags=None, all_tags=False
+    ):
         """Generator that iterates over specified revisions.
 
         Args:

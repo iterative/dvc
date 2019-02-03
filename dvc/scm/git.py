@@ -76,7 +76,9 @@ class Git(Base):
         ignore_list = []
         if os.path.exists(gitignore):
             ignore_list = open(gitignore, "r").readlines()
-            filtered = list(filter(lambda x: x.strip() == entry.strip(), ignore_list))
+            filtered = list(
+                filter(lambda x: x.strip() == entry.strip(), ignore_list)
+            )
             if filtered:
                 return
 

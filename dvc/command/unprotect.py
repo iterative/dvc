@@ -25,5 +25,7 @@ def add_parser(subparsers, parent_parser):
         description=UNPROTECT_HELP,
         help=UNPROTECT_HELP,
     )
-    unprotect_parser.add_argument("targets", nargs="+", help="Data files/directory.")
+    unprotect_parser.add_argument(
+        "targets", nargs="+", help="Data files/directory."
+    )
     unprotect_parser.set_defaults(func=CmdUnprotect)

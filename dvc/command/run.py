@@ -13,7 +13,12 @@ class CmdRun(CmdBase):
         overwrite = self.args.yes or self.args.overwrite_dvcfile
 
         if not any(
-            [self.args.deps, self.args.outs, self.args.outs_no_cache, self.args.command]
+            [
+                self.args.deps,
+                self.args.outs,
+                self.args.outs_no_cache,
+                self.args.command,
+            ]
         ):  # pragma: no cover
             logger.error(
                 "too few arguments. Specify at least one: '-d', "
@@ -64,7 +69,10 @@ class CmdRun(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    RUN_HELP = "Generate a stage file from a given " "command and execute the command."
+    RUN_HELP = (
+        "Generate a stage file from a given "
+        "command and execute the command."
+    )
     run_parser = subparsers.add_parser(
         "run", parents=[parent_parser], description=RUN_HELP, help=RUN_HELP
     )

@@ -64,7 +64,9 @@ class CmdConfig(CmdBase):
             self.config.set(self.configobj, section, opt, value)
             self.config.save(self.configobj)
         except DvcException:
-            logger.error("failed to set '{}.{}' to '{}'".format(section, opt, value))
+            logger.error(
+                "failed to set '{}.{}' to '{}'".format(section, opt, value)
+            )
             return 1
         return 0
 
@@ -104,8 +106,14 @@ def add_parser(subparsers, parent_parser):
         help=CONFIG_HELP,
     )
     config_parser.add_argument(
-        "-u", "--unset", default=False, action="store_true", help="Unset option."
+        "-u",
+        "--unset",
+        default=False,
+        action="store_true",
+        help="Unset option.",
     )
     config_parser.add_argument("name", help="Option name.")
-    config_parser.add_argument("value", nargs="?", default=None, help="Option value.")
+    config_parser.add_argument(
+        "value", nargs="?", default=None, help="Option value."
+    )
     config_parser.set_defaults(func=CmdConfig)

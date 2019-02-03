@@ -87,7 +87,9 @@ class RemoteS3(RemoteBase):
         try:
             obj = self.s3.head_object(Bucket=bucket, Key=path)
         except Exception:
-            raise DvcException("s3://{}/{} does not exist".format(bucket, path))
+            raise DvcException(
+                "s3://{}/{} does not exist".format(bucket, path)
+            )
 
         return obj["ETag"].strip('"')
 
@@ -96,7 +98,9 @@ class RemoteS3(RemoteBase):
             raise NotImplementedError
 
         return {
-            self.PARAM_CHECKSUM: self.get_etag(path_info["bucket"], path_info["path"])
+            self.PARAM_CHECKSUM: self.get_etag(
+                path_info["bucket"], path_info["path"]
+            )
         }
 
     def copy(self, from_info, to_info, s3=None):
@@ -122,10 +126,14 @@ class RemoteS3(RemoteBase):
             raise NotImplementedError
 
         logger.debug(
-            "Removing s3://{}/{}".format(path_info["bucket"], path_info["path"])
+            "Removing s3://{}/{}".format(
+                path_info["bucket"], path_info["path"]
+            )
         )
 
-        self.s3.delete_object(Bucket=path_info["bucket"], Key=path_info["path"])
+        self.s3.delete_object(
+            Bucket=path_info["bucket"], Key=path_info["path"]
+        )
 
     def _list_paths(self, bucket, prefix):
         s3 = self.s3
@@ -186,7 +194,10 @@ class RemoteS3(RemoteBase):
 
             try:
                 s3.upload_file(
-                    from_info["path"], to_info["bucket"], to_info["path"], Callback=cb
+                    from_info["path"],
+                    to_info["bucket"],
+                    to_info["path"],
+                    Callback=cb,
                 )
             except Exception:
                 msg = "failed to upload '{}'".format(from_info["path"])
@@ -195,7 +206,9 @@ class RemoteS3(RemoteBase):
 
             progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         s3 = self.s3
@@ -232,7 +245,10 @@ class RemoteS3(RemoteBase):
                     cb = Callback(name, total)
 
                 s3.download_file(
-                    from_info["bucket"], from_info["path"], tmp_file, Callback=cb
+                    from_info["bucket"],
+                    from_info["path"],
+                    tmp_file,
+                    Callback=cb,
                 )
             except Exception:
                 msg = "failed to download '{}/{}'".format(

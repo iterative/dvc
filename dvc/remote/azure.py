@@ -84,7 +84,9 @@ class RemoteAzure(RemoteBase):
             raise NotImplementedError
 
         logger.debug(
-            "Removing azure://{}/{}".format(path_info["bucket"], path_info["path"])
+            "Removing azure://{}/{}".format(
+                path_info["bucket"], path_info["path"]
+            )
         )
 
         self.blob_service.delete_blob(path_info["bucket"], path_info["path"])
@@ -93,7 +95,9 @@ class RemoteAzure(RemoteBase):
         blob_service = self.blob_service
         next_marker = None
         while True:
-            blobs = blob_service.list_blobs(bucket, prefix=prefix, marker=next_marker)
+            blobs = blob_service.list_blobs(
+                bucket, prefix=prefix, marker=next_marker
+            )
 
             for blob in blobs:
                 yield blob.name
@@ -120,7 +124,9 @@ class RemoteAzure(RemoteBase):
             path = to_info["path"]
 
             logger.debug(
-                "Uploading '{}' to '{}/{}'".format(from_info["path"], bucket, path)
+                "Uploading '{}' to '{}/{}'".format(
+                    from_info["path"], bucket, path
+                )
             )
 
             if not name:
@@ -138,7 +144,9 @@ class RemoteAzure(RemoteBase):
             else:
                 progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -152,7 +160,9 @@ class RemoteAzure(RemoteBase):
             path = from_info["path"]
 
             logger.debug(
-                "Downloading '{}/{}' to '{}'".format(bucket, path, to_info["path"])
+                "Downloading '{}/{}' to '{}'".format(
+                    bucket, path, to_info["path"]
+                )
             )
 
             tmp_file = self.tmp_file(to_info["path"])

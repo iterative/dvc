@@ -41,10 +41,12 @@ class OutputDuplicationError(DvcException):
         assert isinstance(output, str) or isinstance(output, builtin_str)
         assert isinstance(stages, list)
         assert all(
-            isinstance(stage, str) or isinstance(stage, builtin_str) for stage in stages
+            isinstance(stage, str) or isinstance(stage, builtin_str)
+            for stage in stages
         )
         msg = (
-            "file/directory '{}' is specified as an output in more than one" "stage: {}"
+            "file/directory '{}' is specified as an output in more than one"
+            "stage: {}"
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
 
@@ -80,9 +82,14 @@ class CircularDependencyError(DvcException):
     """
 
     def __init__(self, dependency):
-        assert isinstance(dependency, str) or isinstance(dependency, builtin_str)
+        assert isinstance(dependency, str) or isinstance(
+            dependency, builtin_str
+        )
 
-        msg = "file/directory '{}' is specified as an output and as a " "dependency."
+        msg = (
+            "file/directory '{}' is specified as an output and as a "
+            "dependency."
+        )
         super(CircularDependencyError, self).__init__(msg.format(dependency))
 
 

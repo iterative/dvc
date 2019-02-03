@@ -21,7 +21,9 @@ class TestUtils(TestDvc):
         self.assertTrue(filecmp.cmp(src, dest, shallow=False))
 
         utils.copyfile(src, dest_dir)
-        self.assertTrue(filecmp.cmp(src, "{}/{}".format(dest_dir, src), shallow=False))
+        self.assertTrue(
+            filecmp.cmp(src, "{}/{}".format(dest_dir, src), shallow=False)
+        )
 
         shutil.rmtree(dest_dir)
         os.remove(src)

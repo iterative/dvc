@@ -45,7 +45,9 @@ class TestIgnore(TestGit):
     def _count_gitignore(self):
         with open(Git.GITIGNORE, "r") as fd:
             lines = fd.readlines()
-            return len(list(filter(lambda x: x.strip() == "/" + self.FOO, lines)))
+            return len(
+                list(filter(lambda x: x.strip() == "/" + self.FOO, lines))
+            )
 
     def test(self):
         git = Git(self._root_dir)

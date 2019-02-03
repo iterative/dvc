@@ -12,7 +12,9 @@ class CmdLockBase(CmdBase):
                 self.project.lock_stage(target, unlock=unlock)
             except DvcException:
                 logger.error(
-                    "failed to {}lock '{}'".format("un" if unlock else "", target)
+                    "failed to {}lock '{}'".format(
+                        "un" if unlock else "", target
+                    )
                 )
 
                 return 1
@@ -39,7 +41,10 @@ def add_parser(subparsers, parent_parser):
 
     UNLOCK_HELP = "Unlock DVC file."
     unlock_parser = subparsers.add_parser(
-        "unlock", parents=[parent_parser], description=UNLOCK_HELP, help=UNLOCK_HELP
+        "unlock",
+        parents=[parent_parser],
+        description=UNLOCK_HELP,
+        help=UNLOCK_HELP,
     )
     unlock_parser.add_argument("targets", nargs="+", help="DVC files.")
     unlock_parser.set_defaults(func=CmdUnlock)

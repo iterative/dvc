@@ -63,7 +63,12 @@ class TestRun(TestDvc):
 class TestRunEmpty(TestDvc):
     def test(self):
         self.dvc.run(
-            cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty.dvc", cwd=os.curdir
+            cmd="",
+            deps=[],
+            outs=[],
+            outs_no_cache=[],
+            fname="empty.dvc",
+            cwd=os.curdir,
         )
 
 
@@ -84,7 +89,12 @@ class TestRunBadStageFilename(TestDvc):
     def test(self):
         with self.assertRaises(StageFileBadNameError):
             self.dvc.run(
-                cmd="", deps=[], outs=[], outs_no_cache=[], fname="empty", cwd=os.curdir
+                cmd="",
+                deps=[],
+                outs=[],
+                outs_no_cache=[],
+                fname="empty",
+                cwd=os.curdir,
             )
 
         with self.assertRaises(StageFileBadNameError):
@@ -101,7 +111,8 @@ class TestRunBadStageFilename(TestDvc):
 class TestRunNoExec(TestDvc):
     def test(self):
         self.dvc.run(
-            cmd="python {} {} {}".format(self.CODE, self.FOO, "out"), no_exec=True
+            cmd="python {} {} {}".format(self.CODE, self.FOO, "out"),
+            no_exec=True,
         )
         self.assertFalse(os.path.exists("out"))
 
@@ -128,16 +139,25 @@ class TestRunCircularDependency(TestDvc):
     def test_non_normalized_paths(self):
         with self.assertRaises(CircularDependencyError):
             self.dvc.run(
-                cmd="", deps=["./foo"], outs=["foo"], fname="circular-dependency.dvc"
+                cmd="",
+                deps=["./foo"],
+                outs=["foo"],
+                fname="circular-dependency.dvc",
             )
 
     def test_graph(self):
-        self.dvc.run(deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt")
+        self.dvc.run(
+            deps=[self.FOO], outs=["bar.txt"], cmd="echo bar > bar.txt"
+        )
 
-        self.dvc.run(deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt")
+        self.dvc.run(
+            deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt"
+        )
 
         with self.assertRaises(CyclicGraphError):
-            self.dvc.run(deps=["baz.txt"], outs=[self.FOO], cmd="echo baz > foo")
+            self.dvc.run(
+                deps=["baz.txt"], outs=[self.FOO], cmd="echo baz > foo"
+            )
 
 
 class TestRunDuplicatedArguments(TestDvc):
@@ -162,7 +182,10 @@ class TestRunDuplicatedArguments(TestDvc):
     def test_non_normalized_paths(self):
         with self.assertRaises(ArgumentDuplicationError):
             self.dvc.run(
-                cmd="", deps=[], outs=["foo", "./foo"], fname="circular-dependency.dvc"
+                cmd="",
+                deps=[],
+                outs=["foo", "./foo"],
+                fname="circular-dependency.dvc",
             )
 
 
@@ -172,7 +195,10 @@ class TestRunWorkingDirectoryAsOutput(TestDvc):
 
         with self.assertRaises(WorkingDirectoryAsOutputError):
             self.dvc.run(
-                cmd="", cwd=self.DATA_DIR, outs=[self.FOO], fname="inside-cwd.dvc"
+                cmd="",
+                cwd=self.DATA_DIR,
+                outs=[self.FOO],
+                fname="inside-cwd.dvc",
             )
 
 
@@ -271,7 +297,16 @@ class TestRunUnprotectOutsCopy(TestDvc):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+            [
+                "run",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
@@ -313,7 +348,16 @@ class TestRunUnprotectOutsSymlink(TestDvc):
 
         self.assertEqual(ret, 0)
         ret = main(
-            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+            [
+                "run",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
@@ -357,7 +401,16 @@ class TestRunUnprotectOutsHardlink(TestDvc):
 
         self.assertEqual(ret, 0)
         ret = main(
-            ["run", "-d", self.CODE, "-o", self.FOO, "python", self.CODE, self.FOO]
+            [
+                "run",
+                "-d",
+                self.CODE,
+                "-o",
+                self.FOO,
+                "python",
+                self.CODE,
+                self.FOO,
+            ]
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
@@ -468,7 +521,9 @@ class TestCmdRunOverwrite(TestDvc):
 
         time.sleep(1)
 
-        ret = main(["run", "--overwrite-dvcfile", "-f", "out.dvc", "-d", self.BAR])
+        ret = main(
+            ["run", "--overwrite-dvcfile", "-f", "out.dvc", "-d", self.BAR]
+        )
         self.assertEqual(ret, 0)
 
         # NOTE: check that dvcfile was overwritten

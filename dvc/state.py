@@ -60,7 +60,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     LINK_STATE_TABLE = "link_state"
     LINK_STATE_TABLE_LAYOUT = (
-        "path TEXT PRIMARY KEY, " "inode INTEGER NOT NULL, " "mtime TEXT NOT NULL"
+        "path TEXT PRIMARY KEY, "
+        "inode INTEGER NOT NULL, "
+        "mtime TEXT NOT NULL"
     )
 
     STATE_ROW_LIMIT = 100000000
@@ -82,7 +84,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             Config.SECTION_STATE_ROW_LIMIT, self.STATE_ROW_LIMIT
         )
         self.row_cleanup_quota = state_config.get(
-            Config.SECTION_STATE_ROW_CLEANUP_QUOTA, self.STATE_ROW_CLEANUP_QUOTA
+            Config.SECTION_STATE_ROW_CLEANUP_QUOTA,
+            self.STATE_ROW_CLEANUP_QUOTA,
         )
 
         if not self.dvc_dir:
@@ -92,7 +95,10 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self.state_file = os.path.join(self.dvc_dir, self.STATE_FILE)
 
         # https://www.sqlite.org/tempfiles.html
-        self.temp_files = [self.state_file + "-journal", self.state_file + "-wal"]
+        self.temp_files = [
+            self.state_file + "-journal",
+            self.state_file + "-wal",
+        ]
 
         self.database = None
         self.cursor = None
@@ -186,8 +192,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         # Check that the state file is indeed a database
         cmd = "CREATE TABLE IF NOT EXISTS {} ({})"
         self._execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE_LAYOUT))
-        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_TABLE_LAYOUT))
-        self._execute(cmd.format(self.LINK_STATE_TABLE, self.LINK_STATE_TABLE_LAYOUT))
+        self._execute(
+            cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_TABLE_LAYOUT)
+        )
+        self._execute(
+            cmd.format(self.LINK_STATE_TABLE, self.LINK_STATE_TABLE_LAYOUT)
+        )
 
         cmd = (
             "INSERT OR IGNORE INTO {} (count) SELECT 0 "
@@ -253,7 +263,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 "DELETE FROM {} WHERE timestamp IN ("
                 "SELECT timestamp FROM {} ORDER BY timestamp ASC LIMIT {});"
             )
-            self._execute(cmd.format(self.STATE_TABLE, self.STATE_TABLE, delete))
+            self._execute(
+                cmd.format(self.STATE_TABLE, self.STATE_TABLE, delete)
+            )
 
             self._vacuum()
 
@@ -268,7 +280,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
         self._execute(
             cmd.format(
-                self.STATE_INFO_TABLE, self._to_sqlite(count), self.STATE_INFO_ROW
+                self.STATE_INFO_TABLE,
+                self._to_sqlite(count),
+                self.STATE_INFO_ROW,
             )
         )
 
@@ -423,8 +437,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         inode = self._inode(path)
         relpath = os.path.relpath(path, self.root_dir)
 
-        cmd = "REPLACE INTO {}(path, inode, mtime) " 'VALUES ("{}", {}, "{}")'.format(
-            self.LINK_STATE_TABLE, relpath, self._to_sqlite(inode), mtime
+        cmd = (
+            "REPLACE INTO {}(path, inode, mtime) "
+            'VALUES ("{}", {}, "{}")'.format(
+                self.LINK_STATE_TABLE, relpath, self._to_sqlite(inode), mtime
+            )
         )
         self._execute(cmd)
 

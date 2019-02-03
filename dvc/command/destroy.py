@@ -31,12 +31,20 @@ class CmdDestroy(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DESTROY_HELP = (
-        "Destroy dvc. Will remove all project's information, " "data files and cache."
+        "Destroy dvc. Will remove all project's information, "
+        "data files and cache."
     )
     destroy_parser = subparsers.add_parser(
-        "destroy", parents=[parent_parser], description=DESTROY_HELP, help=DESTROY_HELP
+        "destroy",
+        parents=[parent_parser],
+        description=DESTROY_HELP,
+        help=DESTROY_HELP,
     )
     destroy_parser.add_argument(
-        "-f", "--force", action="store_true", default=False, help="Force destruction."
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Force destruction.",
     )
     destroy_parser.set_defaults(func=CmdDestroy)

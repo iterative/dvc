@@ -52,9 +52,14 @@ class CmdRepro(CmdBase):
 def add_parser(subparsers, parent_parser):
     REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'."
     repro_parser = subparsers.add_parser(
-        "repro", parents=[parent_parser], description=REPRO_HELP, help=REPRO_HELP
+        "repro",
+        parents=[parent_parser],
+        description=REPRO_HELP,
+        help=REPRO_HELP,
     )
-    repro_parser.add_argument("targets", nargs="*", help="DVC file to reproduce.")
+    repro_parser.add_argument(
+        "targets", nargs="*", help="DVC file to reproduce."
+    )
     repro_parser.add_argument(
         "-f",
         "--force",
@@ -67,7 +72,8 @@ def add_parser(subparsers, parent_parser):
         "--single-item",
         action="store_true",
         default=False,
-        help="Reproduce only single data item without recursive dependencies " "check.",
+        help="Reproduce only single data item without recursive dependencies "
+        "check.",
     )
     repro_parser.add_argument(
         "-c",

@@ -14,7 +14,8 @@ class TestRemoteAzure(TestCase):
 
     def test_init_compat(self):
         url = "azure://ContainerName={container_name};{connection_string}".format(
-            container_name=self.container_name, connection_string=self.connection_string
+            container_name=self.container_name,
+            connection_string=self.connection_string,
         )
         config = {"url": url}
         remote = RemoteAzure(None, config)

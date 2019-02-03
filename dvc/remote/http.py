@@ -41,7 +41,9 @@ class RemoteHTTP(RemoteBase):
     def prefix(self):
         return self.cache_dir
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -51,7 +53,9 @@ class RemoteHTTP(RemoteBase):
             if to_info["scheme"] != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}' to '{}'".format(from_info["path"], to_info["path"])
+            msg = "Downloading '{}' to '{}'".format(
+                from_info["path"], to_info["path"]
+            )
             logger.debug(msg)
 
             tmp_file = self.tmp_file(to_info["path"])

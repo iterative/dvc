@@ -63,7 +63,9 @@ class RemoteGS(RemoteBase):
             raise NotImplementedError
 
         return {
-            self.PARAM_CHECKSUM: self.get_md5(path_info["bucket"], path_info["path"])
+            self.PARAM_CHECKSUM: self.get_md5(
+                path_info["bucket"], path_info["path"]
+            )
         }
 
     def copy(self, from_info, to_info, gs=None):
@@ -96,7 +98,9 @@ class RemoteGS(RemoteBase):
             raise NotImplementedError
 
         logger.debug(
-            "Removing gs://{}/{}".format(path_info["bucket"], path_info["path"])
+            "Removing gs://{}/{}".format(
+                path_info["bucket"], path_info["path"]
+            )
         )
 
         blob = self.gs.bucket(path_info["bucket"]).get_blob(path_info["path"])
@@ -149,13 +153,17 @@ class RemoteGS(RemoteBase):
             except Exception:
                 msg = "failed to upload '{}' to '{}/{}'"
                 logger.error(
-                    msg.format(from_info["path"], to_info["bucket"], to_info["path"])
+                    msg.format(
+                        from_info["path"], to_info["bucket"], to_info["path"]
+                    )
                 )
                 continue
 
             progress.finish_target(name)
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         gs = self.gs
@@ -194,7 +202,9 @@ class RemoteGS(RemoteBase):
             except Exception:
                 msg = "failed to download '{}/{}' to '{}'"
                 logger.error(
-                    msg.format(from_info["bucket"], from_info["path"], to_info["path"])
+                    msg.format(
+                        from_info["bucket"], from_info["path"], to_info["path"]
+                    )
                 )
                 continue
 

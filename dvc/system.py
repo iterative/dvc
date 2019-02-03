@@ -23,7 +23,11 @@ class System(object):
                 raise DvcException("link", cause=exc)
 
         CreateHardLink = ctypes.windll.kernel32.CreateHardLinkW
-        CreateHardLink.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p, ctypes.c_void_p]
+        CreateHardLink.argtypes = [
+            ctypes.c_wchar_p,
+            ctypes.c_wchar_p,
+            ctypes.c_void_p,
+        ]
         CreateHardLink.restype = ctypes.wintypes.BOOL
 
         res = CreateHardLink(link_name, source, None)
@@ -158,10 +162,20 @@ class System(object):
         flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT
 
         func = ctypes.windll.kernel32.CreateFileW
-        func.argtypes = [c_wchar_p, DWORD, DWORD, c_void_p, DWORD, DWORD, HANDLE]
+        func.argtypes = [
+            c_wchar_p,
+            DWORD,
+            DWORD,
+            c_void_p,
+            DWORD,
+            DWORD,
+            HANDLE,
+        ]
         func.restype = HANDLE
 
-        hfile = func(path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None)
+        hfile = func(
+            path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None
+        )
         if hfile is None:
             raise WinError()
 
@@ -198,7 +212,11 @@ class System(object):
             info = System.getdirinfo(path)
             inode = abs(
                 hash(
-                    (info.dwVolumeSerialNumber, info.nFileIndexHigh, info.nFileIndexLow)
+                    (
+                        info.dwVolumeSerialNumber,
+                        info.nFileIndexHigh,
+                        info.nFileIndexLow,
+                    )
                 )
             )
         assert inode >= 0

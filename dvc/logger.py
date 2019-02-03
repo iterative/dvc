@@ -244,7 +244,8 @@ def _parse_exc():
 
     if is_verbose():
         stack_trace = "{line}\n{stack_trace}{line}\n".format(
-            line=colorize("-" * 60, color="red"), stack_trace="\n".join(tb_list)
+            line=colorize("-" * 60, color="red"),
+            stack_trace="\n".join(tb_list),
         )
     else:
         stack_trace = ""

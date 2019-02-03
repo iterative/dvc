@@ -11,17 +11,25 @@ from dvc.remote.ssh import RemoteSSH
 class OutputSSH(OutputBase):
     REMOTE = RemoteSSH
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(
+        self, stage, path, info=None, remote=None, cache=True, metric=False
+    ):
         super(OutputSSH, self).__init__(
             stage, path, info=info, remote=remote, cache=cache, metric=metric
         )
         parsed = urlparse(path)
         host = remote.host if remote else parsed.hostname
-        port = remote.port if remote else (parsed.port or RemoteSSH.DEFAULT_PORT)
-        user = remote.user if remote else (parsed.username or getpass.getuser())
+        port = (
+            remote.port if remote else (parsed.port or RemoteSSH.DEFAULT_PORT)
+        )
+        user = (
+            remote.user if remote else (parsed.username or getpass.getuser())
+        )
 
         if remote:
-            path = posixpath.join(remote.prefix, urlparse(path).path.lstrip("/"))
+            path = posixpath.join(
+                remote.prefix, urlparse(path).path.lstrip("/")
+            )
         else:
             path = parsed.path
 

@@ -22,7 +22,10 @@ def add_parser(subparsers, parent_parser):
 
     CACHE_HELP = "Manage cache settings."
     cache_parser = subparsers.add_parser(
-        "cache", parents=[parent_parser], description=CACHE_HELP, help=CACHE_HELP
+        "cache",
+        parents=[parent_parser],
+        description=CACHE_HELP,
+        help=CACHE_HELP,
     )
 
     cache_subparsers = cache_parser.add_subparsers(
@@ -42,7 +45,11 @@ def add_parser(subparsers, parent_parser):
         help=CACHE_DIR_HELP,
     )
     cache_dir_parser.add_argument(
-        "-u", "--unset", default=False, action="store_true", help="Unset option."
+        "-u",
+        "--unset",
+        default=False,
+        action="store_true",
+        help="Unset option.",
     )
     cache_dir_parser.add_argument(
         "value",

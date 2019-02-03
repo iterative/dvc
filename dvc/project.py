@@ -7,7 +7,11 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-from dvc.exceptions import DvcException, MoveNotDataSourceError, NotDvcProjectError
+from dvc.exceptions import (
+    DvcException,
+    MoveNotDataSourceError,
+    NotDvcProjectError,
+)
 
 
 class InitError(DvcException):
@@ -276,7 +280,9 @@ class Project(object):
         import dvc.output as Output
         from dvc.stage import Stage
 
-        from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
+        from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[
+            0
+        ]
 
         to_path = self._expand_target_path(from_path, to_path)
 
@@ -289,7 +295,9 @@ class Project(object):
             )
         except StopIteration:
             raise DvcException(
-                "unable to find stage file with output '{path}'".format(path=from_path)
+                "unable to find stage file with output '{path}'".format(
+                    path=from_path
+                )
             )
 
         if not stage.is_data_source:
@@ -349,7 +357,9 @@ class Project(object):
 
     def unprotect(self, path):
         if not os.path.exists(path):
-            raise DvcException("can't unprotect non-existing data '{}'".format(path))
+            raise DvcException(
+                "can't unprotect non-existing data '{}'".format(path)
+            )
 
         if os.path.isdir(path):
             self._unprotect_dir(path)
@@ -553,7 +563,9 @@ class Project(object):
                 used.append(out.path)
         self.state.remove_unused_links(used)
 
-    def checkout(self, target=None, with_deps=False, force=False, recursive=False):
+    def checkout(
+        self, target=None, with_deps=False, force=False, recursive=False
+    ):
 
         if target and not recursive:
             all_stages = self.active_stages()
@@ -569,7 +581,9 @@ class Project(object):
                 if stage.locked:
                     logger.warning(
                         "DVC file '{path}' is locked. Its dependencies are"
-                        " not going to be checked out.".format(path=stage.relpath)
+                        " not going to be checked out.".format(
+                            path=stage.relpath
+                        )
                     )
 
                 stage.checkout(force=force)
@@ -597,7 +611,9 @@ class Project(object):
 
         return ret
 
-    def _collect_dir_cache(self, out, branch=None, remote=None, force=False, jobs=None):
+    def _collect_dir_cache(
+        self, out, branch=None, remote=None, force=False, jobs=None
+    ):
         info = out.dumpd()
         ret = [info]
         r = out.remote
@@ -605,7 +621,9 @@ class Project(object):
 
         if self.cache.local.changed_cache_file(md5):
             try:
-                self.cloud.pull(ret, jobs=jobs, remote=remote, show_checksums=False)
+                self.cloud.pull(
+                    ret, jobs=jobs, remote=remote, show_checksums=False
+                )
             except DvcException as exc:
                 msg = "Failed to pull cache for '{}': {}"
                 logger.debug(msg.format(out, exc))
@@ -626,7 +644,9 @@ class Project(object):
 
         for i in self.cache.local.load_dir_cache(md5):
             i["branch"] = branch
-            i[r.PARAM_PATH] = os.path.join(info[r.PARAM_PATH], i[r.PARAM_RELPATH])
+            i[r.PARAM_PATH] = os.path.join(
+                info[r.PARAM_PATH], i[r.PARAM_RELPATH]
+            )
             ret.append(i)
 
         return ret
@@ -680,7 +700,9 @@ class Project(object):
         cache["ssh"] = []
         cache["azure"] = []
 
-        for branch in self.scm.brancher(all_branches=all_branches, all_tags=all_tags):
+        for branch in self.scm.brancher(
+            all_branches=all_branches, all_tags=all_tags
+        ):
             if target:
                 if recursive:
                     stages = self.stages(target)
@@ -703,7 +725,11 @@ class Project(object):
                 for out in stage.outs:
                     scheme = out.path_info["scheme"]
                     cache[scheme] += self._collect_used_cache(
-                        out, branch=branch, remote=remote, force=force, jobs=jobs
+                        out,
+                        branch=branch,
+                        remote=remote,
+                        force=force,
+                        jobs=jobs,
                     )
 
         return cache
@@ -809,7 +835,9 @@ class Project(object):
                 self._do_gc("azure", self.cache.azure.gc, clist)
 
             if cloud:
-                self._do_gc("remote", self.cloud._get_cloud(remote, "gc -c").gc, clist)
+                self._do_gc(
+                    "remote", self.cloud._get_cloud(remote, "gc -c").gc, clist
+                )
 
     def push(
         self,
@@ -833,7 +861,9 @@ class Project(object):
                 jobs=jobs,
                 recursive=recursive,
             )["local"]
-            self.cloud.push(used, jobs, remote=remote, show_checksums=show_checksums)
+            self.cloud.push(
+                used, jobs, remote=remote, show_checksums=show_checksums
+            )
 
     def fetch(
         self,
@@ -857,7 +887,9 @@ class Project(object):
                 jobs=jobs,
                 recursive=recursive,
             )["local"]
-            self.cloud.pull(used, jobs, remote=remote, show_checksums=show_checksums)
+            self.cloud.pull(
+                used, jobs, remote=remote, show_checksums=show_checksums
+            )
 
     def pull(
         self,
@@ -882,7 +914,10 @@ class Project(object):
             recursive=recursive,
         )
         self.checkout(
-            target=target, with_deps=with_deps, force=force, recursive=recursive
+            target=target,
+            with_deps=with_deps,
+            force=force,
+            recursive=recursive,
         )
 
     def _local_status(self, target=None, with_deps=False):
@@ -938,7 +973,10 @@ class Project(object):
             if status == cloud.STATUS_OK:
                 continue
 
-            prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}
+            prefix_map = {
+                cloud.STATUS_DELETED: "deleted",
+                cloud.STATUS_NEW: "new",
+            }
 
             ret[name] = prefix_map[status]
 
@@ -1036,7 +1074,9 @@ class Project(object):
         abs_path = os.path.abspath(path)
         if os.path.isdir(abs_path) and recursive:
             matched = [
-                out for out in outs if os.path.abspath(out.path).startswith(abs_path)
+                out
+                for out in outs
+                if os.path.abspath(out.path).startswith(abs_path)
             ]
         else:
             matched = [out for out in outs if out.path == abs_path]
@@ -1056,17 +1096,23 @@ class Project(object):
         recursive=False,
     ):
         res = {}
-        for branch in self.scm.brancher(all_branches=all_branches, all_tags=all_tags):
+        for branch in self.scm.brancher(
+            all_branches=all_branches, all_tags=all_tags
+        ):
 
             astages = self.active_stages()
             outs = [out for stage in astages for out in stage.outs]
 
             if path:
-                outs = self._find_output_by_path(path, outs=outs, recursive=recursive)
+                outs = self._find_output_by_path(
+                    path, outs=outs, recursive=recursive
+                )
                 stages = [out.stage.path for out in outs]
                 entries = []
                 for out in outs:
-                    if all([out.metric, not typ, isinstance(out.metric, dict)]):
+                    if all(
+                        [out.metric, not typ, isinstance(out.metric, dict)]
+                    ):
                         entries += [
                             (
                                 out.path,
@@ -1192,7 +1238,10 @@ class Project(object):
 
     def graph(self, stages=None, from_directory=None):
         import networkx as nx
-        from dvc.exceptions import OutputDuplicationError, WorkingDirectoryAsOutputError
+        from dvc.exceptions import (
+            OutputDuplicationError,
+            WorkingDirectoryAsOutputError,
+        )
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
@@ -1217,7 +1266,9 @@ class Project(object):
                 )
 
                 if overlaps:
-                    raise WorkingDirectoryAsOutputError(stage.cwd, stage.relpath)
+                    raise WorkingDirectoryAsOutputError(
+                        stage.cwd, stage.relpath
+                    )
 
         # collect the whole DAG
         for stage in stages:
@@ -1252,7 +1303,9 @@ class Project(object):
 
         G, G_active = self.graph(from_directory=from_directory)
 
-        return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
+        return [
+            G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
+        ]
 
     def stages(self, from_directory=None):
         """

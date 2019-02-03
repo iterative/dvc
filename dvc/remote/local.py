@@ -205,7 +205,8 @@ class RemoteLOCAL(RemoteBase):
 
             if len(files) > LARGE_DIR_SIZE:
                 msg = (
-                    "Computing md5 for a large directory {}. " "This is only done once."
+                    "Computing md5 for a large directory {}. "
+                    "This is only done once."
                 )
                 logger.info(msg.format(os.path.relpath(root)))
                 bar = True
@@ -223,7 +224,9 @@ class RemoteLOCAL(RemoteBase):
                     processed += 1
 
                 md5 = self.state.update(path)
-                dir_info.append({self.PARAM_RELPATH: relpath, self.PARAM_CHECKSUM: md5})
+                dir_info.append(
+                    {self.PARAM_RELPATH: relpath, self.PARAM_CHECKSUM: md5}
+                )
 
             if bar:
                 progress.finish_target(title)
@@ -349,7 +352,9 @@ class RemoteLOCAL(RemoteBase):
             for file in files
         )
 
-        cached_files = set(os.path.join(path, file["relpath"]) for file in dir_info)
+        cached_files = set(
+            os.path.join(path, file["relpath"]) for file in dir_info
+        )
 
         delta = working_dir_files - cached_files
 
@@ -420,7 +425,9 @@ class RemoteLOCAL(RemoteBase):
         path = path_info["path"]
 
         msg = "Saving '{}' to cache '{}'."
-        logger.info(msg.format(os.path.relpath(path), os.path.relpath(self.cache_dir)))
+        logger.info(
+            msg.format(os.path.relpath(path), os.path.relpath(self.cache_dir))
+        )
 
         if os.path.isdir(path):
             return self._save_dir(path_info)
@@ -460,7 +467,9 @@ class RemoteLOCAL(RemoteBase):
                 raise NotImplementedError
 
             logger.debug(
-                "Uploading '{}' to '{}'".format(from_info["path"], to_info["path"])
+                "Uploading '{}' to '{}'".format(
+                    from_info["path"], to_info["path"]
+                )
             )
 
             if not name:
@@ -477,7 +486,9 @@ class RemoteLOCAL(RemoteBase):
                     )
                 )
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -488,7 +499,9 @@ class RemoteLOCAL(RemoteBase):
                 raise NotImplementedError
 
             logger.debug(
-                "Downloading '{}' to '{}'".format(from_info["path"], to_info["path"])
+                "Downloading '{}' to '{}'".format(
+                    from_info["path"], to_info["path"]
+                )
             )
 
             if not name:
@@ -561,7 +574,9 @@ class RemoteLOCAL(RemoteBase):
         progress.finish_target(title)
 
         for md5, info in ret.items():
-            info["status"] = STATUS_MAP[(md5 in local_exists, md5 in remote_exists)]
+            info["status"] = STATUS_MAP[
+                (md5 in local_exists, md5 in remote_exists)
+            ]
 
         return ret
 
@@ -603,7 +618,12 @@ class RemoteLOCAL(RemoteBase):
         )
 
     def _process(
-        self, checksum_infos, remote, jobs=None, show_checksums=False, download=False
+        self,
+        checksum_infos,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        download=False,
     ):
         msg = "Preparing to {} data {} '{}'"
         logger.info(

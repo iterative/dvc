@@ -59,7 +59,9 @@ class CmdMetricsModify(CmdBase):
 class CmdMetricsAdd(CmdBase):
     def run(self):
         try:
-            self.project.metrics_add(self.args.path, self.args.type, self.args.xpath)
+            self.project.metrics_add(
+                self.args.path, self.args.type, self.args.xpath
+            )
         except DvcException:
             msg = "failed to add metric file '{}'".format(self.args.path)
             logger.error(msg)
@@ -83,11 +85,15 @@ class CmdMetricsRemove(CmdBase):
 def add_parser(subparsers, parent_parser):
     METRICS_HELP = "Get metrics from all branches."
     metrics_parser = subparsers.add_parser(
-        "metrics", parents=[parent_parser], description=METRICS_HELP, help=METRICS_HELP
+        "metrics",
+        parents=[parent_parser],
+        description=METRICS_HELP,
+        help=METRICS_HELP,
     )
 
     metrics_subparsers = metrics_parser.add_subparsers(
-        dest="cmd", help="Use dvc metrics CMD --help for command-specific help."
+        dest="cmd",
+        help="Use dvc metrics CMD --help for command-specific help.",
     )
 
     fix_subparsers(metrics_subparsers)

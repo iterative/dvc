@@ -32,7 +32,9 @@ class CmdRemoteAdd(CmdConfig):
     def run(self):
         remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
         if remote == RemoteLOCAL:
-            self.args.url = self.resolve_path(self.args.url, self.configobj.filename)
+            self.args.url = self.resolve_path(
+                self.args.url, self.configobj.filename
+            )
 
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
         ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
@@ -61,7 +63,9 @@ class CmdRemoteRemove(CmdConfig):
 
         if default == self.args.name:
             return self._unset(
-                Config.SECTION_CORE, opt=Config.SECTION_CORE_REMOTE, configobj=config
+                Config.SECTION_CORE,
+                opt=Config.SECTION_CORE_REMOTE,
+                configobj=config,
             )
 
     def run(self):
@@ -104,7 +108,9 @@ class CmdRemoteList(CmdConfig):
             r = re.match(Config.SECTION_REMOTE_REGEX, section)
             if r:
                 name = r.group("name")
-                url = self.configobj[section].get(Config.SECTION_REMOTE_URL, "")
+                url = self.configobj[section].get(
+                    Config.SECTION_REMOTE_URL, ""
+                )
                 logger.info("{}\t{}".format(name, url))
         return 0
 
@@ -114,11 +120,15 @@ def add_parser(subparsers, parent_parser):
 
     REMOTE_HELP = "Manage set of tracked repositories."
     remote_parser = subparsers.add_parser(
-        "remote", parents=[parent_parser], description=REMOTE_HELP, help=REMOTE_HELP
+        "remote",
+        parents=[parent_parser],
+        description=REMOTE_HELP,
+        help=REMOTE_HELP,
     )
 
     remote_subparsers = remote_parser.add_subparsers(
-        dest="cmd", help="Use dvc remote CMD --help for " "command-specific help."
+        dest="cmd",
+        help="Use dvc remote CMD --help for " "command-specific help.",
     )
 
     fix_subparsers(remote_subparsers)
@@ -152,7 +162,9 @@ def add_parser(subparsers, parent_parser):
         description=REMOTE_DEFAULT_HELP,
         help=REMOTE_DEFAULT_HELP,
     )
-    remote_default_parser.add_argument("name", nargs="?", help="Name of the remote.")
+    remote_default_parser.add_argument(
+        "name", nargs="?", help="Name of the remote."
+    )
     remote_default_parser.add_argument(
         "-u",
         "--unset",
@@ -183,7 +195,11 @@ def add_parser(subparsers, parent_parser):
     remote_modify_parser.add_argument("option", help="Option.")
     remote_modify_parser.add_argument("value", nargs="?", help="Value.")
     remote_modify_parser.add_argument(
-        "-u", "--unset", default=False, action="store_true", help="Unset option."
+        "-u",
+        "--unset",
+        default=False,
+        action="store_true",
+        help="Unset option.",
     )
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 

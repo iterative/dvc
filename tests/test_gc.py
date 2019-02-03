@@ -118,7 +118,9 @@ class TestGCMultipleProjects(TestDvc):
         self.additional_dvc = Project.init(self.additional_path)
 
         cache_path = os.path.join(self._root_dir, ".dvc", "cache")
-        config_path = os.path.join(self.additional_path, ".dvc", "config.local")
+        config_path = os.path.join(
+            self.additional_path, ".dvc", "config.local"
+        )
         cfg = configobj.ConfigObj()
         cfg.filename = config_path
         cfg["cache"] = {"dir": cache_path}

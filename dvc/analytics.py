@@ -228,7 +228,9 @@ class Analytics(object):
 
         core = config.config.get(Config.SECTION_CORE, {})
         enabled = core.get(Config.SECTION_CORE_ANALYTICS, True)
-        logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
+        logger.debug(
+            "Analytics is {}abled.".format("en" if enabled else "dis")
+        )
         return enabled
 
     @staticmethod

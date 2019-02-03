@@ -131,7 +131,9 @@ class Stage(object):
         self.locked = locked
 
     def __repr__(self):
-        return "Stage: '{path}'".format(path=self.relpath if self.path else "No path")
+        return "Stage: '{path}'".format(
+            path=self.relpath if self.path else "No path"
+        )
 
     @property
     def relpath(self):
@@ -212,7 +214,9 @@ class Stage(object):
         return False
 
     def changed(self):
-        ret = any([self._changed_deps(), self._changed_outs(), self._changed_md5()])
+        ret = any(
+            [self._changed_deps(), self._changed_outs(), self._changed_md5()]
+        )
 
         if ret:
             msg = "Stage '{}' changed.".format(self.relpath)
@@ -467,7 +471,9 @@ class Stage(object):
         self._check_dvc_filename(fname)
 
         logger.info(
-            "Saving information to '{file}'.".format(file=os.path.relpath(fname))
+            "Saving information to '{file}'.".format(
+                file=os.path.relpath(fname)
+            )
         )
 
         with open(fname, "w") as fd:
@@ -487,7 +493,9 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        return dict_md5(d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC])
+        return dict_md5(
+            d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC]
+        )
 
     def save(self):
         for dep in self.deps:
@@ -559,7 +567,9 @@ class Stage(object):
     def run(self, dry=False):
         if self.locked:
             logger.info(
-                "Verifying outputs in locked stage '{stage}'".format(stage=self.relpath)
+                "Verifying outputs in locked stage '{stage}'".format(
+                    stage=self.relpath
+                )
             )
             if not dry:
                 self.check_missing_outputs()

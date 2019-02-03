@@ -132,7 +132,9 @@ class TestMoveDirectoryShouldNotOverwriteExisting(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertFalse(os.path.exists(self.DATA_DIR + Stage.STAGE_FILE_SUFFIX))
+        self.assertFalse(
+            os.path.exists(self.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+        )
 
         self.assertTrue(os.path.exists(new_dir_name))
         self.assertTrue(os.path.isfile(new_dir_name + Stage.STAGE_FILE_SUFFIX))
@@ -163,4 +165,6 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertTrue(os.path.exists(new_data_stage_file))
 
         new_stage_file = load_stage_file(new_data_stage_file)
-        self.assertEqual(os.path.basename(self.DATA), new_stage_file["outs"][0]["path"])
+        self.assertEqual(
+            os.path.basename(self.DATA), new_stage_file["outs"][0]["path"]
+        )

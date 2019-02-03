@@ -27,7 +27,9 @@ class RemoteHDFS(RemoteBase):
         self.prefix = self.url
         self.user = self.group("user")
         if not self.user:
-            self.user = config.get(Config.SECTION_REMOTE_USER, getpass.getuser())
+            self.user = config.get(
+                Config.SECTION_REMOTE_USER, getpass.getuser()
+            )
 
         self.path_info = {"scheme": "hdfs", "user": self.user}
 
@@ -78,7 +80,9 @@ class RemoteHDFS(RemoteBase):
         )
 
     def rm(self, path_info):
-        self.hadoop_fs("rm {}".format(path_info["path"]), user=path_info["user"])
+        self.hadoop_fs(
+            "rm {}".format(path_info["path"]), user=path_info["user"]
+        )
 
     def save_info(self, path_info):
         if path_info["scheme"] != "hdfs":
@@ -135,10 +139,14 @@ class RemoteHDFS(RemoteBase):
             cmd = "mkdir -p {}".format(posixpath.dirname(to_info["path"]))
             self.hadoop_fs(cmd, user=to_info["user"])
 
-            cmd = "copyFromLocal {} {}".format(from_info["path"], to_info["path"])
+            cmd = "copyFromLocal {} {}".format(
+                from_info["path"], to_info["path"]
+            )
             self.hadoop_fs(cmd, user=to_info["user"])
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -156,7 +164,9 @@ class RemoteHDFS(RemoteBase):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            cmd = "copyToLocal {} {}".format(from_info["path"], to_info["path"])
+            cmd = "copyToLocal {} {}".format(
+                from_info["path"], to_info["path"]
+            )
             self.hadoop_fs(cmd, user=from_info["user"])
 
     def list_cache_paths(self):

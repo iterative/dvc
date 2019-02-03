@@ -113,7 +113,9 @@ class CheckoutBase(TestDvc):
         self.dvc.scm.commit("adding " + fname)
 
     def read_ignored(self):
-        return list(map(lambda s: s.strip("\n"), open(self.GIT_IGNORE).readlines()))
+        return list(
+            map(lambda s: s.strip("\n"), open(self.GIT_IGNORE).readlines())
+        )
 
     def outs_info(self, stage):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
@@ -125,7 +127,9 @@ class CheckoutBase(TestDvc):
             for file in files
         ]
 
-        return [FileInfo(path=path, inode=System.inode(path)) for path in paths]
+        return [
+            FileInfo(path=path, inode=System.inode(path)) for path in paths
+        ]
 
 
 class TestRemoveFilesWhenCheckout(CheckoutBase):
@@ -314,7 +318,9 @@ class TestCheckoutNotCachedFile(TestDvc):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, "out")
 
         self.dvc.add(self.FOO)
-        stage = self.dvc.run(cmd=cmd, deps=[self.FOO, self.CODE], outs_no_cache=["out"])
+        stage = self.dvc.run(
+            cmd=cmd, deps=[self.FOO, self.CODE], outs_no_cache=["out"]
+        )
         self.assertTrue(stage is not None)
 
         self.dvc.checkout(force=True)

@@ -10,7 +10,9 @@ from dvc.output.base import OutputBase
 class OutputS3(OutputBase):
     REMOTE = RemoteS3
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(
+        self, stage, path, info=None, remote=None, cache=True, metric=False
+    ):
         super(OutputS3, self).__init__(
             stage, path, info=info, remote=remote, cache=cache, metric=metric
         )
@@ -18,4 +20,8 @@ class OutputS3(OutputBase):
         path = urlparse(path).path.lstrip("/")
         if remote:
             path = posixpath.join(remote.prefix, path)
-        self.path_info = {"scheme": self.scheme, "bucket": bucket, "path": path}
+        self.path_info = {
+            "scheme": self.scheme,
+            "bucket": bucket,
+            "path": path,
+        }

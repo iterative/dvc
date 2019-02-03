@@ -357,9 +357,14 @@ def draw(vertexes, edges):
         y = vertex.view.xy[1]
 
         canvas.box(
-            int(round(x - minx)), int(round(y - miny)), vertex.view.w, vertex.view.h
+            int(round(x - minx)),
+            int(round(y - miny)),
+            vertex.view.w,
+            vertex.view.h,
         )
 
-        canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
+        canvas.text(
+            int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data
+        )
 
     canvas.draw()

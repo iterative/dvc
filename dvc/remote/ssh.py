@@ -76,12 +76,16 @@ class RemoteSSH(RemoteBase):
         )
         self.prefix = parsed.path
         self.port = (
-            config.get(Config.SECTION_REMOTE_PORT) or parsed.port or self.DEFAULT_PORT
+            config.get(Config.SECTION_REMOTE_PORT)
+            or parsed.port
+            or self.DEFAULT_PORT
         )
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
         self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
         self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
-        self.ask_password = config.get(Config.SECTION_REMOTE_ASK_PASSWORD, False)
+        self.ask_password = config.get(
+            Config.SECTION_REMOTE_ASK_PASSWORD, False
+        )
 
         self.path_info = {
             "scheme": "ssh",
@@ -91,7 +95,10 @@ class RemoteSSH(RemoteBase):
         }
 
     def ssh(self, host=None, user=None, port=None):
-        msg = "Establishing ssh connection with '{}' " "through port '{}' as user '{}'"
+        msg = (
+            "Establishing ssh connection with '{}' "
+            "through port '{}' as user '{}'"
+        )
         logger.debug(msg.format(host, port, user))
 
         ssh = paramiko.SSHClient()
@@ -121,7 +128,9 @@ class RemoteSSH(RemoteBase):
         assert not isinstance(path_info, list)
         assert path_info["scheme"] == "ssh"
 
-        with self.ssh(path_info["host"], path_info["user"], path_info["port"]) as ssh:
+        with self.ssh(
+            path_info["host"], path_info["user"], path_info["port"]
+        ) as ssh:
             try:
                 self._exec(ssh, "test -e {}".format(path_info["path"]))
                 exists = True
@@ -139,7 +148,11 @@ class RemoteSSH(RemoteBase):
 
         stdout_chunks = []
         stderr_chunks = []
-        while not channel.closed or channel.recv_ready() or channel.recv_stderr_ready():
+        while (
+            not channel.closed
+            or channel.recv_ready()
+            or channel.recv_stderr_ready()
+        ):
             import select
 
             got_chunk = False
@@ -180,7 +193,9 @@ class RemoteSSH(RemoteBase):
             raise NotImplementedError
 
         ssh = self.ssh(
-            host=path_info["host"], user=path_info["user"], port=path_info["port"]
+            host=path_info["host"],
+            user=path_info["user"],
+            port=path_info["port"],
         )
 
         # Use different md5 commands depending on os
@@ -214,7 +229,9 @@ class RemoteSSH(RemoteBase):
             ssh
             if ssh
             else self.ssh(
-                host=from_info["host"], user=from_info["user"], port=from_info["port"]
+                host=from_info["host"],
+                user=from_info["user"],
+                port=from_info["port"],
             )
         )
 
@@ -254,12 +271,16 @@ class RemoteSSH(RemoteBase):
         )
 
         ssh = self.ssh(
-            host=path_info["host"], user=path_info["user"], port=path_info["port"]
+            host=path_info["host"],
+            user=path_info["user"],
+            port=path_info["port"],
         )
         ssh.open_sftp().remove(path_info["path"])
         ssh.close()
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, names=None):
+    def download(
+        self, from_infos, to_infos, no_progress_bar=False, names=None
+    ):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         ssh = self.ssh(
@@ -299,7 +320,9 @@ class RemoteSSH(RemoteBase):
             except Exception:
                 msg = "failed to download '{}/{}' to '{}'"
                 logger.error(
-                    msg.format(from_info["host"], from_info["path"], to_info["path"])
+                    msg.format(
+                        from_info["host"], from_info["path"], to_info["path"]
+                    )
                 )
                 continue
 
@@ -312,7 +335,9 @@ class RemoteSSH(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         ssh = self.ssh(
-            host=to_infos[0]["host"], user=to_infos[0]["user"], port=to_infos[0]["port"]
+            host=to_infos[0]["host"],
+            user=to_infos[0]["user"],
+            port=to_infos[0]["port"],
         )
         sftp = ssh.open_sftp()
 
@@ -336,11 +361,17 @@ class RemoteSSH(RemoteBase):
             self._exec(ssh, "mkdir -p {}".format(dname))
 
             try:
-                sftp.put(from_info["path"], to_info["path"], callback=create_cb(name))
+                sftp.put(
+                    from_info["path"],
+                    to_info["path"],
+                    callback=create_cb(name),
+                )
             except Exception:
                 msg = "failed to upload '{}' to '{}/{}'"
                 logger.error(
-                    msg.format(from_info["path"], to_info["host"], to_info["path"])
+                    msg.format(
+                        from_info["path"], to_info["host"], to_info["path"]
+                    )
                 )
                 continue
 

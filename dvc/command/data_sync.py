@@ -106,9 +106,14 @@ def add_parser(subparsers, parent_parser):
     # Pull
     PULL_HELP = "Pull data files from the cloud."
     pull_parser = subparsers.add_parser(
-        "pull", parents=[parent_cache_parser], description=PULL_HELP, help=PULL_HELP
+        "pull",
+        parents=[parent_cache_parser],
+        description=PULL_HELP,
+        help=PULL_HELP,
     )
-    pull_parser.add_argument("-r", "--remote", help="Remote repository to pull from.")
+    pull_parser.add_argument(
+        "-r", "--remote", help="Remote repository to pull from."
+    )
     pull_parser.add_argument(
         "-a",
         "--all-branches",
@@ -149,9 +154,14 @@ def add_parser(subparsers, parent_parser):
     # Push
     PUSH_HELP = "Push data files to the cloud."
     push_parser = subparsers.add_parser(
-        "push", parents=[parent_cache_parser], description=PUSH_HELP, help=PUSH_HELP
+        "push",
+        parents=[parent_cache_parser],
+        description=PUSH_HELP,
+        help=PUSH_HELP,
     )
-    push_parser.add_argument("-r", "--remote", help="Remote repository to push to.")
+    push_parser.add_argument(
+        "-r", "--remote", help="Remote repository to push to."
+    )
     push_parser.add_argument(
         "-a",
         "--all-branches",
@@ -185,9 +195,14 @@ def add_parser(subparsers, parent_parser):
     # Fetch
     FETCH_HELP = "Fetch data files from the cloud."
     fetch_parser = subparsers.add_parser(
-        "fetch", parents=[parent_cache_parser], description=FETCH_HELP, help=FETCH_HELP
+        "fetch",
+        parents=[parent_cache_parser],
+        description=FETCH_HELP,
+        help=FETCH_HELP,
     )
-    fetch_parser.add_argument("-r", "--remote", help="Remote repository to fetch from.")
+    fetch_parser.add_argument(
+        "-r", "--remote", help="Remote repository to fetch from."
+    )
     fetch_parser.add_argument(
         "-a",
         "--all-branches",

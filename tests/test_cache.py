@@ -14,10 +14,14 @@ class TestCache(TestDvc):
         self.cache1_md5 = "123"
         self.cache2_md5 = "234"
         self.cache1 = os.path.join(
-            self.dvc.cache.local.cache_dir, self.cache1_md5[0:2], self.cache1_md5[2:]
+            self.dvc.cache.local.cache_dir,
+            self.cache1_md5[0:2],
+            self.cache1_md5[2:],
         )
         self.cache2 = os.path.join(
-            self.dvc.cache.local.cache_dir, self.cache2_md5[0:2], self.cache2_md5[2:]
+            self.dvc.cache.local.cache_dir,
+            self.cache2_md5[0:2],
+            self.cache2_md5[2:],
         )
         self.create(self.cache1, "1")
         self.create(self.cache2, "2")
@@ -103,9 +107,15 @@ class TestSharedCacheDir(TestDir):
             )
         )
         self.assertEqual(len(subdirs), 3)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[0]))), 1)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[1]))), 1)
-        self.assertEqual(len(os.listdir(os.path.join(cache_dir, subdirs[2]))), 1)
+        self.assertEqual(
+            len(os.listdir(os.path.join(cache_dir, subdirs[0]))), 1
+        )
+        self.assertEqual(
+            len(os.listdir(os.path.join(cache_dir, subdirs[1]))), 1
+        )
+        self.assertEqual(
+            len(os.listdir(os.path.join(cache_dir, subdirs[2]))), 1
+        )
 
 
 class TestCacheLinkType(TestDvc):

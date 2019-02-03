@@ -23,7 +23,9 @@ class TestRemote(TestDvc):
         self.assertEqual(main(["remote", "list"]), 0)
 
         self.assertEqual(main(["remote", "remove", remotes[0]]), 0)
-        self.assertEqual(main(["remote", "modify", remotes[0], "option", "value"]), 0)
+        self.assertEqual(
+            main(["remote", "modify", remotes[0], "option", "value"]), 0
+        )
 
         self.assertEqual(main(["remote", "list"]), 0)
 
@@ -61,10 +63,14 @@ class TestRemoteRemoveDefault(TestDvc):
         self.assertEqual(
             main(["remote", "add", "--default", remote, "s3://bucket/name"]), 0
         )
-        self.assertEqual(main(["remote", "modify", remote, "profile", "default"]), 0)
+        self.assertEqual(
+            main(["remote", "modify", remote, "profile", "default"]), 0
+        )
         self.assertEqual(main(["config", "--local", "core.remote", remote]), 0)
 
-        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG))
+        config = configobj.ConfigObj(
+            os.path.join(self.dvc.dvc_dir, Config.CONFIG)
+        )
         local_config = configobj.ConfigObj(
             os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL)
         )
@@ -72,11 +78,14 @@ class TestRemoteRemoveDefault(TestDvc):
             config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE], remote
         )
         self.assertEqual(
-            local_config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE], remote
+            local_config[Config.SECTION_CORE][Config.SECTION_CORE_REMOTE],
+            remote,
         )
 
         self.assertEqual(main(["remote", "remove", remote]), 0)
-        config = configobj.ConfigObj(os.path.join(self.dvc.dvc_dir, Config.CONFIG))
+        config = configobj.ConfigObj(
+            os.path.join(self.dvc.dvc_dir, Config.CONFIG)
+        )
         local_config = configobj.ConfigObj(
             os.path.join(self.dvc.dvc_dir, Config.CONFIG_LOCAL)
         )

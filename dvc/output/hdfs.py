@@ -10,7 +10,9 @@ from dvc.remote.hdfs import RemoteHDFS
 class OutputHDFS(OutputBase):
     REMOTE = RemoteHDFS
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(
+        self, stage, path, info=None, remote=None, cache=True, metric=False
+    ):
         super(OutputHDFS, self).__init__(
             stage, path, info=info, remote=remote, cache=cache, metric=metric
         )

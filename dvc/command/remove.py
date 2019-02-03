@@ -14,13 +14,16 @@ class CmdRemove(CmdBase):
         if self.args.force:
             return False
 
-        msg = "Are you sure you want to remove {} with its outputs?".format(target)
+        msg = "Are you sure you want to remove {} with its outputs?".format(
+            target
+        )
 
         if prompt.confirm(msg):
             return False
 
         raise DvcException(
-            "Cannot purge without a confirmation from the user." " Use '-f' to force."
+            "Cannot purge without a confirmation from the user."
+            " Use '-f' to force."
         )
 
     def run(self):
@@ -37,7 +40,10 @@ class CmdRemove(CmdBase):
 def add_parser(subparsers, parent_parser):
     REMOVE_HELP = "Remove outputs of DVC file."
     remove_parser = subparsers.add_parser(
-        "remove", parents=[parent_parser], description=REMOVE_HELP, help=REMOVE_HELP
+        "remove",
+        parents=[parent_parser],
+        description=REMOVE_HELP,
+        help=REMOVE_HELP,
     )
     remove_parser_group = remove_parser.add_mutually_exclusive_group()
     remove_parser_group.add_argument(
@@ -55,7 +61,11 @@ def add_parser(subparsers, parent_parser):
         help="Remove DVC file and all its outputs.",
     )
     remove_parser.add_argument(
-        "-f", "--force", action="store_true", default=False, help="Force purge."
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Force purge.",
     )
     remove_parser.add_argument("targets", nargs="+", help="DVC files.")
     remove_parser.set_defaults(func=CmdRemove)

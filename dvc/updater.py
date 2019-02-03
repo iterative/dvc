@@ -128,7 +128,8 @@ class Updater(object):  # pragma: no cover
             "formula": "Run {yellow}brew{reset} upgrade dvc",
             "cask": "Run {yellow}brew cask{reset} upgrade dvc",
             "apt": (
-                "Run {yellow}apt-get{reset} install" " {blue}--only-upgrade{reset} dvc"
+                "Run {yellow}apt-get{reset} install"
+                " {blue}--only-upgrade{reset} dvc"
             ),
             "binary": (
                 "To upgrade follow this steps:\n"

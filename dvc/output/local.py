@@ -13,12 +13,16 @@ from dvc.output.base import OutputBase, OutputAlreadyTrackedError
 class OutputLOCAL(OutputBase):
     REMOTE = RemoteLOCAL
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(
+        self, stage, path, info=None, remote=None, cache=True, metric=False
+    ):
         super(OutputLOCAL, self).__init__(
             stage, path, info, remote=remote, cache=cache, metric=metric
         )
         if remote:
-            p = os.path.join(remote.prefix, urlparse(self.url).path.lstrip("/"))
+            p = os.path.join(
+                remote.prefix, urlparse(self.url).path.lstrip("/")
+            )
         else:
             p = path
 
@@ -34,7 +38,9 @@ class OutputLOCAL(OutputBase):
 
     @property
     def is_local(self):
-        return urlparse(self.url).scheme != "remote" and not os.path.isabs(self.url)
+        return urlparse(self.url).scheme != "remote" and not os.path.isabs(
+            self.url
+        )
 
     @property
     def sep(self):
@@ -51,7 +57,9 @@ class OutputLOCAL(OutputBase):
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         if self.is_local:
-            path = self.remote.unixpath(os.path.relpath(self.path, self.stage.cwd))
+            path = self.remote.unixpath(
+                os.path.relpath(self.path, self.stage.cwd)
+            )
         else:
             path = self.url
 

@@ -35,7 +35,9 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.project, target)
         node = os.path.relpath(stage.path, self.project.root_dir)
 
-        pipelines = list(filter(lambda g: node in g.nodes(), self.project.pipelines()))
+        pipelines = list(
+            filter(lambda g: node in g.nodes(), self.project.pipelines())
+        )
 
         assert len(pipelines) == 1
         G = pipelines[0]
@@ -99,10 +101,15 @@ class CmdPipelineShow(CmdBase):
         for target in self.args.targets:
             try:
                 if self.args.ascii:
-                    self._show_ascii(target, self.args.commands, self.args.outs)
+                    self._show_ascii(
+                        target, self.args.commands, self.args.outs
+                    )
                 elif self.args.dot:
                     self.__write_dot(
-                        target, self.args.commands, self.args.outs, self.args.dot
+                        target,
+                        self.args.commands,
+                        self.args.outs,
+                        self.args.dot,
                     )
                 else:
                     self._show(target, self.args.commands, self.args.outs)
@@ -139,7 +146,8 @@ def add_parser(subparsers, parent_parser):
     )
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
-        dest="cmd", help="Use dvc pipeline CMD --help for command-specific help."
+        dest="cmd",
+        help="Use dvc pipeline CMD --help for command-specific help.",
     )
 
     fix_subparsers(pipeline_subparsers)
@@ -167,9 +175,14 @@ def add_parser(subparsers, parent_parser):
         help="Print output files instead of paths to DVC files.",
     )
     pipeline_show_parser.add_argument(
-        "--ascii", action="store_true", default=False, help="Output DAG as ASCII."
+        "--ascii",
+        action="store_true",
+        default=False,
+        help="Output DAG as ASCII.",
     )
-    pipeline_show_parser.add_argument("--dot", help="Write DAG in .dot format.")
+    pipeline_show_parser.add_argument(
+        "--dot", help="Write DAG in .dot format."
+    )
     pipeline_show_parser.add_argument(
         "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
     )

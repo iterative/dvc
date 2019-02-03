@@ -48,7 +48,9 @@ class OutputBase(object):
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
-    def __init__(self, stage, path, info=None, remote=None, cache=True, metric=False):
+    def __init__(
+        self, stage, path, info=None, remote=None, cache=True, metric=False
+    ):
         self.stage = stage
         self.project = stage.project
         self.url = path
@@ -57,9 +59,14 @@ class OutputBase(object):
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
 
-        if self.use_cache and getattr(self.project.cache, self.REMOTE.scheme) is None:
+        if (
+            self.use_cache
+            and getattr(self.project.cache, self.REMOTE.scheme) is None
+        ):
             raise DvcException(
-                "no cache location setup for '{}' outputs.".format(self.REMOTE.scheme)
+                "no cache location setup for '{}' outputs.".format(
+                    self.REMOTE.scheme
+                )
             )
 
     def __repr__(self):
@@ -133,7 +140,9 @@ class OutputBase(object):
         if not self.use_cache:
             self.info = self.remote.save_info(self.path_info)
         else:
-            self.info = getattr(self.project.cache, self.scheme).save(self.path_info)
+            self.info = getattr(self.project.cache, self.scheme).save(
+                self.path_info
+            )
 
     def dumpd(self):
         ret = self.info.copy()

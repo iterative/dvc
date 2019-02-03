@@ -30,7 +30,10 @@ class CmdImport(CmdBase):
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = "Import files from URL."
     import_parser = subparsers.add_parser(
-        "import", parents=[parent_parser], description=IMPORT_HELP, help=IMPORT_HELP
+        "import",
+        parents=[parent_parser],
+        description=IMPORT_HELP,
+        help=IMPORT_HELP,
     )
     import_parser.add_argument(
         "url",

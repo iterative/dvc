@@ -22,7 +22,9 @@ class ConfigError(DvcException):
     """
 
     def __init__(self, msg, ex=None):
-        super(ConfigError, self).__init__("config file error: {}".format(msg), ex)
+        super(ConfigError, self).__init__(
+            "config file error: {}".format(msg), ex
+        )
 
 
 def supported_cache_type(types):
@@ -178,7 +180,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(
             SECTION_CORE_INTERACTIVE, default=False
         ): SECTION_CORE_INTERACTIVE_SCHEMA,
-        Optional(SECTION_CORE_ANALYTICS, default=True): SECTION_CORE_ANALYTICS_SCHEMA,
+        Optional(
+            SECTION_CORE_ANALYTICS, default=True
+        ): SECTION_CORE_ANALYTICS_SCHEMA,
         # backward compatibility
         Optional(SECTION_CORE_CLOUD, default=""): SECTION_CORE_CLOUD_SCHEMA,
         Optional(SECTION_CORE_STORAGEPATH, default=""): str,
@@ -198,7 +202,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_USE_SSL, default=True): And(str, is_bool, Use(to_bool)),
+        Optional(SECTION_AWS_USE_SSL, default=True): And(
+            str, is_bool, Use(to_bool)
+        ),
     }
 
     # backward compatibility
@@ -232,7 +238,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_USE_SSL, default=True): And(str, is_bool, Use(to_bool)),
+        Optional(SECTION_AWS_USE_SSL, default=True): And(
+            str, is_bool, Use(to_bool)
+        ),
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): And(
@@ -302,7 +310,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import user_config_dir
 
-        return user_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
+        return user_config_dir(
+            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
+        )
 
     @staticmethod
     def get_system_config_dir():
@@ -313,7 +323,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import site_config_dir
 
-        return site_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
+        return site_config_dir(
+            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
+        )
 
     @staticmethod
     def init(dvc_dir):
@@ -403,7 +415,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
                 self.config = Schema(self.SCHEMA).validate(self.config)
 
             # NOTE: now converting back to ConfigObj
-            self.config = configobj.ConfigObj(self.config, write_empty_values=True)
+            self.config = configobj.ConfigObj(
+                self.config, write_empty_values=True
+            )
             self.config.filename = self.config_file
             self._resolve_paths(self.config, self.config_file)
         except Exception as ex:
@@ -474,7 +488,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             return
 
         if opt not in config[section].keys():
-            raise ConfigError("option '{}.{}' doesn't exist".format(section, opt))
+            raise ConfigError(
+                "option '{}.{}' doesn't exist".format(section, opt)
+            )
         del config[section][opt]
 
         if not config[section]:
@@ -508,7 +524,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             raise ConfigError("section '{}' doesn't exist".format(section))
 
         if opt not in config[section].keys():
-            raise ConfigError("option '{}.{}' doesn't exist".format(section, opt))
+            raise ConfigError(
+                "option '{}.{}' doesn't exist".format(section, opt)
+            )
 
         logger.info(config[section][opt])
 

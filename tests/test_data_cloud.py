@@ -70,7 +70,13 @@ def _should_test_gcp():
         shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
         try:
             check_output(
-                ["gcloud", "auth", "activate-service-account", "--key-file", creds]
+                [
+                    "gcloud",
+                    "auth",
+                    "activate-service-account",
+                    "--key-file",
+                    creds,
+                ]
             )
         except (CalledProcessError, OSError):
             return False
@@ -111,12 +117,16 @@ def _should_test_hdfs():
         return False
 
     try:
-        check_output(["hadoop", "version"], shell=True, executable=os.getenv("SHELL"))
+        check_output(
+            ["hadoop", "version"], shell=True, executable=os.getenv("SHELL")
+        )
     except (CalledProcessError, IOError):
         return False
 
     p = Popen(
-        "hadoop fs -ls hdfs://127.0.0.1/", shell=True, executable=os.getenv("SHELL")
+        "hadoop fs -ls hdfs://127.0.0.1/",
+        shell=True,
+        executable=os.getenv("SHELL"),
     )
     p.communicate()
     if p.returncode != 0:
@@ -134,11 +144,15 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return "ssh://{}@127.0.0.1:{}".format(getpass.getuser(), get_local_storagepath())
+    return "ssh://{}@127.0.0.1:{}".format(
+        getpass.getuser(), get_local_storagepath()
+    )
 
 
 def get_hdfs_url():
-    return "hdfs://{}@127.0.0.1{}".format(getpass.getuser(), get_local_storagepath())
+    return "hdfs://{}@127.0.0.1{}".format(
+        getpass.getuser(), get_local_storagepath()
+    )
 
 
 def get_aws_storagepath():
@@ -161,7 +175,9 @@ def get_azure_url_compat():
     container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
     connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
     assert container_name is not None
-    return "azure://ContainerName={};{}".format(container_name, connection_string)
+    return "azure://ContainerName={};{}".format(
+        container_name, connection_string
+    )
 
 
 def get_azure_url():
@@ -205,7 +221,9 @@ class TestDataCloudBase(TestDvc):
 
     def _ensure_should_run(self):
         if not self._should_test():
-            raise SkipTest("Test {} is disabled".format(self.__class__.__name__))
+            raise SkipTest(
+                "Test {} is disabled".format(self.__class__.__name__)
+            )
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -433,7 +451,8 @@ class TestDataCloudCLIBase(TestDvc):
         # NOTE: check if remote gc works correctly on directories
         self.main(["gc", "-c", "-f"] + args)
         shutil.move(
-            self.dvc.cache.local.cache_dir, self.dvc.cache.local.cache_dir + ".back"
+            self.dvc.cache.local.cache_dir,
+            self.dvc.cache.local.cache_dir + ".back",
         )
 
         self.main(["fetch"] + args)
@@ -625,7 +644,9 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         return RemoteLOCAL
 
     def _prepare_repo(self):
-        self.main(["remote", "add", "-d", TEST_REMOTE, self.cloud._cloud.cache_dir])
+        self.main(
+            ["remote", "add", "-d", TEST_REMOTE, self.cloud._cloud.cache_dir]
+        )
         self.create(self.DATA, self.DATA_CONTENTS)
         self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
 
