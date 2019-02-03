@@ -73,9 +73,23 @@ class TestDir(TestCase):
 
 
 class TestGit(TestDir):
+    N_RETRIES = 5
     def setUp(self):
         super(TestGit, self).setUp()
-        self.git = Repo.init()
+        # NOTE: handles EAGAIN error on BSD systems (osx in our case).
+        # Otherwise when running tests you might get this exception:
+        #
+        #    GitCommandNotFound: Cmd('git') not found due to:
+        #        OSError('[Errno 35] Resource temporarily unavailable')
+        retries = self.N_RETRIES
+        while retries:
+            try:
+                self.git = Repo.init()
+            except GitCommandNotFound as exc:
+                retries -= 1
+                continue
+            break
+            
         self.git.index.add([self.CODE])
         self.git.index.commit("add code")
 
