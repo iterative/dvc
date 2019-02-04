@@ -413,7 +413,7 @@ class Project(object):
 
         return stage
 
-    def imp(self, url, out):
+    def imp(self, url, out, resume=False):
         from dvc.stage import Stage
 
         stage = Stage.create(project=self, cmd=None, deps=[url], outs=[out])
@@ -425,7 +425,7 @@ class Project(object):
 
         self.files_to_git_add = []
         with self.state:
-            stage.run()
+            stage.run(resume=resume)
 
         stage.dump()
 

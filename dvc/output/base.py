@@ -164,8 +164,8 @@ class OutputBase(object):
 
         return ret
 
-    def download(self, to_info):
-        self.remote.download([self.path_info], [to_info])
+    def download(self, to_info, resume=False):
+        self.remote.download([self.path_info], [to_info], resume=resume)
 
     def checkout(self, force=False):
         if not self.use_cache:

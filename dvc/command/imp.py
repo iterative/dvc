@@ -15,7 +15,7 @@ class CmdImport(CmdBase):
 
             out = self.args.out or default_out
 
-            self.project.imp(self.args.url, out)
+            self.project.imp(self.args.url, out, self.args.resume)
         except DvcException:
             logger.error(
                 "failed to import {}. You could also try downloading "
@@ -47,6 +47,12 @@ def add_parser(subparsers, parent_parser):
         "'ssh://example.com:/path/to/file', "
         "'remote://myremote/path/to/file'(see "
         "`dvc remote` commands). ",
+    )
+    import_parser.add_argument(
+        "--resume",
+        action="store_true",
+        default=False,
+        help="Resume previously started download.",
     )
     import_parser.add_argument("out", nargs="?", help="Output.")
     import_parser.set_defaults(func=CmdImport)

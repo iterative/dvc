@@ -167,7 +167,14 @@ class RemoteBase(object):
     def save(self, path_info):
         raise NotImplementedError
 
-    def download(self, from_infos, to_infos, no_progress_bar=False, name=None):
+    def download(
+        self,
+        from_infos,
+        to_infos,
+        no_progress_bar=False,
+        name=None,
+        resume=False,
+    ):
         raise NotImplementedError
 
     def upload(self, from_infos, to_infos, path_info, names=None):

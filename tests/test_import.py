@@ -4,10 +4,12 @@ import os
 from uuid import uuid4
 
 from dvc import logger
+from dvc.utils.compat import urljoin
 from dvc.exceptions import DvcException
 from dvc.main import main
-from mock import patch
+from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
+from tests.utils.httpd import StaticFileServer
 
 from dvc.utils.compat import StringIO
 
@@ -66,3 +68,72 @@ class TestFailedImportMessage(TestDvc):
             "command.",
             logger.logger.handlers[1].stream.getvalue(),
         )
+
+
+class TestInterruptedDownload(TestDvc):
+    @property
+    def remote(self):
+        return "http://localhost:8000/"
+
+    def _prepare_interrupted_download(self):
+        import_url = urljoin(self.remote, self.FOO)
+        import_output = "imported_file"
+        tmp_file_name = import_output + ".part"
+        tmp_file_path = os.path.join(self._root_dir, tmp_file_name)
+        self._import_with_interrupt(import_output, import_url)
+        self.assertTrue(os.path.exists(tmp_file_name))
+        self.assertFalse(os.path.exists(import_output))
+        return import_output, import_url, tmp_file_path
+
+    def _import_with_interrupt(self, import_output, import_url):
+        def interrupting_generator():
+            yield self.FOO[0].encode("utf8")
+            raise KeyboardInterrupt
+
+        with patch(
+            "requests.models.Response.iter_content",
+            return_value=interrupting_generator(),
+        ):
+            with patch(
+                "dvc.remote.http.RemoteHTTP._content_length", return_value=3
+            ):
+                result = main(["import", import_url, import_output])
+                self.assertEqual(result, 252)
+
+
+class TestShouldResumeDownload(TestInterruptedDownload):
+    @patch("dvc.remote.http.RemoteHTTP.CHUNK_SIZE", 1)
+    def test(self):
+        with StaticFileServer():
+            import_output, import_url, tmp_file_path = (
+                self._prepare_interrupted_download()
+            )
+
+            m = mock_open()
+            with patch("dvc.remote.http.open", m):
+                result = main(
+                    ["import", "--resume", import_url, import_output]
+                )
+                self.assertEqual(result, 0)
+        m.assert_called_once_with(tmp_file_path, "ab")
+        m_handle = m()
+        expected_calls = [call(b"o"), call(b"o")]
+        m_handle.write.assert_has_calls(expected_calls, any_order=False)
+
+
+class TestShouldNotResumeDownload(TestInterruptedDownload):
+    @patch("dvc.remote.http.RemoteHTTP.CHUNK_SIZE", 1)
+    def test(self):
+        with StaticFileServer():
+            import_output, import_url, tmp_file_path = (
+                self._prepare_interrupted_download()
+            )
+
+            m = mock_open()
+            with patch("dvc.remote.http.open", m):
+                result = main(["import", import_url, import_output])
+                self.assertEqual(result, 0)
+        m.assert_called_once_with(tmp_file_path, "wb")
+        m_handle = m()
+        expected_calls = [call(b"f"), call(b"o"), call(b"o")]
+        m_handle.write.assert_has_calls(expected_calls, any_order=False)
