@@ -4,6 +4,7 @@ import os
 
 try:
     from google.cloud import storage
+    from google.auth.credentials import Credentials
 except ImportError:
     storage = None
 
@@ -46,9 +47,7 @@ class RemoteGS(RemoteBase):
     @property
     def gs(self):
         return (
-            storage.Client(self.projectname).from_service_account_json(
-                self.credentialpath
-            )
+            storage.Client.from_service_account_json(self.credentialpath)
             if self.credentialpath
             else storage.Client(self.projectname)
         )

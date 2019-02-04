@@ -547,7 +547,6 @@ class TestCompatRemoteGSCLI(TestDataCloudCLIBase):
         storagepath = get_gcp_storagepath()
         self.main(["config", "core.cloud", "gcp"])
         self.main(["config", "gcp.storagepath", storagepath])
-        self.main(["config", "gcp.credentialpath", TestDvc.GCP_CREDS_FILE])
 
         self._test_cloud()
 
@@ -560,6 +559,15 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
         url = get_gcp_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                "credentialpath",
+                TestDvc.GCP_CREDS_FILE,
+            ]
+        )
 
         self._test_cloud(TEST_REMOTE)
 
