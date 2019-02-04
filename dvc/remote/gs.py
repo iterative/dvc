@@ -4,6 +4,7 @@ import os
 
 try:
     from google.cloud import storage
+    from google.auth.credentials import Credentials
 except ImportError:
     storage = None
 
@@ -28,6 +29,7 @@ class RemoteGS(RemoteBase):
         storagepath.lstrip("/")
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
+        self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
 
         parsed = urlparse(self.url)
         self.bucket = parsed.netloc
@@ -44,7 +46,11 @@ class RemoteGS(RemoteBase):
 
     @property
     def gs(self):
-        return storage.Client(self.projectname)
+        return (
+            storage.Client.from_service_account_json(self.credentialpath)
+            if self.credentialpath
+            else storage.Client(self.projectname)
+        )
 
     def get_md5(self, bucket, path):
         import base64

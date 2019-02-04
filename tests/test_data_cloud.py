@@ -63,23 +63,7 @@ def _should_test_gcp():
     if not os.path.exists(TestDvc.GCP_CREDS_FILE):
         return False
 
-    creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-    if creds and os.getenv("GCP_CREDS"):
-        if os.path.exists(creds):
-            os.unlink(creds)
-        shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
-        try:
-            check_output(
-                [
-                    "gcloud",
-                    "auth",
-                    "activate-service-account",
-                    "--key-file",
-                    creds,
-                ]
-            )
-        except (CalledProcessError, OSError):
-            return False
+    if os.getenv("GCP_CREDS"):
         return True
 
     return False
@@ -331,6 +315,20 @@ class TestRemoteGS(TestDataCloudBase):
     def _should_test(self):
         return _should_test_gcp()
 
+    def _setup_cloud(self):
+        self._ensure_should_run()
+
+        repo = self._get_url()
+
+        config = TEST_CONFIG
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][
+            Config.SECTION_GCP_CREDENTIALPATH
+        ] = TestDvc.GCP_CREDS_FILE
+        self.cloud = DataCloud(self.dvc, config)
+
+        self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
+
     def _get_url(self):
         return get_gcp_url()
 
@@ -561,6 +559,15 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
         url = get_gcp_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                "credentialpath",
+                TestDvc.GCP_CREDS_FILE,
+            ]
+        )
 
         self._test_cloud(TEST_REMOTE)
 
