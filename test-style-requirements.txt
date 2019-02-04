@@ -2,3 +2,4 @@ Pygments  # required by collective.checkdocs
 collective.checkdocs
 black
 flake8
+flake8-docstrings
