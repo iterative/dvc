@@ -58,7 +58,7 @@ class DataCloud(object):
         return None
 
     def _init_remote(self, remote):
-        section = Config.SECTION_REMOTE_FMT.format(remote)
+        section = Config.SECTION_REMOTE_FMT.format(remote).lower()
         cloud_config = self._config.get(section, None)
         if not cloud_config:
             msg = "can't find remote section '{}' in config"
