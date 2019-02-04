@@ -6,6 +6,7 @@ from dvc.command.remote import CmdRemoteAdd
 from dvc.config import Config
 
 from tests.basic_env import TestDvc
+from tests.test_data_cloud import get_local_storagepath
 
 
 class TestRemote(TestDvc):
@@ -136,3 +137,18 @@ class TestRemoteDefault(TestDvc):
         else:
             default = None
         self.assertEqual(default, None)
+
+
+class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
+    upper_case_remote_name = "UPPERCASEREMOTE"
+
+    def test(self):
+        remote_url = get_local_storagepath()
+        ret = main(["remote", "add", self.upper_case_remote_name, remote_url])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["push", "-r", self.upper_case_remote_name])
+        self.assertEqual(ret, 0)
