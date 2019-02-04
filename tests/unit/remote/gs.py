@@ -10,7 +10,11 @@ class TestRemoteGS(TestCase):
     URL = "gs://{}/{}".format(BUCKET, PREFIX)
     CREDENTIALPATH = "gcp_credentials.json"
     PROJECT = "PROJECT"
-    CONFIG = {"projectname": PROJECT, "url": URL, "credentialpath": CREDENTIALPATH}
+    CONFIG = {
+        "projectname": PROJECT,
+        "url": URL,
+        "credentialpath": CREDENTIALPATH,
+    }
 
     def test_init(self):
         remote = RemoteGS(None, self.CONFIG)

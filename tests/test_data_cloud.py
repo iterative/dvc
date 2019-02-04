@@ -322,7 +322,9 @@ class TestRemoteGS(TestDataCloudBase):
 
         config = TEST_CONFIG
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
-        config[TEST_SECTION][Config.SECTION_GCP_CREDENTIALPATH] = TestDvc.GCP_CREDS_FILE
+        config[TEST_SECTION][
+            Config.SECTION_GCP_CREDENTIALPATH
+        ] = TestDvc.GCP_CREDS_FILE
         self.cloud = DataCloud(self.dvc, config)
 
         self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
