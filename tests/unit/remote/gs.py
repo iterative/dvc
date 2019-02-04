@@ -8,8 +8,9 @@ class TestRemoteGS(TestCase):
     BUCKET = "bucket"
     PREFIX = "prefix"
     URL = "gs://{}/{}".format(BUCKET, PREFIX)
+    CREDENTIALPATH = "gcp_credentials.json"
     PROJECT = "PROJECT"
-    CONFIG = {"projectname": PROJECT, "url": URL}
+    CONFIG = {"projectname": PROJECT, "url": URL, "credentialpath": CREDENTIALPATH}
 
     def test_init(self):
         remote = RemoteGS(None, self.CONFIG)
@@ -17,6 +18,7 @@ class TestRemoteGS(TestCase):
         self.assertEqual(remote.prefix, self.PREFIX)
         self.assertEqual(remote.bucket, self.BUCKET)
         self.assertEqual(remote.projectname, self.PROJECT)
+        self.assertEqual(remote.credentialpath, self.CREDENTIALPATH)
 
     @mock.patch("google.cloud.storage.Client")
     def test_gs(self, mock_client):

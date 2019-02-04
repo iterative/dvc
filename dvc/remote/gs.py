@@ -28,10 +28,7 @@ class RemoteGS(RemoteBase):
         storagepath.lstrip("/")
         self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
-
-        shared_creds = config.get(Config.SECTION_GCP_CREDENTIALPATH)
-        if shared_creds:
-            os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", shared_creds)
+        self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
 
         parsed = urlparse(self.url)
         self.bucket = parsed.netloc
@@ -48,7 +45,13 @@ class RemoteGS(RemoteBase):
 
     @property
     def gs(self):
-        return storage.Client(self.projectname)
+        return (
+            storage.Client(self.projectname).from_service_account_json(
+                self.credentialpath
+            )
+            if self.credentialpath
+            else storage.Client(self.projectname)
+        )
 
     def get_md5(self, bucket, path):
         import base64
