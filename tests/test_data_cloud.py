@@ -7,6 +7,8 @@ import shutil
 import getpass
 import platform
 import yaml
+import copy
+
 from dvc.state import State
 from mock import patch
 
@@ -176,7 +178,7 @@ class TestDataCloud(TestDvc):
         self.assertIsInstance(cloud._cloud, cl)
 
     def test(self):
-        config = TEST_CONFIG.copy()
+        config = copy.deepcopy(TEST_CONFIG)
 
         clist = [
             ("s3://mybucket/", RemoteS3),
@@ -214,7 +216,7 @@ class TestDataCloudBase(TestDvc):
 
         repo = self._get_url()
 
-        config = TEST_CONFIG.copy()
+        config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         self.cloud = DataCloud(self.dvc, config)
 
@@ -320,7 +322,7 @@ class TestRemoteGS(TestDataCloudBase):
 
         repo = self._get_url()
 
-        config = TEST_CONFIG.copy()
+        config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][
             Config.SECTION_GCP_CREDENTIALPATH
