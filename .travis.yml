@@ -11,6 +11,7 @@ env:
     PYENV_ROOT="$HOME/.pyenv"
     PATH="$PYENV_ROOT/bin:$PATH"
     PYTHON_CONFIGURE_OPTS="--enable-framework"
+    GOOGLE_APPLICATION_CREDENTIALS="$TRAVIS_BUILD_DIR/scripts/ci/gcp-creds.json"
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
