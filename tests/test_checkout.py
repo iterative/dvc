@@ -374,5 +374,5 @@ class TestCheckoutHook(TestDvc):
 
 class TestCheckoutSuggestGit(TestRepro):
     def test(self):
-        with self.assertRaises(StageFileDoesNotExistError) as sm:
+        with self.assertRaises(StageFileDoesNotExistError):
             self.dvc.checkout(target="gitbranch")
