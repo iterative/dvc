@@ -176,7 +176,7 @@ class TestDataCloud(TestDvc):
         self.assertIsInstance(cloud._cloud, cl)
 
     def test(self):
-        config = TEST_CONFIG
+        config = TEST_CONFIG.copy()
 
         clist = [
             ("s3://mybucket/", RemoteS3),
@@ -214,7 +214,7 @@ class TestDataCloudBase(TestDvc):
 
         repo = self._get_url()
 
-        config = TEST_CONFIG
+        config = TEST_CONFIG.copy()
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         self.cloud = DataCloud(self.dvc, config)
 
@@ -320,7 +320,7 @@ class TestRemoteGS(TestDataCloudBase):
 
         repo = self._get_url()
 
-        config = TEST_CONFIG
+        config = TEST_CONFIG.copy()
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][
             Config.SECTION_GCP_CREDENTIALPATH
