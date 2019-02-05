@@ -28,5 +28,4 @@ if [[ "$TRAVIS_PULL_REQUEST" == "false" && \
 	aws configure set region us-east-2
 
 	openssl enc -d -aes-256-cbc -md md5 -k $GCP_CREDS -in scripts/ci/gcp-creds.json.enc -out scripts/ci/gcp-creds.json
-        gcloud auth activate-service-account --key-file scripts/ci/gcp-creds.json
 fi
