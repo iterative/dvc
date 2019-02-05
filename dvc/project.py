@@ -567,16 +567,19 @@ class Project(object):
         self, target=None, with_deps=False, force=False, recursive=False
     ):
         if target and not recursive:
-            from dvc.stage import Stage, StageFileDoesNotExistError
-
-            if not os.path.exists(target) or not Stage.is_valid_filename(
-                target
-            ):
-
-                raise StageFileDoesNotExistError(target, from_checkout=True)
+            from dvc.stage import (
+                StageFileDoesNotExistError,
+                StageFileBadNameError,
+            )
 
             all_stages = self.active_stages()
-            stages = self._collect(target, with_deps=with_deps)
+            try:
+                stages = self._collect(target, with_deps=with_deps)
+            except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
+                raise DvcException(
+                    str(exc)
+                    + " Did you mean 'git checkout {}'?".format(target)
+                )
         else:
             all_stages = self.active_stages(target)
             stages = all_stages

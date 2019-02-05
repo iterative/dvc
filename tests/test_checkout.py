@@ -10,7 +10,7 @@ from dvc.project import Project
 from dvc.system import System
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
-from dvc.stage import Stage, StageFileDoesNotExistError
+from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException, ConfirmRemoveError
 
@@ -377,20 +377,25 @@ class TestCheckoutSuggestGit(TestRepro):
 
         try:
             self.dvc.checkout(target="gitbranch")
-        except StageFileDoesNotExistError as e:
-            msg = e.args[0]
+        except DvcException as exc:
+            msg = str(exc)
             self.assertEqual(
                 msg,
-                "'gitbranch' does not exist. Do you mean git checkout 'gitbranch'?",
+                "'gitbranch' does not exist. Did you mean 'git checkout gitbranch'?",
             )
 
         try:
             self.dvc.checkout(target=self.FOO)
-        except StageFileDoesNotExistError as e:
-            msg = e.args[0]
+        except DvcException as exc:
+            msg = str(exc)
             self.assertEqual(
                 msg,
-                "'{}' does not exist. Do you mean '{}.dvc'? Or perhaps git checkout '{}'?".format(
-                    self.FOO, self.FOO, self.FOO
+                (
+                    "bad stage filename '{}'."
+                    " Stage files should be named 'Dvcfile'"
+                    " or have a '.dvc' suffix (e.g. '{}.dvc')."
+                    " Did you mean 'git checkout {}'?".format(
+                        self.FOO, self.FOO, self.FOO
+                    )
                 ),
             )

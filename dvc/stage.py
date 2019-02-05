@@ -29,16 +29,12 @@ class StageFileFormatError(DvcException):
 
 
 class StageFileDoesNotExistError(DvcException):
-    def __init__(self, fname, from_checkout=False):
+    def __init__(self, fname):
         msg = "'{}' does not exist.".format(fname)
 
         sname = fname + Stage.STAGE_FILE_SUFFIX
-        prefix = " Do you mean"
         if Stage.is_stage_file(sname):
-            msg += "{} '{}'?".format(prefix, sname)
-            prefix = " Or perhaps"
-        if from_checkout:
-            msg += "{} git checkout '{}'?".format(prefix, fname)
+            msg += " Do you mean '{}'?".format(sname)
 
         super(StageFileDoesNotExistError, self).__init__(msg)
 
@@ -419,7 +415,7 @@ class Stage(object):
         if not Stage.is_valid_filename(fname):
             raise StageFileBadNameError(
                 "bad stage filename '{}'. Stage files should be named"
-                " 'Dvcfile' or have a '.dvc' suffix(e.g. '{}.dvc').".format(
+                " 'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
                     os.path.relpath(fname), os.path.basename(fname)
                 )
             )
