@@ -7,7 +7,6 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-
 from dvc.exceptions import (
     DvcException,
     MoveNotDataSourceError,
@@ -568,8 +567,11 @@ class Project(object):
         self, target=None, with_deps=False, force=False, recursive=False
     ):
         if target and not recursive:
-            if not os.path.exists(target):
-                from dvc.stage import StageFileDoesNotExistError
+            from dvc.stage import Stage, StageFileDoesNotExistError
+
+            if not os.path.exists(target) or not Stage.is_valid_filename(
+                target
+            ):
 
                 raise StageFileDoesNotExistError(target, from_checkout=True)
 

@@ -374,5 +374,23 @@ class TestCheckoutHook(TestDvc):
 
 class TestCheckoutSuggestGit(TestRepro):
     def test(self):
-        with self.assertRaises(StageFileDoesNotExistError):
+
+        try:
             self.dvc.checkout(target="gitbranch")
+        except StageFileDoesNotExistError as e:
+            msg = e.args[0]
+            self.assertEqual(
+                msg,
+                "'gitbranch' does not exist. Do you mean git checkout 'gitbranch'?",
+            )
+
+        try:
+            self.dvc.checkout(target=self.FOO)
+        except StageFileDoesNotExistError as e:
+            msg = e.args[0]
+            self.assertEqual(
+                msg,
+                "'{}' does not exist. Do you mean '{}.dvc'? Or perhaps git checkout '{}'?".format(
+                    self.FOO, self.FOO, self.FOO
+                ),
+            )
