@@ -10,7 +10,7 @@ from dvc.project import Project
 from dvc.system import System
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
-from dvc.stage import Stage
+from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException, ConfirmRemoveError
 
@@ -370,3 +370,9 @@ class TestCheckoutHook(TestDvc):
 
         with self.assertRaises(ConfirmRemoveError):
             self.dvc.checkout()
+
+
+class TestCheckoutSuggestGit(TestRepro):
+    def test(self):
+        with self.assertRaises(StageFileDoesNotExistError) as sm:
+            self.dvc.checkout(target="gitbranch")

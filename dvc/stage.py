@@ -33,12 +33,12 @@ class StageFileDoesNotExistError(DvcException):
         msg = "'{}' does not exist.".format(fname)
 
         sname = fname + Stage.STAGE_FILE_SUFFIX
-        prefix = "Do you mean"
+        prefix = " Do you mean"
         if Stage.is_stage_file(sname):
             msg += "{} '{}'?".format(prefix, sname)
             prefix = " Or perhaps"
         if from_checkout:
-            msg += "{} git checkout '{}'?".format(prefix, sname)
+            msg += "{} git checkout '{}'?".format(prefix, fname)
 
         super(StageFileDoesNotExistError, self).__init__(msg)
 
