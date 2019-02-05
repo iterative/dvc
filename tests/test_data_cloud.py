@@ -65,7 +65,23 @@ def _should_test_gcp():
     if not os.path.exists(TestDvc.GCP_CREDS_FILE):
         return False
 
-    if os.getenv("GCP_CREDS"):
+    creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+    if creds and os.getenv("GCP_CREDS"):
+        if os.path.exists(creds):
+            os.unlink(creds)
+        shutil.copyfile(TestDvc.GCP_CREDS_FILE, creds)
+        try:
+            check_output(
+                [
+                    "gcloud",
+                    "auth",
+                    "activate-service-account",
+                    "--key-file",
+                    creds,
+                ]
+            )
+        except (CalledProcessError, OSError):
+            return False
         return True
 
     return False

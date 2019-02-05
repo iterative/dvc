@@ -957,7 +957,7 @@ class TestReproExternalGS(TestReproExternalBase):
         return "gsutil cp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
-        client = gc.Client.from_service_account_json(self.GCP_CREDS_FILE)
+        client = gc.Client()
         bucket = client.bucket(bucket)
         bucket.blob(key).upload_from_string(body)
 
