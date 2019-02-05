@@ -1,8 +1,6 @@
 import mock
 from unittest import TestCase
-from tests.test_repro import TestRepro
-
-from dvc.stage import Stage, StageFileDoesNotExistError
+from dvc.stage import Stage
 
 
 class TestStageChecksum(TestCase):
