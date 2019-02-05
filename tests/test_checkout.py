@@ -370,3 +370,32 @@ class TestCheckoutHook(TestDvc):
 
         with self.assertRaises(ConfirmRemoveError):
             self.dvc.checkout()
+
+
+class TestCheckoutSuggestGit(TestRepro):
+    def test(self):
+
+        try:
+            self.dvc.checkout(target="gitbranch")
+        except DvcException as exc:
+            msg = str(exc)
+            self.assertEqual(
+                msg,
+                "'gitbranch' does not exist. Did you mean 'git checkout gitbranch'?",
+            )
+
+        try:
+            self.dvc.checkout(target=self.FOO)
+        except DvcException as exc:
+            msg = str(exc)
+            self.assertEqual(
+                msg,
+                (
+                    "bad stage filename '{}'."
+                    " Stage files should be named 'Dvcfile'"
+                    " or have a '.dvc' suffix (e.g. '{}.dvc')."
+                    " Did you mean 'git checkout {}'?".format(
+                        self.FOO, self.FOO, self.FOO
+                    )
+                ),
+            )

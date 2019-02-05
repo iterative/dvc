@@ -1,6 +1,5 @@
 import mock
 from unittest import TestCase
-
 from dvc.stage import Stage
 
 

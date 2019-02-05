@@ -566,10 +566,20 @@ class Project(object):
     def checkout(
         self, target=None, with_deps=False, force=False, recursive=False
     ):
-
         if target and not recursive:
+            from dvc.stage import (
+                StageFileDoesNotExistError,
+                StageFileBadNameError,
+            )
+
             all_stages = self.active_stages()
-            stages = self._collect(target, with_deps=with_deps)
+            try:
+                stages = self._collect(target, with_deps=with_deps)
+            except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
+                raise DvcException(
+                    str(exc)
+                    + " Did you mean 'git checkout {}'?".format(target)
+                )
         else:
             all_stages = self.active_stages(target)
             stages = all_stages
