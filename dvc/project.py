@@ -6,7 +6,6 @@ import collections
 import os
 import dvc.prompt as prompt
 import dvc.logger as logger
-from dvc.stage import StageFileDoesNotExistError
 
 
 from dvc.exceptions import (
@@ -570,6 +569,8 @@ class Project(object):
     ):
         if target and not recursive:
             if not os.path.exists(target):
+                from dvc.stage import StageFileDoesNotExistError
+
                 raise StageFileDoesNotExistError(target, from_checkout=True)
 
             all_stages = self.active_stages()
