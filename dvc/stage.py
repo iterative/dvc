@@ -526,6 +526,10 @@ class Stage(object):
 
         self.md5 = self._compute_md5()
 
+    def commit(self):
+        for out in self.outs:
+            out.commit()
+
     def _check_missing_deps(self):
         missing = [dep for dep in self.deps if not dep.exists]
 
@@ -625,6 +629,7 @@ class Stage(object):
 
         if not dry:
             self.save()
+            self.commit()
 
     def check_missing_outputs(self):
         paths = [

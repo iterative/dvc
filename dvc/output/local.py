@@ -118,4 +118,3 @@ class OutputLOCAL(OutputBase):
                 self.repo.scm.ignore(self.path)
 
         self.info = self.remote.save_info(self.path_info)
-        self.project.cache.local.save(self.path_info, self.info)

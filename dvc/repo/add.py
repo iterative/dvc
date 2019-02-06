@@ -30,6 +30,7 @@ def add(self, fname, recursive=False):
                 continue
 
             stage.save()
+            stage.commit()
             stages.append(stage)
 
     self.check_dag(self.stages() + stages)

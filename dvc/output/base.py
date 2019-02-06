@@ -138,6 +138,8 @@ class OutputBase(object):
 
     def save(self):
         self.info = self.remote.save_info(self.path_info)
+
+    def commit(self):
         if self.use_cache:
             getattr(self.repo.cache, self.scheme).save(
                 self.path_info, self.info
@@ -190,6 +192,7 @@ class OutputBase(object):
         self.url = out.url
         self.path_info = out.path_info
         self.save()
+        self.commit()
 
         if self.scheme == "local" and self.use_cache and self.is_local:
             self.repo.scm.ignore(self.path)
