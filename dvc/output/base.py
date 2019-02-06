@@ -137,11 +137,10 @@ class OutputBase(object):
         return {}
 
     def save(self):
-        if not self.use_cache:
-            self.info = self.remote.save_info(self.path_info)
-        else:
-            self.info = getattr(self.repo.cache, self.scheme).save(
-                self.path_info
+        self.info = self.remote.save_info(self.path_info)
+        if self.use_cache:
+            getattr(self.repo.cache, self.scheme).save(
+                self.path_info, self.info
             )
 
     def dumpd(self):
