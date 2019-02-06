@@ -1,7 +1,7 @@
 import os
 
 
-def add(self, fname, recursive=False):
+def add(self, fname, recursive=False, no_commit=False):
     from dvc.stage import Stage
 
     fnames = []
@@ -30,7 +30,8 @@ def add(self, fname, recursive=False):
                 continue
 
             stage.save()
-            stage.commit()
+            if not no_commit:
+                stage.commit()
             stages.append(stage)
 
     self.check_dag(self.stages() + stages)

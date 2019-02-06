@@ -264,3 +264,11 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
             )
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
+
+
+class TestAddNoCommit(TestDvc):
+    def test(self):
+        ret = main(["add", self.FOO, "--no-commit"])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.isfile(self.FOO))
+        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
