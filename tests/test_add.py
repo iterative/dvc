@@ -188,3 +188,19 @@ class TestCmdAdd(TestDvc):
 
         ret = main(["add", "non-existing-file"])
         self.assertNotEqual(ret, 0)
+
+
+class TestDoubleAddUnchanged(TestDvc):
+    def test_file(self):
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+    def test_dir(self):
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(ret, 0)

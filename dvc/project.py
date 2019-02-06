@@ -229,7 +229,8 @@ class Project(object):
         self._check_dag(self.stages() + stages)
 
         for stage in stages:
-            stage.dump()
+            if stage is not None:
+                stage.dump()
 
         self._remind_to_git_add()
 
