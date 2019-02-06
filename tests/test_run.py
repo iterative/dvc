@@ -628,3 +628,14 @@ class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
         self.cmd += " arg"
         with self.assertRaises(StageFileAlreadyExistsError):
             self._run()
+
+
+class TestRunNoCommit(TestDvc):
+    def test(self):
+        fname = "test"
+        ret = main(
+            ["run", "-o", "foo", "--no-commit", "echo", "test", ">", fname]
+        )
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.isfile(fname))
+        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)

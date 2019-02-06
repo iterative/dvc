@@ -589,7 +589,7 @@ class Stage(object):
         if p.returncode != 0:
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False, resume=False):
+    def run(self, dry=False, resume=False, no_commit=False):
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
@@ -629,7 +629,8 @@ class Stage(object):
 
         if not dry:
             self.save()
-            self.commit()
+            if not no_commit:
+                self.commit()
 
     def check_missing_outputs(self):
         paths = [

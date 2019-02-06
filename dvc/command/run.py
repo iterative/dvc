@@ -42,6 +42,7 @@ class CmdRun(CmdBase):
                 overwrite=overwrite,
                 ignore_build_cache=self.args.ignore_build_cache,
                 remove_outs=self.args.remove_outs,
+                no_commit=self.args.no_commit,
             )
         except DvcException:
             logger.error("failed to run command")
@@ -166,6 +167,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Remove outputs before running the command.",
+    )
+    run_parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        default=False,
+        help="Don't put files/directories into cache.",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."
