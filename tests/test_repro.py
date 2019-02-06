@@ -1269,3 +1269,11 @@ class TestReproAllPipelines(TestDvc):
             ret = main(["repro", "--all-pipelines"])
             self.assertEqual(ret, 0)
             self.assertEqual(mock_reproduce.call_count, 4)
+
+
+class TestReproNoCommit(TestRepro):
+    def test(self):
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
+        ret = main(["repro", self.file1_stage, "--no-commit"])
+        self.assertEqual(ret, 0)
+        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)

@@ -251,7 +251,9 @@ class Stage(object):
         self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
 
-    def reproduce(self, force=False, dry=False, interactive=False):
+    def reproduce(
+        self, force=False, dry=False, interactive=False, no_commit=False
+    ):
         if not self.changed() and not force:
             return None
 
@@ -268,7 +270,7 @@ class Stage(object):
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
-        self.run(dry=dry)
+        self.run(dry=dry, no_commit=no_commit)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
