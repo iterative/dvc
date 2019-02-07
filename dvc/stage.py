@@ -649,26 +649,33 @@ class Stage(object):
             out.checkout(force=force)
 
     @staticmethod
-    def _status(entries, name):
+    def _status(entries):
         ret = {}
 
         for entry in entries:
             ret.update(entry.status())
 
-        if ret:
-            return {name: ret}
-
-        return {}
+        return ret
 
     def status(self):
-        ret = {}
+        ret = []
 
         if not self.locked:
-            ret.update(self._status(self.deps, "deps"))
+            deps_status = self._status(self.deps)
+            if deps_status:
+                ret.append({"changed deps": deps_status})
 
-        ret.update(self._status(self.outs, "outs"))
+        outs_status = self._status(self.outs)
+        if outs_status:
+            ret.append({"changed outs": outs_status})
 
-        if ret or self.changed_md5() or self.is_callback:
+        if self.changed_md5():
+            ret.append("changed checksum")
+
+        if self.is_callback:
+            ret.append("always changed")
+
+        if ret:
             return {self.relpath: ret}
 
         return {}
