@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 
 import boto3
 import uuid
+import paramiko
 from google.cloud import storage as gc
 
 from dvc.main import main
@@ -1049,43 +1050,26 @@ class TestReproExternalSSH(TestReproExternalBase):
     def write(self, bucket, key, body):
         dest = "{}@127.0.0.1".format(getpass.getuser())
         path = posixpath.join(self._dir, key)
-        p = Popen(
-            "ssh {} rm {}".format(dest, path),
-            shell=True,
-            executable=os.getenv("SHELL"),
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        p.communicate()
 
-        p = Popen(
-            'ssh {} "mkdir -p $(dirname {})"'.format(dest, path),
-            shell=True,
-            executable=os.getenv("SHELL"),
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE,
-        )
-        out, err = p.communicate()
-        if p.returncode != 0:
-            print(out)
-            print(err)
-        self.assertEqual(p.returncode, 0)
+        ssh = paramiko.SSHClient()
+        ssh.load_system_host_keys()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect("127.0.0.1")
 
-        p = Popen(
-            'echo "{}" | ssh {} "tr -d \'\n\' > {}"'.format(body, dest, path),
-            shell=True,
-            executable=os.getenv("SHELL"),
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE,
+        sftp = ssh.open_sftp()
+        try:
+            sftp.stat(path)
+            sftp.remove(path)
+        except IOError:
+            pass
+
+        stdin, stdout, stderr = ssh.exec_command(
+            'ssh {} "mkdir -p $(dirname {})"'.format(dest, path)
         )
-        out, err = p.communicate()
-        if p.returncode != 0:
-            print(out)
-            print(err)
-        self.assertEqual(p.returncode, 0)
+        self.assertEqual(stdout.channel.recv_exit_status(), 0)
+
+        with sftp.open(path, "w+") as fobj:
+            fobj.write(body)
 
 
 class TestReproExternalLOCAL(TestReproExternalBase):
