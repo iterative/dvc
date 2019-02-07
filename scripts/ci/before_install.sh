@@ -4,6 +4,10 @@ set -x
 set -e
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    ulimit -a
+    sudo sysctl -a
+    sudo sysctl -w kern.maxproc=62654
+    ulimit -a
     brew update
     brew upgrade pyenv
     # NOTE: used to install and run our style checking tools
