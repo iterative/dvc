@@ -5,8 +5,8 @@ set -e
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     ulimit -a
-    sudo sysctl -w kern.maxproc=62654
-    sudo sysctl -w kern.maxprocperuid=62654
+    sudo sysctl -w kern.maxproc=2048
+    sudo sysctl -w kern.maxprocperuid=2048
     ulimit -a
     brew update
     brew upgrade pyenv
