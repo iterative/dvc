@@ -840,6 +840,8 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
         ret = main(["remote", "add", "myrepo", cache])
         self.assertEqual(ret, 0)
+        ret = main(["remote", "modify", "myrepo", "type", "hardlink"])
+        self.assertEqual(ret, 0)
 
         remote_name = "myremote"
         remote_key = str(uuid.uuid4())
@@ -848,6 +850,8 @@ class TestReproExternalBase(TestDvc):
         )
 
         ret = main(["remote", "add", remote_name, remote])
+        self.assertEqual(ret, 0)
+        ret = main(["remote", "modify", remote_name, "type", "hardlink"])
         self.assertEqual(ret, 0)
 
         self.dvc = Project(".")
@@ -1088,6 +1092,9 @@ class TestReproExternalLOCAL(TestReproExternalBase):
     def setUp(self):
         super(TestReproExternalLOCAL, self).setUp()
         self.tmpdir = TestDvc.mkdtemp()
+        ret = main(["config", "cache.type", "hardlink"])
+        self.assertEqual(ret, 0)
+        self.dvc = Project(".")
 
     def should_test(self):
         return True

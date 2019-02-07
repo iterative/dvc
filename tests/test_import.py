@@ -79,7 +79,7 @@ class TestInterruptedDownload(TestDvc):
         import_url = urljoin(self.remote, self.FOO)
         import_output = "imported_file"
         tmp_file_name = import_output + ".part"
-        tmp_file_path = os.path.join(self._root_dir, tmp_file_name)
+        tmp_file_path = os.path.realpath(os.path.join(self._root_dir, tmp_file_name))
         self._import_with_interrupt(import_output, import_url)
         self.assertTrue(os.path.exists(tmp_file_name))
         self.assertFalse(os.path.exists(import_output))
