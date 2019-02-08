@@ -1048,7 +1048,6 @@ class TestReproExternalSSH(TestReproExternalBase):
         return "scp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
-        dest = "{}@127.0.0.1".format(getpass.getuser())
         path = posixpath.join(self._dir, key)
 
         ssh = paramiko.SSHClient()
@@ -1062,11 +1061,6 @@ class TestReproExternalSSH(TestReproExternalBase):
             sftp.remove(path)
         except IOError:
             pass
-
-        stdin, stdout, stderr = ssh.exec_command(
-            'ssh {} "mkdir -p $(dirname {})"'.format(dest, path)
-        )
-        self.assertEqual(stdout.channel.recv_exit_status(), 0)
 
         with sftp.open(path, "w+") as fobj:
             fobj.write(body)
