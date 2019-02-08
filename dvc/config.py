@@ -382,6 +382,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         cache[self.PRIVATE_CWD] = os.path.dirname(fname)
 
     def _resolve_paths(self, config, fname):
+        if fname is None:
+            return
+
         self._resolve_cache_path(config, fname)
         for section in config.values():
             if self.SECTION_REMOTE_URL not in section.keys():
