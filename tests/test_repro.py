@@ -12,6 +12,7 @@ import boto3
 import uuid
 import paramiko
 from google.cloud import storage as gc
+from flaky.flaky_decorator import flaky
 
 from dvc.main import main
 from dvc.project import Project, ReproductionError
@@ -1026,6 +1027,7 @@ class TestReproExternalHDFS(TestReproExternalBase):
         self.assertEqual(p.returncode, 0)
 
 
+@flaky(max_runs=3, min_passes=1)
 class TestReproExternalSSH(TestReproExternalBase):
     _dir = None
 
