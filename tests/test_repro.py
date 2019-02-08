@@ -1062,6 +1062,11 @@ class TestReproExternalSSH(TestReproExternalBase):
         except IOError:
             pass
 
+        stdin, stdout, stderr = ssh.exec_command(
+            "mkdir -p $(dirname {})".format(path)
+        )
+        self.assertEqual(stdout.channel.recv_exit_status(), 0)
+
         with sftp.open(path, "w+") as fobj:
             fobj.write(body)
 
