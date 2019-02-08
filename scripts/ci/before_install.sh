@@ -53,7 +53,13 @@ if [ -n "$TRAVIS_OS_NAME" ] && [ "$TRAVIS_OS_NAME" != "osx" ] \
   bash "$scriptdir/install_hadoop.sh"
 fi
 
-if  [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     brew install openssl
     brew cask install google-cloud-sdk
+fi
+
+if [[ -n "$PYTHON_VER" ]]; then
+    eval "$(pyenv init -)"
+    pyenv install --skip-existing --keep --verbose "$PYTHON_VER"
+    echo "pyenv activate $PYTHON_VER" >> env.sh
 fi
