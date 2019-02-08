@@ -63,6 +63,7 @@ matrix:
 before_install:
   - bash ./scripts/ci/before_install.sh
   - source env.sh
+  - python --version
 install:
   - bash ./scripts/ci/install.sh
 script:
