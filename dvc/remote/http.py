@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from dvc.utils.compat import open
 
 import os
 import threading

@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import is_py3
+from dvc.utils.compat import is_py3, open
 
 # Based on https://eli.thegreenplace.net/2011/10/19/
 # perls-guess-if-file-is-text-or-binary-implemented-in-python

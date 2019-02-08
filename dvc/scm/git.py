@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 # (called git.py) instead of importing gitpython's git module.
 from __future__ import absolute_import
 
-from dvc.utils.compat import str
+from dvc.utils.compat import str, open
 
 import os
 
