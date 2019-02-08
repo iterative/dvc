@@ -61,5 +61,5 @@ fi
 if [[ -n "$PYTHON_VER" ]]; then
     eval "$(pyenv init -)"
     pyenv install --skip-existing --keep --verbose "$PYTHON_VER"
-    echo "pyenv global $PYTHON_VER" >> env.sh
+    echo "pyenv shell $PYTHON_VER" >> env.sh
 fi
