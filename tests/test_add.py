@@ -32,6 +32,16 @@ class TestAdd(TestDvc):
         self.assertEqual(stage.cmd, None)
         self.assertEqual(stage.outs[0].info["md5"], md5)
 
+    def test_unicode(self):
+        fname = "\xe1"
+
+        with open(fname, "w") as fobj:
+            fobj.write("something")
+
+        stage = self.dvc.add(fname)[0]
+
+        self.assertTrue(os.path.isfile(stage.path))
+
 
 class TestAddUnupportedFile(TestDvc):
     def test(self):

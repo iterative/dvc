@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
+from dvc.utils.compat import str, open
 
 import os
 import errno

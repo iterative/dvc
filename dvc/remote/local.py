@@ -200,7 +200,7 @@ class RemoteLOCAL(RemoteBase):
     def collect_dir_cache(self, dname):
         dir_info = []
 
-        for root, dirs, files in os.walk(dname):
+        for root, dirs, files in os.walk(str(dname)):
             bar = False
 
             if len(files) > LARGE_DIR_SIZE:
@@ -276,6 +276,7 @@ class RemoteLOCAL(RemoteBase):
         # NOTE: Writing first and renaming after that
         # to make sure that the operation is atomic.
         tmp = "{}.{}".format(path, str(uuid.uuid4()))
+
         with open(tmp, "w+") as fd:
             json.dump(dir_info, fd, sort_keys=True)
         move(tmp, path)
@@ -348,7 +349,7 @@ class RemoteLOCAL(RemoteBase):
     def _discard_working_directory_changes(self, path, dir_info, force=False):
         working_dir_files = set(
             os.path.join(root, file)
-            for root, _, files in os.walk(path)
+            for root, _, files in os.walk(str(path))
             for file in files
         )
 

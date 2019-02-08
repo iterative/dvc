@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str
+from dvc.utils.compat import str, builtin_str, open
 
 import collections
 import os
@@ -200,7 +200,7 @@ class Project(object):
 
         fnames = []
         if recursive and os.path.isdir(fname):
-            for root, dirs, files in os.walk(fname):
+            for root, dirs, files in os.walk(str(fname)):
                 for f in files:
                     path = os.path.join(root, f)
                     if Stage.is_stage_file(path):
@@ -351,7 +351,7 @@ class Project(object):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        for root, dirs, files in os.walk(path):
+        for root, dirs, files in os.walk(str(path)):
             for f in files:
                 path = os.path.join(root, f)
                 self._unprotect_file(path)
@@ -1335,7 +1335,7 @@ class Project(object):
 
         stages = []
         outs = []
-        for root, dirs, files in os.walk(from_directory):
+        for root, dirs, files in os.walk(str(from_directory)):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_stage_file(path):

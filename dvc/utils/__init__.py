@@ -1,7 +1,7 @@
 """Helpers for other modules."""
 
 from __future__ import unicode_literals
-from dvc.utils.compat import str, builtin_str
+from dvc.utils.compat import str, builtin_str, open
 
 import os
 import sys

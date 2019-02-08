@@ -18,6 +18,7 @@ if is_py2:
     from BaseHTTPServer import HTTPServer  # noqa: F401
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
+    from io import open  # noqa: F401
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -43,3 +44,4 @@ elif is_py3:
     numeric_types = (int, float)  # noqa: F821
     integer_types = (int,)  # noqa: F821
     input = input  # noqa: F821
+    open = open  # noqa: F821

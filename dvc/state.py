@@ -299,7 +299,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         mtime = os.path.getmtime(path)
 
         if os.path.isdir(path):
-            for root, dirs, files in os.walk(path):
+            for root, dirs, files in os.walk(str(path)):
                 for name in dirs + files:
                     entry = os.path.join(root, name)
                     stat = os.stat(entry)
