@@ -1,3 +1,4 @@
+import os
 import getpass
 
 from unittest import TestCase
@@ -67,3 +68,34 @@ class TestRemoteSSH(TestCase):
         config["port"] = port
         remote = RemoteSSH(None, config)
         self.assertEqual(remote.port, port)
+
+    def test_password_prompt(self):
+        config = {"url": "ssh://127.0.0.1/tmp"}
+        remote = RemoteSSH(None, config)
+        self.assertTrue(remote.should_ask_for_password())
+
+        config = {"url": "ssh://127.0.0.1/tmp", "password": "changeme"}
+        remote = RemoteSSH(None, config)
+        self.assertFalse(remote.should_ask_for_password())
+
+        config = {
+            "url": "ssh://127.0.0.1/tmp",
+            "keyfile": os.path.join("tests", "utils", "test_rsa_nopass.key"),
+        }
+        remote = RemoteSSH(None, config)
+        self.assertFalse(remote.should_ask_for_password())
+
+        config = {
+            "url": "ssh://127.0.0.1/tmp",
+            "keyfile": os.path.join("tests", "utils", "test_rsa.key"),
+        }
+        remote = RemoteSSH(None, config)
+        self.assertTrue(remote.should_ask_for_password())
+
+        config = {
+            "url": "ssh://127.0.0.1/tmp",
+            "keyfile": os.path.join("tests", "utils", "test_rsa.key"),
+            "password": "changeme",
+        }
+        remote = RemoteSSH(None, config)
+        self.assertFalse(remote.should_ask_for_password())

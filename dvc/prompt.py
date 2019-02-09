@@ -7,11 +7,15 @@ import sys
 from getpass import getpass
 
 from dvc.utils.compat import input
+from dvc.progress import progress
 
 
 def _ask(prompt, limited_to=None):
     if not sys.stdout.isatty():
         return None
+
+    if not progress.is_finished:
+        prompt = "\n" + prompt
 
     while True:
         try:
@@ -26,9 +30,8 @@ def _ask(prompt, limited_to=None):
             return answer
 
         print(
-            "Your response must be one of: {options}. Please try again.".format(
-                options=limited_to
-            )
+            "Your response must be one of: {options}."
+            " Please try again.".format(options=limited_to)
         )
 
 
@@ -56,4 +59,8 @@ def password(statement):
         str: password entered by the user.
     """
     prompt = "{statement}: ".format(statement=statement)
+
+    if not progress.is_finished:
+        prompt = "\n" + prompt
+
     return getpass(prompt)

@@ -106,12 +106,11 @@ class RemoteSSH(RemoteBase):
         ssh.load_system_host_keys()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        if self.ask_password and self.password is None:
-            msg = (
+        if self.should_ask_for_password():
+            self.password = prompt.password(
                 "Enter a private key passphrase or a password for "
-                "host '{}' port '{}' user '{}'"
-            ).format(host, port, user)
-            self.password = prompt.password(msg)
+                "host '{}' port '{}' user '{}'".format(host, port, user)
+            )
 
         ssh.connect(
             host,
@@ -392,3 +391,32 @@ class RemoteSSH(RemoteBase):
         flist = stdout.split()
         ssh.close()
         return flist
+
+    def should_ask_for_password(self):
+        from paramiko.dsskey import DSSKey
+        from paramiko.ecdsakey import ECDSAKey
+        from paramiko.ed25519key import Ed25519Key
+        from paramiko.rsakey import RSAKey
+        from paramiko.ssh_exception import (
+            SSHException,
+            PasswordRequiredException,
+        )
+
+        if self.password:
+            return False
+
+        if self.ask_password:
+            return True
+
+        if not self.keyfile:
+            return True
+
+        for pkey in (RSAKey, DSSKey, ECDSAKey, Ed25519Key):
+            try:
+                pkey.from_private_key_file(self.keyfile, self.password)
+            except PasswordRequiredException:
+                return True
+            except SSHException:
+                continue
+
+        return False
