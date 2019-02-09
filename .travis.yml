@@ -63,7 +63,7 @@ matrix:
 before_install:
   - bash ./scripts/ci/before_install.sh
   - if [[ -n "$PYTHON_VER" ]]; then
-        pyenv shell $PYTHON_VER
+        pyenv shell $PYTHON_VER;
     fi
   - python --version
   - source env.sh
