@@ -62,10 +62,6 @@ matrix:
     - PYTHON_CONFIGURE_OPTS="--enable-framework"
 before_install:
   - bash ./scripts/ci/before_install.sh
-  - if [[ -n "$PYTHON_VER" ]]; then
-        pyenv shell $PYTHON_VER;
-    fi
-  - python --version
   - source env.sh
   - python --version
 install:
