@@ -8,12 +8,8 @@ from subprocess import Popen, PIPE
 
 import dvc.logger as logger
 from dvc.config import Config
-from dvc.remote.base import RemoteBase, RemoteBaseCmdError
+from dvc.remote.base import RemoteBase, RemoteCmdError
 from dvc.utils import fix_env
-
-
-class RemoteHDFSCmdError(RemoteBaseCmdError):
-    pass
 
 
 class RemoteHDFS(RemoteBase):
@@ -55,7 +51,7 @@ class RemoteHDFS(RemoteBase):
         )
         out, err = p.communicate()
         if p.returncode != 0:
-            raise RemoteHDFSCmdError(cmd, p.returncode, err)
+            raise RemoteCmdError(self.scheme, cmd, p.returncode, err)
         return out.decode("utf-8")
 
     @staticmethod
@@ -123,7 +119,7 @@ class RemoteHDFS(RemoteBase):
         try:
             self.hadoop_fs("test -e {}".format(path_info["path"]))
             return True
-        except RemoteHDFSCmdError:
+        except RemoteCmdError:
             return False
 
     def upload(self, from_infos, to_infos, names=None):
@@ -177,7 +173,7 @@ class RemoteHDFS(RemoteBase):
     def list_cache_paths(self):
         try:
             self.hadoop_fs("test -e {}".format(self.prefix))
-        except RemoteHDFSCmdError:
+        except RemoteCmdError:
             return []
 
         stdout = self.hadoop_fs("ls -R {}".format(self.prefix))

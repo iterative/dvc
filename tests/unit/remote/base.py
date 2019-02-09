@@ -1,8 +1,8 @@
 import mock
 from unittest import TestCase
 
-from dvc.remote.base import RemoteBase, RemoteMissingDepsError
-from dvc.remote import REMOTES, RemoteLOCAL
+from dvc.remote import REMOTES, RemoteLOCAL, RemoteSSH, RemoteHDFS
+from dvc.remote.base import RemoteBase, RemoteCmdError, RemoteMissingDepsError
 
 
 class TestMissingDeps(TestCase):
@@ -13,3 +13,23 @@ class TestMissingDeps(TestCase):
             with mock.patch.object(remote_class, "REQUIRES", REQUIRES):
                 with self.assertRaises(RemoteMissingDepsError):
                     remote_class(None, {})
+
+
+class TestCmdError(TestCase):
+    def test(self):
+        for remote_class in [RemoteSSH, RemoteHDFS]:
+            project = None
+            config = {}
+
+            remote_name = remote_class.scheme
+            cmd = "sed 'hello'"
+            ret = "1"
+            err = "sed: expression #1, char 2: extra characters after command"
+
+            with mock.patch.object(
+                remote_class,
+                "remove",
+                side_effect=RemoteCmdError(remote_name, cmd, ret, err),
+            ):
+                with self.assertRaises(RemoteCmdError):
+                    remote_class(project, config).remove("file")
