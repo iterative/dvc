@@ -370,10 +370,11 @@ class Project(object):
     def run(
         self,
         cmd=None,
-        deps=[],
-        outs=[],
-        outs_no_cache=[],
-        metrics_no_cache=[],
+        deps=None,
+        outs=None,
+        outs_no_cache=None,
+        metrics=None,
+        metrics_no_cache=None,
         fname=None,
         cwd=os.curdir,
         no_exec=False,
@@ -383,6 +384,17 @@ class Project(object):
     ):
         from dvc.stage import Stage
 
+        if outs is None:
+            outs = []
+        if deps is None:
+            deps = []
+        if outs_no_cache is None:
+            outs_no_cache = []
+        if metrics is None:
+            metrics = []
+        if metrics_no_cache is None:
+            metrics_no_cache = []
+
         with self.state:
             stage = Stage.create(
                 project=self,
@@ -391,6 +403,7 @@ class Project(object):
                 cwd=cwd,
                 outs=outs,
                 outs_no_cache=outs_no_cache,
+                metrics=metrics,
                 metrics_no_cache=metrics_no_cache,
                 deps=deps,
                 overwrite=overwrite,
@@ -1017,14 +1030,16 @@ class Project(object):
                 )
             return self._local_status(target, with_deps=with_deps)
 
-    def _read_metric_json(self, fd, json_path):
+    @staticmethod
+    def _read_metric_json(fd, json_path):
         import json
         from jsonpath_rw import parse
 
         parser = parse(json_path)
         return [x.value for x in parser.find(json.load(fd))]
 
-    def _do_read_metric_xsv(self, reader, row, col):
+    @staticmethod
+    def _do_read_metric_xsv(reader, row, col):
         if col is not None and row is not None:
             return [reader[row][col]]
         elif col is not None:
@@ -1033,22 +1048,24 @@ class Project(object):
             return reader[row]
         return None
 
-    def _read_metric_hxsv(self, fd, hxsv_path, delimiter):
+    @classmethod
+    def _read_metric_hxsv(cls, fd, hxsv_path, delimiter):
         import csv
 
         col, row = hxsv_path.split(",")
         row = int(row)
         reader = list(csv.DictReader(fd, delimiter=builtin_str(delimiter)))
-        return self._do_read_metric_xsv(reader, row, col)
+        return cls._do_read_metric_xsv(reader, row, col)
 
-    def _read_metric_xsv(self, fd, xsv_path, delimiter):
+    @classmethod
+    def _read_metric_xsv(cls, fd, xsv_path, delimiter):
         import csv
 
         col, row = xsv_path.split(",")
         row = int(row)
         col = int(col)
         reader = list(csv.reader(fd, delimiter=builtin_str(delimiter)))
-        return self._do_read_metric_xsv(reader, row, col)
+        return cls._do_read_metric_xsv(reader, row, col)
 
     def _read_metric(self, path, typ=None, xpath=None):
         ret = None
@@ -1182,7 +1199,6 @@ class Project(object):
             return res
 
         if path and os.path.isdir(path):
-            msg = "file '{}' does not exist".format(path)
             return res
 
         if path:
@@ -1214,10 +1230,6 @@ class Project(object):
         if out.scheme != "local":
             msg = "output '{}' scheme '{}' is not supported for metrics"
             raise DvcException(msg.format(out.path, out.path_info["scheme"]))
-
-        if out.use_cache:
-            msg = "cached output '{}' is not supported for metrics"
-            raise DvcException(msg.format(out.rel_path))
 
         if typ:
             if not isinstance(out.metric, dict):
@@ -1366,7 +1378,8 @@ class Project(object):
             stages.extend(list(nx.get_node_attributes(G, "stage").values()))
         return stages
 
-    def _welcome_message(self):
+    @staticmethod
+    def _welcome_message():
         import colorama
 
         logger.box(
@@ -1390,7 +1403,8 @@ class Project(object):
             )
         )
 
-    def _expand_target_path(self, from_path, to_path):
+    @staticmethod
+    def _expand_target_path(from_path, to_path):
         if os.path.isdir(to_path) and not os.path.isdir(from_path):
             return os.path.join(to_path, os.path.basename(from_path))
         return to_path

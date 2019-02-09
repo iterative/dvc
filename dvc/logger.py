@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 
+from dvc.exceptions import DvcException
 from dvc.utils.compat import str
 
 import re
@@ -63,8 +64,8 @@ def box(message, border_color=None):
     """Prints a message in a box.
 
     Args:
-        message (str): message to print.
-        border_color (str): name of a color to outline the box with.
+        message (unicode): message to print.
+        border_color (unicode): name of a color to outline the box with.
     """
     lines = message.split("\n")
     max_width = max(_visual_width(line) for line in lines)
@@ -230,13 +231,13 @@ def _walk_exc(exc):
             tb_list.insert(0, str(exc.cause_tb))
         exc = exc.cause
 
-    return (exc_list, tb_list)
+    return exc_list, tb_list
 
 
 def _parse_exc():
     exc = sys.exc_info()[1]
     if not exc:
-        return (None, "")
+        return None, ""
 
     exc_list, tb_list = _walk_exc(exc)
 
@@ -250,7 +251,7 @@ def _parse_exc():
     else:
         stack_trace = ""
 
-    return (exception, stack_trace)
+    return exception, stack_trace
 
 
 def _description(message, exception):
@@ -260,6 +261,8 @@ def _description(message, exception):
         description = "{exception}"
     elif message:
         description = "{message}"
+    else:
+        raise DvcException('Unexpected error - either exception or message must be provided')
 
     return description.format(message=message, exception=exception)
 

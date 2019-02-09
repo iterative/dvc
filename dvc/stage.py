@@ -116,11 +116,16 @@ class Stage(object):
         path=None,
         cmd=None,
         cwd=os.curdir,
-        deps=[],
-        outs=[],
+        deps=None,
+        outs=None,
         md5=None,
         locked=False,
     ):
+        if deps is None:
+            deps = []
+        if outs is None:
+            outs = []
+
         self.project = project
         self.path = path
         self.cmd = cmd
@@ -281,10 +286,10 @@ class Stage(object):
     @classmethod
     def _stage_fname_cwd(cls, fname, cwd, outs, add):
         if fname and cwd:
-            return (fname, cwd)
+            return fname, cwd
 
         if not outs:
-            return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
+            return cls.STAGE_FILE, cwd if cwd else os.getcwd()
 
         out = outs[0]
         if out.scheme == "local":
@@ -298,7 +303,7 @@ class Stage(object):
         if not cwd or (add and out.is_local):
             cwd = path.dirname(out.path)
 
-        return (fname, cwd)
+        return fname, cwd
 
     @staticmethod
     def _check_inside_project(project, cwd):
@@ -342,10 +347,11 @@ class Stage(object):
     def create(
         project=None,
         cmd=None,
-        deps=[],
-        outs=[],
-        outs_no_cache=[],
-        metrics_no_cache=[],
+        deps=None,
+        outs=None,
+        outs_no_cache=None,
+        metrics=None,
+        metrics_no_cache=None,
         fname=None,
         cwd=os.curdir,
         locked=False,
@@ -355,9 +361,21 @@ class Stage(object):
         remove_outs=False,
     ):
 
+        if outs is None:
+            outs = []
+        if deps is None:
+            deps = []
+        if outs_no_cache is None:
+            outs_no_cache = []
+        if metrics is None:
+            metrics = []
+        if metrics_no_cache is None:
+            metrics_no_cache = []
+
         stage = Stage(project=project, cwd=cwd, cmd=cmd, locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
+        stage.outs = output.loads_from(stage, metrics, use_cache=True, metric=True)
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
         stage.outs += output.loads_from(
             stage, metrics_no_cache, use_cache=False, metric=True
@@ -512,7 +530,8 @@ class Stage(object):
         if any(missing):
             raise MissingDep(missing)
 
-    def _warn_if_fish(self, executable):  # pragma: no cover
+    @staticmethod
+    def _warn_if_fish(executable):  # pragma: no cover
         if (
             executable is None
             or os.path.basename(os.path.realpath(executable)) != "fish"
@@ -530,8 +549,8 @@ class Stage(object):
     def _check_circular_dependency(self):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = set(file.path for file in self.deps) & set(
-            file.path for file in self.outs
+        circular_dependencies = set(f.path for f in self.deps) & set(
+            f.path for f in self.outs
         )
 
         if circular_dependencies:
@@ -541,11 +560,11 @@ class Stage(object):
         from dvc.exceptions import ArgumentDuplicationError
         from collections import Counter
 
-        count = Counter(file.path for file in self.deps + self.outs)
+        count = Counter(f.path for f in self.deps + self.outs)
 
-        for file, occurrence in count.items():
+        for f, occurrence in count.items():
             if occurrence > 1:
-                raise ArgumentDuplicationError(file)
+                raise ArgumentDuplicationError(f)
 
     def _run(self):
         self._check_missing_deps()
@@ -619,7 +638,8 @@ class Stage(object):
         for out in self.outs:
             out.checkout(force=force)
 
-    def _status(self, entries, name):
+    @staticmethod
+    def _status(entries, name):
         ret = {}
 
         for entry in entries:
