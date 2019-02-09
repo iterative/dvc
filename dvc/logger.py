@@ -262,7 +262,9 @@ def _description(message, exception):
     elif message:
         description = "{message}"
     else:
-        raise DvcException('Unexpected error - either exception or message must be provided')
+        raise DvcException(
+            "Unexpected error - either exception or message must be provided"
+        )
 
     return description.format(message=message, exception=exception)
 

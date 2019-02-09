@@ -375,7 +375,9 @@ class Stage(object):
         stage = Stage(project=project, cwd=cwd, cmd=cmd, locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
-        stage.outs = output.loads_from(stage, metrics, use_cache=True, metric=True)
+        stage.outs += output.loads_from(
+            stage, metrics, use_cache=True, metric=True
+        )
         stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
         stage.outs += output.loads_from(
             stage, metrics_no_cache, use_cache=False, metric=True
