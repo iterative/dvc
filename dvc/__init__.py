@@ -20,8 +20,11 @@ VERSIONPATH = os.path.join(PACKAGEPATH, "version.py")
 
 def _update_version_file():
     """Dynamically update version file."""
-    from git import Repo
-    from git.exc import InvalidGitRepositoryError
+    try:
+        from git import Repo
+        from git.exc import InvalidGitRepositoryError
+    except ImportError:
+        return __version__
 
     try:
         repo = Repo(HOMEPATH)
