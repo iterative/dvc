@@ -1,6 +1,6 @@
 # This script generates config.ini for setup.iss script
 from dvc import VERSION
-from dvc.utils.compat import ConfigParser, open
+from dvc.utils.compat import ConfigParser
 
 config = ConfigParser.ConfigParser()
 config.add_section("Version")
