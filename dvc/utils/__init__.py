@@ -196,7 +196,7 @@ def fix_env(env=None):
         lp_orig = env.get(lp_key + "_ORIG", None)
         if lp_orig is not None:
             # NOTE: py2 doesn't like unicode strings in environ
-            env[lp_key] = cast_bytes_py2(lp_orig)
+            env[cast_bytes_py2(lp_key)] = cast_bytes_py2(lp_orig)
         else:
             env.pop(lp_key, None)
 

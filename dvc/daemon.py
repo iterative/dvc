@@ -79,7 +79,7 @@ def daemon(args):
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])
-    env["PYTHONPATH"] = cast_bytes_py2(
+    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
         os.path.dirname(os.path.dirname(file_path))
     )
 
