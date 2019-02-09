@@ -35,10 +35,12 @@ class DataCloudError(DvcException):
         super(DataCloudError, self).__init__("Data sync error: {}".format(msg))
 
 
-class RemoteBaseCmdError(DvcException):
-    def __init__(self, cmd, ret, err):
-        m = "SSH command '{}' finished with non-zero return code '{}': {}"
-        super(RemoteBaseCmdError, self).__init__(m.format(cmd, ret, err))
+class RemoteCmdError(DvcException):
+    def __init__(self, remote, cmd, ret, err):
+        super(RemoteCmdError, self).__init__(
+            "{remote} command '{cmd}' finished with non-zero return code"
+            " {ret}': {err}".format(remote=remote, cmd=cmd, ret=ret, err=err)
+        )
 
 
 class RemoteMissingDepsError(DvcException):

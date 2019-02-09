@@ -16,7 +16,7 @@ from dvc.config import Config
 from dvc.progress import progress
 from dvc.utils.compat import urlparse
 from dvc.exceptions import DvcException
-from dvc.remote.base import RemoteBase, RemoteBaseCmdError
+from dvc.remote.base import RemoteBase, RemoteCmdError
 
 
 def sizeof_fmt(num, suffix="B"):
@@ -41,10 +41,6 @@ def percent_cb(name, complete, total):
 def create_cb(name):
     """ Create callback function for multipart object """
     return lambda cur, tot: percent_cb(name, cur, tot)
-
-
-class RemoteSSHCmdError(RemoteBaseCmdError):
-    pass
 
 
 class RemoteSSH(RemoteBase):
@@ -134,7 +130,7 @@ class RemoteSSH(RemoteBase):
             try:
                 self._exec(ssh, "test -e {}".format(path_info["path"]))
                 exists = True
-            except RemoteSSHCmdError:
+            except RemoteCmdError:
                 exists = False
 
         return exists
@@ -184,7 +180,7 @@ class RemoteSSH(RemoteBase):
         ret = stdout.channel.recv_exit_status()
         if ret != 0:
             err = b"".join(stderr_chunks).decode("utf-8")
-            raise RemoteSSHCmdError(cmd, ret, err)
+            raise RemoteCmdError(self.scheme, cmd, ret, err)
 
         return b"".join(stdout_chunks).decode("utf-8")
 
