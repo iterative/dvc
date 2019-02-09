@@ -41,6 +41,12 @@ class RemoteBaseCmdError(DvcException):
         super(RemoteBaseCmdError, self).__init__(m.format(cmd, ret, err))
 
 
+class RemoteActionNotImplemented(DvcException):
+    def __init__(self, action, scheme):
+        m = "{} is not supported by {} remote".format(action, scheme)
+        super(RemoteActionNotImplemented, self).__init__(m)
+
+
 class RemoteMissingDepsError(DvcException):
     pass
 
@@ -165,7 +171,7 @@ class RemoteBase(object):
         return False
 
     def save(self, path_info):
-        raise NotImplementedError
+        raise RemoteActionNotImplemented("save", self.scheme)
 
     def download(
         self,
@@ -175,19 +181,19 @@ class RemoteBase(object):
         name=None,
         resume=False,
     ):
-        raise NotImplementedError
+        raise RemoteActionNotImplemented("download", self.scheme)
 
-    def upload(self, from_infos, to_infos, path_info, names=None):
-        raise NotImplementedError
+    def upload(self, from_infos, to_infos, names=None):
+        raise RemoteActionNotImplemented("upload", self.scheme)
 
     def remove(self, path_info):
-        raise NotImplementedError
+        raise RemoteActionNotImplemented("remove", self.scheme)
 
     def move(self, path_info):
-        raise NotImplementedError
+        raise RemoteActionNotImplemented("move", self.scheme)
 
     def copy(self, from_info, to_info):
-        raise NotImplementedError
+        raise RemoteActionNotImplemented("copy", self.scheme)
 
     def _makedirs(self, fname):
         dname = os.path.dirname(fname)
