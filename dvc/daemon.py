@@ -9,6 +9,7 @@ from subprocess import Popen
 
 import dvc.logger as logger
 from dvc.utils import is_binary, fix_env
+from dvc.utils.compat import cast_bytes_py2
 
 
 CREATE_NEW_PROCESS_GROUP = 0x00000200
@@ -78,7 +79,9 @@ def daemon(args):
 
     env = fix_env()
     file_path = os.path.abspath(inspect.stack()[0][1])
-    env["PYTHONPATH"] = os.path.dirname(os.path.dirname(file_path))
+    env["PYTHONPATH"] = cast_bytes_py2(
+        os.path.dirname(os.path.dirname(file_path))
+    )
 
     logger.debug("Trying to spawn '{}' with env '{}'".format(cmd, env))
 
