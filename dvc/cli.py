@@ -29,6 +29,7 @@ import dvc.command.root as root
 import dvc.command.lock as lock
 import dvc.command.pipeline as pipeline
 import dvc.command.daemon as daemon
+import dvc.command.commit as commit
 from dvc.exceptions import DvcParserError
 from dvc import VERSION
 
@@ -56,6 +57,7 @@ COMMANDS = [
     lock,
     pipeline,
     daemon,
+    commit,
 ]
 
 

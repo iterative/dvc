@@ -67,6 +67,10 @@ class StageBadCwdError(DvcException):
         super(StageBadCwdError, self).__init__(msg.format(cwd))
 
 
+class StageCommitError(DvcException):
+    pass
+
+
 class MissingDep(DvcException):
     def __init__(self, deps):
         assert len(deps) > 0
@@ -527,6 +531,35 @@ class Stage(object):
             out.save()
 
         self.md5 = self._compute_md5()
+
+    @staticmethod
+    def _changed_entries(entries):
+        ret = []
+        for entry in entries:
+            if entry.checksum and entry.changed_checksum():
+                ret.append(entry.rel_path)
+        return ret
+
+    def check_can_commit(self, force):
+        changed_deps = self._changed_entries(self.deps)
+        changed_outs = self._changed_entries(self.outs)
+
+        if changed_deps or changed_outs or self.changed_md5():
+            msg = (
+                "dependencies {}".format(changed_deps) if changed_deps else ""
+            )
+            msg += " and " if (changed_deps and changed_outs) else ""
+            msg += "outputs {}".format(changed_outs) if changed_outs else ""
+            msg += "md5" if not (changed_deps or changed_outs) else ""
+            msg += " of '{}' changed. Are you sure you commit it?".format(
+                self.relpath
+            )
+            if not force and not prompt.confirm(msg):
+                raise StageCommitError(
+                    "unable to commit changed '{}'. Use `-f|--force` to "
+                    "force.`".format(self.relpath)
+                )
+            self.save()
 
     def commit(self):
         for out in self.outs:

@@ -630,12 +630,17 @@ class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
             self._run()
 
 
-class TestRunNoCommit(TestDvc):
+class TestRunCommit(TestDvc):
     def test(self):
         fname = "test"
         ret = main(
-            ["run", "-o", "foo", "--no-commit", "echo", "test", ">", fname]
+            ["run", "-o", self.FOO, "--no-commit", "echo", "test", ">", fname]
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
+
+        ret = main(["commit", self.FOO + ".dvc"])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.isfile(fname))
+        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)

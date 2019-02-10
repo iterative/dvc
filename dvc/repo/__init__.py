@@ -28,6 +28,7 @@ class Repo(object):
     from dvc.repo.pull import pull
     from dvc.repo.status import status
     from dvc.repo.gc import gc
+    from dvc.repo.commit import commit
 
     def __init__(self, root_dir=None):
         from dvc.config import Config
