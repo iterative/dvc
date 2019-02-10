@@ -551,8 +551,8 @@ class Stage(object):
     def _check_circular_dependency(self):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = set(f.path for f in self.deps) & set(
-            f.path for f in self.outs
+        circular_dependencies = set(d.path for d in self.deps) & set(
+            o.path for o in self.outs
         )
 
         if circular_dependencies:
@@ -562,11 +562,11 @@ class Stage(object):
         from dvc.exceptions import ArgumentDuplicationError
         from collections import Counter
 
-        count = Counter(f.path for f in self.deps + self.outs)
+        path_counts = Counter(edge.path for edge in self.deps + self.outs)
 
-        for f, occurrence in count.items():
+        for path, occurrence in path_counts.items():
             if occurrence > 1:
-                raise ArgumentDuplicationError(f)
+                raise ArgumentDuplicationError(path)
 
     def _run(self):
         self._check_missing_deps()
