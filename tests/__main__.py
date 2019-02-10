@@ -1,5 +1,7 @@
 import os
+import sys
 from subprocess import check_call
+
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(REPO_ROOT)
@@ -10,8 +12,14 @@ os.putenv(
 os.putenv("DVC_HOME", REPO_ROOT)
 os.putenv("DVC_TEST", "true")
 
+if len(sys.argv) == 1:
+    scope = "--all-modules"
+else:
+    scope = " ".join(sys.argv[1:])
+
 cmd = (
     "nosetests -v --processes=-1 --process-timeout=500 --cover-inclusive "
-    "--cover-erase --cover-package=dvc --with-coverage --all-modules --with-flaky"
+    "--cover-erase --cover-package=dvc --with-coverage --with-flaky "
+    "{scope} ".format(scope=scope)
 )
 check_call(cmd, shell=True)
