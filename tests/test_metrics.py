@@ -378,12 +378,6 @@ class TestCachedMetrics(TestDvc):
         self.dvc.scm.checkout(branch)
         self.dvc.checkout(force=True)
 
-        print(
-            'print(json.dumps({{"metrics": "{branch}"}})\n'.format(
-                branch=branch
-            )
-        )
-
         with open("code.py", "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
