@@ -50,7 +50,7 @@ class TestRun(TestDvc):
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):
-            stage = self.dvc.run(
+            self.dvc.run(
                 cmd=cmd,
                 deps=deps,
                 outs=outs,
@@ -528,6 +528,18 @@ class TestCmdRunOverwrite(TestDvc):
 
         # NOTE: check that dvcfile was overwritten
         self.assertNotEqual(stage_mtime, os.path.getmtime("out.dvc"))
+
+
+class TestCmdRunCliMetrics(TestDvc):
+    def test_cached(self):
+        ret = main(["run", "-m", "metrics.txt", "echo test > metrics.txt"])
+        self.assertEqual(ret, 0)
+        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+
+    def test_not_cached(self):
+        ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
+        self.assertEqual(ret, 0)
+        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
 
 
 class TestRunDeterministicBase(TestDvc):

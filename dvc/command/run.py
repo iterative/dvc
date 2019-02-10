@@ -17,12 +17,14 @@ class CmdRun(CmdBase):
                 self.args.deps,
                 self.args.outs,
                 self.args.outs_no_cache,
+                self.args.metrics,
+                self.args.metrics_no_cache,
                 self.args.command,
             ]
         ):  # pragma: no cover
             logger.error(
                 "too few arguments. Specify at least one: '-d', "
-                "'-o', '-O', 'command'."
+                "'-o', '-O', '-m', '-M', 'command'."
             )
             return 1
 
@@ -31,6 +33,7 @@ class CmdRun(CmdBase):
                 cmd=self._parsed_cmd(),
                 outs=self.args.outs,
                 outs_no_cache=self.args.outs_no_cache,
+                metrics=self.args.metrics,
                 metrics_no_cache=self.args.metrics_no_cache,
                 deps=self.args.deps,
                 fname=self.args.file,
@@ -88,22 +91,30 @@ def add_parser(subparsers, parent_parser):
         "--outs",
         action="append",
         default=[],
-        help="Declare output data file or data directory.",
+        help="Declare output file or directory.",
     )
     run_parser.add_argument(
         "-O",
         "--outs-no-cache",
         action="append",
         default=[],
-        help="Declare output regular file or directory "
-        "(sync to Git, not DVC cache).",
+        help="Declare output file or directory "
+        "(do not put into DVC cache).",
+    )
+    run_parser.add_argument(
+        "-m",
+        "--metrics",
+        action="append",
+        default=[],
+        help="Declare output metric file or directory.",
     )
     run_parser.add_argument(
         "-M",
         "--metrics-no-cache",
         action="append",
         default=[],
-        help="Declare output metric file or " "directory (not cached by DVC).",
+        help="Declare output metric file or directory "
+        "(do not put into DVC cache).",
     )
     run_parser.add_argument(
         "-f",

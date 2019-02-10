@@ -36,7 +36,7 @@ def confirm(statement):
     """Ask the user for confirmation about the specified statement.
 
     Args:
-        statement (str): statement to ask the user confirmation about.
+        statement (unicode): statement to ask the user confirmation about.
 
     Returns:
         bool: whether or not specified statement was confirmed.

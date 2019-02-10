@@ -11,7 +11,7 @@ class DvcException(Exception):
     """Base class for all dvc exceptions.
 
     Args:
-        msg (str): message for this exception.
+        msg (unicode): message for this exception.
         cause (Exception): optional cause exception.
     """
 
@@ -33,7 +33,7 @@ class OutputDuplicationError(DvcException):
     stage.
 
     Args:
-        output (str): path to the file/directory.
+        output (unicode): path to the file/directory.
         stages (list): list of paths to stages.
     """
 
