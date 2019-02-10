@@ -1154,7 +1154,7 @@ class Project(object):
                     if os.path.isdir(path):
                         logger.warning(
                             "Path '{path}' is a directory. "
-                            "Consider runnig with '-R'.".format(path=path)
+                            "Consider running with '-R'.".format(path=path)
                         )
                         return {}
 
@@ -1202,7 +1202,7 @@ class Project(object):
             return res
 
         if path:
-            msg = "file '{}' does not exist".format(path)
+            msg = "file '{}' does not exist or malformed".format(path)
         else:
             msg = (
                 "no metric files in this repository."
