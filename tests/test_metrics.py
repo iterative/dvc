@@ -378,10 +378,26 @@ class TestCachedMetrics(TestDvc):
         self.dvc.scm.checkout(branch)
         self.dvc.checkout(force=True)
 
-        content = json.dumps({"metrics": branch})
+        print(
+            'print(json.dumps({{"metrics": "{branch}"}})\n'.format(
+                branch=branch
+            )
+        )
+
+        with open("code.py", "w+") as fobj:
+            fobj.write("import sys\n")
+            fobj.write("import os\n")
+            fobj.write("import json\n")
+            fobj.write(
+                'print(json.dumps({{"metrics": "{branch}"}}))\n'.format(
+                    branch=branch
+                )
+            )
+
         stage = self.dvc.run(
+            deps=["code.py"],
             metrics=["metrics.json"],
-            cmd="echo '{content}' > metrics.json".format(content=content),
+            cmd="python code.py metrics.json > metrics.json",
         )
         self.assertIsNotNone(stage)
         self.assertEqual(stage.relpath, "metrics.json.dvc")
