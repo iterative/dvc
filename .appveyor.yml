@@ -69,7 +69,7 @@ before_test:
   - aws configure set aws_secret_access_key "%aws_secret_access_key%"
   - aws configure set region us-east-2
   - openssl enc -d -aes-256-cbc -md md5 -k "%GCP_CREDS%" -in scripts\ci\gcp-creds.json.enc -out scripts\ci\gcp-creds.json & exit 0
-  - pip install -r test-requirements.txt
+  - pip install -r tests/requirements.txt
 
 test_script:
   - python -mtests

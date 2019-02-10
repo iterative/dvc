@@ -1,2 +1,0 @@
--r ../../test-style-requirements.txt
-gitpython  # used by dvc/__init__.py to dynamically create dvc version

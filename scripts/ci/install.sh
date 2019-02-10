@@ -16,7 +16,7 @@ function retry {
 # work or not.
 retry pip install --upgrade pip setuptools wheel
 retry pip install -r requirements.txt
-retry pip install -r test-requirements.txt
+retry pip install -r tests/requirements.txt
 
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"

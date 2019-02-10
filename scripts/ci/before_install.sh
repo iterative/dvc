@@ -20,7 +20,7 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     python --version
 fi
 
-pip install -r scripts/ci/requirements.txt
+pip install -r tests/requirements.txt
 
 # stop the build if there are any readme formatting errors
 python setup.py checkdocs

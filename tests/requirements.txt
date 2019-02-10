@@ -8,3 +8,8 @@ xmltodict>=0.11.0
 awscli>=1.14.18
 google-compute-engine
 pywin32; sys_platform == 'win32'
+Pygments  # required by collective.checkdocs
+collective.checkdocs
+black; python_version >= '3.6'
+flake8
+flake8-docstrings
