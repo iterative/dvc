@@ -17,12 +17,14 @@ class CmdRun(CmdBase):
                 self.args.deps,
                 self.args.outs,
                 self.args.outs_no_cache,
+                self.args.metrics,
+                self.args.metrics_no_cache,
                 self.args.command,
             ]
         ):  # pragma: no cover
             logger.error(
                 "too few arguments. Specify at least one: '-d', "
-                "'-o', '-O', 'command'."
+                "'-o', '-O', '-m', '-M', 'command'."
             )
             return 1
 
