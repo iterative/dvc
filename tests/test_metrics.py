@@ -359,7 +359,7 @@ class TestNoMetrics(TestDvc):
 
 
 class TestCachedMetrics(TestDvc):
-    def _do_write(self, branch):
+    def _do_add(self, branch):
         self.dvc.scm.checkout(branch)
         self.dvc.checkout(force=True)
 
@@ -369,20 +369,35 @@ class TestCachedMetrics(TestDvc):
         stages = self.dvc.add("metrics.json")
         self.assertEqual(len(stages), 1)
         stage = stages[0]
-        self.assertNotEqual(stage, None)
+        self.assertIsNotNone(stage)
 
         self.dvc.scm.add([".gitignore", "metrics.json.dvc"])
         self.dvc.scm.commit(branch)
 
-    def test(self):
+    def _do_run(self, branch):
+        self.dvc.scm.checkout(branch)
+        self.dvc.checkout(force=True)
+
+        content = json.dumps({"metrics": branch})
+        stage = self.dvc.run(
+            metrics=["metrics.json"],
+            cmd="echo '{content}' > metrics.json".format(content=content),
+        )
+        self.assertIsNotNone(stage)
+        self.assertEqual(stage.relpath, "metrics.json.dvc")
+
+        self.dvc.scm.add([".gitignore", "metrics.json.dvc"])
+        self.dvc.scm.commit(branch)
+
+    def _test_metrics(self, func):
         self.dvc.scm.commit("init")
 
         self.dvc.scm.branch("one")
         self.dvc.scm.branch("two")
 
-        self._do_write("master")
-        self._do_write("one")
-        self._do_write("two")
+        func("master")
+        func("one")
+        func("two")
 
         self.dvc = Project(".")
 
@@ -398,3 +413,9 @@ class TestCachedMetrics(TestDvc):
                 "two": {"metrics.json": ["two"]},
             },
         )
+
+    def test_add(self):
+        self._test_metrics(self._do_add)
+
+    def test_run(self):
+        self._test_metrics(self._do_run)
