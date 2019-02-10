@@ -532,12 +532,12 @@ class TestCmdRunOverwrite(TestDvc):
 
 class TestCmdRunCliMetrics(TestDvc):
     def test_cached(self):
-        ret = main(["run", "-m", "metrics.txt", "echo 'test' > metrics.txt"])
+        ret = main(["run", "-m", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
         self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
 
     def test_not_cached(self):
-        ret = main(["run", "-M", "metrics.txt", "echo 'test' > metrics.txt"])
+        ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
         self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
 
