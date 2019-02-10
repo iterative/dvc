@@ -286,10 +286,10 @@ class Stage(object):
     @classmethod
     def _stage_fname_cwd(cls, fname, cwd, outs, add):
         if fname and cwd:
-            return fname, cwd
+            return (fname, cwd)
 
         if not outs:
-            return cls.STAGE_FILE, cwd if cwd else os.getcwd()
+            return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
 
         out = outs[0]
         if out.scheme == "local":
@@ -303,7 +303,7 @@ class Stage(object):
         if not cwd or (add and out.is_local):
             cwd = path.dirname(out.path)
 
-        return fname, cwd
+        return (fname, cwd)
 
     @staticmethod
     def _check_inside_project(project, cwd):

@@ -237,7 +237,7 @@ def _walk_exc(exc):
 def _parse_exc():
     exc = sys.exc_info()[1]
     if not exc:
-        return None, ""
+        return (None, "")
 
     exc_list, tb_list = _walk_exc(exc)
 
@@ -251,7 +251,7 @@ def _parse_exc():
     else:
         stack_trace = ""
 
-    return exception, stack_trace
+    return (exception, stack_trace)
 
 
 def _description(message, exception):

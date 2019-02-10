@@ -91,15 +91,15 @@ def add_parser(subparsers, parent_parser):
         "--outs",
         action="append",
         default=[],
-        help="Declare output data file or data directory.",
+        help="Declare output file or directory.",
     )
     run_parser.add_argument(
         "-O",
         "--outs-no-cache",
         action="append",
         default=[],
-        help="Declare output data file or directory "
-        "(sync to Git, not DVC cache).",
+        help="Declare output file or directory "
+        "(do not put into DVC cache).",
     )
     run_parser.add_argument(
         "-m",
@@ -113,7 +113,8 @@ def add_parser(subparsers, parent_parser):
         "--metrics-no-cache",
         action="append",
         default=[],
-        help="Declare output metric file or " "directory (not cached by DVC).",
+        help="Declare output metric file or directory "
+        "(do not put into DVC cache).",
     )
     run_parser.add_argument(
         "-f",
