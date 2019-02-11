@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str
 
 import sys
 import os
