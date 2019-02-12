@@ -1127,7 +1127,6 @@ class Project(object):
         for branch in self.scm.brancher(
             all_branches=all_branches, all_tags=all_tags
         ):
-
             astages = self.active_stages()
             outs = [out for stage in astages for out in stage.outs]
 
@@ -1135,44 +1134,28 @@ class Project(object):
                 outs = self._find_output_by_path(
                     path, outs=outs, recursive=recursive
                 )
-                stages = [out.stage.path for out in outs]
-                entries = []
-                for out in outs:
-                    if all(
-                        [out.metric, not typ, isinstance(out.metric, dict)]
-                    ):
-                        entries += [
-                            (
-                                out.path,
-                                out.metric.get(out.PARAM_METRIC_TYPE, None),
-                                out.metric.get(out.PARAM_METRIC_XPATH, None),
-                            )
-                        ]
-                    else:
-                        entries += [(out.path, typ, xpath)]
-                if not entries:
-                    if os.path.isdir(path):
-                        logger.warning(
-                            "Path '{path}' is a directory. "
-                            "Consider running with '-R'.".format(path=path)
-                        )
-                        return {}
 
-                    else:
-                        entries += [(path, typ, xpath)]
+            metrics = filter(lambda o: o.metric, outs)
+            stages = set()
+            entries = []
 
-            else:
-                metrics = filter(lambda o: o.metric, outs)
-                stages = None
-                entries = []
-                for o in metrics:
-                    if not typ and isinstance(o.metric, dict):
-                        t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
-                        x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
-                    else:
-                        t = typ
-                        x = xpath
-                    entries.append((o.path, t, x))
+            for o in metrics:
+                if not typ and isinstance(o.metric, dict):
+                    t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
+                    x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
+                else:
+                    t = typ
+                    x = xpath
+                entries.append((o.path, t, x))
+                stages.add(o.stage.path)
+
+            if path and not entries:
+                if os.path.isdir(path):
+                    logger.warning(
+                        "Path '{path}' is a directory. "
+                        "Consider running with '-R'.".format(path=path)
+                    )
+                    return {}
 
             for fname, t, x in entries:
                 if stages:
@@ -1202,7 +1185,9 @@ class Project(object):
             return res
 
         if path:
-            msg = "file '{}' does not exist or malformed".format(path)
+            msg = "file '{}' does not exist, not a metric file or is malformed".format(
+                path
+            )
         else:
             msg = (
                 "no metric files in this repository."
