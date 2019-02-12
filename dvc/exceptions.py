@@ -125,8 +125,8 @@ class MoveNotDataSourceError(DvcException):
         super(MoveNotDataSourceError, self).__init__(msg.format(path=path))
 
 
-class NotDvcProjectError(DvcException):
-    """Thrown if a directory is not a dvc project.
+class NotDvcRepoError(DvcException):
+    """Thrown if a directory is not a dvc repo.
 
     Args:
         root (str): path to the directory.
@@ -134,7 +134,7 @@ class NotDvcProjectError(DvcException):
 
     def __init__(self, root):
         msg = "not a dvc repository (checked up to mount point '{}')"
-        super(NotDvcProjectError, self).__init__(msg.format(root))
+        super(NotDvcRepoError, self).__init__(msg.format(root))
 
 
 class DvcParserError(DvcException):
@@ -163,3 +163,15 @@ class ConfirmRemoveError(DvcException):
             "unable to remove '{}' without a confirmation from the user. Use "
             "'-f' to force.".format(path)
         )
+
+
+class InitError(DvcException):
+    def __init__(self, msg):
+        super(InitError, self).__init__(msg)
+
+
+class ReproductionError(DvcException):
+    def __init__(self, dvc_file_name, ex):
+        self.path = dvc_file_name
+        msg = "failed to reproduce '{}'".format(dvc_file_name)
+        super(ReproductionError, self).__init__(msg, cause=ex)

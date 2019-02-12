@@ -51,9 +51,9 @@ class TestCmdMove(TestDvc):
 
 class TestMoveNotDataSource(TestRepro):
     def test(self):
-        from dvc.project import Project
+        from dvc.repo import Repo as DvcRepo
 
-        self.dvc = Project(self._root_dir)
+        self.dvc = DvcRepo(self._root_dir)
         with self.assertRaises(MoveNotDataSourceError):
             self.dvc.move(self.file1, "dst")
 

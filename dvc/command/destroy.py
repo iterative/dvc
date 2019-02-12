@@ -22,7 +22,7 @@ class CmdDestroy(CmdBase):
                     " Use '-f' to force."
                 )
 
-            self.project.destroy()
+            self.repo.destroy()
         except Exception:
             logger.error("failed to destroy DVC")
             return 1
@@ -31,7 +31,7 @@ class CmdDestroy(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     DESTROY_HELP = (
-        "Destroy dvc. Will remove all project's information, "
+        "Destroy dvc. Will remove all repo's information, "
         "data files and cache."
     )
     destroy_parser = subparsers.add_parser(

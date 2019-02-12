@@ -24,7 +24,7 @@ class CmdRepro(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                stages = self.project.reproduce(
+                stages = self.repo.reproduce(
                     target,
                     recursive=recursive,
                     force=self.args.force,
@@ -39,7 +39,7 @@ class CmdRepro(CmdBase):
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
 
                 if self.args.metrics:
-                    self.project.metrics_show()
+                    self.repo.metrics.show()
             except DvcException:
                 logger.error()
                 ret = 1
@@ -79,7 +79,7 @@ def add_parser(subparsers, parent_parser):
         "-c",
         "--cwd",
         default=os.path.curdir,
-        help="Directory within your project to reroduce from.",
+        help="Directory within your repo to reroduce from.",
     )
     repro_parser.add_argument(
         "-m",
@@ -115,7 +115,7 @@ def add_parser(subparsers, parent_parser):
         "--all-pipelines",
         action="store_true",
         default=False,
-        help="Reproduce all pipelines in the project.",
+        help="Reproduce all pipelines in the repo.",
     )
     repro_parser.add_argument(
         "--ignore-build-cache",

@@ -28,7 +28,7 @@ class CmdMetricsShow(CmdBase):
                 typ = self.args.type
                 xpath = self.args.xpath
 
-            self.project.metrics_show(
+            self.repo.metrics.show(
                 self.args.path,
                 typ=typ,
                 xpath=xpath,
@@ -46,7 +46,7 @@ class CmdMetricsShow(CmdBase):
 class CmdMetricsModify(CmdBase):
     def run(self):
         try:
-            self.project.metrics_modify(
+            self.repo.metrics.modify(
                 self.args.path, typ=self.args.type, xpath=self.args.xpath
             )
         except DvcException:
@@ -59,7 +59,7 @@ class CmdMetricsModify(CmdBase):
 class CmdMetricsAdd(CmdBase):
     def run(self):
         try:
-            self.project.metrics_add(
+            self.repo.metrics.add(
                 self.args.path, self.args.type, self.args.xpath
             )
         except DvcException:
@@ -73,7 +73,7 @@ class CmdMetricsAdd(CmdBase):
 class CmdMetricsRemove(CmdBase):
     def run(self):
         try:
-            self.project.metrics_remove(self.args.path)
+            self.repo.metrics.remove(self.args.path)
         except DvcException:
             msg = "failed to remove metric file '{}'".format(self.args.path)
             logger.error(msg)

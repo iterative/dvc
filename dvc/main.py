@@ -6,7 +6,7 @@ import dvc.logger as logger
 from dvc.cli import parse_args
 from dvc.command.base import CmdBase
 from dvc.analytics import Analytics
-from dvc.exceptions import NotDvcProjectError, DvcParserError
+from dvc.exceptions import NotDvcRepoError, DvcParserError
 
 
 def main(argv=None):
@@ -33,7 +33,7 @@ def main(argv=None):
     except KeyboardInterrupt:
         logger.error("interrupted by the user")
         ret = 252
-    except NotDvcProjectError:
+    except NotDvcRepoError:
         logger.error()
         ret = 253
     except DvcParserError:

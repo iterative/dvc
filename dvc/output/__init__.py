@@ -55,8 +55,8 @@ def _get(stage, p, info, cache, metric):
     parsed = urlparse(p)
     if parsed.scheme == "remote":
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.project.config.config[name]
-        remote = Remote(stage.project, sect)
+        sect = stage.repo.config.config[name]
+        remote = Remote(stage.repo, sect)
         return OUTS_MAP[remote.scheme](
             stage, p, info, cache=cache, remote=remote, metric=metric
         )

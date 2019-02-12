@@ -15,13 +15,17 @@ from google.cloud import storage as gc
 from flaky.flaky_decorator import flaky
 
 from dvc.main import main
-from dvc.project import Project, ReproductionError
+from dvc.repo import Repo as DvcRepo
 from dvc.utils import file_md5
 from dvc.utils.compat import urljoin
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
-from dvc.exceptions import CyclicGraphError, WorkingDirectoryAsOutputError
+from dvc.exceptions import (
+    CyclicGraphError,
+    WorkingDirectoryAsOutputError,
+    ReproductionError,
+)
 
 from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
@@ -160,7 +164,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        with patch.object(Project, "stages") as mock_stages:
+        with patch.object(DvcRepo, "stages") as mock_stages:
             mock_stages.return_value = [
                 nested_stage,
                 Stage.load(self.dvc, error_stage_path),
@@ -582,11 +586,11 @@ class TestReproMetricsAddUnchanged(TestDvc):
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics_add(file1)
+        self.dvc.metrics.add(file1)
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
-        self.dvc.metrics_remove(file1)
+        self.dvc.metrics.remove(file1)
         stages = self.dvc.reproduce(file1_stage)
         self.assertEqual(len(stages), 0)
 
@@ -856,7 +860,7 @@ class TestReproExternalBase(TestDvc):
         ret = main(["remote", "modify", remote_name, "type", "hardlink"])
         self.assertEqual(ret, 0)
 
-        self.dvc = Project(".")
+        self.dvc = DvcRepo(".")
 
         foo_key = remote_key + self.sep + self.FOO
         bar_key = remote_key + self.sep + self.BAR
@@ -1079,7 +1083,7 @@ class TestReproExternalLOCAL(TestReproExternalBase):
         self.tmpdir = TestDvc.mkdtemp()
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
-        self.dvc = Project(".")
+        self.dvc = DvcRepo(".")
 
     def should_test(self):
         return True
@@ -1148,7 +1152,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertEqual(ret1, 0)
         self.assertEqual(ret2, 0)
 
-        self.dvc = Project(".")
+        self.dvc = DvcRepo(".")
 
         # Import
         with StaticFileServer():

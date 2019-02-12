@@ -59,8 +59,8 @@ class RemoteSSH(RemoteBase):
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
-    def __init__(self, project, config):
-        super(RemoteSSH, self).__init__(project, config)
+    def __init__(self, repo, config):
+        super(RemoteSSH, self).__init__(repo, config)
         self.url = config.get(Config.SECTION_REMOTE_URL, "ssh://")
 
         parsed = urlparse(self.url)

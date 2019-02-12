@@ -59,8 +59,8 @@ class RemoteBase(object):
     REQUIRES = {}
     JOBS = 4 * cpu_count()
 
-    def __init__(self, project, config):
-        self.project = project
+    def __init__(self, repo, config):
+        self.repo = repo
         deps_ok = all(self.REQUIRES.values())
         if not deps_ok:
             missing = [k for k, v in self.REQUIRES.items() if v is None]

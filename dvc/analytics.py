@@ -161,8 +161,8 @@ class Analytics(object):
         """Collect analytics report."""
         from dvc.scm import SCM
         from dvc.utils import is_binary
-        from dvc.project import Project
-        from dvc.exceptions import NotDvcProjectError
+        from dvc.repo import Repo
+        from dvc.exceptions import NotDvcRepoError
 
         self.info[self.PARAM_DVC_VERSION] = VERSION
         self.info[self.PARAM_IS_BINARY] = is_binary()
@@ -171,9 +171,9 @@ class Analytics(object):
         self.info[self.PARAM_SYSTEM_INFO] = self._collect_system_info()
 
         try:
-            scm = SCM(root_dir=Project.find_root())
+            scm = SCM(root_dir=Repo.find_root())
             self.info[self.PARAM_SCM_CLASS] = type(scm).__name__
-        except NotDvcProjectError:
+        except NotDvcRepoError:
             pass
 
     def collect_cmd(self, args, ret):
@@ -204,8 +204,8 @@ class Analytics(object):
     @staticmethod
     def _is_enabled(cmd=None):
         from dvc.config import Config
-        from dvc.project import Project
-        from dvc.exceptions import NotDvcProjectError
+        from dvc.repo import Repo
+        from dvc.exceptions import NotDvcRepoError
         from dvc.command.daemon import CmdDaemonBase
 
         if os.getenv("DVC_TEST"):
@@ -216,10 +216,10 @@ class Analytics(object):
 
         if cmd is None or not hasattr(cmd, "config"):
             try:
-                dvc_dir = Project.find_dvc_dir()
+                dvc_dir = Repo.find_dvc_dir()
                 config = Config(dvc_dir)
                 assert config is not None
-            except NotDvcProjectError:
+            except NotDvcRepoError:
                 config = Config(validate=False)
                 assert config is not None
         else:

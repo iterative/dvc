@@ -19,9 +19,9 @@ class DataCloud(object):
     """Class that manages dvc remotes.
 
     Args:
-        project (dvc.project.Project): project instance that belongs to the
-            project that we are working on.
-        config (dict): config of the project.
+        repo (dvc.repo.Repo): repo instance that belongs to the repo that
+            we are working on.
+        config (dict): config of the repo.
 
     Raises:
         config.ConfigError: thrown when config has invalid format.
@@ -38,8 +38,8 @@ class DataCloud(object):
         "https": RemoteHTTP,
     }
 
-    def __init__(self, project, config=None):
-        self.project = project
+    def __init__(self, repo, config=None):
+        self.repo = repo
         self._config = config
         self._core = self._config[Config.SECTION_CORE]
 
@@ -64,7 +64,7 @@ class DataCloud(object):
             msg = "can't find remote section '{}' in config"
             raise ConfigError(msg.format(section))
 
-        return Remote(self.project, cloud_config)
+        return Remote(self.repo, cloud_config)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()
@@ -94,7 +94,7 @@ class DataCloud(object):
         if global_storage_path:
             logger.warning("using obsoleted config format. Consider updating.")
 
-        cloud = cloud_type(self.project, cloud_config)
+        cloud = cloud_type(self.repo, cloud_config)
         return cloud
 
     def _get_cloud(self, remote, cmd):
@@ -122,7 +122,7 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.project.cache.local.push(
+        return self.repo.cache.local.push(
             targets,
             jobs=jobs,
             remote=self._get_cloud(remote, "push"),
@@ -140,7 +140,7 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        return self.project.cache.local.pull(
+        return self.repo.cache.local.pull(
             targets,
             jobs=jobs,
             remote=self._get_cloud(remote, "pull"),
@@ -160,6 +160,6 @@ class DataCloud(object):
                 information messages.
         """
         cloud = self._get_cloud(remote, "status")
-        return self.project.cache.local.status(
+        return self.repo.cache.local.status(
             targets, jobs=jobs, remote=cloud, show_checksums=show_checksums
         )

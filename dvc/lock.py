@@ -10,11 +10,11 @@ from dvc.exceptions import DvcException
 
 
 class LockError(DvcException):
-    """Thrown when unable to acquire the lock for dvc project."""
+    """Thrown when unable to acquire the lock for dvc repo."""
 
 
 class Lock(object):
-    """Class for dvc project lock.
+    """Class for dvc repo lock.
 
     Args:
         dvc_dir (str): path to the directory that the lock should be created
@@ -39,7 +39,7 @@ class Lock(object):
             )
 
     def lock(self):
-        """Acquire lock for dvc project."""
+        """Acquire lock for dvc repo."""
         try:
             self._do_lock()
             return
@@ -49,7 +49,7 @@ class Lock(object):
         self._do_lock()
 
     def unlock(self):
-        """Release lock for dvc project."""
+        """Release lock for dvc repo."""
         self._lock.close()
         self._lock = None
 

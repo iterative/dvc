@@ -24,7 +24,7 @@ class StateVersionTooNewError(DvcException):
             "you are using an old version '{dvc_version}' of dvc that is "
             "using state file version '{expected}' which is not compatible "
             "with the state file version '{actual}' that is used in this "
-            "project. Please upgrade right now!".format(
+            "repo. Please upgrade right now!".format(
                 dvc_version=dvc_version, expected=expected, actual=actual
             )
         )
@@ -34,8 +34,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
-        project (dvc.project.Project): project instance that this state
-            belongs to.
+        repo (dvc.repo.Repo): repo instance that this state belongs to.
         config (configobj.ConfigObj): config for the state.
 
     Raises:
@@ -71,10 +70,10 @@ class State(object):  # pylint: disable=too-many-instance-attributes
     MAX_INT = 2 ** 63 - 1
     MAX_UINT = 2 ** 64 - 2
 
-    def __init__(self, project, config):
-        self.project = project
-        self.dvc_dir = project.dvc_dir
-        self.root_dir = project.root_dir
+    def __init__(self, repo, config):
+        self.repo = repo
+        self.dvc_dir = repo.dvc_dir
+        self.root_dir = repo.root_dir
 
         self.row_limit = 100
         self.row_cleanup_quota = 50
@@ -112,7 +111,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     def _collect(self, path):
         if os.path.isdir(path):
-            return self.project.cache.local.collect_dir_cache(path)
+            return self.repo.cache.local.collect_dir_cache(path)
         return (file_md5(path)[0], None)
 
     def changed(self, path, md5):
@@ -420,7 +419,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         md5, info = self._do_update(path)
         if not info:
-            info = self.project.cache.local.load_dir_cache(md5)
+            info = self.repo.cache.local.load_dir_cache(md5)
         return (md5, info)
 
     def update_link(self, path):

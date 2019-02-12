@@ -19,13 +19,13 @@ class CmdGC(CmdBase):
         else:
             msg += "all git branches and all git tags"
 
-        if self.args.projects is not None and len(self.args.projects) > 0:
-            msg += " of the current and the following projects:"
+        if self.args.repos is not None and len(self.args.repos) > 0:
+            msg += " of the current and the following repos:"
 
-            for project_path in self.args.projects:
-                msg += "\n  - %s" % os.path.abspath(project_path)
+            for repo_path in self.args.repos:
+                msg += "\n  - %s" % os.path.abspath(repo_path)
         else:
-            msg += " of the current project."
+            msg += " of the current repo."
 
         logger.warning(msg)
 
@@ -33,14 +33,14 @@ class CmdGC(CmdBase):
         if not self.args.force and not prompt.confirm(msg):
             return 1
 
-        self.project.gc(
+        self.repo.gc(
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
             jobs=self.args.jobs,
-            projects=self.args.projects,
+            repos=self.args.repos,
         )
         return 0
 
@@ -91,6 +91,7 @@ def add_parser(subparsers, parent_parser):
     gc_parser.add_argument(
         "-p",
         "--projects",
+        dest="repos",
         type=str,
         nargs="*",
         default=None,

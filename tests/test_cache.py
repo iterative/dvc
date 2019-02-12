@@ -142,7 +142,7 @@ class TestCmdCacheDir(TestDvc):
         ret = main(["cache", "dir", dname])
         self.assertEqual(ret, 0)
 
-        # NOTE: we are in the project's root and config is in .dvc/, so
+        # NOTE: we are in the repo's root and config is in .dvc/, so
         # dir path written to config should be just one level above.
         rel = os.path.join("..", dname)
         config = configobj.ConfigObj(self.dvc.config.config_file)

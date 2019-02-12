@@ -76,7 +76,7 @@ class CmdRemoteRemove(CmdConfig):
 
         for configobj in [
             self.config._local_config,
-            self.config._project_config,
+            self.config._repo_config,
             self.config._global_config,
             self.config._system_config,
         ]:

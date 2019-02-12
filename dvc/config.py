@@ -108,11 +108,11 @@ def is_percent(val):
 
 
 class Config(object):  # pylint: disable=too-many-instance-attributes
-    """Class that manages configuration files for a dvc project.
+    """Class that manages configuration files for a dvc repo.
 
     Args:
         dvc_dir (str): optional path to `.dvc` directory, that is used to
-            access project-specific configs like .dvc/config and
+            access repo-specific configs like .dvc/config and
             .dvc/config.local.
         validate (bool): optional flag to tell dvc if it should validate the
             config or just load it as is. 'True' by default.
@@ -295,7 +295,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
         self._system_config = None
         self._global_config = None
-        self._project_config = None
+        self._repo_config = None
         self._local_config = None
 
         self.config = None
@@ -347,9 +347,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         self._global_config = configobj.ConfigObj(self.global_config_file)
 
         if self.config_file is not None:
-            self._project_config = configobj.ConfigObj(self.config_file)
+            self._repo_config = configobj.ConfigObj(self.config_file)
         else:
-            self._project_config = configobj.ConfigObj()
+            self._repo_config = configobj.ConfigObj()
 
         if self.config_local_file is not None:
             self._local_config = configobj.ConfigObj(self.config_local_file)
@@ -454,7 +454,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             clist = [
                 self._system_config,
                 self._global_config,
-                self._project_config,
+                self._repo_config,
                 self._local_config,
             ]
 

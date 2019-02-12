@@ -6,7 +6,7 @@ from git.exc import GitCommandNotFound
 from unittest import TestCase
 
 import dvc.logger as logger
-from dvc.project import Project
+from dvc.repo import Repo as DvcRepo
 
 
 class TestDir(TestCase):
@@ -111,5 +111,5 @@ class TestGitSubmodule(TestGit):
 class TestDvc(TestGit):
     def setUp(self):
         super(TestDvc, self).setUp()
-        self.dvc = Project.init(self._root_dir)
+        self.dvc = DvcRepo.init(self._root_dir)
         logger.be_verbose()

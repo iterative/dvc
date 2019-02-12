@@ -1,4 +1,4 @@
-"""Manages cache of a dvc project."""
+"""Manages cache of a dvc repo."""
 
 from __future__ import unicode_literals
 
@@ -8,42 +8,41 @@ from dvc.config import Config
 
 
 class Cache(object):
-    """Class that manages cache locations of a dvc project.
+    """Class that manages cache locations of a dvc repo.
 
     Args:
-        project (dvc.project.Project): project instance that this cache
-            belongs to.
+        repo (dvc.repo.Repo): repo instance that this cache belongs to.
     """
 
     CACHE_DIR = "cache"
 
-    def __init__(self, project):
+    def __init__(self, repo):
         from dvc.remote import Remote
 
-        self.project = project
+        self.repo = repo
 
-        config = project.config.config[Config.SECTION_CACHE]
+        config = repo.config.config[Config.SECTION_CACHE]
         local = config.get(Config.SECTION_CACHE_LOCAL)
 
         if local:
             name = Config.SECTION_REMOTE_FMT.format(local)
-            sect = project.config.config[name]
+            sect = repo.config.config[name]
         else:
-            default_cache_dir = os.path.join(project.dvc_dir, self.CACHE_DIR)
+            default_cache_dir = os.path.join(repo.dvc_dir, self.CACHE_DIR)
             cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
             cache_type = config.get(Config.SECTION_CACHE_TYPE)
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
 
             sect = {
                 Config.PRIVATE_CWD: config.get(
-                    Config.PRIVATE_CWD, project.dvc_dir
+                    Config.PRIVATE_CWD, repo.dvc_dir
                 ),
                 Config.SECTION_REMOTE_URL: cache_dir,
                 Config.SECTION_CACHE_TYPE: cache_type,
                 Config.SECTION_CACHE_PROTECTED: protected,
             }
 
-        self._local = Remote(project, sect)
+        self._local = Remote(repo, sect)
 
         self._s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
         self._gs = self._get_remote(config, Config.SECTION_CACHE_GS)
@@ -89,5 +88,5 @@ class Cache(object):
             return None
 
         name = Config.SECTION_REMOTE_FMT.format(remote)
-        sect = self.project.config.config[name]
-        return Remote(self.project, sect)
+        sect = self.repo.config.config[name]
+        return Remote(self.repo, sect)

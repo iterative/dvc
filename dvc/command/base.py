@@ -20,10 +20,10 @@ def fix_subparsers(subparsers):
 
 class CmdBase(object):
     def __init__(self, args):
-        from dvc.project import Project
+        from dvc.repo import Repo
 
-        self.project = Project()
-        self.config = self.project.config
+        self.repo = Repo()
+        self.config = self.repo.config
         self.args = args
         self.set_loglevel(args)
 
@@ -49,7 +49,7 @@ class CmdBase(object):
         from dvc.lock import LockError
 
         try:
-            with self.project.lock:
+            with self.repo.lock:
                 return self.run()
         except LockError:
             logger.error("failed to lock before running a command")

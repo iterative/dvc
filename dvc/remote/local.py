@@ -38,9 +38,9 @@ class RemoteLOCAL(RemoteBase):
         "reflink": System.reflink,
     }
 
-    def __init__(self, project, config):
-        super(RemoteLOCAL, self).__init__(project, config)
-        self.state = self.project.state if self.project else None
+    def __init__(self, repo, config):
+        super(RemoteLOCAL, self).__init__(repo, config)
+        self.state = self.repo.state if self.repo else None
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)

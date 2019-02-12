@@ -16,11 +16,11 @@ class CmdDaemonBase(CmdBase):
 class CmdDaemonUpdater(CmdDaemonBase):
     def run(self):
         import os
-        from dvc.project import Project
+        from dvc.repo import Repo
         from dvc.updater import Updater
 
-        root_dir = Project.find_root()
-        dvc_dir = os.path.join(root_dir, Project.DVC_DIR)
+        root_dir = Repo.find_root()
+        dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
         updater = Updater(dvc_dir)
         updater.fetch(detach=False)
 

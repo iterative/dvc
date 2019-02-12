@@ -27,5 +27,5 @@ def _get(config):
     return RemoteLOCAL
 
 
-def Remote(project, config):
-    return _get(config)(project, config)
+def Remote(repo, config):
+    return _get(config)(repo, config)

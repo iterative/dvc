@@ -28,7 +28,7 @@ class CmdDataStatus(CmdDataBase):
     def do_run(self, target=None):
         indent = 1 if self.args.cloud else 0
         try:
-            st = self.project.status(
+            st = self.repo.status(
                 target=target,
                 jobs=self.args.jobs,
                 cloud=self.args.cloud,

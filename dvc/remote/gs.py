@@ -22,8 +22,8 @@ class RemoteGS(RemoteBase):
     REQUIRES = {"google.cloud.storage": storage}
     PARAM_CHECKSUM = "md5"
 
-    def __init__(self, project, config):
-        super(RemoteGS, self).__init__(project, config)
+    def __init__(self, repo, config):
+        super(RemoteGS, self).__init__(repo, config)
         storagepath = "gs://"
         storagepath += config.get(Config.SECTION_AWS_STORAGEPATH, "/")
         storagepath.lstrip("/")

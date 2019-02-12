@@ -63,7 +63,7 @@ class StageFileBadNameError(DvcException):
 
 class StageBadCwdError(DvcException):
     def __init__(self, cwd):
-        msg = "stage cwd '{}' is outside of the current dvc project"
+        msg = "stage cwd '{}' is outside of the current dvc repo"
         super(StageBadCwdError, self).__init__(msg.format(cwd))
 
 
@@ -112,7 +112,7 @@ class Stage(object):
 
     def __init__(
         self,
-        project,
+        repo,
         path=None,
         cmd=None,
         cwd=os.curdir,
@@ -126,7 +126,7 @@ class Stage(object):
         if outs is None:
             outs = []
 
-        self.project = project
+        self.repo = repo
         self.path = path
         self.cmd = cmd
         self.cwd = cwd
@@ -245,7 +245,7 @@ class Stage(object):
         for out in self.outs:
             if out.scheme != "local" or not out.exists:
                 continue
-            self.project.unprotect(out.path)
+            self.repo.unprotect(out.path)
 
     def remove(self):
         self.remove_outs(ignore_remove=True)
@@ -306,9 +306,9 @@ class Stage(object):
         return (fname, cwd)
 
     @staticmethod
-    def _check_inside_project(project, cwd):
-        assert project is not None
-        proj_dir = os.path.realpath(project.root_dir)
+    def _check_inside_repo(repo, cwd):
+        assert repo is not None
+        proj_dir = os.path.realpath(repo.root_dir)
         if not os.path.realpath(cwd).startswith(proj_dir):
             raise StageBadCwdError(cwd)
 
@@ -320,7 +320,7 @@ class Stage(object):
         from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
 
-        old = Stage.load(self.project, self.path)
+        old = Stage.load(self.repo, self.path)
         if old._changed_outs():
             return False
 
@@ -345,7 +345,7 @@ class Stage(object):
 
     @staticmethod
     def create(
-        project=None,
+        repo=None,
         cmd=None,
         deps=None,
         outs=None,
@@ -372,7 +372,7 @@ class Stage(object):
         if metrics_no_cache is None:
             metrics_no_cache = []
 
-        stage = Stage(project=project, cwd=cwd, cmd=cmd, locked=locked)
+        stage = Stage(repo=repo, cwd=cwd, cmd=cmd, locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(
@@ -397,7 +397,7 @@ class Stage(object):
 
         fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
 
-        Stage._check_inside_project(project, cwd)
+        Stage._check_inside_repo(repo, cwd)
 
         cwd = os.path.abspath(cwd)
         path = os.path.join(cwd, fname)
@@ -446,7 +446,7 @@ class Stage(object):
             raise StageFileDoesNotExistError(fname)
 
     @staticmethod
-    def load(project, fname):
+    def load(repo, fname):
         Stage._check_file_exists(fname)
         Stage._check_dvc_filename(fname)
 
@@ -459,7 +459,7 @@ class Stage(object):
         Stage.validate(d, fname=os.path.relpath(fname))
 
         stage = Stage(
-            project=project,
+            repo=repo,
             path=os.path.abspath(fname),
             cwd=os.path.dirname(os.path.abspath(fname)),
             cmd=d.get(Stage.PARAM_CMD),
@@ -499,7 +499,7 @@ class Stage(object):
         with open(fname, "w") as fd:
             yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
 
-        self.project.files_to_git_add.append(os.path.relpath(fname))
+        self.repo.files_to_git_add.append(os.path.relpath(fname))
 
     def _compute_md5(self):
         from dvc.output.local import OutputLOCAL

@@ -6,7 +6,7 @@ import filecmp
 import collections
 
 from dvc.main import main
-from dvc.project import Project
+from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
@@ -73,7 +73,7 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        self.dvc = Project(".")
+        self.dvc = DvcRepo(".")
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         self.assertEqual(len(stages[0].outs), 1)

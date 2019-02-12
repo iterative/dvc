@@ -18,7 +18,7 @@ class TestMissingDeps(TestCase):
 class TestCmdError(TestCase):
     def test(self):
         for remote_class in [RemoteSSH, RemoteHDFS]:
-            project = None
+            repo = None
             config = {}
 
             remote_name = remote_class.scheme
@@ -32,4 +32,4 @@ class TestCmdError(TestCase):
                 side_effect=RemoteCmdError(remote_name, cmd, ret, err),
             ):
                 with self.assertRaises(RemoteCmdError):
-                    remote_class(project, config).remove("file")
+                    remote_class(repo, config).remove("file")

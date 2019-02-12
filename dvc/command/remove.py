@@ -30,7 +30,7 @@ class CmdRemove(CmdBase):
         for target in self.args.targets:
             try:
                 outs_only = self._is_outs_only(target)
-                self.project.remove(target, outs_only=outs_only)
+                self.repo.remove(target, outs_only=outs_only)
             except DvcException:
                 logger.error("failed to remove {}".format(target))
                 return 1

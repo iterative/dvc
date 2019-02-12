@@ -9,7 +9,7 @@ class CmdAdd(CmdBase):
     def run(self):
         for target in self.args.targets:
             try:
-                self.project.add(target, recursive=self.args.recursive)
+                self.repo.add(target, recursive=self.args.recursive)
             except DvcException:
                 logger.error("failed to add file")
                 return 1

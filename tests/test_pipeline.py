@@ -234,7 +234,7 @@ class TestPipelineListSingle(TestPipelineShowDeep):
         self.assertEqual(ret, 0)
 
 
-class TestProjectPipeline(TestDvc):
+class TestDvcRepoPipeline(TestDvc):
     def test_no_stages(self):
         pipelines = self.dvc.pipelines()
         self.assertEqual(len(pipelines), 0)

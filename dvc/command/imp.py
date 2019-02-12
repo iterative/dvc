@@ -15,7 +15,7 @@ class CmdImport(CmdBase):
 
             out = self.args.out or default_out
 
-            self.project.imp(self.args.url, out, self.args.resume)
+            self.repo.imp(self.args.url, out, self.args.resume)
         except DvcException:
             logger.error(
                 "failed to import {}. You could also try downloading "

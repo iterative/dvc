@@ -52,7 +52,7 @@ class OutputLOCAL(OutputBase):
 
     @property
     def cache(self):
-        return self.project.cache.local.get(self.checksum)
+        return self.repo.cache.local.get(self.checksum)
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
@@ -111,10 +111,10 @@ class OutputLOCAL(OutputBase):
             return
 
         if self.is_local:
-            if self.project.scm.is_tracked(self.path):
+            if self.repo.scm.is_tracked(self.path):
                 raise OutputAlreadyTrackedError(self.rel_path)
 
             if self.use_cache:
-                self.project.scm.ignore(self.path)
+                self.repo.scm.ignore(self.path)
 
-        self.info = self.project.cache.local.save(self.path_info)
+        self.info = self.repo.cache.local.save(self.path_info)

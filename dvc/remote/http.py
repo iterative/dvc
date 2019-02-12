@@ -32,8 +32,8 @@ class RemoteHTTP(RemoteBase):
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
 
-    def __init__(self, project, config):
-        super(RemoteHTTP, self).__init__(project, config)
+    def __init__(self, repo, config):
+        super(RemoteHTTP, self).__init__(repo, config)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
         self.path_info = {"scheme": "http"}
