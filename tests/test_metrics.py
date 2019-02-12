@@ -35,16 +35,19 @@ class TestMetrics(TestDvc):
                 fd.write("branch\n")
                 fd.write(branch)
 
-            self.dvc.scm.add(
-                [
-                    "metric",
-                    "metric_json",
-                    "metric_tsv",
-                    "metric_htsv",
-                    "metric_csv",
-                    "metric_hcsv",
-                ]
-            )
+            files = [
+                "metric",
+                "metric_json",
+                "metric_tsv",
+                "metric_htsv",
+                "metric_csv",
+                "metric_hcsv",
+            ]
+
+            self.dvc.run(metrics_no_cache=files, overwrite=True)
+
+            self.dvc.scm.add(files + ["metric.dvc"])
+
             self.dvc.scm.commit("metric")
 
         self.dvc.scm.checkout("master")
@@ -367,6 +370,7 @@ class TestCachedMetrics(TestDvc):
             json.dump({"metrics": branch}, fd)
 
         stages = self.dvc.add("metrics.json")
+        self.dvc.metrics_add("metrics.json", typ="json", xpath="metrics")
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertIsNotNone(stage)
@@ -413,6 +417,19 @@ class TestCachedMetrics(TestDvc):
 
         res = self.dvc.metrics_show(
             "metrics.json", all_branches=True, typ="json", xpath="metrics"
+        )
+
+        self.assertEqual(
+            res,
+            {
+                "master": {"metrics.json": ["master"]},
+                "one": {"metrics.json": ["one"]},
+                "two": {"metrics.json": ["two"]},
+            },
+        )
+
+        res = self.dvc.metrics_show(
+            "", all_branches=True, typ="json", xpath="metrics"
         )
 
         self.assertEqual(
