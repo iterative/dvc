@@ -258,7 +258,7 @@ class TestDataCloudBase(TestDvc):
         info_dir = stage_dir.outs[0].dumpd()
         md5_dir = info_dir["md5"]
 
-        with self.cloud.project.state:
+        with self.cloud.repo.state:
             # Check status
             status = self.cloud.status([info], show_checksums=True)
             expected = {md5: {"name": md5, "status": STATUS_NEW}}

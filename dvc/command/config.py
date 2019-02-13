@@ -11,14 +11,14 @@ from dvc.exceptions import DvcException
 
 class CmdConfig(CmdBase):
     def __init__(self, args):
-        from dvc.project import Project, NotDvcProjectError
+        from dvc.repo import Repo, NotDvcRepoError
 
         self.args = args
 
         try:
-            dvc_dir = os.path.join(Project.find_root(), Project.DVC_DIR)
+            dvc_dir = os.path.join(Repo.find_root(), Repo.DVC_DIR)
             saved_exc = None
-        except NotDvcProjectError as exc:
+        except NotDvcRepoError as exc:
             dvc_dir = None
             saved_exc = exc
 
@@ -34,7 +34,7 @@ class CmdConfig(CmdBase):
         else:
             if dvc_dir is None:
                 raise saved_exc
-            self.configobj = self.config._project_config
+            self.configobj = self.config._repo_config
 
     def run_cmd(self):
         return self.run()

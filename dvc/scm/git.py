@@ -21,14 +21,14 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
 
-    def __init__(self, root_dir=os.curdir, project=None):
-        super(Git, self).__init__(root_dir, project=project)
+    def __init__(self, root_dir=os.curdir, repo=None):
+        super(Git, self).__init__(root_dir, repo=repo)
 
         import git
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.repo = git.Repo(root_dir)
+            self.git = git.Repo(root_dir)
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
             raise SCMError(msg.format(root_dir))
@@ -37,7 +37,7 @@ class Git(Base):
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
         libpath = env.get("LD_LIBRARY_PATH", None)
-        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
+        self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
 
     @staticmethod
     def is_repo(root_dir):
@@ -53,7 +53,7 @@ class Git(Base):
 
     @property
     def dir(self):
-        return self.repo.git_dir
+        return self.git.git_dir
 
     @property
     def ignore_file(self):
@@ -94,8 +94,8 @@ class Git(Base):
         with open(gitignore, "a") as fobj:
             fobj.write(content)
 
-        if self.project is not None:
-            self.project.files_to_git_add.append(os.path.relpath(gitignore))
+        if self.repo is not None:
+            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -111,14 +111,14 @@ class Git(Base):
         with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 
-        if self.project is not None:
-            self.project.files_to_git_add.append(os.path.relpath(gitignore))
+        if self.repo is not None:
+            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
-            self.repo.index.add(paths)
+            self.git.index.add(paths)
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files"
@@ -130,35 +130,35 @@ class Git(Base):
             logger.error(msg)
 
     def commit(self, msg):
-        self.repo.index.commit(msg)
+        self.git.index.commit(msg)
 
     def checkout(self, branch, create_new=False):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch)
+            self.git.git.checkout("HEAD", b=branch)
         else:
-            self.repo.git.checkout(branch)
+            self.git.git.checkout(branch)
 
     def branch(self, branch):
-        self.repo.git.branch(branch)
+        self.git.git.branch(branch)
 
     def tag(self, tag):
-        self.repo.git.tag(tag)
+        self.git.git.tag(tag)
 
     def untracked_files(self):
-        files = self.repo.untracked_files
-        return [os.path.join(self.repo.working_dir, fname) for fname in files]
+        files = self.git.untracked_files
+        return [os.path.join(self.git.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
-        return len(self.repo.git.ls_files(path)) != 0
+        return len(self.git.git.ls_files(path)) != 0
 
     def active_branch(self):
-        return self.repo.active_branch.name
+        return self.git.active_branch.name
 
     def list_branches(self):
-        return [h.name for h in self.repo.heads]
+        return [h.name for h in self.git.heads]
 
     def list_tags(self):
-        return [t.name for t in self.repo.tags]
+        return [t.name for t in self.git.tags]
 
     def _install_hook(self, name, cmd):
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)

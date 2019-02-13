@@ -29,7 +29,7 @@ class CmdRun(CmdBase):
             return 1
 
         try:
-            self.project.run(
+            self.repo.run(
                 cmd=self._parsed_cmd(),
                 outs=self.args.outs,
                 outs_no_cache=self.args.outs_no_cache,
@@ -130,7 +130,7 @@ def add_parser(subparsers, parent_parser):
         "-c",
         "--cwd",
         default=os.path.curdir,
-        help="Directory within your project to run your command and place "
+        help="Directory within your repo to run your command and place "
         "stage file in.",
     )
     run_parser.add_argument(

@@ -4,7 +4,7 @@ import configobj
 from git import Repo
 
 from dvc.main import main
-from dvc.project import Project
+from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
 from tests.basic_env import TestDir
@@ -104,7 +104,7 @@ class TestGCBranchesTags(TestDvc):
         self._check_cache(1)
 
 
-class TestGCMultipleProjects(TestDvc):
+class TestGCMultipleDvcRepos(TestDvc):
     def _check_cache(self, num):
         total = 0
         for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
@@ -112,10 +112,10 @@ class TestGCMultipleProjects(TestDvc):
         self.assertEqual(total, num)
 
     def setUp(self):
-        super(TestGCMultipleProjects, self).setUp()
+        super(TestGCMultipleDvcRepos, self).setUp()
         self.additional_path = TestDir.mkdtemp()
         self.additional_git = Repo.init(self.additional_path)
-        self.additional_dvc = Project.init(self.additional_path)
+        self.additional_dvc = DvcRepo.init(self.additional_path)
 
         cache_path = os.path.join(self._root_dir, ".dvc", "cache")
         config_path = os.path.join(
@@ -126,14 +126,14 @@ class TestGCMultipleProjects(TestDvc):
         cfg["cache"] = {"dir": cache_path}
         cfg.write()
 
-        self.additional_dvc = Project(self.additional_path)
+        self.additional_dvc = DvcRepo(self.additional_path)
 
     def test(self):
 
         # ADD FILE ONLY IN MAIN PROJECT
         fname = "only_in_first"
         with open(fname, "w+") as fobj:
-            fobj.write("only in main project")
+            fobj.write("only in main repo")
 
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -141,7 +141,7 @@ class TestGCMultipleProjects(TestDvc):
         # ADD FILE IN MAIN PROJECT THAT IS ALSO IN SECOND PROJECT
         fname = "in_both"
         with open(fname, "w+") as fobj:
-            fobj.write("in both projects")
+            fobj.write("in both repos")
 
         stages = self.dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -151,7 +151,7 @@ class TestGCMultipleProjects(TestDvc):
         # ADD FILE ONLY IN SECOND PROJECT
         fname = os.path.join(self.additional_path, "only_in_second")
         with open(fname, "w+") as fobj:
-            fobj.write("only in additional project")
+            fobj.write("only in additional repo")
 
         stages = self.additional_dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -159,7 +159,7 @@ class TestGCMultipleProjects(TestDvc):
         # ADD FILE IN SECOND PROJECT THAT IS ALSO IN MAIN PROJECT
         fname = os.path.join(self.additional_path, "in_both")
         with open(fname, "w+") as fobj:
-            fobj.write("in both projects")
+            fobj.write("in both repos")
 
         stages = self.additional_dvc.add(fname)
         self.assertEqual(len(stages), 1)
@@ -168,7 +168,7 @@ class TestGCMultipleProjects(TestDvc):
 
         self._check_cache(3)
 
-        self.dvc.gc(projects=[self.additional_path])
+        self.dvc.gc(repos=[self.additional_path])
         self._check_cache(3)
 
         self.dvc.gc()

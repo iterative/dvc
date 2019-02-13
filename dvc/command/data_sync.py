@@ -24,7 +24,7 @@ class CmdDataBase(CmdBase):
 class CmdDataPull(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.pull(
+            self.repo.pull(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -44,7 +44,7 @@ class CmdDataPull(CmdDataBase):
 class CmdDataPush(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.push(
+            self.repo.push(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -63,7 +63,7 @@ class CmdDataPush(CmdDataBase):
 class CmdDataFetch(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.project.fetch(
+            self.repo.fetch(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -240,7 +240,7 @@ def add_parser(subparsers, _parent_parser):
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    STATUS_HELP = "Show the project status."
+    STATUS_HELP = "Show the repo status."
     status_parser = subparsers.add_parser(
         "status",
         parents=[shared_parent_parser()],

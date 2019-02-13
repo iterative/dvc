@@ -35,8 +35,8 @@ class RemoteS3(RemoteBase):
     REQUIRES = {"boto3": boto3}
     PARAM_CHECKSUM = "etag"
 
-    def __init__(self, project, config):
-        super(RemoteS3, self).__init__(project, config)
+    def __init__(self, repo, config):
+        super(RemoteS3, self).__init__(repo, config)
 
         storagepath = "s3://{}".format(
             config.get(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")

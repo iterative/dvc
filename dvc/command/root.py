@@ -11,12 +11,12 @@ class CmdRoot(CmdBase):
         return self.run()
 
     def run(self):
-        logger.info(os.path.relpath(self.project.root_dir))
+        logger.info(os.path.relpath(self.repo.root_dir))
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    ROOT_HELP = "Relative path to project's directory."
+    ROOT_HELP = "Relative path to repo's directory."
     root_parser = subparsers.add_parser(
         "root", parents=[parent_parser], description=ROOT_HELP, help=ROOT_HELP
     )

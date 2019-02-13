@@ -1,4 +1,4 @@
-"""Manages progress bars for dvc project."""
+"""Manages progress bars for dvc repo."""
 
 from __future__ import print_function
 from __future__ import unicode_literals

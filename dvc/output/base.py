@@ -52,16 +52,16 @@ class OutputBase(object):
         self, stage, path, info=None, remote=None, cache=True, metric=False
     ):
         self.stage = stage
-        self.project = stage.project
+        self.repo = stage.repo
         self.url = path
         self.info = info
-        self.remote = remote or self.REMOTE(self.project, {})
+        self.remote = remote or self.REMOTE(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
 
         if (
             self.use_cache
-            and getattr(self.project.cache, self.REMOTE.scheme) is None
+            and getattr(self.repo.cache, self.REMOTE.scheme) is None
         ):
             raise DvcException(
                 "no cache location setup for '{}' outputs.".format(
@@ -118,7 +118,7 @@ class OutputBase(object):
         if not self.use_cache:
             return self.info != self.remote.save_info(self.path_info)
 
-        return getattr(self.project.cache, self.scheme).changed(
+        return getattr(self.repo.cache, self.scheme).changed(
             self.path_info, self.info
         )
 
@@ -126,7 +126,7 @@ class OutputBase(object):
         if not self.use_cache or not self.checksum:
             return True
 
-        cache = self.project.cache.__getattribute__(self.scheme)
+        cache = self.repo.cache.__getattribute__(self.scheme)
 
         return cache.changed_cache(self.checksum)
 
@@ -140,7 +140,7 @@ class OutputBase(object):
         if not self.use_cache:
             self.info = self.remote.save_info(self.path_info)
         else:
-            self.info = getattr(self.project.cache, self.scheme).save(
+            self.info = getattr(self.repo.cache, self.scheme).save(
                 self.path_info
             )
 
@@ -171,7 +171,7 @@ class OutputBase(object):
         if not self.use_cache:
             return
 
-        getattr(self.project.cache, self.scheme).checkout(
+        getattr(self.repo.cache, self.scheme).checkout(
             self.path_info, self.info, force=force
         )
 
@@ -181,11 +181,11 @@ class OutputBase(object):
             return
 
         if ignore_remove and self.use_cache and self.is_local:
-            self.project.scm.ignore_remove(self.path)
+            self.repo.scm.ignore_remove(self.path)
 
     def move(self, out):
         if self.scheme == "local" and self.use_cache and self.is_local:
-            self.project.scm.ignore_remove(self.path)
+            self.repo.scm.ignore_remove(self.path)
 
         self.remote.move(self.path_info, out.path_info)
         self.url = out.url
@@ -193,4 +193,4 @@ class OutputBase(object):
         self.save()
 
         if self.scheme == "local" and self.use_cache and self.is_local:
-            self.project.scm.ignore(self.path)
+            self.repo.scm.ignore(self.path)

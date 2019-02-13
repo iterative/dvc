@@ -1,18 +1,19 @@
 import os
 
 from dvc.main import main
-from dvc.project import Project, InitError
+from dvc.repo import Repo as DvcRepo
+from dvc.exceptions import InitError
 
 from tests.basic_env import TestGit, TestDir
 
 
 class TestInit(TestGit):
     def _test_init(self):
-        self.assertTrue(os.path.exists(Project.DVC_DIR))
-        self.assertTrue(os.path.isdir(Project.DVC_DIR))
+        self.assertTrue(os.path.exists(DvcRepo.DVC_DIR))
+        self.assertTrue(os.path.isdir(DvcRepo.DVC_DIR))
 
     def test_api(self):
-        Project.init()
+        DvcRepo.init()
 
         self._test_init()
 
@@ -41,7 +42,7 @@ class TestDoubleInit(TestInit):
 class TestInitNoSCMFail(TestDir):
     def test_api(self):
         with self.assertRaises(InitError):
-            Project.init()
+            DvcRepo.init()
 
     def test_cli(self):
         ret = main(["init"])
@@ -50,11 +51,11 @@ class TestInitNoSCMFail(TestDir):
 
 class TestInitNoSCM(TestDir):
     def _test_init(self):
-        self.assertTrue(os.path.exists(Project.DVC_DIR))
-        self.assertTrue(os.path.isdir(Project.DVC_DIR))
+        self.assertTrue(os.path.exists(DvcRepo.DVC_DIR))
+        self.assertTrue(os.path.isdir(DvcRepo.DVC_DIR))
 
     def test_api(self):
-        Project.init(no_scm=True)
+        DvcRepo.init(no_scm=True)
 
         self._test_init()
 

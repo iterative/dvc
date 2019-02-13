@@ -11,7 +11,7 @@ from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.exceptions import DvcException
 from dvc.output.base import OutputAlreadyTrackedError
-from dvc.project import Project
+from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
 
@@ -172,7 +172,7 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["remote", "add", remote, cwd])
         self.assertEqual(ret, 0)
 
-        self.dvc = Project()
+        self.dvc = DvcRepo()
 
         foo = "remote://{}/{}".format(remote, self.FOO)
         ret = main(["add", foo])

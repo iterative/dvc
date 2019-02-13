@@ -1,4 +1,4 @@
-"""Manages logger for dvc project."""
+"""Manages logger for dvc repo."""
 
 from __future__ import unicode_literals
 

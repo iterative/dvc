@@ -1,9 +1,9 @@
 import os
 import json
 
-from dvc.project import Project
+from dvc.repo import Repo as DvcRepo
 from dvc.main import main
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from tests.basic_env import TestDvc
 
 
@@ -53,13 +53,13 @@ class TestMetrics(TestDvc):
         self.dvc.scm.checkout("master")
 
     def test(self):
-        ret = self.dvc.metrics_show("metric", all_branches=True)
+        ret = self.dvc.metrics.show("metric", all_branches=True)
         self.assertEqual(len(ret), 3)
         self.assertTrue(ret["foo"]["metric"] == "foo")
         self.assertTrue(ret["bar"]["metric"] == "bar")
         self.assertTrue(ret["baz"]["metric"] == "baz")
 
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "metric_json", typ="json", xpath="branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
@@ -67,7 +67,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["bar"]["metric_json"] == ["bar"])
         self.assertTrue(ret["baz"]["metric_json"] == ["baz"])
 
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "metric_tsv", typ="tsv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
@@ -75,7 +75,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["bar"]["metric_tsv"] == ["bar"])
         self.assertTrue(ret["baz"]["metric_tsv"] == ["baz"])
 
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "metric_htsv", typ="htsv", xpath="branch,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
@@ -83,7 +83,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["bar"]["metric_htsv"] == ["bar"])
         self.assertTrue(ret["baz"]["metric_htsv"] == ["baz"])
 
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "metric_csv", typ="csv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
@@ -91,7 +91,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["bar"]["metric_csv"] == ["bar"])
         self.assertTrue(ret["baz"]["metric_csv"] == ["baz"])
 
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "metric_hcsv", typ="hcsv", xpath="branch,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
@@ -144,13 +144,12 @@ class TestMetricsRecursive(TestDvc):
         self.dvc.scm.checkout("master")
 
     def test(self):
+        with self.assertRaises(BadMetricError):
+            ret = self.dvc.metrics.show(
+                "nested", all_branches=True, recursive=False
+            )
 
-        ret = self.dvc.metrics_show(
-            "nested", all_branches=True, recursive=False
-        )
-        self.assertEqual(len(ret), 0)
-
-        ret = self.dvc.metrics_show(
+        ret = self.dvc.metrics.show(
             "nested", all_branches=True, recursive=True
         )
         self.assertEqual(len(ret), 1)
@@ -334,7 +333,7 @@ class TestMetricsCLI(TestMetrics):
 
         with self.assertRaises(DvcException):
             self.dvc.run(outs_no_cache=["metrics_dir"])
-            self.dvc.metrics_add("metrics_dir")
+            self.dvc.metrics.add("metrics_dir")
 
     def test_binary(self):
         with open("metrics_bin", "w+") as fd:
@@ -342,7 +341,7 @@ class TestMetricsCLI(TestMetrics):
 
         with self.assertRaises(DvcException):
             self.dvc.run(outs_no_cache=["metrics_bin"])
-            self.dvc.metrics_add("metrics_bin")
+            self.dvc.metrics.add("metrics_bin")
 
     def test_non_existing(self):
         ret = main(["metrics", "add", "non-existing"])
@@ -357,6 +356,10 @@ class TestMetricsCLI(TestMetrics):
 
 class TestNoMetrics(TestDvc):
     def test(self):
+        with self.assertRaises(NoMetricsError):
+            self.dvc.metrics.show()
+
+    def test_cli(self):
         ret = main(["metrics", "show"])
         self.assertNotEqual(ret, 0)
 
@@ -370,7 +373,7 @@ class TestCachedMetrics(TestDvc):
             json.dump({"metrics": branch}, fd)
 
         stages = self.dvc.add("metrics.json")
-        self.dvc.metrics_add("metrics.json", typ="json", xpath="metrics")
+        self.dvc.metrics.add("metrics.json", typ="json", xpath="metrics")
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertIsNotNone(stage)
@@ -413,9 +416,9 @@ class TestCachedMetrics(TestDvc):
         func("one")
         func("two")
 
-        self.dvc = Project(".")
+        self.dvc = DvcRepo(".")
 
-        res = self.dvc.metrics_show(
+        res = self.dvc.metrics.show(
             "metrics.json", all_branches=True, typ="json", xpath="metrics"
         )
 
@@ -428,7 +431,7 @@ class TestCachedMetrics(TestDvc):
             },
         )
 
-        res = self.dvc.metrics_show(
+        res = self.dvc.metrics.show(
             "", all_branches=True, typ="json", xpath="metrics"
         )
 

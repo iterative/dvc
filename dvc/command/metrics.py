@@ -6,29 +6,41 @@ from dvc.command.base import CmdBase, fix_subparsers
 
 
 class CmdMetricsShow(CmdBase):
-    def run(self):
-        try:
-            # backward compatibility
-            if self.args.json_path:
-                typ = "json"
-                xpath = self.args.json_path
-            elif self.args.tsv_path:
-                typ = "tsv"
-                xpath = self.args.tsv_path
-            elif self.args.htsv_path:
-                typ = "htsv"
-                xpath = self.args.htsv_path
-            elif self.args.csv_path:
-                typ = "csv"
-                xpath = self.args.csv_path
-            elif self.args.hcsv_path:
-                typ = "hcsv"
-                xpath = self.args.hcsv_path
-            else:
-                typ = self.args.type
-                xpath = self.args.xpath
+    def _show(self, metrics):
+        for branch, val in metrics.items():
+            if self.args.all_branches or self.args.all_tags:
+                logger.info("{}:".format(branch))
 
-            self.project.metrics_show(
+            for fname, metric in val.items():
+                logger.info("\t{}: {}".format(fname, metric))
+
+    def _get_type_xpath(self):
+        # backward compatibility
+        if self.args.json_path:
+            typ = "json"
+            xpath = self.args.json_path
+        elif self.args.tsv_path:
+            typ = "tsv"
+            xpath = self.args.tsv_path
+        elif self.args.htsv_path:
+            typ = "htsv"
+            xpath = self.args.htsv_path
+        elif self.args.csv_path:
+            typ = "csv"
+            xpath = self.args.csv_path
+        elif self.args.hcsv_path:
+            typ = "hcsv"
+            xpath = self.args.hcsv_path
+        else:
+            typ = self.args.type
+            xpath = self.args.xpath
+
+        return typ, xpath
+
+    def run(self):
+        typ, xpath = self._get_type_xpath()
+        try:
+            metrics = self.repo.metrics.show(
                 self.args.path,
                 typ=typ,
                 xpath=xpath,
@@ -36,6 +48,8 @@ class CmdMetricsShow(CmdBase):
                 all_tags=self.args.all_tags,
                 recursive=self.args.recursive,
             )
+
+            self._show(metrics)
         except DvcException:
             logger.error("failed to show metrics")
             return 1
@@ -46,7 +60,7 @@ class CmdMetricsShow(CmdBase):
 class CmdMetricsModify(CmdBase):
     def run(self):
         try:
-            self.project.metrics_modify(
+            self.repo.metrics.modify(
                 self.args.path, typ=self.args.type, xpath=self.args.xpath
             )
         except DvcException:
@@ -59,7 +73,7 @@ class CmdMetricsModify(CmdBase):
 class CmdMetricsAdd(CmdBase):
     def run(self):
         try:
-            self.project.metrics_add(
+            self.repo.metrics.add(
                 self.args.path, self.args.type, self.args.xpath
             )
         except DvcException:
@@ -73,7 +87,7 @@ class CmdMetricsAdd(CmdBase):
 class CmdMetricsRemove(CmdBase):
     def run(self):
         try:
-            self.project.metrics_remove(self.args.path)
+            self.repo.metrics.remove(self.args.path)
         except DvcException:
             msg = "failed to remove metric file '{}'".format(self.args.path)
             logger.error(msg)

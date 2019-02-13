@@ -8,13 +8,14 @@ class CmdInit(object):
         self.args = args
 
     def run_cmd(self):
-        from dvc.project import Project, InitError
+        from dvc.repo import Repo
+        from dvc.exceptions import InitError
 
         try:
-            self.project = Project.init(
+            self.repo = Repo.init(
                 ".", no_scm=self.args.no_scm, force=self.args.force
             )
-            self.config = self.project.config
+            self.config = self.repo.config
         except InitError:
             logger.error("failed to initiate dvc")
             return 1

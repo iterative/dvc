@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str, builtin_str
 
+import os
 import traceback
 
 
@@ -49,6 +50,21 @@ class OutputDuplicationError(DvcException):
             "stage: {}"
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
+
+
+class OutputNotFoundError(DvcException):
+    """Thrown if a file/directory not found in repository pipelines.
+
+    Args:
+        output (unicode): path to the file/directory.
+    """
+
+    def __init__(self, output):
+        super(OutputNotFoundError, self).__init__(
+            "unable to find stage file with output '{path}'".format(
+                path=os.path.relpath(output)
+            )
+        )
 
 
 class WorkingDirectoryAsOutputError(DvcException):
@@ -125,8 +141,8 @@ class MoveNotDataSourceError(DvcException):
         super(MoveNotDataSourceError, self).__init__(msg.format(path=path))
 
 
-class NotDvcProjectError(DvcException):
-    """Thrown if a directory is not a dvc project.
+class NotDvcRepoError(DvcException):
+    """Thrown if a directory is not a dvc repo.
 
     Args:
         root (str): path to the directory.
@@ -134,7 +150,7 @@ class NotDvcProjectError(DvcException):
 
     def __init__(self, root):
         msg = "not a dvc repository (checked up to mount point '{}')"
-        super(NotDvcProjectError, self).__init__(msg.format(root))
+        super(NotDvcRepoError, self).__init__(msg.format(root))
 
 
 class DvcParserError(DvcException):
@@ -162,4 +178,33 @@ class ConfirmRemoveError(DvcException):
         super(ConfirmRemoveError, self).__init__(
             "unable to remove '{}' without a confirmation from the user. Use "
             "'-f' to force.".format(path)
+        )
+
+
+class InitError(DvcException):
+    def __init__(self, msg):
+        super(InitError, self).__init__(msg)
+
+
+class ReproductionError(DvcException):
+    def __init__(self, dvc_file_name, ex):
+        self.path = dvc_file_name
+        msg = "failed to reproduce '{}'".format(dvc_file_name)
+        super(ReproductionError, self).__init__(msg, cause=ex)
+
+
+class BadMetricError(DvcException):
+    def __init__(self, path):
+        super(BadMetricError, self).__init__(
+            "'{}' does not exist, not a metric or is malformed".format(
+                os.path.relpath(path)
+            )
+        )
+
+
+class NoMetricsError(DvcException):
+    def __init__(self):
+        super(NoMetricsError, self).__init__(
+            "no metric files in this repository. "
+            "Use 'dvc metrics add' to add a metric file to track."
         )

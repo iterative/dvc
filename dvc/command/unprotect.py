@@ -9,7 +9,7 @@ class CmdUnprotect(CmdBase):
     def run(self):
         for target in self.args.targets:
             try:
-                self.project.unprotect(target)
+                self.repo.unprotect(target)
             except DvcException:
                 msg = "failed to unprotect '{}'".format(target)
                 logger.error(msg)

@@ -20,8 +20,8 @@ class FileNotInRepoError(DvcException):
 class Base(object):
     """Base class for source control management driver implementations."""
 
-    def __init__(self, root_dir=os.curdir, project=None):
-        self.project = project
+    def __init__(self, root_dir=os.curdir, repo=None):
+        self.repo = repo
         self.root_dir = root_dir
 
     def __repr__(self):
@@ -126,16 +126,16 @@ class Base(object):
         return False
 
     def active_branch(self):  # pylint: disable=no-self-use
-        """Returns current branch in the project."""
+        """Returns current branch in the repo."""
         return ""
 
     def list_branches(self):  # pylint: disable=no-self-use
-        """Returns a list of available branches in the project."""
+        """Returns a list of available branches in the repo."""
         return []
 
     def list_tags(self):  # pylint: disable=no-self-use
-        """Returns a list of available tags in the project."""
+        """Returns a list of available tags in the repo."""
         return []
 
     def install(self):
-        """Adds dvc commands to SCM hooks for the project."""
+        """Adds dvc commands to SCM hooks for the repo."""

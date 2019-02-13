@@ -9,7 +9,7 @@ class CmdLockBase(CmdBase):
     def run(self, unlock=False):
         for target in self.args.targets:
             try:
-                self.project.lock_stage(target, unlock=unlock)
+                self.repo.lock_stage(target, unlock=unlock)
             except DvcException:
                 logger.error(
                     "failed to {}lock '{}'".format(
