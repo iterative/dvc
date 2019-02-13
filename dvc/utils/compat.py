@@ -1,6 +1,7 @@
 """Handle import compatibility between Python 2 and Python 3"""
 
 import sys
+import os
 
 
 # Syntax sugar.
@@ -13,6 +14,7 @@ is_py2 = _ver[0] == 2
 is_py3 = _ver[0] == 3
 
 # NOTE: cast_bytes_py2 is taken from https://github.com/ipython/ipython_genutils
+# NOTE _makedirs is taken from https://github.com/python/cpython/blob/3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
 
 # simplified version of ipython_genutils/encoding.py
 DEFAULT_ENCODING = sys.getdefaultencoding()
@@ -33,6 +35,27 @@ def cast_bytes(s, encoding=None):
     return s
 
 
+def _makedirs(name, mode=0o777, exist_ok=False):
+    head, tail = os.path.split(name)
+    if not tail:
+        head, tail = os.path.split(head)
+    if head and tail and not os.path.exists(head):
+        try:
+            _makedirs(head, exist_ok=exist_ok)
+        except FileExistsError:
+            pass
+        cdir = os.curdir
+        if isinstance(tail, bytes):
+            cdir = bytes(os.curdir, "ASCII")
+        if tail == cdir:
+            return
+    try:
+        os.mkdir(name, mode)
+    except OSError:
+        if not exist_ok or not os.path.isdir(name):
+            raise
+
+
 if is_py2:
     from urlparse import urlparse, urljoin  # noqa: F401
     from StringIO import StringIO  # noqa: F401
@@ -49,8 +72,10 @@ if is_py2:
     integer_types = (int, long)  # noqa: F821
     input = raw_input  # noqa: F821
     cast_bytes_py2 = cast_bytes
+    makedirs = _makedirs
 
 elif is_py3:
+    from os import makedirs  # noqa: F401
     from urllib.parse import urlparse, urljoin  # noqa: F401
     from io import StringIO  # noqa: F401
     from http.server import (  # noqa: F401

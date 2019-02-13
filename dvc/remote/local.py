@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
+from dvc.utils.compat import str, makedirs
 
 import os
 import stat
@@ -484,7 +484,7 @@ class RemoteLOCAL(RemoteBase):
             if not name:
                 name = os.path.basename(from_info["path"])
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             try:
                 copyfile(from_info["path"], to_info["path"], name=name)
@@ -521,7 +521,7 @@ class RemoteLOCAL(RemoteBase):
             if not name:
                 name = os.path.basename(to_info["path"])
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
             tmp_file = self.tmp_file(to_info["path"])
             try:
                 copyfile(

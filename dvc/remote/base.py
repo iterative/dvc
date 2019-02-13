@@ -197,15 +197,6 @@ class RemoteBase(object):
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def _makedirs(self, fname):
-        dname = os.path.dirname(fname)
-
-        try:
-            os.makedirs(dname)
-        except OSError as e:
-            if e.errno != errno.EEXIST:
-                raise
-
     def exists(self, path_infos):
         raise NotImplementedError
 

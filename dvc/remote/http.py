@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import open
+from dvc.utils.compat import open, makedirs
 
 import os
 import threading
@@ -67,7 +67,7 @@ class RemoteHTTP(RemoteBase):
             if not name:
                 name = os.path.basename(to_info["path"])
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             total = self._content_length(from_info["path"])
 

@@ -40,7 +40,7 @@ class TestRemoteSSH(TestCase):
         self.assertEqual(remote.port, port)
         self.assertEqual(remote.prefix, path)
 
-        # SCP-like URL ssh://[user@]host.xz:path
+        # SCP-like URL ssh://[user@]host.xz:/absolute/path
         url = "ssh://{}@{}:{}".format(user, host, path)
         config = {"url": url}
 
