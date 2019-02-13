@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str, builtin_str
 
+import os
 import traceback
 
 
@@ -49,6 +50,21 @@ class OutputDuplicationError(DvcException):
             "stage: {}"
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
+
+
+class OutputNotFoundError(DvcException):
+    """Thrown if a file/directory not found in repository pipelines.
+
+    Args:
+        output (unicode): path to the file/directory.
+    """
+
+    def __init__(self, output):
+        super(OutputNotFoundError, self).__init__(
+            "unable to find stage file with output '{path}'".format(
+                path=os.path.relpath(output)
+            )
+        )
 
 
 class WorkingDirectoryAsOutputError(DvcException):
@@ -175,3 +191,20 @@ class ReproductionError(DvcException):
         self.path = dvc_file_name
         msg = "failed to reproduce '{}'".format(dvc_file_name)
         super(ReproductionError, self).__init__(msg, cause=ex)
+
+
+class BadMetricError(DvcException):
+    def __init__(self, path):
+        super(BadMetricError, self).__init__(
+            "'{}' does not exist, not a metric or is malformed".format(
+                os.path.relpath(path)
+            )
+        )
+
+
+class NoMetricsError(DvcException):
+    def __init__(self):
+        super(NoMetricsError, self).__init__(
+            "no metric files in this repository. "
+            "Use 'dvc metrics add' to add a metric file to track."
+        )

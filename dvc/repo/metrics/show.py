@@ -6,8 +6,13 @@ import json
 from jsonpath_rw import parse
 
 import dvc.logger as logger
-from dvc.exceptions import OutputDuplicationError, DvcException
-from dvc.repo.metrics.modify import find_output_by_path
+from dvc.exceptions import (
+    OutputDuplicationError,
+    DvcException,
+    OutputNotFoundError,
+    BadMetricError,
+    NoMetricsError,
+)
 from dvc.utils.compat import str, builtin_str, open
 
 
@@ -67,6 +72,50 @@ def _read_metric(path, typ=None, xpath=None):
     return ret
 
 
+def _collect_metrics(self, path, recursive, typ, xpath):
+    outs = [out for stage in self.stages() for out in stage.outs]
+
+    if path:
+        try:
+            outs = self.find_outs_by_path(path, outs=outs, recursive=recursive)
+        except OutputNotFoundError:
+            return []
+
+    res = []
+    for o in outs:
+        if not o.metric:
+            continue
+
+        if not typ and isinstance(o.metric, dict):
+            t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
+            x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
+        else:
+            t = typ
+            x = xpath
+
+        res.append((o, t, x))
+
+    return res
+
+
+def _read_metrics(self, metrics):
+    res = {}
+    for out, typ, xpath in metrics:
+        assert out.scheme == "local"
+        if out.use_cache:
+            path = self.cache.local.get(out.checksum)
+        else:
+            path = out.path
+
+        metric = _read_metric(path, typ=typ, xpath=xpath)
+        if not metric:
+            continue
+
+        res[out.rel_path] = metric
+
+    return res
+
+
 def show(
     self,
     path=None,
@@ -80,71 +129,14 @@ def show(
     for branch in self.scm.brancher(
         all_branches=all_branches, all_tags=all_tags
     ):
-        astages = self.active_stages()
-        outs = [out for stage in astages for out in stage.outs]
+        entries = _collect_metrics(self, path, recursive, typ, xpath)
+        metrics = _read_metrics(self, entries)
+        if metrics:
+            res[branch] = metrics
 
+    if not res:
         if path:
-            outs = find_output_by_path(
-                self, path, outs=outs, recursive=recursive
-            )
+            raise BadMetricError(path)
+        raise NoMetricsError()
 
-        metrics = filter(lambda o: o.metric, outs)
-        stages = set()
-        entries = []
-
-        for o in metrics:
-            if not typ and isinstance(o.metric, dict):
-                t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
-                x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
-            else:
-                t = typ
-                x = xpath
-            entries.append((o.path, t, x))
-            stages.add(o.stage.path)
-
-        if path and not entries:
-            if os.path.isdir(path):
-                logger.warning(
-                    "Path '{path}' is a directory. "
-                    "Consider running with '-R'.".format(path=path)
-                )
-                return {}
-
-        for fname, t, x in entries:
-            if stages:
-                for stage in stages:
-                    self.checkout(stage, force=True)
-
-            rel = os.path.relpath(fname)
-            metric = _read_metric(fname, typ=t, xpath=x)
-            if not metric:
-                continue
-
-            if branch not in res:
-                res[branch] = {}
-
-            res[branch][rel] = metric
-
-    for branch, val in res.items():
-        if all_branches or all_tags:
-            logger.info("{}:".format(branch))
-        for fname, metric in val.items():
-            logger.info("\t{}: {}".format(fname, metric))
-
-    if res:
-        return res
-
-    if path and os.path.isdir(path):
-        return res
-
-    if path:
-        msg = "file '{}' does not exist, not a metric file or is malformed".format(
-            path
-        )
-    else:
-        msg = (
-            "no metric files in this repository."
-            " use 'dvc metrics add' to add a metric file to track."
-        )
-
-    raise DvcException(msg)
+    return res

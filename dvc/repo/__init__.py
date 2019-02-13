@@ -7,7 +7,7 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.exceptions import DvcException, NotDvcRepoError, OutputNotFoundError
 
 
 class Repo(object):
@@ -299,7 +299,7 @@ class Repo(object):
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
-        stages = stages or self.stages(from_directory)
+        stages = stages or self.stages(from_directory, check_dag=False)
         stages = [stage for stage in stages if stage]
         outs = []
 
@@ -361,7 +361,7 @@ class Repo(object):
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
 
-    def stages(self, from_directory=None):
+    def stages(self, from_directory=None, check_dag=True):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -399,6 +399,9 @@ class Repo(object):
 
             dirs[:] = list(filter(filter_dirs, dirs))
 
+        if check_dag:
+            self.check_dag(stages)
+
         return stages
 
     def active_stages(self, from_directory=None):
@@ -408,3 +411,25 @@ class Repo(object):
         for G in self.pipelines(from_directory):
             stages.extend(list(nx.get_node_attributes(G, "stage").values()))
         return stages
+
+    def find_outs_by_path(self, path, outs=None, recursive=False):
+        if not outs:
+            outs = [out for stage in self.stages() for out in stage.outs]
+
+        abs_path = os.path.abspath(path)
+        is_dir = os.path.isdir(abs_path)
+
+        def func(out):
+            if out.path == abs_path:
+                return True
+
+            if is_dir and recursive and out.path.startswith(abs_path + os.sep):
+                return True
+
+            return False
+
+        matched = list(filter(func, outs))
+        if not matched:
+            raise OutputNotFoundError(path)
+
+        return matched

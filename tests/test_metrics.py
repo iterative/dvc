@@ -3,7 +3,7 @@ import json
 
 from dvc.repo import Repo as DvcRepo
 from dvc.main import main
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from tests.basic_env import TestDvc
 
 
@@ -144,11 +144,10 @@ class TestMetricsRecursive(TestDvc):
         self.dvc.scm.checkout("master")
 
     def test(self):
-
-        ret = self.dvc.metrics.show(
-            "nested", all_branches=True, recursive=False
-        )
-        self.assertEqual(len(ret), 0)
+        with self.assertRaises(BadMetricError):
+            ret = self.dvc.metrics.show(
+                "nested", all_branches=True, recursive=False
+            )
 
         ret = self.dvc.metrics.show(
             "nested", all_branches=True, recursive=True
@@ -357,6 +356,10 @@ class TestMetricsCLI(TestMetrics):
 
 class TestNoMetrics(TestDvc):
     def test(self):
+        with self.assertRaises(NoMetricsError):
+            self.dvc.metrics.show()
+
+    def test_cli(self):
         ret = main(["metrics", "show"])
         self.assertNotEqual(ret, 0)
 

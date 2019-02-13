@@ -34,19 +34,10 @@ def move(self, from_path, to_path):
 
     to_path = _expand_target_path(from_path, to_path)
 
-    try:
-        stage, out = next(
-            (stage, out)
-            for stage in self.stages()
-            for out in stage.outs
-            if from_out.path == out.path
-        )
-    except StopIteration:
-        raise DvcException(
-            "unable to find stage file with output '{path}'".format(
-                path=from_path
-            )
-        )
+    outs = self.find_outs_by_path(from_out.path)
+    assert len(outs) == 1
+    out = outs[0]
+    stage = out.stage
 
     if not stage.is_data_source:
         raise MoveNotDataSourceError(stage.relpath)
