@@ -51,6 +51,11 @@ class TestRemoteSSH(TestCase):
         self.assertEqual(remote.port, remote.DEFAULT_PORT)
         self.assertEqual(remote.prefix, path)
 
+    def test_no_path(self):
+        config = {"url": "ssh://127.0.0.1"}
+        remote = RemoteSSH(None, config)
+        self.assertEqual(remote.prefix, "/")
+
     def test_port(self):
         url = "ssh://127.0.0.1/path/to/dir"
         config = {"url": url}

@@ -70,7 +70,7 @@ class RemoteSSH(RemoteBase):
             or parsed.username
             or getpass.getuser()
         )
-        self.prefix = parsed.path
+        self.prefix = parsed.path or "/"
         self.port = (
             config.get(Config.SECTION_REMOTE_PORT)
             or parsed.port
