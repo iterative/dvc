@@ -657,6 +657,7 @@ class RemoteLOCAL(RemoteBase):
         chunks = self._get_chunks(download, remote, status_info, status, jobs)
 
         if len(chunks) == 0:
+            print("Everything up-to-date")
             return
 
         futures = []
