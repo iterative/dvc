@@ -24,6 +24,11 @@ class CmdDataBase(CmdBase):
                 ret = 1
         return ret
 
+    @staticmethod
+    def check_up_to_date(processed_files_count, message):
+        if processed_files_count == 0:
+            logger.info(message)
+
 
 class CmdDataPull(CmdDataBase):
     def do_run(self, target=None):
@@ -42,8 +47,7 @@ class CmdDataPull(CmdDataBase):
         except Exception:
             logger.error("failed to pull data from the cloud")
             return 1
-        if processed_files_count == 0:
-            logger.info(self.UP_TO_DATE_MSG)
+        self.check_up_to_date(processed_files_count, self.UP_TO_DATE_MSG)
         return 0
 
 
@@ -63,8 +67,7 @@ class CmdDataPush(CmdDataBase):
         except Exception:
             logger.error("failed to push data to the cloud")
             return 1
-        if processed_files_count == 0:
-            logger.info(self.UP_TO_DATE_MSG)
+        self.check_up_to_date(processed_files_count, self.UP_TO_DATE_MSG)
         return 0
 
 
@@ -84,8 +87,7 @@ class CmdDataFetch(CmdDataBase):
         except Exception:
             logger.error("failed to fetch data from the cloud")
             return 1
-        if processed_files_count == 0:
-            logger.info(self.UP_TO_DATE_MSG)
+        self.check_up_to_date(processed_files_count, self.UP_TO_DATE_MSG)
         return 0
 
 
