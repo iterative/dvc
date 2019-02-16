@@ -7,6 +7,10 @@ from dvc.command.base import CmdBase
 
 
 class CmdDataBase(CmdBase):
+    def __init__(self, args):
+        self.UP_TO_DATE_MSG = "Everything is up-to-date."
+        super().__init__(args)
+
     def do_run(self, target):
         pass
 
@@ -22,8 +26,6 @@ class CmdDataBase(CmdBase):
 
 
 class CmdDataPull(CmdDataBase):
-    UP_TO_DATE_MSG = "Everything is up-to-date."
-
     def do_run(self, target=None):
         try:
             processed_files_count = self.repo.pull(
@@ -46,8 +48,6 @@ class CmdDataPull(CmdDataBase):
 
 
 class CmdDataPush(CmdDataBase):
-    UP_TO_DATE_MSG = "Everything is up-to-date."
-
     def do_run(self, target=None):
         try:
             processed_files_count = self.repo.push(
@@ -69,8 +69,6 @@ class CmdDataPush(CmdDataBase):
 
 
 class CmdDataFetch(CmdDataBase):
-    UP_TO_DATE_MSG = "Everything is up-to-date."
-
     def do_run(self, target=None):
         try:
             processed_files_count = self.repo.fetch(
