@@ -403,35 +403,40 @@ class TestReproIgnoreBuildCache(TestDvc):
         code1 = "code1.py"
         shutil.copyfile(self.CODE, code1)
         file1 = "file1"
-        file1_stage = file1 + ".dvc"
-        stage = self.dvc.run(
-            fname=file1_stage,
+        file1_stage = self.dvc.run(
             outs=[file1],
             deps=[self.FOO, code1],
             cmd="python {} {} {}".format(code1, self.FOO, file1),
         )
-        self.assertTrue(stage is not None)
+        self.assertTrue(file1_stage is not None)
 
         code2 = "code2.py"
         shutil.copyfile(self.CODE, code2)
         file2 = "file2"
-        file2_stage = file2 + ".dvc"
-        stage = self.dvc.run(
-            fname=file2_stage,
+        file2_stage = self.dvc.run(
             outs=[file2],
             deps=[file1, code2],
             cmd="python {} {} {}".format(code2, file1, file2),
         )
-        self.assertTrue(stage is not None)
+        self.assertTrue(file2_stage is not None)
 
-        with open(code1, "a") as fobj:
+        code3 = "code3.py"
+        shutil.copyfile(self.CODE, code3)
+        file3 = "file3"
+        file3_stage = self.dvc.run(
+            outs=[file3],
+            deps=[file2, code3],
+            cmd="python {} {} {}".format(code3, file2, file3),
+        )
+        self.assertTrue(file3_stage is not None)
+
+        with open(code2, "a") as fobj:
             fobj.write("\n\n")
 
-        stages = self.dvc.reproduce(file2_stage)
-        self.assertEqual(len(stages), 1)
-
-        stages = self.dvc.reproduce(file2_stage, ignore_build_cache=True)
+        stages = self.dvc.reproduce(file3_stage.path, ignore_build_cache=True)
         self.assertEqual(len(stages), 2)
+        self.assertEqual(stages[0].path, file2_stage.path)
+        self.assertEqual(stages[1].path, file3_stage.path)
 
 
 class TestReproPipeline(TestReproChangedDeepData):

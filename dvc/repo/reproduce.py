@@ -120,7 +120,7 @@ def _reproduce_stages(
         try:
             ret = _reproduce_stage(stages, n, force, dry, interactive)
 
-            if len(ret) == 0 and ignore_build_cache:
+            if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
                 # bottom. If one stage is changed, it will be reproduced,
                 # which tells us that we should force reproducing all of
