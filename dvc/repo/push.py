@@ -23,6 +23,6 @@ def push(
             jobs=jobs,
             recursive=recursive,
         )["local"]
-        self.cloud.push(
+        return self.cloud.push(
             used, jobs, remote=remote, show_checksums=show_checksums
         )

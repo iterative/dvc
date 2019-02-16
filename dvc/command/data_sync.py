@@ -7,6 +7,8 @@ from dvc.command.base import CmdBase
 
 
 class CmdDataBase(CmdBase):
+    UP_TO_DATE_MSG = "Everything is up to date."
+
     def do_run(self, target):
         pass
 
@@ -20,11 +22,16 @@ class CmdDataBase(CmdBase):
                 ret = 1
         return ret
 
+    @classmethod
+    def check_up_to_date(cls, processed_files_count):
+        if processed_files_count == 0:
+            logger.info(cls.UP_TO_DATE_MSG)
+
 
 class CmdDataPull(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.repo.pull(
+            processed_files_count = self.repo.pull(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -38,13 +45,14 @@ class CmdDataPull(CmdDataBase):
         except Exception:
             logger.error("failed to pull data from the cloud")
             return 1
+        self.check_up_to_date(processed_files_count)
         return 0
 
 
 class CmdDataPush(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.repo.push(
+            processed_files_count = self.repo.push(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -57,13 +65,14 @@ class CmdDataPush(CmdDataBase):
         except Exception:
             logger.error("failed to push data to the cloud")
             return 1
+        self.check_up_to_date(processed_files_count)
         return 0
 
 
 class CmdDataFetch(CmdDataBase):
     def do_run(self, target=None):
         try:
-            self.repo.fetch(
+            processed_files_count = self.repo.fetch(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -76,6 +85,7 @@ class CmdDataFetch(CmdDataBase):
         except Exception:
             logger.error("failed to fetch data from the cloud")
             return 1
+        self.check_up_to_date(processed_files_count)
         return 0
 
 

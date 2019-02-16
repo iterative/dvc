@@ -13,7 +13,7 @@ def pull(
     force=False,
     recursive=False,
 ):
-    self.fetch(
+    processed_files_count = self.fetch(
         target,
         jobs,
         remote=remote,
@@ -26,3 +26,4 @@ def pull(
     self.checkout(
         target=target, with_deps=with_deps, force=force, recursive=recursive
     )
+    return processed_files_count
