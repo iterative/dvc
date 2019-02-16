@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import dvc.logger as logger
-from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 from dvc.exceptions import DvcException
 
 
@@ -14,6 +13,8 @@ def _cleanup_unused_links(self, all_stages):
 
 
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):
+    from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
+
     if target and not recursive:
         all_stages = self.active_stages()
         try:

@@ -1,7 +1,6 @@
-from dvc.stage import Stage
-
-
 def imp(self, url, out, resume=False):
+    from dvc.stage import Stage
+
     stage = Stage.create(repo=self, cmd=None, deps=[url], outs=[out])
 
     if stage is None:
