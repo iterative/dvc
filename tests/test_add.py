@@ -238,6 +238,29 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
-            ret = main(["run", "-d", self.FOO, "cat foo"])
+            ret = main(["run", "-d", self.FOO, "cat {}".format(self.FOO)])
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
+
+
+class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
+    def test(self):
+        file_md5_counter = spy(dvc.state.file_md5)
+        with patch.object(dvc.state, "file_md5", file_md5_counter):
+
+            ret = main(["config", "cache.type", "copy"])
+            self.assertEqual(ret, 0)
+
+            ret = main(["add", self.DATA_DIR])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 3)
+
+            ret = main(["status"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 3)
+
+            ret = main(
+                ["run", "-d", self.DATA_DIR, "ls {}".format(self.DATA_DIR)]
+            )
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 3)
