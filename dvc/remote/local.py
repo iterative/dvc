@@ -657,8 +657,7 @@ class RemoteLOCAL(RemoteBase):
         chunks = self._get_chunks(download, remote, status_info, status, jobs)
 
         if len(chunks) == 0:
-            print("Everything up-to-date")
-            return
+            return 0
 
         futures = []
         with ThreadPoolExecutor(max_workers=jobs) as executor:
@@ -669,8 +668,10 @@ class RemoteLOCAL(RemoteBase):
         for f in futures:
             f.result()
 
+        return len(chunks)
+
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        self._process(
+        return self._process(
             checksum_infos,
             remote,
             jobs=jobs,
@@ -679,7 +680,7 @@ class RemoteLOCAL(RemoteBase):
         )
 
     def pull(self, checksum_infos, remote, jobs=None, show_checksums=False):
-        self._process(
+        return self._process(
             checksum_infos,
             remote,
             jobs=jobs,

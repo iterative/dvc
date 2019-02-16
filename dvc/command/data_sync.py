@@ -22,9 +22,11 @@ class CmdDataBase(CmdBase):
 
 
 class CmdDataPull(CmdDataBase):
+    UP_TO_DATE_MSG = "Everything is up-to-date."
+
     def do_run(self, target=None):
         try:
-            self.repo.pull(
+            processed_files_count = self.repo.pull(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -38,13 +40,17 @@ class CmdDataPull(CmdDataBase):
         except Exception:
             logger.error("failed to pull data from the cloud")
             return 1
+        if processed_files_count == 0:
+            logger.info(self.UP_TO_DATE_MSG)
         return 0
 
 
 class CmdDataPush(CmdDataBase):
+    UP_TO_DATE_MSG = "Everything is up-to-date."
+
     def do_run(self, target=None):
         try:
-            self.repo.push(
+            processed_files_count = self.repo.push(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -57,13 +63,17 @@ class CmdDataPush(CmdDataBase):
         except Exception:
             logger.error("failed to push data to the cloud")
             return 1
+        if processed_files_count == 0:
+            logger.info(self.UP_TO_DATE_MSG)
         return 0
 
 
 class CmdDataFetch(CmdDataBase):
+    UP_TO_DATE_MSG = "Everything is up-to-date."
+
     def do_run(self, target=None):
         try:
-            self.repo.fetch(
+            processed_files_count = self.repo.fetch(
                 target=target,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
@@ -76,6 +86,8 @@ class CmdDataFetch(CmdDataBase):
         except Exception:
             logger.error("failed to fetch data from the cloud")
             return 1
+        if processed_files_count == 0:
+            logger.info(self.UP_TO_DATE_MSG)
         return 0
 
 

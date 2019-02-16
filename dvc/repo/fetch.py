@@ -23,6 +23,6 @@ def fetch(
             jobs=jobs,
             recursive=recursive,
         )["local"]
-        self.cloud.pull(
+        return self.cloud.pull(
             used, jobs, remote=remote, show_checksums=show_checksums
         )
