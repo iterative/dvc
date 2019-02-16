@@ -415,10 +415,16 @@ class RemoteLOCAL(RemoteBase):
 
             self.link(c, p)
 
+            self.state.update(p, md5)
+            self.state.update(c, md5)
+
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
 
         self.state.update_link(path)
+
+        cache = self.get(md5)
+        self.state.update(cache)
 
         if bar:
             progress.finish_target(dir_relpath)
