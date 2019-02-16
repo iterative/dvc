@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import dvc.logger as logger
-import dvc.remote.base as cloud
 
 
 def _local_status(self, target=None, with_deps=False):
@@ -36,6 +35,8 @@ def _cloud_status(
     with_deps=False,
     all_tags=False,
 ):
+    import dvc.remote.base as cloud
+
     used = self.used_cache(
         target,
         all_branches=all_branches,

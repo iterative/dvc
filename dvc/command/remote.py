@@ -6,7 +6,6 @@ import re
 import dvc.logger as logger
 from dvc.command.base import fix_subparsers
 from dvc.config import Config
-from dvc.remote import _get, RemoteLOCAL
 from dvc.command.config import CmdConfig
 
 
@@ -30,6 +29,8 @@ class CmdRemoteAdd(CmdConfig):
         return os.path.relpath(path, os.path.dirname(config_file))
 
     def run(self):
+        from dvc.remote import _get, RemoteLOCAL
+
         remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
         if remote == RemoteLOCAL:
             self.args.url = self.resolve_path(
