@@ -385,6 +385,12 @@ class RemoteLOCAL(RemoteBase):
         self.link(cache, path)
         self.state.update_link(path)
 
+        # we need to update path and cache, since in case of reflink,
+        # or copy cache type moving original file results in updates on
+        # next executed command, which causes md5 recalculation
+        self.state.update(path, md5)
+        self.state.update(cache, md5)
+
         return {self.PARAM_CHECKSUM: md5}
 
     def _save_dir(self, path_info):

@@ -1,12 +1,17 @@
 from __future__ import unicode_literals
 
 import os
+
+import dvc
 import yaml
 import time
 import shutil
 import filecmp
 
+from mock import patch
+
 from dvc.main import main
+from dvc.state import State
 from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.exceptions import DvcException
@@ -14,6 +19,7 @@ from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
+from tests.utils import spy
 
 
 class TestAdd(TestDvc):
@@ -214,3 +220,24 @@ class TestDoubleAddUnchanged(TestDvc):
 
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
+
+
+class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
+    def test(self):
+        file_md5_counter = spy(dvc.state.file_md5)
+        with patch.object(dvc.state, "file_md5", file_md5_counter):
+
+            ret = main(["config", "cache.type", "copy"])
+            self.assertEqual(ret, 0)
+
+            ret = main(["add", self.FOO])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 1)
+
+            ret = main(["status"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 1)
+
+            ret = main(["run", "-d", self.FOO, "cat foo"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 1)

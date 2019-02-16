@@ -30,6 +30,10 @@ class StateVersionTooNewError(DvcException):
         )
 
 
+def _file_metadata_changed(actual_mtime, mtime, actual_size, size):
+    return actual_mtime != mtime or actual_size != size
+
+
 class State(object):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
@@ -316,83 +320,146 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         logger.debug("Path {} inode {}".format(path, System.inode(path)))
         return System.inode(path)
 
-    def _do_update(self, path):
+    def _do_update(self, path, known_checksum=None):
         """
         Make sure the stored info for the given path is up to date.
         """
         if not os.path.exists(path):
-            return (None, None)
+            return None, None
 
         actual_mtime, actual_size = self._mtime_and_size(path)
         actual_inode = self._inode(path)
 
+        existing_records = self._get_state_records_for_inode(actual_inode)
+        should_insert_new_record = not existing_records
+
+        if should_insert_new_record:
+            md5, info = self._insert_new_state_record(
+                path, actual_inode, actual_mtime, actual_size, known_checksum
+            )
+        else:
+            md5, info = self._update_existing_state_record(
+                path,
+                actual_inode,
+                actual_mtime,
+                actual_size,
+                existing_records,
+                known_checksum,
+            )
+
+        return md5, info
+
+    def _update_existing_state_record(
+        self,
+        path,
+        actual_inode,
+        actual_mtime,
+        actual_size,
+        existing_records,
+        known_checksum=None,
+    ):
+
+        md5, mtime, size = self._get_existing_record_data(
+            actual_inode, actual_mtime, actual_size, existing_records
+        )
+        if _file_metadata_changed(actual_mtime, mtime, actual_size, size):
+            md5, info = self._update_state_for_path_changed(
+                path, actual_inode, actual_mtime, actual_size, known_checksum
+            )
+        else:
+            info = None
+            self._update_state_record_timestamp_for_inode(actual_inode)
+        return md5, info
+
+    def _get_existing_record_data(
+        self, actual_inode, actual_mtime, actual_size, existing_records
+    ):
+        assert len(existing_records) == 1
+        assert len(existing_records[0]) == 5
+        inode, mtime, size, md5, _ = existing_records[0]
+        inode = self._from_sqlite(inode)
+        assert inode == actual_inode
+        logger.debug(
+            "Inode '{}', mtime '{}', actual mtime '{}', size '{}', "
+            "actual size '{}'.".format(
+                inode, mtime, actual_mtime, size, actual_size
+            )
+        )
+        return md5, mtime, size
+
+    def _update_state_record_timestamp_for_inode(self, actual_inode):
+        cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
+        self._execute(
+            cmd.format(
+                self.STATE_TABLE,
+                int(nanotime.timestamp(time.time())),
+                self._to_sqlite(actual_inode),
+            )
+        )
+
+    def _update_state_for_path_changed(
+        self,
+        path,
+        actual_inode,
+        actual_mtime,
+        actual_size,
+        known_checksum=None,
+    ):
+        if known_checksum:
+            md5, info = known_checksum, None
+        else:
+            md5, info = self._collect(path)
+        cmd = (
+            "UPDATE {} SET "
+            'mtime = "{}", size = "{}", '
+            'md5 = "{}", timestamp = "{}" '
+            "WHERE inode = {}"
+        )
+        self._execute(
+            cmd.format(
+                self.STATE_TABLE,
+                actual_mtime,
+                actual_size,
+                md5,
+                int(nanotime.timestamp(time.time())),
+                self._to_sqlite(actual_inode),
+            )
+        )
+        return md5, info
+
+    def _insert_new_state_record(
+        self, path, actual_inode, actual_mtime, actual_size, known_checksum
+    ):
+        if known_checksum:
+            md5, info = known_checksum, None
+        else:
+            md5, info = self._collect(path)
+        cmd = (
+            "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
+            'VALUES ({}, "{}", "{}", "{}", "{}")'
+        )
+        self._execute(
+            cmd.format(
+                self.STATE_TABLE,
+                self._to_sqlite(actual_inode),
+                actual_mtime,
+                actual_size,
+                md5,
+                int(nanotime.timestamp(time.time())),
+            )
+        )
+        self.inserts += 1
+        return md5, info
+
+    def _get_state_records_for_inode(self, actual_inode):
         cmd = "SELECT * from {} WHERE inode={}".format(
             self.STATE_TABLE, self._to_sqlite(actual_inode)
         )
-
         self._execute(cmd)
         ret = self._fetchall()
-        if not ret:
-            md5, info = self._collect(path)
-            cmd = (
-                "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
-                'VALUES ({}, "{}", "{}", "{}", "{}")'
-            )
-            self._execute(
-                cmd.format(
-                    self.STATE_TABLE,
-                    self._to_sqlite(actual_inode),
-                    actual_mtime,
-                    actual_size,
-                    md5,
-                    int(nanotime.timestamp(time.time())),
-                )
-            )
-            self.inserts += 1
-        else:
-            assert len(ret) == 1
-            assert len(ret[0]) == 5
-            inode, mtime, size, md5, _ = ret[0]
-            inode = self._from_sqlite(inode)
-            assert inode == actual_inode
-            logger.debug(
-                "Inode '{}', mtime '{}', actual mtime '{}', size '{}', "
-                "actual size '{}'.".format(
-                    inode, mtime, actual_mtime, size, actual_size
-                )
-            )
-            if actual_mtime != mtime or actual_size != size:
-                md5, info = self._collect(path)
-                cmd = (
-                    "UPDATE {} SET "
-                    'mtime = "{}", size = "{}", '
-                    'md5 = "{}", timestamp = "{}" '
-                    "WHERE inode = {}"
-                )
-                self._execute(
-                    cmd.format(
-                        self.STATE_TABLE,
-                        actual_mtime,
-                        actual_size,
-                        md5,
-                        int(nanotime.timestamp(time.time())),
-                        self._to_sqlite(actual_inode),
-                    )
-                )
-            else:
-                info = None
-                cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
-                self._execute(
-                    cmd.format(
-                        self.STATE_TABLE,
-                        int(nanotime.timestamp(time.time())),
-                        self._to_sqlite(actual_inode),
-                    )
-                )
+        return ret
 
-        return (md5, info)
-
-    def update(self, path):
+    def update(self, path, known_checksum=None):
         """Gets the checksum for the specified path. Checksum will be
         retrieved from the state database if available, otherwise it will be
         computed and cached in the state database for the further use.
@@ -403,7 +470,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         Returns:
             str: checksum for the specified path.
         """
-        return self._do_update(path)[0]
+        return self._do_update(path, known_checksum)[0]
 
     def update_info(self, path):
         """Gets the checksum and the directory info (if applicable) for the
