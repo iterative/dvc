@@ -76,7 +76,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["baz"]["metric_tsv"] == ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_htsv", typ="htsv", xpath="branch,0", all_branches=True
+            "metric_htsv", typ="htsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         self.assertTrue(ret["foo"]["metric_htsv"] == ["foo"])
@@ -92,7 +92,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["baz"]["metric_csv"] == ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ="hcsv", xpath="branch,0", all_branches=True
+            "metric_hcsv", typ="hcsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         self.assertTrue(ret["foo"]["metric_hcsv"] == ["foo"])
@@ -203,73 +203,6 @@ class TestMetricsReproCLI(TestDvc):
             self.dvc.run(metrics_no_cache=["metrics_bin"])
 
 
-class TestMetricsCLICompat(TestMetrics):
-    def test(self):
-        # FIXME check output
-        ret = main(["metrics", "show", "--all-branches", "metric", "-v"])
-        self.assertEqual(ret, 0)
-
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "--all-branches",
-                "metric_json",
-                "--json-path",
-                "branch",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "--all-branches",
-                "metric_tsv",
-                "--tsv-path",
-                "0,0",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "--all-branches",
-                "metric_htsv",
-                "--htsv-path",
-                "branch,0",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "--all-branches",
-                "metric_csv",
-                "--csv-path",
-                "0,0",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "--all-branches",
-                "metric_hcsv",
-                "--hcsv-path",
-                "branch,0",
-            ]
-        )
-        self.assertEqual(ret, 0)
-
-
 class TestMetricsCLI(TestMetrics):
     def test(self):
         # FIXME check output
@@ -304,7 +237,7 @@ class TestMetricsCLI(TestMetrics):
                 "-t",
                 "htsv",
                 "-x",
-                "branch,0",
+                "0,branch",
             ]
         )
         self.assertEqual(ret, 0)
@@ -323,7 +256,7 @@ class TestMetricsCLI(TestMetrics):
                 "-t",
                 "hcsv",
                 "-x",
-                "branch,0",
+                "0,branch",
             ]
         )
         self.assertEqual(ret, 0)

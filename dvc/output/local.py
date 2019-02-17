@@ -67,7 +67,7 @@ class OutputLOCAL(OutputBase):
 
         return ret
 
-    def _verify_metric(self):
+    def verify_metric(self):
         if not self.metric:
             return
 
@@ -97,7 +97,7 @@ class OutputLOCAL(OutputBase):
 
         if not self.use_cache:
             self.info = self.remote.save_info(self.path_info)
-            self._verify_metric()
+            self.verify_metric()
             if not self.IS_DEPENDENCY:
                 msg = "Output '{}' doesn't use cache. Skipping saving."
                 logger.info(msg.format(self.rel_path))

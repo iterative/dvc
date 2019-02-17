@@ -6,14 +6,8 @@ import json
 from jsonpath_rw import parse
 
 import dvc.logger as logger
-from dvc.exceptions import (
-    OutputDuplicationError,
-    DvcException,
-    OutputNotFoundError,
-    BadMetricError,
-    NoMetricsError,
-)
-from dvc.utils.compat import str, builtin_str, open
+from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
+from dvc.utils.compat import builtin_str, open
 
 
 def _read_metric_json(fd, json_path):
@@ -32,14 +26,14 @@ def _do_read_metric_xsv(reader, row, col):
 
 
 def _read_metric_hxsv(fd, hxsv_path, delimiter):
-    col, row = hxsv_path.split(",")
+    row, col = hxsv_path.split(",")
     row = int(row)
     reader = list(csv.DictReader(fd, delimiter=builtin_str(delimiter)))
     return _do_read_metric_xsv(reader, row, col)
 
 
 def _read_metric_xsv(fd, xsv_path, delimiter):
-    col, row = xsv_path.split(",")
+    row, col = xsv_path.split(",")
     row = int(row)
     col = int(col)
     reader = list(csv.reader(fd, delimiter=builtin_str(delimiter)))
@@ -52,6 +46,7 @@ def _read_metric(path, typ=None, xpath=None):
     if not os.path.exists(path):
         return ret
 
+    typ = typ.lower().strip() if typ else typ
     try:
         with open(path, "r") as fd:
             if typ == "json":
@@ -66,8 +61,12 @@ def _read_metric(path, typ=None, xpath=None):
                 ret = _read_metric_hxsv(fd, xpath, "\t")
             else:
                 ret = fd.read().strip()
+    # Json path library has to be replaced or wrapped in
+    # order to fix this too broad except clause.
     except Exception:
-        logger.error("unable to read metric in '{}'".format(path))
+        logger.warning(
+            "unable to read metric in '{}'".format(path), parse_exception=True
+        )
 
     return ret
 
