@@ -68,7 +68,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["baz"]["metric_json"] == ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_tsv", typ="tsv", xpath="0,0", all_branches=True
+            "metric_tsv", typ="TsV", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         self.assertTrue(ret["foo"]["metric_tsv"] == ["foo"])
@@ -84,7 +84,7 @@ class TestMetrics(TestDvc):
         self.assertTrue(ret["baz"]["metric_htsv"] == ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_csv", typ="csv", xpath="0,0", all_branches=True
+            "metric_csv", typ="CSV", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         self.assertTrue(ret["foo"]["metric_csv"] == ["foo"])
@@ -145,9 +145,7 @@ class TestMetricsRecursive(TestDvc):
 
     def test(self):
         with self.assertRaises(BadMetricError):
-            ret = self.dvc.metrics.show(
-                "nested", all_branches=True, recursive=False
-            )
+            self.dvc.metrics.show("nested", all_branches=True, recursive=False)
 
         ret = self.dvc.metrics.show(
             "nested", all_branches=True, recursive=True
@@ -183,7 +181,10 @@ class TestMetricsReproCLI(TestDvc):
         ret = main(["metrics", "add", "metrics"])
         self.assertEqual(ret, 0)
 
-        ret = main(["metrics", "modify", "-t", "csv", "-x", "0,0", "metrics"])
+        ret = main(["metrics", "modify", "-t", "XSV", "-x", "0,0", "metrics"])
+        self.assertEqual(ret, 1)
+
+        ret = main(["metrics", "modify", "-t", "CSV", "-x", "0,0", "metrics"])
         self.assertEqual(ret, 0)
 
         ret = main(["repro", "-f", "-m", stage.path])
@@ -243,7 +244,7 @@ class TestMetricsCLI(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "-a", "metric_csv", "-t", "csv", "-x", "0,0"]
+            ["metrics", "show", "-a", "metric_csv", "-t", "CSV", "-x", "0,0"]
         )
         self.assertEqual(ret, 0)
 
