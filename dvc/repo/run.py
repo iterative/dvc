@@ -15,6 +15,7 @@ def run(
     overwrite=False,
     ignore_build_cache=False,
     remove_outs=False,
+    no_commit=False,
 ):
     from dvc.stage import Stage
 
@@ -53,7 +54,7 @@ def run(
     self.files_to_git_add = []
     with self.state:
         if not no_exec:
-            stage.run()
+            stage.run(no_commit=no_commit)
 
     stage.dump()
 

@@ -172,7 +172,7 @@ class RemoteBase(object):
         logger.debug("'{}' hasn't changed.".format(path_info))
         return False
 
-    def save(self, path_info):
+    def save(self, path_info, checksum_info):
         raise RemoteActionNotImplemented("save", self.scheme)
 
     def download(

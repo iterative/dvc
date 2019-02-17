@@ -109,17 +109,15 @@ class RemoteS3(RemoteBase):
         source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
         self.s3.copy(source, to_info["bucket"], to_info["path"])
 
-    def save(self, path_info):
+    def save(self, path_info, checksum_info):
         if path_info["scheme"] != "s3":
             raise NotImplementedError
 
-        etag = self.get_etag(path_info["bucket"], path_info["path"])
+        etag = checksum_info[self.PARAM_CHECKSUM]
         path = self.checksum_to_path(etag)
         to_info = {"scheme": "s3", "bucket": self.bucket, "path": path}
 
         self.copy(path_info, to_info)
-
-        return {self.PARAM_CHECKSUM: etag}
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":

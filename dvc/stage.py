@@ -67,6 +67,10 @@ class StageBadCwdError(DvcException):
         super(StageBadCwdError, self).__init__(msg.format(cwd))
 
 
+class StageCommitError(DvcException):
+    pass
+
+
 class MissingDep(DvcException):
     def __init__(self, deps):
         assert len(deps) > 0
@@ -251,7 +255,9 @@ class Stage(object):
         self.remove_outs(ignore_remove=True)
         os.unlink(self.path)
 
-    def reproduce(self, force=False, dry=False, interactive=False):
+    def reproduce(
+        self, force=False, dry=False, interactive=False, no_commit=False
+    ):
         if not self.changed() and not force:
             return None
 
@@ -268,7 +274,7 @@ class Stage(object):
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
-        self.run(dry=dry)
+        self.run(dry=dry, no_commit=no_commit)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
@@ -526,6 +532,39 @@ class Stage(object):
 
         self.md5 = self._compute_md5()
 
+    @staticmethod
+    def _changed_entries(entries):
+        ret = []
+        for entry in entries:
+            if entry.checksum and entry.changed_checksum():
+                ret.append(entry.rel_path)
+        return ret
+
+    def check_can_commit(self, force):
+        changed_deps = self._changed_entries(self.deps)
+        changed_outs = self._changed_entries(self.outs)
+
+        if changed_deps or changed_outs or self.changed_md5():
+            msg = (
+                "dependencies {}".format(changed_deps) if changed_deps else ""
+            )
+            msg += " and " if (changed_deps and changed_outs) else ""
+            msg += "outputs {}".format(changed_outs) if changed_outs else ""
+            msg += "md5" if not (changed_deps or changed_outs) else ""
+            msg += " of '{}' changed. Are you sure you commit it?".format(
+                self.relpath
+            )
+            if not force and not prompt.confirm(msg):
+                raise StageCommitError(
+                    "unable to commit changed '{}'. Use `-f|--force` to "
+                    "force.`".format(self.relpath)
+                )
+            self.save()
+
+    def commit(self):
+        for out in self.outs:
+            out.commit()
+
     def _check_missing_deps(self):
         missing = [dep for dep in self.deps if not dep.exists]
 
@@ -585,7 +624,7 @@ class Stage(object):
         if p.returncode != 0:
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False, resume=False):
+    def run(self, dry=False, resume=False, no_commit=False):
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
@@ -625,6 +664,8 @@ class Stage(object):
 
         if not dry:
             self.save()
+            if not no_commit:
+                self.commit()
 
     def check_missing_outputs(self):
         paths = [
@@ -641,26 +682,33 @@ class Stage(object):
             out.checkout(force=force)
 
     @staticmethod
-    def _status(entries, name):
+    def _status(entries):
         ret = {}
 
         for entry in entries:
             ret.update(entry.status())
 
-        if ret:
-            return {name: ret}
-
-        return {}
+        return ret
 
     def status(self):
-        ret = {}
+        ret = []
 
         if not self.locked:
-            ret.update(self._status(self.deps, "deps"))
+            deps_status = self._status(self.deps)
+            if deps_status:
+                ret.append({"changed deps": deps_status})
 
-        ret.update(self._status(self.outs, "outs"))
+        outs_status = self._status(self.outs)
+        if outs_status:
+            ret.append({"changed outs": outs_status})
 
-        if ret or self.changed_md5() or self.is_callback:
+        if self.changed_md5():
+            ret.append("changed checksum")
+
+        if self.is_callback:
+            ret.append("always changed")
+
+        if ret:
             return {self.relpath: ret}
 
         return {}

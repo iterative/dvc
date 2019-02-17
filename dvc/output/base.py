@@ -111,15 +111,12 @@ class OutputBase(object):
     def exists(self):
         return self.remote.exists(self.path_info)
 
-    def changed(self):
-        if not self.exists:
-            return True
-
-        if not self.use_cache:
-            return self.info != self.remote.save_info(self.path_info)
-
-        return getattr(self.repo.cache, self.scheme).changed(
-            self.path_info, self.info
+    def changed_checksum(self):
+        return (
+            self.checksum
+            != self.remote.save_info(self.path_info)[
+                self.remote.PARAM_CHECKSUM
+            ]
         )
 
     def changed_cache(self):
@@ -131,17 +128,30 @@ class OutputBase(object):
         return cache.changed_cache(self.checksum)
 
     def status(self):
-        if self.changed():
-            # FIXME better msgs
-            return {str(self): "changed"}
+        if self.checksum and self.use_cache and self.changed_cache():
+            return {str(self): "not in cache"}
+
+        if not self.exists:
+            return {str(self): "deleted"}
+
+        if self.changed_checksum():
+            return {str(self): "modified"}
+
+        if not self.checksum:
+            return {str(self): "new"}
+
         return {}
 
+    def changed(self):
+        return bool(self.status())
+
     def save(self):
-        if not self.use_cache:
-            self.info = self.remote.save_info(self.path_info)
-        else:
-            self.info = getattr(self.repo.cache, self.scheme).save(
-                self.path_info
+        self.info = self.remote.save_info(self.path_info)
+
+    def commit(self):
+        if self.use_cache:
+            getattr(self.repo.cache, self.scheme).save(
+                self.path_info, self.info
             )
 
     def dumpd(self):
@@ -191,6 +201,7 @@ class OutputBase(object):
         self.url = out.url
         self.path_info = out.path_info
         self.save()
+        self.commit()
 
         if self.scheme == "local" and self.use_cache and self.is_local:
             self.repo.scm.ignore(self.path)

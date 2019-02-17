@@ -370,9 +370,7 @@ class RemoteLOCAL(RemoteBase):
         move(inp, tmp)
         move(tmp, outp)
 
-    def _save_file(self, path_info):
-        path = path_info["path"]
-        md5 = self.state.update(path)
+    def _save_file(self, path, md5):
         assert md5 is not None
 
         cache = self.get(md5)
@@ -393,9 +391,8 @@ class RemoteLOCAL(RemoteBase):
 
         return {self.PARAM_CHECKSUM: md5}
 
-    def _save_dir(self, path_info):
-        path = path_info["path"]
-        md5, dir_info = self.state.update_info(path)
+    def _save_dir(self, path, md5):
+        dir_info = self.load_dir_cache(md5)
         dir_relpath = os.path.relpath(path)
         dir_size = len(dir_info)
         bar = dir_size > LARGE_DIR_SIZE
@@ -429,9 +426,7 @@ class RemoteLOCAL(RemoteBase):
         if bar:
             progress.finish_target(dir_relpath)
 
-        return {self.PARAM_CHECKSUM: md5}
-
-    def save(self, path_info):
+    def save(self, path_info, checksum_info):
         if path_info["scheme"] != "local":
             raise NotImplementedError
 
@@ -442,10 +437,11 @@ class RemoteLOCAL(RemoteBase):
             msg.format(os.path.relpath(path), os.path.relpath(self.cache_dir))
         )
 
+        md5 = checksum_info[self.PARAM_CHECKSUM]
         if os.path.isdir(path):
-            return self._save_dir(path_info)
+            self._save_dir(path, md5)
         else:
-            return self._save_file(path_info)
+            self._save_file(path, md5)
 
     def save_info(self, path_info):
         if path_info["scheme"] != "local":

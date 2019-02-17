@@ -9,7 +9,11 @@ class CmdAdd(CmdBase):
     def run(self):
         for target in self.args.targets:
             try:
-                self.repo.add(target, recursive=self.args.recursive)
+                self.repo.add(
+                    target,
+                    recursive=self.args.recursive,
+                    no_commit=self.args.no_commit,
+                )
             except DvcException:
                 logger.error("failed to add file")
                 return 1
@@ -27,6 +31,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Recursively add each file under the directory.",
+    )
+    add_parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        default=False,
+        help="Don't put files/directories into cache.",
     )
     add_parser.add_argument(
         "targets", nargs="+", help="Input files/directories."

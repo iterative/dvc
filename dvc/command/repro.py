@@ -33,6 +33,7 @@ class CmdRepro(CmdBase):
                     pipeline=self.args.pipeline,
                     all_pipelines=self.args.all_pipelines,
                     ignore_build_cache=self.args.ignore_build_cache,
+                    no_commit=self.args.no_commit,
                 )
 
                 if len(stages) == 0:
@@ -123,5 +124,11 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Reproduce all descendants of a changed stage even if their "
         "direct dependencies didn't change.",
+    )
+    repro_parser.add_argument(
+        "--no-commit",
+        action="store_true",
+        default=False,
+        help="Don't put files/directories into cache.",
     )
     repro_parser.set_defaults(func=CmdRepro)

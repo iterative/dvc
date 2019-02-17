@@ -2,10 +2,11 @@ from __future__ import unicode_literals
 
 import dvc.logger as logger
 from dvc.command.data_sync import CmdDataBase
+from dvc.utils.compat import str
 
 
 class CmdDataStatus(CmdDataBase):
-    STATUS_LEN = 10
+    STATUS_LEN = 20
     STATUS_INDENT = "\t"
     UP_TO_DATE_MSG = "Pipeline is up to date. Nothing to reproduce."
 
@@ -17,13 +18,23 @@ class CmdDataStatus(CmdDataBase):
     def _show(self, status, indent=0):
         ind = indent * self.STATUS_INDENT
 
+        if isinstance(status, str):
+            logger.info("{}{}".format(ind, status))
+            return
+
+        if isinstance(status, list):
+            for entry in status:
+                self._show(entry, indent)
+            return
+
+        assert isinstance(status, dict)
+
         for key, value in status.items():
-            if isinstance(value, dict):
-                logger.info("{}{}".format(ind, key))
+            if isinstance(value, str):
+                logger.info("{}{}{}".format(ind, self._normalize(value), key))
+            elif value:
+                logger.info("{}{}:".format(ind, key))
                 self._show(value, indent + 1)
-            else:
-                msg = "{}{}{}".format(ind, self._normalize(value), key)
-                logger.info(msg)
 
     def do_run(self, target=None):
         indent = 1 if self.args.cloud else 0

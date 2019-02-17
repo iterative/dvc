@@ -6,7 +6,7 @@ import dvc.logger as logger
 from dvc.exceptions import ReproductionError
 
 
-def _reproduce_stage(stages, node, force, dry, interactive):
+def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
     stage = stages[node]
 
     if stage.locked:
@@ -15,7 +15,9 @@ def _reproduce_stage(stages, node, force, dry, interactive):
             " not going to be reproduced.".format(path=stage.relpath)
         )
 
-    stage = stage.reproduce(force=force, dry=dry, interactive=interactive)
+    stage = stage.reproduce(
+        force=force, dry=dry, interactive=interactive, no_commit=no_commit
+    )
     if not stage:
         return []
 
@@ -35,6 +37,7 @@ def reproduce(
     pipeline=False,
     all_pipelines=False,
     ignore_build_cache=False,
+    no_commit=False,
 ):
     from dvc.stage import Stage
 
@@ -75,6 +78,7 @@ def reproduce(
                 dry=dry,
                 interactive=interactive,
                 ignore_build_cache=ignore_build_cache,
+                no_commit=no_commit,
             )
             ret.extend(stages)
 
@@ -91,6 +95,7 @@ def _reproduce(
     dry=False,
     interactive=False,
     ignore_build_cache=False,
+    no_commit=False,
 ):
     import networkx as nx
     from dvc.stage import Stage
@@ -102,23 +107,34 @@ def _reproduce(
 
     if recursive:
         ret = _reproduce_stages(
-            G, stages, node, force, dry, interactive, ignore_build_cache
+            G,
+            stages,
+            node,
+            force,
+            dry,
+            interactive,
+            ignore_build_cache,
+            no_commit,
         )
     else:
-        ret = _reproduce_stage(stages, node, force, dry, interactive)
+        ret = _reproduce_stage(
+            stages, node, force, dry, interactive, no_commit
+        )
 
     return ret
 
 
 def _reproduce_stages(
-    G, stages, node, force, dry, interactive, ignore_build_cache
+    G, stages, node, force, dry, interactive, ignore_build_cache, no_commit
 ):
     import networkx as nx
 
     result = []
     for n in nx.dfs_postorder_nodes(G, node):
         try:
-            ret = _reproduce_stage(stages, n, force, dry, interactive)
+            ret = _reproduce_stage(
+                stages, n, force, dry, interactive, no_commit
+            )
 
             if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
