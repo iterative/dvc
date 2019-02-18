@@ -9,5 +9,5 @@ fi
 
 rm -rf dist/
 pip install twine
-python setup.py bdist_wheel --universal
+python setup.py sdist bdist_wheel --universal
 twine upload dist/*
