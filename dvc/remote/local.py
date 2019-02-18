@@ -412,8 +412,8 @@ class RemoteLOCAL(RemoteBase):
 
             self.link(c, p)
 
-            self.state.update(p, md5)
-            self.state.update(c, md5)
+            self.state.update(p, m)
+            self.state.update(c, m)
 
             if bar:
                 progress.update_target(dir_relpath, processed, dir_size)
