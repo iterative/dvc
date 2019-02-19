@@ -672,8 +672,6 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         self.main(
             ["remote", "add", "-d", TEST_REMOTE, self.cloud._cloud.cache_dir]
         )
-        self.create(self.DATA, self.DATA_CONTENTS)
-        self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
 
         self.dvc.add(self.DATA)
         self.dvc.add(self.DATA_SUB_CONTENTS)

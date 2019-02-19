@@ -9,7 +9,7 @@ except ImportError:
     storage = None
 
 import dvc.logger as logger
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, makedirs
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
 from dvc.progress import progress
@@ -204,7 +204,7 @@ class RemoteGS(RemoteBase):
                 # lets at least update progress at pathpoints(start, finish)
                 progress.update_target(name, 0, None)
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             try:
                 bucket = gs.bucket(from_info["bucket"])

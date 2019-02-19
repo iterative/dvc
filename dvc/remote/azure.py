@@ -10,7 +10,7 @@ except ImportError:
     BlockBlobService = None
 
 import dvc.logger as logger
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -176,7 +176,7 @@ class RemoteAzure(RemoteBase):
 
             cb = None if no_progress_bar else Callback(name)
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             try:
                 self.blob_service.get_blob_to_path(

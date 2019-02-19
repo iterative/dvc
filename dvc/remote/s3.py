@@ -9,7 +9,7 @@ except ImportError:
     boto3 = None
 
 import dvc.logger as logger
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
@@ -236,7 +236,7 @@ class RemoteS3(RemoteBase):
             if not name:
                 name = os.path.basename(to_info["path"])
 
-            self._makedirs(to_info["path"])
+            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
 
             try:
                 if no_progress_bar:
