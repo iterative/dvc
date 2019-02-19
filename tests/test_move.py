@@ -6,7 +6,7 @@ from dvc.stage import Stage
 
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
-from tests.utils import load_stage_file
+from tests.utils import load_stage_file, cd
 
 
 class TestMove(TestDvc):
@@ -168,3 +168,17 @@ class TestMoveFileBetweenDirectories(TestDvc):
         self.assertEqual(
             os.path.basename(self.DATA), new_stage_file["outs"][0]["path"]
         )
+
+
+class TestMoveFileInsideDirectory(TestDvc):
+    def test(self):
+        ret = main(["add", "data_dir/data"])
+        self.assertEqual(ret, 0)
+
+        with cd("data_dir"):
+            ret = main(["move", "data", "data.txt"])
+            self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.exists("data_dir/data"))
+        self.assertTrue(os.path.exists("data_dir/data.txt"))
+        self.assertTrue(os.path.exists("data_dir/data.txt.dvc"))

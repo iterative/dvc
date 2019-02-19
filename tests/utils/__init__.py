@@ -1,5 +1,7 @@
 import yaml
+import os
 from mock import MagicMock
+from contextlib import contextmanager
 
 
 def spy(method_to_decorate):
@@ -16,3 +18,13 @@ def spy(method_to_decorate):
 def load_stage_file(path):
     with open(path, "r") as fobj:
         return yaml.safe_load(fobj)
+
+
+@contextmanager
+def cd(newdir):
+    prevdir = os.getcwd()
+    os.chdir(os.path.expanduser(newdir))
+    try:
+        yield
+    finally:
+        os.chdir(prevdir)
