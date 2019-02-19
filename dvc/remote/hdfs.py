@@ -88,18 +88,6 @@ class RemoteHDFS(RemoteBase):
 
         return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
-    def save(self, path_info, checksum_info):
-        if path_info["scheme"] != "hdfs":
-            raise NotImplementedError
-
-        assert path_info.get("path")
-
-        checksum = checksum_info[self.PARAM_CHECKSUM]
-        dest = path_info.copy()
-        dest["path"] = self.checksum_to_path(checksum)
-
-        self.copy(path_info, dest)
-
     def remove(self, path_info):
         if path_info["scheme"] != "hdfs":
             raise NotImplementedError
