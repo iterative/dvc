@@ -11,6 +11,7 @@ import copy
 
 from dvc.state import State
 from mock import patch
+from tests.utils.logger import MockLoggerHandlers
 
 import dvc.logger as logger
 from dvc.utils.compat import str
@@ -637,7 +638,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)
 
-        with logger.MockHandlers(logger.logger):
+        with MockLoggerHandlers(logger.logger):
             logger.logger.handlers[0].stream = StringIO()
             self.main(["status", "-c"])
             self.assertIn(
