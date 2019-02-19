@@ -637,6 +637,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)
 
+        logger.setup_handlers()
         logger.logger.handlers[0].stream = StringIO()
         self.main(["status", "-c"])
         self.assertIn(
