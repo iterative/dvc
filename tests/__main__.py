@@ -20,6 +20,7 @@ else:
 cmd = (
     "nosetests -v --processes=-1 --process-timeout=500 --cover-inclusive "
     "--cover-erase --cover-package=dvc --with-coverage --with-flaky "
+    "--logging-clear-handlers "
     "{scope} ".format(scope=scope)
 )
 check_call(cmd, shell=True)

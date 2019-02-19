@@ -8,6 +8,7 @@ from tests.basic_env import TestDvc
 
 import dvc.logger as logger
 from dvc.utils.compat import StringIO
+from tests.utils.logger import MockLoggerHandlers
 
 
 class TestMetrics(TestDvc):
@@ -357,25 +358,26 @@ class TestMetricsCLI(TestMetrics):
         ret = main(["add", "metric.unknown"])
         self.assertEqual(ret, 0)
 
-        logger.logger.handlers[1].stream = StringIO()
-        ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
-        self.assertEqual(ret, 1)
-        self.assertIn(
-            "failed to add metric file 'metric.unknown' - metric type 'unknown'"
-            " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
-            logger.logger.handlers[1].stream.getvalue(),
-        )
+        with MockLoggerHandlers(logger.logger):
+            logger.logger.handlers[1].stream = StringIO()
+            ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
+            self.assertEqual(ret, 1)
+            self.assertIn(
+                "failed to add metric file 'metric.unknown' - metric type 'unknown'"
+                " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+                logger.logger.handlers[1].stream.getvalue(),
+            )
 
-        ret = main(["metrics", "add", "metric.unknown", "-t", "raw"])
-        self.assertEqual(ret, 0)
+            ret = main(["metrics", "add", "metric.unknown", "-t", "raw"])
+            self.assertEqual(ret, 0)
 
-        logger.logger.handlers[0].stream = StringIO()
-        ret = main(["metrics", "show", "metric.unknown"])
-        self.assertEqual(ret, 0)
-        self.assertIn(
-            "\tmetric.unknown: unknown",
-            logger.logger.handlers[0].stream.getvalue(),
-        )
+            logger.logger.handlers[0].stream = StringIO()
+            ret = main(["metrics", "show", "metric.unknown"])
+            self.assertEqual(ret, 0)
+            self.assertIn(
+                "\tmetric.unknown: unknown",
+                logger.logger.handlers[0].stream.getvalue(),
+            )
 
     def test_wrong_type_modify(self):
         with open("metric.unknown", "w+") as fd:
@@ -385,25 +387,28 @@ class TestMetricsCLI(TestMetrics):
         ret = main(["run", "-m", "metric.unknown"])
         self.assertEqual(ret, 0)
 
-        logger.logger.handlers[1].stream = StringIO()
-        ret = main(["metrics", "modify", "metric.unknown", "-t", "unknown"])
-        self.assertEqual(ret, 1)
-        self.assertIn(
-            "failed to modify metric file settings - metric type 'unknown'"
-            " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
-            logger.logger.handlers[1].stream.getvalue(),
-        )
+        with MockLoggerHandlers(logger.logger):
+            logger.logger.handlers[1].stream = StringIO()
+            ret = main(
+                ["metrics", "modify", "metric.unknown", "-t", "unknown"]
+            )
+            self.assertEqual(ret, 1)
+            self.assertIn(
+                "failed to modify metric file settings - metric type 'unknown'"
+                " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+                logger.logger.handlers[1].stream.getvalue(),
+            )
 
-        ret = main(["metrics", "modify", "metric.unknown", "-t", "CSV"])
-        self.assertEqual(ret, 0)
+            ret = main(["metrics", "modify", "metric.unknown", "-t", "CSV"])
+            self.assertEqual(ret, 0)
 
-        logger.logger.handlers[0].stream = StringIO()
-        ret = main(["metrics", "show", "metric.unknown"])
-        self.assertEqual(ret, 0)
-        self.assertIn(
-            "\tmetric.unknown: unknown",
-            logger.logger.handlers[0].stream.getvalue(),
-        )
+            logger.logger.handlers[0].stream = StringIO()
+            ret = main(["metrics", "show", "metric.unknown"])
+            self.assertEqual(ret, 0)
+            self.assertIn(
+                "\tmetric.unknown: unknown",
+                logger.logger.handlers[0].stream.getvalue(),
+            )
 
     def test_wrong_type_show(self):
         with open("metric.unknown", "w+") as fd:
@@ -413,15 +418,24 @@ class TestMetricsCLI(TestMetrics):
         ret = main(["run", "-m", "metric.unknown"])
         self.assertEqual(ret, 0)
 
-        logger.logger.handlers[0].stream = StringIO()
-        ret = main(
-            ["metrics", "show", "metric.unknown", "-t", "unknown", "-x", "0,0"]
-        )
-        self.assertEqual(ret, 0)
-        self.assertIn(
-            "\tmetric.unknown: unknown",
-            logger.logger.handlers[0].stream.getvalue(),
-        )
+        with MockLoggerHandlers(logger.logger):
+            logger.logger.handlers[0].stream = StringIO()
+            ret = main(
+                [
+                    "metrics",
+                    "show",
+                    "metric.unknown",
+                    "-t",
+                    "unknown",
+                    "-x",
+                    "0,0",
+                ]
+            )
+            self.assertEqual(ret, 0)
+            self.assertIn(
+                "\tmetric.unknown: unknown",
+                logger.logger.handlers[0].stream.getvalue(),
+            )
 
 
 class TestNoMetrics(TestDvc):

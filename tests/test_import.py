@@ -10,6 +10,8 @@ from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
 from tests.utils.httpd import StaticFileServer
+from tests.utils.logger import MockLoggerHandlers
+
 
 from dvc.utils.compat import StringIO
 
@@ -53,21 +55,22 @@ class TestFailedImportMessage(TestDvc):
 
     @patch("dvc.command.imp.urlparse")
     def _test(self, imp_urlparse_patch):
-        logger.logger.handlers[1].stream = StringIO()
-        page_address = "http://somesite.com/file_name"
+        with MockLoggerHandlers(logger.logger):
+            logger.logger.handlers[1].stream = StringIO()
+            page_address = "http://somesite.com/file_name"
 
-        def dvc_exception(*args, **kwargs):
-            raise DvcException("message")
+            def dvc_exception(*args, **kwargs):
+                raise DvcException("message")
 
-        imp_urlparse_patch.side_effect = dvc_exception
-        main(["import", page_address])
-        self.assertIn(
-            "Error: failed to import "
-            "http://somesite.com/file_name. You could also try "
-            "downloading it manually and adding it with `dvc add` "
-            "command.",
-            logger.logger.handlers[1].stream.getvalue(),
-        )
+            imp_urlparse_patch.side_effect = dvc_exception
+            main(["import", page_address])
+            self.assertIn(
+                "Error: failed to import "
+                "http://somesite.com/file_name. You could also try "
+                "downloading it manually and adding it with `dvc add` "
+                "command.",
+                logger.logger.handlers[1].stream.getvalue(),
+            )
 
 
 class TestInterruptedDownload(TestDvc):
