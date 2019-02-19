@@ -1,6 +1,5 @@
 import hashlib
 import os
-import socket
 import threading
 
 from dvc.utils.compat import HTTPServer, SimpleHTTPRequestHandler
