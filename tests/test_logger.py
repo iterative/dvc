@@ -14,6 +14,10 @@ class TestLogger(TestCase):
     color_patch = patch.object(logger, "colorize", new=lambda x, color="": x)
 
     def setUp(self):
+        logger.logger.handlers = [
+            logger.logging.StreamHandler(),
+            logger.logging.StreamHandler(),
+        ]
         logger.logger.handlers[0].stream = StringIO()
         logger.logger.handlers[1].stream = StringIO()
         logger.set_default_level()
