@@ -637,16 +637,16 @@ class TestWarnOnOutdatedStage(TestDvc):
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)
 
-        logger.setup_handlers()
-        logger.logger.handlers[0].stream = StringIO()
-        self.main(["status", "-c"])
-        self.assertIn(
-            "Warning: Output 'bar'(Stage: 'bar.dvc') is "
-            "missing version info. Cache for it will not be "
-            "collected. Use dvc repro to get your pipeline up to "
-            "date.",
-            logger.logger.handlers[0].stream.getvalue(),
-        )
+        with logger.MockHandlers(logger.logger):
+            logger.logger.handlers[0].stream = StringIO()
+            self.main(["status", "-c"])
+            self.assertIn(
+                "Warning: Output 'bar'(Stage: 'bar.dvc') is "
+                "missing version info. Cache for it will not be "
+                "collected. Use dvc repro to get your pipeline up to "
+                "date.",
+                logger.logger.handlers[0].stream.getvalue(),
+            )
 
     def test(self):
         self.color_patch.start()
