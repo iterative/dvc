@@ -303,11 +303,7 @@ def _visual_center(line, width):
 
 def setup_handlers():
     if not logger.handlers:
-        temp_log_file = "tmp.log"
-        logger.handlers = [
-            logging.FileHandler(temp_log_file),
-            logging.FileHandler(temp_log_file),
-        ]
+        logger.handlers = [logging.StreamHandler(), logging.StreamHandler()]
 
 
 logger = logging.getLogger("dvc")  # pylint: disable=invalid-name
