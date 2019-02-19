@@ -301,6 +301,11 @@ def _visual_center(line, width):
     return (left_padding * " ") + line + (right_padding * " ")
 
 
+def setup_handlers():
+    if not logger.handlers:
+        logger.handlers = [logging.StreamHandler(), logging.StreamHandler()]
+
+
 logger = logging.getLogger("dvc")  # pylint: disable=invalid-name
 
 set_default_level()

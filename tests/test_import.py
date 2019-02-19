@@ -53,6 +53,8 @@ class TestFailedImportMessage(TestDvc):
 
     @patch("dvc.command.imp.urlparse")
     def _test(self, imp_urlparse_patch):
+        logger.setup_handlers()
+
         logger.logger.handlers[1].stream = StringIO()
         page_address = "http://somesite.com/file_name"
 
