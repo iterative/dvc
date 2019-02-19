@@ -173,7 +173,21 @@ class RemoteBase(object):
         return False
 
     def save(self, path_info, checksum_info):
-        raise RemoteActionNotImplemented("save", self.scheme)
+        if path_info["scheme"] != self.scheme:
+            raise RemoteActionNotImplemented(
+                "save {} -> {}".format(path_info["scheme"], self.scheme),
+                self.scheme,
+            )
+
+        checksum = checksum_info[self.PARAM_CHECKSUM]
+        if not self.changed_cache(checksum):
+            return
+
+        to_info = self.checksum_to_path_info(checksum)
+
+        logger.info("Saving '{}' to '{}'.".format(path_info, to_info))
+
+        self.copy(path_info, to_info)
 
     def download(
         self,
@@ -265,6 +279,10 @@ class RemoteBase(object):
     def changed_cache(self, checksum):
         cache = self.checksum_to_path_info(checksum)
         expected = {self.PARAM_CHECKSUM: checksum}
+
+        if not self.exists(cache):
+            return True
+
         actual = self.save_info(cache)
 
         logger.debug(

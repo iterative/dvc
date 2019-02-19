@@ -87,18 +87,6 @@ class RemoteGS(RemoteBase):
             blob, self.gs.bucket(to_info["bucket"]), new_name=to_info["path"]
         )
 
-    def save(self, path_info):
-        if path_info["scheme"] != "gs":
-            raise NotImplementedError
-
-        md5 = self.get_md5(path_info["bucket"], path_info["path"])
-        path = self.checksum_to_path(md5)
-        to_info = {"scheme": "gs", "bucket": self.bucket, "path": path}
-
-        self.copy(path_info, to_info)
-
-        return {self.PARAM_CHECKSUM: md5}
-
     def remove(self, path_info):
         if path_info["scheme"] != "gs":
             raise NotImplementedError
