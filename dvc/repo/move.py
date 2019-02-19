@@ -52,7 +52,9 @@ def move(self, from_path, to_path):
             os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX,
         )
 
-        stage.cwd = os.path.join(self.root_dir, os.path.dirname(to_path))
+        stage.cwd = os.path.abspath(
+            os.path.join(os.curdir, os.path.dirname(to_path))
+        )
 
     to_out = Output.loads_from(
         stage, [os.path.basename(to_path)], out.cache, out.metric

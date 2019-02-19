@@ -2,6 +2,7 @@
 
 import sys
 import os
+import errno
 
 
 # Syntax sugar.
@@ -42,8 +43,9 @@ def _makedirs(name, mode=0o777, exist_ok=False):
     if head and tail and not os.path.exists(head):
         try:
             _makedirs(head, exist_ok=exist_ok)
-        except FileExistsError:
-            pass
+        except OSError as e:
+            if e.errno == errno.EEXIST:
+                pass
         cdir = os.curdir
         if isinstance(tail, bytes):
             cdir = bytes(os.curdir, "ASCII")
