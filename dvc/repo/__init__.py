@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open
+from dvc.utils.compat import str
 
-import collections
 import os
 import dvc.prompt as prompt
 import dvc.logger as logger

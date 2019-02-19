@@ -29,11 +29,20 @@ def debug(message):
     logger.debug(out)
 
 
-def warning(message):
+def warning(message, parse_exception=False):
     """Prints a warning message."""
     prefix = colorize("Warning", color="yellow")
 
-    out = "{prefix}: {message}".format(prefix=prefix, message=message)
+    exception, stack_trace = None, ""
+    if parse_exception:
+        exception, stack_trace = _parse_exc()
+
+    out = "{prefix}: {description}".format(
+        prefix=prefix, description=_description(message, exception)
+    )
+
+    if stack_trace:
+        out += "\n{stack_trace}".format(stack_trace=stack_trace)
 
     logger.warning(out)
 

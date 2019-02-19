@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str
 
 import re
 from schema import Or, Optional
 
 from dvc.exceptions import DvcException
+from dvc.utils.compat import str
 
 
 class OutputDoesNotExistError(DvcException):
@@ -76,6 +76,12 @@ class OutputBase(object):
 
     def __str__(self):
         return self.url
+
+    @property
+    def is_local(self):
+        raise DvcException(
+            "is local is not supported for {}".format(self.scheme)
+        )
 
     @classmethod
     def match(cls, url):
@@ -173,6 +179,11 @@ class OutputBase(object):
         ret[self.PARAM_METRIC] = self.metric
 
         return ret
+
+    def verify_metric(self):
+        raise DvcException(
+            "verify metric is not supported for {}".format(self.scheme)
+        )
 
     def download(self, to_info, resume=False):
         self.remote.download([self.path_info], [to_info], resume=resume)
