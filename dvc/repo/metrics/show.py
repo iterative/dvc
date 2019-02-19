@@ -15,69 +15,95 @@ def _read_metric_json(fd, json_path):
     return [x.value for x in parser.find(json.load(fd))]
 
 
+def _get_values(row):
+    if isinstance(row, dict):
+        return list(row.values())
+    else:
+        return row
+
+
 def _do_read_metric_xsv(reader, row, col):
     if col is not None and row is not None:
         return [reader[row][col]]
     elif col is not None:
         return [r[col] for r in reader]
     elif row is not None:
-        return reader[row]
-    return None
+        return _get_values(reader[row])
+    return [_get_values(r) for r in reader]
 
 
 def _read_metric_hxsv(fd, hxsv_path, delimiter):
-    row, col = hxsv_path.split(",")
-    row = int(row)
+    indices = hxsv_path.split(",")
+    row = indices[0]
+    row = int(row) if row else None
+    col = indices[1] if len(indices) > 1 and indices[1] else None
     reader = list(csv.DictReader(fd, delimiter=builtin_str(delimiter)))
     return _do_read_metric_xsv(reader, row, col)
 
 
 def _read_metric_xsv(fd, xsv_path, delimiter):
-    row, col = xsv_path.split(",")
-    row = int(row)
-    col = int(col)
+    indices = xsv_path.split(",")
+    row = indices[0]
+    row = int(row) if row else None
+    col = int(indices[1]) if len(indices) > 1 and indices[1] else None
     reader = list(csv.reader(fd, delimiter=builtin_str(delimiter)))
     return _do_read_metric_xsv(reader, row, col)
 
 
-def _read_metric(path, typ=None, xpath=None):
-    ret = None
+def _read_typed_metric(typ, xpath, fd):
+    if typ == "json":
+        ret = _read_metric_json(fd, xpath)
+    elif typ == "csv":
+        ret = _read_metric_xsv(fd, xpath, ",")
+    elif typ == "tsv":
+        ret = _read_metric_xsv(fd, xpath, "\t")
+    elif typ == "hcsv":
+        ret = _read_metric_hxsv(fd, xpath, ",")
+    elif typ == "htsv":
+        ret = _read_metric_hxsv(fd, xpath, "\t")
+    else:
+        ret = fd.read().strip()
+    return ret
 
+
+def _read_metric(path, typ=None, xpath=None, branch=None):
+    ret = None
     if not os.path.exists(path):
         return ret
 
     typ = typ.lower().strip() if typ else typ
+    xpath = xpath.strip() if xpath else xpath
     try:
         with open(path, "r") as fd:
-            if typ == "json":
-                ret = _read_metric_json(fd, xpath)
-            elif typ == "csv":
-                ret = _read_metric_xsv(fd, xpath, ",")
-            elif typ == "tsv":
-                ret = _read_metric_xsv(fd, xpath, "\t")
-            elif typ == "hcsv":
-                ret = _read_metric_hxsv(fd, xpath, ",")
-            elif typ == "htsv":
-                ret = _read_metric_hxsv(fd, xpath, "\t")
-            else:
+            if not xpath:
                 ret = fd.read().strip()
+            else:
+                ret = _read_typed_metric(typ, xpath, fd)
     # Json path library has to be replaced or wrapped in
     # order to fix this too broad except clause.
     except Exception:
         logger.warning(
-            "unable to read metric in '{}'".format(path), parse_exception=True
+            "unable to read metric in '{}' in branch '{}'".format(
+                path, branch
+            ),
+            parse_exception=True,
         )
 
     return ret
 
 
-def _collect_metrics(self, path, recursive, typ, xpath):
+def _collect_metrics(self, path, recursive, typ, xpath, branch):
     outs = [out for stage in self.stages() for out in stage.outs]
 
     if path:
         try:
             outs = self.find_outs_by_path(path, outs=outs, recursive=recursive)
         except OutputNotFoundError:
+            logger.debug(
+                "stage file not for found for '{}' in branch '{}'".format(
+                    path, branch
+                )
+            )
             return []
 
     res = []
@@ -97,7 +123,7 @@ def _collect_metrics(self, path, recursive, typ, xpath):
     return res
 
 
-def _read_metrics(self, metrics):
+def _read_metrics(self, metrics, branch):
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
@@ -106,7 +132,7 @@ def _read_metrics(self, metrics):
         else:
             path = out.path
 
-        metric = _read_metric(path, typ=typ, xpath=xpath)
+        metric = _read_metric(path, typ=typ, xpath=xpath, branch=branch)
         if not metric:
             continue
 
@@ -128,8 +154,8 @@ def show(
     for branch in self.scm.brancher(
         all_branches=all_branches, all_tags=all_tags
     ):
-        entries = _collect_metrics(self, path, recursive, typ, xpath)
-        metrics = _read_metrics(self, entries)
+        entries = _collect_metrics(self, path, recursive, typ, xpath, branch)
+        metrics = _read_metrics(self, entries, branch)
         if metrics:
             res[branch] = metrics
 

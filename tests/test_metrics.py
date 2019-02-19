@@ -6,6 +6,9 @@ from dvc.main import main
 from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from tests.basic_env import TestDvc
 
+import dvc.logger as logger
+from dvc.utils.compat import StringIO
+
 
 class TestMetrics(TestDvc):
     def setUp(self):
@@ -52,52 +55,116 @@ class TestMetrics(TestDvc):
 
         self.dvc.scm.checkout("master")
 
-    def test(self):
+    def test_show(self):
         ret = self.dvc.metrics.show("metric", all_branches=True)
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric"] == "foo")
-        self.assertTrue(ret["bar"]["metric"] == "bar")
-        self.assertTrue(ret["baz"]["metric"] == "baz")
+        self.assertEqual(ret["foo"]["metric"], "foo")
+        self.assertEqual(ret["bar"]["metric"], "bar")
+        self.assertEqual(ret["baz"]["metric"], "baz")
 
         ret = self.dvc.metrics.show(
             "metric_json", typ="json", xpath="branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric_json"] == ["foo"])
-        self.assertTrue(ret["bar"]["metric_json"] == ["bar"])
-        self.assertTrue(ret["baz"]["metric_json"] == ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_json"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric_json"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric_json"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_tsv", typ="TsV", xpath="0,0", all_branches=True
+            "metric_tsv", typ="tsv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric_tsv"] == ["foo"])
-        self.assertTrue(ret["bar"]["metric_tsv"] == ["bar"])
-        self.assertTrue(ret["baz"]["metric_tsv"] == ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_tsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric_tsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric_tsv"], ["baz"])
 
         ret = self.dvc.metrics.show(
             "metric_htsv", typ="htsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric_htsv"] == ["foo"])
-        self.assertTrue(ret["bar"]["metric_htsv"] == ["bar"])
-        self.assertTrue(ret["baz"]["metric_htsv"] == ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_htsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric_htsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric_htsv"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_csv", typ="CSV", xpath="0,0", all_branches=True
+            "metric_csv", typ="csv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric_csv"] == ["foo"])
-        self.assertTrue(ret["bar"]["metric_csv"] == ["bar"])
-        self.assertTrue(ret["baz"]["metric_csv"] == ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_csv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric_csv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric_csv"], ["baz"])
 
         ret = self.dvc.metrics.show(
             "metric_hcsv", typ="hcsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertTrue(ret["foo"]["metric_hcsv"] == ["foo"])
-        self.assertTrue(ret["bar"]["metric_hcsv"] == ["bar"])
-        self.assertTrue(ret["baz"]["metric_hcsv"] == ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric_hcsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric_hcsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric_hcsv"], ["baz"])
+
+    def test_unknown_type_ignored(self):
+        ret = self.dvc.metrics.show(
+            "metric_hcsv", typ="unknown", xpath="0,branch", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_hcsv"], "branch\n" + b)
+
+    def test_type_case_normalized(self):
+        ret = self.dvc.metrics.show(
+            "metric_hcsv", typ=" hCSV ", xpath="0,branch", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_hcsv"], [b])
+
+    def test_xpath_is_empty(self):
+        ret = self.dvc.metrics.show(
+            "metric_json", typ="json", xpath="", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertEqual(ret[b]["metric_json"], json.dumps({"branch": b}))
+
+    def test_xpath_is_none(self):
+        ret = self.dvc.metrics.show(
+            "metric_json", typ="json", xpath=None, all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertEqual(ret[b]["metric_json"], json.dumps({"branch": b}))
+
+    def test_xpath_all_columns(self):
+        ret = self.dvc.metrics.show(
+            "metric_hcsv", typ="hcsv ", xpath="0,", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_hcsv"], [b])
+
+    def test_xpath_all_rows(self):
+        ret = self.dvc.metrics.show(
+            "metric_csv", typ="csv", xpath=",0", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_csv"], [b])
+
+    def test_xpath_all(self):
+        ret = self.dvc.metrics.show(
+            "metric_csv", typ="csv", xpath=",", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_csv"], [[b]])
+
+    def test_xpath_all_with_header(self):
+        ret = self.dvc.metrics.show(
+            "metric_hcsv", typ="hcsv", xpath=",", all_branches=True
+        )
+        self.assertEqual(len(ret), 3)
+        for b in ["foo", "bar", "baz"]:
+            self.assertSequenceEqual(ret[b]["metric_hcsv"], [[b]])
 
 
 class TestMetricsRecursive(TestDvc):
@@ -181,9 +248,6 @@ class TestMetricsReproCLI(TestDvc):
         ret = main(["metrics", "add", "metrics"])
         self.assertEqual(ret, 0)
 
-        ret = main(["metrics", "modify", "-t", "XSV", "-x", "0,0", "metrics"])
-        self.assertEqual(ret, 1)
-
         ret = main(["metrics", "modify", "-t", "CSV", "-x", "0,0", "metrics"])
         self.assertEqual(ret, 0)
 
@@ -223,12 +287,10 @@ class TestMetricsCLI(TestMetrics):
             ]
         )
         self.assertEqual(ret, 0)
-
         ret = main(
             ["metrics", "show", "-a", "metric_tsv", "-t", "tsv", "-x", "0,0"]
         )
         self.assertEqual(ret, 0)
-
         ret = main(
             [
                 "metrics",
@@ -244,7 +306,7 @@ class TestMetricsCLI(TestMetrics):
         self.assertEqual(ret, 0)
 
         ret = main(
-            ["metrics", "show", "-a", "metric_csv", "-t", "CSV", "-x", "0,0"]
+            ["metrics", "show", "-a", "metric_csv", "-t", "csv", "-x", "0,0"]
         )
         self.assertEqual(ret, 0)
 
@@ -286,6 +348,80 @@ class TestMetricsCLI(TestMetrics):
 
         ret = main(["metrics", "remove", "non-existing"])
         self.assertNotEqual(ret, 0)
+
+    def test_wrong_type_add(self):
+        with open("metric.unknown", "w+") as fd:
+            fd.write("unknown")
+            fd.flush()
+
+        ret = main(["add", "metric.unknown"])
+        self.assertEqual(ret, 0)
+
+        logger.logger.handlers[1].stream = StringIO()
+        ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
+        self.assertEqual(ret, 1)
+        self.assertIn(
+            "failed to add metric file 'metric.unknown' - metric type 'unknown'"
+            " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+            logger.logger.handlers[1].stream.getvalue(),
+        )
+
+        ret = main(["metrics", "add", "metric.unknown", "-t", "raw"])
+        self.assertEqual(ret, 0)
+
+        logger.logger.handlers[0].stream = StringIO()
+        ret = main(["metrics", "show", "metric.unknown"])
+        self.assertEqual(ret, 0)
+        self.assertIn(
+            "\tmetric.unknown: unknown",
+            logger.logger.handlers[0].stream.getvalue(),
+        )
+
+    def test_wrong_type_modify(self):
+        with open("metric.unknown", "w+") as fd:
+            fd.write("unknown")
+            fd.flush()
+
+        ret = main(["run", "-m", "metric.unknown"])
+        self.assertEqual(ret, 0)
+
+        logger.logger.handlers[1].stream = StringIO()
+        ret = main(["metrics", "modify", "metric.unknown", "-t", "unknown"])
+        self.assertEqual(ret, 1)
+        self.assertIn(
+            "failed to modify metric file settings - metric type 'unknown'"
+            " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+            logger.logger.handlers[1].stream.getvalue(),
+        )
+
+        ret = main(["metrics", "modify", "metric.unknown", "-t", "CSV"])
+        self.assertEqual(ret, 0)
+
+        logger.logger.handlers[0].stream = StringIO()
+        ret = main(["metrics", "show", "metric.unknown"])
+        self.assertEqual(ret, 0)
+        self.assertIn(
+            "\tmetric.unknown: unknown",
+            logger.logger.handlers[0].stream.getvalue(),
+        )
+
+    def test_wrong_type_show(self):
+        with open("metric.unknown", "w+") as fd:
+            fd.write("unknown")
+            fd.flush()
+
+        ret = main(["run", "-m", "metric.unknown"])
+        self.assertEqual(ret, 0)
+
+        logger.logger.handlers[0].stream = StringIO()
+        ret = main(
+            ["metrics", "show", "metric.unknown", "-t", "unknown", "-x", "0,0"]
+        )
+        self.assertEqual(ret, 0)
+        self.assertIn(
+            "\tmetric.unknown: unknown",
+            logger.logger.handlers[0].stream.getvalue(),
+        )
 
 
 class TestNoMetrics(TestDvc):
