@@ -55,14 +55,14 @@ def add_parser(subparsers, parent_parser):
         "--all-branches",
         action="store_true",
         default=False,
-        help="Collect garbage for all branches.",
+        help="Keep data files for the tips of all git branches.",
     )
     gc_parser.add_argument(
         "-T",
         "--all-tags",
         action="store_true",
         default=False,
-        help="Collect garbage for all tags.",
+        help="Keep data files for all git tags.",
     )
     gc_parser.add_argument(
         "-c",
@@ -74,6 +74,8 @@ def add_parser(subparsers, parent_parser):
     gc_parser.add_argument(
         "-r", "--remote", help="Remote repository to collect garbage in."
     )
+    # What does this actually mean? Tracing the code, it seems the only place this parameter is used is when deciding
+    # whether to throw an error when a dir cache entry is missing (Repo._collect_dir_cache)
     gc_parser.add_argument(
         "-f",
         "--force",
@@ -95,6 +97,7 @@ def add_parser(subparsers, parent_parser):
         type=str,
         nargs="*",
         default=None,
-        help="Collect garbage for all given projects.",
+        help="Keep data files required by these projects in addition to the current one. "
+             "Useful if you share a single cache across repos.",
     )
     gc_parser.set_defaults(func=CmdGC)
