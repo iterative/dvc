@@ -18,10 +18,6 @@ class CmdDataStatus(CmdDataBase):
     def _show(self, status, indent=0):
         ind = indent * self.STATUS_INDENT
 
-        if isinstance(status, str):
-            logger.info("{}{}".format(ind, status))
-            return
-
         if isinstance(status, list):
             for entry in status:
                 self._show(entry, indent)
