@@ -44,7 +44,7 @@ def _makedirs(name, mode=0o777, exist_ok=False):
             _makedirs(head, exist_ok=exist_ok)
         except OSError as e:
             if e.errno != errno.EEXIST:
-                raise e
+                raise
         cdir = os.curdir
         if isinstance(tail, bytes):
             cdir = bytes(os.curdir, "ASCII")
