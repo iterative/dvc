@@ -46,7 +46,10 @@ class CmdGC(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    GC_HELP = "Collect garbage."
+    GC_HELP = (
+        "Collect garbage from your DVC cache. \n"
+        "Delets all files in the cache which are not in use by the specified git references (defaults to just HEAD)."
+    )
     gc_parser = subparsers.add_parser(
         "gc", parents=[parent_parser], description=GC_HELP, help=GC_HELP
     )
@@ -74,8 +77,6 @@ def add_parser(subparsers, parent_parser):
     gc_parser.add_argument(
         "-r", "--remote", help="Remote repository to collect garbage in."
     )
-    # What does this actually mean? Tracing the code, it seems the only place this parameter is used is when deciding
-    # whether to throw an error when a dir cache entry is missing (Repo._collect_dir_cache)
     gc_parser.add_argument(
         "-f",
         "--force",
@@ -98,6 +99,6 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         default=None,
         help="Keep data files required by these projects in addition to the current one. "
-             "Useful if you share a single cache across repos.",
+        "Useful if you share a single cache across repos.",
     )
     gc_parser.set_defaults(func=CmdGC)
