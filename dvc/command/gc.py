@@ -48,7 +48,7 @@ class CmdGC(CmdBase):
 def add_parser(subparsers, parent_parser):
     GC_HELP = (
         "Collect garbage from your DVC cache. \n"
-        "Delets all files in the cache which are not in use by the specified git references (defaults to just HEAD)."
+        "Deletes all files in the cache which are not in use by the specified git references (defaults to just HEAD)."
     )
     gc_parser = subparsers.add_parser(
         "gc", parents=[parent_parser], description=GC_HELP, help=GC_HELP
