@@ -14,7 +14,7 @@ from operator import itemgetter
 import dvc.logger as logger
 from dvc.system import System
 from dvc.remote.base import RemoteBase, STATUS_MAP, STATUS_NEW, STATUS_DELETED
-from dvc.utils import remove, move, copyfile, dict_md5, to_chunks
+from dvc.utils import remove, move, copyfile, dict_md5, to_chunks, tmp_fname
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -522,7 +522,7 @@ class RemoteLOCAL(RemoteBase):
                 name = os.path.basename(to_info["path"])
 
             makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
-            tmp_file = self.tmp_file(to_info["path"])
+            tmp_file = tmp_fname(to_info["path"])
             try:
                 copyfile(
                     from_info["path"],

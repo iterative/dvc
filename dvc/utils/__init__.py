@@ -212,3 +212,10 @@ def convert_to_unicode(data):
         return type(data)(map(convert_to_unicode, data))
     else:
         return data
+
+
+def tmp_fname(fname):
+    """ Temporary name for a partial download """
+    from uuid import uuid4
+
+    return fname + "." + str(uuid4()) + ".tmp"
