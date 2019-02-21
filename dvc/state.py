@@ -2,18 +2,14 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
-
 import os
-import time
 import sqlite3
-import nanotime
 
 import dvc.logger as logger
 from dvc.config import Config
-from dvc.system import System
-from dvc.utils import file_md5, remove
+from dvc.utils import file_md5, remove, current_timestamp
 from dvc.exceptions import DvcException
+from dvc.utils.fs import get_mtime_and_size, get_inode
 
 
 class StateVersionTooNewError(DvcException):
@@ -289,36 +285,14 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             )
         )
 
+        self._update_cache_directory_state()
+
         self.database.commit()
         self.cursor.close()
         self.database.close()
         self.database = None
         self.cursor = None
         self.inserts = 0
-
-    @staticmethod
-    def _mtime_and_size(path):
-        size = os.path.getsize(path)
-        mtime = os.path.getmtime(path)
-
-        if os.path.isdir(path):
-            for root, dirs, files in os.walk(str(path)):
-                for name in dirs + files:
-                    entry = os.path.join(root, name)
-                    stat = os.stat(entry)
-                    size += stat.st_size
-                    entry_mtime = stat.st_mtime
-                    if entry_mtime > mtime:
-                        mtime = entry_mtime
-
-        # State of files handled by dvc is stored in db as TEXT.
-        # We cast results to string for later comparisons with stored values.
-        return str(int(nanotime.timestamp(mtime))), str(size)
-
-    @staticmethod
-    def _inode(path):
-        logger.debug("Path {} inode {}".format(path, System.inode(path)))
-        return System.inode(path)
 
     def _do_update(self, path, known_checksum=None):
         """
@@ -327,24 +301,23 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return None, None
 
-        actual_mtime, actual_size = self._mtime_and_size(path)
-        actual_inode = self._inode(path)
+        actual_mtime, actual_size = get_mtime_and_size(path)
+        actual_inode = get_inode(path)
 
-        existing_records = self._get_state_records_for_inode(actual_inode)
-        should_insert_new_record = not existing_records
+        existing_record = self.get_state_record_for_inode(actual_inode)
 
-        if should_insert_new_record:
-            md5, info = self._insert_new_state_record(
-                path, actual_inode, actual_mtime, actual_size, known_checksum
-            )
-        else:
+        if existing_record:
             md5, info = self._update_existing_state_record(
                 path,
                 actual_inode,
                 actual_mtime,
                 actual_size,
-                existing_records,
+                existing_record,
                 known_checksum,
+            )
+        else:
+            md5, info = self._insert_new_state_record(
+                path, actual_inode, actual_mtime, actual_size, known_checksum
             )
 
         return md5, info
@@ -355,13 +328,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         actual_inode,
         actual_mtime,
         actual_size,
-        existing_records,
+        existing_record,
         known_checksum=None,
     ):
 
-        md5, mtime, size = self._get_existing_record_data(
-            actual_inode, actual_mtime, actual_size, existing_records
-        )
+        mtime, size, md5, _ = existing_record
         if _file_metadata_changed(actual_mtime, mtime, actual_size, size):
             md5, info = self._update_state_for_path_changed(
                 path, actual_inode, actual_mtime, actual_size, known_checksum
@@ -371,28 +342,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             self._update_state_record_timestamp_for_inode(actual_inode)
         return md5, info
 
-    def _get_existing_record_data(
-        self, actual_inode, actual_mtime, actual_size, existing_records
-    ):
-        assert len(existing_records) == 1
-        assert len(existing_records[0]) == 5
-        inode, mtime, size, md5, _ = existing_records[0]
-        inode = self._from_sqlite(inode)
-        assert inode == actual_inode
-        logger.debug(
-            "Inode '{}', mtime '{}', actual mtime '{}', size '{}', "
-            "actual size '{}'.".format(
-                inode, mtime, actual_mtime, size, actual_size
-            )
-        )
-        return md5, mtime, size
-
     def _update_state_record_timestamp_for_inode(self, actual_inode):
         cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
         self._execute(
             cmd.format(
                 self.STATE_TABLE,
-                int(nanotime.timestamp(time.time())),
+                current_timestamp(),
                 self._to_sqlite(actual_inode),
             )
         )
@@ -421,7 +376,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 actual_mtime,
                 actual_size,
                 md5,
-                int(nanotime.timestamp(time.time())),
+                current_timestamp(),
                 self._to_sqlite(actual_inode),
             )
         )
@@ -445,19 +400,22 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 actual_mtime,
                 actual_size,
                 md5,
-                int(nanotime.timestamp(time.time())),
+                current_timestamp(),
             )
         )
         self.inserts += 1
         return md5, info
 
-    def _get_state_records_for_inode(self, actual_inode):
-        cmd = "SELECT * from {} WHERE inode={}".format(
-            self.STATE_TABLE, self._to_sqlite(actual_inode)
-        )
+    def get_state_record_for_inode(self, inode):
+        cmd = "SELECT mtime, size, md5, timestamp from {} " "WHERE inode={}"
+        cmd = cmd.format(self.STATE_TABLE, inode)
         self._execute(cmd)
-        ret = self._fetchall()
-        return ret
+        results = self._fetchall()
+        if results:
+            # uniquness constrain on inode
+            assert len(results) == 1
+            return results[0]
+        return None
 
     def update(self, path, known_checksum=None):
         """Gets the checksum for the specified path. Checksum will be
@@ -499,8 +457,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return
 
-        mtime, _ = self._mtime_and_size(path)
-        inode = self._inode(path)
+        mtime, _ = get_mtime_and_size(path)
+        inode = get_inode(path)
         relpath = os.path.relpath(path, self.root_dir)
 
         cmd = (
@@ -531,8 +489,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             if not os.path.exists(path):
                 continue
 
-            actual_inode = self._inode(path)
-            actual_mtime, _ = self._mtime_and_size(path)
+            actual_inode = get_inode(path)
+            actual_mtime, _ = get_mtime_and_size(path)
 
             if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))
@@ -542,3 +500,20 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         for relpath in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
             self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
+
+    def _update_cache_directory_state(self):
+        cache_path = self.repo.cache.local.cache_dir
+        mtime, size = get_mtime_and_size(cache_path)
+        inode = get_inode(cache_path)
+
+        cmd = (
+            "INSERT OR REPLACE INTO {}(inode, size, mtime, timestamp, md5) "
+            'VALUES ({}, "{}", "{}", "{}", "")'.format(
+                self.STATE_TABLE,
+                self._to_sqlite(inode),
+                size,
+                mtime,
+                current_timestamp(),
+            )
+        )
+        self._execute(cmd)

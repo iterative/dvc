@@ -10,6 +10,8 @@ import math
 import json
 import shutil
 import hashlib
+import nanotime
+import time
 
 LOCAL_CHUNK_SIZE = 1024 * 1024
 LARGE_FILE_SIZE = 1024 * 1024 * 1024
@@ -219,3 +221,7 @@ def tmp_fname(fname):
     from uuid import uuid4
 
     return fname + "." + str(uuid4()) + ".tmp"
+
+
+def current_timestamp():
+    return int(nanotime.timestamp(time.time()))

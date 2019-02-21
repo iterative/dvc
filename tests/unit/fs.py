@@ -1,15 +1,14 @@
-from dvc.utils.compat import str
-
 import os
 
-from dvc.state import State
-from tests.basic_env import TestDvc
+from dvc.utils.compat import str
+from dvc.utils.fs import get_mtime_and_size
+from tests.basic_env import TestDir
 
 
-class TestMtimeAndSize(TestDvc):
+class TestMtimeAndSize(TestDir):
     def test(self):
-        file_time, file_size = State._mtime_and_size(self.DATA)
-        dir_time, dir_size = State._mtime_and_size(self.DATA_DIR)
+        file_time, file_size = get_mtime_and_size(self.DATA)
+        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR)
 
         actual_file_size = os.path.getsize(self.DATA)
         actual_dir_size = (
