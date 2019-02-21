@@ -3,7 +3,7 @@ cache:
   - pip
   - directories:
     - /opt/python
-    - $HOME/.pyenv_cache
+    - $HOME/.pyenv
 sudo: true
 dist: xenial
 python: "3.7"
