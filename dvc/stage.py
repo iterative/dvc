@@ -657,7 +657,7 @@ class Stage(object):
         else:
             logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
-                if self._already_cached():
+                if not self.is_callback and self._already_cached():
                     self.checkout()
                 else:
                     self._run()
