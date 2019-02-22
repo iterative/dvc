@@ -26,9 +26,8 @@ def _ask(prompt, limited_to=None):
             return answer
 
         print(
-            "Your response must be one of: {options}. Please try again.".format(
-                options=limited_to
-            )
+            "Your response must be one of: {options}. "
+            "Please try again.".format(options=limited_to)
         )
 
 

@@ -11,7 +11,6 @@ import filecmp
 from mock import patch
 
 from dvc.main import main
-from dvc.state import State
 from dvc.utils import file_md5
 from dvc.stage import Stage
 from dvc.exceptions import DvcException

@@ -1,5 +1,4 @@
 import yaml
-import shutil
 
 from tests.basic_env import TestDvc
 from dvc.stage import StageCommitError

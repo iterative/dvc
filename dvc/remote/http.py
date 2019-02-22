@@ -121,9 +121,8 @@ class RemoteHTTP(RemoteBase):
 
         if not etag:
             raise DvcException(
-                "could not find an ETag or Content-MD5 header for '{url}'".format(
-                    url=url
-                )
+                "could not find an ETag or "
+                "Content-MD5 header for '{url}'".format(url=url)
             )
 
         if etag.startswith("W/"):

@@ -19,17 +19,19 @@ def _welcome_message():
         border_color="red",
     )
 
-    logger.info(
+    msg = (
         "{yellow}What's next?{nc}\n"
         "{yellow}------------{nc}\n"
         "- Check out the documentation: {blue}https://dvc.org/doc{nc}\n"
         "- Get help and share ideas: {blue}https://dvc.org/chat{nc}\n"
-        "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}".format(
-            yellow=colorama.Fore.YELLOW,
-            blue=colorama.Fore.BLUE,
-            nc=colorama.Fore.RESET,
-        )
+        "- Star us on GitHub: {blue}https://github.com/iterative/dvc{nc}"
+    ).format(
+        yellow=colorama.Fore.YELLOW,
+        blue=colorama.Fore.BLUE,
+        nc=colorama.Fore.RESET,
     )
+
+    logger.info(msg)
 
 
 def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -56,8 +58,8 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     scm = SCM(root_dir)
     if type(scm) == Base and not no_scm:
         raise InitError(
-            "{repo} is not tracked by any supported scm tool"
-            " (e.g. git). Use '--no-scm' if you don't want to use any scm.".format(
+            "{repo} is not tracked by any supported scm tool (e.g. git). "
+            "Use '--no-scm' if you don't want to use any scm.".format(
                 repo=root_dir
             )
         )

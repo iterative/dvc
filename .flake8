@@ -1,4 +1,7 @@
 [flake8]
-ignore = E203, E266, E501, W503, F403, F401
+ignore =
+    E203, # Whitespace before ':'
+    E266, # Too many leading '#' for block comment
+    W503, # Line break occurred before a binary operator
 max-line-length = 79
 select = B,C,E,F,W,T4,B9

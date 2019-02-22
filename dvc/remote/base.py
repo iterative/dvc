@@ -2,9 +2,7 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str
 
-import os
 import re
-import errno
 import posixpath
 from multiprocessing import cpu_count
 
@@ -83,10 +81,8 @@ class RemoteBase(object):
                 "\n"
                 "If you have installed dvc from a binary package and you "
                 "are still seeing this message, please report it to us "
-                "using https://github.com/iterative/dvc/issues. Thank you!".format(
-                    url, missing, " ".join(missing), self.scheme
-                )
-            )
+                "using https://github.com/iterative/dvc/issues. Thank you!"
+            ).format(url, missing, " ".join(missing), self.scheme)
             raise RemoteMissingDepsError(msg)
 
     def __repr__(self):

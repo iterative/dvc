@@ -16,7 +16,10 @@ def modify(repo, path, typ=None, xpath=None, delete=False):
     if typ is not None:
         typ = typ.lower().strip()
         if typ not in ["raw", "json", "csv", "tsv", "hcsv", "htsv"]:
-            msg = "metric type '{typ}' is not supported, must be one of [{types}]"
+            msg = (
+                "metric type '{typ}' is not supported, "
+                "must be one of [{types}]"
+            )
             raise DvcException(
                 msg.format(typ=typ, types=", ".join(supported_types))
             )

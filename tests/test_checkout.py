@@ -381,7 +381,10 @@ class TestCheckoutSuggestGit(TestRepro):
             msg = str(exc)
             self.assertEqual(
                 msg,
-                "'gitbranch' does not exist. Did you mean 'git checkout gitbranch'?",
+                (
+                    "'gitbranch' does not exist. "
+                    "Did you mean 'git checkout gitbranch'?"
+                ),
             )
 
         try:

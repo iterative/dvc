@@ -1,6 +1,6 @@
 import os
 
-from dvc.exceptions import MoveNotDataSourceError, DvcException
+from dvc.exceptions import MoveNotDataSourceError
 
 
 def _expand_target_path(from_path, to_path):

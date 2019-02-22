@@ -363,8 +363,9 @@ class TestMetricsCLI(TestMetrics):
             ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
             self.assertEqual(ret, 1)
             self.assertIn(
-                "failed to add metric file 'metric.unknown' - metric type 'unknown'"
-                " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+                "failed to add metric file 'metric.unknown' - metric type "
+                "'unknown' is not supported, must be one of "
+                "[raw, json, csv, tsv, hcsv, htsv]",
                 logger.logger.handlers[1].stream.getvalue(),
             )
 
@@ -394,8 +395,9 @@ class TestMetricsCLI(TestMetrics):
             )
             self.assertEqual(ret, 1)
             self.assertIn(
-                "failed to modify metric file settings - metric type 'unknown'"
-                " is not supported, must be one of [raw, json, csv, tsv, hcsv, htsv]",
+                "failed to modify metric file settings - metric type "
+                "'unknown' is not supported, must be one of "
+                "[raw, json, csv, tsv, hcsv, htsv]",
                 logger.logger.handlers[1].stream.getvalue(),
             )
 

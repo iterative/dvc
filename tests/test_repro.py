@@ -803,13 +803,15 @@ class TestReproExternalBase(TestDvc):
 
         patch_run = patch.object(stage, "_run", wraps=stage._run)
 
-        with self.dvc.state, patch_download as mock_download, patch_checkout as mock_checkout, patch_run as mock_run:
+        with self.dvc.state:
+            with patch_download as mock_download:
+                with patch_checkout as mock_checkout:
+                    with patch_run as mock_run:
+                        stage.run()
 
-            stage.run()
-
-            mock_run.assert_not_called()
-            mock_download.assert_not_called()
-            mock_checkout.assert_called_once()
+                        mock_run.assert_not_called()
+                        mock_download.assert_not_called()
+                        mock_checkout.assert_called_once()
 
     def corrupted_cache(self):
         os.unlink("bar.dvc")
@@ -827,12 +829,13 @@ class TestReproExternalBase(TestDvc):
 
         patch_run = patch.object(stage, "_run", wraps=stage._run)
 
-        with self.dvc.state, patch_checkout as mock_checkout, patch_run as mock_run:
+        with self.dvc.state:
+            with patch_checkout as mock_checkout:
+                with patch_run as mock_run:
+                    stage.run()
 
-            stage.run()
-
-            mock_run.assert_called_once()
-            mock_checkout.assert_not_called()
+                    mock_run.assert_called_once()
+                    mock_checkout.assert_not_called()
 
     @patch("dvc.prompt.confirm", return_value=True)
     def test(self, mock_prompt):

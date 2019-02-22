@@ -27,14 +27,17 @@ def encode(u, encoding=None):
     return u.encode(encoding, "replace")
 
 
-# NOTE: cast_bytes_py2 is taken from https://github.com/ipython/ipython_genutils
+# NOTE: cast_bytes_py2 is taken from
+# https://github.com/ipython/ipython_genutils
 def cast_bytes(s, encoding=None):
     if not isinstance(s, bytes):
         return encode(s, encoding)
     return s
 
 
-# NOTE _makedirs is taken from https://github.com/python/cpython/blob/3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
+# NOTE _makedirs is taken from
+# https://github.com/python/cpython/blob/
+# 3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
 def _makedirs(name, mode=0o777, exist_ok=False):
     head, tail = os.path.split(name)
     if not tail:

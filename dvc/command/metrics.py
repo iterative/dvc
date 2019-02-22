@@ -75,7 +75,10 @@ class CmdMetricsRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    METRICS_HELP = "A set of commands to add, manage, collect and display project metrics."
+    METRICS_HELP = (
+        "A set of commands to add, manage, collect and display project "
+        "metrics."
+    )
     metrics_parser = subparsers.add_parser(
         "metrics",
         parents=[parent_parser],
@@ -125,7 +128,10 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="If path is a directory, recursively search and process metric files in path.",
+        help=(
+            "If path is a directory, recursively search and process metric "
+            "files in path."
+        ),
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 

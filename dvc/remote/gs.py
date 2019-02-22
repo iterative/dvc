@@ -4,7 +4,6 @@ import os
 
 try:
     from google.cloud import storage
-    from google.auth.credentials import Credentials
 except ImportError:
     storage = None
 

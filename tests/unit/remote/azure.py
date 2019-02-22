@@ -13,7 +13,9 @@ class TestRemoteAzure(TestCase):
     )
 
     def test_init_compat(self):
-        url = "azure://ContainerName={container_name};{connection_string}".format(
+        url = (
+            "azure://ContainerName={container_name};{connection_string}"
+        ).format(
             container_name=self.container_name,
             connection_string=self.connection_string,
         )

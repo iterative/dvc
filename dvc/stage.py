@@ -186,10 +186,9 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "Dvc file '{fname}' is a 'callback' stage (has a command and"
-                " no dependencies) and thus always considered as changed.".format(
-                    fname=self.relpath
-                )
+                "Dvc file '{fname}' is a 'callback' stage "
+                "(has a command and no dependencies) and thus always "
+                "considered as changed.".format(fname=self.relpath)
             )
             return True
 
@@ -265,8 +264,9 @@ class Stage(object):
             # Removing outputs only if we actually have command to reproduce
             self.remove_outs(ignore_remove=False)
 
-        msg = "Going to reproduce '{stage}'. Are you sure you want to continue?".format(
-            stage=self.relpath
+        msg = (
+            "Going to reproduce '{stage}'. "
+            "Are you sure you want to continue?".format(stage=self.relpath)
         )
 
         if interactive and not prompt.confirm(msg):
