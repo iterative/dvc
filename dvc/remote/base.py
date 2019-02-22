@@ -108,13 +108,6 @@ class RemoteBase(object):
             return None
         return m.group(name)
 
-    @staticmethod
-    def tmp_file(fname):
-        """ Temporary name for a partial download """
-        import uuid
-
-        return fname + "." + str(uuid.uuid4())
-
     def save_info(self, path_info):
         raise NotImplementedError
 

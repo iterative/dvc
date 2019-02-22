@@ -7,6 +7,7 @@ except ImportError:
     paramiko = None
 
 import dvc.logger as logger
+from dvc.utils import tmp_fname
 from dvc.utils.compat import makedirs
 from dvc.progress import progress
 from dvc.exceptions import DvcException
@@ -145,12 +146,10 @@ class SSHConnection:
         self._sftp.remove(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
-        from uuid import uuid4
-
         self._sftp_connect()
 
         makedirs(posixpath.dirname(dest), exist_ok=True)
-        tmp_file = dest + "." + str(uuid4())
+        tmp_file = tmp_fname(dest)
 
         if no_progress_bar:
             self._sftp.get(src, tmp_file)
@@ -167,15 +166,18 @@ class SSHConnection:
         self._sftp_connect()
 
         self.makedirs(posixpath.dirname(dest))
+        tmp_file = tmp_fname(dest)
 
         if no_progress_bar:
-            self._sftp.put(src, dest)
+            self._sftp.put(src, tmp_file)
         else:
             if not progress_title:
                 progress_title = os.path.basename(dest)
 
-            self._sftp.put(src, dest, callback=create_cb(progress_title))
+            self._sftp.put(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
+
+        self._sftp.rename(tmp_file, dest)
 
     def execute(self, cmd):
         stdin, stdout, stderr = self._ssh.exec_command(cmd)

@@ -9,6 +9,7 @@ except ImportError:
     boto3 = None
 
 import dvc.logger as logger
+from dvc.utils import tmp_fname
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
@@ -222,7 +223,7 @@ class RemoteS3(RemoteBase):
             )
             logger.debug(msg)
 
-            tmp_file = self.tmp_file(to_info["path"])
+            tmp_file = tmp_fname(to_info["path"])
             if not name:
                 name = os.path.basename(to_info["path"])
 
