@@ -48,7 +48,8 @@ class CmdGC(CmdBase):
 def add_parser(subparsers, parent_parser):
     GC_HELP = (
         "Collect garbage from your DVC cache. \n"
-        "Deletes all files in the cache which are not in use by the specified git references (defaults to just HEAD)."
+        "Deletes all files in the cache which are not in use by the "
+        "specified git references (defaults to just HEAD)."
     )
     gc_parser = subparsers.add_parser(
         "gc", parents=[parent_parser], description=GC_HELP, help=GC_HELP
@@ -82,7 +83,7 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Force garbage collection.",
+        help="Force garbage collection - automatically agree to all prompts.",
     )
     gc_parser.add_argument(
         "-j",
@@ -98,7 +99,8 @@ def add_parser(subparsers, parent_parser):
         type=str,
         nargs="*",
         default=None,
-        help="Keep data files required by these projects in addition to the current one. "
+        help="Keep data files required by these projects "
+        "in addition to the current one. "
         "Useful if you share a single cache across repos.",
     )
     gc_parser.set_defaults(func=CmdGC)
