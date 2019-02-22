@@ -76,7 +76,7 @@ def status(
     all_tags=False,
 ):
     with self.state:
-        if cloud:
+        if cloud or remote:
             return _cloud_status(
                 self,
                 target,
