@@ -1277,3 +1277,19 @@ class TestReproNoCommit(TestRepro):
         ret = main(["repro", self.file1_stage, "--no-commit"])
         self.assertEqual(ret, 0)
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
+
+
+class TestReproAlreadyCached(TestRepro):
+    def test(self):
+        first_out = self.dvc.run(
+            fname="random.dvc",
+            deps=[],
+            outs=["random.txt"],
+            cmd='python -c "{}" > random.txt'.format(
+                "from random import random; print(random())"
+            ),
+        ).outs[0]
+
+        second_out = self.dvc.reproduce(target="random.dvc")[0].outs[0]
+
+        self.assertNotEqual(first_out.checksum, second_out.checksum)
