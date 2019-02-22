@@ -5,6 +5,7 @@ from schema import Or, Optional
 
 from dvc.exceptions import DvcException
 from dvc.utils.compat import str
+from dvc.remote.base import RemoteBase
 
 
 class OutputDoesNotExistError(DvcException):
@@ -28,7 +29,7 @@ class OutputAlreadyTrackedError(DvcException):
 class OutputBase(object):
     IS_DEPENDENCY = False
 
-    REMOTE = None
+    REMOTE = RemoteBase
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"
@@ -152,6 +153,9 @@ class OutputBase(object):
         return bool(self.status())
 
     def save(self):
+        if not self.exists:
+            raise self.DoesNotExistError(self)
+
         self.info = self.remote.save_info(self.path_info)
 
     def commit(self):
