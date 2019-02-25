@@ -21,6 +21,8 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
+from dvc.utils.fs import get_mtime_and_size, get_inode
+
 
 class RemoteLOCAL(RemoteBase):
     scheme = "local"
@@ -122,13 +124,11 @@ class RemoteLOCAL(RemoteBase):
             if self.changed_cache_file(md5):
                 return True
 
-            if not self.is_dir_cache(cache):
-                continue
-
-            for entry in self.load_dir_cache(md5):
-                md5 = entry[self.PARAM_CHECKSUM]
-                cache = self.get(md5)
-                clist.append((cache, md5))
+            if self.is_dir_cache(cache) and self._cache_metadata_changed():
+                for entry in self.load_dir_cache(md5):
+                    md5 = entry[self.PARAM_CHECKSUM]
+                    cache = self.get(md5)
+                    clist.append((cache, md5))
 
         return False
 
@@ -695,3 +695,15 @@ class RemoteLOCAL(RemoteBase):
             show_checksums=show_checksums,
             download=True,
         )
+
+    def _cache_metadata_changed(self):
+        mtime, size = get_mtime_and_size(self.cache_dir)
+        inode = get_inode(self.cache_dir)
+
+        existing_record = self.state.get_state_record_for_inode(inode)
+
+        if existing_record:
+            cached_mtime, cached_size, _, _ = existing_record
+            return not (mtime == cached_mtime and size == cached_size)
+
+        return True
