@@ -61,10 +61,10 @@ class StageFileBadNameError(DvcException):
         super(StageFileBadNameError, self).__init__(msg)
 
 
-class StageBadCwdError(DvcException):
+class StageBadWdirError(DvcException):
     def __init__(self, cwd):
         msg = "stage cwd '{}' is outside of the current dvc repo"
-        super(StageBadCwdError, self).__init__(msg.format(cwd))
+        super(StageBadWdirError, self).__init__(msg.format(cwd))
 
 
 class StageCommitError(DvcException):
@@ -102,6 +102,7 @@ class Stage(object):
 
     PARAM_MD5 = "md5"
     PARAM_CMD = "cmd"
+    PARAM_WDIR = "wdir"
     PARAM_DEPS = "deps"
     PARAM_OUTS = "outs"
     PARAM_LOCKED = "locked"
@@ -109,6 +110,7 @@ class Stage(object):
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
         Optional(PARAM_CMD): Or(str, None),
+        Optional(PARAM_WDIR): Or(str, None),
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
         Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
         Optional(PARAM_LOCKED): bool,
@@ -119,7 +121,7 @@ class Stage(object):
         repo,
         path=None,
         cmd=None,
-        cwd=os.curdir,
+        wdir=os.curdir,
         deps=None,
         outs=None,
         md5=None,
@@ -133,7 +135,7 @@ class Stage(object):
         self.repo = repo
         self.path = path
         self.cmd = cmd
-        self.cwd = cwd
+        self.wdir = wdir
         self.outs = outs
         self.deps = deps
         self.md5 = md5
@@ -290,12 +292,12 @@ class Stage(object):
             raise StageFileFormatError(fname, exc)
 
     @classmethod
-    def _stage_fname_cwd(cls, fname, cwd, outs, add):
-        if fname and cwd:
-            return (fname, cwd)
+    def _stage_fname(cls, fname, outs, add):
+        if fname:
+            return fname
 
         if not outs:
-            return (cls.STAGE_FILE, cwd if cwd else os.getcwd())
+            return cls.STAGE_FILE
 
         out = outs[0]
         if out.scheme == "local":
@@ -303,20 +305,19 @@ class Stage(object):
         else:
             path = posixpath
 
-        if not fname:
-            fname = path.basename(out.path) + cls.STAGE_FILE_SUFFIX
+        fname = path.basename(out.path) + cls.STAGE_FILE_SUFFIX
 
-        if not cwd or (add and out.is_local):
-            cwd = path.dirname(out.path)
+        if add and out.is_local:
+            fname = path.join(path.dirname(out.path), fname)
 
-        return (fname, cwd)
+        return fname
 
     @staticmethod
-    def _check_inside_repo(repo, cwd):
+    def _check_inside_repo(repo, wdir):
         assert repo is not None
         proj_dir = os.path.realpath(repo.root_dir)
-        if not os.path.realpath(cwd).startswith(proj_dir):
-            raise StageBadCwdError(cwd)
+        if not os.path.realpath(wdir).startswith(proj_dir):
+            raise StageBadWdirError(wdir)
 
     @property
     def is_cached(self):
@@ -359,14 +360,14 @@ class Stage(object):
         metrics=None,
         metrics_no_cache=None,
         fname=None,
-        cwd=os.curdir,
+        cwd=None,
+        wdir=None,
         locked=False,
         add=False,
         overwrite=True,
         ignore_build_cache=False,
         remove_outs=False,
     ):
-
         if outs is None:
             outs = []
         if deps is None:
@@ -378,7 +379,20 @@ class Stage(object):
         if metrics_no_cache is None:
             metrics_no_cache = []
 
-        stage = Stage(repo=repo, cwd=cwd, cmd=cmd, locked=locked)
+        # Backward compatibility for `cwd` option
+        if wdir is None and cwd is not None:
+            if fname is not None and os.path.basename(fname) != fname:
+                raise StageFileBadNameError(
+                    "stage file name '{fname}' may not contain subdirectories."
+                    " if '-c|--cwd' (deprecated) is specified. Use '-w|--wdir'"
+                    " along with '-f' to specify stage file name and working"
+                    " directory.".format(fname=fname)
+                )
+            wdir = cwd
+        else:
+            wdir = os.curdir if wdir is None else wdir
+
+        stage = Stage(repo=repo, wdir=wdir, cmd=cmd, locked=locked)
 
         stage.outs = output.loads_from(stage, outs, use_cache=True)
         stage.outs += output.loads_from(
@@ -393,22 +407,18 @@ class Stage(object):
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
 
-        if fname is not None and os.path.basename(fname) != fname:
-            raise StageFileBadNameError(
-                "stage file name '{fname}' should not contain subdirectories."
-                " Use '-c|--cwd' to change location of the stage file.".format(
-                    fname=fname
-                )
-            )
+        fname = Stage._stage_fname(fname, stage.outs, add=add)
 
-        fname, cwd = Stage._stage_fname_cwd(fname, cwd, stage.outs, add=add)
+        Stage._check_inside_repo(repo, wdir)
 
-        Stage._check_inside_repo(repo, cwd)
+        wdir = os.path.abspath(wdir)
 
-        cwd = os.path.abspath(cwd)
-        path = os.path.join(cwd, fname)
+        if cwd is not None:
+            path = os.path.join(wdir, fname)
+        else:
+            path = os.path.abspath(fname)
 
-        stage.cwd = cwd
+        stage.wdir = wdir
         stage.path = path
 
         # NOTE: remove outs before we check build cache
@@ -463,11 +473,16 @@ class Stage(object):
             d = yaml.safe_load(fd) or {}
 
         Stage.validate(d, fname=os.path.relpath(fname))
+        path = os.path.abspath(fname)
 
         stage = Stage(
             repo=repo,
-            path=os.path.abspath(fname),
-            cwd=os.path.dirname(os.path.abspath(fname)),
+            path=path,
+            wdir=os.path.abspath(
+                os.path.join(
+                    os.path.dirname(path), d.get(Stage.PARAM_WDIR, ".")
+                )
+            ),
             cmd=d.get(Stage.PARAM_CMD),
             md5=d.get(Stage.PARAM_MD5),
             locked=d.get(Stage.PARAM_LOCKED, False),
@@ -484,6 +499,7 @@ class Stage(object):
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
+                Stage.PARAM_WDIR: self.wdir,
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
@@ -501,9 +517,13 @@ class Stage(object):
                 file=os.path.relpath(fname)
             )
         )
+        d = self.dumpd()
 
+        d[Stage.PARAM_WDIR] = os.path.relpath(
+            self.wdir, os.path.dirname(fname)
+        )
         with open(fname, "w") as fd:
-            yaml.safe_dump(self.dumpd(), fd, default_flow_style=False)
+            yaml.safe_dump(d, fd, default_flow_style=False)
 
         self.repo.files_to_git_add.append(os.path.relpath(fname))
 
@@ -515,6 +535,13 @@ class Stage(object):
         # NOTE: removing md5 manually in order to not affect md5s in deps/outs
         if self.PARAM_MD5 in d.keys():
             del d[self.PARAM_MD5]
+
+        # Ignore the wdir default value. In this case stage file w/o
+        # wdir has the same md5 as a file with the default value specified.
+        # It's important for backward compatibility with pipelines that
+        # didn't have WDIR in their stage files.
+        if d.get(self.PARAM_WDIR) == ".":
+            del d[self.PARAM_WDIR]
 
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
@@ -614,7 +641,7 @@ class Stage(object):
 
         p = subprocess.Popen(
             self.cmd,
-            cwd=self.cwd,
+            cwd=self.wdir,
             shell=True,
             env=fix_env(os.environ),
             executable=executable,

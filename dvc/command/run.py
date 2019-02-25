@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import os
 import argparse
 
 import dvc.logger as logger
@@ -38,6 +37,7 @@ class CmdRun(CmdBase):
                 deps=self.args.deps,
                 fname=self.args.file,
                 cwd=self.args.cwd,
+                wdir=self.args.wdir,
                 no_exec=self.args.no_exec,
                 overwrite=overwrite,
                 ignore_build_cache=self.args.ignore_build_cache,
@@ -128,11 +128,13 @@ def add_parser(subparsers, parent_parser):
         "a stage filename.",
     )
     run_parser.add_argument(
-        "-c",
-        "--cwd",
-        default=os.path.curdir,
-        help="Directory within your repo to run your command and place "
-        "stage file in.",
+        "-c", "--cwd", default=None, help="Deprecated, use -w and -f instead."
+    )
+    run_parser.add_argument(
+        "-w",
+        "--wdir",
+        default=None,
+        help="Directory within your repo to run your command in.",
     )
     run_parser.add_argument(
         "--no-exec",

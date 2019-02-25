@@ -30,7 +30,7 @@ def move(self, from_path, to_path):
     import dvc.output as Output
     from dvc.stage import Stage
 
-    from_out = Output.loads_from(Stage(self, cwd=os.curdir), [from_path])[0]
+    from_out = Output.loads_from(Stage(self), [from_path])[0]
 
     to_path = _expand_target_path(from_path, to_path)
 
@@ -52,7 +52,7 @@ def move(self, from_path, to_path):
             os.path.basename(to_path) + Stage.STAGE_FILE_SUFFIX,
         )
 
-        stage.cwd = os.path.abspath(
+        stage.wdir = os.path.abspath(
             os.path.join(os.curdir, os.path.dirname(to_path))
         )
 

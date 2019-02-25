@@ -9,7 +9,7 @@ from dvc.utils import file_md5
 from dvc.system import System
 from dvc.stage import Stage
 from dvc.stage import StageFileBadNameError, MissingDep
-from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
+from dvc.stage import StageBadWdirError, StageFileAlreadyExistsError
 from dvc.exceptions import (
     OutputDuplicationError,
     CircularDependencyError,
@@ -204,7 +204,7 @@ class TestRunWorkingDirectoryAsOutput(TestDvc):
 
 class TestRunBadCwd(TestDvc):
     def test(self):
-        with self.assertRaises(StageBadCwdError):
+        with self.assertRaises(StageBadWdirError):
             self.dvc.run(cmd="", cwd=self.mkdtemp())
 
 

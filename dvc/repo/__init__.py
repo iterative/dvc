@@ -315,13 +315,13 @@ class Repo(object):
 
         for stage in stages:
             for out in outs:
-                overlaps = stage.cwd == out.path or stage.cwd.startswith(
+                overlaps = stage.wdir == out.path or stage.wdir.startswith(
                     out.path + os.sep
                 )
 
                 if overlaps:
                     raise WorkingDirectoryAsOutputError(
-                        stage.cwd, stage.relpath
+                        stage.wdir, stage.relpath
                     )
 
         # collect the whole DAG

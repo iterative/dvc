@@ -1,4 +1,4 @@
-import os
+from __future__ import unicode_literals
 
 
 def run(
@@ -10,7 +10,8 @@ def run(
     metrics=None,
     metrics_no_cache=None,
     fname=None,
-    cwd=os.curdir,
+    cwd=None,
+    wdir=None,
     no_exec=False,
     overwrite=False,
     ignore_build_cache=False,
@@ -36,6 +37,7 @@ def run(
             fname=fname,
             cmd=cmd,
             cwd=cwd,
+            wdir=wdir,
             outs=outs,
             outs_no_cache=outs_no_cache,
             metrics=metrics,

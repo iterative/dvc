@@ -77,13 +77,13 @@ class WorkingDirectoryAsOutputError(DvcException):
             output.
     """
 
-    def __init__(self, cwd, fname):
-        assert isinstance(cwd, str) or isinstance(cwd, builtin_str)
+    def __init__(self, wdir, fname):
+        assert isinstance(wdir, str) or isinstance(wdir, builtin_str)
         assert isinstance(fname, str) or isinstance(fname, builtin_str)
         msg = (
             "current working directory '{cwd}' is specified as an output in"
             " '{fname}'. Use another CWD to prevent any data removal.".format(
-                cwd=cwd, fname=fname
+                cwd=wdir, fname=fname
             )
         )
         super(WorkingDirectoryAsOutputError, self).__init__(msg)
