@@ -23,7 +23,7 @@ from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
 from dvc.exceptions import (
     CyclicGraphError,
-    WorkingDirectoryAsOutputError,
+    StagePathAsOutputError,
     ReproductionError,
 )
 
@@ -121,7 +121,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
             yaml.safe_dump(stage_dump, fd, default_flow_style=False)
 
-        with self.assertRaises(WorkingDirectoryAsOutputError):
+        with self.assertRaises(StagePathAsOutputError):
             self.dvc.reproduce(faulty_stage_path)
 
     def test_nested(self):
@@ -170,7 +170,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
                 Stage.load(self.dvc, error_stage_path),
             ]
 
-            with self.assertRaises(WorkingDirectoryAsOutputError):
+            with self.assertRaises(StagePathAsOutputError):
                 self.dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self):
@@ -196,8 +196,8 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         try:
             self.dvc.reproduce(stage)
-        except WorkingDirectoryAsOutputError:
-            self.fail("should not raise WorkingDirectoryAsOutputError")
+        except StagePathAsOutputError:
+            self.fail("should not raise StagePathAsOutputError")
 
 
 class TestReproDepUnderDir(TestDvc):

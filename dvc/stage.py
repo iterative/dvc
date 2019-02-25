@@ -61,10 +61,16 @@ class StageFileBadNameError(DvcException):
         super(StageFileBadNameError, self).__init__(msg)
 
 
-class StageBadWdirError(DvcException):
-    def __init__(self, cwd):
-        msg = "stage cwd '{}' is outside of the current dvc repo"
-        super(StageBadWdirError, self).__init__(msg.format(cwd))
+class StagePathOutsideError(DvcException):
+    def __init__(self, path):
+        msg = "stage working or file path '{}' is outside of dvc repo"
+        super(StagePathOutsideError, self).__init__(msg.format(path))
+
+
+class StagePathNotFoundError(DvcException):
+    def __init__(self, path):
+        msg = "stage working or file path '{}' does not exist"
+        super(StagePathNotFoundError, self).__init__(msg.format(path))
 
 
 class StageCommitError(DvcException):
@@ -313,11 +319,15 @@ class Stage(object):
         return fname
 
     @staticmethod
-    def _check_inside_repo(repo, wdir):
+    def _check_stage_path(repo, path):
         assert repo is not None
-        proj_dir = os.path.realpath(repo.root_dir)
-        if not os.path.realpath(wdir).startswith(proj_dir):
-            raise StageBadWdirError(wdir)
+
+        if not os.path.exists(os.path.realpath(path)):
+            raise StagePathNotFoundError(path)
+
+        proj_dir = os.path.realpath(repo.root_dir) + os.path.sep
+        if not (os.path.realpath(path) + os.path.sep).startswith(proj_dir):
+            raise StagePathOutsideError(path)
 
     @property
     def is_cached(self):
@@ -383,9 +393,9 @@ class Stage(object):
         if wdir is None and cwd is not None:
             if fname is not None and os.path.basename(fname) != fname:
                 raise StageFileBadNameError(
-                    "stage file name '{fname}' may not contain subdirectories."
+                    "stage file name '{fname}' may not contain subdirectories"
                     " if '-c|--cwd' (deprecated) is specified. Use '-w|--wdir'"
-                    " along with '-f' to specify stage file name and working"
+                    " along with '-f' to specify stage file path and working"
                     " directory.".format(fname=fname)
                 )
             wdir = cwd
@@ -408,15 +418,15 @@ class Stage(object):
         stage._check_duplicated_arguments()
 
         fname = Stage._stage_fname(fname, stage.outs, add=add)
-
-        Stage._check_inside_repo(repo, wdir)
-
         wdir = os.path.abspath(wdir)
 
         if cwd is not None:
             path = os.path.join(wdir, fname)
         else:
             path = os.path.abspath(fname)
+
+        Stage._check_stage_path(repo, wdir)
+        Stage._check_stage_path(repo, os.path.dirname(path))
 
         stage.wdir = wdir
         stage.path = path

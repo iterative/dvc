@@ -67,9 +67,9 @@ class OutputNotFoundError(DvcException):
         )
 
 
-class WorkingDirectoryAsOutputError(DvcException):
+class StagePathAsOutputError(DvcException):
     """Thrown if directory that stage is going to be saved in is specified as
-    an output of anothe stage.
+    an output of another stage.
 
     Args:
         cwd (str): path to the directory.
@@ -86,7 +86,7 @@ class WorkingDirectoryAsOutputError(DvcException):
                 cwd=wdir, fname=fname
             )
         )
-        super(WorkingDirectoryAsOutputError, self).__init__(msg)
+        super(StagePathAsOutputError, self).__init__(msg)
 
 
 class CircularDependencyError(DvcException):

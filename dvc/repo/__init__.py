@@ -294,7 +294,7 @@ class Repo(object):
         import networkx as nx
         from dvc.exceptions import (
             OutputDuplicationError,
-            WorkingDirectoryAsOutputError,
+            StagePathAsOutputError,
         )
 
         G = nx.DiGraph()
@@ -314,15 +314,10 @@ class Repo(object):
                 outs.append(out)
 
         for stage in stages:
+            path_dir = os.path.dirname(stage.path) + os.sep
             for out in outs:
-                overlaps = stage.wdir == out.path or stage.wdir.startswith(
-                    out.path + os.sep
-                )
-
-                if overlaps:
-                    raise WorkingDirectoryAsOutputError(
-                        stage.wdir, stage.relpath
-                    )
+                if path_dir.startswith(out.path + os.sep):
+                    raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
         # collect the whole DAG
         for stage in stages:
