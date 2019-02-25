@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from dvc.exceptions import DvcException
 from dvc.utils.compat import str
+from dvc.progress import progress_aware
 
 import re
 import sys
@@ -15,6 +16,7 @@ from contextlib import contextmanager
 import colorama
 
 
+@progress_aware
 def info(message):
     """Prints an info message."""
     logger.info(message)
@@ -29,6 +31,7 @@ def debug(message):
     logger.debug(out)
 
 
+@progress_aware
 def warning(message, parse_exception=False):
     """Prints a warning message."""
     prefix = colorize("Warning", color="yellow")
@@ -47,6 +50,7 @@ def warning(message, parse_exception=False):
     logger.warning(out)
 
 
+@progress_aware
 def error(message=None):
     """Prints an error message."""
     prefix = colorize("Error", color="red")

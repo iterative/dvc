@@ -6,6 +6,7 @@ from __future__ import print_function
 import sys
 from getpass import getpass
 
+from dvc.progress import progress_aware
 from dvc.utils.compat import input
 
 
@@ -32,6 +33,7 @@ def _ask(prompt, limited_to=None):
         )
 
 
+@progress_aware
 def confirm(statement):
     """Ask the user for confirmation about the specified statement.
 
@@ -46,6 +48,7 @@ def confirm(statement):
     return answer and answer.startswith("y")
 
 
+@progress_aware
 def password(statement):
     """Ask the user for a password.
 
