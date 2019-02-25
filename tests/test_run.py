@@ -1,4 +1,6 @@
 import os
+import uuid
+
 import mock
 import shutil
 import filecmp
@@ -7,15 +9,15 @@ import subprocess
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.system import System
-from dvc.stage import Stage
+from dvc.stage import Stage, StagePathNotFoundError
 from dvc.stage import StageFileBadNameError, MissingDep
-from dvc.stage import StageBadCwdError, StageFileAlreadyExistsError
+from dvc.stage import StagePathOutsideError, StageFileAlreadyExistsError
 from dvc.exceptions import (
     OutputDuplicationError,
     CircularDependencyError,
     CyclicGraphError,
     ArgumentDuplicationError,
-    WorkingDirectoryAsOutputError,
+    StagePathAsOutputError,
 )
 
 from tests.basic_env import TestDvc
@@ -189,11 +191,11 @@ class TestRunDuplicatedArguments(TestDvc):
             )
 
 
-class TestRunWorkingDirectoryAsOutput(TestDvc):
-    def test(self):
+class TestRunStageInsideOutput(TestDvc):
+    def test_cwd(self):
         self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
 
-        with self.assertRaises(WorkingDirectoryAsOutputError):
+        with self.assertRaises(StagePathAsOutputError):
             self.dvc.run(
                 cmd="",
                 cwd=self.DATA_DIR,
@@ -201,11 +203,72 @@ class TestRunWorkingDirectoryAsOutput(TestDvc):
                 fname="inside-cwd.dvc",
             )
 
+    def test_file_name(self):
+        self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
+
+        with self.assertRaises(StagePathAsOutputError):
+            self.dvc.run(
+                cmd="",
+                outs=[self.FOO],
+                fname=os.path.join(self.DATA_DIR, "inside-cwd.dvc"),
+            )
+
 
 class TestRunBadCwd(TestDvc):
     def test(self):
-        with self.assertRaises(StageBadCwdError):
+        with self.assertRaises(StagePathOutsideError):
             self.dvc.run(cmd="", cwd=self.mkdtemp())
+
+    def test_same_prefix(self):
+        with self.assertRaises(StagePathOutsideError):
+            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            os.mkdir(path)
+            self.dvc.run(cmd="", cwd=path)
+
+
+class TestRunBadWdir(TestDvc):
+    def test(self):
+        with self.assertRaises(StagePathOutsideError):
+            self.dvc.run(cmd="", wdir=self.mkdtemp())
+
+    def test_same_prefix(self):
+        with self.assertRaises(StagePathOutsideError):
+            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            os.mkdir(path)
+            self.dvc.run(cmd="", wdir=path)
+
+    def test_not_found(self):
+        with self.assertRaises(StagePathNotFoundError):
+            path = os.path.join(self._root_dir, str(uuid.uuid4()))
+            self.dvc.run(cmd="", wdir=path)
+
+
+class TestRunBadName(TestDvc):
+    def test(self):
+        with self.assertRaises(StagePathOutsideError):
+            self.dvc.run(
+                cmd="",
+                fname=os.path.join(
+                    self.mkdtemp(), self.FOO + Stage.STAGE_FILE_SUFFIX
+                ),
+            )
+
+    def test_same_prefix(self):
+        with self.assertRaises(StagePathOutsideError):
+            path = "{}-{}".format(self._root_dir, uuid.uuid4())
+            os.mkdir(path)
+            self.dvc.run(
+                cmd="",
+                fname=os.path.join(path, self.FOO + Stage.STAGE_FILE_SUFFIX),
+            )
+
+    def test_not_found(self):
+        with self.assertRaises(StagePathNotFoundError):
+            path = os.path.join(self._root_dir, str(uuid.uuid4()))
+            self.dvc.run(
+                cmd="",
+                fname=os.path.join(path, self.FOO + Stage.STAGE_FILE_SUFFIX),
+            )
 
 
 class TestCmdRun(TestDvc):

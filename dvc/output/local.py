@@ -28,7 +28,7 @@ class OutputLOCAL(OutputBase):
 
         if not os.path.isabs(p):
             p = self.remote.to_ospath(p)
-            p = os.path.join(stage.cwd, p)
+            p = os.path.join(stage.wdir, p)
         p = os.path.abspath(os.path.normpath(p))
 
         self.path_info = {"scheme": "local", "path": p}
@@ -58,7 +58,7 @@ class OutputLOCAL(OutputBase):
         ret = super(OutputLOCAL, self).dumpd()
         if self.is_local:
             path = self.remote.unixpath(
-                os.path.relpath(self.path, self.stage.cwd)
+                os.path.relpath(self.path, self.stage.wdir)
             )
         else:
             path = self.url
