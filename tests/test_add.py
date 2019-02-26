@@ -299,3 +299,35 @@ class TestShouldNotCheckCacheForDirIfCacheMetadataDidNotChange(TestDvc):
             ret = main(["status", "{}.dvc".format(self.DATA_DIR)])
             self.assertEqual(ret, 0)
             self.assertEqual(1, remote_local_loader_spy.mock.call_count)
+
+
+class TestShouldCollectDirCacheOnlyOnce(TestDvc):
+    NEW_LARGE_DIR_SIZE = 1
+
+    @patch("dvc.remote.local.LARGE_DIR_SIZE", NEW_LARGE_DIR_SIZE)
+    def test(self):
+        from dvc.remote.local import RemoteLOCAL
+
+        collect_dir_counter = spy(RemoteLOCAL.collect_dir_cache)
+        with patch.object(
+            RemoteLOCAL, "collect_dir_cache", collect_dir_counter
+        ):
+
+            LARGE_DIR_FILES_NUM = self.NEW_LARGE_DIR_SIZE + 1
+            data_dir = "dir"
+
+            os.makedirs(data_dir)
+
+            for i in range(LARGE_DIR_FILES_NUM):
+                with open(os.path.join(data_dir, str(i)), "w+") as f:
+                    f.write(str(i))
+
+            ret = main(["add", data_dir])
+            self.assertEqual(0, ret)
+
+            ret = main(["status"])
+            self.assertEqual(0, ret)
+
+            ret = main(["status"])
+            self.assertEqual(0, ret)
+        self.assertEqual(1, collect_dir_counter.mock.call_count)
