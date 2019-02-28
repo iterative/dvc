@@ -14,7 +14,7 @@ import dvc.logger as logger
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env
+from dvc.utils import dict_md5, fix_env, load_stage_file
 
 
 class StageCmdFailedError(DvcException):
@@ -488,8 +488,7 @@ class Stage(object):
         if not Stage.is_stage_file(fname):
             raise StageFileIsNotDvcFileError(fname)
 
-        with open(fname, "r") as fd:
-            d = yaml.safe_load(fd) or {}
+        d = load_stage_file(fname)
 
         Stage.validate(d, fname=os.path.relpath(fname))
         path = os.path.abspath(fname)

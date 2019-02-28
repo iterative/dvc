@@ -1,4 +1,5 @@
 import yaml
+from dvc.utils import load_stage_file
 
 from tests.basic_env import TestDvc
 from dvc.stage import StageCommitError
@@ -76,9 +77,7 @@ class TestCommitChangedMd5(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
 
-        st = None
-        with open(stage.path, "r") as fobj:
-            st = yaml.safe_load(fobj)
+        st = load_stage_file(stage.path)
 
         st["md5"] = "1111111111"
         with open(stage.path, "w") as fobj:

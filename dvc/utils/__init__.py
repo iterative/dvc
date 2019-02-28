@@ -1,6 +1,8 @@
 """Helpers for other modules."""
 
 from __future__ import unicode_literals
+
+import yaml
 from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2
 
 import os
@@ -225,3 +227,8 @@ def tmp_fname(fname):
 
 def current_timestamp():
     return int(nanotime.timestamp(time.time()))
+
+
+def load_stage_file(path):
+    with open(path, "r") as fobj:
+        return yaml.safe_load(fobj) or {}

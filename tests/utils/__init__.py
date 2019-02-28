@@ -1,4 +1,3 @@
-import yaml
 import os
 from mock import MagicMock
 from contextlib import contextmanager
@@ -13,11 +12,6 @@ def spy(method_to_decorate):
 
     wrapper.mock = mock
     return wrapper
-
-
-def load_stage_file(path):
-    with open(path, "r") as fobj:
-        return yaml.safe_load(fobj)
 
 
 @contextmanager
