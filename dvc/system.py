@@ -267,8 +267,11 @@ class System(object):
         # https://docs.microsoft.com/en-us/windows/desktop/fileio/
         # file-attribute-constants
         FILE_ATTRIBUTE_REPARSE_POINT = 0x400
-        info = System.getdirinfo(path)
-        return info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+
+        if os.path.lexists(path):
+            info = System.getdirinfo(path)
+            return info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
+        return False
 
     @staticmethod
     def is_hardlink(path):

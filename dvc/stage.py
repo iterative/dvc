@@ -4,8 +4,9 @@ from dvc.utils.compat import str, open
 
 import os
 import yaml
-import posixpath
 import subprocess
+
+from dvc.utils.fs import contains_symlink_up_to
 from schema import Schema, SchemaError, Optional, Or, And
 
 import dvc.prompt as prompt
@@ -306,16 +307,24 @@ class Stage(object):
             return cls.STAGE_FILE
 
         out = outs[0]
-        if out.scheme == "local":
-            path = os.path
-        else:
-            path = posixpath
+        path_handler = out.remote.ospath
 
-        fname = path.basename(out.path) + cls.STAGE_FILE_SUFFIX
+        fname = path_handler.basename(out.path) + cls.STAGE_FILE_SUFFIX
 
-        if add and out.is_local:
-            fname = path.join(path.dirname(out.path), fname)
+        fname = Stage._expand_to_path_on_add_local(
+            add, fname, out, path_handler
+        )
 
+        return fname
+
+    @staticmethod
+    def _expand_to_path_on_add_local(add, fname, out, path_handler):
+        if (
+            add
+            and out.is_local
+            and not contains_symlink_up_to(out.path, out.repo.root_dir)
+        ):
+            fname = path_handler.join(path_handler.dirname(out.path), fname)
         return fname
 
     @staticmethod

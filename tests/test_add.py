@@ -7,7 +7,9 @@ import yaml
 import time
 import shutil
 import filecmp
+import posixpath
 
+from dvc.system import System
 from mock import patch
 
 from dvc.main import main
@@ -331,3 +333,76 @@ class TestShouldCollectDirCacheOnlyOnce(TestDvc):
             ret = main(["status"])
             self.assertEqual(0, ret)
         self.assertEqual(1, collect_dir_counter.mock.call_count)
+
+
+class SymlinkAddTestBase(TestDvc):
+    def _get_data_dir(self):
+        raise NotImplementedError
+
+    def _prepare_external_data(self):
+        data_dir = self._get_data_dir()
+
+        self.data_file_name = "data_file"
+        external_data_path = os.path.join(data_dir, self.data_file_name)
+        with open(external_data_path, "w+") as f:
+            f.write("data")
+
+        self.link_name = "data_link"
+        System.symlink(data_dir, self.link_name)
+
+    def _test(self):
+        self._prepare_external_data()
+
+        ret = main(["add", os.path.join(self.link_name, self.data_file_name)])
+        self.assertEqual(0, ret)
+
+        stage_file = self.data_file_name + Stage.STAGE_FILE_SUFFIX
+        self.assertTrue(os.path.exists(stage_file))
+
+        with open(stage_file, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        relative_data_path = posixpath.join(
+            self.link_name, self.data_file_name
+        )
+        self.assertEqual(relative_data_path, d["outs"][0]["path"])
+
+
+class TestShouldAddDataFromExternalSymlink(SymlinkAddTestBase):
+    def _get_data_dir(self):
+        return self.mkdtemp()
+
+    def test(self):
+        self._test()
+
+
+class TestShouldAddDataFromInternalSymlink(SymlinkAddTestBase):
+    def _get_data_dir(self):
+        return self.DATA_DIR
+
+    def test(self):
+        self._test()
+
+
+class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
+    def test(self):
+        def is_symlink_true_below_dvc_root(path):
+            if path == os.path.dirname(self.dvc.root_dir):
+                return True
+            return False
+
+        with patch.object(
+            System, "is_symlink", side_effect=is_symlink_true_below_dvc_root
+        ):
+
+            ret = main(["add", self.DATA])
+            self.assertEqual(0, ret)
+
+            stage_file_path_on_data_below_symlink = (
+                os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
+            )
+            self.assertFalse(
+                os.path.exists(stage_file_path_on_data_below_symlink)
+            )
+
+            stage_file_path = self.DATA + Stage.STAGE_FILE_SUFFIX
+            self.assertTrue(os.path.exists(stage_file_path))
