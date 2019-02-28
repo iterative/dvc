@@ -21,7 +21,7 @@ from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
-from tests.utils import spy
+from tests.utils import spy, get_gitignore_content
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
@@ -457,3 +457,23 @@ class TestAddFilename(TestDvc):
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))
         self.assertFalse(os.path.exists("foo.dvc"))
+
+
+class TestShouldCleanUpAfterFailedAdd(TestDvc):
+    def test(self):
+        ret = main(["add", self.FOO])
+        self.assertEqual(0, ret)
+
+        foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+        # corrupt stage file
+        with open(foo_stage_file, "a+") as file:
+            file.write("this will break yaml file structure")
+
+        ret = main(["add", self.BAR])
+        self.assertEqual(1, ret)
+
+        bar_stage_file = self.BAR + Stage.STAGE_FILE_SUFFIX
+        self.assertFalse(os.path.exists(bar_stage_file))
+
+        gitignore_content = get_gitignore_content()
+        self.assertFalse(any(self.BAR in line for line in gitignore_content))

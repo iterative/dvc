@@ -1,3 +1,4 @@
+import yaml
 import os
 
 from dvc.scm import Git
@@ -19,6 +20,11 @@ def spy(method_to_decorate):
 def get_gitignore_content():
     with open(Git.GITIGNORE, "r") as gitignore:
         return gitignore.readlines()
+
+
+def load_stage_file(path):
+    with open(path, "r") as fobj:
+        return yaml.safe_load(fobj)
 
 
 @contextmanager

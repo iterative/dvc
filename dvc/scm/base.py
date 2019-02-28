@@ -139,3 +139,15 @@ class Base(object):
 
     def install(self):
         """Adds dvc commands to SCM hooks for the repo."""
+
+    def cleanup_ignores(self):
+        """
+        This method should clean up ignores (eg. entries in .gitignore),
+        use, when method editing ignores (eg. add, run, import) fails to
+        perform its task.
+        """
+
+    def reset_ignores(self):
+        """
+        Method to reset in-memory ignore storing mechanism.
+        """

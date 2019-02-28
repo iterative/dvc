@@ -1,9 +1,11 @@
 import os
+
+from dvc.scm import scm_context
 from dvc.stage import Stage
 from dvc.utils import walk_files
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
-
+@scm_context
 def add(repo, target, recursive=False, no_commit=False, fname=None):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
@@ -25,9 +27,6 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
 
     for stage in stages:
         stage.dump()
-
-    repo.remind_to_git_add()
-
     return stages
 
 
