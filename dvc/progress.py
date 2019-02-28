@@ -7,7 +7,6 @@ from dvc.utils.compat import str
 
 import sys
 import threading
-import dvc.logger as logger
 
 
 class Progress(object):
@@ -100,6 +99,8 @@ class Progress(object):
 
     @staticmethod
     def _print(*args, **kwargs):
+        import dvc.logger as logger
+
         if logger.is_quiet():
             return
 
@@ -114,6 +115,20 @@ class Progress(object):
         if self._line is not None:
             self.refresh()
         self._lock.release()
+
+
+def progress_aware(f):
+    """ Decorator to add a new line if progress bar hasn't finished  """
+    from functools import wraps
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not progress.is_finished:
+            progress._print()
+
+        return f(*args, **kwargs)
+
+    return wrapper
 
 
 progress = Progress()  # pylint: disable=invalid-name
