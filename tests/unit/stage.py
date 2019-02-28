@@ -5,7 +5,7 @@ from dvc.stage import Stage
 
 class TestStageChecksum(TestCase):
     def test(self):
-        stage = Stage(None)
+        stage = Stage(None, "path")
         outs = [{"path": "a", "md5": "123456789"}]
         deps = [{"path": "b", "md5": "987654321"}]
         d = {"md5": "123456", "cmd": "mycmd", "outs": outs, "deps": deps}
