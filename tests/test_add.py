@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import os
 
 import dvc
-import yaml
 import time
 import shutil
 import filecmp
@@ -13,7 +12,7 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5
+from dvc.utils import file_md5, load_stage_file
 from dvc.stage import Stage
 from dvc.exceptions import DvcException
 from dvc.output.base import OutputAlreadyTrackedError
@@ -185,17 +184,15 @@ class TestAddLocalRemoteFile(TestDvc):
         ret = main(["add", foo])
         self.assertEqual(ret, 0)
 
-        with open("foo.dvc", "r") as fobj:
-            d = yaml.safe_load(fobj)
-            self.assertEqual(d["outs"][0]["path"], foo)
+        d = load_stage_file("foo.dvc")
+        self.assertEqual(d["outs"][0]["path"], foo)
 
         bar = os.path.join(cwd, self.BAR)
         ret = main(["add", bar])
         self.assertEqual(ret, 0)
 
-        with open("bar.dvc", "r") as fobj:
-            d = yaml.safe_load(fobj)
-            self.assertEqual(d["outs"][0]["path"], bar)
+        d = load_stage_file("bar.dvc")
+        self.assertEqual(d["outs"][0]["path"], bar)
 
 
 class TestCmdAdd(TestDvc):
@@ -359,8 +356,7 @@ class SymlinkAddTestBase(TestDvc):
         stage_file = self.data_file_name + Stage.STAGE_FILE_SUFFIX
         self.assertTrue(os.path.exists(stage_file))
 
-        with open(stage_file, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage_file)
         relative_data_path = posixpath.join(
             self.link_name, self.data_file_name
         )

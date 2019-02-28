@@ -1,6 +1,7 @@
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileFormatError
+from dvc.utils import load_stage_file
 
 from tests.basic_env import TestDvc
 
@@ -75,8 +76,7 @@ class TestReload(TestDvc):
         stage = stages[0]
         self.assertTrue(stage is not None)
 
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
 
         # NOTE: checking that reloaded stage didn't change its checksum
         md5 = "11111111111111111111111111111111"
@@ -89,7 +89,5 @@ class TestReload(TestDvc):
         self.assertTrue(stage is not None)
         stage.dump()
 
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
-
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[stage.PARAM_MD5], md5)

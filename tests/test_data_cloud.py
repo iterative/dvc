@@ -28,7 +28,7 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils import file_md5
+from dvc.utils import file_md5, load_stage_file
 
 from tests.basic_env import TestDvc
 from tests.utils import spy
@@ -632,8 +632,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         self.main(["push"])
 
         stage_file_path = stage.relpath
-        with open(stage_file_path, "r") as stage_file:
-            content = yaml.safe_load(stage_file)
+        content = load_stage_file(stage_file_path)
         del (content["outs"][0]["md5"])
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)

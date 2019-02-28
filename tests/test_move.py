@@ -3,10 +3,11 @@ import os
 from dvc.main import main
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.stage import Stage
+from dvc.utils import load_stage_file
 
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
-from tests.utils import load_stage_file, cd
+from tests.utils import cd
 
 
 class TestMove(TestDvc):
