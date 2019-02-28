@@ -78,6 +78,9 @@ class CmdConfig(CmdBase):
         elif self.args.value is None:
             return self._show(section, opt)
         else:
+            home_dir = os.path.expanduser("~")
+            self.args.value = self.args.value.replace(home_dir, "~")
+
             return self._set(section, opt, self.args.value)
 
 

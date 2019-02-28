@@ -57,6 +57,18 @@ class TestRemote(TestDvc):
         config = configobj.ConfigObj(self.dvc.config.config_file)
         self.assertEqual(config['remote "mylocal"']["url"], rel)
 
+    def test_home_directory_path(self):
+        ret = main(["remote", "add", "ssh", "ssh://127.0.0.1:/path/to/dir"])
+        self.assertEqual(ret, 0)
+
+        keyfile_path = os.path.expanduser("~/.ssh/id_rsa")
+
+        ret = main(["remote", "modify", "ssh", "keyfile", keyfile_path])
+        self.assertEqual(ret, 0)
+
+        config = configobj.ConfigObj(self.dvc.config.config_file)
+        self.assertEqual(config['remote "ssh"']["keyfile"], "~/.ssh/id_rsa")
+
 
 class TestRemoteRemoveDefault(TestDvc):
     def test(self):
