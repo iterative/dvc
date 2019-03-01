@@ -74,6 +74,12 @@ class StagePathNotFoundError(DvcException):
         super(StagePathNotFoundError, self).__init__(msg.format(path))
 
 
+class StagePathNotDirectoryError(DvcException):
+    def __init__(self, path):
+        msg = "stage working or file path '{}' is not directory"
+        super(StagePathNotDirectoryError, self).__init__(msg.format(path))
+
+
 class StageCommitError(DvcException):
     pass
 
@@ -331,11 +337,15 @@ class Stage(object):
     def _check_stage_path(repo, path):
         assert repo is not None
 
-        if not os.path.exists(os.path.realpath(path)):
+        real_path = os.path.realpath(path)
+        if not os.path.exists(real_path):
             raise StagePathNotFoundError(path)
 
+        if not os.path.isdir(real_path):
+            raise StagePathNotDirectoryError(path)
+
         proj_dir = os.path.realpath(repo.root_dir) + os.path.sep
-        if not (os.path.realpath(path) + os.path.sep).startswith(proj_dir):
+        if not (real_path + os.path.sep).startswith(proj_dir):
             raise StagePathOutsideError(path)
 
     @property

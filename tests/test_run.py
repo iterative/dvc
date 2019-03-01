@@ -5,11 +5,12 @@ import mock
 import shutil
 import filecmp
 import subprocess
+import yaml
 
 from dvc.main import main
 from dvc.utils import file_md5
 from dvc.system import System
-from dvc.stage import Stage, StagePathNotFoundError
+from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
 from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StagePathOutsideError, StageFileAlreadyExistsError
 from dvc.exceptions import (
@@ -242,6 +243,14 @@ class TestRunBadWdir(TestDvc):
             path = os.path.join(self._root_dir, str(uuid.uuid4()))
             self.dvc.run(cmd="", wdir=path)
 
+    def test_not_dir(self):
+        with self.assertRaises(StagePathNotDirectoryError):
+            path = os.path.join(self._root_dir, str(uuid.uuid4()))
+            os.mkdir(path)
+            path = os.path.join(path, str(uuid.uuid4()))
+            open(path, "a").close()
+            self.dvc.run(cmd="", wdir=path)
+
 
 class TestRunBadName(TestDvc):
     def test(self):
@@ -316,7 +325,7 @@ class TestCmdRun(TestDvc):
         self.assertEqual(stage.cmd, 'echo "foo bar"')
 
     @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt(self, mock_popen):
+    def test_keyboard_interrupt(self, _):
         ret = main(["run", "mycmd"])
         self.assertEqual(ret, 252)
 
@@ -603,6 +612,58 @@ class TestCmdRunCliMetrics(TestDvc):
         ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
         self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+
+
+class TestCmdRunWorkingDirectory(TestDvc):
+    def test_default_wdir_is_written(self):
+        stage = self.dvc.run(
+            cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
+        )
+        with open(stage.relpath, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        self.assertEqual(d[Stage.PARAM_WDIR], ".")
+
+        stage = self.dvc.run(
+            cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
+        )
+        with open(stage.relpath, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        self.assertEqual(d[Stage.PARAM_WDIR], ".")
+
+    def test_fname_changes_path_and_wdir(self):
+        dname = "dir"
+        os.mkdir(os.path.join(self._root_dir, dname))
+        foo = os.path.join(dname, self.FOO)
+        fname = os.path.join(dname, "stage" + Stage.STAGE_FILE_SUFFIX)
+        stage = self.dvc.run(
+            cmd="echo test > {}".format(foo), outs=[foo], fname=fname
+        )
+        self.assertEqual(stage.wdir, os.path.realpath(self._root_dir))
+        self.assertEqual(
+            stage.path, os.path.join(os.path.realpath(self._root_dir), fname)
+        )
+
+        # Check that it is dumped properly (relative to fname)
+        with open(stage.relpath, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        self.assertEqual(d[Stage.PARAM_WDIR], "..")
+
+    def test_cwd_is_ignored(self):
+        dname = "dir"
+        os.mkdir(os.path.join(self._root_dir, dname))
+        foo = os.path.join(dname, self.FOO)
+        fname = os.path.join("stage" + Stage.STAGE_FILE_SUFFIX)
+        stage = self.dvc.run(
+            cmd="echo test > {}".format(foo),
+            outs=[foo],
+            cwd=dname,
+            wdir=".",
+            fname=fname,
+        )
+        self.assertEqual(stage.wdir, os.path.realpath(self._root_dir))
+        self.assertEqual(
+            stage.path, os.path.join(os.path.realpath(self._root_dir), fname)
+        )
 
 
 class TestRunDeterministicBase(TestDvc):

@@ -732,7 +732,7 @@ class TestCmdRepro(TestReproChangedData):
         self.assertNotEqual(ret, 0)
 
 
-class TestCmdReproChdir(TestDvc):
+class TestCmdReproChdirCwdBackwardCompatible(TestDvc):
     def test(self):
         dname = "dir"
         os.mkdir(dname)
@@ -749,6 +749,44 @@ class TestCmdReproChdir(TestDvc):
                 "Dvcfile",
                 "-c",
                 dname,
+                "-d",
+                self.FOO,
+                "-o",
+                self.BAR,
+                "python {} {} {}".format(self.CODE, self.FOO, self.BAR),
+            ]
+        )
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.isfile(foo))
+        self.assertTrue(os.path.isfile(bar))
+        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
+
+        os.unlink(bar)
+
+        ret = main(["repro", "-c", dname])
+        self.assertEqual(ret, 0)
+        self.assertTrue(os.path.isfile(foo))
+        self.assertTrue(os.path.isfile(bar))
+        self.assertTrue(filecmp.cmp(foo, bar, shallow=False))
+
+
+class TestCmdReproChdir(TestDvc):
+    def test(self):
+        dname = "dir"
+        os.mkdir(dname)
+        foo = os.path.join(dname, self.FOO)
+        bar = os.path.join(dname, self.BAR)
+        code = os.path.join(dname, self.CODE)
+        shutil.copyfile(self.FOO, foo)
+        shutil.copyfile(self.CODE, code)
+
+        ret = main(
+            [
+                "run",
+                "-f",
+                "{}/Dvcfile".format(dname),
+                "-w",
+                "{}".format(dname),
                 "-d",
                 self.FOO,
                 "-o",
