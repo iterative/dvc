@@ -212,8 +212,14 @@ class NoMetricsError(DvcException):
 
 class StageFileCorruptedError(DvcException):
     def __init__(self, path):
-        msg = (
-            "Unable to read stage file: {} "
-            "\n Yaml file structure is corrupted".format(path)
+        super(StageFileCorruptedError, self).__init__(
+            "unable to read stage file: {} "
+            "YAML file structure is corrupted".format(path)
         )
-        super(StageFileCorruptedError, self).__init__(msg)
+
+
+class RecursiveAddingWhileUsingFilename(DvcException):
+    def __init__(self, path):
+        super(RecursiveAddingWhileUsingFilename, self).__init__(
+            "using fname with recursive is not allowed."
+        )

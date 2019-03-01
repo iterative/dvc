@@ -16,7 +16,7 @@ from mock import patch
 from dvc.main import main
 from dvc.utils import file_md5, load_stage_file
 from dvc.stage import Stage
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
@@ -425,7 +425,35 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
             self.assertEqual(1, ret)
 
             self.assertIn(
-                "Unable to read stage file: {} \n "
-                "Yaml file structure is corrupted".format(foo_stage),
+                "unable to read stage file: {} "
+                "YAML file structure is corrupted".format(foo_stage),
                 logger.handlers[1].stream.getvalue(),
             )
+
+
+class TestAddFilename(TestDvc):
+    def test(self):
+        ret = main(["add", self.FOO, self.BAR, "-f", "error.dvc"])
+        self.assertNotEqual(0, ret)
+
+        ret = main(["add", "-R", self.DATA_DIR, "-f", "error.dvc"])
+        self.assertNotEqual(0, ret)
+
+        with self.assertRaises(RecursiveAddingWhileUsingFilename):
+            self.dvc.add(self.DATA_DIR, recursive=True, fname="error.dvc")
+
+        ret = main(["add", self.DATA_DIR, "-f", "data_directory.dvc"])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("data_directory.dvc"))
+
+        ret = main(["add", self.FOO, "-f", "bar.dvc"])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("bar.dvc"))
+        self.assertFalse(os.path.exists("foo.dvc"))
+
+        os.remove("bar.dvc")
+
+        ret = main(["add", self.FOO, "--file", "bar.dvc"])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("bar.dvc"))
+        self.assertFalse(os.path.exists("foo.dvc"))
