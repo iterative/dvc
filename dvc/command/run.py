@@ -147,9 +147,7 @@ def add_parser(subparsers, parent_parser):
         "--yes",
         action="store_true",
         default=False,
-        help="(OBSOLETED, use --overwrite-dvcfile instead) Automatic 'yes' "
-        "answer to all prompts. E.g. when '.dvc' file exists and dvc "
-        "asks if you want to overwrite it.",
+        help="Deprecated, use --overwrite-dvcfile instead",
     )
     run_parser.add_argument(
         "--overwrite-dvcfile",

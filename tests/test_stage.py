@@ -1,3 +1,5 @@
+import yaml
+
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileFormatError
@@ -91,3 +93,24 @@ class TestReload(TestDvc):
 
         d = load_stage_file(stage.relpath)
         self.assertEqual(d[stage.PARAM_MD5], md5)
+
+
+class TestDefaultWorkingDirectory(TestDvc):
+    def test_ignored_in_checksum(self):
+        stage = self.dvc.run(
+            cmd="echo test > {}".format(self.FOO),
+            deps=[self.BAR],
+            outs=[self.FOO],
+        )
+
+        with open(stage.relpath, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        self.assertEqual(d[stage.PARAM_WDIR], ".")
+
+        del d[stage.PARAM_WDIR]
+        with open(stage.relpath, "w") as fobj:
+            yaml.safe_dump(d, fobj, default_flow_style=False)
+
+        with self.dvc.state:
+            stage = Stage.load(self.dvc, stage.relpath)
+            self.assertFalse(stage.changed())
