@@ -10,7 +10,7 @@ except ImportError:
     BlockBlobService = None
 
 import dvc.logger as logger
-from dvc.utils import tmp_fname
+from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
@@ -187,7 +187,7 @@ class RemoteAzure(RemoteBase):
                 msg = "failed to download '{}/{}'".format(bucket, path)
                 logger.warning(msg)
             else:
-                os.rename(tmp_file, to_info["path"])
+                move(tmp_file, to_info["path"])
 
                 if not no_progress_bar:
                     progress.finish_target(name)

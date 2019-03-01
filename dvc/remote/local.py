@@ -534,7 +534,7 @@ class RemoteLOCAL(RemoteBase):
                     name=name,
                 )
 
-                os.rename(tmp_file, to_info["path"])
+                move(tmp_file, to_info["path"])
             except Exception:
                 logger.error(
                     "failed to download '{}' to '{}'".format(

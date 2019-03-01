@@ -8,7 +8,7 @@ except ImportError:
     storage = None
 
 import dvc.logger as logger
-from dvc.utils import tmp_fname
+from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
@@ -207,7 +207,7 @@ class RemoteGS(RemoteBase):
                 )
                 continue
 
-            os.rename(tmp_file, to_info["path"])
+            move(tmp_file, to_info["path"])
 
             if not no_progress_bar:
                 progress.finish_target(name)
