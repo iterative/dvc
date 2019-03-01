@@ -564,9 +564,9 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        return dict_md5(
-            d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC]
-        )
+        m = dict_md5(d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC])
+        logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
+        return m
 
     def save(self):
         for dep in self.deps:
