@@ -540,6 +540,9 @@ class RemoteLOCAL(RemoteBase):
 
                 continue
 
+            if os.path.exists(to_info["path"]):
+                os.remove(to_info["path"])
+
             os.rename(tmp_file, to_info["path"])
 
     def _group(self, checksum_infos, show_checksums=False):

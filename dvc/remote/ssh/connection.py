@@ -160,6 +160,9 @@ class SSHConnection:
             self._sftp.get(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
 
+        if os.path.exists(dest):
+            os.remove(dest)
+
         os.rename(tmp_file, dest)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):

@@ -147,6 +147,9 @@ class RemoteHTTP(RemoteBase):
             mode, partial_file, request, transferred_bytes, callback
         )
 
+        if os.path.exists(target_file):
+            os.remove(target_file)
+
         os.rename(partial_file, target_file)
 
     def _write_request_content(

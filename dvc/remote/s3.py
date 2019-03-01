@@ -251,6 +251,9 @@ class RemoteS3(RemoteBase):
                 logger.error(msg)
                 continue
 
+            if os.path.exists(to_info["path"]):
+                os.remove(to_info["path"])
+
             os.rename(tmp_file, to_info["path"])
 
             if not no_progress_bar:

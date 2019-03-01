@@ -283,7 +283,7 @@ class Stage(object):
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
-        self.run(dry=dry, no_commit=no_commit)
+        self.run(dry=dry, no_commit=no_commit, force=force)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
@@ -669,7 +669,7 @@ class Stage(object):
         if p.returncode != 0:
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False, resume=False, no_commit=False):
+    def run(self, dry=False, resume=False, no_commit=False, force=False):
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
@@ -686,7 +686,7 @@ class Stage(object):
                 )
             )
             if not dry:
-                if self._already_cached():
+                if self._already_cached() and not force:
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(
@@ -702,7 +702,11 @@ class Stage(object):
         else:
             logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
-                if not self.is_callback and self._already_cached():
+                if (
+                    not force
+                    and not self.is_callback
+                    and self._already_cached()
+                ):
                     self.checkout()
                 else:
                     self._run()
