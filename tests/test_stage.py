@@ -103,6 +103,9 @@ class TestDefaultWorkingDirectory(TestDvc):
             outs=[self.FOO],
         )
 
+        d = stage.dumpd()
+        self.assertEqual(d[stage.PARAM_WDIR], ".")
+
         with open(stage.relpath, "r") as fobj:
             d = yaml.safe_load(fobj)
         self.assertEqual(d[stage.PARAM_WDIR], ".")
@@ -110,6 +113,10 @@ class TestDefaultWorkingDirectory(TestDvc):
         del d[stage.PARAM_WDIR]
         with open(stage.relpath, "w") as fobj:
             yaml.safe_dump(d, fobj, default_flow_style=False)
+
+        with open(stage.relpath, "r") as fobj:
+            d = yaml.safe_load(fobj)
+        self.assertIsNone(d.get(stage.PARAM_WDIR))
 
         with self.dvc.state:
             stage = Stage.load(self.dvc, stage.relpath)
