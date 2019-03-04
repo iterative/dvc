@@ -2,6 +2,7 @@ import yaml
 import os
 
 from dvc.scm import Git
+from dvc.utils.compat import StringIO
 from mock import MagicMock
 from contextlib import contextmanager
 
@@ -25,6 +26,18 @@ def get_gitignore_content():
 def load_stage_file(path):
     with open(path, "r") as fobj:
         return yaml.safe_load(fobj)
+
+
+def reset_logger_error_output():
+    from dvc.logger import logger
+
+    logger.handlers[1].stream = StringIO()
+
+
+def reset_logger_standard_output():
+    from dvc.logger import logger
+
+    logger.handlers[0].stream = StringIO()
 
 
 @contextmanager
