@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import os
+from dvc.utils.compat import StringIO
 
 import dvc
 import time
@@ -8,6 +9,7 @@ import shutil
 import filecmp
 import posixpath
 
+from dvc.logger import logger
 from dvc.system import System
 from mock import patch
 
@@ -20,6 +22,7 @@ from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
 from tests.utils import spy
+from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
 class TestAdd(TestDvc):
@@ -402,3 +405,27 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
 
             stage_file_path = self.DATA + Stage.STAGE_FILE_SUFFIX
             self.assertTrue(os.path.exists(stage_file_path))
+
+
+class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
+    def test(self):
+        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
+            logger.handlers[1].stream = StringIO()
+
+            ret = main(["add", self.FOO])
+            self.assertEqual(0, ret)
+
+            foo_stage = os.path.abspath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+
+            # corrupt stage file
+            with open(foo_stage, "a+") as file:
+                file.write("this will break yaml file structure")
+
+            ret = main(["add", self.BAR])
+            self.assertEqual(1, ret)
+
+            self.assertIn(
+                "Unable to read stage file: {} \n "
+                "Yaml file structure is corrupted".format(foo_stage),
+                logger.handlers[1].stream.getvalue(),
+            )

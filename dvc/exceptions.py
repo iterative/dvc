@@ -208,3 +208,12 @@ class NoMetricsError(DvcException):
             "no metric files in this repository. "
             "Use 'dvc metrics add' to add a metric file to track."
         )
+
+
+class StageFileCorruptedError(DvcException):
+    def __init__(self, path):
+        msg = (
+            "Unable to read stage file: {} "
+            "\n Yaml file structure is corrupted".format(path)
+        )
+        super(StageFileCorruptedError, self).__init__(msg)

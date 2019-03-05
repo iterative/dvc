@@ -10,8 +10,7 @@ from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
 from tests.utils.httpd import StaticFileServer
-from tests.utils.logger import MockLoggerHandlers
-
+from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 from dvc.utils.compat import StringIO
 
@@ -46,12 +45,9 @@ class TestDefaultOutput(TestDvc):
 
 
 class TestFailedImportMessage(TestDvc):
-    color_patch = patch.object(logger, "colorize", new=lambda x, color="": x)
-
     def test(self):
-        self.color_patch.start()
-        self._test()
-        self.color_patch.stop()
+        with ConsoleFontColorsRemover():
+            self._test()
 
     @patch("dvc.command.imp.urlparse")
     def _test(self, imp_urlparse_patch):
