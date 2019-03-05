@@ -486,9 +486,11 @@ class RemoteLOCAL(RemoteBase):
                 name = os.path.basename(from_info["path"])
 
             makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
+            tmp_file = tmp_fname(to_info["path"])
 
             try:
-                copyfile(from_info["path"], to_info["path"], name=name)
+                copyfile(from_info["path"], tmp_file, name=name)
+                os.rename(tmp_file, to_info["path"])
             except Exception:
                 logger.error(
                     "failed to upload '{}' to '{}'".format(
@@ -531,6 +533,8 @@ class RemoteLOCAL(RemoteBase):
                     no_progress_bar=no_progress_bar,
                     name=name,
                 )
+
+                os.rename(tmp_file, to_info["path"])
             except Exception:
                 logger.error(
                     "failed to download '{}' to '{}'".format(
@@ -539,8 +543,6 @@ class RemoteLOCAL(RemoteBase):
                 )
 
                 continue
-
-            os.rename(tmp_file, to_info["path"])
 
     def _group(self, checksum_infos, show_checksums=False):
         by_md5 = {}

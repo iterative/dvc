@@ -9,7 +9,7 @@ from subprocess import Popen, PIPE
 import dvc.logger as logger
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteCmdError
-from dvc.utils import fix_env
+from dvc.utils import fix_env, tmp_fname
 
 
 class RemoteHDFS(RemoteBase):
@@ -118,13 +118,22 @@ class RemoteHDFS(RemoteBase):
             if from_info["scheme"] != "local":
                 raise NotImplementedError
 
-            cmd = "mkdir -p {}".format(posixpath.dirname(to_info["path"]))
-            self.hadoop_fs(cmd, user=to_info["user"])
-
-            cmd = "copyFromLocal {} {}".format(
-                from_info["path"], to_info["path"]
+            self.hadoop_fs(
+                "mkdir -p {}".format(posixpath.dirname(to_info["path"])),
+                user=to_info["user"],
             )
-            self.hadoop_fs(cmd, user=to_info["user"])
+
+            tmp_file = tmp_fname(to_info["user"])
+
+            self.hadoop_fs(
+                "copyFromLocal {} {}".format(from_info["path"], tmp_file),
+                user=to_info["user"],
+            )
+
+            self.hadoop_fs(
+                "mv {} {}".format(tmp_file, to_info["path"]),
+                user=to_info["user"],
+            )
 
     def download(
         self,
@@ -151,10 +160,14 @@ class RemoteHDFS(RemoteBase):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            cmd = "copyToLocal {} {}".format(
-                from_info["path"], to_info["path"]
+            tmp_file = tmp_fname(to_info["user"])
+
+            self.hadoop_fs(
+                "copyToLocal {} {}".format(from_info["path"], tmp_file),
+                user=from_info["user"],
             )
-            self.hadoop_fs(cmd, user=from_info["user"])
+
+            os.rename(tmp_file, to_info["path"])
 
     def list_cache_paths(self):
         try:
