@@ -1,5 +1,4 @@
 import traceback
-from mock import patch
 from unittest import TestCase
 
 import logging
@@ -7,11 +6,11 @@ import dvc.logger as logger
 from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
 from dvc.utils.compat import StringIO
+from tests.utils.logger import ConsoleFontColorsRemover
 
 
 class TestLogger(TestCase):
     handlers = logger.logger.handlers
-    color_patch = patch.object(logger, "colorize", new=lambda x, color="": x)
 
     def setUp(self):
         logger.logger.handlers = [
@@ -21,12 +20,14 @@ class TestLogger(TestCase):
         logger.logger.handlers[0].stream = StringIO()
         logger.logger.handlers[1].stream = StringIO()
         logger.set_default_level()
-        self.color_patch.start()
+
+        self.consoleColorRemover = ConsoleFontColorsRemover()
+        self.consoleColorRemover.__enter__()
 
     def tearDown(self):
         logger.logger.handlers = self.handlers
         logger.be_verbose()
-        self.color_patch.stop()
+        self.consoleColorRemover.__exit__()
 
     @property
     def stdout(self):

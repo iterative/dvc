@@ -1,4 +1,6 @@
 import os
+
+from dvc.scm import Git
 from mock import MagicMock
 from contextlib import contextmanager
 
@@ -12,6 +14,11 @@ def spy(method_to_decorate):
 
     wrapper.mock = mock
     return wrapper
+
+
+def get_gitignore_content():
+    with open(Git.GITIGNORE, "r") as gitignore:
+        return gitignore.readlines()
 
 
 @contextmanager

@@ -1,4 +1,6 @@
 import logging
+from mock import patch
+import dvc.logger as logger
 
 
 class MockLoggerHandlers(object):
@@ -18,3 +20,16 @@ class MockLoggerHandlers(object):
         for h in self._logger.handlers:
             h.close()
         self._logger.handlers = self._handlers
+
+
+class ConsoleFontColorsRemover(object):
+    def __init__(self):
+        self.color_patch = patch.object(
+            logger, "colorize", new=lambda x, color="": x
+        )
+
+    def __enter__(self):
+        self.color_patch.start()
+
+    def __exit__(self, exc_type=None, exc_val=None, exc_tb=None):
+        self.color_patch.stop()

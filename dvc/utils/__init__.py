@@ -15,6 +15,8 @@ import hashlib
 import nanotime
 import time
 
+from yaml.scanner import ScannerError
+
 LOCAL_CHUNK_SIZE = 1024 * 1024
 LARGE_FILE_SIZE = 1024 * 1024 * 1024
 LARGE_DIR_SIZE = 100
@@ -230,5 +232,10 @@ def current_timestamp():
 
 
 def load_stage_file(path):
+    from dvc.exceptions import StageFileCorruptedError
+
     with open(path, "r") as fobj:
-        return yaml.safe_load(fobj) or {}
+        try:
+            return yaml.safe_load(fobj) or {}
+        except ScannerError:
+            raise StageFileCorruptedError(path)

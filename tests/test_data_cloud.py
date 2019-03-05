@@ -11,7 +11,7 @@ import copy
 
 from dvc.state import State
 from mock import patch
-from tests.utils.logger import MockLoggerHandlers
+from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 import dvc.logger as logger
 from dvc.utils.compat import str
@@ -617,8 +617,6 @@ class TestDataCloudErrorCLI(TestDvc):
 
 
 class TestWarnOnOutdatedStage(TestDvc):
-    color_patch = patch.object(logger, "colorize", new=lambda x, color="": x)
-
     def main(self, args):
         ret = main(args)
         self.assertEqual(ret, 0)
@@ -649,9 +647,8 @@ class TestWarnOnOutdatedStage(TestDvc):
             )
 
     def test(self):
-        self.color_patch.start()
-        self._test()
-        self.color_patch.stop()
+        with ConsoleFontColorsRemover():
+            self._test()
 
 
 class TestRecursiveSyncOperations(TestDataCloudBase):
