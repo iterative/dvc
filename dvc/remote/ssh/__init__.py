@@ -129,7 +129,11 @@ class RemoteSSH(RemoteBase):
         # Check each checksum individually if we have less then defined number of checksums
         if len(checksums) < self.CHECK_EXIST_LIST_ALL_FILE_THRESHOLD:
             with self.ssh(**self.path_info) as ssh:
-                return [checksum for checksum in checksums if ssh.file_exists(self.checksum_to_path(checksum))]
+                return [
+                    checksum
+                    for checksum in checksums
+                    if ssh.file_exists(self.checksum_to_path(checksum))
+                ]
         # Fallback to listing all files if we have many checksums
         return super(RemoteSSH, self).cache_exists(checksums)
 
