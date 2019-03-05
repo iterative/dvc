@@ -132,7 +132,7 @@ class RemoteSSH(RemoteBase):
                     for checksum in checksums
                     if ssh.file_exists(self.checksum_to_path(checksum))
                 ]
-        # Fallback to listing all files if we have many checksums
+        # Fallback to listing all files for many checksums
         return super(RemoteSSH, self).cache_exists(checksums)
 
     def download(
