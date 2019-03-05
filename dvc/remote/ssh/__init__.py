@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import getpass
 
+import os
+
 try:
     import paramiko
 except ImportError:
@@ -28,6 +30,7 @@ class RemoteSSH(RemoteBase):
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800
+    CHECK_EXIST_LIST_ALL_FILE_THRESHOLD = 50
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
@@ -121,6 +124,14 @@ class RemoteSSH(RemoteBase):
 
         with self.ssh(**path_info) as ssh:
             ssh.remove(path_info["path"])
+
+    def cache_exists(self, checksums):
+        # Check each checksum individually if we have less then defined number of checksums
+        if len(checksums) < self.CHECK_EXIST_LIST_ALL_FILE_THRESHOLD:
+            with self.ssh(**self.path_info) as ssh:
+                return [checksum for checksum in checksums if ssh.file_exists(os.path.join(self.prefix, checksum))]
+        # Fallback to listing all files if we have many checksums
+        return super(RemoteSSH, self).cache_exists(checksums)
 
     def download(
         self,
