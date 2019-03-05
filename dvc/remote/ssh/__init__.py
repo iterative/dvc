@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 
 import getpass
 
-import os
-
 try:
     import paramiko
 except ImportError:
@@ -126,7 +124,7 @@ class RemoteSSH(RemoteBase):
             ssh.remove(path_info["path"])
 
     def cache_exists(self, checksums):
-        # Check each checksum individually if we have less then defined number of checksums
+        # Check each checksum if we have less then defined num of checksums
         if len(checksums) < self.CHECK_EXIST_LIST_ALL_FILE_THRESHOLD:
             with self.ssh(**self.path_info) as ssh:
                 return [
