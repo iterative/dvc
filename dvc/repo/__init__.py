@@ -93,7 +93,9 @@ class Repo(object):
         return os.path.join(root_dir, Repo.DVC_DIR)
 
     def remind_to_git_add(self):
-        if not self.files_to_git_add:
+        is_git_repo = type(self.scm).__name__ == "Git"
+
+        if not is_git_repo or not self.files_to_git_add:
             return
 
         logger.info(
