@@ -21,6 +21,7 @@ from dvc.utils.compat import urljoin
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
+from dvc.output.base import OutputBase
 from dvc.exceptions import (
     CyclicGraphError,
     StagePathAsOutputError,
@@ -1322,15 +1323,53 @@ class TestReproNoCommit(TestRepro):
 
 class TestReproAlreadyCached(TestRepro):
     def test(self):
-        first_out = self.dvc.run(
-            fname="random.dvc",
+        run_out = self.dvc.run(
+            fname="datetime.dvc",
             deps=[],
-            outs=["random.txt"],
-            cmd='python -c "{}" > random.txt'.format(
-                "from random import random; print(random())"
-            ),
+            outs=["datetime.txt"],
+            cmd='python -c "import time; print(time.time())" > datetime.txt',
         ).outs[0]
 
-        second_out = self.dvc.reproduce(target="random.dvc")[0].outs[0]
+        repro_out = self.dvc.reproduce(target="datetime.dvc")[0].outs[0]
 
-        self.assertNotEqual(first_out.checksum, second_out.checksum)
+        self.assertNotEqual(run_out.checksum, repro_out.checksum)
+
+    def test_force_with_dependencies(self):
+        run_out = self.dvc.run(
+            fname="datetime.dvc",
+            deps=[self.FOO],
+            outs=["datetime.txt"],
+            cmd='python -c "import time; print(time.time())" > datetime.txt',
+        ).outs[0]
+
+        ret = main(["repro", "--force", "datetime.dvc"])
+        self.assertEqual(ret, 0)
+
+        repro_out = Stage.load(self.dvc, "datetime.dvc").outs[0]
+
+        self.assertNotEqual(run_out.checksum, repro_out.checksum)
+
+    def test_force_import(self):
+        ret = main(["import", self.FOO, self.BAR])
+        self.assertEqual(ret, 0)
+
+        patch_download = patch.object(
+            RemoteLOCAL,
+            "download",
+            side_effect=RemoteLOCAL.download,
+            autospec=True,
+        )
+
+        patch_checkout = patch.object(
+            OutputBase,
+            "checkout",
+            side_effect=OutputBase.checkout,
+            autospec=True,
+        )
+
+        with patch_download as mock_download:
+            with patch_checkout as mock_checkout:
+                ret = main(["repro", "--force", "bar.dvc"])
+                self.assertEqual(ret, 0)
+                self.assertEqual(mock_download.call_count, 1)
+                self.assertEqual(mock_checkout.call_count, 0)

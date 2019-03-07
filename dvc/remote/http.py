@@ -10,6 +10,7 @@ from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
+from dvc.utils import move
 
 
 class ProgressBarCallback(object):
@@ -147,7 +148,7 @@ class RemoteHTTP(RemoteBase):
             mode, partial_file, request, transferred_bytes, callback
         )
 
-        os.rename(partial_file, target_file)
+        move(partial_file, target_file)
 
     def _write_request_content(
         self, mode, partial_file, request, transferred_bytes, callback=None
