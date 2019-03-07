@@ -415,7 +415,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
             ret = main(["add", self.FOO])
             self.assertEqual(0, ret)
 
-            foo_stage = os.path.abspath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+            foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
             # corrupt stage file
             with open(foo_stage, "a+") as file:
