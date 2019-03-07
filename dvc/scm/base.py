@@ -151,3 +151,14 @@ class Base(object):
         """
         Method to reset in-memory ignore storing mechanism.
         """
+
+    def remind_to_track(self):
+        """
+        Method to remind user to track newly created files handled by scm
+        """
+
+    def track_file(self, path):
+        """
+        Method to add file to mechanism that will remind user
+        to track new files
+        """

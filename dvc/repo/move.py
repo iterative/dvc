@@ -1,6 +1,7 @@
 import os
 
 from dvc.exceptions import MoveNotDataSourceError
+from dvc.scm import scm_context
 
 
 def _expand_target_path(from_path, to_path):
@@ -9,6 +10,7 @@ def _expand_target_path(from_path, to_path):
     return to_path
 
 
+@scm_context
 def move(self, from_path, to_path):
     """
     Renames an output file and modifies the stage associated
@@ -64,5 +66,3 @@ def move(self, from_path, to_path):
         out.move(to_out)
 
     stage.dump()
-
-    self.remind_to_git_add()

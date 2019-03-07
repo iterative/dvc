@@ -28,15 +28,14 @@ def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
 def scm_context(method):
     def run(*args, **kw):
         repo = args[0]
-        assert type(repo) is dvc.repo.Repo
-        scm = repo.scm
+        assert isinstance(repo, dvc.repo.Repo)
         try:
             result = method(*args, **kw)
-            scm.reset_ignores()
-            repo.remind_to_git_add()
+            repo.scm.reset_ignores()
+            repo.scm.remind_to_track()
             return result
         except Exception as e:
-            scm.cleanup_ignores()
+            repo.scm.cleanup_ignores()
             raise e
 
     return run

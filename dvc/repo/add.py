@@ -5,6 +5,7 @@ from dvc.stage import Stage
 from dvc.utils import walk_files
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
+
 @scm_context
 def add(repo, target, recursive=False, no_commit=False, fname=None):
     if recursive and fname:

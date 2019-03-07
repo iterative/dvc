@@ -4,6 +4,7 @@ import os
 
 import dvc.logger as logger
 from dvc.exceptions import ReproductionError
+from dvc.scm import scm_context
 
 
 def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
@@ -27,6 +28,7 @@ def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
     return [stage]
 
 
+@scm_context
 def reproduce(
     self,
     target=None,
@@ -65,8 +67,6 @@ def reproduce(
     else:
         targets.append(target)
 
-    self.files_to_git_add = []
-
     ret = []
     with self.state:
         for target in targets:
@@ -81,8 +81,6 @@ def reproduce(
                 no_commit=no_commit,
             )
             ret.extend(stages)
-
-    self.remind_to_git_add()
 
     return ret
 
