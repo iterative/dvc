@@ -128,7 +128,7 @@ class SSHConnection:
         self._sftp_connect()
 
         for entry in self._sftp.listdir_attr(directory):
-            path = os.path.join(directory, entry.filename)
+            path = posixpath.join(directory, entry.filename)
 
             if S_ISLNK(entry.st_mode):
                 path = self._sftp.readlink(directory)
