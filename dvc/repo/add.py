@@ -11,16 +11,7 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
-    targets = [target]
-
-    if os.path.isdir(target) and recursive:
-        targets = [
-            file
-            for file in walk_files(target)
-            if not Stage.is_stage_file(file)
-            if os.path.basename(file) != repo.scm.ignore_file
-            if not repo.scm.is_tracked(file)
-        ]
+    targets = _find_all_targets(repo, target, recursive)
 
     stages = _create_stages(repo, targets, fname, no_commit)
 
@@ -29,6 +20,19 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
     for stage in stages:
         stage.dump()
     return stages
+
+
+def _find_all_targets(repo, target, recursive):
+    if os.path.isdir(target) and recursive:
+        return [
+            file
+            for file in walk_files(target)
+            if not repo.is_dvc_internal(file)
+            if not Stage.is_stage_file(file)
+            if not repo.scm.belongs_to_scm(file)
+            if not repo.scm.is_tracked(file)
+        ]
+    return [target]
 
 
 def _create_stages(repo, targets, fname, no_commit):

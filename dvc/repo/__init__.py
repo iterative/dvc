@@ -415,3 +415,7 @@ class Repo(object):
             raise OutputNotFoundError(path)
 
         return matched
+
+    def is_dvc_internal(self, path):
+        path_parts = os.path.normpath(path).split(os.path.sep)
+        return self.DVC_DIR in path_parts
