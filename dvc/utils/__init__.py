@@ -239,3 +239,9 @@ def load_stage_file(path):
             return yaml.safe_load(fobj) or {}
         except ScannerError:
             raise StageFileCorruptedError(path)
+
+
+def walk_files(directory):
+    for root, _, files in os.walk(directory):
+        for f in files:
+            yield os.path.join(root, f)
