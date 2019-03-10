@@ -51,6 +51,10 @@ class OutputLOCAL(OutputBase):
         return os.path.relpath(self.path)
 
     @property
+    def dvc_path(self):
+        return os.path.relpath(self.path, self.stage.wdir)
+
+    @property
     def cache(self):
         return self.repo.cache.local.get(self.checksum)
 

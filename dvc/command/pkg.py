@@ -8,7 +8,10 @@ from dvc.command.base import CmdBase, fix_subparsers
 class CmdPkg(CmdBase):
     def run(self, unlock=False):
         try:
-            return self.repo.install_pkg(self.args.address)
+            return self.repo.install_pkg(self.args.address,
+                                         self.args.target_dir,
+                                         self.args.outs,
+                                         self.args.file)
         except DvcException:
             logger.error(
                 "failed to install package '{}'".format(self.args.address)
@@ -47,5 +50,28 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default="",
         help="Package address: git://<url> or https://github.com/..."
+    )
+    pkg_install_parser.add_argument(
+        "target_dir",
+        nargs="?",
+        default=".",
+        help="Target directory to deploy package outputs"
+    )
+    pkg_install_parser.add_argument(
+        "-o",
+        "--outs",
+        action="append",
+        default=[],
+        help="deploy package output",
+    )
+    pkg_install_parser.add_argument(
+        "-f",
+        "--file",
+        help="Specify name of the stage file. It should be "
+        "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
+        "'prepare.dvc', 'clean.dvc', etc) in order for "
+        "dvc to be able to find it later. By default "
+        "the file has 'mod_' prefix and imported package name "
+        "followed by .dvc",
     )
     pkg_install_parser.set_defaults(func=CmdPkg)
