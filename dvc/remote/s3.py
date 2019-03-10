@@ -55,6 +55,8 @@ class RemoteS3(RemoteBase):
 
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
+        self.list_objects = config.get(Config.SECTION_AWS_LIST_OBJECTS)
+
         self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
 
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
@@ -125,27 +127,17 @@ class RemoteS3(RemoteBase):
         )
 
     def _list_paths(self, bucket, prefix):
+        """ Read config for list object api, paginate through list objects."""
         s3 = self.s3
-
         kwargs = {"Bucket": bucket, "Prefix": prefix}
-        while True:
-            # NOTE: list_objects_v2() is 90% faster than head_object [1]
-            #
-            # [1] https://www.peterbe.com/plog/
-            #     fastest-way-to-find-out-if-a-file-exists-in-s3
-            resp = s3.list_objects_v2(**kwargs)
-            contents = resp.get("Contents", None)
-            if not contents:
-                break
-
-            for obj in contents:
-                yield obj["Key"]
-
-            token = resp.get("NextContinuationToken", None)
-            if not token:
-                break
-
-            kwargs["ContinuationToken"] = token
+        if self.list_objects:
+            list_objects_api = "list_objects"
+        else:
+            list_objects_api = "list_objects_v2"
+        paginator = s3.get_paginator(list_objects_api)
+        for page in paginator.paginate(**kwargs):
+            for item in page["Contents"]:
+                yield item["Key"]
 
     def list_cache_paths(self):
         return self._list_paths(self.bucket, self.prefix)
