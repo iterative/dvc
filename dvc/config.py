@@ -193,6 +193,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_STORAGEPATH = "storagepath"
     SECTION_AWS_CREDENTIALPATH = "credentialpath"
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
+    SECTION_AWS_LIST_OBJECTS = "listobjects"
     SECTION_AWS_REGION = "region"
     SECTION_AWS_PROFILE = "profile"
     SECTION_AWS_USE_SSL = "use_ssl"
@@ -202,6 +203,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): And(
+            str, is_bool, Use(to_bool)
+        ),
         Optional(SECTION_AWS_USE_SSL, default=True): And(
             str, is_bool, Use(to_bool)
         ),
@@ -239,6 +243,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): And(
+            str, is_bool, Use(to_bool)
+        ),
         Optional(SECTION_AWS_USE_SSL, default=True): And(
             str, is_bool, Use(to_bool)
         ),
