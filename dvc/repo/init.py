@@ -4,7 +4,7 @@ import colorama
 
 import dvc.logger as logger
 from dvc.repo import Repo
-from dvc.scm import SCM, Base
+from dvc.scm import SCM, NoSCM
 from dvc.config import Config
 from dvc.exceptions import InitError
 
@@ -56,7 +56,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     root_dir = os.path.abspath(root_dir)
     dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
     scm = SCM(root_dir)
-    if type(scm) == Base and not no_scm:
+    if isinstance(scm, NoSCM) and not no_scm:
         raise InitError(
             "{repo} is not tracked by any supported scm tool (e.g. git). "
             "Use '--no-scm' if you don't want to use any scm.".format(

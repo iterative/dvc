@@ -232,13 +232,17 @@ def current_timestamp():
 
 
 def load_stage_file(path):
+    with open(path, "r") as fobj:
+        return load_stage_file_fobj(fobj, path)
+
+
+def load_stage_file_fobj(fobj, path):
     from dvc.exceptions import StageFileCorruptedError
 
-    with open(path, "r") as fobj:
-        try:
-            return yaml.safe_load(fobj) or {}
-        except ScannerError:
-            raise StageFileCorruptedError(path)
+    try:
+        return yaml.safe_load(fobj) or {}
+    except ScannerError:
+        raise StageFileCorruptedError(path)
 
 
 def walk_files(directory):

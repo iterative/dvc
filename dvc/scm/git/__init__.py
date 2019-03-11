@@ -2,11 +2,9 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
-
 import os
 
-import dvc.logger as logger
+from dvc.utils.compat import str, open
 from dvc.utils import fix_env
 from dvc.scm.base import (
     Base,
@@ -14,6 +12,8 @@ from dvc.scm.base import (
     FileNotInRepoError,
     FileNotInTargetSubdirError,
 )
+from dvc.scm.git.tree import GitTree
+import dvc.logger as logger
 
 
 class Git(Base):
@@ -122,7 +122,7 @@ class Git(Base):
         content = entry
         if ignore_list:
             content = "\n" + content
-        with open(gitignore, "a") as fobj:
+        with open(gitignore, "a", encoding="utf-8") as fobj:
             fobj.write(content)
 
     def ignore_remove(self, path):
@@ -176,7 +176,13 @@ class Git(Base):
         return [os.path.join(self.git.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
-        return len(self.git.git.ls_files(path)) != 0
+        # it is equivalent to `bool(self.git.git.ls_files(path))` by
+        # functionality, but ls_files fails on unicode filenames
+        path = os.path.relpath(path, self.root_dir)
+        return path in [i[0] for i in self.git.index.entries]
+
+    def is_dirty(self):
+        return self.git.is_dirty()
 
     def active_branch(self):
         return self.git.active_branch.name
@@ -226,3 +232,6 @@ class Git(Base):
         basename = os.path.basename(path)
         path_parts = os.path.normpath(path).split(os.path.sep)
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
+
+    def get_tree(self, rev):
+        return GitTree(self.git, rev)

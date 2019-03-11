@@ -66,30 +66,23 @@ def _read_typed_metric(typ, xpath, fd):
     return ret
 
 
-def _read_metric(path, typ=None, xpath=None, branch=None):
-    ret = None
-    if not os.path.exists(path):
-        return ret
-
+def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     typ = typ.lower().strip() if typ else typ
-    xpath = xpath.strip() if xpath else xpath
     try:
-        with open(path, "r") as fd:
-            if not xpath:
-                ret = fd.read().strip()
-            else:
-                ret = _read_typed_metric(typ, xpath, fd)
+        if xpath:
+            return _read_typed_metric(typ, xpath.strip(), fd)
+        else:
+            return fd.read().strip()
     # Json path library has to be replaced or wrapped in
     # order to fix this too broad except clause.
     except Exception:
         logger.warning(
             "unable to read metric in '{}' in branch '{}'".format(
-                path, branch
+                rel_path, branch
             ),
             parse_exception=True,
         )
-
-    return ret
+        return None
 
 
 def _collect_metrics(self, path, recursive, typ, xpath, branch):
@@ -123,16 +116,33 @@ def _collect_metrics(self, path, recursive, typ, xpath, branch):
     return res
 
 
+def _read_metrics_filesystem(path, typ, xpath, rel_path, branch):
+    if not os.path.exists(path):
+        return None
+    with open(path, "r") as fd:
+        return _read_metric(
+            fd, typ=typ, xpath=xpath, rel_path=rel_path, branch=branch
+        )
+
+
 def _read_metrics(self, metrics, branch):
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
         if out.use_cache:
-            path = self.cache.local.get(out.checksum)
+            metric = _read_metrics_filesystem(
+                self.cache.local.get(out.checksum),
+                typ=typ,
+                xpath=xpath,
+                rel_path=out.rel_path,
+                branch=branch,
+            )
         else:
-            path = out.path
+            fd = self.tree.open(out.path)
+            metric = _read_metric(
+                fd, typ=typ, xpath=xpath, rel_path=out.rel_path, branch=branch
+            )
 
-        metric = _read_metric(path, typ=typ, xpath=xpath, branch=branch)
         if not metric:
             continue
 
@@ -151,9 +161,8 @@ def show(
     recursive=False,
 ):
     res = {}
-    for branch in self.scm.brancher(
-        all_branches=all_branches, all_tags=all_tags
-    ):
+
+    for branch in self.brancher(all_branches=all_branches, all_tags=all_tags):
         entries = _collect_metrics(self, path, recursive, typ, xpath, branch)
         metrics = _read_metrics(self, entries, branch)
         if metrics:

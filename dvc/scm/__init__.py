@@ -8,6 +8,12 @@ from dvc.scm.git import Git
 import dvc
 
 
+# just a sugar to point that this is an actual implementation for a dvc
+# project under no SCM control
+class NoSCM(Base):
+    pass
+
+
 def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
     """Returns SCM instance that corresponds to a repo at the specified
     path.
@@ -22,7 +28,7 @@ def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
     if Git.is_repo(root_dir) or Git.is_submodule(root_dir):
         return Git(root_dir, repo=repo)
 
-    return Base(root_dir, repo=repo)
+    return NoSCM(root_dir, repo=repo)
 
 
 def scm_context(method):

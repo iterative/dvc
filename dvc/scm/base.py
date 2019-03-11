@@ -81,53 +81,16 @@ class Base(object):
     def tag(self, tag):
         """Makes SCM create a tag with a specified name."""
 
-    def brancher(
-        self, branches=None, all_branches=False, tags=None, all_tags=False
-    ):
-        """Generator that iterates over specified revisions.
-
-        Args:
-            branches (list): a list of branches to iterate over.
-            all_branches (bool): iterate over all available branches.
-            tags (list): a list of tags to iterate over.
-            all_tags (bool): iterate over all available tags.
-
-        Yields:
-            str: the current revision.
-        """
-        if not branches and not all_branches and not tags and not all_tags:
-            yield ""
-            return
-
-        saved = self.active_branch()
-        revs = []
-
-        if all_branches:
-            branches = self.list_branches()
-
-        if all_tags:
-            tags = self.list_tags()
-
-        if branches is None:
-            revs.extend([saved])
-        else:
-            revs.extend(branches)
-
-        if tags is not None:
-            revs.extend(tags)
-
-        for rev in revs:
-            self.checkout(rev)
-            yield rev
-
-        self.checkout(saved)
-
     def untracked_files(self):  # pylint: disable=no-self-use
         """Returns a list of untracked files."""
         return []
 
     def is_tracked(self, path):  # pylint: disable=no-self-use, unused-argument
         """Returns whether or not a specified path is tracked."""
+        return False
+
+    def is_dirty(self):
+        """Return whether the SCM contains uncommited changes."""
         return False
 
     def active_branch(self):  # pylint: disable=no-self-use

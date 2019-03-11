@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
 import os
+
 from git import Repo
 
 from dvc.utils.compat import str  # noqa: F401
-from dvc.scm import SCM, Base, Git
+from dvc.scm import SCM, NoSCM, Git
 from dvc.scm.base import FileNotInTargetSubdirError
 
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
@@ -13,7 +14,7 @@ from tests.utils import get_gitignore_content
 
 class TestSCM(TestDir):
     def test_none(self):
-        self.assertIsInstance(SCM(self._root_dir), Base)
+        self.assertIsInstance(SCM(self._root_dir), NoSCM)
 
     def test_git(self):
         Repo.init(os.curdir)
@@ -28,7 +29,22 @@ class TestSCMGit(TestGit):
         G = Git(self._root_dir)
         G.add(["foo"])
         G.commit("add")
-        self.assertTrue("foo" in self.git.git.ls_files())
+        self.assertIn("foo", self.git.git.ls_files())
+
+    def test_is_tracked(self):
+        foo = os.path.abspath(self.FOO)
+        G = Git(self._root_dir)
+        G.add([self.FOO, self.UNICODE])
+        self.assertTrue(G.is_tracked(foo))
+        self.assertTrue(G.is_tracked(self.FOO))
+        self.assertTrue(G.is_tracked(self.UNICODE))
+        G.commit("add")
+        self.assertTrue(G.is_tracked(foo))
+        self.assertTrue(G.is_tracked(self.FOO))
+        G.git.index.remove([self.FOO], working_tree=True)
+        self.assertFalse(G.is_tracked(foo))
+        self.assertFalse(G.is_tracked(self.FOO))
+        self.assertFalse(G.is_tracked("not-existing-file"))
 
 
 class TestSCMGitSubmodule(TestGitSubmodule):
