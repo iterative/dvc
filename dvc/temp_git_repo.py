@@ -33,7 +33,12 @@ class TempGitRepo(object):
 
     def fetch(self, targets):
         for target in targets:
-            self.repo.fetch(target)
+            try:
+                self.repo.fetch(target)
+            except Exception as ex:
+                msg = 'error in fetching data from {}: {}'.format(
+                    os.path.basename(target), ex)
+                raise DvcException(msg)
 
     @property
     def is_state_set(self):
@@ -92,7 +97,10 @@ class TempGitRepo(object):
             obj_name = os.path.join(tmp_repo_cache, prefix)
             for suffix in os.listdir(obj_name):
                 src_path = os.path.join(tmp_repo_cache, prefix, suffix)
-                dest = os.path.join(parent_repo.cache.local.url, prefix, suffix)
+                pre = os.path.join(parent_repo.cache.local.url, prefix)
+                if not os.path.exists(pre):
+                    os.mkdir(pre)
+                dest = os.path.join(pre, suffix)
                 shutil.move(src_path, dest)
             pass
 

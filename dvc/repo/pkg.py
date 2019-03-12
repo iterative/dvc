@@ -110,7 +110,7 @@ class GitPackage(Package):
         if not outs_filter:
             result = tmp_repo.outs
         else:
-            result = filter(lambda out: out.dvc_path in outs_filter, tmp_repo.outs)
+            result = list(filter(lambda out: out.dvc_path in outs_filter, tmp_repo.outs))
 
         from dvc.repo import Repo
         target_repo = Repo(target_dir)
@@ -138,7 +138,9 @@ def install_pkg(self, address, target_dir, outs_filter, file):
     addresses = [address] if address else PackageManager.read_packages()
 
     if not os.path.isdir(target_dir):
-        logger.error('Unable to install package: target directory does not exist')
+        logger.error(
+            'Unable to install package: target directory \'{}\' does not exist'
+                .format(target_dir))
         return 1
 
     if not os.path.realpath(target_dir).startswith(os.path.realpath('.')):
