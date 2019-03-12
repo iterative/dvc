@@ -22,7 +22,10 @@ def info(message):
     logger.info(message)
 
 
-@progress_aware
+# Do not annotate debug with progress_aware. Why? Debug messages are called
+# in analytics.py. Trigger introduced by @progress_aware may run even
+# if log_level != DEBUG (look at Progress.print) Which might result in
+# messy terminal after any command (because analytics run in separate thread)
 def debug(message):
     """Prints a debug message."""
     prefix = colorize("Debug", color="blue")
