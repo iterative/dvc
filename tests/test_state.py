@@ -1,10 +1,12 @@
 import os
+import mock
 
 from dvc.utils.compat import str
 
 from dvc.state import State
 from dvc.utils import file_md5
 from dvc.main import main
+from dvc.utils.fs import get_inode
 
 from tests.basic_env import TestDvc
 
@@ -44,3 +46,29 @@ class TestStateOverflow(TestDvc):
 
         ret = main(["add", "dir"])
         self.assertEqual(ret, 0)
+
+
+class TestGetStateRecordForInode(TestDvc):
+    @staticmethod
+    def mock_get_inode(special_path, special_value):
+        def get_inode_mocked(path):
+            if path == special_path:
+                return special_value
+            else:
+                return get_inode(path)
+
+        return get_inode_mocked
+
+    @mock.patch("dvc.state.get_inode", autospec=True)
+    def test_transforms_inode(self, get_inode_mock):
+        state = State(self.dvc, self.dvc.config.config)
+        inode = state.MAX_INT + 2
+        self.assertNotEqual(inode, state._to_sqlite(inode))
+
+        path = os.path.join(self.dvc.root_dir, self.FOO)
+        get_inode_mock.side_effect = self.mock_get_inode(path, inode)
+
+        with state:
+            state.update(path)
+            ret = state.get_state_record_for_inode(inode)
+            self.assertIsNotNone(ret)
