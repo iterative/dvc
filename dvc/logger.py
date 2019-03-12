@@ -22,6 +22,7 @@ def info(message):
     logger.info(message)
 
 
+@progress_aware
 def debug(message):
     """Prints a debug message."""
     prefix = colorize("Debug", color="blue")

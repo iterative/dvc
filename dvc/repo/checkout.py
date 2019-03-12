@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import dvc.logger as logger
 from dvc.exceptions import DvcException
+from dvc.progress import progress
 
 
 def _cleanup_unused_links(self, all_stages):
@@ -30,7 +31,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     with self.state:
         _cleanup_unused_links(self, all_stages)
 
-        for stage in stages:
+        for index, stage in enumerate(stages):
             if stage.locked:
                 logger.warning(
                     "DVC file '{path}' is locked. Its dependencies are"
@@ -38,3 +39,6 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
                 )
 
             stage.checkout(force=force)
+            progress.update_target(
+                "Checkout in progress", index + 1, len(stages)
+            )
