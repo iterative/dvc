@@ -206,7 +206,9 @@ class TestMetricsRecursive(TestDvc):
 
         self.assertEqual(ret, 0)
 
-        self.dvc.scm.add(["nested"])
+        self.dvc.scm.add(
+            ["nested", "metric_nested.dvc", "metric_subnested.dvc"]
+        )
         self.dvc.scm.commit("nested metrics")
 
         self.dvc.scm.checkout("master")
