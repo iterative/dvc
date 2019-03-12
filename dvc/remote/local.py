@@ -8,6 +8,7 @@ import uuid
 import json
 import ntpath
 import shutil
+from queue import Queue
 import posixpath
 from operator import itemgetter
 
@@ -466,7 +467,7 @@ class RemoteLOCAL(RemoteBase):
         assert isinstance(md5s, list)
         return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, tmp_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
@@ -502,6 +503,7 @@ class RemoteLOCAL(RemoteBase):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         names=None,
         resume=False,
@@ -597,6 +599,14 @@ class RemoteLOCAL(RemoteBase):
 
         return ret
 
+    def _create_tmp_infos(self, infos):
+        result = []
+        for info in infos:
+            tmp_info = dict(info)
+            tmp_info["path"] += ".tmp"
+            result.append(tmp_info)
+        return result
+
     def _get_chunks(self, download, remote, status_info, status, jobs):
         title = "Analysing status."
 
@@ -625,11 +635,13 @@ class RemoteLOCAL(RemoteBase):
         else:
             to_infos = path_infos
             from_infos = cache
+        tmp_infos = self._create_tmp_infos(to_infos)
 
         return list(
             zip(
                 to_chunks(from_infos, jobs),
                 to_chunks(to_infos, jobs),
+                to_chunks(tmp_infos, jobs),
                 to_chunks(names, jobs),
             )
         )
@@ -671,15 +683,26 @@ class RemoteLOCAL(RemoteBase):
             return 0
 
         futures = []
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            for from_infos, to_infos, names in chunks:
-                res = executor.submit(func, from_infos, to_infos, names=names)
-                futures.append(res)
-
+        tmp_files = []
+        try:
+            with ThreadPoolExecutor(max_workers=jobs) as executor:
+                for from_infos, to_infos, tmp_infos, names in chunks:
+                    tmp_files.extend(tmp_infos)
+                    res = executor.submit(func, from_infos, to_infos, tmp_infos, names=names)
+                    futures.append(res)
+        except (KeyboardInterrupt, Exception):
+            self._cleanup_tmp_files(tmp_files)
+            raise
         for f in futures:
             f.result()
 
         return len(chunks)
+
+    def _cleanup_tmp_files(self, to_clean):
+        for i_info in to_clean:
+            # TODO Delete tmp file depending on i_info scheme
+            pass
+
 
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         return self._process(

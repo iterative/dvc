@@ -46,6 +46,7 @@ class RemoteHTTP(RemoteBase):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         names=None,
         resume=False,

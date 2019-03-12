@@ -126,6 +126,7 @@ class RemoteSSH(RemoteBase):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         names=None,
         resume=False,
@@ -168,7 +169,7 @@ class RemoteSSH(RemoteBase):
 
         ssh.close()
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, tmp_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         with self.ssh(**to_infos[0]) as ssh:

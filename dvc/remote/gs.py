@@ -117,7 +117,7 @@ class RemoteGS(RemoteBase):
         paths = self._list_paths(path_info["bucket"], path_info["path"])
         return any(path_info["path"] == path for path in paths)
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, tmp_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         gs = self.gs
@@ -159,6 +159,7 @@ class RemoteGS(RemoteBase):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         names=None,
         resume=False,
@@ -167,7 +168,7 @@ class RemoteGS(RemoteBase):
 
         gs = self.gs
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
+        for to_info, from_info, name in zip(to_infos, from_infos, tmp_infos, names):
             if from_info["scheme"] != "gs":
                 raise NotImplementedError
 
@@ -175,7 +176,7 @@ class RemoteGS(RemoteBase):
                 self.copy(from_info, to_info, gs=gs)
                 continue
 
-            if to_info["scheme"] != "local":
+            if to_info["scheme"] != "local" and tmp_info["scheme"] != "local":
                 raise NotImplementedError
 
             msg = "Downloading '{}/{}' to '{}'".format(
@@ -183,7 +184,6 @@ class RemoteGS(RemoteBase):
             )
             logger.debug(msg)
 
-            tmp_file = tmp_fname(to_info["path"])
             if not name:
                 name = os.path.basename(to_info["path"])
 
@@ -197,7 +197,7 @@ class RemoteGS(RemoteBase):
             try:
                 bucket = gs.bucket(from_info["bucket"])
                 blob = bucket.get_blob(from_info["path"])
-                blob.download_to_filename(tmp_file)
+                blob.download_to_filename(tmp_info["path"])
             except Exception:
                 msg = "failed to download '{}/{}' to '{}'"
                 logger.error(
@@ -207,7 +207,7 @@ class RemoteGS(RemoteBase):
                 )
                 continue
 
-            os.rename(tmp_file, to_info["path"])
+            os.rename(tmp_info["path"], to_info["path"])
 
             if not no_progress_bar:
                 progress.finish_target(name)

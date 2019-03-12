@@ -190,7 +190,9 @@ class OutputBase(object):
         )
 
     def download(self, to_info, resume=False):
-        self.remote.download([self.path_info], [to_info], resume=resume)
+        tmp_info = dict(self.path_info)
+        tmp_info["path"] += ".tmp"
+        self.remote.download([self.path_info], [to_info], [tmp_info], resume=resume)
 
     def checkout(self, force=False):
         if not self.use_cache:

@@ -111,7 +111,7 @@ class RemoteAzure(RemoteBase):
     def list_cache_paths(self):
         return self._list_paths(self.bucket, self.prefix)
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, tmp_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
@@ -149,6 +149,7 @@ class RemoteAzure(RemoteBase):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         names=None,
         resume=False,

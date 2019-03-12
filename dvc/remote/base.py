@@ -182,13 +182,14 @@ class RemoteBase(object):
         self,
         from_infos,
         to_infos,
+        tmp_infos,
         no_progress_bar=False,
         name=None,
         resume=False,
     ):
         raise RemoteActionNotImplemented("download", self.scheme)
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, tmp_infos, names=None):
         raise RemoteActionNotImplemented("upload", self.scheme)
 
     def remove(self, path_info):
