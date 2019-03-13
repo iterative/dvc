@@ -18,7 +18,7 @@ else:
     scope = " ".join(sys.argv[1:])
 
 cmd = (
-    "nosetests -v --processes=4 --process-timeout=500 --cover-inclusive "
+    "nosetests -v --processes=4 --process-timeout=600 --cover-inclusive "
     "--cover-erase --cover-package=dvc --with-coverage --with-flaky "
     "--logging-clear-handlers "
     "{scope} ".format(scope=scope)
