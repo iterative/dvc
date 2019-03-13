@@ -149,7 +149,10 @@ class NotDvcRepoError(DvcException):
     """
 
     def __init__(self, root):
-        msg = "not a dvc repository (checked up to mount point '{}')"
+        msg = (
+            "you are not inside of a dvc repository "
+            "(checked up to mount point '{}')"
+        )
         super(NotDvcRepoError, self).__init__(msg.format(root))
 
 
