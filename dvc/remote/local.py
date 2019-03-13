@@ -468,10 +468,10 @@ class RemoteLOCAL(RemoteBase):
         return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info["scheme"] != "local":
+        for from_info, to_info, tmp_info, name in zip(from_infos, to_infos, tmp_infos, names):
+            if to_info["scheme"] != "local" or tmp_info["scheme"] != "local":
                 raise NotImplementedError
 
             if from_info["scheme"] != "local":
@@ -487,11 +487,10 @@ class RemoteLOCAL(RemoteBase):
                 name = os.path.basename(from_info["path"])
 
             makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
-            tmp_file = tmp_fname(to_info["path"])
 
             try:
-                copyfile(from_info["path"], tmp_file, name=name)
-                os.rename(tmp_file, to_info["path"])
+                copyfile(from_info["path"], tmp_info["path"], name=name)
+                os.rename(tmp_info["path"], to_info["path"])
             except Exception:
                 logger.error(
                     "failed to upload '{}' to '{}'".format(
@@ -508,13 +507,13 @@ class RemoteLOCAL(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
+        for to_info, from_info, tmp_info, name in zip(to_infos, from_infos, tmp_infos, names):
             if from_info["scheme"] != "local":
                 raise NotImplementedError
 
-            if to_info["scheme"] != "local":
+            if to_info["scheme"] != "local" or tmp_info["scheme"] != "local":
                 raise NotImplementedError
 
             logger.debug(
@@ -527,16 +526,15 @@ class RemoteLOCAL(RemoteBase):
                 name = os.path.basename(to_info["path"])
 
             makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
-            tmp_file = tmp_fname(to_info["path"])
             try:
                 copyfile(
                     from_info["path"],
-                    tmp_file,
+                    tmp_info["path"],
                     no_progress_bar=no_progress_bar,
                     name=name,
                 )
 
-                os.rename(tmp_file, to_info["path"])
+                os.rename(tmp_info["path"], to_info["path"])
             except Exception:
                 logger.error(
                     "failed to download '{}' to '{}'".format(
@@ -603,7 +601,7 @@ class RemoteLOCAL(RemoteBase):
         result = []
         for info in infos:
             tmp_info = dict(info)
-            tmp_info["path"] += ".tmp"
+            tmp_info["path"] = tmp_fname(tmp_info["path"])
             result.append(tmp_info)
         return result
 
@@ -691,18 +689,21 @@ class RemoteLOCAL(RemoteBase):
                     res = executor.submit(func, from_infos, to_infos, tmp_infos, names=names)
                     futures.append(res)
         except (KeyboardInterrupt, Exception):
-            self._cleanup_tmp_files(tmp_files)
+            logger.error("Cleaning up temporary files...")
+            self._cleanup_tmp_files(remote, tmp_files)
             raise
         for f in futures:
             f.result()
 
         return len(chunks)
 
-    def _cleanup_tmp_files(self, to_clean):
-        for i_info in to_clean:
-            # TODO Delete tmp file depending on i_info scheme
-            pass
-
+    def _cleanup_tmp_files(self, remote, tmp_files):
+        for i_info in tmp_infos:
+            logger.error("About to remove file {}".format(i_info))
+            if i_info["scheme"] == "local":
+                self.remove(i_info)
+            else:
+                remote.remove(i_info)
 
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         return self._process(

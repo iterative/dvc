@@ -8,7 +8,6 @@ except ImportError:
     storage = None
 
 import dvc.logger as logger
-from dvc.utils import tmp_fname
 from dvc.utils.compat import urlparse, makedirs
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
@@ -118,7 +117,7 @@ class RemoteGS(RemoteBase):
         return any(path_info["path"] == path for path in paths)
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         gs = self.gs
 
@@ -164,11 +163,11 @@ class RemoteGS(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
         gs = self.gs
 
-        for to_info, from_info, name in zip(to_infos, from_infos, tmp_infos, names):
+        for to_info, from_info, tmp_info, name in zip(to_infos, from_infos, tmp_infos, names):
             if from_info["scheme"] != "gs":
                 raise NotImplementedError
 
@@ -180,7 +179,7 @@ class RemoteGS(RemoteBase):
                 raise NotImplementedError
 
             msg = "Downloading '{}/{}' to '{}'".format(
-                from_info["bucket"], from_info["path"], to_info["path"]
+                from_info["bucket"], from_info["path"], tmp_info["path"]
             )
             logger.debug(msg)
 
@@ -202,7 +201,7 @@ class RemoteGS(RemoteBase):
                 msg = "failed to download '{}/{}' to '{}'"
                 logger.error(
                     msg.format(
-                        from_info["bucket"], from_info["path"], to_info["path"]
+                        from_info["bucket"], from_info["path"], tmp_info["path"]
                     )
                 )
                 continue

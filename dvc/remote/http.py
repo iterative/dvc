@@ -51,7 +51,7 @@ class RemoteHTTP(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info["scheme"] not in ["http", "https"]:

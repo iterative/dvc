@@ -4,6 +4,7 @@ import re
 from schema import Or, Optional
 
 from dvc.exceptions import DvcException
+from dvc.utils import tmp_fname
 from dvc.utils.compat import str
 from dvc.remote.base import RemoteBase
 
@@ -191,7 +192,7 @@ class OutputBase(object):
 
     def download(self, to_info, resume=False):
         tmp_info = dict(self.path_info)
-        tmp_info["path"] += ".tmp"
+        tmp_info["path"] = tmp_fname(tmp_info["path"])
         self.remote.download([self.path_info], [to_info], [tmp_info], resume=resume)
 
     def checkout(self, force=False):

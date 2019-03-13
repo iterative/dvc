@@ -131,7 +131,7 @@ class RemoteSSH(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
         ssh = self.ssh(**from_infos[0])
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -170,7 +170,7 @@ class RemoteSSH(RemoteBase):
         ssh.close()
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         with self.ssh(**to_infos[0]) as ssh:
             for from_info, to_info, name in zip(from_infos, to_infos, names):

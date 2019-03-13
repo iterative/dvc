@@ -205,10 +205,11 @@ class RemoteBase(object):
         raise NotImplementedError
 
     @classmethod
-    def _verify_path_args(cls, from_infos, to_infos, names=None):
+    def _verify_path_args(cls, from_infos, to_infos, tmp_infos, names=None):
         assert isinstance(from_infos, list)
         assert isinstance(to_infos, list)
-        assert len(from_infos) == len(to_infos)
+        assert isinstance(tmp_infos, list)
+        assert len(from_infos) == len(to_infos) and len(to_infos) == len(tmp_infos)
 
         if not names:
             names = len(to_infos) * [None]

@@ -112,7 +112,7 @@ class RemoteAzure(RemoteBase):
         return self._list_paths(self.bucket, self.prefix)
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
             if to_info["scheme"] != self.scheme:
@@ -154,9 +154,9 @@ class RemoteAzure(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
+        for to_info, from_info, tmp_info, name in zip(to_infos, from_infos, tmp_infos, names):
             if from_info["scheme"] != self.scheme:
                 raise NotImplementedError
 
@@ -172,7 +172,6 @@ class RemoteAzure(RemoteBase):
                 )
             )
 
-            tmp_file = tmp_fname(to_info["path"])
             if not name:
                 name = os.path.basename(to_info["path"])
 
@@ -182,13 +181,13 @@ class RemoteAzure(RemoteBase):
 
             try:
                 self.blob_service.get_blob_to_path(
-                    bucket, path, tmp_file, progress_callback=cb
+                    bucket, path, tmp_info["path"], progress_callback=cb
                 )
             except Exception:
                 msg = "failed to download '{}/{}'".format(bucket, path)
                 logger.warning(msg)
             else:
-                os.rename(tmp_file, to_info["path"])
+                os.rename(tmp_info["path"], to_info["path"])
 
                 if not no_progress_bar:
                     progress.finish_target(name)

@@ -158,7 +158,7 @@ class RemoteS3(RemoteBase):
         return any(path_info["path"] == path for path in paths)
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         s3 = self.s3
 
@@ -204,7 +204,7 @@ class RemoteS3(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
         s3 = self.s3
 

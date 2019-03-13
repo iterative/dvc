@@ -109,10 +109,10 @@ class RemoteHDFS(RemoteBase):
             return False
 
     def upload(self, from_infos, to_infos, tmp_infos, names=None):
-        names = self._verify_path_args(to_infos, from_infos, names)
+        names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info["scheme"] != "hdfs":
+        for from_info, to_info, tmp_infos, name in zip(from_infos, to_infos, tmp_infos, names):
+            if to_info["scheme"] != "hdfs" or tmp_info["scheme"] != "hdfs":
                 raise NotImplementedError
 
             if from_info["scheme"] != "local":
@@ -123,15 +123,13 @@ class RemoteHDFS(RemoteBase):
                 user=to_info["user"],
             )
 
-            tmp_file = tmp_fname(to_info["user"])
-
             self.hadoop_fs(
-                "copyFromLocal {} {}".format(from_info["path"], tmp_file),
+                "copyFromLocal {} {}".format(from_info["path"], tmp_info["path"]),
                 user=to_info["user"],
             )
 
             self.hadoop_fs(
-                "mv {} {}".format(tmp_file, to_info["path"]),
+                "mv {} {}".format(tmp_info["path"], to_info["path"]),
                 user=to_info["user"],
             )
 
@@ -144,9 +142,9 @@ class RemoteHDFS(RemoteBase):
         names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
+        for to_info, from_info, tmp_infos, name in zip(to_infos, from_infos, tmp_infos, names):
             if from_info["scheme"] != "hdfs":
                 raise NotImplementedError
 
@@ -154,21 +152,19 @@ class RemoteHDFS(RemoteBase):
                 self.copy(from_info, to_info)
                 continue
 
-            if to_info["scheme"] != "local":
+            if to_info["scheme"] != "local" or tmp_info["scheme"] != "local":
                 raise NotImplementedError
 
             dname = os.path.dirname(to_info["path"])
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            tmp_file = tmp_fname(to_info["user"])
-
             self.hadoop_fs(
-                "copyToLocal {} {}".format(from_info["path"], tmp_file),
+                "copyToLocal {} {}".format(from_info["path"], tmp_info["path"]),
                 user=from_info["user"],
             )
 
-            os.rename(tmp_file, to_info["path"])
+            os.rename(tmp_info["path"], to_info["path"])
 
     def list_cache_paths(self):
         try:
