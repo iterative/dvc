@@ -123,7 +123,7 @@ class RemoteHDFS(RemoteBase):
                 user=to_info["user"],
             )
 
-            tmp_file = tmp_fname(to_info["user"])
+            tmp_file = tmp_fname(to_info["path"])
 
             self.hadoop_fs(
                 "copyFromLocal {} {}".format(from_info["path"], tmp_file),
@@ -160,7 +160,7 @@ class RemoteHDFS(RemoteBase):
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            tmp_file = tmp_fname(to_info["user"])
+            tmp_file = tmp_fname(to_info["path"])
 
             self.hadoop_fs(
                 "copyToLocal {} {}".format(from_info["path"], tmp_file),
