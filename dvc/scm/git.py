@@ -39,6 +39,9 @@ class Git(Base):
         libpath = env.get("LD_LIBRARY_PATH", None)
         self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
 
+        self.ignored_paths = []
+        self.files_to_track = []
+
     @staticmethod
     def is_repo(root_dir):
         return os.path.isdir(Git._get_git_dir(root_dir))
@@ -95,8 +98,9 @@ class Git(Base):
         with open(gitignore, "a") as fobj:
             fobj.write(content)
 
-        if self.repo is not None:
-            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
+        self.track_file(os.path.relpath(gitignore))
+
+        self.ignored_paths.append(path)
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -112,8 +116,7 @@ class Git(Base):
         with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 
-        if self.repo is not None:
-            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
+        self.track_file(os.path.relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
@@ -173,3 +176,25 @@ class Git(Base):
     def install(self):
         self._install_hook("post-checkout", "checkout")
         self._install_hook("pre-commit", "status")
+
+    def cleanup_ignores(self):
+        for path in self.ignored_paths:
+            self.ignore_remove(path)
+        self.reset_ignores()
+
+    def reset_ignores(self):
+        self.ignored_paths = []
+
+    def remind_to_track(self):
+        if not self.files_to_track:
+            return
+
+        logger.info(
+            "\n"
+            "To track the changes with git run:\n"
+            "\n"
+            "\tgit add {files}".format(files=" ".join(self.files_to_track))
+        )
+
+    def track_file(self, path):
+        self.files_to_track.append(path)

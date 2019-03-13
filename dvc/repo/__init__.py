@@ -62,8 +62,6 @@ class Repo(object):
 
         self.metrics = Metrics(self)
 
-        self.files_to_git_add = []
-
         self._ignore()
 
         self.updater.check()
@@ -91,17 +89,6 @@ class Repo(object):
     def find_dvc_dir(root=None):
         root_dir = Repo.find_root(root)
         return os.path.join(root_dir, Repo.DVC_DIR)
-
-    def remind_to_git_add(self):
-        if not self.files_to_git_add:
-            return
-
-        logger.info(
-            "\n"
-            "To track the changes with git run:\n"
-            "\n"
-            "\tgit add {files}".format(files=" ".join(self.files_to_git_add))
-        )
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):

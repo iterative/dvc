@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+from dvc.scm import scm_context
 
+
+@scm_context
 def run(
     self,
     cmd=None,
@@ -53,13 +56,10 @@ def run(
 
     self.check_dag(self.stages() + [stage])
 
-    self.files_to_git_add = []
     with self.state:
         if not no_exec:
             stage.run(no_commit=no_commit)
 
     stage.dump()
-
-    self.remind_to_git_add()
 
     return stage
