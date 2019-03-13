@@ -136,7 +136,10 @@ class RemoteS3(RemoteBase):
             list_objects_api = "list_objects_v2"
         paginator = s3.get_paginator(list_objects_api)
         for page in paginator.paginate(**kwargs):
-            for item in page["Contents"]:
+            contents = page.get("Contents", None)
+            if not contents:
+                continue
+            for item in contents:
                 yield item["Key"]
 
     def list_cache_paths(self):
