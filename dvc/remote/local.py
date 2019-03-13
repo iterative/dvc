@@ -13,7 +13,13 @@ from operator import itemgetter
 
 import dvc.logger as logger
 from dvc.system import System
-from dvc.remote.base import RemoteBase, STATUS_MAP, STATUS_NEW, STATUS_DELETED
+from dvc.remote.base import (
+    RemoteBase,
+    STATUS_MAP,
+    STATUS_NEW,
+    STATUS_DELETED,
+    STATUS_MISSING,
+)
 from dvc.utils import remove, move, copyfile, dict_md5, to_chunks, tmp_fname
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
@@ -590,12 +596,16 @@ class RemoteLOCAL(RemoteBase):
 
         progress.finish_target(title)
 
-        for md5, info in ret.items():
-            info["status"] = STATUS_MAP[
-                (md5 in local_exists, md5 in remote_exists)
-            ]
+        self._fill_statuses(ret, local_exists, remote_exists)
+
+        self._log_missing_caches(ret)
 
         return ret
+
+    def _fill_statuses(self, checksum_info_dir, local_exists, remote_exists):
+        for md5, info in checksum_info_dir.items():
+            status = STATUS_MAP[(md5 in local_exists, md5 in remote_exists)]
+            info["status"] = status
 
     def _get_chunks(self, download, remote, status_info, status, jobs):
         title = "Analysing status."
@@ -710,3 +720,22 @@ class RemoteLOCAL(RemoteBase):
             return not (mtime == cached_mtime and size == cached_size)
 
         return True
+
+    def _log_missing_caches(self, checksum_info_dict):
+        missing_caches = [
+            (md5, info)
+            for md5, info in checksum_info_dict.items()
+            if info["status"] == STATUS_MISSING
+        ]
+        if missing_caches:
+            missing_desc = "".join(
+                [
+                    "\nname: {}, md5: {}".format(info["name"], md5)
+                    for md5, info in missing_caches
+                ]
+            )
+            msg = (
+                "Some of the cache files do not exist neither locally "
+                "nor on remote. Missing cache files: {}".format(missing_desc)
+            )
+            logger.warning(msg)

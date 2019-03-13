@@ -9,10 +9,9 @@ from dvc.exceptions import DvcException
 from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
+from tests.utils import reset_logger_error_output
 from tests.utils.httpd import StaticFileServer
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
-
-from dvc.utils.compat import StringIO
 
 
 class TestCmdImport(TestDvc):
@@ -52,7 +51,7 @@ class TestFailedImportMessage(TestDvc):
     @patch("dvc.command.imp.urlparse")
     def _test(self, imp_urlparse_patch):
         with MockLoggerHandlers(logger.logger):
-            logger.logger.handlers[1].stream = StringIO()
+            reset_logger_error_output()
             page_address = "http://somesite.com/file_name"
 
             def dvc_exception(*args, **kwargs):
