@@ -162,3 +162,6 @@ class Base(object):
         Method to add file to mechanism that will remind user
         to track new files
         """
+
+    def belongs_to_scm(self, path):
+        """Return boolean whether file belongs to scm"""

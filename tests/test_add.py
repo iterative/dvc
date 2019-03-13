@@ -476,3 +476,16 @@ class TestShouldCleanUpAfterFailedAdd(TestDvc):
 
         gitignore_content = get_gitignore_content()
         self.assertFalse(any(self.BAR in line for line in gitignore_content))
+
+
+class TestShouldNotTrackGitInternalFiles(TestDvc):
+    def test(self):
+        stage_creator_spy = spy(dvc.repo.add._create_stages)
+
+        with patch.object(dvc.repo.add, "_create_stages", stage_creator_spy):
+            ret = main(["add", "-R", self.dvc.root_dir])
+            self.assertEqual(0, ret)
+
+        created_stages_filenames = stage_creator_spy.mock.call_args[0][0]
+        for fname in created_stages_filenames:
+            self.assertNotIn(".git", fname)

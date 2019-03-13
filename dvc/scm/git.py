@@ -198,3 +198,8 @@ class Git(Base):
 
     def track_file(self, path):
         self.files_to_track.append(path)
+
+    def belongs_to_scm(self, path):
+        basename = os.path.basename(path)
+        path_parts = os.path.normpath(path).split(os.path.sep)
+        return basename == self.ignore_file or Git.GIT_DIR in path_parts
