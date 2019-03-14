@@ -148,7 +148,7 @@ class SSHConnection:
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
 
-        makedirs(posixpath.dirname(dest), exist_ok=True)
+        makedirs(os.path.dirname(dest), exist_ok=True)
         tmp_file = tmp_fname(dest)
 
         if no_progress_bar:
@@ -175,7 +175,7 @@ class SSHConnection:
             self._sftp.put(src, tmp_file)
         else:
             if not progress_title:
-                progress_title = os.path.basename(dest)
+                progress_title = posixpath.basename(dest)
 
             self._sftp.put(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
