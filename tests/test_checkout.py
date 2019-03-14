@@ -1,10 +1,12 @@
 import os
-import mock
+import sys
+
 import yaml
 import shutil
 import filecmp
 import collections
 
+from dvc.logger import logger
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
@@ -14,7 +16,8 @@ from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException, ConfirmRemoveError
 
-from mock import patch
+from mock import patch, call
+from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
 class TestCheckout(TestRepro):
@@ -355,8 +358,8 @@ class TestCheckoutDirectory(TestRepro):
 
 
 class TestCheckoutHook(TestDvc):
-    @mock.patch("sys.stdout.isatty", return_value=True)
-    @mock.patch("dvc.prompt.input", side_effect=EOFError)
+    @patch("sys.stdout.isatty", return_value=True)
+    @patch("dvc.prompt.input", side_effect=EOFError)
     def test(self, mock_input, mock_isatty):
         """ Test that dvc checkout handles EOFError gracefully, which is what
         it will experience when running in a git hook.
@@ -402,3 +405,84 @@ class TestCheckoutSuggestGit(TestRepro):
                     )
                 ),
             )
+
+
+class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
+    def setUp(self):
+        super(TestCheckoutShouldHaveSelfClearingProgressBar, self).setUp()
+        self._prepare_repo()
+        self._checkout()
+        self.data_checkout_pattern = "Data .* didn't change."
+        self.clearline_pattern = "\r\x1b\\[K"
+
+    def test(self):
+        stdout_calls = self.to_generator(self.stdout_mock.method_calls)
+
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, self.data_checkout_pattern
+        )
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, "\\[#{15} {15}\\].*% Checkout in progress"
+        )
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, self.clearline_pattern
+        )
+
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, self.data_checkout_pattern
+        )
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, "\\[#{30}\\] 100% Checkout in progress"
+        )
+        self.assertThenWriteWithArgMatching(
+            stdout_calls, self.clearline_pattern
+        )
+
+    def _prepare_repo(self):
+        storage = self.mkdtemp()
+
+        ret = main(["remote", "add", "-d", "myremote", storage])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.BAR])
+        self.assertEqual(0, ret)
+
+    def _checkout(self):
+        with MockLoggerHandlers(
+            logger
+        ), ConsoleFontColorsRemover(), patch.object(
+            sys, "stdout"
+        ) as stdout_mock:
+            self.stdout_mock = logger.handlers[0].stream = stdout_mock
+
+            ret = main(["checkout"])
+            self.assertEqual(0, ret)
+
+    def to_generator(self, calls):
+        return (c for c in calls)
+
+    def assertThenWriteWithArgMatching(self, calls, arg_regex):
+        next_call = next(calls, None)
+
+        if not next_call:
+            raise AssertionError(
+                "Expected call to write with arg matching: {}"
+                ", but there are  no more calls to "
+                "check!".format(arg_regex)
+            )
+
+        method_called = next_call[0]
+
+        if method_called == call.write()[0]:
+            arg_called = next_call[1][0]
+            import re
+
+            pattern = re.compile(arg_regex)
+            result = pattern.search(arg_called)
+            if result:
+                return
+
+        self.assertThenWriteWithArgMatching(calls, arg_regex)

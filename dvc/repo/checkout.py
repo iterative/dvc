@@ -31,6 +31,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     with self.state:
         _cleanup_unused_links(self, all_stages)
 
+        checkout_progress_message = "Checkout in progress"
         for index, stage in enumerate(stages):
             if stage.locked:
                 logger.warning(
@@ -40,5 +41,9 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
 
             stage.checkout(force=force)
             progress.update_target(
-                "Checkout in progress", index + 1, len(stages)
+                checkout_progress_message, index + 1, len(stages)
             )
+            import time
+
+            time.sleep(1)
+        progress.finish_target(checkout_progress_message)
