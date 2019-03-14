@@ -10,6 +10,6 @@ google-compute-engine
 pywin32; sys_platform == 'win32'
 Pygments  # required by collective.checkdocs
 collective.checkdocs
-black; python_version >= '3.6'
+-e git+https://github.com/ambv/black.git@stable#egg=black ; python_version >= '3.6'
 flake8
 flake8-docstrings
