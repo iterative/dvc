@@ -45,6 +45,7 @@ class Repo(object):
         from dvc.updater import Updater
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
+        from dvc.repo.tag import Tag
 
         root_dir = self.find_root(root_dir)
 
@@ -70,6 +71,7 @@ class Repo(object):
         self.updater = Updater(self.dvc_dir)
 
         self.metrics = Metrics(self)
+        self.tag = Tag(self)
 
         self._ignore()
 

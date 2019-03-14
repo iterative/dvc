@@ -22,6 +22,7 @@ class OutputLOCAL(OutputBase):
         cache=True,
         metric=False,
         persist=False,
+        tags=None,
     ):
         super(OutputLOCAL, self).__init__(
             stage,
@@ -31,6 +32,7 @@ class OutputLOCAL(OutputBase):
             cache=cache,
             metric=metric,
             persist=persist,
+            tags=tags,
         )
         if remote:
             p = os.path.join(
