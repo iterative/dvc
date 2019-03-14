@@ -49,6 +49,8 @@ environment:
 #      PYTHON_ARCH: "64"
 
 install:
+  - cinst win32-openssh -params '"/SSHServerFeature /KeyBasedAuthenticationFeature"'
+  - ps: Restart-Computer -Force -Verbose
   - ps: Install-Product node
   - npm install -g azurite
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
@@ -65,6 +67,7 @@ install:
 build: false
 
 before_test:
+  - ssh 127.0.0.1 echo TEST
   - aws configure set aws_access_key_id "%aws_access_key_id%"
   - aws configure set aws_secret_access_key "%aws_secret_access_key%"
   - aws configure set region us-east-2
