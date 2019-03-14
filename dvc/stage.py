@@ -522,13 +522,15 @@ class Stage(object):
         return stage
 
     def dumpd(self):
+        from dvc.remote.local import RemoteLOCAL
+
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: os.path.relpath(
-                    self.wdir, os.path.dirname(self.path)
+                Stage.PARAM_WDIR: RemoteLOCAL.unixpath(
+                    os.path.relpath(self.wdir, os.path.dirname(self.path))
                 ),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],

@@ -48,3 +48,17 @@ class TestStageChecksum(TestCase):
             self.assertEqual(
                 stage._compute_md5(), "2ceba15e87f6848aa756502c1e6d24e9"
             )
+
+
+class TestPathConversion(TestCase):
+    def test(self):
+        import posixpath
+        import ntpath
+
+        stage = Stage(None, "path")
+
+        stage.wdir = posixpath.join("..", "..")
+        self.assertEqual(stage.dumpd()["wdir"], "../..")
+
+        stage.wdir = ntpath.join("..", "..")
+        self.assertEqual(stage.dumpd()["wdir"], "../..")
