@@ -62,19 +62,26 @@ class Git(Base):
     def ignore_file(self):
         return self.GITIGNORE
 
-    def _get_gitignore(self, path):
+    def _get_gitignore(self, path, base_dir):
         assert os.path.isabs(path)
+        assert os.path.isabs(base_dir)
+        assert path.startswith(base_dir)
+
+        entry = os.path.relpath(path, base_dir)
         # NOTE: using '/' prefix to make path unambiguous
-        entry = "/" + os.path.basename(path)
-        gitignore = os.path.join(os.path.dirname(path), self.GITIGNORE)
+        if entry[0] != "/":
+            entry = "/" + entry
+
+        gitignore = os.path.join(base_dir, self.GITIGNORE)
 
         if not gitignore.startswith(self.root_dir):
             raise FileNotInRepoError(path)
 
         return entry, gitignore
 
-    def ignore(self, path):
-        entry, gitignore = self._get_gitignore(path)
+    def ignore(self, path, in_curr_dir=False):
+        base_dir = os.path.realpath('.') if in_curr_dir else os.path.dirname(path)
+        entry, gitignore = self._get_gitignore(path, base_dir)
 
         ignore_list = []
         if os.path.exists(gitignore):

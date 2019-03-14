@@ -84,6 +84,11 @@ class OutputBase(object):
             "is local is not supported for {}".format(self.scheme)
         )
 
+    def assign_to_stage_file(self, target_repo):
+        raise DvcException(
+            "change repo is not supported for {}".format(self.scheme)
+        )
+
     @classmethod
     def match(cls, url):
         return re.match(cls.REMOTE.REGEX, url)

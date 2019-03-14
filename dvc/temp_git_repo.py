@@ -88,7 +88,6 @@ class TempGitRepo(object):
             raise DvcException('...')
 
         tmp_repo_cache = self.repo.cache.local.url
-        print('=== CACHE dir={}'.format(tmp_repo_cache))
 
         for prefix in os.listdir(tmp_repo_cache):
             if len(prefix) != 2:

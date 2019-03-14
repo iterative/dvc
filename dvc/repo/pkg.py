@@ -33,7 +33,7 @@ class PackageManager(object):
 class Package(object):
     MODULES_DIR = 'dvc_mod'
 
-    def install_or_update(self, repo, target_dir, outs_filter, stage_file):
+    def install_or_update(self, repo, target_dir, outs_filter, file):
         raise NotImplementedError('A method of abstract Package class was called')
 
     def is_in_root(self):
@@ -46,7 +46,7 @@ class GitPackage(Package):
     def __init__(self, addr):
         self._addr = addr
 
-    def install_or_update(self, parent_repo, target_dir, outs_filter, stage):
+    def install_or_update(self, parent_repo, target_dir, outs_filter, file):
         if not self.is_in_root():
             raise DvcException('This command can be run only from a repository root')
 
@@ -59,43 +59,56 @@ class GitPackage(Package):
         if not module_name:
             raise DvcException('Package address error: unable to extract package name')
 
-        fetched_stage_files = set()
         with TempGitRepo(self._addr, module_name, Package.MODULES_DIR) as tmp_repo:
-            dvc_file = self.get_dvc_file_name(stage, target_dir, module_name)
-            outputs_to_copy = self._outputs_to_copy(outs_filter, tmp_repo, target_dir)
+            outputs_to_copy = tmp_repo.outs
+            if outs_filter:
+                outputs_to_copy = list(filter(lambda out: out.dvc_path in outs_filter,
+                                              outputs_to_copy))
 
             fetched_stage_files = set(map(lambda o: o.stage.path, outputs_to_copy))
             tmp_repo.fetch(fetched_stage_files)
 
-            self._create_stage_file(outputs_to_copy, parent_repo, dvc_file)
-
-            module_dir = os.path.join(GitPackage.MODULES_DIR, module_name)
-
-            if os.path.exists(module_dir):
-                logger.info('Updating package {}'.format(module_name))
-                shutil.rmtree(module_dir)
-            else:
-                logger.info('Adding package {}'.format(module_name))
-
+            module_dir = self.create_module_dir(module_name)
             tmp_repo.persist_to(module_dir, parent_repo)
 
-        fetched_stage_files = parent_repo.stages(from_directory=target_dir)
-        for stage in fetched_stage_files:
-            parent_repo.checkout(stage.path)
+            dvc_file = self.get_dvc_file_name(file, target_dir, module_name)
+            try:
+                self.persist_stage_and_scm_state(parent_repo, outputs_to_copy,
+                                                 target_dir, dvc_file)
+            except Exception as ex:
+                raise DvcException("Package '{}' was installed "
+                                   "but stage file '{}' "
+                                   "was not created properly: {}".format(
+                                        self._addr, dvc_file, ex))
 
-        pass
+        parent_repo.checkout(dvc_file)
 
     @staticmethod
-    def _create_stage_file(outputs_to_copy, repo, dvc_file):
+    def persist_stage_and_scm_state(parent_repo, outputs_to_copy,
+                                    target_dir, dvc_file):
         stage = Stage.create(
-            repo=repo,
+            repo=parent_repo,
             fname=dvc_file,
-            validate_state=False
+            validate_state=False,
+            wdir=target_dir,
         )
+        stage.outs = list(map(lambda o: o.assign_to_stage_file(stage),
+                              outputs_to_copy))
 
-        stage.outs = outputs_to_copy
+        for out in stage.outs:
+            parent_repo.scm.ignore(out.path, in_curr_dir=True)
+
         stage.dump()
-        return stage
+
+    @staticmethod
+    def create_module_dir(module_name):
+        module_dir = os.path.join(GitPackage.MODULES_DIR, module_name)
+        if os.path.exists(module_dir):
+            logger.info('Updating package {}'.format(module_name))
+            shutil.rmtree(module_dir)
+        else:
+            logger.info('Adding package {}'.format(module_name))
+        return module_dir
 
     def get_dvc_file_name(self, stage_file, target_dir, module_name):
         if stage_file:
@@ -104,21 +117,6 @@ class GitPackage(Package):
             dvc_file_name = self.DEF_DVC_FILE_PREFIX + module_name + '.dvc'
             dvc_file_path = os.path.join(target_dir, dvc_file_name)
         return dvc_file_path
-
-    @staticmethod
-    def _outputs_to_copy(outs_filter, tmp_repo, target_dir):
-        if not outs_filter:
-            result = tmp_repo.outs
-        else:
-            result = list(filter(lambda out: out.dvc_path in outs_filter, tmp_repo.outs))
-
-        from dvc.repo import Repo
-        target_repo = Repo(target_dir)
-
-        for r in result:
-            r.repo = target_repo
-
-        return result
 
 
 def install_pkg(self, address, target_dir, outs_filter, file):
