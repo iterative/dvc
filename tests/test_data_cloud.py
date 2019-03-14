@@ -634,7 +634,7 @@ class TestWarnOnOutdatedStage(TestDvc):
 
         stage_file_path = stage.relpath
         content = load_stage_file(stage_file_path)
-        del (content["outs"][0]["md5"])
+        del content["outs"][0]["md5"]
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)
 
