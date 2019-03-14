@@ -709,8 +709,8 @@ class TestReproMissingMd5InStageFile(TestRepro):
         with open(self.file1_stage, "r") as fd:
             d = yaml.load(fd)
 
-        del (d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM])
-        del (d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM])
+        del d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM]
+        del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
 
         with open(self.file1_stage, "w") as fd:
             yaml.dump(d, fd)
