@@ -62,7 +62,7 @@ class TestDir(TestCase):
         return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
 
     def setUp(self):
-        self._root_dir = TestDir.mkdtemp()
+        self._root_dir = os.path.realpath(TestDir.mkdtemp())
 
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)

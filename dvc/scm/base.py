@@ -22,7 +22,7 @@ class Base(object):
 
     def __init__(self, root_dir=os.curdir, repo=None):
         self.repo = repo
-        self.root_dir = root_dir
+        self.root_dir = os.path.realpath(root_dir)
 
     def __repr__(self):
         return "{class_name}: '{directory}'".format(
