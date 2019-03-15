@@ -16,10 +16,10 @@ class TestDir(TestCase):
     )
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
-    DATA = os.path.join(DATA_DIR, "data")
-    DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub")
-    DATA_CONTENTS = DATA
-    DATA_SUB_CONTENTS = DATA_SUB
+    DATA = os.path.join(DATA_DIR, "data.csv")
+    DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub.csv")
+    DATA_CONTENTS = DATA + ' sOmE randOme stuff'
+    DATA_SUB_CONTENTS = DATA_SUB + 'SOME random STUFF'
     FOO = "foo"
     FOO_CONTENTS = FOO
     BAR = "bar"
