@@ -3,6 +3,7 @@ import os
 from git import Repo
 
 from dvc.scm import SCM, Base, Git
+from dvc.scm.base import FileNotInTargetSubdir
 
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 from tests.utils import get_gitignore_content
@@ -100,3 +101,12 @@ class TestIgnore(TestGit):
         self.assertEqual(entry, '/dir2/dir3')
         gitignore2 = os.path.join(self._root_dir, 'dir1/', Git.GITIGNORE)
         self.assertEqual(gitignore, gitignore2)
+
+    def test_get_gitignore_ignorefile_dir_upper_level(self):
+        git = Git(self._root_dir)
+
+        data_dir1 = os.path.join(self._root_dir, 'dir1/dir2/file1')
+        ignore_file_dir = os.path.realpath('aa/bb')
+
+        with self.assertRaises(FileNotInTargetSubdir):
+            git._get_gitignore(data_dir1, ignore_file_dir)

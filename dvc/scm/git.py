@@ -12,7 +12,7 @@ import os
 
 import dvc.logger as logger
 from dvc.utils import fix_env
-from dvc.scm.base import Base, SCMError, FileNotInRepoError
+from dvc.scm.base import Base, SCMError, FileNotInRepoError, FileNotInTargetSubdir
 
 
 class Git(Base):
@@ -68,7 +68,11 @@ class Git(Base):
 
         assert os.path.isabs(path)
         assert os.path.isabs(ignore_file_dir)
-        assert path.startswith(ignore_file_dir)
+
+        if not path.startswith(ignore_file_dir):
+            msg = "{} file has to be located in one of '{}' subdirectories"\
+                  ", not outside '{}'"
+            raise FileNotInTargetSubdir(msg.format(self.GITIGNORE, path, ignore_file_dir))
 
         entry = os.path.relpath(path, ignore_file_dir)
         # NOTE: using '/' prefix to make path unambiguous

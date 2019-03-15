@@ -17,6 +17,11 @@ class FileNotInRepoError(DvcException):
     """
 
 
+class FileNotInTargetSubdir(DvcException):
+    """Thrown when trying to place .gitignore for a file that not in
+    the file subdirectory."""
+
+
 class Base(object):
     """Base class for source control management driver implementations."""
 
