@@ -291,7 +291,9 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cls, cache):
         return cache.endswith(cls.MD5_DIR_SUFFIX)
 
-    def do_checkout(self, path_info, checksum, force=False):
+    def do_checkout(
+        self, path_info, checksum, force=False, progress_callback=None
+    ):
         path = path_info["path"]
         md5 = checksum
         cache = self.get(md5)
@@ -302,6 +304,8 @@ class RemoteLOCAL(RemoteBase):
 
             self.link(cache, path)
             self.state.update_link(path)
+            if progress_callback:
+                progress_callback.update(os.path.relpath(path))
             return
 
         # Create dir separately so that dir is created
@@ -311,8 +315,6 @@ class RemoteLOCAL(RemoteBase):
 
         dir_info = self.load_dir_cache(md5)
         dir_relpath = os.path.relpath(path)
-        dir_size = len(dir_info)
-        bar = dir_size > LARGE_DIR_SIZE
 
         logger.info("Linking directory '{}'.".format(dir_relpath))
 
@@ -332,15 +334,12 @@ class RemoteLOCAL(RemoteBase):
 
                 self.link(c, p)
 
-            if bar:
-                progress.update_target(dir_relpath, processed, dir_size)
+            if progress_callback:
+                progress_callback.update(os.path.relpath(p))
 
         self._discard_working_directory_changes(path, dir_info, force=force)
 
         self.state.update_link(path)
-
-        if bar:
-            progress.finish_target(dir_relpath)
 
     def already_cached(self, path_info):
         assert path_info["scheme"] in ["", "local"]
@@ -739,3 +738,10 @@ class RemoteLOCAL(RemoteBase):
                 "nor on remote. Missing cache files: {}".format(missing_desc)
             )
             logger.warning(msg)
+
+    def get_files_number(self, md5):
+        cache = self.get(md5)
+        if self.is_dir_cache(cache):
+            return len(self.load_dir_cache(md5))
+
+        return 1

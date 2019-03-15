@@ -739,9 +739,9 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
-    def checkout(self, force=False):
+    def checkout(self, force=False, progress_callback=None):
         for out in self.outs:
-            out.checkout(force=force)
+            out.checkout(force=force, progress_callback=progress_callback)
 
     @staticmethod
     def _status(entries):
@@ -784,3 +784,12 @@ class Stage(object):
                 for out in self.outs
             )
         )
+
+    def get_all_files_number(self):
+        all_files_num = 0
+        for out in self.outs:
+            out_files_num = self.repo.cache.local.get_files_number(
+                out.checksum
+            )
+            all_files_num += out_files_num
+        return all_files_num

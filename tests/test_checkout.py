@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 
 import yaml
 import shutil
@@ -16,7 +17,7 @@ from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException, ConfirmRemoveError
 
-from mock import patch, call
+from mock import patch
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
@@ -408,40 +409,60 @@ class TestCheckoutSuggestGit(TestRepro):
 
 
 class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
+    clearline_pattern = "\r\x1b[K"
+
     def setUp(self):
         super(TestCheckoutShouldHaveSelfClearingProgressBar, self).setUp()
         self._prepare_repo()
-        self._checkout()
-        self.data_checkout_pattern = "Data .* didn't change."
-        self.clearline_pattern = "\r\x1b\\[K"
 
     def test(self):
-        stdout_calls = self.to_generator(self.stdout_mock.method_calls)
+        self._checkout_and_intercept_std_output()
 
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, self.data_checkout_pattern
-        )
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, "\\[#{15} {15}\\].*% Checkout in progress"
-        )
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, self.clearline_pattern
-        )
+        stdout_calls = self.stdout_mock.method_calls
+        write_calls = self.filter_out_non_write_calls(stdout_calls)
+        write_calls = self.filter_out_empty_write_calls(write_calls)
+        self.write_args = [w_c[1][0] for w_c in write_calls]
 
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, self.data_checkout_pattern
-        )
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, "\\[#{30}\\] 100% Checkout in progress"
-        )
-        self.assertThenWriteWithArgMatching(
-            stdout_calls, self.clearline_pattern
-        )
+        progress_bars = self.get_progress_bars()
+        update_bars = progress_bars[:-1]
+        finish_bar = progress_bars[-1]
+
+        self.assertEqual(4, len(update_bars))
+        self.assertRegex(progress_bars[0], ".*\\[#{7} {23}\\] 25%.*")
+        self.assertRegex(progress_bars[1], ".*\\[#{15} {15}\\] 50%.*")
+        self.assertRegex(progress_bars[2], ".*\\[#{22} {8}\\] 75%.*")
+        self.assertRegex(progress_bars[3], ".*\\[#{30}\\] 100%.*")
+
+        self.assertCaretReturnFollowsEach(update_bars)
+        self.assertNewLineFollows(finish_bar)
+
+        self.assertAnyEndsWith(update_bars, self.FOO)
+        self.assertAnyEndsWith(update_bars, self.BAR)
+        self.assertAnyEndsWith(update_bars, self.DATA)
+        self.assertAnyEndsWith(update_bars, self.DATA_SUB)
+
+        self.assertTrue(finish_bar.endswith("Checkout finished!"))
+
+    def filter_out_empty_write_calls(self, calls):
+        def is_not_empty_write(call):
+            assert call[0] == "write"
+            return call[1][0] != ""
+
+        return list(filter(is_not_empty_write, calls))
+
+    def filter_out_non_write_calls(self, calls):
+        def is_write_call(call):
+            return call[0] == "write"
+
+        return list(filter(is_write_call, calls))
 
     def _prepare_repo(self):
         storage = self.mkdtemp()
 
         ret = main(["remote", "add", "-d", "myremote", storage])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.DATA_DIR])
         self.assertEqual(0, ret)
 
         ret = main(["add", self.FOO])
@@ -450,7 +471,14 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         ret = main(["add", self.BAR])
         self.assertEqual(0, ret)
 
-    def _checkout(self):
+        ret = main(["push"])
+        self.assertEqual(0, ret)
+
+        shutil.rmtree(self.DATA_DIR)
+        os.unlink(self.FOO)
+        os.unlink(self.BAR)
+
+    def _checkout_and_intercept_std_output(self):
         with MockLoggerHandlers(
             logger
         ), ConsoleFontColorsRemover(), patch.object(
@@ -461,28 +489,27 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
             ret = main(["checkout"])
             self.assertEqual(0, ret)
 
-    def to_generator(self, calls):
-        return (c for c in calls)
+    def get_progress_bars(self):
+        pattern = re.compile(".*\\[.{30}\\].*%.*")
+        return [arg for arg in self.write_args if pattern.match(arg)]
 
-    def assertThenWriteWithArgMatching(self, calls, arg_regex):
-        next_call = next(calls, None)
+    def assertCaretReturnFollowsEach(self, update_bars):
+        for update_bar in update_bars:
 
-        if not next_call:
-            raise AssertionError(
-                "Expected call to write with arg matching: {}"
-                ", but there are  no more calls to "
-                "check!".format(arg_regex)
-            )
+            self.assertIn(update_bar, self.write_args)
 
-        method_called = next_call[0]
+            for index, arg in enumerate(self.write_args):
+                if arg == update_bar:
+                    self.assertEqual(
+                        self.clearline_pattern, self.write_args[index + 1]
+                    )
 
-        if method_called == call.write()[0]:
-            arg_called = next_call[1][0]
-            import re
+    def assertNewLineFollows(self, finish_bar):
+        self.assertIn(finish_bar, self.write_args)
 
-            pattern = re.compile(arg_regex)
-            result = pattern.search(arg_called)
-            if result:
-                return
+        for index, arg in enumerate(self.write_args):
+            if arg == finish_bar:
+                self.assertEqual("\n", self.write_args[index + 1])
 
-        self.assertThenWriteWithArgMatching(calls, arg_regex)
+    def assertAnyEndsWith(self, update_bars, name):
+        self.assertTrue(any(ub for ub in update_bars if ub.endswith(name)))

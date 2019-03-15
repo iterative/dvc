@@ -13,6 +13,31 @@ def _cleanup_unused_links(self, all_stages):
     self.state.remove_unused_links(used)
 
 
+class ProgressCallback(object):
+    def __init__(self, total):
+        self.total = total
+        self.current = 0
+
+    def update(self, name, progress_to_add=1):
+        self.current += progress_to_add
+        progress.update_target(name, self.current, self.total)
+
+    def finish(self, name):
+        progress.finish_target(name)
+
+
+def get_all_files_numbers(stages):
+    return sum(stage.get_all_files_number() for stage in stages)
+
+
+def get_progress_callback(stages):
+    try:
+        total_files_num = get_all_files_numbers(stages)
+        return ProgressCallback(total_files_num)
+    except Exception:
+        return None
+
+
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
@@ -30,20 +55,15 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
 
     with self.state:
         _cleanup_unused_links(self, all_stages)
+        progress_callback = get_progress_callback(stages)
 
-        checkout_progress_message = "Checkout in progress"
-        for index, stage in enumerate(stages):
+        for stage in stages:
             if stage.locked:
                 logger.warning(
                     "DVC file '{path}' is locked. Its dependencies are"
                     " not going to be checked out.".format(path=stage.relpath)
                 )
 
-            stage.checkout(force=force)
-            progress.update_target(
-                checkout_progress_message, index + 1, len(stages)
-            )
-            import time
-
-            time.sleep(1)
-        progress.finish_target(checkout_progress_message)
+            stage.checkout(force=force, progress_callback=progress_callback)
+        if progress_callback:
+            progress_callback.finish("Checkout finished!")

@@ -197,12 +197,15 @@ class OutputBase(object):
     def download(self, to_info, resume=False):
         self.remote.download([self.path_info], [to_info], resume=resume)
 
-    def checkout(self, force=False):
+    def checkout(self, force=False, progress_callback=None):
         if not self.use_cache:
             return
 
         getattr(self.repo.cache, self.scheme).checkout(
-            self.path_info, self.info, force=force
+            self.path_info,
+            self.info,
+            force=force,
+            progress_callback=progress_callback,
         )
 
     def remove(self, ignore_remove=False):
