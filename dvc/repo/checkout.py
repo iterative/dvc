@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.progress import progress
+from dvc.progress import ProgressCallback
 
 
 def _cleanup_unused_links(self, all_stages):
@@ -11,19 +11,6 @@ def _cleanup_unused_links(self, all_stages):
         for out in stage.outs:
             used.append(out.path)
     self.state.remove_unused_links(used)
-
-
-class ProgressCallback(object):
-    def __init__(self, total):
-        self.total = total
-        self.current = 0
-
-    def update(self, name, progress_to_add=1):
-        self.current += progress_to_add
-        progress.update_target(name, self.current, self.total)
-
-    def finish(self, name):
-        progress.finish_target(name)
 
 
 def get_all_files_numbers(stages):

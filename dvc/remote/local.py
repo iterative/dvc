@@ -316,7 +316,7 @@ class RemoteLOCAL(RemoteBase):
         dir_info = self.load_dir_cache(md5)
         dir_relpath = os.path.relpath(path)
 
-        logger.info("Linking directory '{}'.".format(dir_relpath))
+        logger.debug("Linking directory '{}'.".format(dir_relpath))
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]

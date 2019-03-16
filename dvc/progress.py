@@ -8,6 +8,8 @@ from dvc.utils.compat import str
 import sys
 import threading
 
+CLEARLINE_PATTERN = "\r\x1b[K"
+
 
 class Progress(object):
     """
@@ -31,7 +33,7 @@ class Progress(object):
         return self._n_total == self._n_finished
 
     def clearln(self):
-        self.print("\r\x1b[K", end="")
+        self.print(CLEARLINE_PATTERN, end="")
 
     def _writeln(self, line):
         self.clearln()
@@ -136,6 +138,23 @@ def progress_aware(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+class ProgressCallback(object):
+    def __init__(self, total):
+        self.total = total
+        self.current = 0
+
+    def update(self, name, progress_to_add=1):
+        import time
+
+        time.sleep(0.5)
+        self.current += progress_to_add
+        progress.update_target(name, self.current, self.total)
+        time.sleep(0.5)
+
+    def finish(self, name):
+        progress.finish_target(name)
 
 
 progress = Progress()  # pylint: disable=invalid-name

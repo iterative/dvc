@@ -9,6 +9,7 @@ import collections
 
 from dvc.logger import logger
 from dvc.main import main
+from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from tests.basic_env import TestDvc
@@ -409,8 +410,6 @@ class TestCheckoutSuggestGit(TestRepro):
 
 
 class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
-    clearline_pattern = "\r\x1b[K"
-
     def setUp(self):
         super(TestCheckoutShouldHaveSelfClearingProgressBar, self).setUp()
         self._prepare_repo()
@@ -501,7 +500,7 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
             for index, arg in enumerate(self.write_args):
                 if arg == update_bar:
                     self.assertEqual(
-                        self.clearline_pattern, self.write_args[index + 1]
+                        progress.CLEARLINE_PATTERN, self.write_args[index + 1]
                     )
 
     def assertNewLineFollows(self, finish_bar):
