@@ -1,6 +1,6 @@
 from dvc.dependency.ssh import DependencySSH
 
-from tests.unit.dependency.local import TestDependencyLOCAL
+from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 
 class TestDependencySSH(TestDependencyLOCAL):

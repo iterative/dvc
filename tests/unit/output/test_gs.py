@@ -1,6 +1,6 @@
 from dvc.output.gs import OutputGS
 
-from tests.unit.output.local import TestOutputLOCAL
+from tests.unit.output.test_local import TestOutputLOCAL
 
 
 class TestOutputGS(TestOutputLOCAL):

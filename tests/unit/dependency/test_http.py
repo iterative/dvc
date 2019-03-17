@@ -1,6 +1,6 @@
 from dvc.dependency.http import DependencyHTTP
 
-from tests.unit.dependency.local import TestDependencyLOCAL
+from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 
 class TestDependencyHTTP(TestDependencyLOCAL):

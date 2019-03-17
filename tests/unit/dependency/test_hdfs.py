@@ -1,6 +1,6 @@
 from dvc.dependency.hdfs import DependencyHDFS
 
-from tests.unit.dependency.local import TestDependencyLOCAL
+from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 
 class TestDependencyHDFS(TestDependencyLOCAL):
