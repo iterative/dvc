@@ -212,7 +212,9 @@ class Stage(object):
                 logger.warning(
                     "Dependency '{dep}' of '{stage}' changed because it is "
                     "{status}'.".format(
-                        dep=dep, stage=self.relpath, status=dep.status()
+                        dep=dep,
+                        stage=self.relpath,
+                        status=dep.status()[str(dep)],
                     )
                 )
                 return True
@@ -225,7 +227,9 @@ class Stage(object):
                 logger.warning(
                     "Output '{out}' of '{stage}' changed because it is "
                     "{status}'".format(
-                        out=out, stage=self.relpath, status=out.status()
+                        out=out,
+                        stage=self.relpath,
+                        status=out.status()[str(out)],
                     )
                 )
                 return True
