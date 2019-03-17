@@ -27,3 +27,5 @@ innosetup/config.ini
 dvc/version.py
 
 *.swp
+
+pip-wheel-metadata/
