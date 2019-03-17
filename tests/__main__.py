@@ -21,9 +21,9 @@ cmd = (
     "nosetests -v --processes=4 --process-timeout=600 --cover-inclusive "
     "--cover-erase --cover-package=dvc --with-coverage --with-flaky "
     "--logging-clear-handlers "
-    # --exe: ensures tests are executed even if `basic_env.py` has umask 0777
-    #   and owned by root:root as it does when running in Windows Subsystem for
-    #   Linux (WSL).
+    # --exe ensures tests are executed even if they have exec permissions set
+    # and owned by root:root as they do when running in Windows Subsystem for
+    # Linux (WSL).
     "--exe "
     "{scope} ".format(scope=scope)
 )
