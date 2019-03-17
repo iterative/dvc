@@ -9,7 +9,7 @@ if [[ $python_ver != "2" ]]; then
     exit 0
 fi
 
-if [[ $TRAVIS_OS_NAME == "osx" && $TRAVIS_OSX_IMAGE != "xcode10.1" ]]; then
+if [[ $TRAVIS_OS_NAME == "osx" && $TRAVIS_OSX_IMAGE != "xcode8.3" ]]; then
     echo false
     exit 0
 fi
