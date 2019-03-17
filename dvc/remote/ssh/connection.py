@@ -1,3 +1,4 @@
+import errno
 import os
 import posixpath
 
@@ -143,7 +144,16 @@ class SSHConnection:
 
     def remove(self, path):
         self._sftp_connect()
-        self._sftp.remove(path)
+        try:
+            self._sftp.remove(path)
+        except FileNotFoundError as exc:
+            if exc.errno == errno.ENOENT:
+                logger.warning(
+                    "Remote file '{}' can not be removed via SSH because it "
+                    "do not exist.".format(path)
+                )
+            else:
+                raise
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
