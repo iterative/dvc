@@ -210,8 +210,9 @@ class Stage(object):
         for dep in self.deps:
             if dep.changed():
                 logger.warning(
-                    "Dependency '{dep}' of '{stage}' changed.".format(
-                        dep=dep, stage=self.relpath
+                    "Dependency '{dep}' of '{stage}' changed because it is "
+                    "{status}'.".format(
+                        dep=dep, stage=self.relpath, status=dep.status()
                     )
                 )
                 return True
@@ -222,8 +223,9 @@ class Stage(object):
         for out in self.outs:
             if out.changed():
                 logger.warning(
-                    "Output '{out}' of '{stage}' changed.".format(
-                        out=out, stage=self.relpath
+                    "Output '{out}' of '{stage}' changed because it is "
+                    "{status}'".format(
+                        out=out, stage=self.relpath, status=out.status()
                     )
                 )
                 return True
@@ -253,10 +255,13 @@ class Stage(object):
         return ret
 
     def remove_outs(self, ignore_remove=False):
-        """
-        Used mainly for `dvc remove --outs`
-        """
+        """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
+            logger.debug(
+                "Removing output '{out}' of '{stage}'.".format(
+                    out=out, stage=self.relpath
+                )
+            )
             out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
