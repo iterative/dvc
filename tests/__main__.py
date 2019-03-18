@@ -17,7 +17,8 @@ if len(sys.argv) == 1:
 else:
     params = " ".join(sys.argv[1:])
 
-cmd = "py.test -v -n=4 --timeout=600 --cov=dvc " "{params} ".format(
-    params=params
+cmd = (
+    "py.test -v -n=4 --timeout=600 --timeout_method=thread --cov=dvc "
+    "{params} ".format(params=params)
 )
 check_call(cmd, shell=True)
