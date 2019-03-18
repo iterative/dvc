@@ -291,14 +291,15 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cls, cache):
         return cache.endswith(cls.MD5_DIR_SUFFIX)
 
-    def do_checkout(
-        self, path_info, checksum, force=False, progress_callback=None
-    ):
+    def do_checkout(self, output, force=False, progress_callback=None):
+        path_info = output.path_info
+        checksum = output.info.get(self.PARAM_CHECKSUM)
+
         path = path_info["path"]
         md5 = checksum
         cache = self.get(md5)
 
-        if not self.is_dir_cache(cache):
+        if not output.is_dir_cache:
             if os.path.exists(path):
                 self.safe_remove(path_info, force=force)
 
@@ -313,7 +314,7 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        dir_info = self.load_dir_cache(md5)
+        dir_info = output.get_dir_cache()
         dir_relpath = os.path.relpath(path)
 
         logger.debug("Linking directory '{}'.".format(dir_relpath))

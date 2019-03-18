@@ -5,7 +5,7 @@ import os
 import dvc.logger as logger
 from dvc.utils.compat import urlparse
 from dvc.istextfile import istextfile
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, CacheNotFoundException
 from dvc.remote.local import RemoteLOCAL
 from dvc.output.base import OutputBase, OutputAlreadyTrackedError
 
@@ -32,6 +32,7 @@ class OutputLOCAL(OutputBase):
         p = os.path.abspath(os.path.normpath(p))
 
         self.path_info = {"scheme": "local", "path": p}
+        self.dir_cache = None
 
     def __str__(self):
         return self.rel_path
@@ -68,6 +69,13 @@ class OutputLOCAL(OutputBase):
     @property
     def cache(self):
         return self.repo.cache.local.get(self.checksum)
+
+    @property
+    def is_dir_cache(self):
+        if self.cache is None:
+            raise CacheNotFoundException(self.checksum)
+
+        return self.repo.cache.local.is_dir_cache(self.checksum)
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
@@ -133,3 +141,17 @@ class OutputLOCAL(OutputBase):
                 self.repo.scm.ignore(self.path)
 
         self.info = self.remote.save_info(self.path_info)
+
+    def get_dir_cache(self):
+        if not self.dir_cache:
+            self.dir_cache = self.repo.cache.local.load_dir_cache(
+                self.checksum
+            )
+
+        return self.dir_cache
+
+    def get_files_number(self):
+        if self.is_dir_cache:
+            return len(self.get_dir_cache())
+        else:
+            return 1

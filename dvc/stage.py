@@ -786,10 +786,4 @@ class Stage(object):
         )
 
     def get_all_files_number(self):
-        all_files_num = 0
-        for out in self.outs:
-            out_files_num = self.repo.cache.local.get_files_number(
-                out.checksum
-            )
-            all_files_num += out_files_num
-        return all_files_num
+        return sum(out.get_files_number() for out in self.outs)
