@@ -150,7 +150,7 @@ class Repo(object):
         node = os.path.relpath(stage.path, self.root_dir)
         G = self._get_pipeline(node)
 
-        ret = [stage]
+        ret = []
         for n in nx.dfs_postorder_nodes(G, node):
             ret.append(G.node[n]["stage"])
 
