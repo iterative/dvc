@@ -22,6 +22,7 @@ from dvc.repo import Repo as DvcRepo
 from tests.basic_env import TestDvc
 from tests.utils import spy, reset_logger_error_output, get_gitignore_content
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
+import pytest
 
 
 class TestAdd(TestDvc):
@@ -29,16 +30,16 @@ class TestAdd(TestDvc):
         md5 = file_md5(self.FOO)[0]
 
         stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
+        assert len(stages) == 1
         stage = stages[0]
-        self.assertTrue(stage is not None)
+        assert stage is not None
 
-        self.assertIsInstance(stage, Stage)
-        self.assertTrue(os.path.isfile(stage.path))
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(stage.cmd, None)
-        self.assertEqual(stage.outs[0].info["md5"], md5)
+        assert isinstance(stage, Stage)
+        assert os.path.isfile(stage.path)
+        assert len(stage.outs) == 1
+        assert len(stage.deps) == 0
+        assert stage.cmd is None
+        assert stage.outs[0].info["md5"] == md5
 
     def test_unicode(self):
         fname = "\xe1"
@@ -48,12 +49,12 @@ class TestAdd(TestDvc):
 
         stage = self.dvc.add(fname)[0]
 
-        self.assertTrue(os.path.isfile(stage.path))
+        assert os.path.isfile(stage.path)
 
 
 class TestAddUnupportedFile(TestDvc):
     def test(self):
-        with self.assertRaises(DvcException):
+        with pytest.raises(DvcException):
             self.dvc.add("unsupported://unsupported")
 
 
@@ -63,29 +64,29 @@ class TestAddDirectory(TestDvc):
         os.mkdir(dname)
         self.create(os.path.join(dname, "file"), "file")
         stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
+        assert len(stages) == 1
         stage = stages[0]
-        self.assertTrue(stage is not None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
+        assert stage is not None
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
 
         md5 = stage.outs[0].info["md5"]
 
         dir_info = self.dvc.cache.local.load_dir_cache(md5)
         for info in dir_info:
-            self.assertTrue("\\" not in info["relpath"])
+            assert "\\" not in info["relpath"]
 
 
 class TestAddDirectoryRecursive(TestDvc):
     def test(self):
         stages = self.dvc.add(self.DATA_DIR, recursive=True)
-        self.assertEqual(len(stages), 2)
+        assert len(stages) == 2
 
 
 class TestAddCmdDirectoryRecursive(TestDvc):
     def test(self):
         ret = main(["add", "--recursive", self.DATA_DIR])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
@@ -94,10 +95,10 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         os.mkdir(dname)
         self.create(os.path.join(dname, "file"), "file")
         stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
+        assert len(stages) == 1
         stage = stages[0]
-        self.assertTrue(stage is not None)
-        self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
+        assert stage is not None
+        assert os.path.abspath("directory.dvc") == stage.path
 
 
 class TestAddTrackedFile(TestDvc):
@@ -107,7 +108,7 @@ class TestAddTrackedFile(TestDvc):
         self.dvc.scm.add([fname])
         self.dvc.scm.commit("add {}".format(fname))
 
-        with self.assertRaises(OutputAlreadyTrackedError):
+        with pytest.raises(OutputAlreadyTrackedError):
             self.dvc.add(fname)
 
 
@@ -119,36 +120,36 @@ class TestAddDirWithExistingCache(TestDvc):
         shutil.copyfile(self.FOO, fname)
 
         stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+        assert len(stages) == 1
+        assert stages[0] is not None
         stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+        assert len(stages) == 1
+        assert stages[0] is not None
 
 
 class TestAddModifiedDir(TestDvc):
     def test(self):
         stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+        assert len(stages) == 1
+        assert stages[0] is not None
         os.unlink(self.DATA)
 
         time.sleep(2)
 
         stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        self.assertTrue(stages[0] is not None)
+        assert len(stages) == 1
+        assert stages[0] is not None
 
 
 class TestAddFileInDir(TestDvc):
     def test(self):
         stages = self.dvc.add(self.DATA_SUB)
-        self.assertEqual(len(stages), 1)
+        assert len(stages) == 1
         stage = stages[0]
-        self.assertNotEqual(stage, None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, self.DATA_SUB + ".dvc")
+        assert stage is not None
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
+        assert stage.relpath == self.DATA_SUB + ".dvc"
 
 
 class TestAddExternalLocalFile(TestDvc):
@@ -158,15 +159,15 @@ class TestAddExternalLocalFile(TestDvc):
         shutil.copyfile(self.FOO, fname)
 
         stages = self.dvc.add(fname)
-        self.assertEqual(len(stages), 1)
+        assert len(stages) == 1
         stage = stages[0]
-        self.assertNotEqual(stage, None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, "foo.dvc")
-        self.assertEqual(len(os.listdir(dname)), 1)
-        self.assertTrue(os.path.isfile(fname))
-        self.assertTrue(filecmp.cmp(fname, "foo", shallow=False))
+        assert stage is not None
+        assert len(stage.deps) == 0
+        assert len(stage.outs) == 1
+        assert stage.relpath == "foo.dvc"
+        assert len(os.listdir(dname)) == 1
+        assert os.path.isfile(fname)
+        assert filecmp.cmp(fname, "foo", shallow=False)
 
 
 class TestAddLocalRemoteFile(TestDvc):
@@ -178,48 +179,48 @@ class TestAddLocalRemoteFile(TestDvc):
         remote = "myremote"
 
         ret = main(["remote", "add", remote, cwd])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         self.dvc = DvcRepo()
 
         foo = "remote://{}/{}".format(remote, self.FOO)
         ret = main(["add", foo])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         d = load_stage_file("foo.dvc")
-        self.assertEqual(d["outs"][0]["path"], foo)
+        assert d["outs"][0]["path"] == foo
 
         bar = os.path.join(cwd, self.BAR)
         ret = main(["add", bar])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         d = load_stage_file("bar.dvc")
-        self.assertEqual(d["outs"][0]["path"], bar)
+        assert d["outs"][0]["path"] == bar
 
 
 class TestCmdAdd(TestDvc):
     def test(self):
         ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         ret = main(["add", "non-existing-file"])
-        self.assertNotEqual(ret, 0)
+        assert ret != 0
 
 
 class TestDoubleAddUnchanged(TestDvc):
     def test_file(self):
         ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         ret = main(["add", self.FOO])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
     def test_dir(self):
         ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
         ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
 
 class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
@@ -228,19 +229,19 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
         with patch.object(dvc.state, "file_md5", file_md5_counter):
 
             ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
+            assert ret == 0
 
             ret = main(["add", self.FOO])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 1
 
             ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 1
 
             ret = main(["run", "-d", self.FOO, "cat {}".format(self.FOO)])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 1)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 1
 
 
 class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
@@ -249,34 +250,34 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
         with patch.object(dvc.state, "file_md5", file_md5_counter):
 
             ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
+            assert ret == 0
 
             ret = main(["add", self.DATA_DIR])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 3
 
             ret = main(["status"])
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 3
 
             ret = main(
                 ["run", "-d", self.DATA_DIR, "ls {}".format(self.DATA_DIR)]
             )
-            self.assertEqual(ret, 0)
-            self.assertEqual(file_md5_counter.mock.call_count, 3)
+            assert ret == 0
+            assert file_md5_counter.mock.call_count == 3
 
 
 class TestAddCommit(TestDvc):
     def test(self):
         ret = main(["add", self.FOO, "--no-commit"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
+        assert ret == 0
+        assert os.path.isfile(self.FOO)
+        assert len(os.listdir(self.dvc.cache.local.cache_dir)) == 0
 
         ret = main(["commit", self.FOO + ".dvc"])
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
+        assert ret == 0
+        assert os.path.isfile(self.FOO)
+        assert len(os.listdir(self.dvc.cache.local.cache_dir)) == 1
 
 
 class TestShouldNotCheckCacheForDirIfCacheMetadataDidNotChange(TestDvc):
@@ -291,15 +292,15 @@ class TestShouldNotCheckCacheForDirIfCacheMetadataDidNotChange(TestDvc):
         ):
 
             ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
+            assert ret == 0
 
             ret = main(["add", self.DATA_DIR])
-            self.assertEqual(ret, 0)
-            self.assertEqual(1, remote_local_loader_spy.mock.call_count)
+            assert ret == 0
+            assert 1 == remote_local_loader_spy.mock.call_count
 
             ret = main(["status", "{}.dvc".format(self.DATA_DIR)])
-            self.assertEqual(ret, 0)
-            self.assertEqual(1, remote_local_loader_spy.mock.call_count)
+            assert ret == 0
+            assert 1 == remote_local_loader_spy.mock.call_count
 
 
 class TestShouldCollectDirCacheOnlyOnce(TestDvc):
@@ -324,14 +325,14 @@ class TestShouldCollectDirCacheOnlyOnce(TestDvc):
                     f.write(str(i))
 
             ret = main(["add", data_dir])
-            self.assertEqual(0, ret)
+            assert 0 == ret
 
             ret = main(["status"])
-            self.assertEqual(0, ret)
+            assert 0 == ret
 
             ret = main(["status"])
-            self.assertEqual(0, ret)
-        self.assertEqual(1, collect_dir_counter.mock.call_count)
+            assert 0 == ret
+        assert 1 == collect_dir_counter.mock.call_count
 
 
 class SymlinkAddTestBase(TestDvc):
@@ -353,16 +354,16 @@ class SymlinkAddTestBase(TestDvc):
         self._prepare_external_data()
 
         ret = main(["add", os.path.join(self.link_name, self.data_file_name)])
-        self.assertEqual(0, ret)
+        assert 0 == ret
 
         stage_file = self.data_file_name + Stage.STAGE_FILE_SUFFIX
-        self.assertTrue(os.path.exists(stage_file))
+        assert os.path.exists(stage_file)
 
         d = load_stage_file(stage_file)
         relative_data_path = posixpath.join(
             self.link_name, self.data_file_name
         )
-        self.assertEqual(relative_data_path, d["outs"][0]["path"])
+        assert relative_data_path == d["outs"][0]["path"]
 
 
 class TestShouldAddDataFromExternalSymlink(SymlinkAddTestBase):
@@ -393,17 +394,15 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
         ):
 
             ret = main(["add", self.DATA])
-            self.assertEqual(0, ret)
+            assert 0 == ret
 
             stage_file_path_on_data_below_symlink = (
                 os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
             )
-            self.assertFalse(
-                os.path.exists(stage_file_path_on_data_below_symlink)
-            )
+            assert not os.path.exists(stage_file_path_on_data_below_symlink)
 
             stage_file_path = self.DATA + Stage.STAGE_FILE_SUFFIX
-            self.assertTrue(os.path.exists(stage_file_path))
+            assert os.path.exists(stage_file_path)
 
 
 class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
@@ -412,7 +411,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
             reset_logger_error_output()
 
             ret = main(["add", self.FOO])
-            self.assertEqual(0, ret)
+            assert 0 == ret
 
             foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
@@ -421,47 +420,47 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
                 file.write("this will break yaml file structure")
 
             ret = main(["add", self.BAR])
-            self.assertEqual(1, ret)
+            assert 1 == ret
 
-            self.assertIn(
+            assert (
                 "unable to read stage file: {} "
-                "YAML file structure is corrupted".format(foo_stage),
-                logger.handlers[1].stream.getvalue(),
+                "YAML file structure is corrupted".format(foo_stage)
+                in logger.handlers[1].stream.getvalue()
             )
 
 
 class TestAddFilename(TestDvc):
     def test(self):
         ret = main(["add", self.FOO, self.BAR, "-f", "error.dvc"])
-        self.assertNotEqual(0, ret)
+        assert 0 != ret
 
         ret = main(["add", "-R", self.DATA_DIR, "-f", "error.dvc"])
-        self.assertNotEqual(0, ret)
+        assert 0 != ret
 
-        with self.assertRaises(RecursiveAddingWhileUsingFilename):
+        with pytest.raises(RecursiveAddingWhileUsingFilename):
             self.dvc.add(self.DATA_DIR, recursive=True, fname="error.dvc")
 
         ret = main(["add", self.DATA_DIR, "-f", "data_directory.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("data_directory.dvc"))
+        assert 0 == ret
+        assert os.path.exists("data_directory.dvc")
 
         ret = main(["add", self.FOO, "-f", "bar.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-        self.assertFalse(os.path.exists("foo.dvc"))
+        assert 0 == ret
+        assert os.path.exists("bar.dvc")
+        assert not os.path.exists("foo.dvc")
 
         os.remove("bar.dvc")
 
         ret = main(["add", self.FOO, "--file", "bar.dvc"])
-        self.assertEqual(0, ret)
-        self.assertTrue(os.path.exists("bar.dvc"))
-        self.assertFalse(os.path.exists("foo.dvc"))
+        assert 0 == ret
+        assert os.path.exists("bar.dvc")
+        assert not os.path.exists("foo.dvc")
 
 
 class TestShouldCleanUpAfterFailedAdd(TestDvc):
     def test(self):
         ret = main(["add", self.FOO])
-        self.assertEqual(0, ret)
+        assert 0 == ret
 
         foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
         # corrupt stage file
@@ -469,13 +468,13 @@ class TestShouldCleanUpAfterFailedAdd(TestDvc):
             file.write("this will break yaml file structure")
 
         ret = main(["add", self.BAR])
-        self.assertEqual(1, ret)
+        assert 1 == ret
 
         bar_stage_file = self.BAR + Stage.STAGE_FILE_SUFFIX
-        self.assertFalse(os.path.exists(bar_stage_file))
+        assert not os.path.exists(bar_stage_file)
 
         gitignore_content = get_gitignore_content()
-        self.assertFalse(any(self.BAR in line for line in gitignore_content))
+        assert not any(self.BAR in line for line in gitignore_content)
 
 
 class TestShouldNotTrackGitInternalFiles(TestDvc):
@@ -484,8 +483,8 @@ class TestShouldNotTrackGitInternalFiles(TestDvc):
 
         with patch.object(dvc.repo.add, "_create_stages", stage_creator_spy):
             ret = main(["add", "-R", self.dvc.root_dir])
-            self.assertEqual(0, ret)
+            assert 0 == ret
 
         created_stages_filenames = stage_creator_spy.mock.call_args[0][0]
         for fname in created_stages_filenames:
-            self.assertNotIn(".git", fname)
+            assert ".git" not in fname
