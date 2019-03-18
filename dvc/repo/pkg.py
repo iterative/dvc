@@ -21,7 +21,7 @@ class PackageManager(object):
     def get_package(addr):
         for pkg_class in [GitPackage]:
             try:
-                return pkg_class(addr)
+                return pkg_class()
             except Exception:
                 pass
         return None
@@ -33,7 +33,7 @@ class PackageManager(object):
 class Package(object):
     MODULES_DIR = 'dvc_mod'
 
-    def install_or_update(self, repo, target_dir, outs_filter, file):
+    def install_or_update(self, parent_repo, addr, target_dir, outs_filter, file):
         raise NotImplementedError('A method of abstract Package class was called')
 
     def is_in_root(self):
@@ -43,10 +43,7 @@ class Package(object):
 class GitPackage(Package):
     DEF_DVC_FILE_PREFIX = 'mod_'
 
-    def __init__(self, addr):
-        self._addr = addr
-
-    def install_or_update(self, parent_repo, target_dir, outs_filter, file):
+    def install_or_update(self, parent_repo, addr, target_dir, outs_filter, file):
         if not self.is_in_root():
             raise DvcException('This command can be run only from a repository root')
 
@@ -55,11 +52,11 @@ class GitPackage(Package):
             os.makedirs(self.MODULES_DIR)
             parent_repo.scm.ignore(os.path.abspath(self.MODULES_DIR))
 
-        module_name = Git.polish_url(self._addr).strip('/').split('/')[-1]
+        module_name = Git.polish_url(addr).strip('/').split('/')[-1]
         if not module_name:
             raise DvcException('Package address error: unable to extract package name')
 
-        with TempGitRepo(self._addr, module_name, Package.MODULES_DIR) as tmp_repo:
+        with TempGitRepo(addr, module_name, Package.MODULES_DIR) as tmp_repo:
             outputs_to_copy = tmp_repo.outs
             if outs_filter:
                 outputs_to_copy = list(filter(lambda out: out.dvc_path in outs_filter,
@@ -79,7 +76,7 @@ class GitPackage(Package):
                 raise DvcException("Package '{}' was installed "
                                    "but stage file '{}' "
                                    "was not created properly: {}".format(
-                                        self._addr, dvc_file, ex))
+                                        addr, dvc_file, ex))
 
         parent_repo.checkout(dvc_file)
 
@@ -119,7 +116,7 @@ class GitPackage(Package):
         return dvc_file_path
 
 
-def install_pkg(self, address, target_dir, outs_filter, file):
+def install_pkg(self, address, target_dir, outs_filter=[], file=None):
     """
     Install package.
 
@@ -141,15 +138,15 @@ def install_pkg(self, address, target_dir, outs_filter, file):
                 .format(target_dir))
         return 1
 
-    if not os.path.realpath(target_dir).startswith(os.path.realpath('.')):
-        logger.error('Unable to install package: target directory {} should be'
-                     ' a subdirectory of the current dir'.format(target_dir))
+    if not os.path.realpath(target_dir).startswith(os.path.realpath(os.curdir)):
+        logger.error("Unable to install package: the current dir should be"
+                     " a subdirectory of the target dir {}".format(target_dir))
         return 1
 
     for addr in addresses:
-        pkg = PackageManager.get_package(addr)
         try:
-            pkg.install_or_update(self, target_dir, outs_filter, file)
+            mgr = PackageManager.get_package(addr)
+            mgr.install_or_update(self, addr, target_dir, outs_filter, file)
         except Exception as ex:
             logger.error('Unable to install package: '.format(ex))
             return 1

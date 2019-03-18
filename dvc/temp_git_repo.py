@@ -4,9 +4,16 @@ import tempfile
 
 import git
 
-from dvc import logger as logger
+from dvc import logger
 from dvc.exceptions import DvcException
-from dvc.remote import RemoteLOCAL
+
+
+class TempRepoException(DvcException):
+    """Raise when temporary package repository has not properly created"""
+
+    def __init__(self, temp_repo, msg, cause=None):
+        m = 'temp repository \'{}\' error: {}'.format(temp_repo.addr, msg)
+        super(TempRepoException, self).__init__(m, cause)
 
 
 class TempGitRepo(object):
@@ -38,7 +45,7 @@ class TempGitRepo(object):
             except Exception as ex:
                 msg = 'error in fetching data from {}: {}'.format(
                     os.path.basename(target), ex)
-                raise DvcException(msg)
+                raise TempRepoException(self, msg)
 
     @property
     def is_state_set(self):
@@ -46,7 +53,7 @@ class TempGitRepo(object):
 
     def __enter__(self):
         if self.is_state_set:
-            raise DvcException('Git repo cloning duplication')
+            raise TempRepoException(self, 'Git repo cloning duplication')
 
         module_temp_dir = None
         try:
@@ -70,7 +77,8 @@ class TempGitRepo(object):
                 if os.path.exists(fname):
                     os.remove(fname)
 
-            self._set_state(module_temp_dir, self._read_outputs(module_temp_dir))
+            outputs = self._read_outputs(module_temp_dir)
+            self._set_state(module_temp_dir, outputs)
         finally:
             if not self.is_state_set:
                 if module_temp_dir and os.path.exists(module_temp_dir):
@@ -85,7 +93,7 @@ class TempGitRepo(object):
 
     def persist_to(self, module_dir, parent_repo):
         if not self.is_state_set:
-            raise DvcException('...')
+            raise TempRepoException(self, 'cannot persist')
 
         tmp_repo_cache = self.repo.cache.local.url
 
