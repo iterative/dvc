@@ -146,12 +146,8 @@ class ProgressCallback(object):
         self.current = 0
 
     def update(self, name, progress_to_add=1):
-        import time
-
-        time.sleep(0.5)
         self.current += progress_to_add
         progress.update_target(name, self.current, self.total)
-        time.sleep(0.5)
 
     def finish(self, name):
         progress.finish_target(name)
