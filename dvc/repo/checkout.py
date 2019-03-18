@@ -21,9 +21,7 @@ def get_progress_callback(stages):
     try:
         total_files_num = get_all_files_numbers(stages)
         return ProgressCallback(total_files_num)
-    except CacheNotFoundException:
-        return None
-    except NotImplementedError:
+    except CacheNotFoundException or NotImplementedError:
         return None
 
 
