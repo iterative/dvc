@@ -56,19 +56,24 @@ class TestContainsLink(TestCase):
     def test_should_return_false_on_no_more_dirs_below_path(
         self, dirname_patch, _
     ):
-        self.assertFalse(contains_symlink_up_to("path"))
+        self.assertFalse(
+            contains_symlink_up_to(os.path.join("foo", "path"), "foo")
+        )
         dirname_patch.assert_called_once()
 
     @patch.object(System, "is_symlink", return_value=False)
-    @patch.object(os.path, "dirname", return_value="")
-    def test_should_call_recursive_on_no_condition_matched(self, _, __):
+    def test_should_call_recursive_on_no_condition_matched(self, _):
         contains_symlink_spy = spy(contains_symlink_up_to)
         with patch.object(
             dvc.utils.fs, "contains_symlink_up_to", contains_symlink_spy
         ):
 
             # call from full path to match contains_symlink_spy patch path
-            self.assertFalse(dvc.utils.fs.contains_symlink_up_to("path"))
+            self.assertFalse(
+                dvc.utils.fs.contains_symlink_up_to(
+                    os.path.join("foo", "path"), "foo"
+                )
+            )
             self.assertEqual(2, contains_symlink_spy.mock.call_count)
 
     @patch.object(System, "is_symlink", return_value=True)

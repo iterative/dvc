@@ -1,5 +1,5 @@
 azure-storage-blob==1.3.0
-boto3==1.9.86
+boto3==1.9.115
 ply>=3.9 # See https://github.com/pyinstaller/pyinstaller/issues/1945
 configparser>=3.5.0
 zc.lockfile>=1.2.1

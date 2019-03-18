@@ -38,6 +38,12 @@ class Progress(object):
         self._print(line, end="")
         sys.stdout.flush()
 
+    def reset(self):
+        with self._lock:
+            self._n_total = 0
+            self._n_finished = 0
+            self._line = None
+
     def refresh(self, line=None):
         """Refreshes progress bar."""
         # Just go away if it is locked. Will update next time

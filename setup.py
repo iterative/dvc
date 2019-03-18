@@ -26,7 +26,7 @@ install_requires = [
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
-s3 = ["boto3==1.7.4"]
+s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==1.3.0"]
 ssh = ["paramiko>=2.4.1"]
 all_remotes = gs + s3 + azure + ssh

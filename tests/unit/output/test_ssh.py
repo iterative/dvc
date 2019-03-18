@@ -1,6 +1,6 @@
 from dvc.output.ssh import OutputSSH
 
-from tests.unit.output.local import TestOutputLOCAL
+from tests.unit.output.test_local import TestOutputLOCAL
 
 
 class TestOutputSSH(TestOutputLOCAL):
