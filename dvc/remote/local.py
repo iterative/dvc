@@ -23,7 +23,7 @@ from dvc.remote.base import (
 from dvc.utils import remove, move, copyfile, dict_md5, to_chunks, tmp_fname
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
-from dvc.exceptions import DvcException, CacheNotFoundException
+from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
@@ -739,14 +739,3 @@ class RemoteLOCAL(RemoteBase):
                 "nor on remote. Missing cache files: {}".format(missing_desc)
             )
             logger.warning(msg)
-
-    def get_files_number(self, md5):
-        cache = self.get(md5)
-
-        if not cache:
-            raise CacheNotFoundException(md5)
-
-        if self.is_dir_cache(cache):
-            return len(self.load_dir_cache(md5))
-
-        return 1

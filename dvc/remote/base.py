@@ -362,6 +362,3 @@ class RemoteBase(object):
         self.do_checkout(
             output, force=force, progress_callback=progress_callback
         )
-
-    def get_files_number(self, md5):
-        raise NotImplementedError

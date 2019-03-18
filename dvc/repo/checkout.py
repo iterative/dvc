@@ -23,6 +23,8 @@ def get_progress_callback(stages):
         return ProgressCallback(total_files_num)
     except CacheNotFoundException:
         return None
+    except NotImplementedError:
+        return None
 
 
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):

@@ -202,7 +202,7 @@ class OutputBase(object):
             return
 
         getattr(self.repo.cache, self.scheme).checkout(
-            self, force=force, progress_callback=progress_callback
+            output=self, force=force, progress_callback=progress_callback
         )
 
     def remove(self, ignore_remove=False):
@@ -225,3 +225,6 @@ class OutputBase(object):
 
         if self.scheme == "local" and self.use_cache and self.is_local:
             self.repo.scm.ignore(self.path)
+
+    def get_files_number(self):
+        raise NotImplementedError
