@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import dvc.logger as logger
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, CacheNotFoundException
 from dvc.progress import ProgressCallback
 
 
@@ -21,7 +21,7 @@ def get_progress_callback(stages):
     try:
         total_files_num = get_all_files_numbers(stages)
         return ProgressCallback(total_files_num)
-    except Exception:
+    except CacheNotFoundException:
         return None
 
 

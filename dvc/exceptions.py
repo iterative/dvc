@@ -227,3 +227,9 @@ class RecursiveAddingWhileUsingFilename(DvcException):
         super(RecursiveAddingWhileUsingFilename, self).__init__(
             "using fname with recursive is not allowed."
         )
+
+
+class CacheNotFoundException(DvcException):
+    def __init__(self, md5):
+        msg = "Could not find cache for checksum: {}".format(md5)
+        super(CacheNotFoundException, self).__init__(msg)
