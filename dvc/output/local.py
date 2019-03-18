@@ -151,7 +151,6 @@ class OutputLOCAL(OutputBase):
         return self.dir_cache
 
     def get_files_number(self):
-        raise NotImplementedError
         if self.is_dir_cache:
             return len(self.get_dir_cache())
         else:
