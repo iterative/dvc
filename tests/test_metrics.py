@@ -109,7 +109,7 @@ class TestMetrics(TestDvc):
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_hcsv"], "branch\n" + b)
+            self.assertEqual(ret[b]["metric_hcsv"].split(), ["branch", b])
 
     def test_type_case_normalized(self):
         ret = self.dvc.metrics.show(
