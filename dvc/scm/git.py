@@ -127,7 +127,7 @@ class Git(Base):
         if ignore_list:
             content = "\n" + content
         with open(gitignore, "a") as fobj:
-            fobj.write(content)
+            fobj.write(str(content))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
