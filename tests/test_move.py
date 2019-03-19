@@ -181,5 +181,8 @@ class TestMoveFileInsideDirectory(TestDvc):
             self.assertEqual(ret, 0)
 
         self.assertFalse(os.path.exists(self.DATA))
-        self.assertTrue(os.path.exists(os.path.join(self.DATA_DIR, "data.txt")))
-        self.assertTrue(os.path.exists(os.path.join(self.DATA_DIR, "data.txt.dvc")))
+
+        data_fullpath = os.path.join(self.DATA_DIR, "data.txt")
+        dvc_fullpath = os.path.join(self.DATA_DIR, "data.txt.dvc")
+        self.assertTrue(os.path.exists(data_fullpath))
+        self.assertTrue(os.path.exists(dvc_fullpath))

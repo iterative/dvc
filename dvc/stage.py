@@ -459,7 +459,6 @@ class Stage(object):
         else:
             stage.unprotect_outs()
 
-
         if validate_state:
             if os.path.exists(path):
                 if not ignore_build_cache and stage.is_cached:

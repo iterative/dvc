@@ -20,8 +20,8 @@ class TestDirFixture(object):
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
     DATA = os.path.join(DATA_DIR, "data.csv")
     DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub.csv")
-    DATA_CONTENTS = DATA + ' sOmE randOme stuff'
-    DATA_SUB_CONTENTS = DATA_SUB + 'SOME random STUFF'
+    DATA_CONTENTS = DATA + " sOmE randOme stuff"
+    DATA_SUB_CONTENTS = DATA_SUB + "SOME random STUFF"
     FOO = "foo"
     FOO_CONTENTS = FOO
     BAR = "bar"
@@ -142,9 +142,9 @@ class TestDvcGitInitializedFixture(TestDvcFixture):
 
 
 class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
-    DATA_DVC_FILE = 'data.csv.dvc'
-    DATA_DIR_DVC_FILE = 'data_sub_dir.dvc'
-    REMOTE = 'myremote2'
+    DATA_DVC_FILE = "data.csv.dvc"
+    DATA_DIR_DVC_FILE = "data_sub_dir.dvc"
+    REMOTE = "myremote2"
 
     def __init__(self, root_dir=None, cache_dir=None):
         super(TestDvcDataFileFixture, self).__init__(root_dir)
@@ -166,20 +166,25 @@ class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
                 default = True
                 name = self.REMOTE
                 url = self.cache_dir
+
             cmd = CmdRemoteAdd(MockConfig())
             cmd.run()
 
-        self.git.index.add([os.path.join(self.DATA_DIR, self.DATA_DVC_FILE),
-                            os.path.join(self.DATA_DIR, self.DATA_DIR_DVC_FILE),
-                            os.path.join(self.DATA_DIR, '.gitignore'),
-                            '.dvc/config',
-                            self.FOO,
-                            self.BAR
-                            ])
-        self.git.index.commit('Hello world commit')
+        self.git.index.add(
+            [
+                os.path.join(self.DATA_DIR, self.DATA_DVC_FILE),
+                os.path.join(self.DATA_DIR, self.DATA_DIR_DVC_FILE),
+                os.path.join(self.DATA_DIR, ".gitignore"),
+                ".dvc/config",
+                self.FOO,
+                self.BAR,
+            ]
+        )
+        self.git.index.commit("Hello world commit")
 
 
 # Inheritance order in the classes below is important.
+
 
 class TestDir(TestDirFixture, TestCase):
     def __init__(self, methodName, root_dir=None):
@@ -206,8 +211,8 @@ class TestDvc(TestDvcFixture, TestCase):
 
 
 class TestDvcPkg(TestDvcFixture, TestCase):
-    GIT_PKG = 'git_pkg'
-    CACHE_DIR = 'mycache'
+    GIT_PKG = "git_pkg"
+    CACHE_DIR = "mycache"
 
     def __init__(self, methodName, root_dir=None):
         TestDvcFixture.__init__(self, root_dir)
@@ -215,6 +220,7 @@ class TestDvcPkg(TestDvcFixture, TestCase):
 
         self.pkg_dir = os.path.join(self._root_dir, self.GIT_PKG)
         cache_dir = os.path.join(self._root_dir, self.CACHE_DIR)
-        self.pkg_fixture = TestDvcDataFileFixture(root_dir=self.pkg_dir,
-                                                  cache_dir=cache_dir)
+        self.pkg_fixture = TestDvcDataFileFixture(
+            root_dir=self.pkg_dir, cache_dir=cache_dir
+        )
         self.pkg_fixture.setUp()
