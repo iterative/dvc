@@ -115,14 +115,14 @@ class Git(Base):
         )
         logger.info(msg)
 
-        self._add_entry_to_gitignore(self, entry, gitignore, ignore_list)
+        self._add_entry_to_gitignore(entry, gitignore, ignore_list)
 
         self.track_file(os.path.relpath(gitignore))
 
         self.ignored_paths.append(path)
 
     @staticmethod
-    def _add_entry_to_gitignore(self, entry, gitignore, ignore_list):
+    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
         content = entry
         if ignore_list:
             content = "\n" + content

@@ -1,5 +1,6 @@
-import os
+from __future__ import unicode_literals
 
+import os
 from git import Repo
 
 from dvc.scm import SCM, Base, Git
