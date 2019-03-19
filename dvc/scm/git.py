@@ -85,8 +85,8 @@ class Git(Base):
 
         entry = os.path.relpath(path, ignore_file_dir)
         # NOTE: using '/' prefix to make path unambiguous
-        if len(entry) > 0 and entry[0] != "/":
-            entry = "/" + entry
+        if len(entry) > len(os.sep) and entry[: len(os.sep)] != len(os.sep):
+            entry = os.path.join(os.sep, entry)
 
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
