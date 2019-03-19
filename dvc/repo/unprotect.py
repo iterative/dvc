@@ -6,7 +6,7 @@ import uuid
 
 import dvc.logger as logger
 from dvc.system import System
-from dvc.utils import copyfile, move, remove
+from dvc.utils import copyfile, remove
 from dvc.exceptions import DvcException
 
 
