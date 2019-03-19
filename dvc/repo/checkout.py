@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import dvc.logger as logger
-from dvc.exceptions import DvcException, CacheNotFoundException
+from dvc.exceptions import DvcException
 from dvc.progress import ProgressCallback
 
 
@@ -18,11 +18,10 @@ def get_all_files_numbers(stages):
 
 
 def get_progress_callback(stages):
-    try:
-        total_files_num = get_all_files_numbers(stages)
-        return ProgressCallback(total_files_num)
-    except (CacheNotFoundException, NotImplementedError):
+    total_files_num = get_all_files_numbers(stages)
+    if total_files_num == 0:
         return None
+    return ProgressCallback(total_files_num)
 
 
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):

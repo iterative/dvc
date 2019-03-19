@@ -227,4 +227,4 @@ class OutputBase(object):
             self.repo.scm.ignore(self.path)
 
     def get_files_number(self):
-        raise NotImplementedError
+        return 0
