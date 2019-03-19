@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from dvc.utils.compat import str, open
 
 import os
+import errno
 
 
 class System(object):
@@ -61,8 +62,22 @@ class System(object):
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
+        import dvc.logger as logger
 
-        clib = ctypes.CDLL("libc.dylib")
+        LIBC = "libc.dylib"
+        LIBC_FALLBACK = "/usr/lib/libSystem.dylib"
+        try:
+            clib = ctypes.CDLL(LIBC)
+        except OSError as exc:
+            logger.debug(
+                "unable to access '{}' (errno '{}'). "
+                "Falling back to '{}'.".format(LIBC, exc.errno, LIBC_FALLBACK)
+            )
+            if exc.errno != errno.ENOENT:
+                raise
+            # NOTE: trying to bypass System Integrity Protection (SIP)
+            clib = ctypes.CDLL(LIBC_FALLBACK)
+
         if not hasattr(clib, "clonefile"):
             return -1
 
