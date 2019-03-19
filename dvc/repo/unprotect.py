@@ -21,7 +21,7 @@ def _unprotect_file(path):
         # the temporary name, and then original file should be replaced by new.
         copyfile(path, tmp)
         remove(path)
-        move(tmp, path)
+        os.rename(tmp, path)
 
     else:
         logger.debug(
