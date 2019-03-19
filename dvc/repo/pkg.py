@@ -11,7 +11,7 @@ from dvc.temp_git_repo import TempGitRepo
 
 
 class PackageParams(object):
-    def __init__(self, address, target_dir, select, file):
+    def __init__(self, address, target_dir, select=[], file=None):
         self.address = address
         self.target_dir = target_dir
         self.select = select
@@ -82,10 +82,10 @@ class GitPackage(Package):
             pkg_params.address, module_name, Package.MODULES_DIR
         ) as tmp_repo:
             outputs_to_copy = tmp_repo.outs
-            if pkg_params.filters:
+            if pkg_params.select:
                 outputs_to_copy = list(
                     filter(
-                        lambda out: out.dvc_path in pkg_params.filters,
+                        lambda out: out.dvc_path in pkg_params.select,
                         outputs_to_copy,
                     )
                 )

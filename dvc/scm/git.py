@@ -115,22 +115,19 @@ class Git(Base):
         )
         logger.info(msg)
 
-        self._add_entry_to_gitignore(entry, gitignore, ignore_list)
+        self._add_entry_to_gitignore(self, entry, gitignore, ignore_list)
 
-        if self.repo is not None:
-            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
+        self.track_file(os.path.relpath(gitignore))
+
+        self.ignored_paths.append(path)
 
     @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
+    def _add_entry_to_gitignore(self, entry, gitignore, ignore_list):
         content = entry
         if ignore_list:
             content = "\n" + content
         with open(gitignore, "a") as fobj:
             fobj.write(content)
-
-        self.track_file(os.path.relpath(gitignore))
-
-        self.ignored_paths.append(path)
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
