@@ -128,6 +128,10 @@ class TestCacheLinkType(TestDvc):
 
 
 class TestCmdCacheDir(TestDvc):
+    def test(self):
+        ret = main(["cache", "dir"])
+        self.assertEqual(ret, 254)
+
     def test_abs_path(self):
         dname = os.path.join(os.path.dirname(self._root_dir), "dir")
         ret = main(["cache", "dir", dname])
