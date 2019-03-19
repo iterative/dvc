@@ -242,6 +242,6 @@ def load_stage_file(path):
 
 
 def walk_files(directory):
-    for root, _, files in os.walk(directory):
+    for root, _, files in os.walk(str(directory)):
         for f in files:
             yield os.path.join(root, f)

@@ -20,7 +20,15 @@ from dvc.remote.base import (
     STATUS_DELETED,
     STATUS_MISSING,
 )
-from dvc.utils import remove, move, copyfile, dict_md5, to_chunks, tmp_fname
+from dvc.utils import (
+    remove,
+    move,
+    copyfile,
+    dict_md5,
+    to_chunks,
+    tmp_fname,
+    walk_files,
+)
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -353,11 +361,7 @@ class RemoteLOCAL(RemoteBase):
         return not self.changed_cache(current_md5)
 
     def _discard_working_directory_changes(self, path, dir_info, force=False):
-        working_dir_files = set(
-            os.path.join(root, file)
-            for root, _, files in os.walk(str(path))
-            for file in files
-        )
+        working_dir_files = set(path for path in walk_files(path))
 
         cached_files = set(
             os.path.join(path, file["relpath"]) for file in dir_info

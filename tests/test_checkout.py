@@ -8,6 +8,7 @@ import collections
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
+from dvc.utils import walk_files
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
@@ -121,10 +122,7 @@ class CheckoutBase(TestDvc):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
 
         paths = [
-            os.path.join(root, file)
-            for output in stage.outs
-            for root, _, files in os.walk(output.path)
-            for file in files
+            path for output in stage.outs for path in walk_files(output.path)
         ]
 
         return [
