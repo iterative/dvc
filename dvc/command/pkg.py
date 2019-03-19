@@ -3,15 +3,19 @@ from __future__ import unicode_literals
 import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers
+from dvc.repo.pkg import PackageParams
 
 
 class CmdPkg(CmdBase):
     def run(self, unlock=False):
         try:
-            return self.repo.install_pkg(self.args.address,
-                                         self.args.target_dir,
-                                         self.args.select,
-                                         self.args.file)
+            pkg_params = PackageParams(
+                self.args.address,
+                self.args.target_dir,
+                self.args.select,
+                self.args.file,
+            )
+            return self.repo.install_pkg(pkg_params)
         except DvcException:
             logger.error(
                 "failed to install package '{}'".format(self.args.address)
@@ -25,15 +29,11 @@ def add_parser(subparsers, parent_parser):
 
     PKG_HELP = "Manage packages and modules"
     pkg_parser = subparsers.add_parser(
-        "pkg",
-        parents=[parent_parser],
-        description=PKG_HELP,
-        help=PKG_HELP,
+        "pkg", parents=[parent_parser], description=PKG_HELP, help=PKG_HELP
     )
 
     pkg_subparsers = pkg_parser.add_subparsers(
-        dest="cmd",
-        help="Use dvc pkg CMD --help for command-specific help.",
+        dest="cmd", help="Use dvc pkg CMD --help for command-specific help."
     )
 
     fix_subparsers(pkg_subparsers)
@@ -49,7 +49,7 @@ def add_parser(subparsers, parent_parser):
         "address",
         nargs="?",
         default="",
-        help="Package address: git://<url> or https://github.com/..."
+        help="Package address: git://<url> or https://github.com/...",
     )
     pkg_install_parser.add_argument(
         "target_dir",
@@ -57,7 +57,7 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=".",
         help="Target directory to deploy package outputs. "
-             "Default value is the current dir."
+        "Default value is the current dir.",
     )
     pkg_install_parser.add_argument(
         "-s",
@@ -66,8 +66,8 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Select and persist only specified outputs from a package. "
-             "The parameter can be used multiple times. "
-             "All outputs will be selected by default.",
+        "The parameter can be used multiple times. "
+        "All outputs will be selected by default.",
     )
     pkg_install_parser.add_argument(
         "-f",

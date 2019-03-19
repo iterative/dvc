@@ -12,7 +12,12 @@ import os
 
 import dvc.logger as logger
 from dvc.utils import fix_env
-from dvc.scm.base import Base, SCMError, FileNotInRepoError, FileNotInTargetSubdir
+from dvc.scm.base import (
+    Base,
+    SCMError,
+    FileNotInRepoError,
+    FileNotInTargetSubdir,
+)
 
 
 class Git(Base):
@@ -70,9 +75,13 @@ class Git(Base):
         assert os.path.isabs(ignore_file_dir)
 
         if not path.startswith(ignore_file_dir):
-            msg = "{} file has to be located in one of '{}' subdirectories"\
-                  ", not outside '{}'"
-            raise FileNotInTargetSubdir(msg.format(self.GITIGNORE, path, ignore_file_dir))
+            msg = (
+                "{} file has to be located in one of '{}' subdirectories"
+                ", not outside '{}'"
+            )
+            raise FileNotInTargetSubdir(
+                msg.format(self.GITIGNORE, path, ignore_file_dir)
+            )
 
         entry = os.path.relpath(path, ignore_file_dir)
         # NOTE: using '/' prefix to make path unambiguous
@@ -87,17 +96,18 @@ class Git(Base):
         return entry, gitignore
 
     def ignore(self, path, in_curr_dir=False):
-        base_dir = os.path.realpath(os.curdir) if in_curr_dir else os.path.dirname(path)
+        base_dir = (
+            os.path.realpath(os.curdir)
+            if in_curr_dir
+            else os.path.dirname(path)
+        )
         entry, gitignore = self._get_gitignore(path, base_dir)
 
         ignore_list = []
         if os.path.exists(gitignore):
             with open(gitignore, "r") as f:
                 ignore_list = f.readlines()
-            filtered = list(
-                filter(lambda x: x.strip() == entry.strip(), ignore_list)
-            )
-            if filtered:
+            if any(filter(lambda x: x.strip() == entry.strip(), ignore_list)):
                 return
 
         msg = "Adding '{}' to '{}'.".format(
@@ -105,10 +115,16 @@ class Git(Base):
         )
         logger.info(msg)
 
+        self._add_entry_to_gitignore(entry, gitignore, ignore_list)
+
+        if self.repo is not None:
+            self.repo.files_to_git_add.append(os.path.relpath(gitignore))
+
+    @staticmethod
+    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
         content = entry
         if ignore_list:
             content = "\n" + content
-
         with open(gitignore, "a") as fobj:
             fobj.write(content)
 
