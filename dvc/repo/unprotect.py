@@ -6,7 +6,7 @@ import uuid
 
 import dvc.logger as logger
 from dvc.system import System
-from dvc.utils import copyfile, remove
+from dvc.utils import copyfile, remove, walk_files
 from dvc.exceptions import DvcException
 
 
@@ -33,10 +33,8 @@ def _unprotect_file(path):
 
 
 def _unprotect_dir(path):
-    for root, dirs, files in os.walk(str(path)):
-        for f in files:
-            path = os.path.join(root, f)
-            _unprotect_file(path)
+    for path in walk_files(path):
+        _unprotect_file(path)
 
 
 def unprotect(path):
