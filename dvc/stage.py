@@ -396,6 +396,7 @@ class Stage(object):
         overwrite=True,
         ignore_build_cache=False,
         remove_outs=False,
+        validate_state=True,
     ):
         if outs is None:
             outs = []
@@ -458,20 +459,21 @@ class Stage(object):
         else:
             stage.unprotect_outs()
 
-        if os.path.exists(path):
-            if not ignore_build_cache and stage.is_cached:
-                logger.info("Stage is cached, skipping.")
-                return None
+        if validate_state:
+            if os.path.exists(path):
+                if not ignore_build_cache and stage.is_cached:
+                    logger.info("Stage is cached, skipping.")
+                    return None
 
-            msg = (
-                "'{}' already exists. Do you wish to run the command and "
-                "overwrite it?".format(stage.relpath)
-            )
+                msg = (
+                    "'{}' already exists. Do you wish to run the command and "
+                    "overwrite it?".format(stage.relpath)
+                )
 
-            if not overwrite and not prompt.confirm(msg):
-                raise StageFileAlreadyExistsError(stage.relpath)
+                if not overwrite and not prompt.confirm(msg):
+                    raise StageFileAlreadyExistsError(stage.relpath)
 
-            os.unlink(path)
+                os.unlink(path)
 
         return stage
 

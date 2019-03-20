@@ -173,13 +173,16 @@ class TestMoveFileBetweenDirectories(TestDvc):
 
 class TestMoveFileInsideDirectory(TestDvc):
     def test(self):
-        ret = main(["add", "data_dir/data"])
+        ret = main(["add", self.DATA])
         self.assertEqual(ret, 0)
 
-        with cd("data_dir"):
-            ret = main(["move", "data", "data.txt"])
+        with cd(self.DATA_DIR):
+            ret = main(["move", os.path.basename(self.DATA), "data.txt"])
             self.assertEqual(ret, 0)
 
-        self.assertFalse(os.path.exists("data_dir/data"))
-        self.assertTrue(os.path.exists("data_dir/data.txt"))
-        self.assertTrue(os.path.exists("data_dir/data.txt.dvc"))
+        self.assertFalse(os.path.exists(self.DATA))
+
+        data_fullpath = os.path.join(self.DATA_DIR, "data.txt")
+        dvc_fullpath = os.path.join(self.DATA_DIR, "data.txt.dvc")
+        self.assertTrue(os.path.exists(data_fullpath))
+        self.assertTrue(os.path.exists(dvc_fullpath))

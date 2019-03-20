@@ -42,6 +42,17 @@ class OutputLOCAL(OutputBase):
             self.url
         )
 
+    def assign_to_stage_file(self, stage):
+        from dvc.repo import Repo
+
+        fullpath = os.path.abspath(stage.wdir)
+        self.path_info["path"] = os.path.join(fullpath, self.stage_path)
+
+        self.repo = Repo(self.path)
+
+        self.stage = stage
+        return self
+
     @property
     def sep(self):
         return os.sep
@@ -49,6 +60,10 @@ class OutputLOCAL(OutputBase):
     @property
     def rel_path(self):
         return os.path.relpath(self.path)
+
+    @property
+    def stage_path(self):
+        return os.path.relpath(self.path, self.stage.wdir)
 
     @property
     def cache(self):

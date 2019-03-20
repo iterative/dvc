@@ -9,6 +9,7 @@ import argparse
 import dvc.logger as logger
 from dvc.command.base import fix_subparsers
 import dvc.command.init as init
+import dvc.command.pkg as pkg
 import dvc.command.destroy as destroy
 import dvc.command.remove as remove
 import dvc.command.move as move
@@ -36,6 +37,7 @@ from dvc import VERSION
 
 COMMANDS = [
     init,
+    pkg,
     destroy,
     add,
     remove,

@@ -28,6 +28,7 @@ class Repo(object):
     from dvc.repo.status import status
     from dvc.repo.gc import gc
     from dvc.repo.commit import commit
+    from dvc.repo.pkg import install_pkg
 
     def __init__(self, root_dir=None):
         from dvc.config import Config

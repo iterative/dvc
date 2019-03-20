@@ -675,7 +675,7 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         )
 
         self.dvc.add(self.DATA)
-        self.dvc.add(self.DATA_SUB_CONTENTS)
+        self.dvc.add(self.DATA_SUB)
 
     def _remove_local_data_files(self):
         os.remove(self.DATA)
