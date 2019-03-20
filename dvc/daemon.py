@@ -83,7 +83,7 @@ def daemon(args):
         os.path.dirname(os.path.dirname(file_path))
     )
 
-    logger.debug("Trying to spawn '{}' with env '{}'".format(cmd, env))
+    logger.debug("Trying to spawn '{}'".format(cmd))
 
     if os.name == "nt":
         _spawn_windows(cmd, env)
