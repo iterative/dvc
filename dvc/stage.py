@@ -208,13 +208,12 @@ class Stage(object):
             return True
 
         for dep in self.deps:
-            if dep.changed():
+            status = dep.status()
+            if status:
                 logger.warning(
                     "Dependency '{dep}' of '{stage}' changed because it is "
                     "'{status}'.".format(
-                        dep=dep,
-                        stage=self.relpath,
-                        status=dep.status()[str(dep)],
+                        dep=dep, stage=self.relpath, status=status[str(dep)]
                     )
                 )
                 return True
@@ -223,13 +222,12 @@ class Stage(object):
 
     def _changed_outs(self):
         for out in self.outs:
-            if out.changed():
+            status = out.status()
+            if status:
                 logger.warning(
                     "Output '{out}' of '{stage}' changed because it is "
                     "'{status}'".format(
-                        out=out,
-                        stage=self.relpath,
-                        status=out.status()[str(out)],
+                        out=out, stage=self.relpath, status=status[str(out)]
                     )
                 )
                 return True
