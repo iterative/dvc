@@ -29,7 +29,7 @@ def add_parser(subparsers, parent_parser):
 
     PKG_HELP = "Manage packages and modules"
     pkg_parser = subparsers.add_parser(
-        "pkg", parents=[parent_parser], description=PKG_HELP, help=PKG_HELP
+        "pkg", parents=[parent_parser], description=PKG_HELP, add_help=False
     )
 
     pkg_subparsers = pkg_parser.add_subparsers(
