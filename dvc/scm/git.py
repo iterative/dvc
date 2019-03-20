@@ -84,6 +84,7 @@ class Git(Base):
             )
 
         entry = os.path.relpath(path, ignore_file_dir)
+        entry.replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
