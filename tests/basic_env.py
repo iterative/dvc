@@ -18,10 +18,10 @@ class TestDirFixture(object):
     )
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
-    DATA = os.path.join(DATA_DIR, "data.csv")
-    DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub.csv")
-    DATA_CONTENTS = DATA + " sOmE randOme stuff"
-    DATA_SUB_CONTENTS = DATA_SUB + "SOME random STUFF"
+    DATA = os.path.join(DATA_DIR, "data")
+    DATA_SUB = os.path.join(DATA_SUB_DIR, "data_sub")
+    DATA_CONTENTS = DATA
+    DATA_SUB_CONTENTS = DATA_SUB
     FOO = "foo"
     FOO_CONTENTS = FOO
     BAR = "bar"
@@ -44,9 +44,9 @@ class TestDirFixture(object):
     def __init__(self, root_dir=None):
         if root_dir:
             os.mkdir(root_dir)
-            self._root_dir = os.path.realpath(root_dir)
         else:
-            self._root_dir = os.path.realpath(TestDirFixture.mkdtemp())
+            root_dir = self.mkdtemp()
+        self._root_dir = os.path.realpath(root_dir)
 
     def _pushd(self, d):
         self._saved_dir = os.path.realpath(os.curdir)
@@ -86,9 +86,6 @@ class TestDirFixture(object):
 
 class TestGitFixture(TestDirFixture):
     N_RETRIES = 5
-
-    def __init__(self, root_dir=None):
-        super(TestGitFixture, self).__init__(root_dir)
 
     def setUp(self):
         super(TestGitFixture, self).setUp()
@@ -142,7 +139,7 @@ class TestDvcGitInitializedFixture(TestDvcFixture):
 
 
 class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
-    DATA_DVC_FILE = "data.csv.dvc"
+    DATA_DVC_FILE = "data.dvc"
     DATA_DIR_DVC_FILE = "data_sub_dir.dvc"
     REMOTE = "myremote2"
 
@@ -183,7 +180,7 @@ class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
         self.git.index.commit("Hello world commit")
 
 
-# Inheritance order in the classes below is important.
+# NOTE: Inheritance order in the classes below is important.
 
 
 class TestDir(TestDirFixture, TestCase):

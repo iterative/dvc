@@ -17,7 +17,7 @@ class FileNotInRepoError(DvcException):
     """
 
 
-class FileNotInTargetSubdir(DvcException):
+class FileNotInTargetSubdirError(DvcException):
     """Thrown when trying to place .gitignore for a file that not in
     the file subdirectory."""
 

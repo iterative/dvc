@@ -16,7 +16,7 @@ from dvc.scm.base import (
     Base,
     SCMError,
     FileNotInRepoError,
-    FileNotInTargetSubdir,
+    FileNotInTargetSubdirError,
 )
 
 
@@ -79,7 +79,7 @@ class Git(Base):
                 "{} file has to be located in one of '{}' subdirectories"
                 ", not outside '{}'"
             )
-            raise FileNotInTargetSubdir(
+            raise FileNotInTargetSubdirError(
                 msg.format(self.GITIGNORE, path, ignore_file_dir)
             )
 

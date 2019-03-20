@@ -43,10 +43,10 @@ class OutputLOCAL(OutputBase):
         )
 
     def assign_to_stage_file(self, stage):
-        fullpath = os.path.abspath(stage.wdir)
-        self.path_info["path"] = os.path.join(fullpath, self.dvc_path)
-
         from dvc.repo import Repo
+
+        fullpath = os.path.abspath(stage.wdir)
+        self.path_info["path"] = os.path.join(fullpath, self.stage_path)
 
         self.repo = Repo(self.path)
 
@@ -62,7 +62,7 @@ class OutputLOCAL(OutputBase):
         return os.path.relpath(self.path)
 
     @property
-    def dvc_path(self):
+    def stage_path(self):
         return os.path.relpath(self.path, self.stage.wdir)
 
     @property

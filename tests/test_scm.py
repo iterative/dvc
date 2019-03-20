@@ -5,7 +5,7 @@ from git import Repo
 
 from dvc.utils.compat import str  # noqa: F401
 from dvc.scm import SCM, Base, Git
-from dvc.scm.base import FileNotInTargetSubdir
+from dvc.scm.base import FileNotInTargetSubdirError
 
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 from tests.utils import get_gitignore_content
@@ -121,5 +121,5 @@ class TestIgnore(TestGit):
         data_dir1 = os.path.join(self._root_dir, file_double_dir)
         ignore_file_dir = os.path.realpath(os.path.join("aa", "bb"))
 
-        with self.assertRaises(FileNotInTargetSubdir):
+        with self.assertRaises(FileNotInTargetSubdirError):
             git._get_gitignore(data_dir1, ignore_file_dir)
