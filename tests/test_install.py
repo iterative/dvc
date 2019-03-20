@@ -20,6 +20,8 @@ class TestInstall(TestDvc):
         self.assertTrue(os.path.isfile(hook("pre-commit")))
 
         self.dvc.add(self.FOO)
+        self.dvc.scm.add([".gitignore", self.FOO + ".dvc"])
+        self.dvc.scm.commit("add")
         os.unlink(self.FOO)
 
         self.dvc.scm.checkout("branch", create_new=True)

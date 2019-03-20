@@ -489,7 +489,7 @@ class TestCachedMetrics(TestDvc):
         self.assertIsNotNone(stage)
         self.assertEqual(stage.relpath, "metrics.json.dvc")
 
-        self.dvc.scm.add([".gitignore", "metrics.json.dvc"])
+        self.dvc.scm.add(["code.py", ".gitignore", "metrics.json.dvc"])
         self.dvc.scm.commit(branch)
 
     def _test_metrics(self, func):
@@ -501,6 +501,10 @@ class TestCachedMetrics(TestDvc):
         func("master")
         func("one")
         func("two")
+
+        # TestDvc currently is based on TestGit, so it is safe to use
+        # scm.git for now
+        self.dvc.scm.git.git.clean("-fd")
 
         self.dvc = DvcRepo(".")
 
