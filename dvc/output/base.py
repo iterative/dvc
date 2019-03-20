@@ -227,4 +227,7 @@ class OutputBase(object):
             self.repo.scm.ignore(self.path)
 
     def get_files_number(self):
+        if self.use_cache and self.checksum:
+            return 1
+
         return 0
