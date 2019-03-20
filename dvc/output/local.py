@@ -33,8 +33,7 @@ class OutputLOCAL(OutputBase):
 
         self.path_info = {"scheme": "local", "path": p}
 
-        self.dir_cache = None
-        self.cached_checksum = None
+        self._dir_cache = {}
 
     def __str__(self):
         return self.rel_path
@@ -141,23 +140,19 @@ class OutputLOCAL(OutputBase):
 
         self.info = self.remote.save_info(self.path_info)
 
-    def get_dir_cache(self):
-        if not self.dir_cache or self.checksum_changed():
-            self.dir_cache = self.repo.cache.local.load_dir_cache(
+    @property
+    def dir_cache(self):
+        if self.checksum not in self._dir_cache.keys():
+            self._dir_cache[
                 self.checksum
-            )
-            self.cached_checksum = self.checksum
+            ] = self.repo.cache.local.load_dir_cache(self.checksum)
 
-        return self.dir_cache
+        return self._dir_cache[self.checksum]
 
     def get_files_number(self):
         if self.cache is None:
             return 0
 
         if self.is_dir_cache:
-            return len(self.get_dir_cache())
-        else:
-            return 1
-
-    def checksum_changed(self):
-        return self.checksum != self.cached_checksum
+            return len(self.dir_cache)
+        return 1

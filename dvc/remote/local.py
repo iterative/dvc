@@ -314,7 +314,7 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        dir_info = output.get_dir_cache()
+        dir_info = output.dir_cache
         dir_relpath = os.path.relpath(path)
 
         logger.debug("Linking directory '{}'.".format(dir_relpath))
