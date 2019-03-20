@@ -475,7 +475,7 @@ class TestShouldCleanUpAfterFailedAdd(TestDvc):
         self.assertFalse(os.path.exists(bar_stage_file))
 
         gitignore_content = get_gitignore_content()
-        self.assertFalse(any(self.BAR in line for line in gitignore_content))
+        self.assertNotIn("/" + self.BAR, gitignore_content)
 
 
 class TestShouldNotTrackGitInternalFiles(TestDvc):

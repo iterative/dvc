@@ -20,7 +20,7 @@ def spy(method_to_decorate):
 
 def get_gitignore_content():
     with open(Git.GITIGNORE, "r") as gitignore:
-        return gitignore.readlines()
+        return gitignore.read().splitlines()
 
 
 def load_stage_file(path):

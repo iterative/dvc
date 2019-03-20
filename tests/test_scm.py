@@ -64,8 +64,7 @@ class TestSCMGitSubmodule(TestGitSubmodule):
 class TestIgnore(TestGit):
     def _count_gitignore(self):
         lines = get_gitignore_content()
-
-        return len(list(filter(lambda x: x.strip() == "/" + self.FOO, lines)))
+        return len([i for i in lines if i == "/" + self.FOO])
 
     def test_ignore(self):
         git = Git(self._root_dir)
