@@ -85,8 +85,8 @@ class Git(Base):
 
         entry = os.path.relpath(path, ignore_file_dir)
         # NOTE: using '/' prefix to make path unambiguous
-        if len(entry) > len(os.sep) and entry[: len(os.sep)] != len(os.sep):
-            entry = os.path.join(os.sep, entry)
+        if len(entry) > 0 and entry[0] != "/":
+            entry = "/" + entry
 
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
@@ -127,7 +127,7 @@ class Git(Base):
         if ignore_list:
             content = "\n" + content
         with open(gitignore, "a") as fobj:
-            fobj.write(str(content))
+            fobj.write(content)
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)

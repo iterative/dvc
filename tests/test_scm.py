@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 from git import Repo
 
+from dvc.utils.compat import str  # noqa: F401
 from dvc.scm import SCM, Base, Git
 from dvc.scm.base import FileNotInTargetSubdir
 
@@ -67,14 +68,14 @@ class TestIgnore(TestGit):
     def test_get_gitignore(self):
         data_dir = os.path.join(self._root_dir, "file1")
         entry, gitignore = Git(self._root_dir)._get_gitignore(data_dir)
-        self.assertEqual(entry, os.path.join(os.sep, "file1"))
+        self.assertEqual(entry, "/file1")
         self.assertEqual(
             gitignore, os.path.join(self._root_dir, Git.GITIGNORE)
         )
 
         data_dir = os.path.join(self._root_dir, "dir")
         entry, gitignore = Git(self._root_dir)._get_gitignore(data_dir)
-        self.assertEqual(entry, os.path.join(os.sep, "dir"))
+        self.assertEqual(entry, "/dir")
         self.assertEqual(
             gitignore, os.path.join(self._root_dir, Git.GITIGNORE)
         )
@@ -82,14 +83,14 @@ class TestIgnore(TestGit):
     def test_get_gitignore_subdir(self):
         data_dir = os.path.join(self._root_dir, os.path.join("dir1", "file1"))
         entry, gitignore = Git(self._root_dir)._get_gitignore(data_dir)
-        self.assertEqual(entry, os.path.join(os.sep, "file1"))
+        self.assertEqual(entry, "/file1")
         self.assertEqual(
             gitignore, os.path.join(self._root_dir, "dir1", Git.GITIGNORE)
         )
 
         data_dir = os.path.join(self._root_dir, os.path.join("dir1", "dir2"))
         entry, gitignore = Git(self._root_dir)._get_gitignore(data_dir)
-        self.assertEqual(entry, os.path.join(os.sep, "dir2"))
+        self.assertEqual(entry, "/dir2")
         self.assertEqual(
             gitignore, os.path.join(self._root_dir, "dir1", Git.GITIGNORE)
         )
@@ -101,8 +102,7 @@ class TestIgnore(TestGit):
         data_dir1 = os.path.join(self._root_dir, file_double_dir)
         dir1_real1 = os.path.realpath("dir1")
         entry, gitignore = git._get_gitignore(data_dir1, dir1_real1)
-        file_single_dir = os.path.join(os.sep, "dir2", "file1")
-        self.assertEqual(entry, file_single_dir)
+        self.assertEqual(entry, "/dir2/file1")
         gitignore1 = os.path.join(self._root_dir, "dir1", Git.GITIGNORE)
         self.assertEqual(gitignore, gitignore1)
 
@@ -110,7 +110,7 @@ class TestIgnore(TestGit):
         data_dir2 = os.path.join(self._root_dir, triple_dir)
         dir1_real2 = os.path.realpath("dir1")
         entry, gitignore = git._get_gitignore(data_dir2, dir1_real2)
-        self.assertEqual(entry, os.path.join(os.sep, "dir2", "dir3"))
+        self.assertEqual(entry, "/dir2/dir3")
         gitignore2 = os.path.join(self._root_dir, "dir1", Git.GITIGNORE)
         self.assertEqual(gitignore, gitignore2)
 
