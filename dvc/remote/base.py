@@ -322,7 +322,10 @@ class RemoteBase(object):
 
         self.remove(path_info)
 
-    def do_checkout(self, path_info, checksum, force=False):
+    def do_checkout(self, output, force=False, progress_callback=None):
+        path_info = output.path_info
+        checksum = output.info.get(self.PARAM_CHECKSUM)
+
         if self.exists(path_info):
             msg = "data '{}' exists. Removing before checkout."
             logger.warning(msg.format(str(path_info)))
@@ -331,29 +334,31 @@ class RemoteBase(object):
         from_info = self.checksum_to_path_info(checksum)
         self.copy(from_info, path_info)
 
-    def checkout(self, path_info, checksum_info, force=False):
-        scheme = path_info["scheme"]
+    def checkout(self, output, force=False, progress_callback=None):
+        scheme = output.path_info["scheme"]
         if scheme not in ["", "local"] and scheme != self.scheme:
             raise NotImplementedError
 
-        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        checksum = output.info.get(self.PARAM_CHECKSUM)
         if not checksum:
             msg = "No checksum info for '{}'."
-            logger.info(msg.format(str(path_info)))
+            logger.debug(msg.format(str(output.path_info)))
             return
 
-        if not self.changed(path_info, checksum_info):
+        if not self.changed(output.path_info, output.info):
             msg = "Data '{}' didn't change."
-            logger.info(msg.format(str(path_info)))
+            logger.debug(msg.format(str(output.path_info)))
             return
 
         if self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
-            logger.warning(msg.format(checksum, str(path_info)))
-            self.safe_remove(path_info, force=force)
+            logger.warning(msg.format(checksum, str(output.path_info)))
+            self.safe_remove(output.path_info, force=force)
             return
 
         msg = "Checking out '{}' with cache '{}'."
-        logger.info(msg.format(str(path_info), checksum))
+        logger.debug(msg.format(str(output.path_info), checksum))
 
-        self.do_checkout(path_info, checksum, force=force)
+        self.do_checkout(
+            output, force=force, progress_callback=progress_callback
+        )

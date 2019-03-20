@@ -197,12 +197,12 @@ class OutputBase(object):
     def download(self, to_info, resume=False):
         self.remote.download([self.path_info], [to_info], resume=resume)
 
-    def checkout(self, force=False):
+    def checkout(self, force=False, progress_callback=None):
         if not self.use_cache:
             return
 
         getattr(self.repo.cache, self.scheme).checkout(
-            self.path_info, self.info, force=force
+            output=self, force=force, progress_callback=progress_callback
         )
 
     def remove(self, ignore_remove=False):
@@ -225,3 +225,9 @@ class OutputBase(object):
 
         if self.scheme == "local" and self.use_cache and self.is_local:
             self.repo.scm.ignore(self.path)
+
+    def get_files_number(self):
+        if self.use_cache and self.checksum:
+            return 1
+
+        return 0

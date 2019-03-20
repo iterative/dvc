@@ -33,6 +33,8 @@ class OutputLOCAL(OutputBase):
 
         self.path_info = {"scheme": "local", "path": p}
 
+        self._dir_cache = {}
+
     def __str__(self):
         return self.rel_path
 
@@ -68,6 +70,10 @@ class OutputLOCAL(OutputBase):
     @property
     def cache(self):
         return self.repo.cache.local.get(self.checksum)
+
+    @property
+    def is_dir_cache(self):
+        return self.repo.cache.local.is_dir_cache(self.checksum)
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
@@ -133,3 +139,20 @@ class OutputLOCAL(OutputBase):
                 self.repo.scm.ignore(self.path)
 
         self.info = self.remote.save_info(self.path_info)
+
+    @property
+    def dir_cache(self):
+        if self.checksum not in self._dir_cache.keys():
+            self._dir_cache[
+                self.checksum
+            ] = self.repo.cache.local.load_dir_cache(self.checksum)
+
+        return self._dir_cache[self.checksum]
+
+    def get_files_number(self):
+        if self.cache is None:
+            return 0
+
+        if self.is_dir_cache:
+            return len(self.dir_cache)
+        return 1

@@ -8,6 +8,8 @@ from dvc.utils.compat import str
 import sys
 import threading
 
+CLEARLINE_PATTERN = "\r\x1b[K"
+
 
 class Progress(object):
     """
@@ -30,12 +32,12 @@ class Progress(object):
         """Returns if all targets have finished."""
         return self._n_total == self._n_finished
 
-    def _clearln(self):
-        self._print("\r\x1b[K", end="")
+    def clearln(self):
+        self.print(CLEARLINE_PATTERN, end="")
 
     def _writeln(self, line):
-        self._clearln()
-        self._print(line, end="")
+        self.clearln()
+        self.print(line, end="")
         sys.stdout.flush()
 
     def reset(self):
@@ -70,9 +72,9 @@ class Progress(object):
             pbar = self._bar(name, 100, 100)
 
             if sys.stdout.isatty():
-                self._clearln()
+                self.clearln()
 
-            self._print(pbar)
+            self.print(pbar)
 
             self._n_finished += 1
             self._line = None
@@ -104,7 +106,7 @@ class Progress(object):
         return num + pbar + percent + target_name
 
     @staticmethod
-    def _print(*args, **kwargs):
+    def print(*args, **kwargs):
         import dvc.logger as logger
 
         if logger.is_quiet():
@@ -115,7 +117,7 @@ class Progress(object):
     def __enter__(self):
         self._lock.acquire(True)
         if self._line is not None:
-            self._clearln()
+            self.clearln()
 
     def __exit__(self, typ, value, tbck):
         if self._line is not None:
@@ -130,11 +132,25 @@ def progress_aware(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not progress.is_finished:
-            progress._print()
+            progress.print()
+        progress.clearln()
 
         return f(*args, **kwargs)
 
     return wrapper
+
+
+class ProgressCallback(object):
+    def __init__(self, total):
+        self.total = total
+        self.current = 0
+
+    def update(self, name, progress_to_add=1):
+        self.current += progress_to_add
+        progress.update_target(name, self.current, self.total)
+
+    def finish(self, name):
+        progress.finish_target(name)
 
 
 progress = Progress()  # pylint: disable=invalid-name

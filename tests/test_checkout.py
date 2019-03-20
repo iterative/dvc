@@ -1,11 +1,15 @@
 import os
-import mock
+import sys
+import re
+
 import yaml
 import shutil
 import filecmp
 import collections
 
+from dvc.logger import logger
 from dvc.main import main
+from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from tests.basic_env import TestDvc
@@ -15,6 +19,7 @@ from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import DvcException, ConfirmRemoveError
 
 from mock import patch
+from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
 class TestCheckout(TestRepro):
@@ -355,8 +360,8 @@ class TestCheckoutDirectory(TestRepro):
 
 
 class TestCheckoutHook(TestDvc):
-    @mock.patch("sys.stdout.isatty", return_value=True)
-    @mock.patch("dvc.prompt.input", side_effect=EOFError)
+    @patch("sys.stdout.isatty", return_value=True)
+    @patch("dvc.prompt.input", side_effect=EOFError)
     def test(self, mock_input, mock_isatty):
         """ Test that dvc checkout handles EOFError gracefully, which is what
         it will experience when running in a git hook.
@@ -402,3 +407,108 @@ class TestCheckoutSuggestGit(TestRepro):
                     )
                 ),
             )
+
+
+class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
+    def setUp(self):
+        super(TestCheckoutShouldHaveSelfClearingProgressBar, self).setUp()
+        self._prepare_repo()
+
+    def test(self):
+        self._checkout_and_intercept_std_output()
+
+        stdout_calls = self.stdout_mock.method_calls
+        write_calls = self.filter_out_non_write_calls(stdout_calls)
+        write_calls = self.filter_out_empty_write_calls(write_calls)
+        self.write_args = [w_c[1][0] for w_c in write_calls]
+
+        progress_bars = self.get_progress_bars()
+        update_bars = progress_bars[:-1]
+        finish_bar = progress_bars[-1]
+
+        self.assertEqual(4, len(update_bars))
+        self.assertRegexpMatches(progress_bars[0], ".*\\[#{7} {23}\\] 25%.*")
+        self.assertRegexpMatches(progress_bars[1], ".*\\[#{15} {15}\\] 50%.*")
+        self.assertRegexpMatches(progress_bars[2], ".*\\[#{22} {8}\\] 75%.*")
+        self.assertRegexpMatches(progress_bars[3], ".*\\[#{30}\\] 100%.*")
+
+        self.assertCaretReturnFollowsEach(update_bars)
+        self.assertNewLineFollows(finish_bar)
+
+        self.assertAnyEndsWith(update_bars, self.FOO)
+        self.assertAnyEndsWith(update_bars, self.BAR)
+        self.assertAnyEndsWith(update_bars, self.DATA)
+        self.assertAnyEndsWith(update_bars, self.DATA_SUB)
+
+        self.assertTrue(finish_bar.endswith("Checkout finished!"))
+
+    def filter_out_empty_write_calls(self, calls):
+        def is_not_empty_write(call):
+            assert call[0] == "write"
+            return call[1][0] != ""
+
+        return list(filter(is_not_empty_write, calls))
+
+    def filter_out_non_write_calls(self, calls):
+        def is_write_call(call):
+            return call[0] == "write"
+
+        return list(filter(is_write_call, calls))
+
+    def _prepare_repo(self):
+        storage = self.mkdtemp()
+
+        ret = main(["remote", "add", "-d", "myremote", storage])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(0, ret)
+
+        ret = main(["add", self.BAR])
+        self.assertEqual(0, ret)
+
+        ret = main(["push"])
+        self.assertEqual(0, ret)
+
+        shutil.rmtree(self.DATA_DIR)
+        os.unlink(self.FOO)
+        os.unlink(self.BAR)
+
+    def _checkout_and_intercept_std_output(self):
+        with MockLoggerHandlers(
+            logger
+        ), ConsoleFontColorsRemover(), patch.object(
+            sys, "stdout"
+        ) as stdout_mock:
+            self.stdout_mock = logger.handlers[0].stream = stdout_mock
+
+            ret = main(["checkout"])
+            self.assertEqual(0, ret)
+
+    def get_progress_bars(self):
+        pattern = re.compile(".*\\[.{30}\\].*%.*")
+        return [arg for arg in self.write_args if pattern.match(arg)]
+
+    def assertCaretReturnFollowsEach(self, update_bars):
+        for update_bar in update_bars:
+
+            self.assertIn(update_bar, self.write_args)
+
+            for index, arg in enumerate(self.write_args):
+                if arg == update_bar:
+                    self.assertEqual(
+                        progress.CLEARLINE_PATTERN, self.write_args[index + 1]
+                    )
+
+    def assertNewLineFollows(self, finish_bar):
+        self.assertIn(finish_bar, self.write_args)
+
+        for index, arg in enumerate(self.write_args):
+            if arg == finish_bar:
+                self.assertEqual("\n", self.write_args[index + 1])
+
+    def assertAnyEndsWith(self, update_bars, name):
+        self.assertTrue(any(ub for ub in update_bars if ub.endswith(name)))
