@@ -83,8 +83,7 @@ class Git(Base):
                 msg.format(self.GITIGNORE, path, ignore_file_dir)
             )
 
-        entry = os.path.relpath(path, ignore_file_dir)
-        entry.replace(os.sep, "/")
+        entry = os.path.relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
