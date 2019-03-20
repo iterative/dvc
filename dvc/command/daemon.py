@@ -43,7 +43,7 @@ def add_parser(subparsers, parent_parser):
         "daemon",
         parents=[parent_parser],
         description=DAEMON_HELP,
-        help=DAEMON_HELP,
+        add_help=False,
     )
 
     daemon_subparsers = daemon_parser.add_subparsers(
