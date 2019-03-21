@@ -1,10 +1,15 @@
 import os
+import sys
+import unittest
 
 from dvc.main import main
 
 from tests.basic_env import TestDvc
 
 
+@unittest.skipIf(
+    sys.platform == "win32", "Git hooks aren't supported on Windows"
+)
 class TestInstall(TestDvc):
     def test(self):
         ret = main(["install"])
