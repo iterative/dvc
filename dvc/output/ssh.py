@@ -12,10 +12,23 @@ class OutputSSH(OutputBase):
     REMOTE = RemoteSSH
 
     def __init__(
-        self, stage, path, info=None, remote=None, cache=True, metric=False
+        self,
+        stage,
+        path,
+        info=None,
+        remote=None,
+        cache=True,
+        metric=False,
+        persist=False,
     ):
         super(OutputSSH, self).__init__(
-            stage, path, info=info, remote=remote, cache=cache, metric=metric
+            stage,
+            path,
+            info=info,
+            remote=remote,
+            cache=cache,
+            metric=metric,
+            persist=persist,
         )
         parsed = urlparse(path)
         host = remote.host if remote else parsed.hostname

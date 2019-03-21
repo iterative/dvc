@@ -262,18 +262,19 @@ class Stage(object):
     def remove_outs(self, ignore_remove=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            logger.debug(
-                "Removing output '{out}' of '{stage}'.".format(
-                    out=out, stage=self.relpath
+            if out.persist:
+                out.unprotect()
+            else:
+                logger.debug(
+                    "Removing output '{out}' of '{stage}'.".format(
+                        out=out, stage=self.relpath
+                    )
                 )
-            )
-            out.remove(ignore_remove=ignore_remove)
+                out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
         for out in self.outs:
-            if out.scheme != "local" or not out.exists:
-                continue
-            self.repo.unprotect(out.path)
+            out.unprotect()
 
     def remove(self):
         self.remove_outs(ignore_remove=True)
@@ -407,6 +408,8 @@ class Stage(object):
         ignore_build_cache=False,
         remove_outs=False,
         validate_state=True,
+        outs_persist=None,
+        outs_persist_no_cache=None,
     ):
         if outs is None:
             outs = []
@@ -418,6 +421,10 @@ class Stage(object):
             metrics = []
         if metrics_no_cache is None:
             metrics_no_cache = []
+        if outs_persist is None:
+            outs_persist = []
+        if outs_persist_no_cache is None:
+            outs_persist_no_cache = []
 
         # Backward compatibility for `cwd` option
         if wdir is None and cwd is not None:
@@ -434,13 +441,14 @@ class Stage(object):
 
         stage = Stage(repo=repo, wdir=wdir, cmd=cmd, locked=locked)
 
-        stage.outs = output.loads_from(stage, outs, use_cache=True)
-        stage.outs += output.loads_from(
-            stage, metrics, use_cache=True, metric=True
-        )
-        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.outs += output.loads_from(
-            stage, metrics_no_cache, use_cache=False, metric=True
+        Stage._fill_stage_outputs(
+            stage,
+            outs,
+            outs_no_cache,
+            metrics,
+            metrics_no_cache,
+            outs_persist,
+            outs_persist_no_cache,
         )
         stage.deps = dependency.loads_from(stage, deps)
 
@@ -486,6 +494,31 @@ class Stage(object):
                 os.unlink(path)
 
         return stage
+
+    @staticmethod
+    def _fill_stage_outputs(
+        stage,
+        outs,
+        outs_no_cache,
+        metrics,
+        metrics_no_cache,
+        outs_persist,
+        outs_persist_no_cache,
+    ):
+        stage.outs = output.loads_from(stage, outs, use_cache=True)
+        stage.outs += output.loads_from(
+            stage, metrics, use_cache=True, metric=True
+        )
+        stage.outs += output.loads_from(
+            stage, outs_persist, use_cache=True, persist=True
+        )
+        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
+        stage.outs += output.loads_from(
+            stage, metrics_no_cache, use_cache=False, metric=True
+        )
+        stage.outs += output.loads_from(
+            stage, outs_persist_no_cache, use_cache=False, persist=True
+        )
 
     @staticmethod
     def _check_dvc_filename(fname):

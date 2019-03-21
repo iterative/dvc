@@ -362,3 +362,7 @@ class RemoteBase(object):
         self.do_checkout(
             output, force=force, progress_callback=progress_callback
         )
+
+    @staticmethod
+    def unprotect(path_info):
+        pass

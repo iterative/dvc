@@ -101,11 +101,9 @@ class Repo(object):
         init(root_dir=root_dir, no_scm=no_scm, force=force)
         return Repo(root_dir)
 
-    @staticmethod
-    def unprotect(target):
-        from dvc.repo.unprotect import unprotect
-
-        return unprotect(target)
+    def unprotect(self, target):
+        path_info = {"schema": "local", "path": target}
+        return self.cache.local.unprotect(path_info)
 
     def _ignore(self):
         flist = [

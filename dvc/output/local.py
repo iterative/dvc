@@ -14,10 +14,23 @@ class OutputLOCAL(OutputBase):
     REMOTE = RemoteLOCAL
 
     def __init__(
-        self, stage, path, info=None, remote=None, cache=True, metric=False
+        self,
+        stage,
+        path,
+        info=None,
+        remote=None,
+        cache=True,
+        metric=False,
+        persist=False,
     ):
         super(OutputLOCAL, self).__init__(
-            stage, path, info, remote=remote, cache=cache, metric=metric
+            stage,
+            path,
+            info,
+            remote=remote,
+            cache=cache,
+            metric=metric,
+            persist=persist,
         )
         if remote:
             p = os.path.join(

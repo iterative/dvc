@@ -48,23 +48,38 @@ SCHEMA = {
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
     schema.Optional(OutputBase.PARAM_CACHE): bool,
     schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
+    schema.Optional(OutputBase.PARAM_PERSIST): bool,
 }
 
 
-def _get(stage, p, info, cache, metric):
+def _get(stage, p, info, cache, metric, persist):
     parsed = urlparse(p)
     if parsed.scheme == "remote":
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
         sect = stage.repo.config.config[name]
         remote = Remote(stage.repo, sect)
         return OUTS_MAP[remote.scheme](
-            stage, p, info, cache=cache, remote=remote, metric=metric
+            stage,
+            p,
+            info,
+            cache=cache,
+            remote=remote,
+            metric=metric,
+            persist=persist,
         )
 
     for o in OUTS:
         if o.supported(p):
             return o(stage, p, info, cache=cache, remote=None, metric=metric)
-    return OutputLOCAL(stage, p, info, cache=cache, remote=None, metric=metric)
+    return OutputLOCAL(
+        stage,
+        p,
+        info,
+        cache=cache,
+        remote=None,
+        metric=metric,
+        persist=persist,
+    )
 
 
 def loadd_from(stage, d_list):
@@ -73,12 +88,24 @@ def loadd_from(stage, d_list):
         p = d.pop(OutputBase.PARAM_PATH)
         cache = d.pop(OutputBase.PARAM_CACHE, True)
         metric = d.pop(OutputBase.PARAM_METRIC, False)
-        ret.append(_get(stage, p, info=d, cache=cache, metric=metric))
+        persist = d.pop(OutputBase.PARAM_PERSIST, False)
+        ret.append(
+            _get(stage, p, info=d, cache=cache, metric=metric, persist=persist)
+        )
     return ret
 
 
-def loads_from(stage, s_list, use_cache=True, metric=False):
+def loads_from(stage, s_list, use_cache=True, metric=False, persist=False):
     ret = []
     for s in s_list:
-        ret.append(_get(stage, s, info={}, cache=use_cache, metric=metric))
+        ret.append(
+            _get(
+                stage,
+                s,
+                info={},
+                cache=use_cache,
+                metric=metric,
+                persist=persist,
+            )
+        )
     return ret
