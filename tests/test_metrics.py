@@ -109,7 +109,7 @@ class TestMetrics(TestDvc):
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_hcsv"], "branch\n" + b)
+            self.assertEqual(ret[b]["metric_hcsv"].split(), ["branch", b])
 
     def test_type_case_normalized(self):
         ret = self.dvc.metrics.show(
@@ -206,7 +206,9 @@ class TestMetricsRecursive(TestDvc):
 
         self.assertEqual(ret, 0)
 
-        self.dvc.scm.add(["nested"])
+        self.dvc.scm.add(
+            ["nested", "metric_nested.dvc", "metric_subnested.dvc"]
+        )
         self.dvc.scm.commit("nested metrics")
 
         self.dvc.scm.checkout("master")
@@ -489,7 +491,7 @@ class TestCachedMetrics(TestDvc):
         self.assertIsNotNone(stage)
         self.assertEqual(stage.relpath, "metrics.json.dvc")
 
-        self.dvc.scm.add([".gitignore", "metrics.json.dvc"])
+        self.dvc.scm.add(["code.py", ".gitignore", "metrics.json.dvc"])
         self.dvc.scm.commit(branch)
 
     def _test_metrics(self, func):
@@ -501,6 +503,10 @@ class TestCachedMetrics(TestDvc):
         func("master")
         func("one")
         func("two")
+
+        # TestDvc currently is based on TestGit, so it is safe to use
+        # scm.git for now
+        self.dvc.scm.git.git.clean("-fd")
 
         self.dvc = DvcRepo(".")
 

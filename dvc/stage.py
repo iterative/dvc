@@ -14,7 +14,7 @@ import dvc.logger as logger
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env, load_stage_file
+from dvc.utils import dict_md5, fix_env, load_stage_file_fobj
 
 
 class StageCmdFailedError(DvcException):
@@ -171,7 +171,10 @@ class Stage(object):
     @staticmethod
     def is_valid_filename(path):
         return (
-            path.endswith(Stage.STAGE_FILE_SUFFIX)
+            # path.endswith doesn't work for encoded unicode filenames on
+            # Python 2 and since Stage.STAGE_FILE_SUFFIX is ascii then it is
+            # not needed to decode the path from py2's str
+            path[-len(Stage.STAGE_FILE_SUFFIX) :] == Stage.STAGE_FILE_SUFFIX
             or os.path.basename(path) == Stage.STAGE_FILE
         )
 
@@ -488,19 +491,27 @@ class Stage(object):
             )
 
     @staticmethod
-    def _check_file_exists(fname):
-        if not os.path.exists(fname):
+    def _check_file_exists(repo, fname):
+        if not repo.tree.exists(fname):
             raise StageFileDoesNotExistError(fname)
 
     @staticmethod
-    def load(repo, fname):
-        Stage._check_file_exists(fname)
-        Stage._check_dvc_filename(fname)
-
-        if not Stage.is_stage_file(fname):
+    def _check_isfile(repo, fname):
+        if not repo.tree.isfile(fname):
             raise StageFileIsNotDvcFileError(fname)
 
-        d = load_stage_file(fname)
+    @staticmethod
+    def load(repo, fname):
+
+        # it raises the proper exceptions by priority:
+        # 1. when the file doesn't exists
+        # 2. filename is not a dvc filename
+        # 3. path doesn't represent a regular file
+        Stage._check_file_exists(repo, fname)
+        Stage._check_dvc_filename(fname)
+        Stage._check_isfile(repo, fname)
+
+        d = load_stage_file_fobj(repo.tree.open(fname), fname)
 
         Stage.validate(d, fname=os.path.relpath(fname))
         path = os.path.abspath(fname)

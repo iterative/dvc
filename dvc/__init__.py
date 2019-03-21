@@ -57,6 +57,7 @@ if os.path.exists(os.path.join(HOMEPATH, "setup.py")):
     if (
         os.getenv("APPVEYOR_REPO_TAG", "").lower() != "true"
         and os.getenv("TRAVIS_TAG", "") == ""
+        and os.getenv("DVC_TEST", "").lower() != "true"
     ):
         __version__ = _update_version_file()
     else:  # pragma: no cover

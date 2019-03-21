@@ -1,3 +1,7 @@
+# encoding: utf-8
+
+from __future__ import unicode_literals
+
 import os
 import shutil
 import uuid
@@ -10,6 +14,7 @@ from unittest import TestCase
 import dvc.logger as logger
 from dvc.command.remote import CmdRemoteAdd
 from dvc.repo import Repo as DvcRepo
+from dvc.utils.compat import open, str
 
 
 class TestDirFixture(object):
@@ -40,6 +45,8 @@ class TestDirFixture(object):
         "import sys\nimport shutil\n"
         "shutil.copyfile(sys.argv[1], sys.argv[2])"
     )
+    UNICODE = "тест"
+    UNICODE_CONTENTS = "проверка"
 
     def __init__(self, root_dir=None):
         if root_dir:
@@ -61,8 +68,12 @@ class TestDirFixture(object):
         if len(dname) > 0 and not os.path.isdir(dname):
             os.makedirs(dname)
 
-        with open(name, "a") as f:
-            f.write(contents)
+        with open(name, "a", encoding="utf-8") as f:
+            f.write(
+                contents
+                if isinstance(contents, str)
+                else contents.decode("utf-8")
+            )
 
     @staticmethod
     def mkdtemp():
@@ -79,6 +90,7 @@ class TestDirFixture(object):
         os.mkdir(self.DATA_SUB_DIR)
         self.create(self.DATA, self.DATA_CONTENTS)
         self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
+        self.create(self.UNICODE, self.UNICODE_CONTENTS)
 
     def tearDown(self):
         self._popd()
@@ -126,6 +138,7 @@ class TestDvcFixture(TestGitFixture):
     def setUp(self):
         super(TestDvcFixture, self).setUp()
         self.dvc = DvcRepo.init(self._root_dir)
+        self.dvc.scm.commit("init dvc")
         logger.be_verbose()
 
 

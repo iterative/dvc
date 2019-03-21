@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
-
 import os
 import dvc.prompt as prompt
 import dvc.logger as logger
@@ -29,6 +27,7 @@ class Repo(object):
     from dvc.repo.gc import gc
     from dvc.repo.commit import commit
     from dvc.repo.pkg import install_pkg
+    from dvc.repo.brancher import brancher
 
     def __init__(self, root_dir=None):
         from dvc.config import Config
@@ -39,6 +38,7 @@ class Repo(object):
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
         from dvc.repo.metrics import Metrics
+        from dvc.repo.tree import WorkingTree
 
         root_dir = self.find_root(root_dir)
 
@@ -46,6 +46,8 @@ class Repo(object):
         self.dvc_dir = os.path.join(self.root_dir, self.DVC_DIR)
 
         self.config = Config(self.dvc_dir)
+
+        self.tree = WorkingTree()
 
         self.scm = SCM(self.root_dir, repo=self)
         self.lock = Lock(self.dvc_dir)
@@ -133,7 +135,7 @@ class Repo(object):
             raise CyclicGraphError(cycles[0])
 
     def _get_pipeline(self, node):
-        pipelines = list(filter(lambda g: node in g.nodes(), self.pipelines()))
+        pipelines = [i for i in self.pipelines() if i.has_node(node)]
         assert len(pipelines) == 1
         return pipelines[0]
 
@@ -147,11 +149,10 @@ class Repo(object):
 
         node = os.path.relpath(stage.path, self.root_dir)
         G = self._get_pipeline(node)
-        stages = nx.get_node_attributes(G, "stage")
 
-        ret = [stage]
+        ret = []
         for n in nx.dfs_postorder_nodes(G, node):
-            ret.append(stages[n])
+            ret.append(G.node[n]["stage"])
 
         return ret
 
@@ -244,7 +245,7 @@ class Repo(object):
         cache["ssh"] = []
         cache["azure"] = []
 
-        for branch in self.scm.brancher(
+        for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
         ):
             if target:
@@ -361,10 +362,10 @@ class Repo(object):
 
         stages = []
         outs = []
-        for root, dirs, files in os.walk(str(from_directory)):
+        for root, dirs, files in self.tree.walk(from_directory):
             for fname in files:
                 path = os.path.join(root, fname)
-                if not Stage.is_stage_file(path):
+                if not Stage.is_valid_filename(path):
                     continue
                 stage = Stage.load(self, path)
                 for out in stage.outs:
@@ -397,10 +398,14 @@ class Repo(object):
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
-            outs = [out for stage in self.stages() for out in stage.outs]
+            # there is no `from_directory=path` argument because some data
+            # files might be generated to an upper level, and so it is
+            # needed to look at all the files (project root_dir)
+            stages = self.stages()
+            outs = [out for stage in stages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
-        is_dir = os.path.isdir(abs_path)
+        is_dir = self.tree.isdir(abs_path)
 
         def func(out):
             if out.path == abs_path:
