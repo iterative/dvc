@@ -94,7 +94,8 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(metrics_subparsers)
 
-    METRICS_SHOW_HELP = "Output metric values."
+    METRICS_SHOW_HELP = "Output metric values.\n\
+    documentation: https://man.dvc.org/metrics-show"
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -136,7 +137,8 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_ADD_HELP = "Tag file as a metric file."
+    METRICS_ADD_HELP = "Tag file as a metric file.\n\
+                       documentation: https://man.dvc.org/metrics-add"
     metrics_add_parser = metrics_subparsers.add_parser(
         "add",
         parents=[parent_parser],
@@ -152,7 +154,8 @@ def add_parser(subparsers, parent_parser):
     metrics_add_parser.add_argument("path", help="Path to a metric file.")
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
-    METRICS_MODIFY_HELP = "Modify metric file options."
+    METRICS_MODIFY_HELP = "Modify metric file options.\n\
+                          documentation: https://man.dvc.org/metrics-modify "
     metrics_modify_parser = metrics_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
@@ -168,7 +171,9 @@ def add_parser(subparsers, parent_parser):
     metrics_modify_parser.add_argument("path", help="Path to a metric file.")
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
-    METRICS_REMOVE_HELP = "Remove files's metric tag."
+    METRICS_REMOVE_HELP = "Remove files's metric tag.\n\
+    https://man.dvc.org/metrics-remove"
+
     metrics_remove_parser = metrics_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
