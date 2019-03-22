@@ -211,7 +211,8 @@ https://dvc.org/doc/commands-reference/push"
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = "Fetch data files from the cloud."
+    FETCH_HELP = "Fetch data files from the cloud.\n \
+https://dvc.org/doc/commands-reference/fetch"
     fetch_parser = subparsers.add_parser(
         "fetch",
         parents=[shared_parent_parser()],
