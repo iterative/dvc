@@ -77,7 +77,8 @@ class CmdMetricsRemove(CmdBase):
 def add_parser(subparsers, parent_parser):
     METRICS_HELP = (
         "A set of commands to add, manage, collect and display project "
-        "metrics."
+        "metrics.\n"
+        "documentation: https://dvc.org/doc/commands-reference/metrics"
     )
     metrics_parser = subparsers.add_parser(
         "metrics",
