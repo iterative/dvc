@@ -38,7 +38,7 @@ class Repo(object):
         from dvc.data_cloud import DataCloud
         from dvc.updater import Updater
         from dvc.repo.metrics import Metrics
-        from dvc.repo.tree import WorkingTree
+        from dvc.scm.tree import WorkingTree
 
         root_dir = self.find_root(root_dir)
 
