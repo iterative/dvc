@@ -253,7 +253,7 @@ documentation: https://dvc.org/doc/commands-reference/fetch"
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    STATUS_HELP = "Show the repo status."
+    STATUS_HELP = "Show the repo status.\ndocumentation: man.dvc.org/status"
     status_parser = subparsers.add_parser(
         "status",
         parents=[shared_parent_parser()],
