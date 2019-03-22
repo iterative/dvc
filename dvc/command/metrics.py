@@ -139,8 +139,10 @@ def add_parser(subparsers, parent_parser):
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)
 
-    METRICS_ADD_HELP = "Tag file as a metric file.\n\
-                       documentation: https://man.dvc.org/metrics-add"
+    METRICS_ADD_HELP = (
+        "Tag file as a metric file. \n"
+        "documentation: https://man.dvc.org/metrics-add"
+    )
     metrics_add_parser = metrics_subparsers.add_parser(
         "add",
         parents=[parent_parser],
@@ -173,8 +175,10 @@ def add_parser(subparsers, parent_parser):
     metrics_modify_parser.add_argument("path", help="Path to a metric file.")
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
-    METRICS_REMOVE_HELP = "Remove files's metric tag.\n\
-    https://man.dvc.org/metrics-remove"
+    METRICS_REMOVE_HELP = (
+        "Remove files's metric tag. \n"
+        "documentation: https://man.dvc.org/metrics-remove"
+    )
 
     metrics_remove_parser = metrics_subparsers.add_parser(
         "remove",

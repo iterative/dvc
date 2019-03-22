@@ -119,8 +119,10 @@ class CmdRemoteList(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage set of tracked repositories.\n \
-documentation: https://man.dvc.org/remote"
+    REMOTE_HELP = (
+        "Manage set of tracked repositories. \n"
+        "documentation: https://man.dvc.org/remote"
+    )
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
@@ -135,8 +137,9 @@ documentation: https://man.dvc.org/remote"
 
     fix_subparsers(remote_subparsers)
 
-    REMOTE_ADD_HELP = "Add remote.\n\
-                      documentation: https://man.dvc.org/remote-add"
+    REMOTE_ADD_HELP = (
+        "Add remote. \n" "documentation: https://man.dvc.org/remote-add"
+    )
     remote_add_parser = remote_subparsers.add_parser(
         "add",
         parents=[parent_config_parser, parent_parser],
@@ -177,7 +180,7 @@ documentation: https://man.dvc.org/remote"
     remote_default_parser.set_defaults(func=CmdRemoteDefault)
 
     REMOTE_REMOVE_HELP = (
-        "Remove remote.\n" "documentation: https://man.dvc.org/remote-remove"
+        "Remove remote. \n" "documentation: https://man.dvc.org/remote-remove"
     )
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
@@ -189,7 +192,7 @@ documentation: https://man.dvc.org/remote"
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
 
     REMOTE_MODIFY_HELP = (
-        "Modify remote.\n" "documentation: https://man.dvc.org/remote-modify"
+        "Modify remote. \n" "documentation: https://man.dvc.org/remote-modify"
     )
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
