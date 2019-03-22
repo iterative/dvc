@@ -119,8 +119,8 @@ class CmdRemoteList(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage set of tracked repositories.\n\
-documentation: https://dvc.org/doc/commands-reference/remote"
+    REMOTE_HELP = "Manage set of tracked repositories.\n \
+documentation: man.dvc.org/remote"
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
@@ -145,8 +145,7 @@ documentation: https://dvc.org/doc/commands-reference/remote"
     remote_add_parser.add_argument("name", help="Name.")
     remote_add_parser.add_argument(
         "url",
-        help="URL. See full list of supported urls at "
-        "https://dvc.org/doc/commands-reference/remote",
+        help="URL. See full list of supported urls at " "man.dvc.org/remote",
     )
     remote_add_parser.add_argument(
         "-d",

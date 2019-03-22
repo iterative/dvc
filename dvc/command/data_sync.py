@@ -121,7 +121,7 @@ def add_parser(subparsers, _parent_parser):
 
     # Pull
     PULL_HELP = "Pull data files from the cloud.\n\
-documentation: https://dvc.org/doc/commands-reference/pull"
+documentation: man.dvc.org/pull"
     pull_parser = subparsers.add_parser(
         "pull",
         parents=[shared_parent_parser()],
@@ -170,7 +170,7 @@ documentation: https://dvc.org/doc/commands-reference/pull"
 
     # Push
     PUSH_HELP = "Push data files to the cloud.\n\
-documentation: https://dvc.org/doc/commands-reference/push"
+documentation: man.dvc.org/push"
     push_parser = subparsers.add_parser(
         "push",
         parents=[shared_parent_parser()],
@@ -212,7 +212,7 @@ documentation: https://dvc.org/doc/commands-reference/push"
 
     # Fetch
     FETCH_HELP = "Fetch data files from the cloud.\n\
-documentation: https://dvc.org/doc/commands-reference/fetch"
+documentation: man.dvc.org/fetch"
     fetch_parser = subparsers.add_parser(
         "fetch",
         parents=[shared_parent_parser()],
