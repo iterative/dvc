@@ -26,7 +26,10 @@ class CmdAdd(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = "Add files/directories to dvc."
+    ADD_HELP = (
+        "Add files/directories to dvc.\n"
+        "documentation: https://man.dvc.org/add"
+    )
     add_parser = subparsers.add_parser(
         "add", parents=[parent_parser], description=ADD_HELP, help=ADD_HELP
     )

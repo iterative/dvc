@@ -120,7 +120,10 @@ def add_parser(subparsers, _parent_parser):
     from dvc.command.status import CmdDataStatus
 
     # Pull
-    PULL_HELP = "Pull data files from the cloud."
+    PULL_HELP = (
+        "Pull data files from the cloud.\n"
+        "documentation: https://man.dvc.org/pull"
+    )
     pull_parser = subparsers.add_parser(
         "pull",
         parents=[shared_parent_parser()],
@@ -168,7 +171,10 @@ def add_parser(subparsers, _parent_parser):
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
-    PUSH_HELP = "Push data files to the cloud."
+    PUSH_HELP = (
+        "Push data files to the cloud.\n"
+        "documentation: https://man.dvc.org/push"
+    )
     push_parser = subparsers.add_parser(
         "push",
         parents=[shared_parent_parser()],
@@ -209,7 +215,10 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = "Fetch data files from the cloud."
+    FETCH_HELP = (
+        "Fetch data files from the cloud.\n"
+        "documentation: https://man.dvc.org/fetch"
+    )
     fetch_parser = subparsers.add_parser(
         "fetch",
         parents=[shared_parent_parser()],
@@ -250,7 +259,9 @@ def add_parser(subparsers, _parent_parser):
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    STATUS_HELP = "Show the repo status."
+    STATUS_HELP = (
+        "Show the repo status.\ndocumentation: https://man.dvc.org/status"
+    )
     status_parser = subparsers.add_parser(
         "status",
         parents=[shared_parent_parser()],

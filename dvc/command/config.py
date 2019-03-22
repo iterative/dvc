@@ -98,7 +98,10 @@ parent_config_parser.add_argument(
 
 
 def add_parser(subparsers, parent_parser):
-    CONFIG_HELP = "Get or set config options."
+    CONFIG_HELP = (
+        "Get or set config options.\n"
+        "documentation: https://man.dvc.org/config"
+    )
     config_parser = subparsers.add_parser(
         "config",
         parents=[parent_config_parser, parent_parser],

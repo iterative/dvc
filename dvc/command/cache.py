@@ -20,7 +20,9 @@ class CmdCacheDir(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    CACHE_HELP = "Manage cache settings."
+    CACHE_HELP = (
+        "Manage cache settings.\ndocumentation: https://man.dvc.org/cache"
+    )
     cache_parser = subparsers.add_parser(
         "cache",
         parents=[parent_parser],

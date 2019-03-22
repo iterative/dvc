@@ -19,12 +19,16 @@ class CmdMove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
+    MOVE_HELP = (
+        "Rename or move a DVC controlled data file or a directory.\n"
+        "documentation: https://man.dvc.org/move"
+    )
     description = (
         "Rename or move a data file or a directory that "
         "is under DVC control. It renames and modifies "
         "the corresponding DVC file to reflect the changes."
     )
-    help = "Rename or move a DVC controlled data file or a directory."
+    help = MOVE_HELP
     move_parser = subparsers.add_parser(
         "move", parents=[parent_parser], description=description, help=help
     )
