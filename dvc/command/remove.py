@@ -38,7 +38,8 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = "Remove outputs of DVC file."
+    REMOVE_HELP = "Remove outputs of DVC file.\n\
+documentation: https://dvc.org/doc/commands-reference/remove"
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
