@@ -30,7 +30,7 @@ class CmdCommit(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     COMMIT_HELP = "Record changes to the repository.\n\
-documentation: man.dvc.org/commit"
+documentation: https://man.dvc.org/commit"
     commit_parser = subparsers.add_parser(
         "commit",
         parents=[parent_parser],

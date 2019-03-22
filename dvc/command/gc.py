@@ -50,7 +50,7 @@ def add_parser(subparsers, parent_parser):
         "Collect garbage from your DVC cache. \n"
         "Deletes all files in the cache which are not in use by the \n"
         "specified git references (defaults to just HEAD).\n"
-        "documentation: man.dvc.org/gc"
+        "documentation: https://man.dvc.org/gc"
     )
     gc_parser = subparsers.add_parser(
         "gc", parents=[parent_parser], description=GC_HELP, help=GC_HELP

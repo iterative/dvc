@@ -27,7 +27,7 @@ def add_parser(subparsers, parent_parser):
     INIT_HELP = (
         "Initialize dvc over a directory "
         "(should already be a git dir).\n"
-        "documentation: man.dvc.org/init "
+        "documentation: https://man.dvc.org/init "
     )
     init_parser = subparsers.add_parser(
         "init", parents=[parent_parser], description=INIT_HELP, help=INIT_HELP

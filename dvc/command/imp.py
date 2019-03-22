@@ -29,7 +29,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = "Import files from URL.\n\
-documentation: man.dvc.org/import"
+documentation: https://man.dvc.org/import"
     import_parser = subparsers.add_parser(
         "import",
         parents=[parent_parser],

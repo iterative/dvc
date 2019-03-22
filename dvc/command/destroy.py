@@ -33,7 +33,7 @@ def add_parser(subparsers, parent_parser):
     DESTROY_HELP = (
         "Destroy dvc. Will remove all repo's information, "
         "data files and cache.\n\
-documentation: man.dvc.org/destroy"
+documentation: https://man.dvc.org/destroy"
     )
     destroy_parser = subparsers.add_parser(
         "destroy",

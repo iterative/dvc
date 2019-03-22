@@ -19,7 +19,7 @@ class CmdCheckout(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     CHECKOUT_HELP = "Checkout data files from cache.\n\
-documentation: man.dvc.org/checkout"
+documentation: https://man.dvc.org/checkout"
     checkout_parser = subparsers.add_parser(
         "checkout",
         parents=[parent_parser],

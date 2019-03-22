@@ -120,7 +120,7 @@ def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
     REMOTE_HELP = "Manage set of tracked repositories.\n \
-documentation: man.dvc.org/remote"
+documentation: https://man.dvc.org/remote"
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],

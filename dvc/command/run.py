@@ -76,7 +76,7 @@ def add_parser(subparsers, parent_parser):
     RUN_HELP = (
         "Generate a stage file from a given "
         "command and execute the command.\n"
-        "documentation: man.dvc.org/run"
+        "documentation: https://man.dvc.org/run"
     )
     run_parser = subparsers.add_parser(
         "run", parents=[parent_parser], description=RUN_HELP, help=RUN_HELP

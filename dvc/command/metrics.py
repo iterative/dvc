@@ -78,7 +78,7 @@ def add_parser(subparsers, parent_parser):
     METRICS_HELP = (
         "A set of commands to add, manage, collect and display project "
         "metrics.\n"
-        "documentation: man.dvc.org/metrics"
+        "documentation: https://man.dvc.org/metrics"
     )
     metrics_parser = subparsers.add_parser(
         "metrics",
