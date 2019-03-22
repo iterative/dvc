@@ -146,7 +146,7 @@ class SSHConnection:
         self._sftp_connect()
         try:
             self._sftp.remove(path)
-        except FileNotFoundError as exc:
+        except IOError as exc:
             if exc.errno == errno.ENOENT:
                 logger.warning(
                     "Remote file '{}' can not be removed via SSH because it "
