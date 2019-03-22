@@ -19,7 +19,7 @@ class CmdUnprotect(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     UNPROTECT_HELP = (
-        "Unprotect data file/directory. \n"
+        "Unprotect data file/directory.\n"
         "documentation: https://man.dvc.org/unprotect"
     )
     unprotect_parser = subparsers.add_parser(

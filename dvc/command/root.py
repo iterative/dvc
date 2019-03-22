@@ -17,7 +17,7 @@ class CmdRoot(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     ROOT_HELP = (
-        "Relative path to repo's directory. \n"
+        "Relative path to repo's directory.\n"
         "documentation: https://man.dvc.org/root"
     )
     root_parser = subparsers.add_parser(

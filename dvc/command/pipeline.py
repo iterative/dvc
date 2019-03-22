@@ -138,7 +138,7 @@ class CmdPipelineList(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     PIPELINE_HELP = (
-        "Manage pipeline. \n" "documentation: https://man.dvc.org/pipeline"
+        "Manage pipeline.\ndocumentation: https://man.dvc.org/pipeline"
     )
     pipeline_parser = subparsers.add_parser(
         "pipeline",
