@@ -94,8 +94,10 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(metrics_subparsers)
 
-    METRICS_SHOW_HELP = "Output metric values.\n\
-    documentation: https://man.dvc.org/metrics-show"
+    METRICS_SHOW_HELP = (
+        "Output metric values.\n"
+        "documentation: https://man.dvc.org/metrics-show"
+    )
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
         parents=[parent_parser],
