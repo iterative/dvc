@@ -3,7 +3,7 @@ import os
 
 from dvc.utils.compat import StringIO
 
-from dvc.repo.tree import BaseTree
+from dvc.tree import BaseTree
 
 
 # see git-fast-import(1)

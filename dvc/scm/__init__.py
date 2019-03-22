@@ -5,8 +5,6 @@ from __future__ import unicode_literals
 from dvc.scm.base import Base
 from dvc.scm.git import Git
 
-import dvc
-
 
 # just a sugar to point that this is an actual implementation for a dvc
 # project under no SCM control
@@ -32,11 +30,9 @@ def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
 
 
 def scm_context(method):
-    def run(*args, **kw):
-        repo = args[0]
-        assert isinstance(repo, dvc.repo.Repo)
+    def run(repo, *args, **kw):
         try:
-            result = method(*args, **kw)
+            result = method(repo, *args, **kw)
             repo.scm.reset_ignores()
             repo.scm.remind_to_track()
             return result

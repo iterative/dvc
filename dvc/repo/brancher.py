@@ -25,7 +25,7 @@ def brancher(  # noqa: E302
     scm = self.scm
 
     if self.scm.is_dirty():
-        from dvc.repo.tree import WorkingTree
+        from dvc.tree import WorkingTree
 
         self.tree = WorkingTree()
         yield "Working Tree"
