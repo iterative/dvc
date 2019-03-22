@@ -119,7 +119,7 @@ class CmdRemoteList(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage set of tracked repositories.\n \
+    REMOTE_HELP = "Manage set of tracked repositories.\n\
 documentation: https://dvc.org/doc/commands-reference/remote"
     remote_parser = subparsers.add_parser(
         "remote",
