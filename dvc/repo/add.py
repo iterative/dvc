@@ -1,6 +1,6 @@
 import os
 
-from dvc.scm import scm_context
+from dvc.repo.scm_context import scm_context
 from dvc.stage import Stage
 from dvc.utils import walk_files
 from dvc.exceptions import RecursiveAddingWhileUsingFilename

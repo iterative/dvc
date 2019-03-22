@@ -4,7 +4,7 @@ import os
 
 import dvc.logger as logger
 from dvc.exceptions import ReproductionError
-from dvc.scm import scm_context
+from dvc.repo.scm_context import scm_context
 
 
 def _reproduce_stage(stages, node, force, dry, interactive, no_commit):

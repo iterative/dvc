@@ -1,7 +1,7 @@
 import os
 
 from dvc.exceptions import MoveNotDataSourceError
-from dvc.scm import scm_context
+from dvc.repo.scm_context import scm_context
 
 
 def _expand_target_path(from_path, to_path):
