@@ -32,7 +32,7 @@ class CmdUnlock(CmdLockBase):
 
 
 def add_parser(subparsers, parent_parser):
-    LOCK_HELP = "Lock DVC file.\n \
+    LOCK_HELP = "Lock DVC file.\n\
 documentation: https://dvc.org/doc/commands-reference/lock"
     lock_parser = subparsers.add_parser(
         "lock", parents=[parent_parser], description=LOCK_HELP, help=LOCK_HELP
@@ -40,7 +40,8 @@ documentation: https://dvc.org/doc/commands-reference/lock"
     lock_parser.add_argument("targets", nargs="+", help="DVC files.")
     lock_parser.set_defaults(func=CmdLock)
 
-    UNLOCK_HELP = "Unlock DVC file."
+    UNLOCK_HELP = "Unlock DVC file.\n\
+documentation: https://dvc.org/doc/commands-reference/unlock"
     unlock_parser = subparsers.add_parser(
         "unlock",
         parents=[parent_parser],

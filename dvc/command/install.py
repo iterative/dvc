@@ -15,7 +15,7 @@ class CmdInstall(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    INSTALL_HELP = "Install dvc hooks into the repository.\n \
+    INSTALL_HELP = "Install dvc hooks into the repository.\n\
 documentation: https://dvc.org/doc/commands-reference/install"
     install_parser = subparsers.add_parser(
         "install",
