@@ -1,5 +1,6 @@
 from dvc.repo import Repo
-from dvc.scm import scm_context, NoSCM
+from dvc.repo.scm_context import scm_context
+from dvc.scm import NoSCM
 from unittest import TestCase
 import mock
 

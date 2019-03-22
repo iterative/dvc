@@ -1,7 +1,7 @@
 from tests.basic_env import TestDvc
 
 from dvc.scm.git import GitTree
-from dvc.repo.tree import WorkingTree
+from dvc.scm.tree import WorkingTree
 
 
 class TestCollect(TestDvc):
