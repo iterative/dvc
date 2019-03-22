@@ -51,7 +51,8 @@ class CmdRepro(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'."
+    REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'.\n\
+documentation: https://dvc.org/doc/commands-reference/repro"
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],
