@@ -283,6 +283,7 @@ class Repo(object):
         from dvc.exceptions import (
             OutputDuplicationError,
             StagePathAsOutputError,
+            OverlappingOutputPathsError,
         )
 
         G = nx.DiGraph()
@@ -293,7 +294,15 @@ class Repo(object):
 
         for stage in stages:
             for out in stage.outs:
-                existing = [o.stage for o in outs if o.path == out.path]
+                existing = []
+                for o in outs:
+                    if o.path == out.path:
+                        existing.append(o.stage)
+
+                    in_o_dir = out.path.startswith(o.path + o.sep)
+                    in_out_dir = o.path.startswith(out.path + out.sep)
+                    if in_o_dir or in_out_dir:
+                        raise OverlappingOutputPathsError(o, out)
 
                 if existing:
                     stages = [stage.relpath, existing[0].relpath]
