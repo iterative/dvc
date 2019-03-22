@@ -147,12 +147,7 @@ class SSHConnection:
         try:
             self._sftp.remove(path)
         except IOError as exc:
-            if exc.errno == errno.ENOENT:
-                logger.warning(
-                    "Remote file '{}' can not be removed via SSH because it "
-                    "do not exist.".format(path)
-                )
-            else:
+            if exc.errno != errno.ENOENT:
                 raise
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
