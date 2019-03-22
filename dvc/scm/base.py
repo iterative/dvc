@@ -42,14 +42,14 @@ class Base(object):
     @staticmethod
     def is_repo(root_dir):  # pylint: disable=unused-argument
         """Returns whether or not root_dir is a valid SCM repository."""
-        return True
+        return False
 
     @staticmethod
     def is_submodule(root_dir):  # pylint: disable=unused-argument
         """Returns whether or not root_dir is a valid SCM repository
         submodule.
         """
-        return True
+        return False
 
     def ignore(self, path):  # pylint: disable=unused-argument
         """Makes SCM ignore a specified path."""

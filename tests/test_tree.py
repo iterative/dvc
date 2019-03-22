@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 from os.path import join
 
 from dvc.scm import SCM
-from dvc.scm.git import GitTree
+from dvc.git.tree import GitTree
 from dvc.repo.tree import WorkingTree
 
 from tests.basic_env import TestDir, TestGit

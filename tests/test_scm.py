@@ -5,7 +5,8 @@ import os
 from git import Repo
 
 from dvc.utils.compat import str  # noqa: F401
-from dvc.scm import SCM, NoSCM, Git
+from dvc.scm import SCM, NoSCM
+from dvc.git.scm import Git
 from dvc.scm.base import FileNotInTargetSubdirError
 
 from tests.basic_env import TestDir, TestGit, TestGitSubmodule

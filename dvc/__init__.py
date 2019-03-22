@@ -96,3 +96,8 @@ try:
     warnings.simplefilter("ignore", CryptographyDeprecationWarning)
 except ImportError:
     pass
+
+from dvc.scm import SCM  # noqa: E402
+from dvc.git.scm import Git  # noqa: E402
+
+SCM.register(Git)

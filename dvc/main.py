@@ -21,6 +21,7 @@ def main(argv=None):
     args = None
     cmd = None
     try:
+
         args = parse_args(argv)
 
         # Init loglevel early in case we'll run

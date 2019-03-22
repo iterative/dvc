@@ -1,7 +1,7 @@
 import yaml
 import os
 
-from dvc.scm import Git
+from dvc.git.scm import Git
 from dvc.utils.compat import StringIO
 from mock import MagicMock
 from contextlib import contextmanager

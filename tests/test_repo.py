@@ -1,6 +1,6 @@
 from tests.basic_env import TestDvc
 
-from dvc.scm.git import GitTree
+from dvc.git.tree import GitTree
 from dvc.repo.tree import WorkingTree
 
 

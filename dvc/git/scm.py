@@ -12,7 +12,7 @@ from dvc.scm.base import (
     FileNotInRepoError,
     FileNotInTargetSubdirError,
 )
-from dvc.scm.git.tree import GitTree
+from dvc.git.tree import GitTree
 import dvc.logger as logger
 
 

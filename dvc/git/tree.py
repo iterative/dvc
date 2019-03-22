@@ -18,7 +18,7 @@ class GitTree(BaseTree):
         """Create GitTree instance
 
         Args:
-            git (dvc.scm.Git):
+            git (dvc.git.Git):
             branch:
         """
         self.git = git
