@@ -158,7 +158,7 @@ def add_parser(subparsers, parent_parser):
     metrics_add_parser.add_argument("path", help="Path to a metric file.")
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
-    METRICS_MODIFY_HELP = "Modify metric file options.\n\
+    METRICS_MODIFY_HELP = "Modify metric file options. \n\
                           documentation: https://man.dvc.org/metrics-modify "
     metrics_modify_parser = metrics_subparsers.add_parser(
         "modify",

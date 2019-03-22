@@ -213,7 +213,7 @@ def add_parser(subparsers, parent_parser):
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
     REMOTE_LIST_HELP = (
-        "List remotes.\n documentation: https://man.dvc.org/remote-list"
+        "List remotes.\n" "documentation: https://man.dvc.org/remote-list"
     )
     remote_list_parser = remote_subparsers.add_parser(
         "list",
