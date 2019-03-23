@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import os
+import re
 
 from dvc.utils.compat import str, open
 from dvc.utils import fix_env
@@ -235,3 +236,82 @@ class Git(Base):
 
     def get_tree(self, rev):
         return GitTree(self.git, rev)
+
+    def _get_diff_obj(self, file_name, a_ref, **kwargs):
+
+        from gitdb.exc import BadObject, BadName
+
+        file_name = file_name[:-1] if file_name.endswith("/") else file_name
+        file_name += ".dvc"
+        commits = []
+        try:
+            if "b_ref" in kwargs and kwargs["b_ref"] is not None:
+                b_ref = kwargs["b_ref"]
+                a_commit = self.git.commit(a_ref)
+                b_commit = self.git.commit(b_ref)
+                commits.append(str(a_commit))
+                commits.append(str(b_commit))
+                diff_obj = a_commit.diff(b_commit, paths=file_name)
+                # other way of getting the diff between commits :
+                # self.git.diff(a_commit, b_commit) returns the diff string
+                # by reading the files in a, b commits and computing the diff
+            else:
+                a_commit = self.git.head.commit
+                b_commit = self.git.commit(a_ref)
+                commits.append(str(a_commit))
+                commits.append(str(b_commit))
+                if a_commit == b_commit:
+                    return None, commits
+                diff_obj = a_commit.diff(b_commit, paths=file_name)
+        except (BadName, BadObject) as e:
+            raise SCMError(e)
+        if len(diff_obj) == 0:
+            msg = "Have not found file/folder '{}' in the commits"
+            raise FileNotInRepoError(msg.format(file_name))
+        return diff_obj[0], commits
+
+    def _extract_fname(self, is_deleted, blob_obj):
+        if not is_deleted:
+            s1 = blob_obj.data_stream.read().decode("utf-8")
+            a_hash, a_fname = re.findall(r"md5:\s([a-fA-F\d]{32}[.dir]*)", s1)
+            return a_hash, a_fname
+        else:
+            return None, None
+
+    def diff(self, file_name, a_ref, **kwargs):
+        """
+        function for diff between two git tag commits
+        returns the dvc hash names of changed file/folder
+        file_name - file on which to calculate diff
+        returns dictionary with keys: (new_file, a_file_name, b_file_name)
+        """
+        diff_dct = {"equal": False}
+        diff_obj, commit_refs = self._get_diff_obj(file_name, a_ref, **kwargs)
+        diff_dct["a_tag"] = commit_refs[0]
+        diff_dct["b_tag"] = commit_refs[1]
+        if diff_obj is None:
+            diff_dct["equal"] = True
+            return diff_dct
+        if not diff_obj.a_path:
+            msg = (
+                "file path {} doesn't exist maybe you forgot to add dataset"
+                " to dvc?"
+            )
+            raise SCMError(msg.format(file_name))
+        # this function doesn't support an indicating of moved of a file/folder
+        diff_dct["new_file"] = diff_obj.new_file
+        diff_dct["deleted_file"] = diff_obj.deleted_file
+        diff_dct["a_hash"], diff_dct["a_fname"] = self._extract_fname(
+            diff_dct["new_file"], diff_obj.a_blob
+        )
+        diff_dct["b_hash"], diff_dct["b_fname"] = self._extract_fname(
+            diff_dct["deleted_file"], diff_obj.b_blob
+        )
+        actual_path = (
+            diff_dct["b_fname"] if diff_dct["b_fname"] else diff_dct["a_fname"]
+        )
+        diff_dct["is_dir"] = actual_path.endswith(".dir")
+        diff_dct["file_path"] = (
+            diff_obj.b_path if diff_obj.b_path else diff_obj.a_path
+        )
+        return diff_dct
