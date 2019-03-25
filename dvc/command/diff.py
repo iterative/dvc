@@ -1,13 +1,29 @@
 from __future__ import unicode_literals
 
+import dvc.logger as logger
+from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 
 
-class CmdMove(CmdBase):
+class CmdDiff(CmdBase):
+    def _show(self, msg):
+        logger.info(msg)
+
     def run(self):
-        self.repo.diff(
-            self.args.target, a_ref=self.args.a_ref, b_ref=self.args.b_ref
-        )
+        try:
+            msg = self.repo.diff(
+                self.args.target, a_ref=self.args.a_ref, b_ref=self.args.b_ref
+            )
+            self._show(msg)
+        except DvcException:
+            msg = "failed to get diff "
+            if self.args.target:
+                msg += self.args.target + " "
+            if self.args.a_ref:
+                msg += self.args.a_ref + " "
+            if self.args.b_ref:
+                msg += self.args.b_ref + " "
+            logger.error(msg)
         return 0
 
 
@@ -33,4 +49,4 @@ def add_parser(subparsers, parent_parser):
         nargs="?",
         default=None,
     )
-    diff_parser.set_defaults(func=CmdMove)
+    diff_parser.set_defaults(func=CmdDiff)

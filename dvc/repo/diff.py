@@ -1,8 +1,6 @@
 import os
 import math
 
-import dvc.logger as logger
-
 
 def _extract_tree(self, cache_dir):
     lst = self.cache.local.load_dir_cache(cache_dir)
@@ -123,7 +121,6 @@ def diff(self, target, a_ref=None, b_ref=None):
         target, diff_dct["a_tag"], diff_dct["b_tag"]
     )
     if diff_dct["equal"]:
-        logger.info(msg)
         return msg
     if diff_dct["is_dir"]:
         dir_info = _diff_dir(self, target, diff_dct)
@@ -131,5 +128,4 @@ def diff(self, target, a_ref=None, b_ref=None):
     else:
         file_info = _diff_file(self, target, diff_dct)
         msg += file_info
-    logger.info(msg)
     return msg
