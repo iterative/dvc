@@ -71,23 +71,46 @@ class CmdPipelineShow(CmdBase):
             else:
                 edges.append((from_stage.relpath, to_stage.relpath))
 
-        return nodes, edges
+        return nodes, edges, networkx.is_tree(G)
 
     def _show_ascii(self, target, commands, outs):
         from dvc.dagascii import draw
 
-        nodes, edges = self.__build_graph(target, commands, outs)
+        nodes, edges, _ = self.__build_graph(target, commands, outs)
 
         if not nodes:
             return
 
         draw(nodes, edges)
 
+    def _show_dependencies_tree(self, target, commands, outs):
+        from treelib import Tree
+
+        nodes, edges, is_tree = self.__build_graph(target, commands, outs)
+        if not nodes:
+            return
+        if not is_tree:
+            raise ValueError(
+                "DAG is not a tree, can not print it in tree-structure way, "
+                "please use --ascii instead"
+            )
+        tree = Tree()
+        tree.create_node(target, target)  # Root node
+        observe_list = [target]
+        while len(observe_list) > 0:
+            current_root = observe_list[0]
+            for edge in edges:
+                if edge[0] == current_root:
+                    tree.create_node(edge[1], edge[1], parent=current_root)
+                    observe_list.append(edge[1])
+            observe_list.pop(0)
+        tree.show()
+
     def __write_dot(self, target, commands, outs, filename):
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
-        _, edges = self.__build_graph(target, commands, outs)
+        _, edges, _ = self.__build_graph(target, commands, outs)
         edges = [edge[::-1] for edge in edges]
 
         simple_g = networkx.DiGraph()
@@ -110,6 +133,10 @@ class CmdPipelineShow(CmdBase):
                         self.args.commands,
                         self.args.outs,
                         self.args.dot,
+                    )
+                elif self.args.tree:
+                    self._show_dependencies_tree(
+                        target, self.args.commands, self.args.outs
                     )
                 else:
                     self._show(target, self.args.commands, self.args.outs)
@@ -184,6 +211,12 @@ def add_parser(subparsers, parent_parser):
     )
     pipeline_show_parser.add_argument(
         "--dot", help="Write DAG in .dot format."
+    )
+    pipeline_show_parser.add_argument(
+        "--tree",
+        action="store_true",
+        default=False,
+        help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
         "targets", nargs="*", help="DVC files. 'Dvcfile' by default."

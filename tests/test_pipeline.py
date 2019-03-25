@@ -34,6 +34,10 @@ class TestPipelineShowSingle(TestDvc):
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.dotFile))
 
+    def test_tree(self):
+        ret = main(["pipeline", "show", "--tree", self.stage])
+        self.assertEqual(ret, 0)
+
     def test_ascii_commands(self):
         ret = main(["pipeline", "show", "--ascii", self.stage, "--commands"])
         self.assertEqual(ret, 0)
