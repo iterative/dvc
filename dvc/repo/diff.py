@@ -94,14 +94,15 @@ def _diff_file(self, target, diff_dct):
 
 
 def diff(self, target, a_ref=None, b_ref=None):
-    """
-    Gerenates diff message string output
-    input:
-    target - file/folder to check diff of
-    a_ref - first git ref/tag
-    b_ref(optional) - second git ref/tag
-    output:
-    string of output message with diff info
+    """Gerenates diff message string output
+
+    Args:
+        target(str) - file/directory to check diff of
+        a_ref(str) - first git tag
+        (optional) b_ref(str) - second git tag
+
+    Returns:
+        string: string of output message with diff info
     """
     diff_dct = self.scm.diff(target, a_ref=a_ref, b_ref=b_ref)
     msg = "dvc diff for '{}' from {} to {} \n\n".format(

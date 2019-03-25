@@ -266,7 +266,7 @@ class Git(Base):
         except (BadName, BadObject) as e:
             raise SCMError(e)
         if len(diff_obj) == 0:
-            msg = "Have not found file/folder '{}' in the commits"
+            msg = "Have not found file/directory '{}' in the commits"
             raise FileNotInRepoError(msg.format(file_name))
         return diff_obj[0], commits
 
@@ -279,11 +279,16 @@ class Git(Base):
             return None, None
 
     def diff(self, file_name, a_ref, **kwargs):
-        """
-        function for diff between two git tag commits
-        returns the dvc hash names of changed file/folder
-        file_name - file on which to calculate diff
-        returns dictionary with keys: (new_file, a_file_name, b_file_name)
+        """Method for diff between two git tag commits
+        returns the dvc hash names of changed file/directory
+
+        Args:
+            file_name(str) - file/directory to perform diff of
+            a_ref(str) - git reference
+            b_ref(str) - optional second git reference
+
+        Returns:
+            dict - dictionary with keys: (new_file, a_file_name, b_file_name)
         """
         diff_dct = {"equal": False}
         diff_obj, commit_refs = self._get_diff_obj(file_name, a_ref, **kwargs)
@@ -298,7 +303,7 @@ class Git(Base):
                 " to dvc?"
             )
             raise SCMError(msg.format(file_name))
-        # this function doesn't support an indicating of moved of a file/folder
+        # function doesn't support an indicating of moved of a file/directory
         diff_dct["new_file"] = diff_obj.new_file
         diff_dct["deleted_file"] = diff_obj.deleted_file
         diff_dct["a_hash"], diff_dct["a_fname"] = self._extract_fname(

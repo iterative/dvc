@@ -60,7 +60,7 @@ class TestDiffDir(TestDvc):
         self.assertEqual(
             self.DATA_DIR + ".dvc",
             out["file_path"],
-            "path to file/folder is incorrect",
+            "path to file/directory is incorrect",
         )
 
 
@@ -82,7 +82,7 @@ class TestDiffFileNotFound(TestDiffDir):
         ) as context:
             self.dvc.scm.diff(self.unknown_file, self.a_ref)
         self.assertTrue(
-            "Have not found file/folder" in str(context.exception),
+            "Have not found file/directory" in str(context.exception),
             "scm raises with incorrect error message",
         )
 
@@ -93,4 +93,6 @@ class TestDiffFileNotFoundRepo(TestDiffFileNotFound):
             FileNotInRepoError, msg="diff with incorrect arg"
         ) as context:
             self.dvc.diff(self.unknown_file, a_ref=self.a_ref)
-        self.assertTrue("Have not found file/folder" in str(context.exception))
+        self.assertTrue(
+            "Have not found file/directory" in str(context.exception)
+        )
