@@ -5,15 +5,16 @@ from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers
 
 
+def show_metrics(metrics, all_branches=False, all_tags=False):
+    for branch, val in metrics.items():
+        if all_branches or all_tags:
+            logger.info("{}:".format(branch))
+
+        for fname, metric in val.items():
+            logger.info("\t{}: {}".format(fname, metric))
+
+
 class CmdMetricsShow(CmdBase):
-    def _show(self, metrics):
-        for branch, val in metrics.items():
-            if self.args.all_branches or self.args.all_tags:
-                logger.info("{}:".format(branch))
-
-            for fname, metric in val.items():
-                logger.info("\t{}: {}".format(fname, metric))
-
     def run(self):
         typ = self.args.type
         xpath = self.args.xpath
@@ -27,7 +28,7 @@ class CmdMetricsShow(CmdBase):
                 recursive=self.args.recursive,
             )
 
-            self._show(metrics)
+            show_metrics(metrics, self.args.all_branches, self.args.all_tags)
         except DvcException:
             logger.error("failed to show metrics")
             return 1

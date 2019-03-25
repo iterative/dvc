@@ -1,3 +1,4 @@
+from dvc.logger import logger
 from dvc.utils.compat import str
 
 import os
@@ -32,8 +33,10 @@ from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.utils import reset_logger_standard_output
 from tests.utils.httpd import StaticFileServer
 from mock import patch
+from tests.utils.logger import MockLoggerHandlers
 
 
 class TestRepro(TestDvc):
@@ -1375,3 +1378,37 @@ class TestReproAlreadyCached(TestRepro):
                 self.assertEqual(ret, 0)
                 self.assertEqual(mock_download.call_count, 1)
                 self.assertEqual(mock_checkout.call_count, 0)
+
+
+class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
+    def test(self):
+        metrics_file = "metrics_file"
+        metrics_value = 0.123489015
+        ret = main(
+            [
+                "run",
+                "-m",
+                metrics_file,
+                "echo {} >> {}".format(metrics_value, metrics_file),
+            ]
+        )
+        self.assertEqual(0, ret)
+
+        with MockLoggerHandlers(logger):
+            reset_logger_standard_output()
+            ret = main(
+                [
+                    "repro",
+                    "--force",
+                    "--metrics",
+                    metrics_file + Stage.STAGE_FILE_SUFFIX,
+                ]
+            )
+            self.assertEqual(0, ret)
+
+            expected_metrics_display = "{}: {}".format(
+                metrics_file, metrics_value
+            )
+            self.assertIn(
+                expected_metrics_display, logger.handlers[0].stream.getvalue()
+            )
