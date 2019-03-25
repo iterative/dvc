@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import humanize
+import inflect
 
 
 def _extract_tree(self, cache_dir):
@@ -34,11 +35,8 @@ def _get_tree_changes(self, a_entries, b_entries):
     return result
 
 
-def plural(string):
-    return str(string) + " file" + "s" * (string > 1)
-
-
 def _diff_dir(self, target, diff_dct):
+    engine = inflect.engine()
     msg = ""
     a_entries, b_entries = {}, {}
     if not diff_dct["new_file"]:
@@ -53,10 +51,14 @@ def _diff_dir(self, target, diff_dct):
         b_entries = _extract_tree(self, diff_dct["b_fname"])
     msg += "\n"
     result = _get_tree_changes(self, a_entries, b_entries)
-    msg += plural(result["ident"]) + " didn't change, "
-    msg += plural(result["changes"]) + " modified, "
-    msg += plural(result["new"]) + " added, "
-    msg += plural(result["del"]) + " deleted, "
+    msg += f"{result['ident']} " + engine.plural("file", result["ident"])
+    msg += " didn't change, "
+    msg += f"{result['changes']} " + engine.plural("file", result["changes"])
+    msg += " modified, "
+    msg += f"{result['new']} " + engine.plural("file", result["new"])
+    msg += " added, "
+    msg += f"{result['del']} " + engine.plural("file", result["del"])
+    msg += " deleted, "
     msg += "size was " + "increased" * (result["diff_sign"] != "-")
     msg += (
         "decreased" * (result["diff_sign"] == "-")
@@ -69,7 +71,6 @@ def _diff_dir(self, target, diff_dct):
 def _diff_file(self, target, diff_dct):
     msg = ""
     size = 0
-    # os.path.getsize(self.cache.local.get(diff_obj['a_fname']))
     if not diff_dct["new_file"]:
         msg += "-{} with md5 {}\n".format(
             target, diff_dct["a_fname"].split(".dir")[0]
