@@ -75,6 +75,7 @@ test_script:
   - python -mtests
 
 after_test:
+  - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" pip install codecov
   - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov
   - if "%APPVEYOR_REPO_TAG%"=="true" python -m dvc pull
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
