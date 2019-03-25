@@ -241,7 +241,7 @@ class Git(Base):
 
         from gitdb.exc import BadObject, BadName
 
-        file_name = file_name[:-1] if file_name.endswith("/") else file_name
+        file_name = os.path.normpath(file_name)
         file_name += ".dvc"
         commits = []
         try:
