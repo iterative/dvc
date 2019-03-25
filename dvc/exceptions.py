@@ -227,3 +227,17 @@ class RecursiveAddingWhileUsingFilename(DvcException):
         super(RecursiveAddingWhileUsingFilename, self).__init__(
             "using fname with recursive is not allowed."
         )
+
+
+class OverlappingOutputPathsError(DvcException):
+    def __init__(self, out_1, out_2):
+        super(OverlappingOutputPathsError, self).__init__(
+            "Paths for outs:\n'{}'('{}')\n'{}'('{}')\noverlap. To avoid "
+            "unpredictable behaviour, rerun command with non overlapping outs "
+            "paths.".format(
+                str(out_1),
+                out_1.stage.relpath,
+                str(out_2),
+                out_2.stage.relpath,
+            )
+        )

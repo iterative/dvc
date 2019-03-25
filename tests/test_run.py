@@ -20,6 +20,7 @@ from dvc.exceptions import (
     CyclicGraphError,
     ArgumentDuplicationError,
     StagePathAsOutputError,
+    OverlappingOutputPathsError,
 )
 
 from tests.basic_env import TestDvc
@@ -198,12 +199,7 @@ class TestRunStageInsideOutput(TestDvc):
         self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
 
         with self.assertRaises(StagePathAsOutputError):
-            self.dvc.run(
-                cmd="",
-                cwd=self.DATA_DIR,
-                outs=[self.FOO],
-                fname="inside-cwd.dvc",
-            )
+            self.dvc.run(cmd="", cwd=self.DATA_DIR, fname="inside-cwd.dvc")
 
     def test_file_name(self):
         self.dvc.run(cmd="", deps=[], outs=[self.DATA_DIR])
@@ -820,3 +816,32 @@ class TestRunPersistOutsNoCache(TestRunPersist):
 
     def test(self):
         self._test()
+
+
+class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
+    def test(self):
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(0, ret)
+
+        with self.assertRaises(OverlappingOutputPathsError) as err:
+            self.dvc.run(
+                outs=[self.DATA], cmd="echo data >> {}".format(self.DATA)
+            )
+        error_output = str(err.exception)
+
+        data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        data_stage = os.path.basename(self.DATA) + Stage.STAGE_FILE_SUFFIX
+
+        self.assertIn("Paths for outs:\n", error_output)
+        self.assertIn(
+            "\n'{}'('{}')\n".format(self.DATA_DIR, data_dir_stage),
+            error_output,
+        )
+        self.assertIn(
+            "\n'{}'('{}')\n".format(self.DATA, data_stage), error_output
+        )
+        self.assertIn(
+            "\noverlap. To avoid unpredictable behaviour, rerun "
+            "command with non overlapping outs paths.",
+            error_output,
+        )

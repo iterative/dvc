@@ -115,9 +115,10 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         faulty_stage_path = os.path.join("dir2", "something.dvc")
 
         with open(faulty_stage_path, "w") as fd:
+            output = os.path.join("..", "something")
             stage_dump = {
-                "cmd": "echo something > something",
-                "outs": [{"path": "something"}],
+                "cmd": "echo something > {}".format(output),
+                "outs": [{"path": output}],
             }
 
             yaml.safe_dump(stage_dump, fd, default_flow_style=False)
@@ -156,9 +157,10 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         error_stage_path = os.path.join(nested_dir, "dir", "error.dvc")
 
         with open(error_stage_path, "w") as fd:
+            output = os.path.join("..", "..", "something")
             stage_dump = {
-                "cmd": "echo something > something",
-                "outs": [{"path": "something"}],
+                "cmd": "echo something > {}".format(output),
+                "outs": [{"path": output}],
             }
 
             yaml.safe_dump(stage_dump, fd, default_flow_style=False)
