@@ -12,6 +12,7 @@ from dvc.scm.base import (
     SCMError,
     FileNotInRepoError,
     FileNotInTargetSubdirError,
+    FileNotInCommitError,
 )
 from dvc.scm.git.tree import GitTree
 import dvc.logger as logger
@@ -264,10 +265,10 @@ class Git(Base):
                     return None, commits
                 diff_obj = a_commit.diff(b_commit, paths=file_name)
         except (BadName, BadObject) as e:
-            raise SCMError(e)
+            raise SCMError("git problem", cause=e)
         if len(diff_obj) == 0:
             msg = "Have not found file/directory '{}' in the commits"
-            raise FileNotInRepoError(msg.format(file_name))
+            raise FileNotInCommitError(msg.format(file_name))
         return diff_obj[0], commits
 
     def _extract_fname(self, is_deleted, blob_obj):

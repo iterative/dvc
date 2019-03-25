@@ -105,7 +105,7 @@ def diff(self, target, a_ref=None, b_ref=None):
         string: string of output message with diff info
     """
     diff_dct = self.scm.diff(target, a_ref=a_ref, b_ref=b_ref)
-    msg = "dvc diff for '{}' from {} to {} \n\n".format(
+    msg = "dvc diff for '{}' from {} to {}\n\n".format(
         target, diff_dct["a_tag"], diff_dct["b_tag"]
     )
     if diff_dct["equal"]:
