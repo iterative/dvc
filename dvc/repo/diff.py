@@ -1,29 +1,12 @@
 from __future__ import unicode_literals
 
 import os
-import math
+import humanize
 
 
 def _extract_tree(self, cache_dir):
     lst = self.cache.local.load_dir_cache(cache_dir)
     return {i["relpath"]: i["md5"] for i in lst}
-
-
-def _convert_size(size_bytes):
-    sign = "" if size_bytes > 0 else "-"
-    if size_bytes > 0:
-        sign = ""
-    else:
-        size_bytes = -size_bytes
-        sign = "-"
-    size_bytes = abs(size_bytes)
-    if size_bytes == 0:
-        return "0B"
-    size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-    i = int(math.floor(math.log(size_bytes, 1024)))
-    p = math.pow(1024, i)
-    s = round(size_bytes / p, 2)
-    return "{} {}".format(s, size_name[i]), sign
 
 
 def _get_tree_changes(self, a_entries, b_entries):
@@ -46,12 +29,13 @@ def _get_tree_changes(self, a_entries, b_entries):
         else:
             result["new"] += 1
             diff_size += os.path.getsize(self.cache.local.get(b_entries[key]))
-    result["diff_size"], result["diff_sign"] = _convert_size(diff_size)
+    result["diff_size"] = humanize.naturalsize(abs(diff_size))
+    result["diff_sign"] = "-" if diff_size < 0 else ""
     return result
 
 
-def plural(s):
-    return str(s) + " file" + "s" * (s > 1)
+def plural(string):
+    return str(string) + " file" + "s" * (string > 1)
 
 
 def _diff_dir(self, target, diff_dct):
@@ -99,12 +83,12 @@ def _diff_file(self, target, diff_dct):
     if not diff_dct["new_file"] and not diff_dct["deleted_file"] and size == 0:
         msg += "file did not change\n"
     elif diff_dct["new_file"]:
-        msg += "added file with size %s" % _convert_size(size)[0]
+        msg += "added file with size {}".format(humanize.naturalsize(size))
     elif diff_dct["deleted_file"]:
-        msg += "deleted file with size %s" % _convert_size(size)[0]
+        msg += "deleted file with size {}".format(humanize.naturalsize(size))
     else:
         msg += "file was modified, file size " + "increased" * (size >= 0)
-        msg += "decreased" * (size < 0) + " by " + _convert_size(size)[0]
+        msg += "decreased" * (size < 0) + " by " + humanize.naturalsize(size)
     return msg
 
 
