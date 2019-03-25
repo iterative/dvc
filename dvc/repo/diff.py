@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import math
 
@@ -21,7 +23,7 @@ def _convert_size(size_bytes):
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i]), sign
+    return "{} {}".format(s, size_name[i]), sign
 
 
 def _get_tree_changes(self, a_entries, b_entries):

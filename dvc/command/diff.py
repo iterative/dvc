@@ -41,11 +41,11 @@ def add_parser(subparsers, parent_parser):
         "target", help="Source path to a data file or directory."
     )
     diff_parser.add_argument(
-        "a_ref", help="Git tag/reference from which diff calculates"
+        "a_ref", help="Git reference from which diff calculates"
     )
     diff_parser.add_argument(
         "b_ref",
-        help="Git tag/reference till which diff calculates",
+        help="Git reference till which diff calculates",
         nargs="?",
         default=None,
     )
