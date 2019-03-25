@@ -20,6 +20,8 @@ def run(
     ignore_build_cache=False,
     remove_outs=False,
     no_commit=False,
+    outs_persist=None,
+    outs_persist_no_cache=None,
 ):
     from dvc.stage import Stage
 
@@ -33,6 +35,10 @@ def run(
         metrics = []
     if metrics_no_cache is None:
         metrics_no_cache = []
+    if outs_persist is None:
+        outs_persist = []
+    if outs_persist_no_cache is None:
+        outs_persist_no_cache = []
 
     with self.state:
         stage = Stage.create(
@@ -49,6 +55,8 @@ def run(
             overwrite=overwrite,
             ignore_build_cache=ignore_build_cache,
             remove_outs=remove_outs,
+            outs_persist=outs_persist,
+            outs_persist_no_cache=outs_persist_no_cache,
         )
 
     if stage is None:

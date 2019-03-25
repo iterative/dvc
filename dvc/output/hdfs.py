@@ -11,10 +11,23 @@ class OutputHDFS(OutputBase):
     REMOTE = RemoteHDFS
 
     def __init__(
-        self, stage, path, info=None, remote=None, cache=True, metric=False
+        self,
+        stage,
+        path,
+        info=None,
+        remote=None,
+        cache=True,
+        metric=False,
+        persist=False,
     ):
         super(OutputHDFS, self).__init__(
-            stage, path, info=info, remote=remote, cache=cache, metric=metric
+            stage,
+            path,
+            info=info,
+            remote=remote,
+            cache=cache,
+            metric=metric,
+            persist=persist,
         )
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip("/"))

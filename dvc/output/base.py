@@ -36,6 +36,7 @@ class OutputBase(object):
     PARAM_METRIC = "metric"
     PARAM_METRIC_TYPE = "type"
     PARAM_METRIC_XPATH = "xpath"
+    PARAM_PERSIST = "persist"
 
     METRIC_SCHEMA = Or(
         None,
@@ -50,7 +51,14 @@ class OutputBase(object):
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
     def __init__(
-        self, stage, path, info=None, remote=None, cache=True, metric=False
+        self,
+        stage,
+        path,
+        info=None,
+        remote=None,
+        cache=True,
+        metric=False,
+        persist=False,
     ):
         self.stage = stage
         self.repo = stage.repo
@@ -59,6 +67,7 @@ class OutputBase(object):
         self.remote = remote or self.REMOTE(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
+        self.persist = persist
 
         if (
             self.use_cache
@@ -186,6 +195,7 @@ class OutputBase(object):
                 del self.metric[self.PARAM_METRIC_XPATH]
 
         ret[self.PARAM_METRIC] = self.metric
+        ret[self.PARAM_PERSIST] = self.persist
 
         return ret
 
@@ -231,3 +241,7 @@ class OutputBase(object):
             return 1
 
         return 0
+
+    def unprotect(self):
+        if self.exists:
+            self.remote.unprotect(self.path_info)
