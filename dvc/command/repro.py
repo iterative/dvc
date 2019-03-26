@@ -4,6 +4,7 @@ import os
 
 import dvc.logger as logger
 from dvc.command.base import CmdBase
+from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
 
@@ -40,7 +41,8 @@ class CmdRepro(CmdBase):
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
 
                 if self.args.metrics:
-                    self.repo.metrics.show()
+                    metrics = self.repo.metrics.show()
+                    show_metrics(metrics)
             except DvcException:
                 logger.error()
                 ret = 1
