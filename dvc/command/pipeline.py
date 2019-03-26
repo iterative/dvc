@@ -90,10 +90,11 @@ class CmdPipelineShow(CmdBase):
         if not nodes:
             return
         if not is_tree:
-            raise ValueError(
+            raise DvcException(
                 "DAG is not a tree, can not print it in tree-structure way, "
                 "please use --ascii instead"
             )
+
         tree = Tree()
         tree.create_node(target, target)  # Root node
         observe_list = [target]
