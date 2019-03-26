@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 import os
-import re
 
 from dvc.utils.compat import str, open
 from dvc.utils import fix_env
@@ -12,7 +11,6 @@ from dvc.scm.base import (
     SCMError,
     FileNotInRepoError,
     FileNotInTargetSubdirError,
-    FileNotInCommitError,
 )
 from dvc.scm.git.tree import GitTree
 import dvc.logger as logger
@@ -238,12 +236,11 @@ class Git(Base):
     def get_tree(self, rev):
         return GitTree(self.git, rev)
 
-    def _get_diff_obj(self, file_name, a_ref, **kwargs):
+    def _get_diff_trees(self, a_ref, **kwargs):
 
         from gitdb.exc import BadObject, BadName
 
-        file_name = os.path.normpath(file_name)
-        file_name += ".dvc"
+        trees = {"a_tree": None, "b_tree": None}
         commits = []
         try:
             if "b_ref" in kwargs and kwargs["b_ref"] is not None:
@@ -252,7 +249,6 @@ class Git(Base):
                 b_commit = self.git.commit(b_ref)
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
-                diff_obj = a_commit.diff(b_commit, paths=file_name)
                 # other way of getting the diff between commits :
                 # self.git.diff(a_commit, b_commit) returns the diff string
                 # by reading the files in a, b commits and computing the diff
@@ -261,63 +257,30 @@ class Git(Base):
                 b_commit = self.git.commit(a_ref)
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
-                if a_commit == b_commit:
-                    return None, commits
-                diff_obj = a_commit.diff(b_commit, paths=file_name)
+            trees["a_tree"] = self.get_tree(commits[0])
+            trees["b_tree"] = self.get_tree(commits[1])
         except (BadName, BadObject) as e:
             raise SCMError("git problem", cause=e)
-        if len(diff_obj) == 0:
-            msg = "Have not found file/directory '{}' in the commits"
-            raise FileNotInCommitError(msg.format(file_name))
-        return diff_obj[0], commits
+        return trees, commits
 
-    def _extract_fname(self, is_deleted, blob_obj):
-        if not is_deleted:
-            s1 = blob_obj.data_stream.read().decode("utf-8")
-            a_hash, a_fname = re.findall(r"md5:\s([a-fA-F\d]{32}[.dir]*)", s1)
-            return a_hash, a_fname
-        else:
-            return None, None
-
-    def diff(self, file_name, a_ref, **kwargs):
-        """Method for diff between two git tag commits
+    def get_diff_trees(self, a_ref, **kwargs):
+        """Method for getting two repo trees between two git tag commits
         returns the dvc hash names of changed file/directory
 
         Args:
-            file_name(str) - file/directory to perform diff of
             a_ref(str) - git reference
-            b_ref(str) - optional second git reference
+            b_ref(str) - optional second git reference, default None
 
         Returns:
-            dict - dictionary with keys: (new_file, a_file_name, b_file_name)
+            dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
         """
         diff_dct = {"equal": False}
-        diff_obj, commit_refs = self._get_diff_obj(file_name, a_ref, **kwargs)
-        diff_dct["a_tag"] = commit_refs[0]
-        diff_dct["b_tag"] = commit_refs[1]
-        if diff_obj is None:
+        trees, commit_refs = self._get_diff_trees(a_ref, **kwargs)
+        diff_dct["a_ref"] = commit_refs[0]
+        diff_dct["b_ref"] = commit_refs[1]
+        if commit_refs[0] == commit_refs[1]:
             diff_dct["equal"] = True
             return diff_dct
-        if not diff_obj.a_path:
-            msg = (
-                "file path {} doesn't exist maybe you forgot to add dataset"
-                " to dvc?"
-            )
-            raise SCMError(msg.format(file_name))
-        # function doesn't support an indicating of moved of a file/directory
-        diff_dct["new_file"] = diff_obj.new_file
-        diff_dct["deleted_file"] = diff_obj.deleted_file
-        diff_dct["a_hash"], diff_dct["a_fname"] = self._extract_fname(
-            diff_dct["new_file"], diff_obj.a_blob
-        )
-        diff_dct["b_hash"], diff_dct["b_fname"] = self._extract_fname(
-            diff_dct["deleted_file"], diff_obj.b_blob
-        )
-        actual_path = (
-            diff_dct["b_fname"] if diff_dct["b_fname"] else diff_dct["a_fname"]
-        )
-        diff_dct["is_dir"] = actual_path.endswith(".dir")
-        diff_dct["file_path"] = (
-            diff_obj.b_path if diff_obj.b_path else diff_obj.a_path
-        )
+        diff_dct["a_tree"] = trees["a_tree"]
+        diff_dct["b_tree"] = trees["b_tree"]
         return diff_dct

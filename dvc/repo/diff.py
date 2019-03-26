@@ -5,8 +5,11 @@ import humanize
 import inflect
 
 
-def _extract_tree(self, cache_dir):
-    lst = self.cache.local.load_dir_cache(cache_dir)
+from dvc.scm.base import FileNotInCommitError
+
+
+def _extract_output(self, output):
+    lst = output.dir_cache
     return {i["relpath"]: i["md5"] for i in lst}
 
 
@@ -35,36 +38,74 @@ def _get_tree_changes(self, a_entries, b_entries):
     return result
 
 
+def _get_diff_outs(self, diff_dct):
+    self.tree = diff_dct["a_tree"]
+    a_outs = {str(out): out for st in self.stages() for out in st.outs}
+    self.tree = diff_dct["b_tree"]
+    b_outs = {str(out): out for st in self.stages() for out in st.outs}
+    outs_paths = set(a_outs.keys())
+    outs_paths.update(b_outs.keys())
+    results = {}
+    for path in outs_paths:
+        if path in a_outs and path in b_outs:
+            results[path] = {
+                "a_output": a_outs[path],
+                "b_output": b_outs[path],
+                "new_file": False,
+                "deleted_file": False,
+                # possible drawback: regular file ->directory movement
+                "is_dir": a_outs[path].is_dir_cache,
+            }
+        elif path in a_outs:
+            results[path] = {
+                "a_output": a_outs[path],
+                "new_file": False,
+                "deleted_file": True,
+                "is_dir": a_outs[path].is_dir_cache,
+            }
+        else:
+            results[path] = {
+                "b_output": b_outs[path],
+                "new_file": True,
+                "deleted_file": False,
+                "is_dir": b_outs[path].is_dir_cache,
+            }
+    return results
+
+
 def _diff_dir(self, target, diff_dct):
     engine = inflect.engine()
     msg = ""
     a_entries, b_entries = {}, {}
     if not diff_dct["new_file"]:
         msg += "-{} with md5 {}\n".format(
-            target, diff_dct["a_fname"].split(".dir")[0]
+            target, diff_dct["a_output"].checksum
         )
-        a_entries = _extract_tree(self, diff_dct["a_fname"])
+        a_entries = _extract_output(self, diff_dct["a_output"])
     if not diff_dct["deleted_file"]:
         msg += "+{} with md5 {}\n".format(
-            target, diff_dct["b_fname"].split(".dir")[0]
+            target, diff_dct["b_output"].checksum
         )
-        b_entries = _extract_tree(self, diff_dct["b_fname"])
+        b_entries = _extract_output(self, diff_dct["b_output"])
     msg += "\n"
     result = _get_tree_changes(self, a_entries, b_entries)
     msg += f"{result['ident']} " + engine.plural("file", result["ident"])
-    msg += " didn't change, "
+    msg += " not changed, "
     msg += f"{result['changes']} " + engine.plural("file", result["changes"])
     msg += " modified, "
     msg += f"{result['new']} " + engine.plural("file", result["new"])
     msg += " added, "
     msg += f"{result['del']} " + engine.plural("file", result["del"])
     msg += " deleted, "
-    msg += "size was " + "increased" * (result["diff_sign"] != "-")
-    msg += (
-        "decreased" * (result["diff_sign"] == "-")
-        + " by "
-        + result["diff_size"]
-    )
+    if result["diff_size"] == "0 Bytes":
+        msg += "size wasn't changed"
+    else:
+        msg += "size was " + "increased" * (result["diff_sign"] != "-")
+        msg += (
+            "decreased" * (result["diff_sign"] == "-")
+            + " by "
+            + result["diff_size"]
+        )
     return msg
 
 
@@ -73,16 +114,20 @@ def _diff_file(self, target, diff_dct):
     size = 0
     if not diff_dct["new_file"]:
         msg += "-{} with md5 {}\n".format(
-            target, diff_dct["a_fname"].split(".dir")[0]
+            target, diff_dct["a_output"].checksum
         )
-        size -= os.path.getsize(self.cache.local.get(diff_dct["a_fname"]))
+        size -= os.path.getsize(
+            self.cache.local.get(diff_dct["a_output"].checksum)
+        )
     if not diff_dct["deleted_file"]:
-        msg += "+{} with md5 {}\n".format(
-            target, diff_dct["b_fname"].split(".dir")[0]
+        msg += "+{} with md5 {}\n\n".format(
+            target, diff_dct["b_output"].checksum
         )
-        size += os.path.getsize(self.cache.local.get(diff_dct["b_fname"]))
+        size += os.path.getsize(
+            self.cache.local.get(diff_dct["b_output"].checksum)
+        )
     if not diff_dct["new_file"] and not diff_dct["deleted_file"] and size == 0:
-        msg += "file did not change\n"
+        msg += "file was not changed"
     elif diff_dct["new_file"]:
         msg += "added file with size {}".format(humanize.naturalsize(size))
     elif diff_dct["deleted_file"]:
@@ -91,6 +136,13 @@ def _diff_file(self, target, diff_dct):
         msg += "file was modified, file size " + "increased" * (size >= 0)
         msg += "decreased" * (size < 0) + " by " + humanize.naturalsize(size)
     return msg
+
+
+def _diff_royal(self, target, diff_dct):
+    msg = "diff for " + target + "\n"
+    if diff_dct["is_dir"]:
+        return _diff_dir(self, target, diff_dct)
+    return msg + _diff_file(self, target, diff_dct)
 
 
 def diff(self, target, a_ref=None, b_ref=None):
@@ -104,16 +156,23 @@ def diff(self, target, a_ref=None, b_ref=None):
     Returns:
         string: string of output message with diff info
     """
-    diff_dct = self.scm.diff(target, a_ref=a_ref, b_ref=b_ref)
-    msg = "dvc diff for '{}' from {} to {}\n\n".format(
-        target, diff_dct["a_tag"], diff_dct["b_tag"]
+    diff_dct = self.scm.get_diff_trees(a_ref, b_ref=b_ref)
+    msg = "dvc diff from {} to {}\n\n".format(
+        diff_dct["a_ref"], diff_dct["b_ref"]
     )
     if diff_dct["equal"]:
         return msg
-    if diff_dct["is_dir"]:
-        dir_info = _diff_dir(self, target, diff_dct)
-        msg += dir_info
+    diff_outs = _get_diff_outs(self, diff_dct)
+    if target is None:
+        for path in diff_outs:
+            info_msg = _diff_royal(self, path, diff_outs[path])
+            msg += info_msg
+            msg += "\n\n"
+        msg = msg[:-2]
+    elif target in diff_outs:
+        info_msg = _diff_royal(self, target, diff_outs[target])
+        msg += info_msg
     else:
-        file_info = _diff_file(self, target, diff_dct)
-        msg += file_info
+        msg = "Have not found file/directory '{}' in the commits"
+        raise FileNotInCommitError(msg.format(target))
     return msg

@@ -38,14 +38,23 @@ def add_parser(subparsers, parent_parser):
         "diff", parents=[parent_parser], description=description, help=help
     )
     diff_parser.add_argument(
-        "target", help="Source path to a data file or directory."
+        "-t",
+        "--target",
+        default=None,
+        help=(
+            "Source path to a data file or directory. Default None,"
+            "if None shows the diff between all DVC tracked files/directories"
+        ),
     )
     diff_parser.add_argument(
         "a_ref", help="Git reference from which diff calculates"
     )
     diff_parser.add_argument(
         "b_ref",
-        help="Git reference till which diff calculates",
+        help=(
+            "Git reference till which diff calculates, if omitted "
+            "diff shows the difference between current HEAD and a_ref"
+        ),
         nargs="?",
         default=None,
     )
