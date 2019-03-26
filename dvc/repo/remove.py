@@ -3,8 +3,8 @@ def remove(self, target, outs_only=False):
 
     stage = Stage.load(self, target)
     if outs_only:
-        stage.remove_outs()
+        stage.remove_outs(force=True)
     else:
-        stage.remove()
+        stage.remove(force=True)
 
     return stage
