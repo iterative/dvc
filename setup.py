@@ -22,6 +22,7 @@ install_requires = [
     "asciimatics>=1.10.0",
     "distro>=1.3.0",
     "appdirs>=1.4.3",
+    "treelib>=1.5.5",
 ]
 
 # Extra dependencies for remote integrations
