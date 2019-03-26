@@ -259,10 +259,10 @@ class Stage(object):
 
         return ret
 
-    def remove_outs(self, ignore_remove=False):
+    def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            if out.persist:
+            if out.persist and not force:
                 out.unprotect()
             else:
                 logger.debug(
@@ -276,8 +276,8 @@ class Stage(object):
         for out in self.outs:
             out.unprotect()
 
-    def remove(self):
-        self.remove_outs(ignore_remove=True)
+    def remove(self, force=False):
+        self.remove_outs(ignore_remove=True, force=force)
         os.unlink(self.path)
 
     def reproduce(

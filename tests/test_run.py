@@ -777,6 +777,14 @@ class TestRunPersist(TestDvc):
         file_content = "content"
         stage_file = file + Stage.STAGE_FILE_SUFFIX
 
+        self.run_command(file, file_content)
+        self.stage_should_contain_persist_flag(stage_file)
+
+        self.should_append_upon_repro(file, stage_file)
+
+        self.should_remove_persistent_outs(file, stage_file)
+
+    def run_command(self, file, file_content):
         ret = main(
             [
                 "run",
@@ -787,17 +795,25 @@ class TestRunPersist(TestDvc):
         )
         self.assertEqual(0, ret)
 
+    def stage_should_contain_persist_flag(self, stage_file):
         stage_file_content = load_stage_file(stage_file)
         self.assertEqual(
             True, stage_file_content["outs"][0][OutputBase.PARAM_PERSIST]
         )
 
+    def should_append_upon_repro(self, file, stage_file):
         ret = main(["repro", stage_file])
         self.assertEqual(0, ret)
 
         with open(file, "r") as fobj:
             lines = fobj.readlines()
         self.assertEqual(2, len(lines))
+
+    def should_remove_persistent_outs(self, file, stage_file):
+        ret = main(["remove", stage_file])
+        self.assertEqual(0, ret)
+
+        self.assertFalse(os.path.exists(file))
 
 
 class TestRunPersistOuts(TestRunPersist):
