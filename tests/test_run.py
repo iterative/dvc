@@ -379,7 +379,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
         ret = main(
             [
@@ -397,7 +397,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
 
 class TestRunUnprotectOutsSymlink(TestDvc):
@@ -405,7 +405,6 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
-            fobj.write("assert os.path.exists(sys.argv[1])\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
@@ -431,7 +430,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
         ret = main(
             [
@@ -450,7 +449,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
 
 class TestRunUnprotectOutsHardlink(TestDvc):
@@ -458,7 +457,6 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         with open(self.CODE, "w+") as fobj:
             fobj.write("import sys\n")
             fobj.write("import os\n")
-            fobj.write("assert os.path.exists(sys.argv[1])\n")
             fobj.write("with open(sys.argv[1], 'a+') as fobj:\n")
             fobj.write("    fobj.write('foo')\n")
 
@@ -484,7 +482,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
         ret = main(
             [
@@ -503,7 +501,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foofoofoo")
+        self.assertEqual(open(self.FOO, "r").read(), "foo")
 
 
 class TestCmdRunOverwrite(TestDvc):
@@ -755,13 +753,13 @@ class TestRunCommit(TestDvc):
     def test(self):
         fname = "test"
         ret = main(
-            ["run", "-o", self.FOO, "--no-commit", "echo", "test", ">", fname]
+            ["run", "-o", fname, "--no-commit", "echo", "test", ">", fname]
         )
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
 
-        ret = main(["commit", self.FOO + ".dvc"])
+        ret = main(["commit", fname + ".dvc"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(fname))
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
@@ -861,3 +859,64 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
             "command with non overlapping outs paths.",
             error_output,
         )
+
+
+class TestRerunWithSameOutputs(TestDvc):
+    def _read_content_only(self, path):
+        with open(path, "r") as fobj:
+            return [line.rstrip() for line in fobj.readlines()]
+
+    @property
+    def _outs_command(self):
+        raise NotImplementedError
+
+    def _run_twice_with_same_outputs(self):
+        ret = main(
+            [
+                "run",
+                "--outs",
+                self.FOO,
+                "echo {} > {}".format(self.FOO_CONTENTS, self.FOO),
+            ]
+        )
+        self.assertEqual(0, ret)
+
+        output_file_content = self._read_content_only(self.FOO)
+        self.assertEqual([self.FOO_CONTENTS], output_file_content)
+
+        ret = main(
+            [
+                "run",
+                self._outs_command,
+                self.FOO,
+                "--overwrite-dvcfile",
+                "echo {} >> {}".format(self.BAR_CONTENTS, self.FOO),
+            ]
+        )
+        self.assertEqual(0, ret)
+
+
+class TestNewRunShouldRemoveOutsOnNoPersist(TestRerunWithSameOutputs):
+    def test(self):
+        self._run_twice_with_same_outputs()
+
+        output_file_content = self._read_content_only(self.FOO)
+        self.assertEqual([self.BAR_CONTENTS], output_file_content)
+
+    @property
+    def _outs_command(self):
+        return "--outs"
+
+
+class TestNewRunShouldNotRemoveOutsOnPersist(TestRerunWithSameOutputs):
+    def test(self):
+        self._run_twice_with_same_outputs()
+
+        output_file_content = self._read_content_only(self.FOO)
+        self.assertEqual(
+            [self.FOO_CONTENTS, self.BAR_CONTENTS], output_file_content
+        )
+
+    @property
+    def _outs_command(self):
+        return "--outs-persist"

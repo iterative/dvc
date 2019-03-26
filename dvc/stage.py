@@ -286,10 +286,6 @@ class Stage(object):
         if not self.changed() and not force:
             return None
 
-        if (self.cmd or self.is_import) and not self.locked and not dry:
-            # Removing outputs only if we actually have command to reproduce
-            self.remove_outs(ignore_remove=False)
-
         msg = (
             "Going to reproduce '{stage}'. "
             "Are you sure you want to continue?".format(stage=self.relpath)
@@ -734,6 +730,9 @@ class Stage(object):
             raise StageCmdFailedError(self)
 
     def run(self, dry=False, resume=False, no_commit=False, force=False):
+        if self.cmd and not self.locked and not dry:
+            self.remove_outs(ignore_remove=False, force=False)
+
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
