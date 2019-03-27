@@ -5,7 +5,12 @@ import os
 import dvc.prompt as prompt
 import dvc.logger as logger
 
-from dvc.exceptions import DvcException, NotDvcRepoError, OutputNotFoundError
+from dvc.exceptions import (
+    DvcException,
+    NotDvcRepoError,
+    OutputNotFoundError,
+    TargetNotDirectoryError,
+)
 
 
 class Repo(object):
@@ -367,6 +372,8 @@ class Repo(object):
 
         if not from_directory:
             from_directory = self.root_dir
+        elif not os.path.isdir(from_directory):
+            raise TargetNotDirectoryError(from_directory)
 
         stages = []
         outs = []

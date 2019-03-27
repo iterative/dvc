@@ -17,7 +17,11 @@ from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage
 from dvc.remote.local import RemoteLOCAL
-from dvc.exceptions import DvcException, ConfirmRemoveError
+from dvc.exceptions import (
+    DvcException,
+    ConfirmRemoveError,
+    TargetNotDirectoryError,
+)
 
 from mock import patch
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
@@ -510,3 +514,24 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
 
     def assertAnyEndsWith(self, update_bars, name):
         self.assertTrue(any(ub for ub in update_bars if ub.endswith(name)))
+
+
+class TestCheckoutTargetRecursiveShouldNotRemoveOtherUsedFiles(TestDvc):
+    def test(self):
+        ret = main(["add", self.DATA_DIR, self.FOO, self.BAR])
+        self.assertEqual(0, ret)
+
+        ret = main(["checkout", "-R", self.DATA_DIR])
+        self.assertEqual(0, ret)
+
+        self.assertTrue(os.path.exists(self.FOO))
+        self.assertTrue(os.path.exists(self.BAR))
+
+
+class TestCheckoutRecursiveNotDirectory(TestDvc):
+    def test(self):
+        ret = main(["add", self.FOO])
+        self.assertEqual(0, ret)
+
+        with self.assertRaises(TargetNotDirectoryError):
+            self.dvc.checkout(target=self.FOO, recursive=True)
