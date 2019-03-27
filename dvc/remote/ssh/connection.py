@@ -128,7 +128,17 @@ class SSHConnection:
 
         self._sftp_connect()
 
-        for entry in self._sftp.listdir_attr(directory):
+        try:
+            dir_entries = self._sftp.listdir_attr(directory)
+        except IOError as exc:
+            raise DvcException(
+                "couldn't get the '{}' remote directory files list".format(
+                    directory
+                ),
+                cause=exc,
+            )
+
+        for entry in dir_entries:
             path = posixpath.join(directory, entry.filename)
 
             if S_ISLNK(entry.st_mode):
