@@ -155,12 +155,7 @@ class OutputLOCAL(OutputBase):
 
     @property
     def dir_cache(self):
-        if self.checksum not in self._dir_cache.keys():
-            self._dir_cache[
-                self.checksum
-            ] = self.repo.cache.local.load_dir_cache(self.checksum)
-
-        return self._dir_cache[self.checksum]
+        return self.repo.cache.local.load_dir_cache(self.checksum)
 
     def get_files_number(self):
         if self.cache is None:

@@ -212,7 +212,7 @@ class OutputBase(object):
             return
 
         getattr(self.repo.cache, self.scheme).checkout(
-            output=self, force=force, progress_callback=progress_callback
+            self.path_info, self.info, force=force, progress_callback=progress_callback
         )
 
     def remove(self, ignore_remove=False):

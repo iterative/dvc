@@ -78,6 +78,8 @@ class RemoteLOCAL(RemoteBase):
 
         self.path_info = {"scheme": "local"}
 
+        self._dir_info = {}
+
     @staticmethod
     def compat_config(config):
         ret = config.copy()
@@ -256,8 +258,11 @@ class RemoteLOCAL(RemoteBase):
 
     def load_dir_cache(self, md5):
         path = self.get(md5)
-
         assert self.is_dir_cache(path)
+
+        dir_info = self._dir_info.get(md5)
+        if dir_info:
+            return dir_info
 
         try:
             with open(path, "r") as fd:
@@ -274,6 +279,8 @@ class RemoteLOCAL(RemoteBase):
 
         for info in d:
             info["relpath"] = self.to_ospath(info["relpath"])
+
+        self._dir_info[md5] = d
 
         return d
 
@@ -299,15 +306,13 @@ class RemoteLOCAL(RemoteBase):
     def is_dir_cache(cls, cache):
         return cache.endswith(cls.MD5_DIR_SUFFIX)
 
-    def do_checkout(self, output, force=False, progress_callback=None):
-        path_info = output.path_info
-        checksum = output.info.get(self.PARAM_CHECKSUM)
-
+    def do_checkout(
+        self, path_info, checksum, force=False, progress_callback=None
+    ):
         path = path_info["path"]
-        md5 = checksum
-        cache = self.get(md5)
+        cache = self.get(checksum)
 
-        if not output.is_dir_cache:
+        if not self.is_dir_cache(cache):
             if os.path.exists(path):
                 self.safe_remove(path_info, force=force)
 
@@ -322,10 +327,11 @@ class RemoteLOCAL(RemoteBase):
         if not os.path.exists(path):
             os.makedirs(path)
 
-        dir_info = output.dir_cache
         dir_relpath = os.path.relpath(path)
 
         logger.debug("Linking directory '{}'.".format(dir_relpath))
+
+        dir_info = self.load_dir_cache(checksum)
 
         for processed, entry in enumerate(dir_info):
             relpath = entry[self.PARAM_RELPATH]
