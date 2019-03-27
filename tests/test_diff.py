@@ -32,22 +32,30 @@ class TestDiff(TestDvc):
 
 class TestDiffRepo(TestDiff):
     def test(self):
-        new_ref = self.git.head.commit
-        msg = self.dvc.diff(self.new_file, a_ref=self.a_ref)
-        test_msg = "dvc diff from {} to {}\n\n".format(new_ref, self.a_ref)
-        test_msg += "diff for '{}'\n".format(self.new_file)
-        test_msg += "-new_file with md5 25fa8325e4e0eb8180445e42558e60bd\n"
-        test_msg += "deleted file with size -8 Bytes"
-        self.assertEqual(test_msg, msg)
+        result = self.dvc.diff(self.new_file, a_ref=self.a_ref)
+        test_dct = {
+            "b_ref": str(self.a_ref),
+            "a_ref": str(self.git.head.commit),
+            "diffs": [
+                {
+                    "target": self.new_file,
+                    "old_file": self.new_file,
+                    "old_checksum": "25fa8325e4e0eb8180445e42558e60bd",
+                    "size_diff": -8,
+                }
+            ],
+        }
+        self.assertEqual(test_dct, result)
 
 
 class TestDiffCmdLine(TestDiff):
     def test(self):
-        with patch("dvc.repo.Repo", config="testing") as MockRepo:
-            MockRepo.return_value.diff.return_value = "testing"
-            MockRepo.return_value.diff.return_value = "testing"
-            ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
-            self.assertEqual(ret, 0)
+        with patch("dvc.cli.diff.CmdDiff._show", autospec=True):
+            with patch("dvc.repo.Repo", config="testing") as MockRepo:
+                MockRepo.return_value.diff.return_value = "testing"
+                MockRepo.return_value.diff.return_value = "testing"
+                ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
+                self.assertEqual(ret, 0)
 
 
 class TestDiffDir(TestDvc):
@@ -73,20 +81,27 @@ class TestDiffDir(TestDvc):
 
 class TestDiffDirRepo(TestDiffDir):
     def test(self):
-        new_ref = self.git.head.commit
-        msg = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
-        test_msg = "dvc diff from ".format(self.DATA_DIR)
-        test_msg += "{} to {}\n\n".format(new_ref, self.a_ref)
-        test_msg += "diff for '{}'\n".format(self.DATA_DIR)
-        test_msg += "-data_dir with md5 d5782f3072167ad3a53ee80b92b30718.dir\n"
-        test_msg += (
-            "+data_dir with md5 bff5a787d16460f32e9f2e62b183b1cc.dir\n\n"
-        )
-        test_msg += "2 files not changed, 0 files modified, 0 files added, "
-        test_msg += "1 file deleted, size was decreased by 30 Bytes"
-        self.assertEqual(
-            msg, test_msg, msg="msg is %s test_msg is %s" % (msg, test_msg)
-        )
+        result = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
+        test_dct = {
+            "b_ref": str(self.a_ref),
+            "a_ref": str(self.git.head.commit),
+            "diffs": [
+                {
+                    "changes": 0,
+                    "del": 1,
+                    "ident": 2,
+                    "moves": 0,
+                    "new": 0,
+                    "target": self.DATA_DIR,
+                    "old_file": self.DATA_DIR,
+                    "old_checksum": "d5782f3072167ad3a53ee80b92b30718.dir",
+                    "new_file": self.DATA_DIR,
+                    "new_checksum": "bff5a787d16460f32e9f2e62b183b1cc.dir",
+                    "size_diff": -30,
+                }
+            ],
+        }
+        self.assertEqual(test_dct, result)
 
 
 class TestDiffFileNotFound(TestDiffDir):
