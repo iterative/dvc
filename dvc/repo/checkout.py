@@ -29,15 +29,14 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
 
     all_stages = self.stages()
 
-    if target and not recursive:
-        try:
-            stages = self.collect(target, with_deps=with_deps)
-        except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
-            raise DvcException(
-                str(exc) + " Did you mean 'git checkout {}'?".format(target)
-            )
-    else:
-        stages = self.active_stages(target)
+    try:
+        stages = self.collect(target, with_deps=with_deps, recursive=recursive)
+    except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
+        if not target:
+            raise
+        raise DvcException(
+            str(exc) + " Did you mean 'git checkout {}'?".format(target)
+        )
 
     with self.state:
         _cleanup_unused_links(self, all_stages)

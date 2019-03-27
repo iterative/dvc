@@ -143,9 +143,12 @@ class Repo(object):
         assert len(pipelines) == 1
         return pipelines[0]
 
-    def collect(self, target, with_deps=False):
+    def collect(self, target, with_deps=False, recursive=False):
         import networkx as nx
         from dvc.stage import Stage
+
+        if not target or recursive:
+            return self.active_stages(target)
 
         stage = Stage.load(self, target)
         if not with_deps:
