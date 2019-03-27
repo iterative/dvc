@@ -236,15 +236,14 @@ class Git(Base):
     def get_tree(self, rev):
         return GitTree(self.git, rev)
 
-    def _get_diff_trees(self, a_ref, **kwargs):
+    def _get_diff_trees(self, a_ref, b_ref):
 
         from gitdb.exc import BadObject, BadName
 
         trees = {"a_tree": None, "b_tree": None}
         commits = []
         try:
-            if "b_ref" in kwargs and kwargs["b_ref"] is not None:
-                b_ref = kwargs["b_ref"]
+            if b_ref is not None:
                 a_commit = self.git.commit(a_ref)
                 b_commit = self.git.commit(b_ref)
                 commits.append(str(a_commit))
@@ -263,7 +262,7 @@ class Git(Base):
             raise SCMError("git problem", cause=e)
         return trees, commits
 
-    def get_diff_trees(self, a_ref, **kwargs):
+    def get_diff_trees(self, a_ref, b_ref=None):
         """Method for getting two repo trees between two git tag commits
         returns the dvc hash names of changed file/directory
 
@@ -275,7 +274,7 @@ class Git(Base):
             dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
         """
         diff_dct = {"equal": False}
-        trees, commit_refs = self._get_diff_trees(a_ref, **kwargs)
+        trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
         diff_dct["a_ref"] = commit_refs[0]
         diff_dct["b_ref"] = commit_refs[1]
         if commit_refs[0] == commit_refs[1]:

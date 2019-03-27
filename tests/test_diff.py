@@ -35,7 +35,7 @@ class TestDiffRepo(TestDiff):
         new_ref = self.git.head.commit
         msg = self.dvc.diff(self.new_file, a_ref=self.a_ref)
         test_msg = "dvc diff from {} to {}\n\n".format(new_ref, self.a_ref)
-        test_msg += "diff for {}\n".format(self.new_file)
+        test_msg += "diff for '{}'\n".format(self.new_file)
         test_msg += "-new_file with md5 25fa8325e4e0eb8180445e42558e60bd\n"
         test_msg += "deleted file with size -8 Bytes"
         self.assertEqual(test_msg, msg)
@@ -77,6 +77,7 @@ class TestDiffDirRepo(TestDiffDir):
         msg = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
         test_msg = "dvc diff from ".format(self.DATA_DIR)
         test_msg += "{} to {}\n\n".format(new_ref, self.a_ref)
+        test_msg += "diff for '{}'\n".format(self.DATA_DIR)
         test_msg += "-data_dir with md5 d5782f3072167ad3a53ee80b92b30718.dir\n"
         test_msg += (
             "+data_dir with md5 bff5a787d16460f32e9f2e62b183b1cc.dir\n\n"

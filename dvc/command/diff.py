@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
+from dvc.utils.collections import compact
 
 
 class CmdDiff(CmdBase):
@@ -16,20 +17,18 @@ class CmdDiff(CmdBase):
             )
             self._show(msg)
         except DvcException:
-            msg = "failed to get diff "
-            if self.args.target:
-                msg += self.args.target + " "
-            if self.args.a_ref:
-                msg += self.args.a_ref + " "
-            if self.args.b_ref:
-                msg += self.args.b_ref + " "
+            msg = "failed to get 'diff "
+            msg += " ".join(
+                compact([self.args.target, self.args.a_ref, self.args.b_ref])
+            )
+            msg += "'"
             logger.error(msg)
         return 0
 
 
 def add_parser(subparsers, parent_parser):
     description = (
-        "show diff of a data file or a directory that "
+        "Show diff of a data file or a directory that "
         "is under DVC control. Some basic statistics "
         "summary, how many files were deleted/changed."
     )
@@ -43,7 +42,8 @@ def add_parser(subparsers, parent_parser):
         default=None,
         help=(
             "Source path to a data file or directory. Default None,"
-            "if None shows the diff between all DVC tracked files/directories"
+            "If not specified, compares all files and directories "
+            "that are under DVC control in the current working space."
         ),
     )
     diff_parser.add_argument(

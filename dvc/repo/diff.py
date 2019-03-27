@@ -8,7 +8,15 @@ import inflect
 from dvc.scm.base import FileNotInCommitError
 
 
-def _extract_output(self, output):
+def _extract_dir(self, output):
+    """Extract the content of dvc tree file
+    Args:
+        self(object) - Repo class instance
+        output(object) - OutputLOCAL class instance
+    Returns:
+        dict - dictionary with keys - paths to file in .dvc/cache
+                               values -checksums for that files
+    """
     lst = output.dir_cache
     return {i["relpath"]: i["md5"] for i in lst}
 
@@ -81,12 +89,12 @@ def _diff_dir(self, target, diff_dct):
         msg += "-{} with md5 {}\n".format(
             target, diff_dct["a_output"].checksum
         )
-        a_entries = _extract_output(self, diff_dct["a_output"])
+        a_entries = _extract_dir(self, diff_dct["a_output"])
     if not diff_dct["deleted_file"]:
         msg += "+{} with md5 {}\n".format(
             target, diff_dct["b_output"].checksum
         )
-        b_entries = _extract_output(self, diff_dct["b_output"])
+        b_entries = _extract_dir(self, diff_dct["b_output"])
     msg += "\n"
     result = _get_tree_changes(self, a_entries, b_entries)
     msg += f"{result['ident']} " + engine.plural("file", result["ident"])
@@ -139,9 +147,9 @@ def _diff_file(self, target, diff_dct):
 
 
 def _diff_royal(self, target, diff_dct):
-    msg = "diff for " + target + "\n"
+    msg = "diff for '" + target + "'\n"
     if diff_dct["is_dir"]:
-        return _diff_dir(self, target, diff_dct)
+        return msg + _diff_dir(self, target, diff_dct)
     return msg + _diff_file(self, target, diff_dct)
 
 
