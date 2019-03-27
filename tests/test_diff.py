@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
+
 import os
+from mock import patch
 
 from dvc.main import main
 
@@ -41,8 +43,11 @@ class TestDiffRepo(TestDiff):
 
 class TestDiffCmdLine(TestDiff):
     def test(self):
-        ret = main(["diff", self.new_file, str(self.a_ref)])
-        self.assertEqual(ret, 0)
+        with patch("dvc.repo.Repo", config="testing") as MockRepo:
+            MockRepo.return_value.diff.return_value = "testing"
+            MockRepo.return_value.diff.return_value = "testing"
+            ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
+            self.assertEqual(ret, 0)
 
 
 class TestDiffDir(TestDvc):
