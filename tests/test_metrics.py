@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import json
 
@@ -166,6 +167,119 @@ class TestMetrics(TestDvc):
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
             self.assertSequenceEqual(ret[b]["metric_hcsv"], [[b]])
+
+    def test_formatted_output(self):
+        with open("metrics.csv", "w") as fobj:
+            # Labels are in Spanish to test unicode characters
+            fobj.write(
+                "valor_mse,desviación_mse,data_set\n"
+                "0.421601,0.173461,entrenamiento\n"
+                "0.67528,0.289545,pruebas\n"
+                "0.671502,0.297848,validación\n"
+            )
+
+        with open("metrics.tsv", "w") as fobj:
+            # Contains quoted newlines to test output correctness
+            fobj.write(
+                "value_mse\tdeviation_mse\tdata_set\n"
+                "0.421601\t0.173461\ttrain\n"
+                '0.67528\t0.289545\t"test\\ning"\n'
+                "0.671502\t0.297848\tvalidation\n"
+            )
+
+        with open("metrics.json", "w") as fobj:
+            fobj.write(
+                "{\n"
+                '     "data_set": [\n'
+                '          "train",\n'
+                '          "testing",\n'
+                '          "validation"\n'
+                "     ],\n"
+                '     "deviation_mse": [\n'
+                '          "0.173461",\n'
+                '          "0.289545",\n'
+                '          "0.297848"\n'
+                "     ],\n"
+                '     "value_mse": [\n'
+                '          "0.421601",\n'
+                '          "0.67528",\n'
+                '          "0.671502"\n'
+                "     ]\n"
+                "}"
+            )
+
+        with open("metrics.txt", "w") as fobj:
+            fobj.write("ROC_AUC: 0.64\nKS: 78.9999999996\nF_SCORE: 77\n")
+
+        self.dvc.run(
+            fname="testing_metrics_output.dvc",
+            metrics_no_cache=[
+                "metrics.csv",
+                "metrics.tsv",
+                "metrics.json",
+                "metrics.txt",
+            ],
+        )
+
+        self.dvc.metrics.modify("metrics.csv", typ="csv")
+        self.dvc.metrics.modify("metrics.tsv", typ="tsv")
+        self.dvc.metrics.modify("metrics.json", typ="json")
+
+        with MockLoggerHandlers(logger.logger):
+            reset_logger_standard_output()
+
+            ret = main(["metrics", "show"])
+            self.assertEqual(ret, 0)
+
+            expected_csv = (
+                u"\tmetrics.csv:\n"
+                u"\t\tvalor_mse   desviación_mse   data_set       \n"
+                u"\t\t0.421601    0.173461         entrenamiento  \n"
+                u"\t\t0.67528     0.289545         pruebas        \n"
+                u"\t\t0.671502    0.297848         validación"
+            )
+
+            expected_tsv = (
+                "\tmetrics.tsv:\n"
+                "\t\tvalue_mse   deviation_mse   data_set    \n"
+                "\t\t0.421601    0.173461        train       \n"
+                "\t\t0.67528     0.289545        test\\ning   \n"
+                "\t\t0.671502    0.297848        validation"
+            )
+
+            expected_txt = (
+                "\tmetrics.txt:\n"
+                "\t\tROC_AUC: 0.64\n"
+                "\t\tKS: 78.9999999996\n"
+                "\t\tF_SCORE: 77\n"
+            )
+
+            expected_json = (
+                "\tmetrics.json:\n"
+                "\t\t{\n"
+                '\t\t     "data_set": [\n'
+                '\t\t          "train",\n'
+                '\t\t          "testing",\n'
+                '\t\t          "validation"\n'
+                "\t\t     ],\n"
+                '\t\t     "deviation_mse": [\n'
+                '\t\t          "0.173461",\n'
+                '\t\t          "0.289545",\n'
+                '\t\t          "0.297848"\n'
+                "\t\t     ],\n"
+                '\t\t     "value_mse": [\n'
+                '\t\t          "0.421601",\n'
+                '\t\t          "0.67528",\n'
+                '\t\t          "0.671502"\n'
+                "\t\t     ]\n"
+                "\t\t}"
+            )
+
+            stdout = logger.logger.handlers[0].stream.getvalue()
+            self.assertIn(expected_tsv, stdout)
+            self.assertIn(expected_csv, stdout)
+            self.assertIn(expected_txt, stdout)
+            self.assertIn(expected_json, stdout)
 
 
 class TestMetricsRecursive(TestDvc):

@@ -27,18 +27,48 @@ def encode(u, encoding=None):
     return u.encode(encoding, "replace")
 
 
-# NOTE: cast_bytes_py2 is taken from
-# https://github.com/ipython/ipython_genutils
+def csv_reader(unicode_csv_data, dialect=None, **kwargs):
+    """csv.reader doesn't support Unicode input, so need to use some tricks
+    to work around this.
+
+    Source: https://docs.python.org/2/library/csv.html#csv-examples
+    """
+    import csv
+
+    dialect = dialect or csv.excel
+
+    if is_py3:
+        # Python3 supports encoding by default, so just return the object
+        for row in csv.reader(unicode_csv_data, dialect=dialect, **kwargs):
+            yield [cell for cell in row]
+
+    else:
+        # csv.py doesn't do Unicode; encode temporarily as UTF-8:
+        reader = csv.reader(
+            utf_8_encoder(unicode_csv_data), dialect=dialect, **kwargs
+        )
+        for row in reader:
+            # decode UTF-8 back to Unicode, cell by cell:
+            yield [unicode(cell, "utf-8") for cell in row]  # noqa: F821
+
+
+def utf_8_encoder(unicode_csv_data):
+    """Source: https://docs.python.org/2/library/csv.html#csv-examples"""
+    for line in unicode_csv_data:
+        yield line.encode("utf-8")
+
+
 def cast_bytes(s, encoding=None):
+    """Source: https://github.com/ipython/ipython_genutils"""
     if not isinstance(s, bytes):
         return encode(s, encoding)
     return s
 
 
-# NOTE _makedirs is taken from
-# https://github.com/python/cpython/blob/
-# 3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
 def _makedirs(name, mode=0o777, exist_ok=False):
+    """Source: https://github.com/python/cpython/blob/
+        3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
+    """
     head, tail = os.path.split(name)
     if not tail:
         head, tail = os.path.split(head)
