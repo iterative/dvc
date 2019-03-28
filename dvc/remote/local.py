@@ -758,7 +758,7 @@ class RemoteLOCAL(RemoteBase):
             copyfile(
                 path,
                 tmp,
-                name="Unprotecting :{}".format(os.path.relpath(path)),
+                name="Unprotecting '{}'".format(os.path.relpath(path)),
             )
             remove(path)
             os.rename(tmp, path)
