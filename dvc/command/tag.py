@@ -2,7 +2,7 @@ import yaml
 
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers
+from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
 
 class CmdTagAdd(CmdBase):
@@ -55,26 +55,26 @@ class CmdTagList(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    TAG_HELP = "A set of commands to manage dvc tags."
+    TAG_HELP = "A set of commands to manage DVC tags."
     tag_parser = subparsers.add_parser(
         "tag",
         parents=[parent_parser],
         description=append_doc_link(TAG_HELP, "tag"),
-        add_help=TAG_HELP,
+        add_help=False,
     )
 
     tag_subparsers = tag_parser.add_subparsers(
         dest="cmd",
-        help="Use dvc tag CMD --help to display command-specific help.",
+        help="Use DVC tag CMD --help to display command-specific help.",
     )
 
     fix_subparsers(tag_subparsers)
 
-    TAG_ADD_HELP = "Add dvc tag."
+    TAG_ADD_HELP = "Add DVC tag."
     tag_add_parser = tag_subparsers.add_parser(
         "add",
         parents=[parent_parser],
-        description=TAG_ADD_HELP,
+        description=append_doc_link(TAG_ADD_HELP, "tag-add"),
         help=TAG_ADD_HELP,
     )
     tag_add_parser.add_argument("tag", help="Dvc tag.")
@@ -86,7 +86,7 @@ def add_parser(subparsers, parent_parser):
         "--with-deps",
         action="store_true",
         default=False,
-        help="Add tag for all dependencies of the specified dvc file.",
+        help="Add tag for all dependencies of the specified DVC file.",
     )
     tag_add_parser.add_argument(
         "-R",
@@ -97,11 +97,11 @@ def add_parser(subparsers, parent_parser):
     )
     tag_add_parser.set_defaults(func=CmdTagAdd)
 
-    TAG_REMOVE_HELP = "Remove dvc tag."
+    TAG_REMOVE_HELP = "Remove DVC tag."
     tag_remove_parser = tag_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
-        description=TAG_REMOVE_HELP,
+        description=append_doc_link(TAG_REMOVE_HELP, "tag-remove"),
         help=TAG_REMOVE_HELP,
     )
     tag_remove_parser.add_argument("tag", help="Dvc tag.")
@@ -113,7 +113,7 @@ def add_parser(subparsers, parent_parser):
         "--with-deps",
         action="store_true",
         default=False,
-        help="Remove tag for all dependencies of the specified dvc file.",
+        help="Remove tag for all dependencies of the specified DVC file.",
     )
     tag_remove_parser.add_argument(
         "-R",
@@ -124,11 +124,11 @@ def add_parser(subparsers, parent_parser):
     )
     tag_remove_parser.set_defaults(func=CmdTagRemove)
 
-    TAG_LIST_HELP = "List dvc tags."
+    TAG_LIST_HELP = "List DVC tags."
     tag_list_parser = tag_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=TAG_LIST_HELP,
+        description=append_doc_link(TAG_LIST_HELP, "tag-list"),
         help=TAG_LIST_HELP,
     )
     tag_list_parser.add_argument(
@@ -139,7 +139,7 @@ def add_parser(subparsers, parent_parser):
         "--with-deps",
         action="store_true",
         default=False,
-        help="List tags for all dependencies of the specified dvc file.",
+        help="List tags for all dependencies of the specified DVC file.",
     )
     tag_list_parser.add_argument(
         "-R",
