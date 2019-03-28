@@ -1,3 +1,5 @@
+import dvc
+
 from dvc.utils.compat import str
 
 import os
@@ -9,7 +11,7 @@ from dvc.exceptions import DvcException
 from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
-from tests.utils import reset_logger_error_output
+from tests.utils import reset_logger_error_output, spy
 from tests.utils.httpd import StaticFileServer
 from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
@@ -137,3 +139,22 @@ class TestShouldNotResumeDownload(TestInterruptedDownload):
         m_handle = m()
         expected_calls = [call(b"f"), call(b"o"), call(b"o")]
         m_handle.write.assert_has_calls(expected_calls, any_order=False)
+
+
+class TestShouldRemoveOutsBeforeImport(TestDvc):
+    def setUp(self):
+        super(TestShouldRemoveOutsBeforeImport, self).setUp()
+        tmp_dir = self.mkdtemp()
+        self.external_source = os.path.join(tmp_dir, "file")
+        with open(self.external_source, "w") as fobj:
+            fobj.write("content")
+
+    def test(self):
+        remove_outs_call_counter = spy(dvc.stage.Stage.remove_outs)
+        with patch.object(
+            dvc.stage.Stage, "remove_outs", remove_outs_call_counter
+        ):
+            ret = main(["import", self.external_source])
+            self.assertEqual(0, ret)
+
+        self.assertEqual(1, remove_outs_call_counter.mock.call_count)

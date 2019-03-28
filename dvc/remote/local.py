@@ -755,7 +755,11 @@ class RemoteLOCAL(RemoteBase):
             # would get only the part of file. So, at first, the file should be
             # copied with the temporary name, and then original file should be
             # replaced by new.
-            copyfile(path, tmp)
+            copyfile(
+                path,
+                tmp,
+                name="Unprotecting '{}'".format(os.path.relpath(path)),
+            )
             remove(path)
             os.rename(tmp, path)
 
