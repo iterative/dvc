@@ -730,7 +730,7 @@ class Stage(object):
             raise StageCmdFailedError(self)
 
     def run(self, dry=False, resume=False, no_commit=False, force=False):
-        if self.cmd and not self.locked and not dry:
+        if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
         if self.locked:

@@ -864,7 +864,7 @@ class TestShouldRaiseOnOverlappingOutputPaths(TestDvc):
 class TestRerunWithSameOutputs(TestDvc):
     def _read_content_only(self, path):
         with open(path, "r") as fobj:
-            return [line.rstrip() for line in fobj.readlines()]
+            return [line.rstrip() for line in fobj]
 
     @property
     def _outs_command(self):
