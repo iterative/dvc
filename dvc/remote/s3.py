@@ -36,8 +36,8 @@ class RemoteS3(RemoteBase):
     REQUIRES = {"boto3": boto3}
     PARAM_CHECKSUM = "etag"
 
-    def __init__(self, repo, config):
-        super(RemoteS3, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteS3, self).__init__(repo, config, name)
 
         storagepath = "s3://{}".format(
             config.get(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
@@ -149,8 +149,14 @@ class RemoteS3(RemoteBase):
         assert not isinstance(path_info, list)
         assert path_info["scheme"] == "s3"
 
-        paths = self._list_paths(path_info["bucket"], path_info["path"])
-        return any(path_info["path"] == path for path in paths)
+        try:
+            self.s3.head_object(
+                Bucket=path_info["bucket"], Key=path_info["path"]
+            )
+        except self.s3.ClientError:
+            return False
+        else:
+            return True
 
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)

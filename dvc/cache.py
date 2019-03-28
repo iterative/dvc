@@ -42,7 +42,7 @@ class Cache(object):
                 Config.SECTION_CACHE_PROTECTED: protected,
             }
 
-        self._local = Remote(repo, sect)
+        self._local = Remote(repo, sect, "cache")
 
         self._s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
         self._gs = self._get_remote(config, Config.SECTION_CACHE_GS)
@@ -89,4 +89,4 @@ class Cache(object):
 
         name = Config.SECTION_REMOTE_FMT.format(remote)
         sect = self.repo.config.config[name]
-        return Remote(self.repo, sect)
+        return Remote(self.repo, sect, name)

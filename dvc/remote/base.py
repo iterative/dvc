@@ -1,15 +1,19 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
+from concurrent.futures import ThreadPoolExecutor
+import concurrent.futures
 
 import re
 import posixpath
 from multiprocessing import cpu_count
 
-import dvc.prompt as prompt
-import dvc.logger as logger
+from dvc.utils.compat import str
+from dvc.utils import threadsafe_iterator
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
+import dvc.prompt as prompt
+import dvc.logger as logger
+from dvc.progress import progress
 
 
 STATUS_OK = 1
@@ -58,8 +62,10 @@ class RemoteBase(object):
     REQUIRES = {}
     JOBS = 4 * cpu_count()
 
-    def __init__(self, repo, config):
+    def __init__(self, repo, config, name):
         self.repo = repo
+        self.config = config
+        self.name = name
         deps_ok = all(self.REQUIRES.values())
         if not deps_ok:
             missing = [k for k, v in self.REQUIRES.items() if v is None]
@@ -201,7 +207,7 @@ class RemoteBase(object):
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def exists(self, path_infos):
+    def exists(self, path_info):
         raise NotImplementedError
 
     @classmethod
@@ -288,16 +294,71 @@ class RemoteBase(object):
 
         return False
 
+    def _parallel(self, func, args):
+        """Wraps iterator into threadsafe_iterator and executes func in JOBS
+        threads in parallel
+        """
+        results = []
+        args = threadsafe_iterator(args)
+        with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            futures = [executor.submit(func, args) for i in range(self.JOBS)]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    data = future.result()
+                except Exception:
+                    logger.error("couldn't execute '%s'".format(func.__name__))
+                else:
+                    results.extend(data)
+        return results
+
+    @property
+    def no_traverse(self):
+        return self.config.get(Config.SECTION_REMOTE_NO_TRAVERSE)
+
     def cache_exists(self, checksums):
-        # NOTE: The reason for such an odd logic is that most of the remotes
-        # take much shorter time to just retrieve everything they have under
-        # a certain prefix(e.g. s3, gs, ssh, hdfs). Other remotes that can
-        # check if particular file exists much quicker, use their own
-        # implementation of cache_exists(see http, local).
-        #
-        # Result of all() might be way too big, so we should walk through
-        # it in one pass.
-        return list(filter(lambda checksum: checksum in checksums, self.all()))
+        """Get list of checksums existing on remote
+
+        This could work in two ways depending on "no_traverse" config flag:
+
+        1. if no_traverse is false - retrieve the list of all
+        files in the remote and check which checksums exist in this list
+
+        2. if no_traverse is true - check each file existence separately
+        """
+
+        target_name = "Checking {} files".format(self.name)
+        if self.no_traverse:
+            checksums = progress.loop(target_name, checksums)
+            return self._parallel(self._cache_exists, checksums)
+        else:
+            # NOTE: The reason for such an odd logic is that most of the
+            # remotes take much shorter time to just retrieve everything they
+            # have under a certain prefix(e.g. s3, gs, ssh, hdfs). Other
+            # remotes that can check if particular file exists much quicker,
+            # use their own implementation of cache_exists(see http, local).
+            #
+            # Result of all() might be way too big, so we should walk through
+            # it in one pass.
+            results = []
+            for checksum in self.all():
+                if checksum in checksums:
+                    # updating the progress with found checksums is not the
+                    # right way to track the process, but it is better than
+                    # calculate the files count, because it could be expensive
+                    # operation for most of remotes
+                    progress.update_target(
+                        target_name, len(results), len(checksums)
+                    )
+                    results.append(checksum)
+            return results
+
+    def _cache_exists(self, checksums):
+        # this method should contain actual implementation of cache_exists
+        results = []
+        for checksum in checksums:
+            if self.exists(self.checksum_to_path_info(checksum)["path"]):
+                results.append(checksum)
+        return results
 
     def already_cached(self, path_info):
         current = self.save_info(path_info)[self.PARAM_CHECKSUM]

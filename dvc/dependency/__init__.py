@@ -50,7 +50,7 @@ def _get(stage, p, info):
     if parsed.scheme == "remote":
         name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
         sect = stage.repo.config.config[name]
-        remote = Remote(stage.repo, sect)
+        remote = Remote(stage.repo, sect, name)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
     for d in DEPS:

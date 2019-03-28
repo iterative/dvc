@@ -114,6 +114,9 @@ class Progress(object):
 
         print(*args, **kwargs)
 
+    def loop(self, target_name, iterable, total=None):
+        return Loop(self, target_name, iterable, total)
+
     def __enter__(self):
         self._lock.acquire(True)
         if self._line is not None:
@@ -123,6 +126,37 @@ class Progress(object):
         if self._line is not None:
             self.refresh()
         self._lock.release()
+
+
+class Loop(object):
+    def __init__(self, progress, target_name, iterable, total):
+        self.progress = progress
+        self.target_name = target_name
+        self.iterable = iterable
+        self.iter = iter(iterable)
+        if total is None:
+            total = len(iterable)
+        self.total = total
+        self.n = 0
+        self.finished = False
+
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        return self.total
+
+    def __contains__(self, item):
+        return item in self.iterable
+
+    def __next__(self):
+        self.n += 1
+        if self.n < self.total:
+            self.progress.update_target(self.target_name, self.n, self.total)
+        elif not self.finished:
+            self.finished = True
+            self.progress.finish_target(self.target_name)
+        return next(self.iter)
 
 
 def progress_aware(f):

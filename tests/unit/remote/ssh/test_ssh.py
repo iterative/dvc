@@ -9,18 +9,18 @@ class TestRemoteSSH(TestCase):
     def test_user(self):
         url = "ssh://127.0.0.1:/path/to/dir"
         config = {"url": url}
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.user, getpass.getuser())
 
         user = "test1"
         url = "ssh://{}@127.0.0.1:/path/to/dir".format(user)
         config = {"url": url}
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.user, user)
 
         user = "test2"
         config["user"] = user
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.user, user)
 
     def test_url(self):
@@ -33,7 +33,7 @@ class TestRemoteSSH(TestCase):
         url = "ssh://{}@{}:{}{}".format(user, host, port, path)
         config = {"url": url}
 
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
 
         self.assertEqual(remote.user, user)
         self.assertEqual(remote.host, host)
@@ -44,7 +44,7 @@ class TestRemoteSSH(TestCase):
         url = "ssh://{}@{}:{}".format(user, host, path)
         config = {"url": url}
 
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
 
         self.assertEqual(remote.user, user)
         self.assertEqual(remote.host, host)
@@ -53,22 +53,22 @@ class TestRemoteSSH(TestCase):
 
     def test_no_path(self):
         config = {"url": "ssh://127.0.0.1"}
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.prefix, "/")
 
     def test_port(self):
         url = "ssh://127.0.0.1/path/to/dir"
         config = {"url": url}
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.port, remote.DEFAULT_PORT)
 
         port = 1234
         url = "ssh://127.0.0.1:{}/path/to/dir".format(port)
         config = {"url": url}
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.port, port)
 
         port = 4321
         config["port"] = port
-        remote = RemoteSSH(None, config)
+        remote = RemoteSSH(None, config, "test")
         self.assertEqual(remote.port, port)

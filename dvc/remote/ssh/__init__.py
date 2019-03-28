@@ -29,8 +29,8 @@ class RemoteSSH(RemoteBase):
     DEFAULT_PORT = 22
     TIMEOUT = 1800
 
-    def __init__(self, repo, config):
-        super(RemoteSSH, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteSSH, self).__init__(repo, config, name)
         self.url = config.get(Config.SECTION_REMOTE_URL, "ssh://")
 
         parsed = urlparse(self.url)
@@ -196,3 +196,13 @@ class RemoteSSH(RemoteBase):
     def list_cache_paths(self):
         with self.ssh(**self.path_info) as ssh:
             return list(ssh.walk_files(self.prefix))
+
+    def _cache_exists(self, checksums):
+        results = []
+        with self.ssh(**self.path_info) as conn:
+            for checksum in checksums:
+                if conn.file_exists(
+                    self.checksum_to_path_info(checksum)["path"]
+                ):
+                    results.append(checksum)
+        return results

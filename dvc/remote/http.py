@@ -33,8 +33,8 @@ class RemoteHTTP(RemoteBase):
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
 
-    def __init__(self, repo, config):
-        super(RemoteHTTP, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteHTTP, self).__init__(repo, config, name)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
         self.path_info = {"scheme": "http"}
@@ -98,13 +98,17 @@ class RemoteHTTP(RemoteBase):
         assert path_info["scheme"] in ["http", "https"]
         return bool(self._request("HEAD", path_info.get("path")))
 
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
+    @property
+    def no_traverse(self):
+        return True
+
+    def _cache_exists(self, checksums):
+        assert isinstance(checksums, list)
 
         def func(md5):
             return bool(self._request("HEAD", self.checksum_to_path(md5)))
 
-        return list(filter(func, md5s))
+        return list(filter(func, checksums))
 
     def save_info(self, path_info):
         if path_info["scheme"] not in ["http", "https"]:

@@ -64,7 +64,7 @@ class DataCloud(object):
             msg = "can't find remote section '{}' in config"
             raise ConfigError(msg.format(section))
 
-        return Remote(self.repo, cloud_config)
+        return Remote(self.repo, cloud_config, section)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()

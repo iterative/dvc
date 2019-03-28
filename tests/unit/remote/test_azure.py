@@ -20,7 +20,7 @@ class TestRemoteAzure(TestCase):
             connection_string=self.connection_string,
         )
         config = {"url": url}
-        remote = RemoteAzure(None, config)
+        remote = RemoteAzure(None, config, "name")
         self.assertEqual(remote.url, url)
         self.assertEqual(remote.prefix, "")
         self.assertEqual(remote.bucket, self.container_name)
@@ -30,7 +30,7 @@ class TestRemoteAzure(TestCase):
         prefix = "some/prefix"
         url = "azure://{}/{}".format(self.container_name, prefix)
         config = {"url": url, "connection_string": self.connection_string}
-        remote = RemoteAzure(None, config)
+        remote = RemoteAzure(None, config, "name")
         self.assertEqual(remote.url, url)
         self.assertEqual(remote.prefix, prefix)
         self.assertEqual(remote.bucket, self.container_name)

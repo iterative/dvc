@@ -38,8 +38,8 @@ class RemoteAzure(RemoteBase):
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 
-    def __init__(self, repo, config):
-        super(RemoteAzure, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteAzure, self).__init__(repo, config, name)
 
         self.url = config.get(Config.SECTION_REMOTE_URL, "azure://")
         match = re.match(self.REGEX, self.url)  # backward compatibility

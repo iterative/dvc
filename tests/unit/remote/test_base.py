@@ -12,7 +12,7 @@ class TestMissingDeps(TestCase):
             REQUIRES = {"foo": None, "bar": None, "mock": mock}
             with mock.patch.object(remote_class, "REQUIRES", REQUIRES):
                 with self.assertRaises(RemoteMissingDepsError):
-                    remote_class(None, {})
+                    remote_class(None, {}, "test")
 
 
 class TestCmdError(TestCase):
@@ -32,30 +32,44 @@ class TestCmdError(TestCase):
                 side_effect=RemoteCmdError(remote_name, cmd, ret, err),
             ):
                 with self.assertRaises(RemoteCmdError):
-                    remote_class(repo, config).remove("file")
+                    remote_class(repo, config, "test").remove("file")
 
 
 class TestCacheExists(TestCase):
+    def _test(self, remote_class, config):
+        remote = remote_class(None, config, "test")
+
+        with mock.patch.object(remote, "changed_cache", return_value=True):
+            with mock.patch.object(remote, "copy") as cp:
+                remote.save(
+                    remote.path_info, {remote.PARAM_CHECKSUM: "1234567890"}
+                )
+                cp.assert_called_once()
+
+        with mock.patch.object(remote, "changed_cache", return_value=False):
+            with mock.patch.object(remote, "copy") as cp:
+                remote.save(
+                    remote.path_info, {remote.PARAM_CHECKSUM: "1234567890"}
+                )
+                cp.assert_not_called()
+
     def test(self):
         for remote_class in REMOTES:
-            config = {
-                "url": remote_class.scheme + "://example/prefix",
-                "connection_string": "1234567",
-            }
-            remote = remote_class(None, config)
+            self._test(
+                remote_class,
+                {
+                    "url": remote_class.scheme + "://example/prefix",
+                    "connection_string": "1234567",
+                },
+            )
 
-            with mock.patch.object(remote, "changed_cache", return_value=True):
-                with mock.patch.object(remote, "copy") as cp:
-                    remote.save(
-                        remote.path_info, {remote.PARAM_CHECKSUM: "1234567890"}
-                    )
-                    cp.assert_called_once()
-
-            with mock.patch.object(
-                remote, "changed_cache", return_value=False
-            ):
-                with mock.patch.object(remote, "copy") as cp:
-                    remote.save(
-                        remote.path_info, {remote.PARAM_CHECKSUM: "1234567890"}
-                    )
-                    cp.assert_not_called()
+    def test_no_traverse(self):
+        for remote_class in REMOTES:
+            self._test(
+                remote_class,
+                {
+                    "url": remote_class.scheme + "://example/prefix",
+                    "connection_string": "1234567",
+                    "no_traverse": True,
+                },
+            )

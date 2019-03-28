@@ -67,7 +67,7 @@ class OutputBase(object):
         self.repo = stage.repo
         self.url = path
         self.info = info
-        self.remote = remote or self.REMOTE(self.repo, {})
+        self.remote = remote or self.REMOTE(self.repo, {}, "output")
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.persist = persist

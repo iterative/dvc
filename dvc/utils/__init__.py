@@ -14,6 +14,7 @@ import shutil
 import hashlib
 import nanotime
 import time
+import threading
 
 from yaml.scanner import ScannerError
 
@@ -249,3 +250,16 @@ def walk_files(directory):
     for root, _, files in os.walk(str(directory)):
         for f in files:
             yield os.path.join(root, f)
+
+
+class threadsafe_iterator(object):
+    def __init__(self, it):
+        self.it = iter(it)
+        self.lock = threading.Lock()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        with self.lock:
+            return next(self.it)

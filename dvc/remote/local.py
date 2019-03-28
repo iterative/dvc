@@ -54,8 +54,8 @@ class RemoteLOCAL(RemoteBase):
         "reflink": System.reflink,
     }
 
-    def __init__(self, repo, config):
-        super(RemoteLOCAL, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteLOCAL, self).__init__(repo, config, name)
         self.state = self.repo.state if self.repo else None
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
         storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
@@ -478,10 +478,6 @@ class RemoteLOCAL(RemoteBase):
 
         move(from_info["path"], to_info["path"])
 
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-        return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
-
     def upload(self, from_infos, to_infos, names=None):
         names = self._verify_path_args(to_infos, from_infos, names)
 
@@ -584,27 +580,14 @@ class RemoteLOCAL(RemoteBase):
 
     def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
         logger.info("Preparing to collect status from {}".format(remote.url))
-        title = "Collecting information"
 
         ret = {}
 
-        progress.set_n_total(1)
-        progress.update_target(title, 0, 100)
-
-        progress.update_target(title, 10, 100)
-
         ret = self._group(checksum_infos, show_checksums=show_checksums)
-        md5s = list(ret.keys())
+        checksums = list(ret.keys())
 
-        progress.update_target(title, 30, 100)
-
-        remote_exists = list(remote.cache_exists(md5s))
-
-        progress.update_target(title, 90, 100)
-
-        local_exists = self.cache_exists(md5s)
-
-        progress.finish_target(title)
+        remote_exists = remote.cache_exists(checksums)
+        local_exists = self.cache_exists(checksums)
 
         self._fill_statuses(ret, local_exists, remote_exists)
 

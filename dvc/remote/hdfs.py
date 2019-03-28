@@ -17,8 +17,8 @@ class RemoteHDFS(RemoteBase):
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
 
-    def __init__(self, repo, config):
-        super(RemoteHDFS, self).__init__(repo, config)
+    def __init__(self, repo, config, name):
+        super(RemoteHDFS, self).__init__(repo, config, name)
         self.url = config.get(Config.SECTION_REMOTE_URL, "/")
         self.prefix = self.url
         self.user = self.group("user")

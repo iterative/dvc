@@ -17,7 +17,7 @@ class TestRemoteGS(TestCase):
     }
 
     def test_init(self):
-        remote = RemoteGS(None, self.CONFIG)
+        remote = RemoteGS(None, self.CONFIG, "test")
         self.assertEqual(remote.url, self.URL)
         self.assertEqual(remote.prefix, self.PREFIX)
         self.assertEqual(remote.bucket, self.BUCKET)
@@ -26,7 +26,7 @@ class TestRemoteGS(TestCase):
 
     @mock.patch("google.cloud.storage.Client.from_service_account_json")
     def test_gs(self, mock_client):
-        remote = RemoteGS(None, self.CONFIG)
+        remote = RemoteGS(None, self.CONFIG, "test")
         self.assertTrue(remote.credentialpath)
         remote.gs()
         mock_client.assert_called_once_with(self.CREDENTIALPATH)
@@ -35,6 +35,6 @@ class TestRemoteGS(TestCase):
     def test_gs_no_credspath(self, mock_client):
         config = self.CONFIG.copy()
         del config["credentialpath"]
-        remote = RemoteGS(None, config)
+        remote = RemoteGS(None, config, "test")
         remote.gs()
         mock_client.assert_called_with(self.PROJECT)
