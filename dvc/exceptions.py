@@ -241,3 +241,10 @@ class OverlappingOutputPathsError(DvcException):
                 out_2.stage.relpath,
             )
         )
+
+
+class TargetNotDirectoryError(DvcException):
+    def __init__(self, path):
+        super(TargetNotDirectoryError, self).__init__(
+            "Target: {} is not a directory".format(path)
+        )

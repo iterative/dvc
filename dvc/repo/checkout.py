@@ -27,8 +27,9 @@ def get_progress_callback(stages):
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
+    all_stages = self.stages()
+
     if target and not recursive:
-        all_stages = self.active_stages()
         try:
             stages = self.collect(target, with_deps=with_deps)
         except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
@@ -36,8 +37,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
                 str(exc) + " Did you mean 'git checkout {}'?".format(target)
             )
     else:
-        all_stages = self.active_stages(target)
-        stages = all_stages
+        stages = self.active_stages(target)
 
     with self.state:
         _cleanup_unused_links(self, all_stages)
