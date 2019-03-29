@@ -8,7 +8,7 @@ from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdLockBase(CmdBase):
-    def run(self, unlock=False):
+    def _run(self, unlock):
         for target in self.args.targets:
             try:
                 self.repo.lock_stage(target, unlock=unlock)
@@ -24,13 +24,13 @@ class CmdLockBase(CmdBase):
 
 
 class CmdLock(CmdLockBase):
-    def run(self, _=False):
-        return super(CmdLock, self).run(False)
+    def run(self):
+        return super(CmdLock, self)._run(False)
 
 
 class CmdUnlock(CmdLockBase):
-    def run(self, _=True):
-        return super(CmdUnlock, self).run(True)
+    def run(self):
+        return super(CmdUnlock, self)._run(True)
 
 
 def add_parser(subparsers, parent_parser):
