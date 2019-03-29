@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import argparse
 
 import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
 
 
@@ -78,13 +78,13 @@ class CmdRun(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    RUN_HELP = (
-        "Generate a stage file from a given "
-        "command and execute the command.\n"
-        "documentation: https://man.dvc.org/run"
-    )
+    RUN_HELP = "Generate a stage file from a command and execute the command."
     run_parser = subparsers.add_parser(
-        "run", parents=[parent_parser], description=RUN_HELP, help=RUN_HELP
+        "run",
+        parents=[parent_parser],
+        description=append_doc_link(RUN_HELP, "run"),
+        help=RUN_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     run_parser.add_argument(
         "-d",

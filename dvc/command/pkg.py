@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers
+from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 from dvc.repo.pkg import PackageParams
 
 
@@ -27,9 +29,14 @@ class CmdPkg(CmdBase):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    PKG_HELP = "Manage packages and modules"
+    PKG_HELP = "Manage DVC packages."
     pkg_parser = subparsers.add_parser(
-        "pkg", parents=[parent_parser], description=PKG_HELP, add_help=False
+        "pkg",
+        parents=[parent_parser],
+        description=append_doc_link(PKG_HELP, "pkg"),
+        help=PKG_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
     )
 
     pkg_subparsers = pkg_parser.add_subparsers(
@@ -42,8 +49,9 @@ def add_parser(subparsers, parent_parser):
     pkg_install_parser = pkg_subparsers.add_parser(
         "install",
         parents=[parent_config_parser, parent_parser],
-        description=PKG_INSTALL_HELP,
+        description=append_doc_link(PKG_INSTALL_HELP, "pkg-install"),
         help=PKG_INSTALL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pkg_install_parser.add_argument(
         "address",

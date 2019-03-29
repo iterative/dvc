@@ -4,7 +4,7 @@ import os
 import argparse
 
 import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.config import Config
 from dvc.exceptions import DvcException
 
@@ -98,15 +98,14 @@ parent_config_parser.add_argument(
 
 
 def add_parser(subparsers, parent_parser):
-    CONFIG_HELP = (
-        "Get or set config options.\n"
-        "documentation: https://man.dvc.org/config"
-    )
+    CONFIG_HELP = "Get or set config options."
+
     config_parser = subparsers.add_parser(
         "config",
         parents=[parent_config_parser, parent_parser],
-        description=CONFIG_HELP,
+        description=append_doc_link(CONFIG_HELP, "config"),
         help=CONFIG_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     config_parser.add_argument(
         "-u",

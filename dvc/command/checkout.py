@@ -1,6 +1,8 @@
 from __future__ import unicode_literals
 
-from dvc.command.base import CmdBase
+import argparse
+
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdCheckout(CmdBase):
@@ -19,15 +21,14 @@ class CmdCheckout(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    CHECKOUT_HELP = (
-        "Checkout data files from cache.\n"
-        "documentation: https://man.dvc.org/checkout"
-    )
+    CHECKOUT_HELP = "Checkout data files from cache."
+
     checkout_parser = subparsers.add_parser(
         "checkout",
         parents=[parent_parser],
-        description=CHECKOUT_HELP,
+        description=append_doc_link(CHECKOUT_HELP, "checkout"),
         help=CHECKOUT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
         "-d",

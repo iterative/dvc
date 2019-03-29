@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
+from dvc.command.base import append_doc_link
 
 
 class CmdInit(object):
@@ -24,13 +27,18 @@ class CmdInit(object):
 
 def add_parser(subparsers, parent_parser):
     """Setup parser for `dvc init`."""
-    INIT_HELP = (
-        "Initialize dvc over a directory "
-        "(should already be a git dir).\n"
-        "documentation: https://man.dvc.org/init "
+    INIT_HELP = "Initialize DVC in the current directory."
+    INIT_DESCRIPTION = (
+        "Initialize DVC in the current directory. Expects directory\n"
+        "to be a Git repository unless --no-scm option is specified."
     )
+
     init_parser = subparsers.add_parser(
-        "init", parents=[parent_parser], description=INIT_HELP, help=INIT_HELP
+        "init",
+        parents=[parent_parser],
+        description=append_doc_link(INIT_DESCRIPTION, "init"),
+        help=INIT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     init_parser.add_argument(
         "--no-scm",
@@ -44,6 +52,6 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Overwrite '.dvc' if it exists. Will remove all local cache.",
+        help="Overwrite '.dvc' if it exists. It removes local cache.",
     )
     init_parser.set_defaults(func=CmdInit)

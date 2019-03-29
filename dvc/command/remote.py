@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
+import argparse
 import os
 import re
 
 import dvc.logger as logger
-from dvc.command.base import fix_subparsers
+from dvc.command.base import fix_subparsers, append_doc_link
 from dvc.config import Config
 from dvc.command.config import CmdConfig
 
@@ -119,15 +120,13 @@ class CmdRemoteList(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = (
-        "Manage set of tracked repositories.\n"
-        "documentation: https://man.dvc.org/remote"
-    )
+    REMOTE_HELP = "Manage remote storage configuration."
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
-        description=REMOTE_HELP,
+        description=append_doc_link(REMOTE_HELP, "remote"),
         help=REMOTE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     remote_subparsers = remote_parser.add_subparsers(
@@ -137,14 +136,13 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(remote_subparsers)
 
-    REMOTE_ADD_HELP = (
-        "Add remote.\ndocumentation: https://man.dvc.org/remote-add"
-    )
+    REMOTE_ADD_HELP = "Add remote."
     remote_add_parser = remote_subparsers.add_parser(
         "add",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_ADD_HELP,
+        description=append_doc_link(REMOTE_ADD_HELP, "remote-add"),
         help=REMOTE_ADD_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_add_parser.add_argument("name", help="Name.")
     remote_add_parser.add_argument(
@@ -164,8 +162,9 @@ def add_parser(subparsers, parent_parser):
     remote_default_parser = remote_subparsers.add_parser(
         "default",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_DEFAULT_HELP,
+        description=append_doc_link(REMOTE_DEFAULT_HELP, "remote-default"),
         help=REMOTE_DEFAULT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_default_parser.add_argument(
         "name", nargs="?", help="Name of the remote."
@@ -179,26 +178,24 @@ def add_parser(subparsers, parent_parser):
     )
     remote_default_parser.set_defaults(func=CmdRemoteDefault)
 
-    REMOTE_REMOVE_HELP = (
-        "Remove remote.\ndocumentation: https://man.dvc.org/remote-remove"
-    )
+    REMOTE_REMOVE_HELP = "Remove remote."
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_REMOVE_HELP,
+        description=append_doc_link(REMOTE_REMOVE_HELP, "remote-remove"),
         help=REMOTE_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_remove_parser.add_argument("name", help="Name")
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
 
-    REMOTE_MODIFY_HELP = (
-        "Modify remote.\ndocumentation: https://man.dvc.org/remote-modify"
-    )
+    REMOTE_MODIFY_HELP = "Modify remote."
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_MODIFY_HELP,
+        description=append_doc_link(REMOTE_MODIFY_HELP, "remote-modify"),
         help=REMOTE_MODIFY_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_modify_parser.add_argument("name", help="Name.")
     remote_modify_parser.add_argument("option", help="Option.")
@@ -212,13 +209,12 @@ def add_parser(subparsers, parent_parser):
     )
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
-    REMOTE_LIST_HELP = (
-        "List remotes.\ndocumentation: https://man.dvc.org/remote-list"
-    )
+    REMOTE_LIST_HELP = "List available remotes."
     remote_list_parser = remote_subparsers.add_parser(
         "list",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_LIST_HELP,
+        description=append_doc_link(REMOTE_LIST_HELP, "remote-list"),
         help=REMOTE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_list_parser.set_defaults(func=CmdRemoteList)

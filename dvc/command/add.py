@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdAdd(CmdBase):
@@ -26,12 +28,14 @@ class CmdAdd(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = (
-        "Add files/directories to dvc.\n"
-        "documentation: https://man.dvc.org/add"
-    )
+    ADD_HELP = "Take data files or directories under DVC control."
+
     add_parser = subparsers.add_parser(
-        "add", parents=[parent_parser], description=ADD_HELP, help=ADD_HELP
+        "add",
+        parents=[parent_parser],
+        description=append_doc_link(ADD_HELP, "add"),
+        help=ADD_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_parser.add_argument(
         "-R",
