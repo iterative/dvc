@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.prompt as prompt
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdRemove(CmdBase):
@@ -38,15 +40,13 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = (
-        "Remove outputs of DVC file.\n"
-        "documentation: https://man.dvc.org/remove"
-    )
+    REMOVE_HELP = "Remove outputs of DVC file."
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
-        description=REMOVE_HELP,
+        description=append_doc_link(REMOVE_HELP, "remove"),
         help=REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remove_parser_group = remove_parser.add_mutually_exclusive_group()
     remove_parser_group.add_argument(

@@ -1,7 +1,9 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdInstall(CmdBase):
@@ -15,14 +17,12 @@ class CmdInstall(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    INSTALL_HELP = (
-        "Install dvc hooks into the repository.\n"
-        "documentation: https://man.dvc.org/install"
-    )
+    INSTALL_HELP = "Install DVC git hooks into the repository."
     install_parser = subparsers.add_parser(
         "install",
         parents=[parent_parser],
-        description=INSTALL_HELP,
+        description=append_doc_link(INSTALL_HELP, "install"),
         help=INSTALL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     install_parser.set_defaults(func=CmdInstall)

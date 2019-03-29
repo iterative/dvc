@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdCommit(CmdBase):
@@ -29,15 +31,14 @@ class CmdCommit(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    COMMIT_HELP = (
-        "Record changes to the repository.\n"
-        "documentation: https://man.dvc.org/commit"
-    )
+    COMMIT_HELP = "Save changed data to cache and update DVC files."
+
     commit_parser = subparsers.add_parser(
         "commit",
         parents=[parent_parser],
-        description=COMMIT_HELP,
+        description=append_doc_link(COMMIT_HELP, "commit"),
         help=COMMIT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     commit_parser.add_argument(
         "-f",

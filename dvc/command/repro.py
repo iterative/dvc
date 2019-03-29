@@ -1,9 +1,10 @@
 from __future__ import unicode_literals
 
+import argparse
 import os
 
 import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
@@ -53,18 +54,18 @@ class CmdRepro(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = (
-        "Reproduce DVC file. Default file name - 'Dvcfile'.\n"
-        "documentation: https://man.dvc.org/repro"
-    )
+    REPRO_HELP = "Check for changes and reproduce DVC file and dependencies."
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],
-        description=REPRO_HELP,
+        description=append_doc_link(REPRO_HELP, "repro"),
         help=REPRO_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     repro_parser.add_argument(
-        "targets", nargs="*", help="DVC file to reproduce."
+        "targets",
+        nargs="*",
+        help="DVC file to reproduce (default - 'Dvcfile').",
     )
     repro_parser.add_argument(
         "-f",

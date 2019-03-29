@@ -1,12 +1,14 @@
 from __future__ import unicode_literals
 
+import argparse
+
 from dvc.utils.compat import str
 
 import os
 
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers
+from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
 
 class CmdPipelineShow(CmdBase):
@@ -165,14 +167,13 @@ class CmdPipelineList(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    PIPELINE_HELP = (
-        "Manage pipeline.\ndocumentation: https://man.dvc.org/pipeline"
-    )
+    PIPELINE_HELP = "Manage pipelines."
     pipeline_parser = subparsers.add_parser(
         "pipeline",
         parents=[parent_parser],
-        description=PIPELINE_HELP,
+        description=append_doc_link(PIPELINE_HELP, "pipeline"),
         help=PIPELINE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
@@ -186,8 +187,9 @@ def add_parser(subparsers, parent_parser):
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=PIPELINE_SHOW_HELP,
+        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline-show"),
         help=PIPELINE_SHOW_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pipeline_show_group = pipeline_show_parser.add_mutually_exclusive_group()
     pipeline_show_group.add_argument(
@@ -228,7 +230,8 @@ def add_parser(subparsers, parent_parser):
     pipeline_list_parser = pipeline_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=PIPELINE_LIST_HELP,
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline-list"),
         help=PIPELINE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pipeline_list_parser.set_defaults(func=CmdPipelineList)

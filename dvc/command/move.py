@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 
 
 class CmdMove(CmdBase):
@@ -19,18 +21,19 @@ class CmdMove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    MOVE_HELP = (
+    MOVE_HELP = "Rename or move a DVC controlled data file or a directory."
+    MOVE_DESCRIPTION = (
         "Rename or move a DVC controlled data file or a directory.\n"
-        "documentation: https://man.dvc.org/move"
+        "It renames and modifies the corresponding DVC file to reflect the"
+        " changes."
     )
-    description = (
-        "Rename or move a data file or a directory that "
-        "is under DVC control. It renames and modifies "
-        "the corresponding DVC file to reflect the changes."
-    )
-    help = MOVE_HELP
+
     move_parser = subparsers.add_parser(
-        "move", parents=[parent_parser], description=description, help=help
+        "move",
+        parents=[parent_parser],
+        description=append_doc_link(MOVE_DESCRIPTION, "move"),
+        help=MOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     move_parser.add_argument(
         "src", help="Source path to a data file or directory."
