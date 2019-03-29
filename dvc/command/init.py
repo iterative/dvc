@@ -52,6 +52,9 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Overwrite '.dvc' if it exists. It removes local cache.",
+        help=(
+            "Overwrite existing '.dvc' directory. "
+            "This operation removes local cache."
+        ),
     )
     init_parser.set_defaults(func=CmdInit)
