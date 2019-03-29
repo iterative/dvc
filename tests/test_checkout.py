@@ -15,12 +15,13 @@ from dvc.system import System
 from dvc.utils import walk_files
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
-from dvc.stage import Stage
+from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import (
     DvcException,
     ConfirmRemoveError,
     TargetNotDirectoryError,
+    CheckoutErrorSuggestGit,
 )
 
 from mock import patch
@@ -385,30 +386,16 @@ class TestCheckoutSuggestGit(TestRepro):
         try:
             self.dvc.checkout(target="gitbranch")
         except DvcException as exc:
-            msg = str(exc)
-            self.assertEqual(
-                msg,
-                (
-                    "'gitbranch' does not exist. "
-                    "Did you mean 'git checkout gitbranch'?"
-                ),
-            )
+            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
+            self.assertIsInstance(exc.cause, StageFileDoesNotExistError)
+            self.assertIsNone(exc.cause.cause)
 
         try:
             self.dvc.checkout(target=self.FOO)
         except DvcException as exc:
-            msg = str(exc)
-            self.assertEqual(
-                msg,
-                (
-                    "bad stage filename '{}'."
-                    " Stage files should be named 'Dvcfile'"
-                    " or have a '.dvc' suffix (e.g. '{}.dvc')."
-                    " Did you mean 'git checkout {}'?".format(
-                        self.FOO, self.FOO, self.FOO
-                    )
-                ),
-            )
+            self.assertIsInstance(exc, CheckoutErrorSuggestGit)
+            self.assertIsInstance(exc.cause, StageFileBadNameError)
+            self.assertIsNone(exc.cause.cause)
 
 
 class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):

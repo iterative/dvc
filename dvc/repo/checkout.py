@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 import dvc.logger as logger
-from dvc.exceptions import DvcException
+from dvc.exceptions import CheckoutErrorSuggestGit
 from dvc.progress import ProgressCallback
 
 
@@ -34,9 +34,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
         if not target:
             raise
-        raise DvcException(
-            str(exc) + " Did you mean 'git checkout {}'?".format(target)
-        )
+        raise CheckoutErrorSuggestGit(target, exc)
 
     with self.state:
         _cleanup_unused_links(self, all_stages)
