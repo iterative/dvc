@@ -25,12 +25,12 @@ class CmdLockBase(CmdBase):
 
 class CmdLock(CmdLockBase):
     def run(self):
-        self._run(False)
+        return self._run(False)
 
 
 class CmdUnlock(CmdLockBase):
     def run(self):
-        self._run(True)
+        return self._run(True)
 
 
 def add_parser(subparsers, parent_parser):
