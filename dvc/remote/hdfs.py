@@ -77,7 +77,7 @@ class RemoteHDFS(RemoteBase):
 
     def rm(self, path_info):
         self.hadoop_fs(
-            "rm {}".format(path_info["path"]), user=path_info["user"]
+            "rm -f {}".format(path_info["path"]), user=path_info["user"]
         )
 
     def save_info(self, path_info):
