@@ -130,7 +130,7 @@ def _read_metrics(self, metrics, branch):
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
         if not typ:
-            typ = _check_file_type(out.path, typ)
+            typ = os.path.splitext(out.path.lower())[1].replace(".", "")
         if out.use_cache:
             metric = _read_metrics_filesystem(
                 self.cache.local.get(out.checksum),
@@ -151,20 +151,6 @@ def _read_metrics(self, metrics, branch):
         res[out.rel_path] = metric
 
     return res
-
-
-def _check_file_type(path, typ):
-    if path.endswith(".json"):
-        typ = "json"
-    elif path.endswith(".tsv"):
-        typ = "tsv"
-    elif path.endswith(".htsv"):
-        typ = "htsv"
-    elif path.endswith(".csv"):
-        typ = "csv"
-    elif path.endswith(".hcsv"):
-        typ = "hcsv"
-    return typ
 
 
 def show(
