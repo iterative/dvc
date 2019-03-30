@@ -7,7 +7,7 @@ from jsonpath_rw import parse
 
 import dvc.logger as logger
 from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
-from dvc.utils.compat import builtin_str, open
+from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
 
 def _read_metric_json(fd, json_path):
@@ -66,13 +66,73 @@ def _read_typed_metric(typ, xpath, fd):
     return ret
 
 
+def _format_csv(content, delimiter):
+    """Format delimited text to have same column width.
+
+    Args:
+        content (str): The content of a metric.
+        delimiter (str): Value separator
+
+    Returns:
+        str: Formatted content.
+
+    Example:
+
+        >>> content = (
+            "value_mse,deviation_mse,data_set\n"
+            "0.421601,0.173461,train\n"
+            "0.67528,0.289545,testing\n"
+            "0.671502,0.297848,validation\n"
+        )
+        >>> _format_csv(content, ",")
+
+        "value_mse  deviation_mse   data_set\n"
+        "0.421601   0.173461        train\n"
+        "0.67528    0.289545        testing\n"
+        "0.671502   0.297848        validation\n"
+    """
+    reader = csv_reader(StringIO(content), delimiter=builtin_str(delimiter))
+    rows = [row for row in reader]
+    max_widths = [max(map(len, column)) for column in zip(*rows)]
+
+    lines = [
+        " ".join(
+            "{entry:{width}}".format(entry=entry, width=width + 2)
+            for entry, width in zip(row, max_widths)
+        )
+        for row in rows
+    ]
+
+    return "\n".join(lines)
+
+
+def _format_output(content, typ):
+    """Tabularize the content according to its type.
+
+    Args:
+        content (str): The content of a metric.
+        typ (str): The type of metric -- (raw|json|tsv|htsv|csv|hcsv).
+
+    Returns:
+        str: Content in a raw or tabular format.
+    """
+
+    if "csv" in str(typ):
+        return _format_csv(content, delimiter=",")
+
+    if "tsv" in str(typ):
+        return _format_csv(content, delimiter="\t")
+
+    return content
+
+
 def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     typ = typ.lower().strip() if typ else typ
     try:
         if xpath:
             return _read_typed_metric(typ, xpath.strip(), fd)
         else:
-            return fd.read().strip()
+            return _format_output(fd.read().strip(), typ)
     # Json path library has to be replaced or wrapped in
     # order to fix this too broad except clause.
     except Exception:
@@ -86,6 +146,23 @@ def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
 
 
 def _collect_metrics(self, path, recursive, typ, xpath, branch):
+    """Gather all the metric outputs.
+
+    Args:
+        path (str): Path to a metric file or a directory.
+        recursive (bool): If path is a directory, do a recursive search for
+            metrics on the given path.
+        typ (str): The type of metric to search for, could be one of the
+            following (raw|json|tsv|htsv|csv|hcsv).
+        xpath (str): Path to search for.
+        branch (str): Branch to look up for metrics.
+
+    Returns:
+        list(tuple): (output, typ, xpath)
+            - output:
+            - typ:
+            - xpath:
+    """
     outs = [out for stage in self.stages() for out in stage.outs]
 
     if path:
@@ -126,6 +203,21 @@ def _read_metrics_filesystem(path, typ, xpath, rel_path, branch):
 
 
 def _read_metrics(self, metrics, branch):
+    """Read the content of each metric file and format it.
+
+    Args:
+        metrics (list): List of metric touples
+        branch (str): Branch to look up for metrics.
+
+    Returns:
+        A dict mapping keys with metrics path name and content.
+        For example:
+
+        {'metric.csv': ("value_mse  deviation_mse   data_set\n"
+                        "0.421601   0.173461        train\n"
+                        "0.67528    0.289545        testing\n"
+                        "0.671502   0.297848        validation\n")}
+    """
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
