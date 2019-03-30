@@ -130,14 +130,17 @@ def _read_metrics(self, metrics, branch):
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
         if out.use_cache:
+            path = self.cache.local.get(out.checksum)
+            typ = _check_file_type(path, typ)
             metric = _read_metrics_filesystem(
-                self.cache.local.get(out.checksum),
+                path,
                 typ=typ,
                 xpath=xpath,
                 rel_path=out.rel_path,
                 branch=branch,
             )
         else:
+            typ = _check_file_type(out.path, typ)
             fd = self.tree.open(out.path)
             metric = _read_metric(
                 fd, typ=typ, xpath=xpath, rel_path=out.rel_path, branch=branch
@@ -149,6 +152,20 @@ def _read_metrics(self, metrics, branch):
         res[out.rel_path] = metric
 
     return res
+
+
+def _check_file_type(path, typ):
+    if path.endswith(".json"):
+        return "json"
+    elif path.endswith(".tsv"):
+        return "tsv"
+    elif path.endswith(".htsv"):
+        return "htsv"
+    elif path.endswith(".csv"):
+        return "csv"
+    elif path.endswith(".hcsv"):
+        return "hcsv"
+    return typ
 
 
 def show(
