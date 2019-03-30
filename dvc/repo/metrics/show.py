@@ -129,7 +129,8 @@ def _read_metrics(self, metrics, branch):
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
-        typ = _check_file_type(out.path, typ)
+        if not typ:
+            typ = _check_file_type(out.path, typ)
         if out.use_cache:
             metric = _read_metrics_filesystem(
                 self.cache.local.get(out.checksum),
@@ -154,15 +155,15 @@ def _read_metrics(self, metrics, branch):
 
 def _check_file_type(path, typ):
     if path.endswith(".json"):
-        return "json"
+        typ = "json"
     elif path.endswith(".tsv"):
-        return "tsv"
+        typ = "tsv"
     elif path.endswith(".htsv"):
-        return "htsv"
+        typ = "htsv"
     elif path.endswith(".csv"):
-        return "csv"
+        typ = "csv"
     elif path.endswith(".hcsv"):
-        return "hcsv"
+        typ = "hcsv"
     return typ
 
 
