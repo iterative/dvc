@@ -19,6 +19,7 @@ class OutputS3(OutputBase):
         cache=True,
         metric=False,
         persist=False,
+        tags=None,
     ):
         super(OutputS3, self).__init__(
             stage,
@@ -28,6 +29,7 @@ class OutputS3(OutputBase):
             cache=cache,
             metric=metric,
             persist=persist,
+            tags=tags,
         )
         bucket = remote.bucket if remote else urlparse(path).netloc
         path = urlparse(path).path.lstrip("/")

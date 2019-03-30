@@ -47,6 +47,8 @@ class OutputBase(object):
         },
     )
 
+    PARAM_TAGS = "tags"
+
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
@@ -59,6 +61,7 @@ class OutputBase(object):
         cache=True,
         metric=False,
         persist=False,
+        tags=None,
     ):
         self.stage = stage
         self.repo = stage.repo
@@ -68,6 +71,7 @@ class OutputBase(object):
         self.use_cache = False if self.IS_DEPENDENCY else cache
         self.metric = False if self.IS_DEPENDENCY else metric
         self.persist = persist
+        self.tags = None if self.IS_DEPENDENCY else (tags or {})
 
         if (
             self.use_cache
@@ -197,6 +201,9 @@ class OutputBase(object):
         ret[self.PARAM_METRIC] = self.metric
         ret[self.PARAM_PERSIST] = self.persist
 
+        if self.tags:
+            ret[self.PARAM_TAGS] = self.tags
+
         return ret
 
     def verify_metric(self):
@@ -207,12 +214,20 @@ class OutputBase(object):
     def download(self, to_info, resume=False):
         self.remote.download([self.path_info], [to_info], resume=resume)
 
-    def checkout(self, force=False, progress_callback=None):
+    def checkout(self, force=False, progress_callback=None, tag=None):
         if not self.use_cache:
             return
 
+        if tag:
+            info = self.tags[tag]
+        else:
+            info = self.info
+
         getattr(self.repo.cache, self.scheme).checkout(
-            output=self, force=force, progress_callback=progress_callback
+            self.path_info,
+            info,
+            force=force,
+            progress_callback=progress_callback,
         )
 
     def remove(self, ignore_remove=False):

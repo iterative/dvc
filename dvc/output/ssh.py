@@ -20,6 +20,7 @@ class OutputSSH(OutputBase):
         cache=True,
         metric=False,
         persist=False,
+        tags=None,
     ):
         super(OutputSSH, self).__init__(
             stage,
@@ -29,6 +30,7 @@ class OutputSSH(OutputBase):
             cache=cache,
             metric=metric,
             persist=persist,
+            tags=tags,
         )
         parsed = urlparse(path)
         host = remote.host if remote else parsed.hostname

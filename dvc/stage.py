@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str, open
 
+import re
 import os
 import yaml
 import subprocess
@@ -129,6 +130,8 @@ class Stage(object):
         Optional(PARAM_LOCKED): bool,
     }
 
+    TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
+
     def __init__(
         self,
         repo,
@@ -139,6 +142,7 @@ class Stage(object):
         outs=None,
         md5=None,
         locked=False,
+        tag=None,
     ):
         if deps is None:
             deps = []
@@ -153,6 +157,7 @@ class Stage(object):
         self.deps = deps
         self.md5 = md5
         self.locked = locked
+        self.tag = tag
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -536,8 +541,17 @@ class Stage(object):
         if not repo.tree.isfile(fname):
             raise StageFileIsNotDvcFileError(fname)
 
+    @classmethod
+    def _get_path_tag(cls, s):
+        regex = re.compile(cls.TAG_REGEX)
+        match = regex.match(s)
+        if not match:
+            return s, None
+        return match.group("path"), match.group("tag")
+
     @staticmethod
     def load(repo, fname):
+        fname, tag = Stage._get_path_tag(fname)
 
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
@@ -563,6 +577,7 @@ class Stage(object):
             cmd=d.get(Stage.PARAM_CMD),
             md5=d.get(Stage.PARAM_MD5),
             locked=d.get(Stage.PARAM_LOCKED, False),
+            tag=tag,
         )
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
@@ -624,7 +639,14 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        m = dict_md5(d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC])
+        m = dict_md5(
+            d,
+            exclude=[
+                self.PARAM_LOCKED,
+                OutputLOCAL.PARAM_METRIC,
+                OutputLOCAL.PARAM_TAGS,
+            ],
+        )
         logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
         return m
 
@@ -791,7 +813,9 @@ class Stage(object):
 
     def checkout(self, force=False, progress_callback=None):
         for out in self.outs:
-            out.checkout(force=force, progress_callback=progress_callback)
+            out.checkout(
+                force=force, tag=self.tag, progress_callback=progress_callback
+            )
 
     @staticmethod
     def _status(entries):

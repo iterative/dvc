@@ -6,10 +6,7 @@ import dvc.logger as logger
 def _local_status(self, target=None, with_deps=False):
     status = {}
 
-    if target:
-        stages = self.collect(target, with_deps=with_deps)
-    else:
-        stages = self.active_stages()
+    stages = self.collect(target, with_deps=with_deps)
 
     for stage in stages:
         if stage.locked:

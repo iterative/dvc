@@ -19,6 +19,7 @@ class OutputHDFS(OutputBase):
         cache=True,
         metric=False,
         persist=False,
+        tags=None,
     ):
         super(OutputHDFS, self).__init__(
             stage,
@@ -28,6 +29,7 @@ class OutputHDFS(OutputBase):
             cache=cache,
             metric=metric,
             persist=persist,
+            tags=tags,
         )
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip("/"))
