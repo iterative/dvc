@@ -129,18 +129,16 @@ def _read_metrics(self, metrics, branch):
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
+        typ = _check_file_type(out.path, typ)
         if out.use_cache:
-            path = self.cache.local.get(out.checksum)
-            typ = _check_file_type(path, typ)
             metric = _read_metrics_filesystem(
-                path,
+                self.cache.local.get(out.checksum),
                 typ=typ,
                 xpath=xpath,
                 rel_path=out.rel_path,
                 branch=branch,
             )
         else:
-            typ = _check_file_type(out.path, typ)
             fd = self.tree.open(out.path)
             metric = _read_metric(
                 fd, typ=typ, xpath=xpath, rel_path=out.rel_path, branch=branch
