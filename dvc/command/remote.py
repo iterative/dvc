@@ -8,14 +8,9 @@ import dvc.logger as logger
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.config import Config
-from dvc.exceptions import ConfirmRemoveError, DvcException
 
 
 class CmdRemoteAdd(CmdConfig):
-    def _prevent_config_overwriting(self, section):
-        if (section in self.configobj.keys()) and not self.args.force:
-            raise ConfirmRemoveError(section)
-
     @staticmethod
     def resolve_path(path, config_file):
         """Resolve path relative to config file location.
@@ -44,11 +39,12 @@ class CmdRemoteAdd(CmdConfig):
             )
 
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-
-        try:
-            self._prevent_config_overwriting(section)
-        except DvcException as exc:
-            logger.error(exc)
+        if (section in self.configobj.keys()) and not self.args.force:
+            logger.error(
+                "Remote with name {} already exists. "
+                "Use -f (--force) to overwrite remote "
+                "with new value".format(self.args.name)
+            )
             return 1
 
         ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
