@@ -541,3 +541,58 @@ class TestCachedMetrics(TestDvc):
 
     def test_run(self):
         self._test_metrics(self._do_run)
+
+
+class TestMetricsType(TestDvc):
+    branches = ["foo", "bar", "baz"]
+    files = [
+        "metric",
+        "metric.txt",
+        "metric.json",
+        "metric.tsv",
+        "metric.htsv",
+        "metric.csv",
+        "metric.hcsv",
+    ]
+    xpaths = [None, None, "branch", "0,0", "0,branch", "0,0", "0,branch"]
+
+    def setUp(self):
+        super(TestMetricsType, self).setUp()
+        self.dvc.scm.commit("init")
+
+        for branch in self.branches:
+            self.dvc.scm.checkout(branch, create_new=True)
+            with open("metric", "w+") as fd:
+                fd.write(branch)
+            with open("metric.txt", "w+") as fd:
+                fd.write(branch)
+            with open("metric.json", "w+") as fd:
+                json.dump({"branch": branch}, fd)
+            with open("metric.csv", "w+") as fd:
+                fd.write(branch)
+            with open("metric.hcsv", "w+") as fd:
+                fd.write("branch\n")
+                fd.write(branch)
+            with open("metric.tsv", "w+") as fd:
+                fd.write(branch)
+            with open("metric.htsv", "w+") as fd:
+                fd.write("branch\n")
+                fd.write(branch)
+            self.dvc.run(metrics_no_cache=self.files, overwrite=True)
+            self.dvc.scm.add(self.files + ["metric.dvc"])
+            self.dvc.scm.commit("metric")
+
+        self.dvc.scm.checkout("master")
+
+    def test_show(self):
+        for file_name, xpath in zip(self.files, self.xpaths):
+            self._do_show(file_name, xpath)
+
+    def _do_show(self, file_name, xpath):
+        ret = self.dvc.metrics.show(file_name, xpath=xpath, all_branches=True)
+        self.assertEqual(len(ret), 3)
+        for branch in self.branches:
+            if isinstance(ret[branch][file_name], list):
+                self.assertSequenceEqual(ret[branch][file_name], [branch])
+            else:
+                self.assertSequenceEqual(ret[branch][file_name], branch)
