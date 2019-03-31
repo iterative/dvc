@@ -144,6 +144,7 @@ class ProgressCallback(object):
     def __init__(self, total):
         self.total = total
         self.current = 0
+        progress.reset()
 
     def update(self, name, progress_to_add=1):
         self.current += progress_to_add
