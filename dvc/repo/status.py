@@ -51,7 +51,7 @@ def _cloud_status(
     for md5, info in status_info.items():
         name = info["name"]
         status = info["status"]
-        if status == cloud.STATUS_OK:
+        if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
             continue
 
         prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}

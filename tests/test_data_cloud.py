@@ -798,15 +798,18 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         with ConsoleFontColorsRemover(), MockLoggerHandlers(logger):
             reset_logger_error_output()
 
-            main(["push"])
+            ret = main(["push"])
+            self.assertEqual(ret, 0)
             self.stderr_contains_message()
 
             reset_logger_error_output()
 
-            main(["pull"])
+            ret = main(["pull", "-f"])
+            self.assertEqual(ret, 0)
             self.stderr_contains_message()
 
             reset_logger_error_output()
 
-            main(["status", "-c"])
+            ret = main(["status", "-c"])
+            self.assertEqual(ret, 0)
             self.stderr_contains_message()
