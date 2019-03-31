@@ -22,30 +22,30 @@ class TestMetrics(TestDvc):
             with open("metric", "w+") as fd:
                 fd.write(branch)
 
-            with open("metric_json", "w+") as fd:
+            with open("metric.json", "w+") as fd:
                 json.dump({"branch": branch}, fd)
 
-            with open("metric_csv", "w+") as fd:
+            with open("metric.csv", "w+") as fd:
                 fd.write(branch)
 
-            with open("metric_hcsv", "w+") as fd:
+            with open("metric.hcsv", "w+") as fd:
                 fd.write("branch\n")
                 fd.write(branch)
 
-            with open("metric_tsv", "w+") as fd:
+            with open("metric.tsv", "w+") as fd:
                 fd.write(branch)
 
-            with open("metric_htsv", "w+") as fd:
+            with open("metric.htsv", "w+") as fd:
                 fd.write("branch\n")
                 fd.write(branch)
 
             files = [
                 "metric",
-                "metric_json",
-                "metric_tsv",
-                "metric_htsv",
-                "metric_csv",
-                "metric_hcsv",
+                "metric.json",
+                "metric.tsv",
+                "metric.htsv",
+                "metric.csv",
+                "metric.hcsv",
             ]
 
             self.dvc.run(metrics_no_cache=files, overwrite=True)
@@ -64,108 +64,104 @@ class TestMetrics(TestDvc):
         self.assertEqual(ret["baz"]["metric"], "baz")
 
         ret = self.dvc.metrics.show(
-            "metric_json", typ="json", xpath="branch", all_branches=True
+            "metric.json", xpath="branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_json"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_json"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_json"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric.json"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric.json"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric.json"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_tsv", typ="tsv", xpath="0,0", all_branches=True
+            "metric.tsv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_tsv"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_tsv"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_tsv"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric.tsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric.tsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric.tsv"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_htsv", typ="htsv", xpath="0,branch", all_branches=True
+            "metric.htsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_htsv"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_htsv"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_htsv"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric.htsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric.htsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric.htsv"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_csv", typ="csv", xpath="0,0", all_branches=True
+            "metric.csv", xpath="0,0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_csv"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_csv"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_csv"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric.csv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric.csv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric.csv"], ["baz"])
 
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ="hcsv", xpath="0,branch", all_branches=True
+            "metric.hcsv", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
-        self.assertSequenceEqual(ret["foo"]["metric_hcsv"], ["foo"])
-        self.assertSequenceEqual(ret["bar"]["metric_hcsv"], ["bar"])
-        self.assertSequenceEqual(ret["baz"]["metric_hcsv"], ["baz"])
+        self.assertSequenceEqual(ret["foo"]["metric.hcsv"], ["foo"])
+        self.assertSequenceEqual(ret["bar"]["metric.hcsv"], ["bar"])
+        self.assertSequenceEqual(ret["baz"]["metric.hcsv"], ["baz"])
 
     def test_unknown_type_ignored(self):
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ="unknown", xpath="0,branch", all_branches=True
+            "metric.hcsv", typ="unknown", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertEqual(ret[b]["metric_hcsv"].split(), ["branch", b])
+            self.assertEqual(ret[b]["metric.hcsv"].split(), ["branch", b])
 
     def test_type_case_normalized(self):
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ=" hCSV ", xpath="0,branch", all_branches=True
+            "metric.hcsv", typ=" hCSV ", xpath="0,branch", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_hcsv"], [b])
+            self.assertSequenceEqual(ret[b]["metric.hcsv"], [b])
 
     def test_xpath_is_empty(self):
-        ret = self.dvc.metrics.show(
-            "metric_json", typ="json", xpath="", all_branches=True
-        )
+        ret = self.dvc.metrics.show("metric.json", xpath="", all_branches=True)
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertEqual(ret[b]["metric_json"], json.dumps({"branch": b}))
+            self.assertEqual(ret[b]["metric.json"], json.dumps({"branch": b}))
 
     def test_xpath_is_none(self):
         ret = self.dvc.metrics.show(
-            "metric_json", typ="json", xpath=None, all_branches=True
+            "metric.json", xpath=None, all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertEqual(ret[b]["metric_json"], json.dumps({"branch": b}))
+            self.assertEqual(ret[b]["metric.json"], json.dumps({"branch": b}))
 
     def test_xpath_all_columns(self):
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ="hcsv ", xpath="0,", all_branches=True
+            "metric.hcsv", xpath="0,", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_hcsv"], [b])
+            self.assertSequenceEqual(ret[b]["metric.hcsv"], [b])
 
     def test_xpath_all_rows(self):
         ret = self.dvc.metrics.show(
-            "metric_csv", typ="csv", xpath=",0", all_branches=True
+            "metric.csv", xpath=",0", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_csv"], [b])
+            self.assertSequenceEqual(ret[b]["metric.csv"], [b])
 
     def test_xpath_all(self):
-        ret = self.dvc.metrics.show(
-            "metric_csv", typ="csv", xpath=",", all_branches=True
-        )
+        ret = self.dvc.metrics.show("metric.csv", xpath=",", all_branches=True)
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_csv"], [[b]])
+            self.assertSequenceEqual(ret[b]["metric.csv"], [[b]])
 
     def test_xpath_all_with_header(self):
         ret = self.dvc.metrics.show(
-            "metric_hcsv", typ="hcsv", xpath=",", all_branches=True
+            "metric.hcsv", xpath=",", all_branches=True
         )
         self.assertEqual(len(ret), 3)
         for b in ["foo", "bar", "baz"]:
-            self.assertSequenceEqual(ret[b]["metric_hcsv"], [[b]])
+            self.assertSequenceEqual(ret[b]["metric.hcsv"], [[b]])
 
 
 class TestMetricsRecursive(TestDvc):
@@ -277,54 +273,17 @@ class TestMetricsCLI(TestMetrics):
         ret = main(["metrics", "show", "-a", "metric", "-v"])
         self.assertEqual(ret, 0)
 
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "-a",
-                "metric_json",
-                "-t",
-                "json",
-                "-x",
-                "branch",
-            ]
-        )
+        ret = main(["metrics", "show", "-a", "metric.json", "-x", "branch"])
         self.assertEqual(ret, 0)
-        ret = main(
-            ["metrics", "show", "-a", "metric_tsv", "-t", "tsv", "-x", "0,0"]
-        )
+        ret = main(["metrics", "show", "-a", "metric.tsv", "-x", "0,0"])
         self.assertEqual(ret, 0)
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "-a",
-                "metric_htsv",
-                "-t",
-                "htsv",
-                "-x",
-                "0,branch",
-            ]
-        )
+        ret = main(["metrics", "show", "-a", "metric.htsv", "-x", "0,branch"])
         self.assertEqual(ret, 0)
 
-        ret = main(
-            ["metrics", "show", "-a", "metric_csv", "-t", "csv", "-x", "0,0"]
-        )
+        ret = main(["metrics", "show", "-a", "metric.csv", "-x", "0,0"])
         self.assertEqual(ret, 0)
 
-        ret = main(
-            [
-                "metrics",
-                "show",
-                "-a",
-                "metric_hcsv",
-                "-t",
-                "hcsv",
-                "-x",
-                "0,branch",
-            ]
-        )
+        ret = main(["metrics", "show", "-a", "metric.hcsv", "-x", "0,branch"])
         self.assertEqual(ret, 0)
 
     def test_dir(self):
