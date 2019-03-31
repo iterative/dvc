@@ -57,6 +57,15 @@ class TestRemote(TestDvc):
         config = configobj.ConfigObj(self.dvc.config.config_file)
         self.assertEqual(config['remote "mylocal"']["url"], rel)
 
+    def test_overwrite(self):
+        remote_name = "a"
+        remote_url = "s3://bucket/name"
+        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 0)
+        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 1)
+        self.assertEqual(
+            main(["remote", "add", "-f", remote_name, remote_url]), 0
+        )
+
 
 class TestRemoteRemoveDefault(TestDvc):
     def test(self):
