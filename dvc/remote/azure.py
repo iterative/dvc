@@ -6,6 +6,7 @@ import re
 
 try:
     from azure.storage.blob import BlockBlobService
+    from azure.common import AzureMissingResourceHttpError
 except ImportError:
     BlockBlobService = None
 
@@ -77,7 +78,12 @@ class RemoteAzure(RemoteBase):
                 connection_string=self.connection_string
             )
             logger.debug("Container name {}".format(self.bucket))
-            self.__blob_service.create_container(self.bucket)
+            try:  # verify that container exists
+                self.__blob_service.list_blobs(
+                    self.bucket, delimiter="/", num_results=1
+                )
+            except AzureMissingResourceHttpError:
+                self.__blob_service.create_container(self.bucket)
         return self.__blob_service
 
     def remove(self, path_info):
