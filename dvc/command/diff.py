@@ -88,7 +88,7 @@ class CmdDiff(CmdBase):
     def run(self):
         try:
             msg = self.repo.diff(
-                self.args.target, a_ref=self.args.a_ref, b_ref=self.args.b_ref
+                self.args.a_ref, target=self.args.target, b_ref=self.args.b_ref
             )
             self._show(msg)
         except DvcException:

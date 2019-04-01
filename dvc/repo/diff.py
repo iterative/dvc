@@ -132,7 +132,7 @@ def _diff_royal(self, target, diff_dct):
     return _diff_file(self, target, diff_dct)
 
 
-def diff(self, target, a_ref=None, b_ref=None):
+def diff(self, a_ref, target=None, b_ref=None):
     """Gerenates diff message string output
 
     Args:
