@@ -13,6 +13,13 @@ import dvc.scm.base as git
 from tests.basic_env import TestDvc
 
 
+def _get_checksum(repo, file_name):
+    outs = [out for s in repo.stages() for out in s.outs]
+    for out in outs:
+        if out.url == file_name:
+            return out.checksum
+
+
 class TestDiff(TestDvc):
     def setUp(self):
         super(TestDiff, self).setUp()
@@ -21,6 +28,7 @@ class TestDiff(TestDvc):
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.new_file)
         self.a_ref = self.git.head.commit
+        self.new_checksum = _get_checksum(self.dvc, self.new_file)
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
 
@@ -41,7 +49,7 @@ class TestDiffRepo(TestDiff):
                 {
                     git.DIFF_TARGET: self.new_file,
                     git.DIFF_NEW_FILE: self.new_file,
-                    git.DIFF_NEW_CHECKSUM: "c81fec3d710806070bcd67f182d1279c",
+                    git.DIFF_NEW_CHECKSUM: self.new_checksum,
                     git.DIFF_SIZE: 13,
                 }
             ],
@@ -67,11 +75,13 @@ class TestDiffDir(TestDvc):
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
         self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file = os.path.join(self.DATA_SUB_DIR, git.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.DATA_DIR)
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit(message="adds data_dir with new_file")
+        self.new_checksum = _get_checksum(self.dvc, self.DATA_DIR)
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
@@ -81,6 +91,8 @@ class TestDiffDir(TestDvc):
 
 
 class TestDiffDirRepo(TestDiffDir):
+    maxDiff = None
+
     def test(self):
         result = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
         test_dct = {
@@ -96,13 +108,9 @@ class TestDiffDirRepo(TestDiffDir):
                     git.DIFF_IS_DIR: True,
                     git.DIFF_TARGET: self.DATA_DIR,
                     git.DIFF_NEW_FILE: self.DATA_DIR,
-                    git.DIFF_NEW_CHECKSUM: (
-                        "d5782f3072167ad3a53ee80b92b30718.dir"
-                    ),
+                    git.DIFF_NEW_CHECKSUM: self.new_checksum,
                     git.DIFF_OLD_FILE: self.DATA_DIR,
-                    git.DIFF_OLD_CHECKSUM: (
-                        "bff5a787d16460f32e9f2e62b183b1cc.dir"
-                    ),
+                    git.DIFF_OLD_CHECKSUM: self.old_checksum,
                     git.DIFF_SIZE: 30,
                 }
             ],
