@@ -221,6 +221,8 @@ def _read_metrics(self, metrics, branch):
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
+        if not typ:
+            typ = os.path.splitext(out.path.lower())[1].replace(".", "")
         if out.use_cache:
             metric = _read_metrics_filesystem(
                 self.cache.local.get(out.checksum),

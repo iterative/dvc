@@ -121,7 +121,13 @@ def add_parser(subparsers, parent_parser):
         "path", nargs="?", help="Path to a metric file or a directory."
     )
     metrics_show_parser.add_argument(
-        "-t", "--type", help="Type of metrics (raw/json/tsv/htsv/csv/hcsv)."
+        "-t",
+        "--type",
+        help=(
+            "Type of metrics (json/tsv/htsv/csv/hcsv). "
+            "It can be detected by the file extension automatically. "
+            "Unsupported types will be treated as raw."
+        ),
     )
     metrics_show_parser.add_argument(
         "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
