@@ -254,8 +254,8 @@ class Git(Base):
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
             else:
-                a_commit = self.git.head.commit
-                b_commit = self.git.commit(a_ref)
+                a_commit = self.git.commit(a_ref)
+                b_commit = self.git.head.commit
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
             trees[DIFF_A_TREE] = self.get_tree(commits[0])
