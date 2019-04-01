@@ -7,7 +7,7 @@ from dvc.main import main
 
 
 from dvc.scm.base import FileNotInCommitError
-import dvc.scm.base as git
+import dvc.repo.diff as diff
 
 
 from tests.basic_env import TestDvc
@@ -34,23 +34,23 @@ class TestDiff(TestDvc):
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out[git.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[git.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[git.DIFF_B_REF])
+        self.assertFalse(out[diff.DIFF_EQUAL])
+        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
+        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
 
 
 class TestDiffRepo(TestDiff):
     def test(self):
-        result = self.dvc.diff(self.new_file, a_ref=self.a_ref)
+        result = self.dvc.diff(self.a_ref, target=self.new_file)
         test_dct = {
-            git.DIFF_A_REF: str(self.a_ref),
-            git.DIFF_B_REF: str(self.git.head.commit),
-            git.DIFF_LIST: [
+            diff.DIFF_A_REF: str(self.a_ref),
+            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_LIST: [
                 {
-                    git.DIFF_TARGET: self.new_file,
-                    git.DIFF_NEW_FILE: self.new_file,
-                    git.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    git.DIFF_SIZE: 13,
+                    diff.DIFF_TARGET: self.new_file,
+                    diff.DIFF_NEW_FILE: self.new_file,
+                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
+                    diff.DIFF_SIZE: 13,
                 }
             ],
         }
@@ -76,7 +76,7 @@ class TestDiffDir(TestDvc):
         self.git.index.commit("adds data_dir")
         self.a_ref = str(self.dvc.scm.git.head.commit)
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
-        self.new_file = os.path.join(self.DATA_SUB_DIR, git.DIFF_NEW_FILE)
+        self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.DATA_DIR)
         self.git.index.add([self.DATA_DIR + ".dvc"])
@@ -85,33 +85,33 @@ class TestDiffDir(TestDvc):
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out[git.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[git.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[git.DIFF_B_REF])
+        self.assertFalse(out[diff.DIFF_EQUAL])
+        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
+        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
 
 
 class TestDiffDirRepo(TestDiffDir):
     maxDiff = None
 
     def test(self):
-        result = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
+        result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
         test_dct = {
-            git.DIFF_A_REF: str(self.a_ref),
-            git.DIFF_B_REF: str(self.git.head.commit),
-            git.DIFF_LIST: [
+            diff.DIFF_A_REF: str(self.a_ref),
+            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_LIST: [
                 {
-                    git.DIFF_CHANGE: 0,
-                    git.DIFF_DEL: 0,
-                    git.DIFF_IDENT: 2,
-                    git.DIFF_MOVE: 0,
-                    git.DIFF_NEW: 1,
-                    git.DIFF_IS_DIR: True,
-                    git.DIFF_TARGET: self.DATA_DIR,
-                    git.DIFF_NEW_FILE: self.DATA_DIR,
-                    git.DIFF_NEW_CHECKSUM: self.new_checksum,
-                    git.DIFF_OLD_FILE: self.DATA_DIR,
-                    git.DIFF_OLD_CHECKSUM: self.old_checksum,
-                    git.DIFF_SIZE: 30,
+                    diff.DIFF_CHANGE: 0,
+                    diff.DIFF_DEL: 0,
+                    diff.DIFF_IDENT: 2,
+                    diff.DIFF_MOVE: 0,
+                    diff.DIFF_NEW: 1,
+                    diff.DIFF_IS_DIR: True,
+                    diff.DIFF_TARGET: self.DATA_DIR,
+                    diff.DIFF_NEW_FILE: self.DATA_DIR,
+                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
+                    diff.DIFF_OLD_FILE: self.DATA_DIR,
+                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
+                    diff.DIFF_SIZE: 30,
                 }
             ],
         }
@@ -125,4 +125,4 @@ class TestDiffFileNotFound(TestDiffDir):
 
     def test(self):
         with self.assertRaises(FileNotInCommitError):
-            self.dvc.diff(self.unknown_file, a_ref=self.a_ref)
+            self.dvc.diff(self.a_ref, target=self.unknown_file)

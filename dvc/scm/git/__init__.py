@@ -11,14 +11,16 @@ from dvc.scm.base import (
     SCMError,
     FileNotInRepoError,
     FileNotInTargetSubdirError,
-    DIFF_A_TREE,
-    DIFF_B_TREE,
-    DIFF_A_REF,
-    DIFF_B_REF,
-    DIFF_EQUAL,
 )
 from dvc.scm.git.tree import GitTree
 import dvc.logger as logger
+
+
+DIFF_A_TREE = "a_tree"
+DIFF_B_TREE = "b_tree"
+DIFF_A_REF = "a_ref"
+DIFF_B_REF = "b_ref"
+DIFF_EQUAL = "equal"
 
 
 class Git(Base):

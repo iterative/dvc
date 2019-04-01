@@ -7,27 +7,6 @@ import os
 from dvc.exceptions import DvcException
 
 
-DIFF_TARGET = "target"
-DIFF_IS_DIR = "is_dir"
-DIFF_OLD_FILE = "old_file"
-DIFF_OLD_CHECKSUM = "old_checksum"
-DIFF_NEW_FILE = "new_file"
-DIFF_NEW_CHECKSUM = "new_checksum"
-DIFF_SIZE = "size_diff"
-DIFF_DEL = "del"
-DIFF_IDENT = "ident"
-DIFF_CHANGE = "changes"
-DIFF_NEW = "new"
-DIFF_MOVE = "moves"
-DIFF_A_TREE = "a_tree"
-DIFF_B_TREE = "b_tree"
-DIFF_A_REF = "a_ref"
-DIFF_B_REF = "b_ref"
-DIFF_EQUAL = "equal"
-DIFF_LIST = "diffs"
-DIFF_SIZE_UNKNOWN = "?"
-
-
 class SCMError(DvcException):
     """Base class for source control management errors."""
 
