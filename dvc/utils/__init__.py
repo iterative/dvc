@@ -257,8 +257,39 @@ def load_stage_file_fobj(fobj, path):
         raise StageFileCorruptedError(path)
 
 
-def walk_files(directory):
-    for root, _, files in os.walk(str(directory)):
+def dvc_walk(
+    top,
+    topdown=True,
+    onerror=None,
+    followlinks=False,
+    ignore_file_handler=None,
+):
+    """
+    Proxy for `os.walk` directory tree generator.
+    Utilizes DvcIgnoreFilter functionality.
+    """
+    ignore_filter = None
+    if topdown:
+        from dvc.ignore import DvcIgnoreFilter
+
+        ignore_filter = DvcIgnoreFilter(
+            top, ignore_file_handler=ignore_file_handler
+        )
+
+    for root, dirs, files in os.walk(
+        top, topdown=topdown, onerror=onerror, followlinks=followlinks
+    ):
+
+        if ignore_filter:
+            dirs[:], files[:] = ignore_filter(root, dirs, files)
+
+        yield root, dirs, files
+
+
+def walk_files(directory, ignore_file_handler=None):
+    for root, _, files in dvc_walk(
+        str(directory), ignore_file_handler=ignore_file_handler
+    ):
         for f in files:
             yield os.path.join(root, f)
 

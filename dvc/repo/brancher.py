@@ -27,7 +27,7 @@ def brancher(  # noqa: E302
     if self.scm.is_dirty():
         from dvc.scm.tree import WorkingTree
 
-        self.tree = WorkingTree()
+        self.tree = WorkingTree(self.root_dir)
         yield "Working Tree"
 
     if all_branches:
