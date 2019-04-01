@@ -8,6 +8,7 @@ import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 from dvc.utils.collections import compact
+import dvc.scm.base as git
 
 
 class CmdDiff(CmdBase):
@@ -24,55 +25,64 @@ class CmdDiff(CmdBase):
     def _show(self, diff_dct):
         engine = inflect.engine()
         msg = "dvc diff from {} to {}".format(
-            diff_dct["a_ref"], diff_dct["b_ref"]
+            diff_dct[git.DIFF_A_REF], diff_dct[git.DIFF_B_REF]
         )
-        if diff_dct.get("equal"):
+        if diff_dct.get(git.DIFF_EQUAL):
             logger.info(msg)
             return
-        for dct in diff_dct["diffs"]:
-            msg += "\n\ndiff for '{}' \n".format(dct["target"])
-            if dct.get("old_file"):
+        for dct in diff_dct[git.DIFF_LIST]:
+            msg += "\n\ndiff for '{}' \n".format(dct[git.DIFF_TARGET])
+            if dct.get(git.DIFF_OLD_FILE):
                 msg += "-{} with md5 {}\n".format(
-                    dct["old_file"], dct["old_checksum"]
+                    dct[git.DIFF_OLD_FILE], dct[git.DIFF_OLD_CHECKSUM]
                 )
-            if dct.get("new_file"):
+            if dct.get(git.DIFF_NEW_FILE):
                 msg += "+{} with md5 {}\n".format(
-                    dct["new_file"], dct["new_checksum"]
+                    dct[git.DIFF_NEW_FILE], dct[git.DIFF_NEW_CHECKSUM]
                 )
             msg += "\n"
-            if dct.get("is_dir"):
-                msg += "{} {} not changed, ".format(
-                    dct["ident"], engine.plural("file", dct["ident"])
-                )
-                msg += "{} {} modified, ".format(
-                    dct["changes"], engine.plural("file", dct["changes"])
-                )
-                msg += "{} {} added, ".format(
-                    dct["new"], engine.plural("file", dct["new"])
-                )
-                msg += "{} {} deleted, ".format(
-                    dct["del"], engine.plural("file", dct["del"])
-                )
-                msg += "size was {}".format(self._print_size(dct["size_diff"]))
-            else:
-                if (
-                    dct.get("old_file")
-                    and dct.get("new_file")
-                    and dct["size_diff"] == 0
-                ):
-                    msg += "file size was not changed"
-                elif dct.get("new_file"):
-                    msg += "added file with size {}".format(
-                        humanize.naturalsize(dct["size_diff"])
+            if dct[git.DIFF_SIZE] != git.DIFF_SIZE_UNKNOWN:
+                if dct.get("is_dir"):
+                    msg += "{} {} not changed, ".format(
+                        dct[git.DIFF_IDENT],
+                        engine.plural("file", dct[git.DIFF_IDENT]),
                     )
-                elif dct.get("old_file"):
-                    msg += "deleted file with size {}".format(
-                        humanize.naturalsize(abs(dct["size_diff"]))
+                    msg += "{} {} modified, ".format(
+                        dct[git.DIFF_CHANGE],
+                        engine.plural("file", dct[git.DIFF_CHANGE]),
+                    )
+                    msg += "{} {} added, ".format(
+                        dct[git.DIFF_NEW],
+                        engine.plural("file", dct[git.DIFF_NEW]),
+                    )
+                    msg += "{} {} deleted, ".format(
+                        dct[git.DIFF_DEL],
+                        engine.plural("file", dct[git.DIFF_DEL]),
+                    )
+                    msg += "size was {}".format(
+                        self._print_size(dct[git.DIFF_SIZE])
                     )
                 else:
-                    msg += "file was modified, file size {}".format(
-                        self._print_size(dct["size_diff"])
-                    )
+                    if (
+                        dct.get(git.DIFF_OLD_FILE)
+                        and dct.get(git.DIFF_NEW_FILE)
+                        and dct[git.DIFF_SIZE] == 0
+                    ):
+                        msg += "file size was not changed"
+                    elif dct.get(git.DIFF_NEW_FILE):
+                        msg += "added file with size {}".format(
+                            humanize.naturalsize(dct[git.DIFF_SIZE])
+                        )
+                    elif dct.get(git.DIFF_OLD_FILE):
+                        msg += "deleted file with size {}".format(
+                            humanize.naturalsize(abs(dct[git.DIFF_SIZE]))
+                        )
+                    else:
+                        msg += "file was modified, file size {}".format(
+                            self._print_size(dct[git.DIFF_SIZE])
+                        )
+            else:
+                msg += "size is ?"
         logger.info(msg)
 
     def run(self):
@@ -82,12 +92,13 @@ class CmdDiff(CmdBase):
             )
             self._show(msg)
         except DvcException:
-            msg = "failed to get 'diff "
-            msg += " ".join(
+            msg = "failed to get 'diff {}'"
+            args = " ".join(
                 compact([self.args.target, self.args.a_ref, self.args.b_ref])
             )
-            msg += "'"
+            msg = msg.format(args)
             logger.error(msg)
+            return 1
         return 0
 
 

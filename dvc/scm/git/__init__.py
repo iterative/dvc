@@ -11,6 +11,11 @@ from dvc.scm.base import (
     SCMError,
     FileNotInRepoError,
     FileNotInTargetSubdirError,
+    DIFF_A_TREE,
+    DIFF_B_TREE,
+    DIFF_A_REF,
+    DIFF_B_REF,
+    DIFF_EQUAL,
 )
 from dvc.scm.git.tree import GitTree
 import dvc.logger as logger
@@ -240,7 +245,7 @@ class Git(Base):
 
         from gitdb.exc import BadObject, BadName
 
-        trees = {"a_tree": None, "b_tree": None}
+        trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
         try:
             if b_ref is not None:
@@ -248,16 +253,13 @@ class Git(Base):
                 b_commit = self.git.commit(b_ref)
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
-                # other way of getting the diff between commits :
-                # self.git.diff(a_commit, b_commit) returns the diff string
-                # by reading the files in a, b commits and computing the diff
             else:
                 a_commit = self.git.head.commit
                 b_commit = self.git.commit(a_ref)
                 commits.append(str(a_commit))
                 commits.append(str(b_commit))
-            trees["a_tree"] = self.get_tree(commits[0])
-            trees["b_tree"] = self.get_tree(commits[1])
+            trees[DIFF_A_TREE] = self.get_tree(commits[0])
+            trees[DIFF_B_TREE] = self.get_tree(commits[1])
         except (BadName, BadObject) as e:
             raise SCMError("git problem", cause=e)
         return trees, commits
@@ -273,13 +275,13 @@ class Git(Base):
         Returns:
             dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
         """
-        diff_dct = {"equal": False}
+        diff_dct = {DIFF_EQUAL: False}
         trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
-        diff_dct["a_ref"] = commit_refs[0]
-        diff_dct["b_ref"] = commit_refs[1]
+        diff_dct[DIFF_A_REF] = commit_refs[0]
+        diff_dct[DIFF_B_REF] = commit_refs[1]
         if commit_refs[0] == commit_refs[1]:
-            diff_dct["equal"] = True
+            diff_dct[DIFF_EQUAL] = True
             return diff_dct
-        diff_dct["a_tree"] = trees["a_tree"]
-        diff_dct["b_tree"] = trees["b_tree"]
+        diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
+        diff_dct[DIFF_B_TREE] = trees[DIFF_B_TREE]
         return diff_dct

@@ -7,6 +7,7 @@ from dvc.main import main
 
 
 from dvc.scm.base import FileNotInCommitError
+import dvc.scm.base as git
 
 
 from tests.basic_env import TestDvc
@@ -16,7 +17,7 @@ class TestDiff(TestDvc):
     def setUp(self):
         super(TestDiff, self).setUp()
 
-        self.new_file = "new_file"
+        self.new_file = "new_test_file"
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.new_file)
         self.a_ref = self.git.head.commit
@@ -25,23 +26,23 @@ class TestDiff(TestDvc):
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out["equal"])
-        self.assertEqual(str(self.a_ref), out["b_ref"])
-        self.assertEqual(str(self.git.head.commit), out["a_ref"])
+        self.assertFalse(out[git.DIFF_EQUAL])
+        self.assertEqual(str(self.a_ref), out[git.DIFF_B_REF])
+        self.assertEqual(str(self.git.head.commit), out[git.DIFF_A_REF])
 
 
 class TestDiffRepo(TestDiff):
     def test(self):
         result = self.dvc.diff(self.new_file, a_ref=self.a_ref)
         test_dct = {
-            "b_ref": str(self.a_ref),
-            "a_ref": str(self.git.head.commit),
-            "diffs": [
+            git.DIFF_B_REF: str(self.a_ref),
+            git.DIFF_A_REF: str(self.git.head.commit),
+            git.DIFF_LIST: [
                 {
-                    "target": self.new_file,
-                    "old_file": self.new_file,
-                    "old_checksum": "25fa8325e4e0eb8180445e42558e60bd",
-                    "size_diff": -8,
+                    git.DIFF_TARGET: self.new_file,
+                    git.DIFF_OLD_FILE: self.new_file,
+                    git.DIFF_OLD_CHECKSUM: "c81fec3d710806070bcd67f182d1279c",
+                    git.DIFF_SIZE: -13,
                 }
             ],
         }
@@ -66,7 +67,7 @@ class TestDiffDir(TestDvc):
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
         self.a_ref = str(self.dvc.scm.git.head.commit)
-        self.new_file = os.path.join(self.DATA_SUB_DIR, "new_file")
+        self.new_file = os.path.join(self.DATA_SUB_DIR, git.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.DATA_DIR)
         self.git.index.add([self.DATA_DIR + ".dvc"])
@@ -74,30 +75,35 @@ class TestDiffDir(TestDvc):
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out["equal"])
-        self.assertEqual(str(self.a_ref), out["b_ref"])
-        self.assertEqual(str(self.git.head.commit), out["a_ref"])
+        self.assertFalse(out[git.DIFF_EQUAL])
+        self.assertEqual(str(self.a_ref), out[git.DIFF_B_REF])
+        self.assertEqual(str(self.git.head.commit), out[git.DIFF_A_REF])
 
 
 class TestDiffDirRepo(TestDiffDir):
     def test(self):
         result = self.dvc.diff(self.DATA_DIR, a_ref=self.a_ref)
         test_dct = {
-            "b_ref": str(self.a_ref),
-            "a_ref": str(self.git.head.commit),
-            "diffs": [
+            git.DIFF_B_REF: str(self.a_ref),
+            git.DIFF_A_REF: str(self.git.head.commit),
+            git.DIFF_LIST: [
                 {
-                    "changes": 0,
-                    "del": 1,
-                    "ident": 2,
-                    "moves": 0,
-                    "new": 0,
-                    "target": self.DATA_DIR,
-                    "old_file": self.DATA_DIR,
-                    "old_checksum": "d5782f3072167ad3a53ee80b92b30718.dir",
-                    "new_file": self.DATA_DIR,
-                    "new_checksum": "bff5a787d16460f32e9f2e62b183b1cc.dir",
-                    "size_diff": -30,
+                    git.DIFF_CHANGE: 0,
+                    git.DIFF_DEL: 1,
+                    git.DIFF_IDENT: 2,
+                    git.DIFF_MOVE: 0,
+                    git.DIFF_NEW: 0,
+                    git.DIFF_IS_DIR: True,
+                    git.DIFF_TARGET: self.DATA_DIR,
+                    git.DIFF_OLD_FILE: self.DATA_DIR,
+                    git.DIFF_OLD_CHECKSUM: (
+                        "d5782f3072167ad3a53ee80b92b30718.dir"
+                    ),
+                    git.DIFF_NEW_FILE: self.DATA_DIR,
+                    git.DIFF_NEW_CHECKSUM: (
+                        "bff5a787d16460f32e9f2e62b183b1cc.dir"
+                    ),
+                    git.DIFF_SIZE: -30,
                 }
             ],
         }
