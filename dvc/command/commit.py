@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdCommit(CmdBase):
@@ -21,7 +24,7 @@ class CmdCommit(CmdBase):
                     force=self.args.force,
                 )
             except DvcException:
-                logger.error(
+                logger.exception(
                     "failed to commit{}".format(
                         (" " + target) if target else ""
                     )

@@ -2,11 +2,14 @@ from __future__ import unicode_literals
 
 import os
 import shutil
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
 from dvc.scm.git.temp_git_repo import TempGitRepo
+
+
+logger = logging.getLogger(__name__)
 
 
 class PackageParams(object):
@@ -196,7 +199,7 @@ def install_pkg(self, pkg_params):
             mgr = PackageManager.get_package(addr)
             mgr.install_or_update(self, pkg_params)
         except Exception as ex:
-            logger.error("Unable to install package: ".format(ex))
+            logger.exception("Unable to install package: ".format(ex))
             return 1
 
     return 0

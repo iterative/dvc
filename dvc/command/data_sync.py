@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
@@ -43,7 +46,7 @@ class CmdDataPull(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to pull data from the cloud")
+            logger.exception("failed to pull data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0
@@ -63,7 +66,7 @@ class CmdDataPush(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to push data to the cloud")
+            logger.exception("failed to push data to the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0
@@ -83,7 +86,7 @@ class CmdDataFetch(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to fetch data from the cloud")
+            logger.exception("failed to fetch data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0

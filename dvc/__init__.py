@@ -8,6 +8,10 @@ from __future__ import unicode_literals
 
 from dvc.version import __version__  # noqa: F401
 import warnings
+import dvc.logger
+
+
+dvc.logger.setup()
 
 # Ignore numpy's runtime warnings: https://github.com/numpy/numpy/pull/432.
 # We don't directly import numpy, but our dependency networkx does, causing

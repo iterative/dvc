@@ -2,9 +2,12 @@ from __future__ import unicode_literals
 
 import argparse
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRoot(CmdBase):

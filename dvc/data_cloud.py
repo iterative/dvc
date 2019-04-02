@@ -2,9 +2,9 @@
 
 from __future__ import unicode_literals
 
-import dvc.logger as logger
-from dvc.config import Config, ConfigError
+import logging
 
+from dvc.config import Config, ConfigError
 from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
@@ -13,6 +13,9 @@ from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
 from dvc.remote.http import RemoteHTTP
+
+
+logger = logging.getLogger(__name__)
 
 
 class DataCloud(object):

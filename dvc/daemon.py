@@ -5,12 +5,14 @@ from __future__ import unicode_literals
 import os
 import sys
 import inspect
+import logging
 from subprocess import Popen
 
-import dvc.logger as logger
 from dvc.utils import is_binary, fix_env
 from dvc.utils.compat import cast_bytes_py2
 
+
+logger = logging.getLogger(__name__)
 
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
@@ -43,7 +45,7 @@ def _spawn_posix(cmd, env):
         if pid > 0:
             return
     except OSError:
-        logger.error("failed at first fork")
+        logger.exception("failed at first fork")
         os._exit(1)  # pylint: disable=protected-access
 
     os.setsid()
@@ -54,7 +56,7 @@ def _spawn_posix(cmd, env):
         if pid > 0:
             os._exit(0)  # pylint: disable=protected-access
     except OSError:
-        logger.error("failed at second fork")
+        logger.exception("failed at second fork")
         os._exit(1)  # pylint: disable=protected-access
 
     sys.stdin.close()

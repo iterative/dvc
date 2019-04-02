@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.utils.compat import urlparse
 from dvc.istextfile import istextfile
 from dvc.exceptions import DvcException
 from dvc.remote.local import RemoteLOCAL
 from dvc.output.base import OutputBase, OutputAlreadyTrackedError
+
+
+logger = logging.getLogger(__name__)
 
 
 class OutputLOCAL(OutputBase):

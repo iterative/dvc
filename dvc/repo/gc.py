@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
 import collections
+import logging
 
-import dvc.logger as logger
+
+logger = logging.getLogger(__name__)
 
 
 def _merge_cache_lists(clists):

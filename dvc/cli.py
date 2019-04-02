@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 
 import sys
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import fix_subparsers
 import dvc.command.init as init
 import dvc.command.pkg as pkg
@@ -35,6 +35,8 @@ import dvc.command.tag as tag
 import dvc.command.diff as diff
 from dvc.exceptions import DvcParserError
 
+
+logger = logging.getLogger(__name__)
 
 COMMANDS = [
     init,

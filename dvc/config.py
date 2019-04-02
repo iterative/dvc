@@ -7,10 +7,12 @@ from dvc.utils.compat import str, open
 import os
 import errno
 import configobj
-from schema import Schema, Optional, And, Use, Regex
+import logging
 
-import dvc.logger as logger
+from schema import Schema, Optional, And, Use, Regex
 from dvc.exceptions import DvcException
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigError(DvcException):

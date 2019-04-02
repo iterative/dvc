@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 def show_metrics(metrics, all_branches=False, all_tags=False):
@@ -46,7 +49,7 @@ class CmdMetricsShow(CmdBase):
 
             show_metrics(metrics, self.args.all_branches, self.args.all_tags)
         except DvcException:
-            logger.error("failed to show metrics")
+            logger.exception("failed to show metrics")
             return 1
 
         return 0
@@ -59,7 +62,7 @@ class CmdMetricsModify(CmdBase):
                 self.args.path, typ=self.args.type, xpath=self.args.xpath
             )
         except DvcException:
-            logger.error("failed to modify metric file settings")
+            logger.exception("failed to modify metric file settings")
             return 1
 
         return 0
@@ -73,7 +76,7 @@ class CmdMetricsAdd(CmdBase):
             )
         except DvcException:
             msg = "failed to add metric file '{}'".format(self.args.path)
-            logger.error(msg)
+            logger.exception(msg)
             return 1
 
         return 0
@@ -85,7 +88,7 @@ class CmdMetricsRemove(CmdBase):
             self.repo.metrics.remove(self.args.path)
         except DvcException:
             msg = "failed to remove metric file '{}'".format(self.args.path)
-            logger.error(msg)
+            logger.exception(msg)
             return 1
 
         return 0

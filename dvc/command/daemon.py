@@ -7,7 +7,6 @@ class CmdDaemonBase(CmdBase):
     def __init__(self, args):
         self.args = args
         self.config = None
-        self.set_loglevel(args)
 
     def run_cmd(self):
         return self.run()

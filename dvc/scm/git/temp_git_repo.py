@@ -1,9 +1,12 @@
 import os
 import shutil
 import tempfile
+import logging
 
-from dvc import logger
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class TempRepoException(DvcException):

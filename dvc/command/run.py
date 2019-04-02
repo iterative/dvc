@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRun(CmdBase):
@@ -50,7 +53,7 @@ class CmdRun(CmdBase):
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
             )
         except DvcException:
-            logger.error("failed to run command")
+            logger.exception("failed to run command")
             return 1
 
         return 0

@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
 import colorama
+import logging
 
-import dvc.logger as logger
+
+logger = logging.getLogger(__name__)
 
 
 def fix_subparsers(subparsers):
@@ -40,7 +42,6 @@ class CmdBase(object):
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args
-        self.set_loglevel(args)
 
     @property
     def default_targets(self):
@@ -51,15 +52,6 @@ class CmdBase(object):
         logger.warning(msg)
         return [Stage.STAGE_FILE]
 
-    @staticmethod
-    def set_loglevel(args):
-        """Sets log level from CLI arguments."""
-        if args.quiet:
-            logger.be_quiet()
-
-        elif args.verbose:
-            logger.be_verbose()
-
     def run_cmd(self):
         from dvc.lock import LockError
 
@@ -67,7 +59,7 @@ class CmdBase(object):
             with self.repo.lock:
                 return self.run()
         except LockError:
-            logger.error("failed to lock before running a command")
+            logger.exception("failed to lock before running a command")
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class

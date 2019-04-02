@@ -3,11 +3,14 @@ from __future__ import unicode_literals
 import os
 import csv
 import json
+import logging
 from jsonpath_rw import parse
 
-import dvc.logger as logger
 from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
+
+
+logger = logging.getLogger(__name__)
 
 
 def _read_metric_json(fd, json_path):
@@ -136,11 +139,10 @@ def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     # Json path library has to be replaced or wrapped in
     # order to fix this too broad except clause.
     except Exception:
-        logger.warning(
+        logger.exception(
             "unable to read metric in '{}' in branch '{}'".format(
                 rel_path, branch
-            ),
-            parse_exception=True,
+            )
         )
         return None
 
