@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import os
+from errno import ENOENT
 
 
 from dvc.scm.base import FileNotInCommitError
@@ -30,6 +31,13 @@ DIFF_SIZE_UNKNOWN = "?"
 DIFF_A_OUTPUT = "a_output"
 DIFF_B_OUTPUT = "b_output"
 DIFF_DELETED = "deleted_file"
+
+
+def _file_not_exists(error, result):
+    if error.errno == ENOENT:
+        result.update({DIFF_SIZE: DIFF_SIZE_UNKNOWN})
+    else:
+        raise error
 
 
 def _extract_dir(self, output):
@@ -124,8 +132,8 @@ def _diff_dir(self, target, diff_dct):
             result[DIFF_NEW_CHECKSUM] = diff_dct[DIFF_B_OUTPUT].checksum
             b_entries = _extract_dir(self, diff_dct[DIFF_B_OUTPUT])
         result.update(_get_tree_changes(self, a_entries, b_entries))
-    except FileNotFoundError:
-        result[DIFF_SIZE] = DIFF_SIZE_UNKNOWN
+    except IOError as e:
+        _file_not_exists(e, result)
     return result
 
 
@@ -145,9 +153,9 @@ def _diff_file(self, target, diff_dct):
             size += os.path.getsize(
                 self.cache.local.get(diff_dct[DIFF_B_OUTPUT].checksum)
             )
-    except FileNotFoundError:
-        size = DIFF_SIZE_UNKNOWN
-    result[DIFF_SIZE] = size
+        result[DIFF_SIZE] = size
+    except IOError as e:
+        _file_not_exists(e, result)
     return result
 
 
