@@ -4,6 +4,7 @@ import os
 from errno import ENOENT
 
 
+import dvc.logger as logger
 from dvc.scm.base import FileNotInCommitError
 from dvc.scm.git import (
     DIFF_A_TREE,
@@ -83,6 +84,20 @@ def _get_tree_changes(self, a_entries, b_entries):
     return result
 
 
+def _check_local_cache(a_out, b_out, is_checked):
+    if not is_checked:
+        outputs = []
+        if a_out is not None and a_out.scheme != "local":
+            is_checked = True
+            outputs.append(str(a_out))
+        if b_out is not None and b_out.scheme != "local":
+            is_checked = True
+            outputs.append(str(b_out))
+        if is_checked:
+            logger.warning("non-local output: {}".format(outputs))
+    return is_checked
+
+
 def _get_diff_outs(self, diff_dct):
     self.tree = diff_dct[DIFF_A_TREE]
     a_outs = {str(out): out for st in self.stages() for out in st.outs}
@@ -91,7 +106,14 @@ def _get_diff_outs(self, diff_dct):
     outs_paths = set(a_outs.keys())
     outs_paths.update(b_outs.keys())
     results = {}
+    not_local_cache = False
     for path in outs_paths:
+        not_local_cache = _check_local_cache(
+            a_outs.get(path), b_outs.get(path), not_local_cache
+        )
+        if b_outs.get(path) and b_outs[path].scheme != "local":
+            not_local_cache = True
+            continue
         if path in a_outs and path in b_outs:
             results[path] = {
                 DIFF_A_OUTPUT: a_outs[path],
