@@ -31,7 +31,7 @@ class CmdDiff(CmdBase):
             logger.info(msg)
             return
         for dct in diff_dct[diff.DIFF_LIST]:
-            msg += "\n\ndiff for '{}' \n".format(dct[diff.DIFF_TARGET])
+            msg += "\n\ndiff for '{}'\n".format(dct[diff.DIFF_TARGET])
             if dct.get(diff.DIFF_OLD_FILE):
                 msg += "-{} with md5 {}\n".format(
                     dct[diff.DIFF_OLD_FILE], dct[diff.DIFF_OLD_CHECKSUM]
@@ -84,6 +84,7 @@ class CmdDiff(CmdBase):
             else:
                 msg += "size is ?"
         logger.info(msg)
+        return msg
 
     def run(self):
         try:

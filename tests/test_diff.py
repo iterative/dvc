@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
 
 import os
-from mock import patch
+from mock import patch, Mock
 
 from dvc.main import main
 
 
 from dvc.scm.base import FileNotInCommitError
 import dvc.repo.diff as diff
+from dvc.command.diff import CmdDiff
 
 
 from tests.basic_env import TestDvc
@@ -31,18 +32,7 @@ class TestDiff(TestDvc):
         self.new_checksum = _get_checksum(self.dvc, self.new_file)
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
-
-    def test(self):
-        out = self.dvc.scm.get_diff_trees(self.a_ref)
-        self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
-
-
-class TestDiffRepo(TestDiff):
-    def test(self):
-        result = self.dvc.diff(self.a_ref, target=self.new_file)
-        test_dct = {
+        self.test_dct = {
             diff.DIFF_A_REF: str(self.a_ref),
             diff.DIFF_B_REF: str(self.git.head.commit),
             diff.DIFF_LIST: [
@@ -54,7 +44,18 @@ class TestDiffRepo(TestDiff):
                 }
             ],
         }
-        self.assertEqual(test_dct, result)
+
+    def test(self):
+        out = self.dvc.scm.get_diff_trees(self.a_ref)
+        self.assertFalse(out[diff.DIFF_EQUAL])
+        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
+        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
+
+
+class TestDiffRepo(TestDiff):
+    def test(self):
+        result = self.dvc.diff(self.a_ref, target=self.new_file)
+        self.assertEqual(self.test_dct, result)
 
 
 class TestDiffCmdLine(TestDiff):
@@ -62,9 +63,31 @@ class TestDiffCmdLine(TestDiff):
         with patch("dvc.cli.diff.CmdDiff._show", autospec=True):
             with patch("dvc.repo.Repo", config="testing") as MockRepo:
                 MockRepo.return_value.diff.return_value = "testing"
-                MockRepo.return_value.diff.return_value = "testing"
                 ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
                 self.assertEqual(ret, 0)
+
+
+class TestDiffCmdMessage(TestDiff):
+    maxDiff = None
+
+    def test(self):
+        with patch("dvc.repo.Repo", config="testing"):
+            m = Mock()
+            cmd_diff = CmdDiff(m)
+            msg = cmd_diff._show(self.test_dct)
+            test_msg = (
+                "dvc diff from {0} to {1}\n\n"
+                "diff for '{2}'\n"
+                "+{2} with md5 {3}\n\n"
+                "added file with size 13 Bytes"
+            )
+            test_msg = test_msg.format(
+                self.test_dct[diff.DIFF_A_REF],
+                self.test_dct[diff.DIFF_B_REF],
+                self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
+                self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
+            )
+            self.assertEqual(test_msg, msg)
 
 
 class TestDiffDir(TestDvc):
@@ -91,8 +114,6 @@ class TestDiffDir(TestDvc):
 
 
 class TestDiffDirRepo(TestDiffDir):
-    maxDiff = None
-
     def test(self):
         result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
         test_dct = {
@@ -112,6 +133,42 @@ class TestDiffDirRepo(TestDiffDir):
                     diff.DIFF_OLD_FILE: self.DATA_DIR,
                     diff.DIFF_OLD_CHECKSUM: self.old_checksum,
                     diff.DIFF_SIZE: 30,
+                }
+            ],
+        }
+        self.assertEqual(test_dct, result)
+
+
+class TestDiffDirRepoDeletedFile(TestDiffDir):
+    def setUp(self):
+        super(TestDiffDirRepoDeletedFile, self).setUp()
+
+        self.b_ref = self.a_ref
+        self.new_checksum = self.old_checksum
+        self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+
+    def test(self):
+        result = self.dvc.diff(
+            self.a_ref, b_ref=self.b_ref, target=self.DATA_DIR
+        )
+        test_dct = {
+            diff.DIFF_A_REF: str(self.a_ref),
+            diff.DIFF_B_REF: str(self.b_ref),
+            diff.DIFF_LIST: [
+                {
+                    diff.DIFF_CHANGE: 0,
+                    diff.DIFF_DEL: 1,
+                    diff.DIFF_IDENT: 2,
+                    diff.DIFF_MOVE: 0,
+                    diff.DIFF_NEW: 0,
+                    diff.DIFF_IS_DIR: True,
+                    diff.DIFF_TARGET: self.DATA_DIR,
+                    diff.DIFF_NEW_FILE: self.DATA_DIR,
+                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
+                    diff.DIFF_OLD_FILE: self.DATA_DIR,
+                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
+                    diff.DIFF_SIZE: -30,
                 }
             ],
         }
