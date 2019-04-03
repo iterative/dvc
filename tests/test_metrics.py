@@ -1,15 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 import json
+import logging
 
 from dvc.repo import Repo as DvcRepo
 from dvc.main import main
 from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from tests.basic_env import TestDvc
-
-import dvc.logger as logger
-from tests.utils import reset_logger_error_output, reset_logger_standard_output
-from tests.utils.logger import MockLoggerHandlers
 
 
 class TestMetrics(TestDvc):
@@ -225,61 +222,62 @@ class TestMetrics(TestDvc):
         self.dvc.metrics.modify("metrics.tsv", typ="tsv")
         self.dvc.metrics.modify("metrics.json", typ="json")
 
-        with MockLoggerHandlers(logger.logger):
-            reset_logger_standard_output()
+        self._caplog.clear()
 
+        with self._caplog.at_level(logging.INFO, logger="dvc"):
             ret = main(["metrics", "show"])
             self.assertEqual(ret, 0)
 
-            expected_csv = (
-                u"\tmetrics.csv:\n"
-                u"\t\tvalor_mse   desviación_mse   data_set       \n"
-                u"\t\t0.421601    0.173461         entrenamiento  \n"
-                u"\t\t0.67528     0.289545         pruebas        \n"
-                u"\t\t0.671502    0.297848         validación"
-            )
+        expected_csv = (
+            u"\tmetrics.csv:\n"
+            u"\t\tvalor_mse   desviación_mse   data_set       \n"
+            u"\t\t0.421601    0.173461         entrenamiento  \n"
+            u"\t\t0.67528     0.289545         pruebas        \n"
+            u"\t\t0.671502    0.297848         validación"
+        )
 
-            expected_tsv = (
-                "\tmetrics.tsv:\n"
-                "\t\tvalue_mse   deviation_mse   data_set    \n"
-                "\t\t0.421601    0.173461        train       \n"
-                "\t\t0.67528     0.289545        test\\ning   \n"
-                "\t\t0.671502    0.297848        validation"
-            )
+        expected_tsv = (
+            "\tmetrics.tsv:\n"
+            "\t\tvalue_mse   deviation_mse   data_set    \n"
+            "\t\t0.421601    0.173461        train       \n"
+            "\t\t0.67528     0.289545        test\\ning   \n"
+            "\t\t0.671502    0.297848        validation"
+        )
 
-            expected_txt = (
-                "\tmetrics.txt:\n"
-                "\t\tROC_AUC: 0.64\n"
-                "\t\tKS: 78.9999999996\n"
-                "\t\tF_SCORE: 77\n"
-            )
+        expected_txt = (
+            "\tmetrics.txt:\n"
+            "\t\tROC_AUC: 0.64\n"
+            "\t\tKS: 78.9999999996\n"
+            "\t\tF_SCORE: 77"
+        )
 
-            expected_json = (
-                "\tmetrics.json:\n"
-                "\t\t{\n"
-                '\t\t     "data_set": [\n'
-                '\t\t          "train",\n'
-                '\t\t          "testing",\n'
-                '\t\t          "validation"\n'
-                "\t\t     ],\n"
-                '\t\t     "deviation_mse": [\n'
-                '\t\t          "0.173461",\n'
-                '\t\t          "0.289545",\n'
-                '\t\t          "0.297848"\n'
-                "\t\t     ],\n"
-                '\t\t     "value_mse": [\n'
-                '\t\t          "0.421601",\n'
-                '\t\t          "0.67528",\n'
-                '\t\t          "0.671502"\n'
-                "\t\t     ]\n"
-                "\t\t}"
-            )
+        expected_json = (
+            "\tmetrics.json:\n"
+            "\t\t{\n"
+            '\t\t     "data_set": [\n'
+            '\t\t          "train",\n'
+            '\t\t          "testing",\n'
+            '\t\t          "validation"\n'
+            "\t\t     ],\n"
+            '\t\t     "deviation_mse": [\n'
+            '\t\t          "0.173461",\n'
+            '\t\t          "0.289545",\n'
+            '\t\t          "0.297848"\n'
+            "\t\t     ],\n"
+            '\t\t     "value_mse": [\n'
+            '\t\t          "0.421601",\n'
+            '\t\t          "0.67528",\n'
+            '\t\t          "0.671502"\n'
+            "\t\t     ]\n"
+            "\t\t}"
+        )
 
-            stdout = logger.logger.handlers[0].stream.getvalue()
-            self.assertIn(expected_tsv, stdout)
-            self.assertIn(expected_csv, stdout)
-            self.assertIn(expected_txt, stdout)
-            self.assertIn(expected_json, stdout)
+        stdout = "\n".join(record.message for record in self._caplog.records)
+
+        assert expected_tsv in stdout
+        assert expected_csv in stdout
+        assert expected_txt in stdout
+        assert expected_json in stdout
 
 
 class TestMetricsRecursive(TestDvc):
@@ -472,29 +470,29 @@ class TestMetricsCLI(TestMetrics):
             fd.flush()
 
         ret = main(["add", "metric.unknown"])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
-        with MockLoggerHandlers(logger.logger):
-            reset_logger_error_output()
-            ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
-            self.assertEqual(ret, 1)
-            self.assertIn(
-                "failed to add metric file 'metric.unknown' - metric type "
-                "'unknown' is not supported, must be one of "
-                "[raw, json, csv, tsv, hcsv, htsv]",
-                logger.logger.handlers[1].stream.getvalue(),
-            )
+        self._caplog.clear()
+        ret = main(["metrics", "add", "metric.unknown", "-t", "unknown"])
+        assert ret == 1
 
-            ret = main(["metrics", "add", "metric.unknown", "-t", "raw"])
-            self.assertEqual(ret, 0)
+        assert (
+            "failed to add metric file 'metric.unknown'"
+        ) in self._caplog.text
 
-            reset_logger_standard_output()
-            ret = main(["metrics", "show", "metric.unknown"])
-            self.assertEqual(ret, 0)
-            self.assertIn(
-                "\tmetric.unknown: unknown",
-                logger.logger.handlers[0].stream.getvalue(),
-            )
+        assert (
+            "'unknown' is not supported, must be one of "
+            "[raw, json, csv, tsv, hcsv, htsv]"
+        ) in self._caplog.text
+
+        ret = main(["metrics", "add", "metric.unknown", "-t", "raw"])
+        assert ret == 0
+
+        self._caplog.clear()
+        ret = main(["metrics", "show", "metric.unknown"])
+        assert ret == 0
+
+        assert "\tmetric.unknown: unknown" in self._caplog.text
 
     def test_wrong_type_modify(self):
         with open("metric.unknown", "w+") as fd:
@@ -502,31 +500,29 @@ class TestMetricsCLI(TestMetrics):
             fd.flush()
 
         ret = main(["run", "-m", "metric.unknown"])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
-        with MockLoggerHandlers(logger.logger):
-            reset_logger_error_output()
-            ret = main(
-                ["metrics", "modify", "metric.unknown", "-t", "unknown"]
-            )
-            self.assertEqual(ret, 1)
-            self.assertIn(
-                "failed to modify metric file settings - metric type "
-                "'unknown' is not supported, must be one of "
-                "[raw, json, csv, tsv, hcsv, htsv]",
-                logger.logger.handlers[1].stream.getvalue(),
-            )
+        self._caplog.clear()
 
-            ret = main(["metrics", "modify", "metric.unknown", "-t", "CSV"])
-            self.assertEqual(ret, 0)
+        ret = main(["metrics", "modify", "metric.unknown", "-t", "unknown"])
+        assert ret == 1
 
-            reset_logger_standard_output()
-            ret = main(["metrics", "show", "metric.unknown"])
-            self.assertEqual(ret, 0)
-            self.assertIn(
-                "\tmetric.unknown: unknown",
-                logger.logger.handlers[0].stream.getvalue(),
-            )
+        assert "failed to modify metric file settings" in self._caplog.text
+
+        assert (
+            "metric type 'unknown' is not supported, must be one of "
+            "[raw, json, csv, tsv, hcsv, htsv]"
+        ) in self._caplog.text
+
+        ret = main(["metrics", "modify", "metric.unknown", "-t", "CSV"])
+        assert ret == 0
+
+        self._caplog.clear()
+
+        ret = main(["metrics", "show", "metric.unknown"])
+        assert ret == 0
+
+        assert "\tmetric.unknown: unknown" in self._caplog.text
 
     def test_wrong_type_show(self):
         with open("metric.unknown", "w+") as fd:
@@ -534,26 +530,15 @@ class TestMetricsCLI(TestMetrics):
             fd.flush()
 
         ret = main(["run", "-m", "metric.unknown"])
-        self.assertEqual(ret, 0)
+        assert ret == 0
 
-        with MockLoggerHandlers(logger.logger):
-            reset_logger_standard_output()
-            ret = main(
-                [
-                    "metrics",
-                    "show",
-                    "metric.unknown",
-                    "-t",
-                    "unknown",
-                    "-x",
-                    "0,0",
-                ]
-            )
-            self.assertEqual(ret, 0)
-            self.assertIn(
-                "\tmetric.unknown: unknown",
-                logger.logger.handlers[0].stream.getvalue(),
-            )
+        self._caplog.clear()
+
+        ret = main(
+            ["metrics", "show", "metric.unknown", "-t", "unknown", "-x", "0,0"]
+        )
+        assert ret == 0
+        assert "\tmetric.unknown: unknown" in self._caplog.text
 
 
 class TestNoMetrics(TestDvc):

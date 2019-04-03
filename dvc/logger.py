@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
+from dvc.utils.compat import str, StringIO
 
 import logging
 import logging.handlers
@@ -47,17 +47,11 @@ class ColorFormatter(logging.Formatter):
     )
 
     def format(self, record):
-        # Might result in messy terminal if we allow this in DEBUG records,
-        # because analytics is logging on a separate thread, that might not
-        # be using the same instance of `progress`.
-        if record.levelname != "DEBUG":
-            self._progress_aware()
-
         if record.levelname == "INFO":
             return record.msg
 
         if record.levelname == "ERROR" or record.levelname == "CRITICAL":
-            exception, stack_trace = self._parse_exc()
+            exception, stack_trace = self._parse_exc(record.exc_info)
 
             return (
                 "{color}{levelname}{nc}: {description}"
@@ -82,6 +76,8 @@ class ColorFormatter(logging.Formatter):
         )
 
     def _description(self, message, exception):
+        description = ""
+
         if exception and message:
             description = "{message} - {exception}"
         elif exception:
@@ -91,29 +87,33 @@ class ColorFormatter(logging.Formatter):
 
         return description.format(message=message, exception=exception)
 
-    def _walk_exc(self, exc):
+    def _walk_exc(self, exc_info):
         import traceback
 
+        buffer = StringIO()
+
+        traceback.print_exception(*exc_info, file=buffer)
+
+        exc = exc_info[1]
+        tb = buffer.getvalue()
+
         exc_list = [str(exc)]
-        tb_list = [traceback.format_exc()]
+        tb_list = [tb]
 
         # NOTE: parsing chained exceptions. See dvc/exceptions.py for more info
-        while hasattr(exc, "cause") and exc.cause is not None:
+        while hasattr(exc, "cause") and exc.cause:
             exc_list.append(str(exc.cause))
-            if hasattr(exc, "cause_tb") and exc.cause_tb is not None:
+            if hasattr(exc, "cause_tb") and exc.cause_tb:
                 tb_list.insert(0, str(exc.cause_tb))
             exc = exc.cause
 
         return exc_list, tb_list
 
-    def _parse_exc(self):
-        import sys
-
-        exc = sys.exc_info()[1]
-        if not exc:
+    def _parse_exc(self, exc_info):
+        if not exc_info:
             return (None, "")
 
-        exc_list, tb_list = self._walk_exc(exc)
+        exc_list, tb_list = self._walk_exc(exc_info)
 
         exception = ": ".join(exc_list)
 

@@ -2,13 +2,15 @@ from __future__ import unicode_literals
 
 import humanize
 import inflect
+import logging
 
-
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase
 from dvc.utils.collections import compact
 import dvc.repo.diff as diff
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDiff(CmdBase):
@@ -113,7 +115,7 @@ class CmdDiff(CmdBase):
                 compact([self.args.target, self.args.a_ref, self.args.b_ref])
             )
             msg = msg.format(args)
-            logger.error(msg)
+            logger.exception(msg)
             return 1
         return 0
 

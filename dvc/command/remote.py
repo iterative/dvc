@@ -5,6 +5,7 @@ import os
 import re
 import logging
 
+from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.config import Config
 

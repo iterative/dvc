@@ -6,15 +6,19 @@ import os
 import shutil
 import uuid
 import tempfile
+import logging
 
 from git import Repo
 from git.exc import GitCommandNotFound
 from unittest import TestCase
+import pytest
 
-import dvc.logger as logger
 from dvc.command.remote import CmdRemoteAdd
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.compat import open, str
+
+
+logger = logging.getLogger("dvc")
 
 
 class TestDirFixture(object):
@@ -139,7 +143,7 @@ class TestDvcFixture(TestGitFixture):
         super(TestDvcFixture, self).setUp()
         self.dvc = DvcRepo.init(self._root_dir)
         self.dvc.scm.commit("init dvc")
-        logger.be_verbose()
+        logger.setLevel("DEBUG")
 
 
 class TestDvcGitInitializedFixture(TestDvcFixture):
@@ -218,6 +222,10 @@ class TestDvc(TestDvcFixture, TestCase):
     def __init__(self, methodName, root_dir=None):
         TestDvcFixture.__init__(self, root_dir)
         TestCase.__init__(self, methodName)
+
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog
 
 
 class TestDvcPkg(TestDvcFixture, TestCase):

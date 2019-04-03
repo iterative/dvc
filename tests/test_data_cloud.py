@@ -8,12 +8,11 @@ import getpass
 import platform
 import yaml
 import copy
+import logging
 
 from dvc.state import State
 from mock import patch
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
-from dvc.logger import logger
 from dvc.utils.compat import str
 from dvc.main import main
 from dvc.config import Config
@@ -31,11 +30,7 @@ from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
 from dvc.utils import file_md5, load_stage_file
 
 from tests.basic_env import TestDvc
-from tests.utils import (
-    spy,
-    reset_logger_standard_output,
-    reset_logger_error_output,
-)
+from tests.utils import spy
 
 
 TEST_REMOTE = "upstream"
@@ -637,20 +632,19 @@ class TestWarnOnOutdatedStage(TestDvc):
         with open(stage_file_path, "w") as stage_file:
             yaml.dump(content, stage_file)
 
-        with MockLoggerHandlers(logger):
-            reset_logger_standard_output()
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
+            self._caplog.clear()
             self.main(["status", "-c"])
-            self.assertIn(
-                "Warning: Output 'bar'(Stage: 'bar.dvc') is "
-                "missing version info. Cache for it will not be "
-                "collected. Use dvc repro to get your pipeline up to "
-                "date.",
-                logger.handlers[0].stream.getvalue(),
+            expected_warning = (
+                "Output 'bar'(Stage: 'bar.dvc') is missing version info."
+                " Cache for it will not be collected."
+                " Use dvc repro to get your pipeline up to date."
             )
 
+            assert expected_warning in self._caplog.text
+
     def test(self):
-        with ConsoleFontColorsRemover():
-            self._test()
+        self._test()
 
 
 class TestRecursiveSyncOperations(TestDataCloudBase):
@@ -783,33 +777,21 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
             self.FOO, checksum_foo
         )
 
-    def stderr_contains_message(self):
-        self.assertIn(
-            self.message_header, logger.handlers[1].stream.getvalue()
-        )
-        self.assertIn(
-            self.message_foo_part, logger.handlers[1].stream.getvalue()
-        )
-        self.assertIn(
-            self.message_bar_part, logger.handlers[1].stream.getvalue()
-        )
-
     def test(self):
-        with ConsoleFontColorsRemover(), MockLoggerHandlers(logger):
-            reset_logger_error_output()
+        self._caplog.clear()
+        main(["push"])
+        assert self.message_header in self._caplog.text
+        assert self.message_foo_part in self._caplog.text
+        assert self.message_bar_part in self._caplog.text
 
-            ret = main(["push"])
-            self.assertEqual(ret, 0)
-            self.stderr_contains_message()
+        self._caplog.clear()
+        main(["pull"])
+        assert self.message_header in self._caplog.text
+        assert self.message_foo_part in self._caplog.text
+        assert self.message_bar_part in self._caplog.text
 
-            reset_logger_error_output()
-
-            ret = main(["pull", "-f"])
-            self.assertEqual(ret, 0)
-            self.stderr_contains_message()
-
-            reset_logger_error_output()
-
-            ret = main(["status", "-c"])
-            self.assertEqual(ret, 0)
-            self.stderr_contains_message()
+        self._caplog.clear()
+        main(["status", "-c"])
+        assert self.message_header in self._caplog.text
+        assert self.message_foo_part in self._caplog.text
+        assert self.message_bar_part in self._caplog.text

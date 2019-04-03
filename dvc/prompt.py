@@ -4,10 +4,13 @@ from __future__ import unicode_literals
 from __future__ import print_function
 
 import sys
+import logging
 from getpass import getpass
 
-from dvc.progress import progress_aware
 from dvc.utils.compat import input
+
+
+logger = logging.getLogger(__name__)
 
 
 def _ask(prompt, limited_to=None):
@@ -26,13 +29,12 @@ def _ask(prompt, limited_to=None):
         if answer in limited_to:
             return answer
 
-        print(
+        logger.info(
             "Your response must be one of: {options}. "
             "Please try again.".format(options=limited_to)
         )
 
 
-@progress_aware
 def confirm(statement):
     """Ask the user for confirmation about the specified statement.
 
@@ -47,7 +49,6 @@ def confirm(statement):
     return answer and answer.startswith("y")
 
 
-@progress_aware
 def password(statement):
     """Ask the user for a password.
 
@@ -57,5 +58,5 @@ def password(statement):
     Returns:
         str: password entered by the user.
     """
-    prompt = "{statement}: ".format(statement=statement)
-    return getpass(prompt)
+    logger.info("{statement}: ".format(statement=statement))
+    return getpass("")

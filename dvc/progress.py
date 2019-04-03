@@ -127,21 +127,6 @@ class Progress(object):
         self._lock.release()
 
 
-def progress_aware(f):
-    """ Decorator to add a new line if progress bar hasn't finished  """
-    from functools import wraps
-
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if not progress.is_finished:
-            progress._print()
-        progress.clearln()
-
-        return f(*args, **kwargs)
-
-    return wrapper
-
-
 class ProgressCallback(object):
     def __init__(self, total):
         self.total = total
