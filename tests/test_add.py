@@ -39,6 +39,7 @@ class TestAdd(TestDvc):
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(stage.cmd, None)
         self.assertEqual(stage.outs[0].info["md5"], md5)
+        self.assertEqual(stage.md5, "ee343f2482f53efffc109be83cc976ac")
 
     def test_unicode(self):
         fname = "\xe1"

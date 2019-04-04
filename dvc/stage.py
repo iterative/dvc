@@ -621,7 +621,7 @@ class Stage(object):
         self.repo.scm.track_file(os.path.relpath(fname))
 
     def _compute_md5(self):
-        from dvc.output.local import OutputLOCAL
+        from dvc.output.base import OutputBase
 
         d = self.dumpd()
 
@@ -643,8 +643,9 @@ class Stage(object):
             d,
             exclude=[
                 self.PARAM_LOCKED,
-                OutputLOCAL.PARAM_METRIC,
-                OutputLOCAL.PARAM_TAGS,
+                OutputBase.PARAM_METRIC,
+                OutputBase.PARAM_TAGS,
+                OutputBase.PARAM_PERSIST,
             ],
         )
         logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
