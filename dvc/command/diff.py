@@ -32,35 +32,32 @@ class CmdDiff(CmdBase):
             return
         for dct in diff_dct[diff.DIFF_LIST]:
             msg += "\n\ndiff for '{}'\n".format(dct[diff.DIFF_TARGET])
+            sample_msg = "{}{} with md5 {}\n"
             if dct.get(diff.DIFF_OLD_FILE):
-                msg += "-{} with md5 {}\n".format(
-                    dct[diff.DIFF_OLD_FILE], dct[diff.DIFF_OLD_CHECKSUM]
+                msg += sample_msg.format(
+                    "-", dct[diff.DIFF_OLD_FILE], dct[diff.DIFF_OLD_CHECKSUM]
                 )
             if dct.get(diff.DIFF_NEW_FILE):
-                msg += "+{} with md5 {}\n".format(
-                    dct[diff.DIFF_NEW_FILE], dct[diff.DIFF_NEW_CHECKSUM]
+                msg += sample_msg.format(
+                    "+", dct[diff.DIFF_NEW_FILE], dct[diff.DIFF_NEW_CHECKSUM]
                 )
             msg += "\n"
             if dct[diff.DIFF_SIZE] != diff.DIFF_SIZE_UNKNOWN:
                 if dct.get("is_dir"):
-                    msg += "{} {} not changed, ".format(
+                    changes_msg = (
+                        "{} {} not changed, {} {} modified, {} {} added, "
+                        "{} {} deleted, size was {}"
+                    )
+                    msg += changes_msg.format(
                         dct[diff.DIFF_IDENT],
                         engine.plural("file", dct[diff.DIFF_IDENT]),
-                    )
-                    msg += "{} {} modified, ".format(
                         dct[diff.DIFF_CHANGE],
                         engine.plural("file", dct[diff.DIFF_CHANGE]),
-                    )
-                    msg += "{} {} added, ".format(
                         dct[diff.DIFF_NEW],
                         engine.plural("file", dct[diff.DIFF_NEW]),
-                    )
-                    msg += "{} {} deleted, ".format(
                         dct[diff.DIFF_DEL],
                         engine.plural("file", dct[diff.DIFF_DEL]),
-                    )
-                    msg += "size was {}".format(
-                        self._print_size(dct[diff.DIFF_SIZE])
+                        self._print_size(dct[diff.DIFF_SIZE]),
                     )
                 else:
                     if (

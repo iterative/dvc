@@ -54,6 +54,44 @@ def _extract_dir(self, output):
     return {i["relpath"]: i["md5"] for i in lst}
 
 
+def _ident_files(a_entries, b_entries):
+    keys = [key for key in a_entries.keys() if key in b_entries]
+    return len(keys)
+
+
+def _modified_files(self, a_entries, b_entries):
+    keys = [key for key in a_entries.keys() if key in b_entries]
+    diff_size = 0
+    modified_count = 0
+    for key in keys:
+        if a_entries[key] != b_entries[key]:
+            modified_count
+            diff_size += os.path.getsize(
+                self.cache.local.get(b_entries[key])
+            ) - os.path.getsize(self.cache.local.get(a_entries[key]))
+    return modified_count, diff_size
+
+
+def _deleted_files(self, a_entries, b_entries):
+    diff_size = 0
+    deleted_count = 0
+    for key, value in a_entries.items():
+        if key not in b_entries:
+            deleted_count += 1
+            diff_size -= os.path.getsize(self.cache.local.get(a_entries[key]))
+    return deleted_count, diff_size
+
+
+def _new_files(self, a_entries, b_entries):
+    diff_size = 0
+    new_count = 0
+    for key, value in b_entries.items():
+        if key not in a_entries:
+            new_count += 1
+            diff_size += os.path.getsize(self.cache.local.get(b_entries[key]))
+    return new_count, diff_size
+
+
 def _get_tree_changes(self, a_entries, b_entries):
     result = {
         DIFF_DEL: 0,
@@ -62,40 +100,23 @@ def _get_tree_changes(self, a_entries, b_entries):
         DIFF_NEW: 0,
         DIFF_MOVE: 0,
     }
-    keys = set(a_entries.keys())
-    keys.update(b_entries.keys())
-    diff_size = 0
-    for key in keys:
-        if key in a_entries and key in b_entries:
-            if a_entries[key] == b_entries[key]:
-                result[DIFF_IDENT] += 1
-            else:
-                result[DIFF_CHANGE] += 1
-                diff_size += os.path.getsize(
-                    self.cache.local.get(b_entries[key])
-                ) - os.path.getsize(self.cache.local.get(a_entries[key]))
-        elif key in a_entries:
-            result[DIFF_DEL] += 1
-            diff_size -= os.path.getsize(self.cache.local.get(a_entries[key]))
-        else:
-            result[DIFF_NEW] += 1
-            diff_size += os.path.getsize(self.cache.local.get(b_entries[key]))
+    result[DIFF_IDENT] = _ident_files(a_entries, b_entries)
+    result[DIFF_CHANGE], diff_size = _modified_files(
+        self, a_entries, b_entries
+    )
     result[DIFF_SIZE] = diff_size
+    result[DIFF_DEL], diff_size = _deleted_files(self, a_entries, b_entries)
+    result[DIFF_SIZE] += diff_size
+    result[DIFF_NEW], diff_size = _new_files(self, a_entries, b_entries)
+    result[DIFF_SIZE] += diff_size
     return result
 
 
-def _check_local_cache(a_out, b_out, is_checked):
-    if not is_checked:
-        outputs = []
-        if a_out is not None and a_out.scheme != "local":
-            is_checked = True
-            outputs.append(str(a_out))
-        if b_out is not None and b_out.scheme != "local":
-            is_checked = True
-            outputs.append(str(b_out))
-        if is_checked:
-            logger.warning("non-local output: {}".format(outputs))
-    return is_checked
+def _check_local_cache(a_out, is_checked):
+    if a_out is not None and a_out.scheme != "local":
+        is_checked.append(str(a_out))
+        return True
+    return False
 
 
 def _get_diff_outs(self, diff_dct):
@@ -106,13 +127,12 @@ def _get_diff_outs(self, diff_dct):
     outs_paths = set(a_outs.keys())
     outs_paths.update(b_outs.keys())
     results = {}
-    not_local_cache = False
+    non_local_cache = []
     for path in outs_paths:
-        not_local_cache = _check_local_cache(
-            a_outs.get(path), b_outs.get(path), not_local_cache
-        )
-        if b_outs.get(path) and b_outs[path].scheme != "local":
-            not_local_cache = True
+        check1 = _check_local_cache(a_outs.get(path), non_local_cache)
+        check2 = _check_local_cache(b_outs.get(path), non_local_cache)
+        # skip files/directories with non-local cache for now
+        if check1 or check2:
             continue
         if path in a_outs and path in b_outs:
             results[path] = {
@@ -137,6 +157,13 @@ def _get_diff_outs(self, diff_dct):
                 DIFF_DELETED: False,
                 DIFF_IS_DIR: b_outs[path].is_dir_cache,
             }
+    if non_local_cache:
+        logger.warning(
+            "Diff is not supported for non-local outputs. Ignoring: {}".format(
+                non_local_cache
+            )
+        )
+
     return results
 
 
