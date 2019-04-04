@@ -32,6 +32,7 @@ DIFF_SIZE_UNKNOWN = "?"
 DIFF_A_OUTPUT = "a_output"
 DIFF_B_OUTPUT = "b_output"
 DIFF_DELETED = "deleted_file"
+DIFF_IS_NEW = "created_file"
 
 
 def _file_not_exists(error, result):
@@ -55,7 +56,9 @@ def _extract_dir(self, output):
 
 
 def _ident_files(a_entries, b_entries):
-    keys = [key for key in a_entries.keys() if key in b_entries]
+    keys = [
+        key for key in a_entries.keys() if b_entries.get(key) == a_entries[key]
+    ]
     return len(keys)
 
 
@@ -134,29 +137,38 @@ def _get_diff_outs(self, diff_dct):
         # skip files/directories with non-local cache for now
         if check1 or check2:
             continue
-        if path in a_outs and path in b_outs:
-            results[path] = {
-                DIFF_A_OUTPUT: a_outs[path],
-                DIFF_B_OUTPUT: b_outs[path],
-                DIFF_NEW_FILE: False,
-                DIFF_DELETED: False,
-                # possible drawback: regular file ->directory movement
-                DIFF_IS_DIR: a_outs[path].is_dir_cache,
-            }
-        elif path in a_outs:
-            results[path] = {
-                DIFF_A_OUTPUT: a_outs[path],
-                DIFF_NEW_FILE: False,
-                DIFF_DELETED: True,
-                DIFF_IS_DIR: a_outs[path].is_dir_cache,
-            }
+        results[path] = {}
+        results[path][DIFF_A_OUTPUT] = a_outs.get(path)
+        results[path][DIFF_B_OUTPUT] = b_outs.get(path)
+        results[path][DIFF_IS_NEW] = path not in a_outs
+        results[path][DIFF_DELETED] = path not in b_outs
+        if path in a_outs:
+            results[path][DIFF_IS_DIR] = a_outs[path].is_dir_cache
         else:
-            results[path] = {
-                DIFF_B_OUTPUT: b_outs[path],
-                DIFF_NEW_FILE: True,
-                DIFF_DELETED: False,
-                DIFF_IS_DIR: b_outs[path].is_dir_cache,
-            }
+            results[path][DIFF_IS_DIR] = b_outs[path].is_dir_cache
+        # if path in a_outs and path in b_outs:
+        #    results[path] = {
+        #        DIFF_A_OUTPUT: a_outs[path],
+        #        DIFF_B_OUTPUT: b_outs[path],
+        #        DIFF_IS_NEW: False,
+        #        DIFF_DELETED: False,
+        #        # possible drawback: regular file ->directory movement
+        #        DIFF_IS_DIR: a_outs[path].is_dir_cache,
+        #    }
+        # elif path in a_outs:
+        #    results[path] = {
+        #        DIFF_A_OUTPUT: a_outs[path],
+        #        DIFF_IS_NEW: False,
+        #        DIFF_DELETED: True,
+        #        DIFF_IS_DIR: a_outs[path].is_dir_cache,
+        #    }
+        # else:
+        #    results[path] = {
+        #        DIFF_B_OUTPUT: b_outs[path],
+        #        DIFF_IS_NEW: True,
+        #        DIFF_DELETED: False,
+        #        DIFF_IS_DIR: b_outs[path].is_dir_cache,
+        #    }
     if non_local_cache:
         logger.warning(
             "Diff is not supported for non-local outputs. Ignoring: {}".format(
@@ -172,7 +184,7 @@ def _diff_dir(self, target, diff_dct):
     result[DIFF_IS_DIR] = True
     a_entries, b_entries = {}, {}
     try:
-        if not diff_dct[DIFF_NEW_FILE]:
+        if not diff_dct[DIFF_IS_NEW]:
             result[DIFF_OLD_FILE] = target
             result[DIFF_OLD_CHECKSUM] = diff_dct[DIFF_A_OUTPUT].checksum
             a_entries = _extract_dir(self, diff_dct[DIFF_A_OUTPUT])
@@ -190,7 +202,7 @@ def _diff_file(self, target, diff_dct):
     result = {DIFF_TARGET: target}
     size = 0
     try:
-        if not diff_dct[DIFF_NEW_FILE]:
+        if not diff_dct[DIFF_IS_NEW]:
             result[DIFF_OLD_FILE] = target
             result[DIFF_OLD_CHECKSUM] = diff_dct[DIFF_A_OUTPUT].checksum
             size -= os.path.getsize(
