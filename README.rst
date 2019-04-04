@@ -54,8 +54,8 @@ How DVC works
 We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ to better understand what DVC
 is and how does it fit your scenarios.
 
-The easiest (but not perfect!) way to describe it: DVC is Git (or Git-lfs to be precise) + ``makefiles``
-tailored specifically for ML and Data Science scenarios.
+The easiest (but not perfect!) _analogy_ to describe it: DVC is Git (or Git-lfs to be precise) + ``makefiles``
+made right and tailored specifically for ML and Data Science scenarios.
 
 #. ``Git/Git-lfs`` part - DVC helps you storing and sharing data artifacts, models. It connects them with your
    Git repository.
