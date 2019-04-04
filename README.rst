@@ -6,7 +6,7 @@
 • `Docs <https://dvc.org/doc>`_
 • `Twitter <https://twitter.com/iterativeai>`_
 • `Chat (Community & Support) <https://dvc.org/chat>`_
-• `Tutorial <https://dvc.org/doc/tutorial>`_
+• `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 .. image:: https://travis-ci.com/iterative/dvc.svg?branch=master
