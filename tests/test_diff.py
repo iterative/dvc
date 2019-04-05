@@ -114,6 +114,8 @@ class TestDiffDir(TestDvc):
 
 
 class TestDiffDirRepo(TestDiffDir):
+    maxDiff = None
+
     def test(self):
         result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
         test_dct = {
@@ -140,6 +142,8 @@ class TestDiffDirRepo(TestDiffDir):
 
 
 class TestDiffDirRepoDeletedFile(TestDiffDir):
+    maxDiff = None
+
     def setUp(self):
         super(TestDiffDirRepoDeletedFile, self).setUp()
 

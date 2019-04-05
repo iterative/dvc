@@ -22,8 +22,62 @@ class CmdDiff(CmdBase):
         natur_size = humanize.naturalsize(abs(size))
         return change.format(natur_size)
 
-    def _show(self, diff_dct):
+    def _get_md5_string(self, sign, file_name, checksum):
+        sample_msg = ""
+        if file_name:
+            sample_msg = "{}{} with md5 {}\n"
+            sample_msg = sample_msg.format(sign, file_name, checksum)
+        return sample_msg
+
+    def _get_dir_changes(self, dct):
         engine = inflect.engine()
+        changes_msg = (
+            "{} {} not changed, {} {} modified, {} {} added, "
+            "{} {} deleted, size was {}"
+        )
+        changes_msg = changes_msg.format(
+            dct[diff.DIFF_IDENT],
+            engine.plural("file", dct[diff.DIFF_IDENT]),
+            dct[diff.DIFF_CHANGE],
+            engine.plural("file", dct[diff.DIFF_CHANGE]),
+            dct[diff.DIFF_NEW],
+            engine.plural("file", dct[diff.DIFF_NEW]),
+            dct[diff.DIFF_DEL],
+            engine.plural("file", dct[diff.DIFF_DEL]),
+            self._print_size(dct[diff.DIFF_SIZE]),
+        )
+        return changes_msg
+
+    def _get_file_changes(self, dct):
+        if (
+            dct.get(diff.DIFF_OLD_FILE)
+            and dct.get(diff.DIFF_NEW_FILE)
+            and dct[diff.DIFF_SIZE] == 0
+        ):
+            msg = "file size was not changed"
+        elif dct.get(diff.DIFF_NEW_FILE):
+            msg = "added file with size {}".format(
+                humanize.naturalsize(dct[diff.DIFF_SIZE])
+            )
+        elif dct.get(diff.DIFF_OLD_FILE):
+            msg = "deleted file with size {}".format(
+                humanize.naturalsize(abs(dct[diff.DIFF_SIZE]))
+            )
+        else:
+            msg = "file was modified, file size {}".format(
+                self._print_size(dct[diff.DIFF_SIZE])
+            )
+        return msg
+
+    def _get_royal_changes(self, dct):
+        if dct[diff.DIFF_SIZE] != diff.DIFF_SIZE_UNKNOWN:
+            if dct.get("is_dir"):
+                return self._get_dir_changes(dct)
+            else:
+                return self._get_file_changes(dct)
+        return "size is ?"
+
+    def _show(self, diff_dct):
         msg = "dvc diff from {} to {}".format(
             diff_dct[diff.DIFF_A_REF], diff_dct[diff.DIFF_B_REF]
         )
@@ -32,54 +86,18 @@ class CmdDiff(CmdBase):
             return
         for dct in diff_dct[diff.DIFF_LIST]:
             msg += "\n\ndiff for '{}'\n".format(dct[diff.DIFF_TARGET])
-            sample_msg = "{}{} with md5 {}\n"
-            if dct.get(diff.DIFF_OLD_FILE):
-                msg += sample_msg.format(
-                    "-", dct[diff.DIFF_OLD_FILE], dct[diff.DIFF_OLD_CHECKSUM]
-                )
-            if dct.get(diff.DIFF_NEW_FILE):
-                msg += sample_msg.format(
-                    "+", dct[diff.DIFF_NEW_FILE], dct[diff.DIFF_NEW_CHECKSUM]
-                )
+            msg += self._get_md5_string(
+                "-",
+                dct.get(diff.DIFF_OLD_FILE),
+                dct.get(diff.DIFF_OLD_CHECKSUM),
+            )
+            msg += self._get_md5_string(
+                "+",
+                dct.get(diff.DIFF_NEW_FILE),
+                dct.get(diff.DIFF_NEW_CHECKSUM),
+            )
             msg += "\n"
-            if dct[diff.DIFF_SIZE] != diff.DIFF_SIZE_UNKNOWN:
-                if dct.get("is_dir"):
-                    changes_msg = (
-                        "{} {} not changed, {} {} modified, {} {} added, "
-                        "{} {} deleted, size was {}"
-                    )
-                    msg += changes_msg.format(
-                        dct[diff.DIFF_IDENT],
-                        engine.plural("file", dct[diff.DIFF_IDENT]),
-                        dct[diff.DIFF_CHANGE],
-                        engine.plural("file", dct[diff.DIFF_CHANGE]),
-                        dct[diff.DIFF_NEW],
-                        engine.plural("file", dct[diff.DIFF_NEW]),
-                        dct[diff.DIFF_DEL],
-                        engine.plural("file", dct[diff.DIFF_DEL]),
-                        self._print_size(dct[diff.DIFF_SIZE]),
-                    )
-                else:
-                    if (
-                        dct.get(diff.DIFF_OLD_FILE)
-                        and dct.get(diff.DIFF_NEW_FILE)
-                        and dct[diff.DIFF_SIZE] == 0
-                    ):
-                        msg += "file size was not changed"
-                    elif dct.get(diff.DIFF_NEW_FILE):
-                        msg += "added file with size {}".format(
-                            humanize.naturalsize(dct[diff.DIFF_SIZE])
-                        )
-                    elif dct.get(diff.DIFF_OLD_FILE):
-                        msg += "deleted file with size {}".format(
-                            humanize.naturalsize(abs(dct[diff.DIFF_SIZE]))
-                        )
-                    else:
-                        msg += "file was modified, file size {}".format(
-                            self._print_size(dct[diff.DIFF_SIZE])
-                        )
-            else:
-                msg += "size is ?"
+            msg += self._get_royal_changes(dct)
         logger.info(msg)
         return msg
 
