@@ -42,17 +42,26 @@ def _file_not_exists(error, result):
         raise error
 
 
-def _extract_dir(self, output):
+def _extract_dir(self, dir_not_exists, output):
     """Extract the content of dvc tree file
     Args:
         self(object) - Repo class instance
+        dir_not_exists(bool) - flag for directory existence
         output(object) - OutputLOCAL class instance
     Returns:
         dict - dictionary with keys - paths to file in .dvc/cache
                                values -checksums for that files
     """
-    lst = output.dir_cache
-    return {i["relpath"]: i["md5"] for i in lst}
+    if not dir_not_exists:
+        lst = output.dir_cache
+        return {i["relpath"]: i["md5"] for i in lst}
+    return {}
+
+
+def _get_dir_info(dir_not_exists, a_output):
+    if not dir_not_exists:
+        return str(a_output), a_output.checksum
+    return "", ""
 
 
 def _ident_files(a_entries, b_entries):
@@ -122,6 +131,13 @@ def _check_local_cache(a_out, is_checked):
     return False
 
 
+def _is_dir(path, a_outs, b_outs):
+    if a_outs.get(path):
+        return a_outs[path].is_dir_cache
+    else:
+        return b_outs[path].is_dir_cache
+
+
 def _get_diff_outs(self, diff_dct):
     self.tree = diff_dct[DIFF_A_TREE]
     a_outs = {str(out): out for st in self.stages() for out in st.outs}
@@ -142,33 +158,7 @@ def _get_diff_outs(self, diff_dct):
         results[path][DIFF_B_OUTPUT] = b_outs.get(path)
         results[path][DIFF_IS_NEW] = path not in a_outs
         results[path][DIFF_DELETED] = path not in b_outs
-        if path in a_outs:
-            results[path][DIFF_IS_DIR] = a_outs[path].is_dir_cache
-        else:
-            results[path][DIFF_IS_DIR] = b_outs[path].is_dir_cache
-        # if path in a_outs and path in b_outs:
-        #    results[path] = {
-        #        DIFF_A_OUTPUT: a_outs[path],
-        #        DIFF_B_OUTPUT: b_outs[path],
-        #        DIFF_IS_NEW: False,
-        #        DIFF_DELETED: False,
-        #        # possible drawback: regular file ->directory movement
-        #        DIFF_IS_DIR: a_outs[path].is_dir_cache,
-        #    }
-        # elif path in a_outs:
-        #    results[path] = {
-        #        DIFF_A_OUTPUT: a_outs[path],
-        #        DIFF_IS_NEW: False,
-        #        DIFF_DELETED: True,
-        #        DIFF_IS_DIR: a_outs[path].is_dir_cache,
-        #    }
-        # else:
-        #    results[path] = {
-        #        DIFF_B_OUTPUT: b_outs[path],
-        #        DIFF_IS_NEW: True,
-        #        DIFF_DELETED: False,
-        #        DIFF_IS_DIR: b_outs[path].is_dir_cache,
-        #    }
+        results[path][DIFF_IS_DIR] = _is_dir(path, a_outs, b_outs)
     if non_local_cache:
         logger.warning(
             "Diff is not supported for non-local outputs. Ignoring: {}".format(
@@ -184,14 +174,18 @@ def _diff_dir(self, target, diff_dct):
     result[DIFF_IS_DIR] = True
     a_entries, b_entries = {}, {}
     try:
-        if not diff_dct[DIFF_IS_NEW]:
-            result[DIFF_OLD_FILE] = target
-            result[DIFF_OLD_CHECKSUM] = diff_dct[DIFF_A_OUTPUT].checksum
-            a_entries = _extract_dir(self, diff_dct[DIFF_A_OUTPUT])
-        if not diff_dct[DIFF_DELETED]:
-            result[DIFF_NEW_FILE] = target
-            result[DIFF_NEW_CHECKSUM] = diff_dct[DIFF_B_OUTPUT].checksum
-            b_entries = _extract_dir(self, diff_dct[DIFF_B_OUTPUT])
+        a_entries = _extract_dir(
+            self, diff_dct[DIFF_IS_NEW], diff_dct[DIFF_A_OUTPUT]
+        )
+        b_entries = _extract_dir(
+            self, diff_dct[DIFF_DELETED], diff_dct[DIFF_B_OUTPUT]
+        )
+        result[DIFF_OLD_FILE], result[DIFF_OLD_CHECKSUM] = _get_dir_info(
+            diff_dct[DIFF_IS_NEW], diff_dct[DIFF_A_OUTPUT]
+        )
+        result[DIFF_NEW_FILE], result[DIFF_NEW_CHECKSUM] = _get_dir_info(
+            diff_dct[DIFF_DELETED], diff_dct[DIFF_B_OUTPUT]
+        )
         result.update(_get_tree_changes(self, a_entries, b_entries))
     except IOError as e:
         _file_not_exists(e, result)
