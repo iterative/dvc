@@ -164,7 +164,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         return num
 
     def _prepare_db(self, empty=False):
-        from dvc import VERSION
+        from dvc import __version__
 
         if not empty:
             cmd = "PRAGMA user_version;"
@@ -176,7 +176,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             version = ret[0][0]
 
             if version > self.VERSION:
-                raise StateVersionTooNewError(VERSION, self.VERSION, version)
+                raise StateVersionTooNewError(
+                    __version__, self.VERSION, version
+                )
             elif version < self.VERSION:
                 msg = (
                     "State file version '{}' is too old. "

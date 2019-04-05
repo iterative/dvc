@@ -9,7 +9,7 @@ import json
 import errno
 
 import dvc.logger as logger
-from dvc import VERSION
+from dvc import __version__
 
 
 class Analytics(object):
@@ -164,7 +164,7 @@ class Analytics(object):
         from dvc.repo import Repo
         from dvc.exceptions import NotDvcRepoError
 
-        self.info[self.PARAM_DVC_VERSION] = VERSION
+        self.info[self.PARAM_DVC_VERSION] = __version__
         self.info[self.PARAM_IS_BINARY] = is_binary()
         self.info[self.PARAM_USER_ID] = self._get_user_id()
 
