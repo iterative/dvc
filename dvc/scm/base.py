@@ -17,6 +17,12 @@ class FileNotInRepoError(DvcException):
     """
 
 
+class FileNotInCommitError(DvcException):
+    """Thrown when trying to find a file/directory that is not
+    in the specified commit in the repository.
+    """
+
+
 class FileNotInTargetSubdirError(DvcException):
     """Thrown when trying to place .gitignore for a file that not in
     the file subdirectory."""

@@ -16,6 +16,13 @@ from dvc.scm.git.tree import GitTree
 import dvc.logger as logger
 
 
+DIFF_A_TREE = "a_tree"
+DIFF_B_TREE = "b_tree"
+DIFF_A_REF = "a_ref"
+DIFF_B_REF = "b_ref"
+DIFF_EQUAL = "equal"
+
+
 class Git(Base):
     """Class for managing Git."""
 
@@ -235,3 +242,48 @@ class Git(Base):
 
     def get_tree(self, rev):
         return GitTree(self.git, rev)
+
+    def _get_diff_trees(self, a_ref, b_ref):
+
+        from gitdb.exc import BadObject, BadName
+
+        trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
+        commits = []
+        try:
+            if b_ref is not None:
+                a_commit = self.git.commit(a_ref)
+                b_commit = self.git.commit(b_ref)
+                commits.append(str(a_commit))
+                commits.append(str(b_commit))
+            else:
+                a_commit = self.git.commit(a_ref)
+                b_commit = self.git.head.commit
+                commits.append(str(a_commit))
+                commits.append(str(b_commit))
+            trees[DIFF_A_TREE] = self.get_tree(commits[0])
+            trees[DIFF_B_TREE] = self.get_tree(commits[1])
+        except (BadName, BadObject) as e:
+            raise SCMError("git problem", cause=e)
+        return trees, commits
+
+    def get_diff_trees(self, a_ref, b_ref=None):
+        """Method for getting two repo trees between two git tag commits
+        returns the dvc hash names of changed file/directory
+
+        Args:
+            a_ref(str) - git reference
+            b_ref(str) - optional second git reference, default None
+
+        Returns:
+            dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
+        """
+        diff_dct = {DIFF_EQUAL: False}
+        trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
+        diff_dct[DIFF_A_REF] = commit_refs[0]
+        diff_dct[DIFF_B_REF] = commit_refs[1]
+        if commit_refs[0] == commit_refs[1]:
+            diff_dct[DIFF_EQUAL] = True
+            return diff_dct
+        diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
+        diff_dct[DIFF_B_TREE] = trees[DIFF_B_TREE]
+        return diff_dct

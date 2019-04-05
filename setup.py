@@ -23,6 +23,8 @@ install_requires = [
     "distro>=1.3.0",
     "appdirs>=1.4.3",
     "treelib>=1.5.5",
+    "inflect>=2.1.0",
+    "humanize>=0.5.1",
 ]
 
 # Extra dependencies for remote integrations

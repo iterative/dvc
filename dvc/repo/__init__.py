@@ -33,6 +33,7 @@ class Repo(object):
     from dvc.repo.gc import gc
     from dvc.repo.commit import commit
     from dvc.repo.pkg import install_pkg
+    from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
 
     def __init__(self, root_dir=None):
