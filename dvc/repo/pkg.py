@@ -6,7 +6,7 @@ import shutil
 import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.stage import Stage
-from dvc.temp_git_repo import TempGitRepo
+from dvc.scm.git.temp_git_repo import TempGitRepo
 
 
 class PackageParams(object):
