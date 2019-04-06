@@ -1,6 +1,10 @@
-import mock
-from unittest import TestCase
+import os
+
 from dvc.stage import Stage
+
+import mock
+import pytest
+from unittest import TestCase
 
 
 class TestStageChecksum(TestCase):
@@ -62,3 +66,12 @@ class TestPathConversion(TestCase):
 
         stage.wdir = ntpath.join("..", "..")
         self.assertEqual(stage.dumpd()["wdir"], "../..")
+
+
+@pytest.mark.parametrize("add", [True, False])
+def test_expand_to_path_on_add_local(add):
+    out = mock.Mock()
+    out.is_in_repo = False
+    path = "path"
+    fname = Stage._expand_to_path_on_add_local(add, path, out, os.path)
+    assert fname == path

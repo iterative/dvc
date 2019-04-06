@@ -92,10 +92,8 @@ class OutputBase(object):
         return self.url
 
     @property
-    def is_local(self):
-        raise DvcException(
-            "is local is not supported for {}".format(self.scheme)
-        )
+    def is_in_repo(self):
+        return False
 
     def assign_to_stage_file(self, target_repo):
         raise DvcException(
@@ -235,11 +233,11 @@ class OutputBase(object):
         if self.scheme != "local":
             return
 
-        if ignore_remove and self.use_cache and self.is_local:
+        if ignore_remove and self.use_cache and self.is_in_repo:
             self.repo.scm.ignore_remove(self.path)
 
     def move(self, out):
-        if self.scheme == "local" and self.use_cache and self.is_local:
+        if self.scheme == "local" and self.use_cache and self.is_in_repo:
             self.repo.scm.ignore_remove(self.path)
 
         self.remote.move(self.path_info, out.path_info)
@@ -248,7 +246,7 @@ class OutputBase(object):
         self.save()
         self.commit()
 
-        if self.scheme == "local" and self.use_cache and self.is_local:
+        if self.scheme == "local" and self.use_cache and self.is_in_repo:
             self.repo.scm.ignore(self.path)
 
     def get_files_number(self):

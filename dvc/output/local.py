@@ -54,7 +54,7 @@ class OutputLOCAL(OutputBase):
         return self.rel_path
 
     @property
-    def is_local(self):
+    def is_in_repo(self):
         return urlparse(self.url).scheme != "remote" and not os.path.isabs(
             self.url
         )
@@ -92,7 +92,7 @@ class OutputLOCAL(OutputBase):
 
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
-        if self.is_local:
+        if self.is_in_repo:
             path = self.remote.unixpath(
                 os.path.relpath(self.path, self.stage.wdir)
             )
@@ -146,7 +146,7 @@ class OutputLOCAL(OutputBase):
             logger.info(msg.format(self.rel_path))
             return
 
-        if self.is_local:
+        if self.is_in_repo:
             if self.repo.scm.is_tracked(self.path):
                 raise OutputAlreadyTrackedError(self.rel_path)
 

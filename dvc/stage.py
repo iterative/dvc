@@ -339,7 +339,7 @@ class Stage(object):
     def _expand_to_path_on_add_local(add, fname, out, path_handler):
         if (
             add
-            and out.is_local
+            and out.is_in_repo
             and not contains_symlink_up_to(out.path, out.repo.root_dir)
         ):
             fname = path_handler.join(path_handler.dirname(out.path), fname)
