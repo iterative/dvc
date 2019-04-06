@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import os
 import shutil
-from git.cmd import Git
 
 import dvc.logger as logger
 from dvc.exceptions import DvcException
@@ -60,6 +59,8 @@ class GitPackage(Package):
     DEF_DVC_FILE_PREFIX = "mod_"
 
     def install_or_update(self, parent_repo, pkg_params):
+        from git.cmd import Git
+
         if not self.is_in_root():
             raise DvcException(
                 "This command can be run only from a repository root"
