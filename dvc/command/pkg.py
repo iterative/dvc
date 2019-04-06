@@ -34,7 +34,6 @@ def add_parser(subparsers, parent_parser):
         "pkg",
         parents=[parent_parser],
         description=append_doc_link(PKG_HELP, "pkg"),
-        help=PKG_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         add_help=False,
     )
