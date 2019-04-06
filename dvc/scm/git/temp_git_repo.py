@@ -2,8 +2,6 @@ import os
 import shutil
 import tempfile
 
-import git
-
 from dvc import logger
 from dvc.exceptions import DvcException
 
@@ -70,6 +68,8 @@ class TempGitRepo(object):
         return self
 
     def _clone_to_temp_dir(self):
+        import git
+
         result = tempfile.mktemp(
             prefix=self._tmp_mod_prefix, dir=self.modules_dir
         )
