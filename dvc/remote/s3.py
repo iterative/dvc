@@ -16,7 +16,6 @@ from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.exceptions import DvcException
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -90,14 +89,18 @@ class RemoteS3(RemoteBase):
         )
 
     def get_etag(self, bucket, path):
+        obj = self.get_head_object(bucket, path)
+
+        return obj["ETag"].strip('"')
+
+    def get_head_object(self, bucket, path, *args, **kwargs):
         try:
-            obj = self.s3.head_object(Bucket=bucket, Key=path)
+            obj = self.s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
         except Exception:
             raise DvcException(
                 "s3://{}/{} does not exist".format(bucket, path)
             )
-
-        return obj["ETag"].strip('"')
+        return obj
 
     def save_info(self, path_info):
         if path_info["scheme"] != "s3":
@@ -113,7 +116,22 @@ class RemoteS3(RemoteBase):
         s3 = s3 if s3 else self.s3
 
         source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
-        self.s3.copy(source, to_info["bucket"], to_info["path"])
+
+        etag = self.get_etag(from_info["bucket"], from_info["path"])
+        if "-" in etag:  # Is Multipart
+            head_object_first_part = self.get_head_object(
+                source["Bucket"], source["Key"], PartNumber=1
+            )
+            required_chunksize = head_object_first_part["ContentLength"]
+            transfer_config = s3.transfer.TransferConfig(
+                multipart_chunksize=required_chunksize
+            )
+        else:
+            transfer_config = s3.transfer.TransferConfig()  # Default
+
+        s3.copy(
+            source, to_info["bucket"], to_info["path"], Config=transfer_config
+        )
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":
