@@ -29,3 +29,11 @@ class TestDaemon(TestCase):
         test_dir = os.path.dirname(file_dir)
         dvc_dir = os.path.dirname(test_dir)
         self.assertEqual(env["PYTHONPATH"], dvc_dir)
+        self.assertEqual(env[daemon.DVC_DAEMON], "1")
+
+
+def test_no_recursive_spawn():
+    with mock.patch.dict(os.environ, {daemon.DVC_DAEMON: "1"}):
+        with mock.patch("dvc.daemon._spawn") as mock_spawn:
+            daemon.daemon(["updater"])
+            mock_spawn.assert_not_called()
