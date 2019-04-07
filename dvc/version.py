@@ -3,11 +3,17 @@ import os
 import subprocess
 
 
+BASE_VERSION = "0.35.0"
+
+
 def generate_version(base_version):
     """Generate a version with information about the git repository"""
     pkg_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
     if not is_git_repo(pkg_dir) or not have_git():
+        return base_version
+
+    if is_release(pkg_dir, base_version):
         return base_version
 
     return "{base_version}+{short_sha}{dirty}".format(
@@ -33,6 +39,17 @@ def have_git():
         return False
 
 
+def is_release(dir_path, base_version):
+    try:
+        output = subprocess.check_output(
+            ["git", "describe", "--tags", "--exact-match"], cwd=dir_path
+        ).decode("utf-8")
+        tag = output.strip()
+        return tag == base_version
+    except subprocess.CalledProcessError:
+        return False
+
+
 def git_revision(dir_path):
     """Get the SHA-1 of the HEAD of a git repository."""
     return subprocess.check_output(
@@ -49,4 +66,4 @@ def is_dirty(dir_path):
         return True
 
 
-__version__ = generate_version(base_version="0.35.0")
+__version__ = generate_version(BASE_VERSION)
