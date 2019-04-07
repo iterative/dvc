@@ -22,9 +22,6 @@ matrix:
   - name: "2.7"
     env:
     - PYTHON_VER=2.7.13
-  - name: "3.4"
-    env:
-    - PYTHON_VER=3.4.6
   - name: "3.5"
     env:
     - PYTHON_VER=3.5.3
@@ -51,7 +48,7 @@ matrix:
     language: ruby
     rvm: 2.4.0
     env:
-    - PYTHON_VER=3.4.3
+    - PYTHON_VER=3.6.2
     - PYTHON_CONFIGURE_OPTS="--enable-framework"
   - if: type = cron OR tag is present
     os: osx
