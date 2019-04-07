@@ -49,4 +49,4 @@ def is_dirty(dir_path):
         return True
 
 
-__version__ = generate_version(base_version="0.34.2")
+__version__ = generate_version(base_version="0.35.0")
