@@ -8,6 +8,7 @@ import inspect
 import logging
 from subprocess import Popen
 
+from dvc.env import DVC_DAEMON
 from dvc.utils import is_binary, fix_env
 from dvc.utils.compat import cast_bytes_py2
 
@@ -68,23 +69,7 @@ def _spawn_posix(cmd, env):
     os._exit(0)  # pylint: disable=protected-access
 
 
-def daemon(args):
-    """Launch a `dvc daemon` command in a detached process.
-
-    Args:
-        args (list): list of arguments to append to `dvc daemon` command.
-    """
-    cmd = [sys.executable]
-    if not is_binary():
-        cmd += ["-m", "dvc"]
-    cmd += ["daemon", "-q"] + args
-
-    env = fix_env()
-    file_path = os.path.abspath(inspect.stack()[0][1])
-    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
-        os.path.dirname(os.path.dirname(file_path))
-    )
-
+def _spawn(cmd, env):
     logger.debug("Trying to spawn '{}'".format(cmd))
 
     if os.name == "nt":
@@ -95,3 +80,28 @@ def daemon(args):
         raise NotImplementedError
 
     logger.debug("Spawned '{}'".format(cmd))
+
+
+def daemon(args):
+    """Launch a `dvc daemon` command in a detached process.
+
+    Args:
+        args (list): list of arguments to append to `dvc daemon` command.
+    """
+    if os.environ.get(DVC_DAEMON):
+        logger.debug("skipping launching a new daemon.")
+        return
+
+    cmd = [sys.executable]
+    if not is_binary():
+        cmd += ["-m", "dvc"]
+    cmd += ["daemon", "-q"] + args
+
+    env = fix_env()
+    file_path = os.path.abspath(inspect.stack()[0][1])
+    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
+        os.path.dirname(os.path.dirname(file_path))
+    )
+    env[cast_bytes_py2(DVC_DAEMON)] = "1"
+
+    _spawn(cmd, env)
