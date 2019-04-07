@@ -7,7 +7,7 @@ def generate_version(base_version):
     """Generate a version with information about the git repository"""
     pkg_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 
-    if not is_git_repo(pkg_dir) or not have_git(pkg_dir):
+    if not is_git_repo(pkg_dir) or not have_git():
         return base_version
 
     return "{base_version}+{short_sha}{dirty}".format(
@@ -22,7 +22,7 @@ def is_git_repo(dir_path):
     return os.path.exists(os.path.join(dir_path, ".git"))
 
 
-def have_git(dir_path):
+def have_git():
     """Can we run the git executable?"""
     try:
         subprocess.check_output(["git", "--help"])
