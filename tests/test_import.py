@@ -3,17 +3,16 @@ import dvc
 from dvc.utils.compat import str
 
 import os
+import logging
 from uuid import uuid4
 
-from dvc import logger
 from dvc.utils.compat import urljoin
 from dvc.exceptions import DvcException
 from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
-from tests.utils import reset_logger_error_output, spy
+from tests.utils import spy
 from tests.utils.httpd import StaticFileServer
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
 class TestCmdImport(TestDvc):
@@ -46,28 +45,27 @@ class TestDefaultOutput(TestDvc):
 
 
 class TestFailedImportMessage(TestDvc):
-    def test(self):
-        with ConsoleFontColorsRemover():
-            self._test()
-
     @patch("dvc.command.imp.urlparse")
-    def _test(self, imp_urlparse_patch):
-        with MockLoggerHandlers(logger.logger):
-            reset_logger_error_output()
-            page_address = "http://somesite.com/file_name"
+    def test(self, imp_urlparse_patch):
+        page_address = "http://somesite.com/file_name"
 
-            def dvc_exception(*args, **kwargs):
-                raise DvcException("message")
+        def dvc_exception(*args, **kwargs):
+            raise DvcException("message")
 
-            imp_urlparse_patch.side_effect = dvc_exception
+        imp_urlparse_patch.side_effect = dvc_exception
+
+        self._caplog.clear()
+
+        with self._caplog.at_level(logging.ERROR, logger="dvc"):
             main(["import", page_address])
-            self.assertIn(
-                "Error: failed to import "
-                "http://somesite.com/file_name. You could also try "
-                "downloading it manually and adding it with `dvc add` "
-                "command.",
-                logger.logger.handlers[1].stream.getvalue(),
+
+            expected_error = (
+                "failed to import http://somesite.com/file_name."
+                " You could also try downloading it manually and"
+                " adding it with `dvc add` command."
             )
+
+            assert expected_error in self._caplog.text
 
 
 class TestInterruptedDownload(TestDvc):

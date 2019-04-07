@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdInstall(CmdBase):
@@ -11,7 +14,7 @@ class CmdInstall(CmdBase):
         try:
             self.repo.install()
         except Exception:
-            logger.error("failed to install dvc hooks")
+            logger.exception("failed to install dvc hooks")
             return 1
         return 0
 

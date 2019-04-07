@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdUnprotect(CmdBase):
@@ -14,7 +17,7 @@ class CmdUnprotect(CmdBase):
                 self.repo.unprotect(target)
             except DvcException:
                 msg = "failed to unprotect '{}'".format(target)
-                logger.error(msg)
+                logger.exception(msg)
                 return 1
         return 0
 

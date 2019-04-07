@@ -2,11 +2,14 @@ from __future__ import unicode_literals
 
 import nanotime
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils.compat import str
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_inode(path):

@@ -2,12 +2,15 @@ from __future__ import unicode_literals
 
 import argparse
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRepro(CmdBase):
@@ -45,7 +48,7 @@ class CmdRepro(CmdBase):
                     metrics = self.repo.metrics.show()
                     show_metrics(metrics)
             except DvcException:
-                logger.error()
+                logger.exception()
                 ret = 1
                 break
 

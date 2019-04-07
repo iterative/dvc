@@ -4,13 +4,16 @@ from dvc.utils.compat import open, makedirs
 import os
 import threading
 import requests
+import logging
 
-import dvc.logger as logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.utils import move
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressBarCallback(object):

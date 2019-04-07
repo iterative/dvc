@@ -1,8 +1,11 @@
 import yaml
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdTagAdd(CmdBase):
@@ -16,7 +19,7 @@ class CmdTagAdd(CmdBase):
                     recursive=self.args.recursive,
                 )
             except DvcException:
-                logger.error("failed to add tag")
+                logger.exception("failed to add tag")
                 return 1
         return 0
 
@@ -32,7 +35,7 @@ class CmdTagRemove(CmdBase):
                     recursive=self.args.recursive,
                 )
             except DvcException:
-                logger.error("failed to remove tag")
+                logger.exception("failed to remove tag")
                 return 1
         return 0
 
@@ -49,7 +52,7 @@ class CmdTagList(CmdBase):
                 if tags:
                     logger.info(yaml.dump(tags, default_flow_style=False))
             except DvcException:
-                logger.error("failed list tags")
+                logger.exception("failed list tags")
                 return 1
         return 0
 

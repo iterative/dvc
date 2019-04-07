@@ -4,12 +4,15 @@ from __future__ import unicode_literals
 
 import os
 import sqlite3
+import logging
 
-import dvc.logger as logger
 from dvc.config import Config
 from dvc.utils import file_md5, remove, current_timestamp
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
+
+
+logger = logging.getLogger(__name__)
 
 
 class StateVersionTooNewError(DvcException):

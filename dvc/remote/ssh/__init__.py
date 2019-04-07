@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import getpass
+import logging
 
 try:
     import paramiko
@@ -8,11 +9,13 @@ except ImportError:
     paramiko = None
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
 from dvc.utils.compat import urlparse
 from dvc.remote.base import RemoteBase
+
+
+logger = logging.getLogger(__name__)
 
 
 class RemoteSSH(RemoteBase):
@@ -184,7 +187,7 @@ class RemoteSSH(RemoteBase):
                         from_info["path"], to_info["path"], progress_title=name
                     )
                 except Exception:
-                    logger.error(
+                    logger.exception(
                         "failed to upload '{host}/{path}' to '{dest}'".format(
                             host=from_info["host"],
                             path=from_info["path"],

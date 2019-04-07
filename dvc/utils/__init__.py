@@ -14,8 +14,14 @@ import shutil
 import hashlib
 import nanotime
 import time
+import colorama
+import re
+import logging
 
 from yaml.scanner import ScannerError
+
+
+logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 1024 * 1024
 LARGE_FILE_SIZE = 1024 * 1024 * 1024
@@ -28,7 +34,6 @@ def dos2unix(data):
 
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
-    import dvc.logger as logger
     from dvc.progress import progress
     from dvc.istextfile import istextfile
 
@@ -152,8 +157,6 @@ def move(src, dst):
 
 
 def remove(path):
-    import dvc.logger as logger
-
     if not os.path.exists(path):
         return
 
@@ -249,3 +252,83 @@ def walk_files(directory):
     for root, _, files in os.walk(str(directory)):
         for f in files:
             yield os.path.join(root, f)
+
+
+def colorize(message, color=None):
+    """Returns a message in a specified color."""
+    if not color:
+        return message
+
+    colors = {
+        "green": colorama.Fore.GREEN,
+        "yellow": colorama.Fore.YELLOW,
+        "blue": colorama.Fore.BLUE,
+        "red": colorama.Fore.RED,
+    }
+
+    return "{color}{message}{nc}".format(
+        color=colors.get(color, ""), message=message, nc=colorama.Fore.RESET
+    )
+
+
+def boxify(message, border_color=None):
+    """Put a message inside a box.
+
+    Args:
+        message (unicode): message to decorate.
+        border_color (unicode): name of the color to outline the box with.
+    """
+    lines = message.split("\n")
+    max_width = max(_visual_width(line) for line in lines)
+
+    padding_horizontal = 5
+    padding_vertical = 1
+
+    box_size_horizontal = max_width + (padding_horizontal * 2)
+
+    chars = {"corner": "+", "horizontal": "-", "vertical": "|", "empty": " "}
+
+    margin = "{corner}{line}{corner}\n".format(
+        corner=chars["corner"], line=chars["horizontal"] * box_size_horizontal
+    )
+
+    padding_lines = [
+        "{border}{space}{border}\n".format(
+            border=colorize(chars["vertical"], color=border_color),
+            space=chars["empty"] * box_size_horizontal,
+        )
+        * padding_vertical
+    ]
+
+    content_lines = [
+        "{border}{space}{content}{space}{border}\n".format(
+            border=colorize(chars["vertical"], color=border_color),
+            space=chars["empty"] * padding_horizontal,
+            content=_visual_center(line, max_width),
+        )
+        for line in lines
+    ]
+
+    box_str = "{margin}{padding}{content}{padding}{margin}".format(
+        margin=colorize(margin, color=border_color),
+        padding="".join(padding_lines),
+        content="".join(content_lines),
+    )
+
+    return box_str
+
+
+def _visual_width(line):
+    """Get the the number of columns required to display a string"""
+
+    return len(re.sub(colorama.ansitowin32.AnsiToWin32.ANSI_CSI_RE, "", line))
+
+
+def _visual_center(line, width):
+    """Center align string according to it's visual width"""
+
+    spaces = max(width - _visual_width(line), 0)
+    left_padding = int(spaces / 2)
+    right_padding = spaces - left_padding
+
+    return (left_padding * " ") + line + (right_padding * " ")

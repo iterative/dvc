@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 
 from dvc.exceptions import (
     DvcException,
@@ -11,6 +11,9 @@ from dvc.exceptions import (
     OutputNotFoundError,
     TargetNotDirectoryError,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Repo(object):
@@ -65,7 +68,11 @@ class Repo(object):
 
         core = self.config.config[Config.SECTION_CORE]
 
-        logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL))
+        logger.setLevel(
+            logging.getLevelName(
+                core.get(Config.SECTION_CORE_LOGLEVEL, "info").upper()
+            )
+        )
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config.config)

@@ -9,9 +9,9 @@ import json
 import ntpath
 import shutil
 import posixpath
+import logging
 from operator import itemgetter
 
-import dvc.logger as logger
 from dvc.system import System
 from dvc.remote.base import (
     RemoteBase,
@@ -36,6 +36,9 @@ from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
 from dvc.utils.fs import get_mtime_and_size, get_inode
+
+
+logger = logging.getLogger(__name__)
 
 
 class RemoteLOCAL(RemoteBase):

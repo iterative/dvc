@@ -2,19 +2,22 @@ from __future__ import unicode_literals
 
 import os
 import threading
+import logging
 
 try:
     import boto3
 except ImportError:
     boto3 = None
 
-import dvc.logger as logger
 from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class Callback(object):

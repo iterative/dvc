@@ -4,12 +4,15 @@ from dvc.utils.compat import str
 
 import re
 import posixpath
+import logging
 from multiprocessing import cpu_count
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
+
+
+logger = logging.getLogger(__name__)
 
 
 STATUS_OK = 1

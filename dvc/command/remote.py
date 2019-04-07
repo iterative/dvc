@@ -3,11 +3,14 @@ from __future__ import unicode_literals
 import argparse
 import os
 import re
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
 from dvc.config import Config
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRemoteAdd(CmdConfig):

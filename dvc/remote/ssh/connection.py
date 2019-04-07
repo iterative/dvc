@@ -1,18 +1,21 @@
 import errno
 import os
 import posixpath
+import logging
 
 try:
     import paramiko
 except ImportError:
     paramiko = None
 
-import dvc.logger as logger
 from dvc.utils import tmp_fname
 from dvc.utils.compat import makedirs
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
+
+
+logger = logging.getLogger(__name__)
 
 
 def sizeof_fmt(num, suffix="B"):

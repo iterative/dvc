@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import os
 import re
+import logging
 
 try:
     from azure.storage.blob import BlockBlobService
@@ -10,12 +11,14 @@ try:
 except ImportError:
     BlockBlobService = None
 
-import dvc.logger as logger
 from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
+
+
+logger = logging.getLogger(__name__)
 
 
 class Callback(object):

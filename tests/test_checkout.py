@@ -6,8 +6,8 @@ import yaml
 import shutil
 import filecmp
 import collections
+import logging
 
-from dvc.logger import logger
 from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
@@ -25,7 +25,9 @@ from dvc.exceptions import (
 )
 
 from mock import patch
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
+
+
+logger = logging.getLogger("dvc")
 
 
 class TestCheckout(TestRepro):
@@ -404,14 +406,22 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         self._prepare_repo()
 
     def test(self):
-        self._checkout_and_intercept_std_output()
+        with self._caplog.at_level(logging.INFO, logger="dvc"), patch.object(
+            sys, "stdout"
+        ) as stdout_mock:
+            self.stdout_mock = logger.handlers[0].stream = stdout_mock
+
+            ret = main(["checkout"])
+            self.assertEqual(0, ret)
 
         stdout_calls = self.stdout_mock.method_calls
         write_calls = self.filter_out_non_write_calls(stdout_calls)
         write_calls = self.filter_out_empty_write_calls(write_calls)
         self.write_args = [w_c[1][0] for w_c in write_calls]
 
-        progress_bars = self.get_progress_bars()
+        pattern = re.compile(".*\\[.{30}\\].*%.*")
+        progress_bars = [arg for arg in self.write_args if pattern.match(arg)]
+
         update_bars = progress_bars[:-1]
         finish_bar = progress_bars[-1]
 
@@ -465,21 +475,6 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         shutil.rmtree(self.DATA_DIR)
         os.unlink(self.FOO)
         os.unlink(self.BAR)
-
-    def _checkout_and_intercept_std_output(self):
-        with MockLoggerHandlers(
-            logger
-        ), ConsoleFontColorsRemover(), patch.object(
-            sys, "stdout"
-        ) as stdout_mock:
-            self.stdout_mock = logger.handlers[0].stream = stdout_mock
-
-            ret = main(["checkout"])
-            self.assertEqual(0, ret)
-
-    def get_progress_bars(self):
-        pattern = re.compile(".*\\[.{30}\\].*%.*")
-        return [arg for arg in self.write_args if pattern.match(arg)]
 
     def assertCaretReturnFollowsEach(self, update_bars):
         for update_bar in update_bars:
