@@ -24,8 +24,6 @@ innosetup/config.ini
 
 .coverage
 
-dvc/version.py
-
 *.swp
 
 pip-wheel-metadata/

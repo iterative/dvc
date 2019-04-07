@@ -34,7 +34,6 @@ import dvc.command.commit as commit
 import dvc.command.tag as tag
 import dvc.command.diff as diff
 from dvc.exceptions import DvcParserError
-from dvc import VERSION
 
 
 COMMANDS = [
@@ -88,7 +87,9 @@ class VersionAction(argparse.Action):  # pragma: no cover
     """Shows dvc version and exits."""
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print(VERSION)
+        from dvc import __version__
+
+        print(__version__)
         sys.exit(0)
 
 

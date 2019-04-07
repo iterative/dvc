@@ -42,7 +42,7 @@ command_exists()
 fpm_build()
 {
 	print_info "Building $1..."
-	VERSION=$(python -c "import dvc; from dvc import VERSION; print(str(VERSION))")
+	VERSION=$(python -c "import dvc; from dvc import __version__; print(str(__version__))")
 	fpm -s dir \
 	    -f \
 	    -t $1 \

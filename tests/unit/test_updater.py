@@ -2,7 +2,7 @@ import os
 import json
 import mock
 
-from dvc import VERSION
+from dvc import __version__
 from tests.basic_env import TestDvc
 
 
@@ -24,7 +24,7 @@ def mocked_requests_get(*args, **kwargs):
         def json(self):
             return self.json_data
 
-    return MockResponse({"version": VERSION}, 200)
+    return MockResponse({"version": __version__}, 200)
 
 
 class TestUpdater(TestDvc):
@@ -36,4 +36,4 @@ class TestUpdater(TestDvc):
         self.assertTrue(os.path.isfile(self.dvc.updater.updater_file))
         with open(self.dvc.updater.updater_file, "r") as fobj:
             info = json.load(fobj)
-        self.assertEqual(info["version"], VERSION)
+        self.assertEqual(info["version"], __version__)
