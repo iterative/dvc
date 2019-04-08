@@ -102,6 +102,6 @@ def daemon(args):
     env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
         os.path.dirname(os.path.dirname(file_path))
     )
-    env[cast_bytes_py2(DVC_DAEMON)] = "1"
+    env[cast_bytes_py2(DVC_DAEMON)] = cast_bytes_py2("1")
 
     _spawn(cmd, env)
