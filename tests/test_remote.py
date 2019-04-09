@@ -66,6 +66,14 @@ class TestRemote(TestDvc):
             main(["remote", "add", "-f", remote_name, remote_url]), 0
         )
 
+    def test_referencing_other_remotes(self):
+        assert main(["remote", "add", "foo", "ssh://localhost/"]) == 0
+        assert main(["remote", "add", "bar", "remote://foo/dvc-storage"]) == 0
+
+        config = configobj.ConfigObj(self.dvc.config.config_file)
+
+        assert config['remote "bar"']["url"] == "remote://foo/dvc-storage"
+
 
 class TestRemoteRemoveDefault(TestDvc):
     def test(self):

@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.config import Config
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
@@ -59,10 +58,10 @@ SCHEMA[schema.Optional(OutputBase.PARAM_PERSIST)] = bool
 
 def _get(stage, p, info, cache, metric, persist=False, tags=None):
     parsed = urlparse(p)
+
     if parsed.scheme == "remote":
-        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.repo.config.config[name]
-        remote = Remote(stage.repo, sect)
+        settings = stage.repo.config.get_remote_settings(parsed.netloc)
+        remote = Remote(stage.repo, settings)
         return OUTS_MAP[remote.scheme](
             stage,
             p,
