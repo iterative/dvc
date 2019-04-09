@@ -36,7 +36,7 @@ class CmdRemoteAdd(CmdConfig):
         from dvc.remote import _get, RemoteLOCAL
 
         remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
-        if remote == RemoteLOCAL:
+        if remote == RemoteLOCAL and not self.args.url.startswith("remote://"):
             self.args.url = self.resolve_path(
                 self.args.url, self.configobj.filename
             )
