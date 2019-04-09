@@ -48,7 +48,7 @@ class CmdRepro(CmdBase):
                     metrics = self.repo.metrics.show()
                     show_metrics(metrics)
             except DvcException:
-                logger.exception()
+                logger.exception("")
                 ret = 1
                 break
 
