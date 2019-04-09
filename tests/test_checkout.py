@@ -517,3 +517,52 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
 
         with self.assertRaises(TargetNotDirectoryError):
             self.dvc.checkout(target=self.FOO, recursive=True)
+
+
+class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
+    def test(self):
+        ret = main(["config", "cache.type", "symlink"])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        if os.name == "nt":
+            from jaraco.windows.filesystem import readlink
+        else:
+            readlink = os.readlink
+
+        self.assertTrue(System.is_symlink(self.FOO))
+        old_foo_link = readlink(self.FOO)
+
+        self.assertTrue(System.is_symlink(self.DATA))
+        old_data_link = readlink(self.DATA)
+
+        old_cache_dir = self.dvc.cache.local.cache_dir
+        new_cache_dir = old_cache_dir + "_new"
+        os.rename(old_cache_dir, new_cache_dir)
+
+        ret = main(["cache", "dir", new_cache_dir])
+        self.assertEqual(ret, 0)
+
+        ret = main(["checkout", "-f"])
+        self.assertEqual(ret, 0)
+
+        self.assertTrue(System.is_symlink(self.FOO))
+        new_foo_link = readlink(self.FOO)
+
+        self.assertTrue(System.is_symlink(self.DATA))
+        new_data_link = readlink(self.DATA)
+
+        self.assertEqual(
+            os.path.relpath(old_foo_link, old_cache_dir),
+            os.path.relpath(new_foo_link, new_cache_dir),
+        )
+
+        self.assertEqual(
+            os.path.relpath(old_data_link, old_cache_dir),
+            os.path.relpath(new_data_link, new_cache_dir),
+        )

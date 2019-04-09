@@ -10,6 +10,7 @@ import sys
 import stat
 import math
 import json
+import errno
 import shutil
 import hashlib
 import nanotime
@@ -156,22 +157,30 @@ def move(src, dst):
     shutil.move(src, dst)
 
 
-def remove(path):
-    if not os.path.exists(path):
-        return
-
-    logger.debug("Removing '{}'".format(os.path.relpath(path)))
-
-    def _chmod(func, p, excinfo):
+def _chmod(func, p, excinfo):
+    try:
         perm = os.stat(p).st_mode
         perm |= stat.S_IWRITE
         os.chmod(p, perm)
-        func(p)
+    except OSError as exc:
+        # NOTE: broken symlink case.
+        if exc.errno != errno.ENOENT:
+            raise
 
-    if os.path.isfile(path):
-        _chmod(os.unlink, path, None)
-    else:
-        shutil.rmtree(path, onerror=_chmod)
+    func(p)
+
+
+def remove(path):
+    logger.debug("Removing '{}'".format(os.path.relpath(path)))
+
+    try:
+        if os.path.isdir(path):
+            shutil.rmtree(path, onerror=_chmod)
+        else:
+            _chmod(os.unlink, path, None)
+    except OSError as exc:
+        if exc.errno != errno.ENOENT:
+            raise
 
 
 def to_chunks(l, jobs):

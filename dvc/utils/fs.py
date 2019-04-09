@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
-import nanotime
 import os
+import errno
+import nanotime
 import logging
 
 from dvc.exceptions import DvcException
@@ -26,7 +27,13 @@ def get_mtime_and_size(path):
         for root, dirs, files in os.walk(str(path)):
             for name in dirs + files:
                 entry = os.path.join(root, name)
-                stat = os.stat(entry)
+                try:
+                    stat = os.stat(entry)
+                except OSError as exc:
+                    # NOTE: broken symlink case.
+                    if exc.errno != errno.ENOENT:
+                        raise
+                    continue
                 size += stat.st_size
                 entry_mtime = stat.st_mtime
                 if entry_mtime > mtime:
