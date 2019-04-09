@@ -117,21 +117,32 @@ class RemoteS3(RemoteBase):
 
         source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
 
-        etag = self.get_etag(from_info["bucket"], from_info["path"])
+        head_object = self.get_head_object(
+            from_info["bucket"], from_info["path"]
+        )
+        etag = head_object["ETag"].strip('"')
         if "-" in etag:  # Is Multipart
             head_object_first_part = self.get_head_object(
                 source["Bucket"], source["Key"], PartNumber=1
             )
             required_chunksize = head_object_first_part["ContentLength"]
-            transfer_config = s3.transfer.TransferConfig(
+            transfer_config = boto3.s3.transfer.TransferConfig(
                 multipart_chunksize=required_chunksize
             )
         else:
-            transfer_config = s3.transfer.TransferConfig()  # Default
+            transfer_config = boto3.s3.transfer.TransferConfig(
+                multipart_threshold=head_object["ContentLenght"]
+            )  # Default
 
         s3.copy(
             source, to_info["bucket"], to_info["path"], Config=transfer_config
         )
+
+        cached_etag = self.get_etag(to_info["bucket"], to_info["path"])
+        if etag != cached_etag:
+            msg = "ETag mismatch detected when copying file to cache!\
+                         (expected: '{}', actual: '{}')"
+            raise DvcException(msg.format(etag, cached_etag))
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":
