@@ -54,7 +54,6 @@ if [ -n "$TRAVIS_OS_NAME" ] && [ "$TRAVIS_OS_NAME" != "osx" ] \
 fi
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    sudo installer -pkg /Library/Developer/CommandLineTools/Packages/macOS_SDK_headers_for_macOS_10.14.pkg -target /
     brew install openssl
     brew cask install google-cloud-sdk
 fi
