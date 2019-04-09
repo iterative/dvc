@@ -129,7 +129,7 @@ class RemoteLOCAL(RemoteBase):
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info["scheme"] == "local"
-        return os.path.exists(path_info["path"])
+        return os.path.lexists(path_info["path"])
 
     def changed_cache(self, md5):
         cache = self.get(md5)
@@ -316,7 +316,7 @@ class RemoteLOCAL(RemoteBase):
         cache = self.get(checksum)
 
         if not self.is_dir_cache(cache):
-            if os.path.exists(path):
+            if self.exists(path_info):
                 self.safe_remove(path_info, force=force)
 
             self.link(cache, path)
@@ -347,7 +347,7 @@ class RemoteLOCAL(RemoteBase):
             entry_checksum_info = {self.PARAM_CHECKSUM: m}
 
             if self.changed(entry_info, entry_checksum_info):
-                if os.path.exists(p):
+                if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
 
                 self.link(c, p)
