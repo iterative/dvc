@@ -188,7 +188,7 @@ class RemoteS3(RemoteBase):
                 )
             except Exception:
                 msg = "failed to upload '{}'".format(from_info["path"])
-                logger.error(msg)
+                logger.exception(msg)
                 continue
 
             progress.finish_target(name)
@@ -246,7 +246,7 @@ class RemoteS3(RemoteBase):
                 msg = "failed to download '{}/{}'".format(
                     from_info["bucket"], from_info["path"]
                 )
-                logger.error(msg)
+                logger.exception(msg)
                 continue
 
             move(tmp_file, to_info["path"])

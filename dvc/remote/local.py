@@ -272,7 +272,7 @@ class RemoteLOCAL(RemoteBase):
                 d = json.load(fd)
         except Exception:
             msg = "Failed to load dir cache '{}'"
-            logger.error(msg.format(os.path.relpath(path)))
+            logger.exception(msg.format(os.path.relpath(path)))
             return []
 
         if not isinstance(d, list):
@@ -511,7 +511,7 @@ class RemoteLOCAL(RemoteBase):
                 copyfile(from_info["path"], tmp_file, name=name)
                 os.rename(tmp_file, to_info["path"])
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to upload '{}' to '{}'".format(
                         from_info["path"], to_info["path"]
                     )
@@ -555,7 +555,7 @@ class RemoteLOCAL(RemoteBase):
 
                 move(tmp_file, to_info["path"])
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to download '{}' to '{}'".format(
                         from_info["path"], to_info["path"]
                     )
