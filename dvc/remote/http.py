@@ -90,7 +90,7 @@ class RemoteHTTP(RemoteBase):
 
             except Exception:
                 msg = "failed to download '{}'".format(from_info["path"])
-                logger.error(msg)
+                logger.exception(msg)
                 continue
 
             if not no_progress_bar:

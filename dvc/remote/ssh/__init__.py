@@ -160,7 +160,7 @@ class RemoteSSH(RemoteBase):
                     from_info["path"], to_info["path"], progress_title=name
                 )
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to download '{host}/{path}' to '{dest}'".format(
                         host=from_info["host"],
                         path=from_info["path"],
