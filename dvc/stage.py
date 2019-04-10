@@ -471,6 +471,11 @@ class Stage(object):
 
         # NOTE: remove outs before we check build cache
         if remove_outs:
+            logger.warning(
+                "--remove-outs is deprecated."
+                " It is now the default behavior,"
+                " so there's no need to use this option anymore."
+            )
             stage.remove_outs(ignore_remove=False)
             logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True
