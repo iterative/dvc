@@ -135,7 +135,7 @@ def add_parser(subparsers, parent_parser):
         "--target",
         default=None,
         help=(
-            "Source path to a data file or directory. Default None."
+            "Source path to a data file or directory. Default None. "
             "If not specified, compares all files and directories "
             "that are under DVC control in the current working space."
         ),
