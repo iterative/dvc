@@ -17,7 +17,7 @@ def _generate_version(base_version):
     if not _is_git_repo(pkg_dir) or not _have_git():
         return base_version
 
-    if _is_release(pkg_dir, base_version):
+    if _is_release(pkg_dir, base_version) and not _is_dirty(pkg_dir):
         return base_version
 
     return "{base_version}+{short_sha}{dirty}".format(
@@ -46,7 +46,9 @@ def _have_git():
 def _is_release(dir_path, base_version):
     try:
         output = subprocess.check_output(
-            ["git", "describe", "--tags", "--exact-match"], cwd=dir_path
+            ["git", "describe", "--tags", "--exact-match"],
+            cwd=dir_path,
+            stderr=subprocess.STDOUT,
         ).decode("utf-8")
         tag = output.strip()
         return tag == base_version
