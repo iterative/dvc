@@ -146,7 +146,7 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "b_ref",
         help=(
-            "Git reference till which diff calculates, if omitted "
+            "Git reference untill which diff calculates, if omitted "
             "diff shows the difference between current HEAD and a_ref"
         ),
         nargs="?",
