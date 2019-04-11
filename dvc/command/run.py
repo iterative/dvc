@@ -175,7 +175,7 @@ def add_parser(subparsers, parent_parser):
         "--remove-outs",
         action="store_true",
         default=False,
-        help="Remove outputs before running the command.",
+        help="Deprecated, this is now the default behavior",
     )
     run_parser.add_argument(
         "--no-commit",
