@@ -909,6 +909,9 @@ class TestReproExternalBase(TestDvc):
         ret = main(["remote", "modify", remote_name, "type", "hardlink"])
         self.assertEqual(ret, 0)
 
+        ret = main(["config", "cache.type", "hardlink"])
+        self.assertEqual(0, ret)
+
         self.dvc = DvcRepo(".")
 
         foo_key = remote_key + self.sep + self.FOO
