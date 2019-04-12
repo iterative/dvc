@@ -255,3 +255,13 @@ class CheckoutErrorSuggestGit(DvcException):
         super(CheckoutErrorSuggestGit, self).__init__(
             "Did you mean 'git checkout {}'?".format(target), cause=cause
         )
+
+
+class ETagMismatchException(DvcException):
+    def __init__(self, etag, cached_etag):
+        super(ETagMismatchException, self).__init__(
+            "ETag mismatch detected when copying file to cache!\
+                                     (expected: '{}', actual: '{}')".format(
+                etag, cached_etag
+            )
+        )

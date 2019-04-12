@@ -14,7 +14,7 @@ from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, ETagMismatchException
 
 logger = logging.getLogger(__name__)
 
@@ -140,9 +140,8 @@ class RemoteS3(RemoteBase):
 
         cached_etag = self.get_etag(to_info["bucket"], to_info["path"])
         if etag != cached_etag:
-            msg = "ETag mismatch detected when copying file to cache!\
-                         (expected: '{}', actual: '{}')"
-            raise DvcException(msg.format(etag, cached_etag))
+
+            raise ETagMismatchException(etag, cached_etag)
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":
