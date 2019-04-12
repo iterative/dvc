@@ -8,7 +8,6 @@ import dvc.logger
 from dvc.exceptions import DvcException
 
 
-dvc.logger.setup()
 logger = logging.getLogger("dvc")
 formatter = dvc.logger.ColorFormatter()
 colors = {
@@ -24,61 +23,64 @@ class TestColorFormatter:
         with caplog.at_level(logging.DEBUG, logger="dvc"):
             logger.debug("message")
 
-        expected = "{blue}DEBUG{nc}: message".format(**colors)
+            expected = "{blue}DEBUG{nc}: message".format(**colors)
 
-        assert expected == formatter.format(caplog.records[0])
+            assert expected == formatter.format(caplog.records[0])
 
     def test_info(self, caplog):
-        logger.info("message")
+        with caplog.at_level(logging.INFO, logger="dvc"):
+            logger.info("message")
 
-        assert "message" == formatter.format(caplog.records[0])
+            assert "message" == formatter.format(caplog.records[0])
 
     def test_warning(self, caplog):
-        logger.warning("message")
+        with caplog.at_level(logging.INFO, logger="dvc"):
+            logger.warning("message")
 
-        expected = "{yellow}WARNING{nc}: message".format(**colors)
+            expected = "{yellow}WARNING{nc}: message".format(**colors)
 
-        assert expected == formatter.format(caplog.records[0])
+            assert expected == formatter.format(caplog.records[0])
 
     def test_error(self, caplog):
-        logger.error("message")
+        with caplog.at_level(logging.INFO, logger="dvc"):
+            logger.error("message")
 
-        expected = (
-            "{red}ERROR{nc}: message\n"
-            "\n"
-            "{footer}".format(footer=formatter.footer, **colors)
-        )
+            expected = (
+                "{red}ERROR{nc}: message\n"
+                "\n"
+                "{footer}".format(footer=formatter.footer, **colors)
+            )
 
-        assert expected == formatter.format(caplog.records[0])
+            assert expected == formatter.format(caplog.records[0])
 
     def test_exception(self, caplog):
-        try:
-            raise ValueError
-        except Exception:
-            logger.exception("message")
-
-        expected = (
-            "{red}ERROR{nc}: message\n"
-            "\n"
-            "{footer}".format(footer=formatter.footer, **colors)
-        )
-
         with caplog.at_level(logging.INFO, logger="dvc"):
+            try:
+                raise ValueError
+            except Exception:
+                logger.exception("message")
+
+            expected = (
+                "{red}ERROR{nc}: message\n"
+                "\n"
+                "{footer}".format(footer=formatter.footer, **colors)
+            )
+
             assert expected == formatter.format(caplog.records[0])
 
     def test_exception_with_description_and_without_message(self, caplog):
-        try:
-            raise Exception("description")
-        except Exception:
-            logger.exception("")
-
-        expected = (
-            "{red}ERROR{nc}: description\n"
-            "\n"
-            "{footer}".format(footer=formatter.footer, **colors)
-        )
-
         with caplog.at_level(logging.INFO, logger="dvc"):
+            try:
+                raise Exception("description")
+            except Exception:
+                logger.exception("")
+
+            expected = (
+                "{red}ERROR{nc}: description\n"
+                "\n"
+                "{footer}".format(footer=formatter.footer, **colors)
+            )
+
             assert expected == formatter.format(caplog.records[0])
 
     def test_exception_with_description_and_message(self, caplog):
