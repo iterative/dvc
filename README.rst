@@ -143,7 +143,7 @@ Package
 Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
 GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
-Ubuntu / Debian (apt)
+Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
@@ -159,7 +159,7 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Arch linux (AUR)
+Arch Linux (AUR)
 ^^^^^^^^^^^^^^^^
 *Unofficial package*, any inquiries regarding the AUR package,
 `refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.
