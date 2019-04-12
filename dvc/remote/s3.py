@@ -14,7 +14,7 @@ from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
-from dvc.exceptions import DvcException, ETagMismatchException
+from dvc.exceptions import DvcException, ETagMismatchError
 
 logger = logging.getLogger(__name__)
 
@@ -112,36 +112,85 @@ class RemoteS3(RemoteBase):
             )
         }
 
+    def _copy_multipart(self, s3, from_info, to_info, size, n_parts):
+        mpu = s3.create_multipart_upload(
+            Bucket=to_info["bucket"], Key=to_info["path"]
+        )
+        mpu_id = mpu["UploadId"]
+
+        parts = []
+        byte_position = 0
+        for i in range(1, n_parts + 1):
+            obj = self.get_head_object(
+                from_info["bucket"], from_info["path"], PartNumber=i
+            )
+            part_size = obj["ContentLength"]
+
+            lastbyte = byte_position + part_size - 1
+            if lastbyte > size:
+                lastbyte = size - 1
+
+            part = s3.upload_part_copy(
+                Bucket=to_info["bucket"],
+                Key=to_info["path"],
+                PartNumber=i,
+                UploadId=mpu_id,
+                CopySourceRange="bytes={}-{}".format(byte_position, lastbyte),
+                CopySource={
+                    "Bucket": from_info["bucket"],
+                    "Key": from_info["path"],
+                },
+            )
+            parts.append(
+                {"PartNumber": i, "ETag": part["CopyPartResult"]["ETag"]}
+            )
+            byte_position += part_size
+
+        s3.complete_multipart_upload(
+            Bucket=to_info["bucket"],
+            Key=to_info["path"],
+            UploadId=mpu_id,
+            MultipartUpload={"Parts": parts},
+        )
+
     def copy(self, from_info, to_info, s3=None):
+        # NOTE: object's etag depends on the way it was uploaded to s3 or the
+        # way it was copied within the s3. More specifically, it depends on
+        # the chunk size that was used to transfer it, which would affect
+        # whether an object would be uploaded as a single part or as a
+        # multipart.
+        #
+        # If an object's etag looks like '8978c98bb5a48c2fb5f2c4c905768afa',
+        # then it was transfered as a single part, which means that the chunk
+        # size used to transfer it was greater or equal to the ContentLength
+        # of that object. So to preserve that tag over the next transfer, we
+        # could use any value >= ContentLength.
+        #
+        # If an object's etag looks like '50d67013a5e1a4070bef1fc8eea4d5f9-13',
+        # then it was transfered as a multipart, which means that the chunk
+        # size used to transfer it was less than ContentLength of that object.
+        # Unfortunately, in general, it doesn't mean that the chunk size was
+        # the same throughout the transfer, so it means that in order to
+        # preserve etag, we need to transfer each part separately, so the
+        # object is transfered in the same chunks as it was originally.
+
         s3 = s3 if s3 else self.s3
 
-        source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
+        obj = self.get_head_object(from_info["bucket"], from_info["path"])
+        etag = obj["ETag"].strip('"')
+        size = obj["ContentLength"]
 
-        head_object = self.get_head_object(
-            from_info["bucket"], from_info["path"]
-        )
-        etag = head_object["ETag"].strip('"')
-        if "-" in etag:  # Is Multipart
-            head_object_first_part = self.get_head_object(
-                source["Bucket"], source["Key"], PartNumber=1
-            )
-            required_chunksize = head_object_first_part["ContentLength"]
-            transfer_config = boto3.s3.transfer.TransferConfig(
-                multipart_chunksize=required_chunksize
-            )
+        _, _, parts_suffix = etag.partition("-")
+        if parts_suffix:
+            n_parts = int(parts_suffix)
+            self._copy_multipart(s3, from_info, to_info, size, n_parts)
         else:
-            transfer_config = boto3.s3.transfer.TransferConfig(
-                multipart_threshold=head_object["ContentLenght"]
-            )  # Default
-
-        s3.copy(
-            source, to_info["bucket"], to_info["path"], Config=transfer_config
-        )
+            source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
+            s3.copy(source, to_info["bucket"], to_info["path"])
 
         cached_etag = self.get_etag(to_info["bucket"], to_info["path"])
         if etag != cached_etag:
-
-            raise ETagMismatchException(etag, cached_etag)
+            raise ETagMismatchError(etag, cached_etag)
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":
