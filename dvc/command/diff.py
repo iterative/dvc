@@ -1,11 +1,13 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import humanize
 import inflect
 import logging
 
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.utils.collections import compact
 import dvc.repo.diff as diff
 
@@ -121,14 +123,17 @@ class CmdDiff(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    description = (
-        "Show diff of a data file or a directory that "
-        "is under DVC control. Some basic statistics "
-        "summary, how many files were deleted/changed."
+    DIFF_DESCRIPTION = (
+        "Show diff of a data file or a directory that is under DVC control.\n"
+        "Some basic statistics summary, how many files were deleted/changed."
     )
-    help = "Show a diff of a DVC controlled data file or a directory."
+    DIFF_HELP = "Show a diff of a DVC controlled data file or a directory."
     diff_parser = subparsers.add_parser(
-        "diff", parents=[parent_parser], description=description, help=help
+        "diff",
+        parents=[parent_parser],
+        description=append_doc_link(DIFF_DESCRIPTION, "diff"),
+        help=DIFF_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
         "-t",
