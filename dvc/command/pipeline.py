@@ -229,6 +229,7 @@ def add_parser(subparsers, parent_parser):
         help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
+        "-l",
         "--locked",
         action="store_true",
         default=False,
