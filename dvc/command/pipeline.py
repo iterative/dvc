@@ -147,8 +147,10 @@ class CmdPipelineShow(CmdBase):
                     )
                 else:
                     self._show(
-                        target, self.args.commands, self.args.outs,
-                        self.args.locked
+                        target,
+                        self.args.commands,
+                        self.args.outs,
+                        self.args.locked,
                     )
             except DvcException:
                 msg = "failed to show pipeline for '{}'".format(target)
