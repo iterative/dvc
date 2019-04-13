@@ -214,6 +214,13 @@ def add_parser(subparsers, parent_parser):
         help="Print output files instead of paths to DVC files.",
     )
     pipeline_show_parser.add_argument(
+        "-l",
+        "--locked",
+        action="store_true",
+        default=False,
+        help="Print locked DVC stages",
+    )
+    pipeline_show_parser.add_argument(
         "--ascii",
         action="store_true",
         default=False,
@@ -227,13 +234,6 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Output DAG as Dependencies Tree.",
-    )
-    pipeline_show_parser.add_argument(
-        "-l",
-        "--locked",
-        action="store_true",
-        default=False,
-        help="Display locked DVC stages",
     )
     pipeline_show_parser.add_argument(
         "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
