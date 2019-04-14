@@ -183,6 +183,11 @@ class SSHConnection:
 
         os.rename(tmp_file, dest)
 
+    def move(self, src, dst):
+        self.makedirs(posixpath.dirname(dst))
+        self._sftp_connect()
+        self._sftp.rename(src, dst)
+
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
 

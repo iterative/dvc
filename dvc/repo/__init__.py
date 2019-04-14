@@ -205,7 +205,7 @@ class Repo(object):
             else:
                 return ret
 
-        for i in self.cache.local.load_dir_cache(md5):
+        for i in out.dir_cache:
             i["branch"] = branch
             i[r.PARAM_PATH] = os.path.join(
                 info[r.PARAM_PATH], i[r.PARAM_RELPATH]
@@ -234,9 +234,7 @@ class Repo(object):
         if out.scheme != "local":
             return ret
 
-        md5 = info[out.remote.PARAM_CHECKSUM]
-        cache = self.cache.local.get(md5)
-        if not out.remote.is_dir_cache(cache):
+        if not out.is_dir_checksum:
             return ret
 
         return self._collect_dir_cache(

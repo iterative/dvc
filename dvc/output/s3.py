@@ -35,8 +35,6 @@ class OutputS3(OutputBase):
         path = urlparse(path).path.lstrip("/")
         if remote:
             path = posixpath.join(remote.prefix, path)
-        self.path_info = {
-            "scheme": self.scheme,
-            "bucket": bucket,
-            "path": path,
-        }
+
+        self.path_info["bucket"] = bucket
+        self.path_info["path"] = path

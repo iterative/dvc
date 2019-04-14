@@ -63,7 +63,7 @@ class RemoteHDFS(RemoteBase):
         assert match is not None
         return match.group(gname)
 
-    def checksum(self, path_info):
+    def get_file_checksum(self, path_info):
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(
             "checksum {}".format(path_info["path"]), user=path_info["user"]
@@ -82,14 +82,6 @@ class RemoteHDFS(RemoteBase):
         self.hadoop_fs(
             "rm -f {}".format(path_info["path"]), user=path_info["user"]
         )
-
-    def save_info(self, path_info):
-        if path_info["scheme"] != "hdfs":
-            raise NotImplementedError
-
-        assert path_info.get("path")
-
-        return {self.PARAM_CHECKSUM: self.checksum(path_info)}
 
     def remove(self, path_info):
         if path_info["scheme"] != "hdfs":
@@ -111,7 +103,7 @@ class RemoteHDFS(RemoteBase):
         except RemoteCmdError:
             return False
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):

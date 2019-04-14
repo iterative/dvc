@@ -95,7 +95,7 @@ class RemoteSSH(RemoteBase):
         with self.ssh(**path_info) as ssh:
             return ssh.file_exists(path_info["path"])
 
-    def md5(self, path_info):
+    def get_file_checksum(self, path_info):
         if path_info["scheme"] != self.scheme:
             raise NotImplementedError
 
@@ -112,18 +112,22 @@ class RemoteSSH(RemoteBase):
         with self.ssh(**from_info) as ssh:
             ssh.cp(from_info["path"], to_info["path"])
 
-    def save_info(self, path_info):
-        if path_info["scheme"] != self.scheme:
-            raise NotImplementedError
-
-        return {self.PARAM_CHECKSUM: self.md5(path_info)}
-
     def remove(self, path_info):
         if path_info["scheme"] != self.scheme:
             raise NotImplementedError
 
         with self.ssh(**path_info) as ssh:
             ssh.remove(path_info["path"])
+
+    def move(self, from_info, to_info):
+        if (
+            from_info["scheme"] != self.scheme
+            or to_info["scheme"] != self.scheme
+        ):
+            raise NotImplementedError
+
+        with self.ssh(**from_info) as ssh:
+            ssh.move(from_info["path"], to_info["path"])
 
     def download(
         self,
@@ -171,7 +175,7 @@ class RemoteSSH(RemoteBase):
 
         ssh.close()
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         with self.ssh(**to_infos[0]) as ssh:

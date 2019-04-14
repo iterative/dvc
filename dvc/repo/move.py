@@ -59,7 +59,7 @@ def move(self, from_path, to_path):
         )
 
     to_out = Output.loads_from(
-        stage, [os.path.basename(to_path)], out.cache, out.metric
+        stage, [os.path.basename(to_path)], out.use_cache, out.metric
     )[0]
 
     with self.state:

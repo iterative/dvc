@@ -94,8 +94,12 @@ class RemoteS3(RemoteBase):
 
         return obj["ETag"].strip('"')
 
+    def get_file_checksum(self, path_info):
+        return self.get_etag(self.s3, path_info["bucket"], path_info["path"])
+
     @staticmethod
     def get_head_object(s3, bucket, path, *args, **kwargs):
+
         try:
             obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
         except Exception as exc:
@@ -103,16 +107,6 @@ class RemoteS3(RemoteBase):
                 "s3://{}/{} does not exist".format(bucket, path), exc
             )
         return obj
-
-    def save_info(self, path_info):
-        if path_info["scheme"] != "s3":
-            raise NotImplementedError
-
-        return {
-            self.PARAM_CHECKSUM: self.get_etag(
-                self.s3, path_info["bucket"], path_info["path"]
-            )
-        }
 
     @classmethod
     def _copy_multipart(cls, s3, from_info, to_info, size, n_parts):
@@ -241,7 +235,7 @@ class RemoteS3(RemoteBase):
         paths = self._list_paths(path_info["bucket"], path_info["path"])
         return any(path_info["path"] == path for path in paths)
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         s3 = self.s3
@@ -263,7 +257,7 @@ class RemoteS3(RemoteBase):
                 name = os.path.basename(from_info["path"])
 
             total = os.path.getsize(from_info["path"])
-            cb = Callback(name, total)
+            cb = None if no_progress_bar else Callback(name, total)
 
             try:
                 s3.upload_file(
