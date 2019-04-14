@@ -93,7 +93,7 @@ class RemoteSSH(RemoteBase):
         assert path_info["scheme"] == self.scheme
 
         with self.ssh(**path_info) as ssh:
-            return ssh.file_exists(path_info["path"])
+            return ssh.exists(path_info["path"])
 
     def get_file_checksum(self, path_info):
         if path_info["scheme"] != self.scheme:
@@ -101,6 +101,10 @@ class RemoteSSH(RemoteBase):
 
         with self.ssh(**path_info) as ssh:
             return ssh.md5(path_info["path"])
+
+    def isdir(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            return ssh.isdir(path_info["path"])
 
     def copy(self, from_info, to_info):
         if (
@@ -203,3 +207,12 @@ class RemoteSSH(RemoteBase):
     def list_cache_paths(self):
         with self.ssh(**self.path_info) as ssh:
             return list(ssh.walk_files(self.prefix))
+
+    def walk(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            for entry in ssh.walk(path_info["path"]):
+                yield entry
+
+    def makedirs(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            ssh.makedirs(path_info["path"])

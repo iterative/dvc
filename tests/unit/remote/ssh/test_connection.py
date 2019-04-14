@@ -37,8 +37,8 @@ def test_isdir(server):
     assert isdir is True
 
 
-def test_file_exists(server):
+def test_exists(server):
     client = _client(server)
     path = "/path/to/file"
-    file_path = client.file_exists(path=path)
+    file_path = client.exists(path=path)
     assert file_path is False
