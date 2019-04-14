@@ -1,5 +1,7 @@
-import yaml
 import logging
+
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
@@ -50,11 +52,19 @@ class CmdTagList(CmdBase):
                     recursive=self.args.recursive,
                 )
                 if tags:
-                    logger.info(yaml.dump(tags, default_flow_style=False))
+                    logger.info(to_yaml_string(tags))
             except DvcException:
                 logger.exception("failed list tags")
                 return 1
         return 0
+
+
+def to_yaml_string(data, **kw):
+    stream = StringIO()
+    yaml = YAML()
+    yaml.default_flow_style = False
+    yaml.dump(data, stream)
+    return stream.getvalue()
 
 
 def add_parser(subparsers, parent_parser):

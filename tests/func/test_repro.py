@@ -1,7 +1,6 @@
 from dvc.utils.compat import str
 
 import os
-import yaml
 import shutil
 import filecmp
 import getpass
@@ -16,7 +15,7 @@ from flaky.flaky_decorator import flaky
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, load_stage_file, dump_stage_file
 from dvc.utils.compat import urljoin
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
@@ -73,14 +72,12 @@ class TestReproCyclicGraph(TestDvc):
             deps=["bar.txt"], outs=["baz.txt"], cmd="echo baz > baz.txt"
         )
 
-        with open("cycle.dvc", "w") as fd:
-            stage_dump = {
-                "cmd": "echo baz > foo",
-                "deps": [{"path": "baz.txt"}],
-                "outs": [{"path": self.FOO}],
-            }
-
-            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+        stage_dump = {
+            "cmd": "echo baz > foo",
+            "deps": [{"path": "baz.txt"}],
+            "outs": [{"path": self.FOO}],
+        }
+        dump_stage_file("cycle.dvc", stage_dump)
 
         with self.assertRaises(CyclicGraphError):
             self.dvc.reproduce("cycle.dvc")
@@ -114,14 +111,12 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         faulty_stage_path = os.path.join("dir2", "something.dvc")
 
-        with open(faulty_stage_path, "w") as fd:
-            output = os.path.join("..", "something")
-            stage_dump = {
-                "cmd": "echo something > {}".format(output),
-                "outs": [{"path": output}],
-            }
-
-            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+        output = os.path.join("..", "something")
+        stage_dump = {
+            "cmd": "echo something > {}".format(output),
+            "outs": [{"path": output}],
+        }
+        dump_stage_file(faulty_stage_path, stage_dump)
 
         with self.assertRaises(StagePathAsOutputError):
             self.dvc.reproduce(faulty_stage_path)
@@ -156,14 +151,12 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         error_stage_path = os.path.join(nested_dir, "dir", "error.dvc")
 
-        with open(error_stage_path, "w") as fd:
-            output = os.path.join("..", "..", "something")
-            stage_dump = {
-                "cmd": "echo something > {}".format(output),
-                "outs": [{"path": output}],
-            }
-
-            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+        output = os.path.join("..", "..", "something")
+        stage_dump = {
+            "cmd": "echo something > {}".format(output),
+            "outs": [{"path": output}],
+        }
+        dump_stage_file(error_stage_path, stage_dump)
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
@@ -192,10 +185,8 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         stage = os.path.join("something-1", "a.dvc")
 
-        with open(stage, "w") as fd:
-            stage_dump = {"cmd": "echo a > a", "outs": [{"path": "a"}]}
-
-            yaml.safe_dump(stage_dump, fd, default_flow_style=False)
+        stage_dump = {"cmd": "echo a > a", "outs": [{"path": "a"}]}
+        dump_stage_file(stage, stage_dump)
 
         try:
             self.dvc.reproduce(stage)
@@ -708,14 +699,10 @@ class TestReproChangedDirData(TestDvc):
 
 class TestReproMissingMd5InStageFile(TestRepro):
     def test(self):
-        with open(self.file1_stage, "r") as fd:
-            d = yaml.load(fd)
-
+        d = load_stage_file(self.file1_stage)
         del d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM]
         del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
-
-        with open(self.file1_stage, "w") as fd:
-            yaml.dump(d, fd)
+        dump_stage_file(self.file1_stage, d)
 
         stages = self.dvc.reproduce(self.file1_stage)
         self.assertEqual(len(stages), 1)

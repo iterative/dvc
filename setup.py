@@ -43,7 +43,6 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "networkx>=2.1",
-    "pyyaml>=3.12",
     "gitpython>=2.1.8",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
@@ -59,6 +58,7 @@ install_requires = [
     "inflect>=2.1.0",
     "humanize>=0.5.1",
     "dulwich>=0.19.11",
+    "ruamel.yaml==0.15.91",
 ]
 
 # Extra dependencies for remote integrations

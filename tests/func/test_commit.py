@@ -1,5 +1,4 @@
-import yaml
-from dvc.utils import load_stage_file
+from dvc.utils import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
 from dvc.stage import StageCommitError
@@ -78,10 +77,8 @@ class TestCommitChangedMd5(TestDvc):
         stage = stages[0]
 
         st = load_stage_file(stage.path)
-
         st["md5"] = "1111111111"
-        with open(stage.path, "w") as fobj:
-            yaml.safe_dump(st, fobj, default_flow_style=False)
+        dump_stage_file(stage.path, st)
 
         with self.assertRaises(StageCommitError):
             self.dvc.commit(stage.path)

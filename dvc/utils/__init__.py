@@ -2,7 +2,6 @@
 
 from __future__ import unicode_literals
 
-import yaml
 from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2
 
 import os
@@ -19,7 +18,8 @@ import colorama
 import re
 import logging
 
-from yaml.scanner import ScannerError
+from ruamel.yaml.error import YAMLError
+from ruamel.yaml import YAML
 
 
 logger = logging.getLogger(__name__)
@@ -252,9 +252,17 @@ def load_stage_file_fobj(fobj, path):
     from dvc.exceptions import StageFileCorruptedError
 
     try:
-        return yaml.safe_load(fobj) or {}
-    except ScannerError:
+        yaml = YAML()
+        return yaml.load(fobj) or {}
+    except YAMLError:
         raise StageFileCorruptedError(path)
+
+
+def dump_stage_file(path, data):
+    with open(path, "w") as fd:
+        yaml = YAML()
+        yaml.default_flow_style = False
+        yaml.dump(data, fd)
 
 
 def dvc_walk(

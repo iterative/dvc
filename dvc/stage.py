@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str
 
+import copy
 import re
 import os
-import yaml
 import subprocess
 import logging
 
@@ -15,7 +15,8 @@ import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env, load_stage_file_fobj
+from dvc.utils import dict_md5, fix_env, load_stage_file_fobj, dump_stage_file
+from dvc.utils.collections import apply_diff
 
 
 logger = logging.getLogger(__name__)
@@ -146,6 +147,7 @@ class Stage(object):
         md5=None,
         locked=False,
         tag=None,
+        state=None,
     ):
         if deps is None:
             deps = []
@@ -161,6 +163,7 @@ class Stage(object):
         self.md5 = md5
         self.locked = locked
         self.tag = tag
+        self._state = state or {}
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -566,6 +569,9 @@ class Stage(object):
         Stage._check_isfile(repo, fname)
 
         d = load_stage_file_fobj(repo.tree.open(fname), fname)
+        # Making a deepcopy since the original structure
+        # looses keys in deps and outs load
+        state = copy.deepcopy(d)
 
         Stage.validate(d, fname=os.path.relpath(fname))
         path = os.path.abspath(fname)
@@ -582,6 +588,7 @@ class Stage(object):
             md5=d.get(Stage.PARAM_MD5),
             locked=d.get(Stage.PARAM_LOCKED, False),
             tag=tag,
+            state=state,
         )
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
@@ -618,9 +625,8 @@ class Stage(object):
             )
         )
         d = self.dumpd()
-
-        with open(fname, "w") as fd:
-            yaml.safe_dump(d, fd, default_flow_style=False)
+        apply_diff(d, self._state)
+        dump_stage_file(fname, self._state)
 
         self.repo.scm.track_file(os.path.relpath(fname))
 
