@@ -98,6 +98,7 @@ class TestDirFixture(object):
 
     def tearDown(self):
         self._popd()
+        # TODO: delete dir here
 
 
 class TestGitFixture(TestDirFixture):
@@ -146,6 +147,7 @@ class TestDvcFixture(TestGitFixture):
         logger.setLevel("DEBUG")
 
 
+# TODO: refactor? Looks like this one is only used once
 class TestDvcGitInitializedFixture(TestDvcFixture):
     def __init__(self, root_dir=None):
         super(TestDvcGitInitializedFixture, self).__init__(root_dir)
@@ -155,6 +157,7 @@ class TestDvcGitInitializedFixture(TestDvcFixture):
         self.git.init()
 
 
+# TODO: refactor? Looks like this one is only used once too
 class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
     DATA_DVC_FILE = "data.dvc"
     DATA_DIR_DVC_FILE = "data_sub_dir.dvc"
