@@ -25,12 +25,12 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
 def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
-            file
-            for file in walk_files(target)
-            if not repo.is_dvc_internal(file)
-            if not Stage.is_stage_file(file)
-            if not repo.scm.belongs_to_scm(file)
-            if not repo.scm.is_tracked(file)
+            fname
+            for fname in walk_files(target)
+            if not repo.is_dvc_internal(fname)
+            if not Stage.is_stage_file(fname)
+            if not repo.scm.belongs_to_scm(fname)
+            if not repo.scm.is_tracked(fname)
         ]
     return [target]
 
