@@ -14,8 +14,7 @@ from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
-from dvc.exceptions import DvcException
-
+from dvc.exceptions import DvcException, ETagMismatchError
 
 logger = logging.getLogger(__name__)
 
@@ -89,15 +88,21 @@ class RemoteS3(RemoteBase):
             "s3", endpoint_url=self.endpoint_url, use_ssl=self.use_ssl
         )
 
-    def get_etag(self, bucket, path):
-        try:
-            obj = self.s3.head_object(Bucket=bucket, Key=path)
-        except Exception:
-            raise DvcException(
-                "s3://{}/{} does not exist".format(bucket, path)
-            )
+    @classmethod
+    def get_etag(cls, s3, bucket, path):
+        obj = cls.get_head_object(s3, bucket, path)
 
         return obj["ETag"].strip('"')
+
+    @staticmethod
+    def get_head_object(s3, bucket, path, *args, **kwargs):
+        try:
+            obj = s3.head_object(Bucket=bucket, Key=path, *args, **kwargs)
+        except Exception as exc:
+            raise DvcException(
+                "s3://{}/{} does not exist".format(bucket, path), exc
+            )
+        return obj
 
     def save_info(self, path_info):
         if path_info["scheme"] != "s3":
@@ -105,15 +110,96 @@ class RemoteS3(RemoteBase):
 
         return {
             self.PARAM_CHECKSUM: self.get_etag(
-                path_info["bucket"], path_info["path"]
+                self.s3, path_info["bucket"], path_info["path"]
             )
         }
 
+    @classmethod
+    def _copy_multipart(cls, s3, from_info, to_info, size, n_parts):
+        mpu = s3.create_multipart_upload(
+            Bucket=to_info["bucket"], Key=to_info["path"]
+        )
+        mpu_id = mpu["UploadId"]
+
+        parts = []
+        byte_position = 0
+        for i in range(1, n_parts + 1):
+            obj = cls.get_head_object(
+                s3, from_info["bucket"], from_info["path"], PartNumber=i
+            )
+            part_size = obj["ContentLength"]
+            lastbyte = byte_position + part_size - 1
+            if lastbyte > size:
+                lastbyte = size - 1
+
+            srange = "bytes={}-{}".format(byte_position, lastbyte)
+
+            part = s3.upload_part_copy(
+                Bucket=to_info["bucket"],
+                Key=to_info["path"],
+                PartNumber=i,
+                UploadId=mpu_id,
+                CopySourceRange=srange,
+                CopySource={
+                    "Bucket": from_info["bucket"],
+                    "Key": from_info["path"],
+                },
+            )
+            parts.append(
+                {"PartNumber": i, "ETag": part["CopyPartResult"]["ETag"]}
+            )
+            byte_position += part_size
+
+        assert n_parts == len(parts)
+
+        s3.complete_multipart_upload(
+            Bucket=to_info["bucket"],
+            Key=to_info["path"],
+            UploadId=mpu_id,
+            MultipartUpload={"Parts": parts},
+        )
+
+    @classmethod
+    def _copy(cls, s3, from_info, to_info):
+        # NOTE: object's etag depends on the way it was uploaded to s3 or the
+        # way it was copied within the s3. More specifically, it depends on
+        # the chunk size that was used to transfer it, which would affect
+        # whether an object would be uploaded as a single part or as a
+        # multipart.
+        #
+        # If an object's etag looks like '8978c98bb5a48c2fb5f2c4c905768afa',
+        # then it was transfered as a single part, which means that the chunk
+        # size used to transfer it was greater or equal to the ContentLength
+        # of that object. So to preserve that tag over the next transfer, we
+        # could use any value >= ContentLength.
+        #
+        # If an object's etag looks like '50d67013a5e1a4070bef1fc8eea4d5f9-13',
+        # then it was transfered as a multipart, which means that the chunk
+        # size used to transfer it was less than ContentLength of that object.
+        # Unfortunately, in general, it doesn't mean that the chunk size was
+        # the same throughout the transfer, so it means that in order to
+        # preserve etag, we need to transfer each part separately, so the
+        # object is transfered in the same chunks as it was originally.
+
+        obj = cls.get_head_object(s3, from_info["bucket"], from_info["path"])
+        etag = obj["ETag"].strip('"')
+        size = obj["ContentLength"]
+
+        _, _, parts_suffix = etag.partition("-")
+        if parts_suffix:
+            n_parts = int(parts_suffix)
+            cls._copy_multipart(s3, from_info, to_info, size, n_parts)
+        else:
+            source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
+            s3.copy(source, to_info["bucket"], to_info["path"])
+
+        cached_etag = cls.get_etag(s3, to_info["bucket"], to_info["path"])
+        if etag != cached_etag:
+            raise ETagMismatchError(etag, cached_etag)
+
     def copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
-
-        source = {"Bucket": from_info["bucket"], "Key": from_info["path"]}
-        self.s3.copy(source, to_info["bucket"], to_info["path"])
+        self._copy(s3, from_info, to_info)
 
     def remove(self, path_info):
         if path_info["scheme"] != "s3":
