@@ -1,20 +1,32 @@
+import uuid
+import posixpath
+
 import boto3
 import pytest
-from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
 from tests.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
 
 
-@mock_s3
-def test_copy_singlepart_preserve_etag():
-    from_info = {"scheme": "s3", "bucket": "mybucket", "path": "from"}
+def _get_src_dst():
+    prefix = str(uuid.uuid4())
+    from_info = {
+        "scheme": "s3",
+        "bucket": TEST_AWS_REPO_BUCKET,
+        "path": posixpath.join(prefix, "from"),
+    }
     to_info = from_info.copy()
-    to_info["path"] = "to"
+    to_info["path"] = posixpath.join(prefix, "to")
+    return from_info, to_info
+
+
+def test_copy_singlepart_preserve_etag():
+    from_info, to_info = _get_src_dst()
+
+    if not _should_test_aws():
+        pytest.skip()
 
     s3 = boto3.client("s3")
-    s3.create_bucket(Bucket=from_info["bucket"])
-
     s3.put_object(
         Bucket=from_info["bucket"], Key=from_info["path"], Body="data"
     )
@@ -52,18 +64,12 @@ def _upload_multipart(s3, Bucket, Key):
     )
 
 
-# NOTE: See https://github.com/iterative/dvc/issues/1889
 def test_copy_multipart_preserve_etag():
-    from_info = {
-        "scheme": "s3",
-        "bucket": TEST_AWS_REPO_BUCKET,
-        "path": "from",
-    }
-    to_info = from_info.copy()
-    to_info["path"] = "to"
+    from_info, to_info = _get_src_dst()
 
     if not _should_test_aws():
         pytest.skip()
 
     s3 = boto3.client("s3")
+    _upload_multipart(s3, from_info["bucket"], from_info["path"])
     RemoteS3._copy(s3, from_info, to_info)

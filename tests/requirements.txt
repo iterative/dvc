@@ -14,4 +14,3 @@ black==19.3b0 ; python_version >= '3.6'
 flake8
 flake8-docstrings
 jaraco.windows==3.9.2
-git+https://github.com/spulec/moto@master#egg=moto
