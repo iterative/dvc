@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from copy import copy
+
 from dvc.utils.compat import str, makedirs
 
 import os
@@ -49,7 +51,7 @@ class RemoteLOCAL(RemoteBase):
     PARAM_RELPATH = "relpath"
     MD5_DIR_SUFFIX = ".dir"
 
-    CACHE_TYPES = ["reflink", "hardlink", "symlink", "copy"]
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
         "copy": shutil.copyfile,
         "symlink": System.symlink,
@@ -74,7 +76,7 @@ class RemoteLOCAL(RemoteBase):
                 types = [t.strip() for t in types.split(",")]
             self.cache_types = types
         else:
-            self.cache_types = self.CACHE_TYPES
+            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)

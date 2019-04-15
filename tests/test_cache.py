@@ -168,3 +168,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(len(subdirs), 1)
         files = os.listdir(os.path.join(tmpdir, subdirs[0]))
         self.assertEqual(len(files), 1)
+
+
+class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
+    def test(self):
+        self.assertEqual(self.dvc.cache.local.cache_types, ["reflink", "copy"])

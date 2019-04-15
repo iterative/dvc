@@ -12,7 +12,7 @@ from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files
+from dvc.utils import walk_files, load_stage_file
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
@@ -134,7 +134,9 @@ class CheckoutBase(TestDvc):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
 
         paths = [
-            path for output in stage.outs for path in walk_files(output.path)
+            path
+            for output in stage["outs"]
+            for path in walk_files(output["path"])
         ]
 
         return [
@@ -210,14 +212,19 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(0, ret)
+
+        stage_path = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        stage = load_stage_file(stage_path)
         staged_files = self.outs_info(stage)
 
-        os.remove(staged_files[0].path)
+        # move instead of remove, to lock inode assigned to stage_files[0].path
+        # if we were to use remove, we might end up with same inode assigned to
+        # newly checked out file
+        shutil.move(staged_files[0].path, "random_name")
 
-        ret = main(["checkout", "--force", stage.relpath])
+        ret = main(["checkout", "--force", stage_path])
         self.assertEqual(ret, 0)
 
         checkedout_files = self.outs_info(stage)
