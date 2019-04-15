@@ -9,6 +9,7 @@ import yaml
 
 from dvc.main import main
 from dvc.output import OutputBase
+from dvc.repo import Repo as DvcRepo
 from dvc.utils import file_md5, load_stage_file
 from dvc.system import System
 from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
@@ -920,3 +921,33 @@ class TestNewRunShouldNotRemoveOutsOnPersist(TestRerunWithSameOutputs):
     @property
     def _outs_command(self):
         return "--outs-persist"
+
+
+class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
+    def setUp(self):
+        super(
+            TestShouldNotCheckoutUponCorruptedLocalHardlinkCache, self
+        ).setUp()
+        ret = main(["config", "cache.type", "hardlink"])
+        self.assertEqual(ret, 0)
+        self.dvc = DvcRepo(".")
+
+    def test(self):
+        cmd = "cp {} {}".format(self.FOO, self.BAR)
+        stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
+
+        with open(self.BAR, "w") as fd:
+            fd.write("corrupting the output cache")
+
+        patch_checkout = mock.patch.object(
+            stage.outs[0], "checkout", wraps=stage.outs[0].checkout
+        )
+        patch_run = mock.patch.object(stage, "_run", wraps=stage._run)
+
+        with self.dvc.state:
+            with patch_checkout as mock_checkout:
+                with patch_run as mock_run:
+                    stage.run()
+
+                    mock_run.assert_called_once()
+                    mock_checkout.assert_not_called()

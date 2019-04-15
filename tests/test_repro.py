@@ -854,30 +854,6 @@ class TestReproExternalBase(TestDvc):
                         mock_download.assert_not_called()
                         mock_checkout.assert_called_once()
 
-    def corrupted_cache(self):
-        os.unlink("bar.dvc")
-
-        stage = self.dvc.run(
-            deps=[self.FOO], outs=[self.BAR], cmd="echo bar > bar"
-        )
-
-        with open(self.BAR, "w") as fd:
-            fd.write("corrupting the cache")
-
-        patch_checkout = patch.object(
-            stage.outs[0], "checkout", wraps=stage.outs[0].checkout
-        )
-
-        patch_run = patch.object(stage, "_run", wraps=stage._run)
-
-        with self.dvc.state:
-            with patch_checkout as mock_checkout:
-                with patch_run as mock_run:
-                    stage.run()
-
-                    mock_run.assert_called_once()
-                    mock_checkout.assert_not_called()
-
     @patch("dvc.prompt.confirm", return_value=True)
     def test(self, mock_prompt):
         if not self.should_test():
@@ -908,9 +884,6 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
         ret = main(["remote", "modify", remote_name, "type", "hardlink"])
         self.assertEqual(ret, 0)
-
-        ret = main(["config", "cache.type", "hardlink"])
-        self.assertEqual(0, ret)
 
         self.dvc = DvcRepo(".")
 
@@ -979,8 +952,6 @@ class TestReproExternalBase(TestDvc):
 
         self.dvc.checkout(cmd_stage.path, force=True)
         self.assertEqual(self.dvc.status(cmd_stage.path), {})
-
-        self.corrupted_cache()
 
 
 class TestReproExternalS3(TestReproExternalBase):
