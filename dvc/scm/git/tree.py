@@ -1,7 +1,8 @@
 import errno
 import os
 
-from dvc.utils.compat import StringIO
+from dvc.ignore import DvcIgnoreFilter
+from dvc.utils.compat import StringIO, BytesIO
 
 from dvc.scm.tree import BaseTree
 
@@ -24,7 +25,11 @@ class GitTree(BaseTree):
         self.git = git
         self.rev = rev
 
-    def open(self, path):
+    @property
+    def tree_root(self):
+        return self.git.working_dir
+
+    def open(self, path, binary=False):
 
         relpath = os.path.relpath(path, self.git.working_dir)
 
@@ -39,7 +44,10 @@ class GitTree(BaseTree):
         # read it immediately, also it needs to be to decoded if we follow
         # the `open()` behavior (since data_stream.read() returns bytes,
         # and `open` with default "r" mode returns str)
-        return StringIO(obj.data_stream.read().decode("utf-8"))
+        data = obj.data_stream.read()
+        if binary:
+            return BytesIO(data)
+        return StringIO(data.decode("utf-8"))
 
     def exists(self, path):
         return self.git_object_by_path(path) is not None
@@ -81,8 +89,13 @@ class GitTree(BaseTree):
             tree = tree[i]
         return tree
 
-    def _walk(self, tree, topdown=True):
-
+    def _walk(
+        self,
+        tree,
+        topdown=True,
+        ignore_file_handler=None,
+        dvc_ignore_filter=None,
+    ):
         dirs, nondirs = [], []
         for i in tree:
             if i.mode == GIT_MODE_DIR:
@@ -91,14 +104,26 @@ class GitTree(BaseTree):
                 nondirs.append(i.name)
 
         if topdown:
+            if not dvc_ignore_filter:
+                dvc_ignore_filter = DvcIgnoreFilter(
+                    tree.abspath, ignore_file_handler=ignore_file_handler
+                )
+            dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
             yield os.path.normpath(tree.path), dirs, nondirs
+
         for i in dirs:
-            for x in self._walk(tree[i], topdown=True):
+            for x in self._walk(
+                tree[i],
+                topdown=True,
+                ignore_file_handler=ignore_file_handler,
+                dvc_ignore_filter=dvc_ignore_filter,
+            ):
                 yield x
+
         if not topdown:
             yield os.path.normpath(tree.path), dirs, nondirs
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, ignore_file_handler=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
