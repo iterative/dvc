@@ -1365,3 +1365,61 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
 
         expected_metrics_display = "{}: {}".format(metrics_file, metrics_value)
         self.assertIn(expected_metrics_display, self._caplog.text)
+
+
+# Pytest style tests
+
+from itertools import chain  # noqa
+from pathlib import Path  # noqa
+import re  # noqa
+import pytest  # noqa
+
+
+@pytest.fixture
+def foo_copy(repo_dir, dvc):
+    stages = dvc.add(repo_dir.FOO)
+    assert len(stages) == 1
+    foo_stage = stages[0]
+    assert foo_stage is not None
+
+    fname = "foo_copy"
+    stage_fname = fname + ".dvc"
+    dvc.run(
+        fname=stage_fname,
+        outs=[fname],
+        deps=[repo_dir.FOO, repo_dir.CODE],
+        cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, fname),
+    )
+    return {"fname": fname, "stage_fname": stage_fname}
+
+
+def test_dvc_formatting_retained(dvc, foo_copy):
+    root = Path(dvc.root_dir)
+    stage_file = root / foo_copy["stage_fname"]
+
+    # Add comments and custom formatting to stage file
+    stage_text = stage_file.read_text()
+    stage_text = re.sub(r"(^|cache:.*)\r?\n?", r"\1 # comment\n", stage_text)
+    stage_text = re.sub(
+        r"^(cmd:)\s*(.*)(\r?\n)", _yaml_line_format, stage_text, flags=re.M
+    )
+    stage_file.write_text(stage_text)
+
+    # Rewrite data source and repro
+    (root / "foo").write_text("new_foo")
+    dvc.reproduce(foo_copy["stage_fname"])
+
+    # All differing lines should be only about md5
+    old_lines = stage_text.splitlines()
+    new_lines = stage_file.read_text().splitlines()
+    diff_lines = lcat((a, b) for a, b in zip(old_lines, new_lines) if a != b)
+    assert all(re.search(r"^\s*-?\s*md5:", line) for line in diff_lines)
+
+
+def _yaml_line_format(m):
+    pre, words, post = m.groups()
+    return pre + " >\n" + "\n".join("  " + s for s in words.split()) + post
+
+
+def lcat(seqs):
+    return list(chain.from_iterable(seqs))
