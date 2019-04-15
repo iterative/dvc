@@ -150,6 +150,14 @@ class TestPipelineShow(TestRepro):
         ret = main(["pipeline", "show", "non-existing"])
         self.assertNotEqual(ret, 0)
 
+    def test_print_locked_stages(self):
+        self.dvc.add("foo")
+        self.dvc.add("bar")
+        self.dvc.lock_stage("foo.dvc")
+
+        ret = main(["pipeline", "show", "foo.dvc", "--locked"])
+        self.assertEqual(ret, 0)
+
 
 class TestPipelineShowDeep(TestReproChangedDeepData):
     def setUp(self):
