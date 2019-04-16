@@ -65,13 +65,6 @@ def add_parser(subparsers, parent_parser):
         "out", nargs="?", help="Destination path to put files to."
     )
     import_parser.add_argument(
-        "-f",
-        "--file",
-        help="Specify name of the stage file. It should be "
-        "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
-        "'prepare.dvc', 'clean.dvc', etc) in order for "
-        "dvc to be able to find it later. By default "
-        "the first output basename + .dvc is used as "
-        "a stage filename.",
+        "-f", "--file", help="Specify name of the DVC file it generates."
     )
     import_parser.set_defaults(func=CmdImport)

@@ -176,3 +176,10 @@ class TestImportFilename(TestDvc):
         ret = main(["import", "--file", "bar.dvc", self.external_source])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists("bar.dvc"))
+
+        os.remove("bar.dvc")
+        os.mkdir("sub")
+
+        ret = main(["import", "--file", "sub/bar.dvc", self.external_source])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("sub/bar.dvc"))
