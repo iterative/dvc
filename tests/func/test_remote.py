@@ -6,7 +6,7 @@ from dvc.command.remote import CmdRemoteAdd
 from dvc.config import Config
 
 from tests.basic_env import TestDvc
-from tests.test_data_cloud import get_local_storagepath
+from tests.func.test_data_cloud import get_local_storagepath
 
 
 class TestRemote(TestDvc):

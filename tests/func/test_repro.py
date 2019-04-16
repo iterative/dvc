@@ -29,9 +29,9 @@ from dvc.exceptions import (
 )
 
 from tests.basic_env import TestDvc
-from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
-from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
-from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.func.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
+from tests.func.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
+from tests.func.test_data_cloud import _should_test_ssh, _should_test_hdfs
 from tests.utils.httpd import StaticFileServer
 from mock import patch
 

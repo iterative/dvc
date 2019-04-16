@@ -1,7 +1,7 @@
 from dvc.stage import Stage
 from dvc.dependency import _get, DEP_MAP
 
-from tests.test_output import TestOutScheme
+from tests.func.test_output import TestOutScheme
 
 
 class TestDepScheme(TestOutScheme):

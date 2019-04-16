@@ -14,7 +14,7 @@ from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from dvc.utils import walk_files, load_stage_file
 from tests.basic_env import TestDvc
-from tests.test_repro import TestRepro
+from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import (
