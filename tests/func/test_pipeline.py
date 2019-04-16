@@ -3,7 +3,7 @@ import logging
 from dvc.main import main
 
 from tests.basic_env import TestDvc
-from tests.test_repro import TestRepro, TestReproChangedDeepData
+from tests.func.test_repro import TestRepro, TestReproChangedDeepData
 import os
 
 

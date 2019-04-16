@@ -2,7 +2,7 @@ import os
 
 from dvc.main import main
 
-from tests.test_repro import TestRepro
+from tests.func.test_repro import TestRepro
 
 
 class TestDestroyNoConfirmation(TestRepro):

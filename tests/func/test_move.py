@@ -6,7 +6,7 @@ from dvc.stage import Stage
 from dvc.utils import load_stage_file
 
 from tests.basic_env import TestDvc
-from tests.test_repro import TestRepro
+from tests.func.test_repro import TestRepro
 from tests.utils import cd
 
 

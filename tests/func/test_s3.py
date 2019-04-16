@@ -5,7 +5,7 @@ import boto3
 import pytest
 
 from dvc.remote.s3 import RemoteS3
-from tests.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
+from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
 
 
 def _get_src_dst():
