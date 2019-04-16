@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2
+from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
 
 import os
 import sys
@@ -263,6 +263,18 @@ def dump_stage_file(path, data):
         yaml = YAML()
         yaml.default_flow_style = False
         yaml.dump(data, fd)
+
+
+def from_yaml_string(s):
+    return YAML().load(StringIO(s))
+
+
+def to_yaml_string(data):
+    stream = StringIO()
+    yaml = YAML()
+    yaml.default_flow_style = False
+    yaml.dump(data, stream)
+    return stream.getvalue()
 
 
 def dvc_walk(

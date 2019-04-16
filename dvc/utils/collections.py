@@ -1,5 +1,9 @@
-from __future__ import unicode_literals
-from collections.abc import Mapping
+from __future__ import absolute_import, unicode_literals
+
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
 
 
 # just simple check for Nones and emtpy strings
