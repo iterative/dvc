@@ -1,3 +1,5 @@
+import logging
+
 from dvc.main import main
 
 from tests.basic_env import TestDvc
@@ -149,6 +151,19 @@ class TestPipelineShow(TestRepro):
     def test_non_existing(self):
         ret = main(["pipeline", "show", "non-existing"])
         self.assertNotEqual(ret, 0)
+
+    def test_print_locked_stages(self):
+        self.dvc.add("foo")
+        self.dvc.add("bar")
+        self.dvc.lock_stage("foo.dvc")
+
+        self._caplog.clear()
+        with self._caplog.at_level(logging.INFO, logger="dvc"):
+            ret = main(["pipeline", "show", "foo.dvc", "--locked"])
+            self.assertEqual(ret, 0)
+
+        assert "foo.dvc" in self._caplog.text
+        assert "bar.dvc" not in self._caplog.text
 
 
 class TestPipelineShowDeep(TestReproChangedDeepData):

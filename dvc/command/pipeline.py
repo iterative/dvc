@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdPipelineShow(CmdBase):
-    def _show(self, target, commands, outs):
+    def _show(self, target, commands, outs, locked):
         import networkx
         from dvc.stage import Stage
 
@@ -22,8 +22,12 @@ class CmdPipelineShow(CmdBase):
         G = self.repo.graph()[0]
         stages = networkx.get_node_attributes(G, "stage")
         node = os.path.relpath(stage.path, self.repo.root_dir)
+        nodes = networkx.dfs_postorder_nodes(G, node)
 
-        for n in networkx.dfs_postorder_nodes(G, node):
+        if locked:
+            nodes = [n for n in nodes if stages[n].locked]
+
+        for n in nodes:
             if commands:
                 logger.info(stages[n].cmd)
             elif outs:
@@ -122,7 +126,7 @@ class CmdPipelineShow(CmdBase):
         simple_g.add_edges_from(edges)
         write_dot(simple_g, filename)
 
-    def run(self, unlock=False):
+    def run(self):
         if not self.args.targets:
             self.args.targets = self.default_targets
 
@@ -144,7 +148,12 @@ class CmdPipelineShow(CmdBase):
                         target, self.args.commands, self.args.outs
                     )
                 else:
-                    self._show(target, self.args.commands, self.args.outs)
+                    self._show(
+                        target,
+                        self.args.commands,
+                        self.args.outs,
+                        self.args.locked,
+                    )
             except DvcException:
                 msg = "failed to show pipeline for '{}'".format(target)
                 logger.exception(msg)
@@ -207,6 +216,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Print output files instead of paths to DVC files.",
+    )
+    pipeline_show_parser.add_argument(
+        "-l",
+        "--locked",
+        action="store_true",
+        default=False,
+        help="Print locked DVC stages",
     )
     pipeline_show_parser.add_argument(
         "--ascii",
