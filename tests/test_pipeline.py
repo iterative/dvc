@@ -153,18 +153,17 @@ class TestPipelineShow(TestRepro):
         self.assertNotEqual(ret, 0)
 
     def test_print_locked_stages(self):
-        self._caplog.clear()
-
         self.dvc.add("foo")
         self.dvc.add("bar")
         self.dvc.lock_stage("foo.dvc")
 
+        self._caplog.clear()
         with self._caplog.at_level(logging.INFO, logger="dvc"):
             ret = main(["pipeline", "show", "foo.dvc", "--locked"])
             self.assertEqual(ret, 0)
 
-        expected_stdout = "foo.dvc"
-        assert expected_stdout in self._caplog.text
+        assert "foo.dvc" in self._caplog.text
+        assert "bar.dvc" not in self._caplog.text
 
 
 class TestPipelineShowDeep(TestReproChangedDeepData):
