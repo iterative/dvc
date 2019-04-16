@@ -244,11 +244,11 @@ def current_timestamp():
 
 
 def load_stage_file(path):
-    with open(path, "r") as fobj:
-        return load_stage_file_fobj(fobj, path)
+    with open(path, "r") as fd:
+        return load_stage_file_fd(fd, path)
 
 
-def load_stage_file_fobj(fobj, path):
+def load_stage_file_fd(fobj, path):
     from dvc.exceptions import StageFileCorruptedError
 
     try:

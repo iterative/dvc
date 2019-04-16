@@ -234,10 +234,14 @@ def _read_metrics(self, metrics, branch):
                 branch=branch,
             )
         else:
-            fd = self.tree.open(out.path)
-            metric = _read_metric(
-                fd, typ=typ, xpath=xpath, rel_path=out.rel_path, branch=branch
-            )
+            with self.tree.open(out.path) as fd:
+                metric = _read_metric(
+                    fd,
+                    typ=typ,
+                    xpath=xpath,
+                    rel_path=out.rel_path,
+                    branch=branch,
+                )
 
         if not metric:
             continue

@@ -92,8 +92,6 @@ def _makedirs(name, mode=0o777, exist_ok=False):
 
 if is_py2:
     from urlparse import urlparse, urljoin  # noqa: F401
-    from StringIO import StringIO  # noqa: F401
-    from io import BytesIO  # noqa: F401
     from BaseHTTPServer import HTTPServer  # noqa: F401
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
@@ -109,6 +107,24 @@ if is_py2:
     input = raw_input  # noqa: F821
     cast_bytes_py2 = cast_bytes
     makedirs = _makedirs
+
+    import StringIO
+    import io
+
+    class StringIO(StringIO.StringIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.close()
+
+    class BytesIO(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.close()
+
 
 elif is_py3:
     from pathlib import Path  # noqa: F401
