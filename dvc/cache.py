@@ -26,14 +26,14 @@ class Cache(object):
 
         if local:
             name = Config.SECTION_REMOTE_FMT.format(local)
-            sect = repo.config.config[name]
+            settings = repo.config.config[name]
         else:
             default_cache_dir = os.path.join(repo.dvc_dir, self.CACHE_DIR)
             cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
             cache_type = config.get(Config.SECTION_CACHE_TYPE)
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
 
-            sect = {
+            settings = {
                 Config.PRIVATE_CWD: config.get(
                     Config.PRIVATE_CWD, repo.dvc_dir
                 ),
@@ -42,51 +42,50 @@ class Cache(object):
                 Config.SECTION_CACHE_PROTECTED: protected,
             }
 
-        self._local = Remote(repo, sect)
-
-        self._s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
-        self._gs = self._get_remote(config, Config.SECTION_CACHE_GS)
-        self._ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
-        self._hdfs = self._get_remote(config, Config.SECTION_CACHE_HDFS)
-        self._azure = self._get_remote(config, Config.SECTION_CACHE_AZURE)
-
-    @property
-    def local(self):
-        """Remote instance for local cache."""
-        return self._local
-
-    @property
-    def s3(self):
-        """Remote instance for AWS S3 cache."""
-        return self._s3
-
-    @property
-    def gs(self):
-        """Remote instance for Google Cloud Storage cache."""
-        return self._gs
-
-    @property
-    def ssh(self):
-        """Remote instance for SSH cache."""
-        return self._ssh
-
-    @property
-    def hdfs(self):
-        """Remote instance for HDFS cache."""
-        return self._hdfs
-
-    @property
-    def azure(self):
-        """Remote instance for azure cache."""
-        return self._azure
+        self.local = Remote(repo, settings)
+        self.s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
+        self.gs = self._get_remote(config, Config.SECTION_CACHE_GS)
+        self.ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
+        self.hdfs = self._get_remote(config, Config.SECTION_CACHE_HDFS)
+        self.azure = self._get_remote(config, Config.SECTION_CACHE_AZURE)
 
     def _get_remote(self, config, name):
+        """
+        The config file is stored in a way that allows you to have a
+        cache for each remote.
+
+        This is needed when specifying external outputs
+        (as they require you to have an external cache location).
+
+        Imagine a config file like the following:
+
+                ['remote "dvc-storage"']
+                url = ssh://localhost/tmp
+                ask_password = true
+
+                [cache]
+                ssh = dvc-storage
+
+        This method resolves the name under the cache section into the
+        correct Remote instance.
+
+        Args:
+            config (dict): The cache section on the config file
+            name (str): Name of the section we are interested in to retrieve
+
+        Returns:
+            remote (dvc.Remote): Remote instance that the section is referring.
+                None when there's no remote with that name.
+
+        Example:
+            >>> _get_remote(config={'ssh': 'dvc-storage'}, name='ssh')
+        """
         from dvc.remote import Remote
 
-        remote = config.get(name, None)
+        remote = config.get(name)
+
         if not remote:
             return None
 
-        name = Config.SECTION_REMOTE_FMT.format(remote)
-        sect = self.repo.config.config[name]
-        return Remote(self.repo, sect)
+        settings = self.repo.config.get_remote_settings(remote)
+        return Remote(self.repo, settings)

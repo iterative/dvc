@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 from dvc.repo.pkg import PackageParams
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdPkg(CmdBase):
@@ -19,7 +22,7 @@ class CmdPkg(CmdBase):
             )
             return self.repo.install_pkg(pkg_params)
         except DvcException:
-            logger.error(
+            logger.exception(
                 "failed to install package '{}'".format(self.args.address)
             )
             return 1

@@ -1,4 +1,7 @@
-import dvc.logger as logger
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def remove(self, tag, target=None, with_deps=False, recursive=False):

@@ -6,16 +6,19 @@ import re
 import os
 import yaml
 import subprocess
+import logging
 
 from dvc.utils.fs import contains_symlink_up_to
 from schema import Schema, SchemaError, Optional, Or, And
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
 from dvc.utils import dict_md5, fix_env, load_stage_file_fobj
+
+
+logger = logging.getLogger(__name__)
 
 
 class StageCmdFailedError(DvcException):
@@ -254,13 +257,9 @@ class Stage(object):
         )
 
         if ret:
-            msg = "Stage '{}' changed.".format(self.relpath)
-            color = "yellow"
+            logger.warning("Stage '{}' changed.".format(self.relpath))
         else:
-            msg = "Stage '{}' didn't change.".format(self.relpath)
-            color = "green"
-
-        logger.info(logger.colorize(msg, color))
+            logger.info("Stage '{}' didn't change.".format(self.relpath))
 
         return ret
 
@@ -472,6 +471,11 @@ class Stage(object):
 
         # NOTE: remove outs before we check build cache
         if remove_outs:
+            logger.warning(
+                "--remove-outs is deprecated."
+                " It is now the default behavior,"
+                " so there's no need to use this option anymore."
+            )
             stage.remove_outs(ignore_remove=False)
             logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True

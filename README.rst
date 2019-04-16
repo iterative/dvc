@@ -30,7 +30,7 @@
 **Data Science Version Control** or **DVC** is an **open-source** tool for data science and
 machine learning projects. Key features:
 
-#. simple **command line** Git-like exprerience. Does not require installing and maintaining
+#. simple **command line** Git-like experience. Does not require installing and maintaining
    any databases. Does not depend on any proprietary online services;
 
 #. it manages and versions **datasets** and **machine learning models**. Data is saved in
@@ -143,7 +143,7 @@ Package
 Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
 GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
-Ubuntu / Debian (apt)
+Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
@@ -159,7 +159,7 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Arch linux (AUR)
+Arch Linux (AUR)
 ^^^^^^^^^^^^^^^^
 *Unofficial package*, any inquiries regarding the AUR package,
 `refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.

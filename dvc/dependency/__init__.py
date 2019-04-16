@@ -2,9 +2,6 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.config import Config
-from dvc.utils.compat import urlparse
-
 import dvc.output as output
 from dvc.output.base import OutputBase
 from dvc.dependency.s3 import DependencyS3
@@ -46,11 +43,13 @@ del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
 
 
 def _get(stage, p, info):
+    from dvc.utils.compat import urlparse
+
     parsed = urlparse(p)
+
     if parsed.scheme == "remote":
-        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.repo.config.config[name]
-        remote = Remote(stage.repo, sect)
+        settings = stage.repo.config.get_remote_settings(parsed.netloc)
+        remote = Remote(stage.repo, settings)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
     for d in DEPS:

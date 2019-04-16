@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
 from dvc.utils.compat import str, open
 from dvc.utils import fix_env
@@ -13,7 +14,9 @@ from dvc.scm.base import (
     FileNotInTargetSubdirError,
 )
 from dvc.scm.git.tree import GitTree
-import dvc.logger as logger
+
+
+logger = logging.getLogger(__name__)
 
 
 DIFF_A_TREE = "a_tree"
@@ -161,7 +164,7 @@ class Git(Base):
                 " for more details.".format(str(paths))
             )
 
-            logger.error(msg)
+            logger.exception(msg)
 
     def commit(self, msg):
         self.git.index.commit(msg)

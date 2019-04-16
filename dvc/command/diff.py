@@ -1,14 +1,18 @@
 from __future__ import unicode_literals
 
+import argparse
+
 import humanize
 import inflect
+import logging
 
-
-import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.utils.collections import compact
 import dvc.repo.diff as diff
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDiff(CmdBase):
@@ -113,27 +117,30 @@ class CmdDiff(CmdBase):
                 compact([self.args.target, self.args.a_ref, self.args.b_ref])
             )
             msg = msg.format(args)
-            logger.error(msg)
+            logger.exception(msg)
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    description = (
-        "Show diff of a data file or a directory that "
-        "is under DVC control. Some basic statistics "
-        "summary, how many files were deleted/changed."
+    DIFF_DESCRIPTION = (
+        "Show diff of a data file or a directory that is under DVC control.\n"
+        "Some basic statistics summary, how many files were deleted/changed."
     )
-    help = "Show a diff of a DVC controlled data file or a directory."
+    DIFF_HELP = "Show a diff of a DVC controlled data file or a directory."
     diff_parser = subparsers.add_parser(
-        "diff", parents=[parent_parser], description=description, help=help
+        "diff",
+        parents=[parent_parser],
+        description=append_doc_link(DIFF_DESCRIPTION, "diff"),
+        help=DIFF_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     diff_parser.add_argument(
         "-t",
         "--target",
         default=None,
         help=(
-            "Source path to a data file or directory. Default None,"
+            "Source path to a data file or directory. Default None. "
             "If not specified, compares all files and directories "
             "that are under DVC control in the current working space."
         ),
@@ -144,7 +151,7 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "b_ref",
         help=(
-            "Git reference till which diff calculates, if omitted "
+            "Git reference untill which diff calculates, if omitted "
             "diff shows the difference between current HEAD and a_ref"
         ),
         nargs="?",

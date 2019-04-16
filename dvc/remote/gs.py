@@ -1,19 +1,22 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
 try:
     from google.cloud import storage
 except ImportError:
     storage = None
 
-import dvc.logger as logger
 from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
 from dvc.progress import progress
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class RemoteGS(RemoteBase):
@@ -146,7 +149,7 @@ class RemoteGS(RemoteBase):
                 blob.upload_from_filename(from_info["path"])
             except Exception:
                 msg = "failed to upload '{}' to '{}/{}'"
-                logger.error(
+                logger.exception(
                     msg.format(
                         from_info["path"], to_info["bucket"], to_info["path"]
                     )
@@ -200,7 +203,7 @@ class RemoteGS(RemoteBase):
                 blob.download_to_filename(tmp_file)
             except Exception:
                 msg = "failed to download '{}/{}' to '{}'"
-                logger.error(
+                logger.exception(
                     msg.format(
                         from_info["bucket"], from_info["path"], to_info["path"]
                     )

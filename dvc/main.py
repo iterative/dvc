@@ -2,11 +2,14 @@
 
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import logging
+
 from dvc.cli import parse_args
-from dvc.command.base import CmdBase
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
+
+
+logger = logging.getLogger("dvc")
 
 
 def main(argv=None):
@@ -20,26 +23,28 @@ def main(argv=None):
     """
     args = None
     cmd = None
+
     try:
         args = parse_args(argv)
 
-        # Init loglevel early in case we'll run
-        # into errors before setting it properly
-        CmdBase.set_loglevel(args)
+        if args.quiet:
+            logger.setLevel(logging.CRITICAL)
+
+        elif args.verbose:
+            logger.setLevel(logging.DEBUG)
 
         cmd = args.func(args)
-
         ret = cmd.run_cmd()
     except KeyboardInterrupt:
-        logger.error("interrupted by the user")
+        logger.exception("interrupted by the user")
         ret = 252
     except NotDvcRepoError:
-        logger.error()
+        logger.exception("")
         ret = 253
     except DvcParserError:
         ret = 254
     except Exception:  # pylint: disable=broad-except
-        logger.error("unexpected error")
+        logger.exception("unexpected error")
         ret = 255
 
     Analytics().send_cmd(cmd, args, ret)

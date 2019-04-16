@@ -4,13 +4,16 @@ from dvc.utils.compat import open, makedirs
 import os
 import threading
 import requests
+import logging
 
-import dvc.logger as logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
 from dvc.utils import move
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressBarCallback(object):
@@ -87,7 +90,7 @@ class RemoteHTTP(RemoteBase):
 
             except Exception:
                 msg = "failed to download '{}'".format(from_info["path"])
-                logger.error(msg)
+                logger.exception(msg)
                 continue
 
             if not no_progress_bar:

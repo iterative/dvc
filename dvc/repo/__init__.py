@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 
 from dvc.exceptions import (
     DvcException,
@@ -11,6 +11,9 @@ from dvc.exceptions import (
     OutputNotFoundError,
     TargetNotDirectoryError,
 )
+from dvc.ignore import DvcIgnoreFileHandler
+
+logger = logging.getLogger(__name__)
 
 
 class Repo(object):
@@ -55,7 +58,7 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
-        self.tree = WorkingTree()
+        self.tree = WorkingTree(self.root_dir)
 
         self.scm = SCM(self.root_dir, repo=self)
         self.lock = Lock(self.dvc_dir)
@@ -65,7 +68,11 @@ class Repo(object):
 
         core = self.config.config[Config.SECTION_CORE]
 
-        logger.set_level(core.get(Config.SECTION_CORE_LOGLEVEL))
+        logger.setLevel(
+            logging.getLevelName(
+                core.get(Config.SECTION_CORE_LOGLEVEL, "info").upper()
+            )
+        )
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config.config)
@@ -383,7 +390,11 @@ class Repo(object):
 
         stages = []
         outs = []
-        for root, dirs, files in self.tree.walk(from_directory):
+
+        ignore_file_handler = DvcIgnoreFileHandler(self.tree)
+        for root, dirs, files in self.tree.walk(
+            from_directory, ignore_file_handler=ignore_file_handler
+        ):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):

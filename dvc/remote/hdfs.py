@@ -4,12 +4,15 @@ import os
 import re
 import getpass
 import posixpath
+import logging
 from subprocess import Popen, PIPE
 
-import dvc.logger as logger
 from dvc.config import Config
 from dvc.remote.base import RemoteBase, RemoteCmdError
 from dvc.utils import fix_env, tmp_fname
+
+
+logger = logging.getLogger(__name__)
 
 
 class RemoteHDFS(RemoteBase):

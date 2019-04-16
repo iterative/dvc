@@ -70,6 +70,15 @@ class TestExternalCacheDir(TestDvc):
         self.assertFalse(os.path.exists(".dvc/cache"))
         self.assertNotEqual(len(os.listdir(cache_dir)), 0)
 
+    def test_remote_references(self):
+        assert main(["remote", "add", "storage", "ssh://localhost"]) == 0
+        assert main(["remote", "add", "cache", "remote://storage/tmp"]) == 0
+        assert main(["config", "cache.ssh", "cache"]) == 0
+
+        self.dvc.__init__()
+
+        assert self.dvc.cache.ssh.url == "ssh://localhost/tmp"
+
 
 class TestSharedCacheDir(TestDir):
     def test(self):
@@ -159,3 +168,8 @@ class TestCmdCacheDir(TestDvc):
         self.assertEqual(len(subdirs), 1)
         files = os.listdir(os.path.join(tmpdir, subdirs[0]))
         self.assertEqual(len(files), 1)
+
+
+class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
+    def test(self):
+        self.assertEqual(self.dvc.cache.local.cache_types, ["reflink", "copy"])

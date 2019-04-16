@@ -8,7 +8,6 @@ import shutil
 import filecmp
 import posixpath
 
-from dvc.logger import logger
 from dvc.system import System
 from mock import patch
 
@@ -20,8 +19,7 @@ from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
 from tests.basic_env import TestDvc
-from tests.utils import spy, reset_logger_error_output, get_gitignore_content
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
+from tests.utils import spy, get_gitignore_content
 
 
 class TestAdd(TestDvc):
@@ -409,26 +407,26 @@ class TestShouldPlaceStageInDataDirIfRepositoryBelowSymlink(TestDvc):
 
 class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
     def test(self):
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_error_output()
+        ret = main(["add", self.FOO])
+        assert 0 == ret
 
-            ret = main(["add", self.FOO])
-            self.assertEqual(0, ret)
+        foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
-            foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+        # corrupt stage file
+        with open(foo_stage, "a+") as file:
+            file.write("this will break yaml file structure")
 
-            # corrupt stage file
-            with open(foo_stage, "a+") as file:
-                file.write("this will break yaml file structure")
+        self._caplog.clear()
 
-            ret = main(["add", self.BAR])
-            self.assertEqual(1, ret)
+        ret = main(["add", self.BAR])
+        assert 1 == ret
 
-            self.assertIn(
-                "unable to read stage file: {} "
-                "YAML file structure is corrupted".format(foo_stage),
-                logger.handlers[1].stream.getvalue(),
-            )
+        expected_error = (
+            "unable to read stage file: {} "
+            "YAML file structure is corrupted".format(foo_stage)
+        )
+
+        assert expected_error in self._caplog.text
 
 
 class TestAddFilename(TestDvc):

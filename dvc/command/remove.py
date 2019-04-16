@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRemove(CmdBase):
@@ -34,7 +37,7 @@ class CmdRemove(CmdBase):
                 outs_only = self._is_outs_only(target)
                 self.repo.remove(target, outs_only=outs_only)
             except DvcException:
-                logger.error("failed to remove {}".format(target))
+                logger.exception("failed to remove {}".format(target))
                 return 1
         return 0
 

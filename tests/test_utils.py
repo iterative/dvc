@@ -58,3 +58,14 @@ class TestUtils(TestDvc):
         md5 = "8b263fa05ede6c3145c164829be694b4"
 
         self.assertEqual(md5, utils.dict_md5(d, exclude=["metric", "locked"]))
+
+    def test_boxify(self):
+        expected = (
+            "+-----------------+\n"
+            "|                 |\n"
+            "|     message     |\n"
+            "|                 |\n"
+            "+-----------------+\n"
+        )
+
+        assert expected == utils.boxify("message")

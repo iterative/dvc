@@ -5,12 +5,15 @@ from __future__ import unicode_literals
 import os
 import sys
 import inspect
+import logging
 from subprocess import Popen
 
-import dvc.logger as logger
+from dvc.env import DVC_DAEMON
 from dvc.utils import is_binary, fix_env
 from dvc.utils.compat import cast_bytes_py2
 
+
+logger = logging.getLogger(__name__)
 
 CREATE_NEW_PROCESS_GROUP = 0x00000200
 DETACHED_PROCESS = 0x00000008
@@ -43,7 +46,7 @@ def _spawn_posix(cmd, env):
         if pid > 0:
             return
     except OSError:
-        logger.error("failed at first fork")
+        logger.exception("failed at first fork")
         os._exit(1)  # pylint: disable=protected-access
 
     os.setsid()
@@ -54,7 +57,7 @@ def _spawn_posix(cmd, env):
         if pid > 0:
             os._exit(0)  # pylint: disable=protected-access
     except OSError:
-        logger.error("failed at second fork")
+        logger.exception("failed at second fork")
         os._exit(1)  # pylint: disable=protected-access
 
     sys.stdin.close()
@@ -66,23 +69,7 @@ def _spawn_posix(cmd, env):
     os._exit(0)  # pylint: disable=protected-access
 
 
-def daemon(args):
-    """Launch a `dvc daemon` command in a detached process.
-
-    Args:
-        args (list): list of arguments to append to `dvc daemon` command.
-    """
-    cmd = [sys.executable]
-    if not is_binary():
-        cmd += ["-m", "dvc"]
-    cmd += ["daemon", "-q"] + args
-
-    env = fix_env()
-    file_path = os.path.abspath(inspect.stack()[0][1])
-    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
-        os.path.dirname(os.path.dirname(file_path))
-    )
-
+def _spawn(cmd, env):
     logger.debug("Trying to spawn '{}'".format(cmd))
 
     if os.name == "nt":
@@ -93,3 +80,28 @@ def daemon(args):
         raise NotImplementedError
 
     logger.debug("Spawned '{}'".format(cmd))
+
+
+def daemon(args):
+    """Launch a `dvc daemon` command in a detached process.
+
+    Args:
+        args (list): list of arguments to append to `dvc daemon` command.
+    """
+    if os.environ.get(DVC_DAEMON):
+        logger.debug("skipping launching a new daemon.")
+        return
+
+    cmd = [sys.executable]
+    if not is_binary():
+        cmd += ["-m", "dvc"]
+    cmd += ["daemon", "-q"] + args
+
+    env = fix_env()
+    file_path = os.path.abspath(inspect.stack()[0][1])
+    env[cast_bytes_py2("PYTHONPATH")] = cast_bytes_py2(
+        os.path.dirname(os.path.dirname(file_path))
+    )
+    env[cast_bytes_py2(DVC_DAEMON)] = cast_bytes_py2("1")
+
+    _spawn(cmd, env)

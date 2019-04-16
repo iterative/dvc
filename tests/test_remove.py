@@ -1,6 +1,8 @@
 import os
+import shutil
 
 from dvc.main import main
+from dvc.system import System
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.exceptions import DvcException
 
@@ -31,6 +33,24 @@ class TestRemoveNonExistentFile(TestDvc):
     def test(self):
         with self.assertRaises(StageFileDoesNotExistError):
             self.dvc.remove("non_existent_dvc_file")
+
+
+class TestRemoveBrokenSymlink(TestDvc):
+    def test(self):
+        ret = main(["config", "cache.type", "symlink"])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        shutil.rmtree(self.dvc.cache.local.cache_dir)
+
+        self.assertTrue(System.is_symlink(self.FOO))
+
+        ret = main(["remove", self.FOO + ".dvc"])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.path.lexists(self.FOO))
 
 
 class TestRemoveDirectory(TestDvc):

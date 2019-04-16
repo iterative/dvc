@@ -58,6 +58,7 @@ install_requires = [
     "treelib>=1.5.5",
     "inflect>=2.1.0",
     "humanize>=0.5.1",
+    "dulwich>=0.19.11",
 ]
 
 # Extra dependencies for remote integrations
@@ -87,10 +88,15 @@ setup(
         ':python_version=="2.7"': ["futures"],
     },
     keywords="data science, data version control, machine learning",
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
     classifiers=[
         "Development Status :: 4 - Beta",
         "Programming Language :: Python :: 2",
+        "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,

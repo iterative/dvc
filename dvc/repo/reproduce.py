@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
+
+
+logger = logging.getLogger(__name__)
 
 
 def _reproduce_stage(stages, node, force, dry, interactive, no_commit):

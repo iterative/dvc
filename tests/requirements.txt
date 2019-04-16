@@ -13,3 +13,4 @@ collective.checkdocs
 black==19.3b0 ; python_version >= '3.6'
 flake8
 flake8-docstrings
+jaraco.windows==3.9.2

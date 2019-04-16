@@ -1,8 +1,12 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import logging
+
 from dvc.exceptions import CheckoutErrorSuggestGit
 from dvc.progress import ProgressCallback
+
+
+logger = logging.getLogger(__name__)
 
 
 def _cleanup_unused_links(self, all_stages):

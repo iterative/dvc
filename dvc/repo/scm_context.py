@@ -5,8 +5,8 @@ def scm_context(method):
             repo.scm.reset_ignores()
             repo.scm.remind_to_track()
             return result
-        except Exception as e:
+        except Exception:
             repo.scm.cleanup_ignores()
-            raise e
+            raise
 
     return run

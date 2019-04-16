@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _local_status(self, target=None, with_deps=False):

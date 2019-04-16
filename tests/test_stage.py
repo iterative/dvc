@@ -1,5 +1,8 @@
 import yaml
+import tempfile
+import os
 
+from dvc.main import main
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileFormatError
@@ -121,3 +124,44 @@ class TestDefaultWorkingDirectory(TestDvc):
         with self.dvc.state:
             stage = Stage.load(self.dvc, stage.relpath)
             self.assertFalse(stage.changed())
+
+
+class TestExternalRemoteResolution(TestDvc):
+    def test_remote_output(self):
+        tmp_path = tempfile.mkdtemp()
+        storage = os.path.join(tmp_path, "storage")
+        file_path = os.path.join(storage, "file")
+
+        os.makedirs(storage)
+
+        assert main(["remote", "add", "tmp", tmp_path]) == 0
+        assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
+        assert (
+            main(
+                [
+                    "run",
+                    "-O",
+                    "remote://storage/file",
+                    "echo file > {path}".format(path=file_path),
+                ]
+            )
+            == 0
+        )
+
+        assert os.path.exists(file_path)
+
+    def test_remote_dependency(self):
+        tmp_path = tempfile.mkdtemp()
+        storage = os.path.join(tmp_path, "storage")
+        file_path = os.path.join(storage, "file")
+
+        os.makedirs(storage)
+
+        with open(file_path, "w") as fobj:
+            fobj.write("Isle of Dogs")
+
+        assert main(["remote", "add", "tmp", tmp_path]) == 0
+        assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
+        assert main(["import", "remote://storage/file", "movie.txt"]) == 0
+
+        assert os.path.exists("movie.txt")

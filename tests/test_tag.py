@@ -1,14 +1,11 @@
 import os
 import shutil
 import filecmp
+import logging
 
 from dvc.main import main
-from dvc.logger import logger
 
 from tests.basic_env import TestDvc
-
-from tests.utils import reset_logger_standard_output, reset_logger_error_output
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
 
 
 class TestTag(TestDvc):
@@ -52,46 +49,45 @@ class TestTagAll(TestDvc):
         ret = main(["add", self.FOO, self.BAR])
         self.assertEqual(ret, 0)
 
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_standard_output()
+        self._caplog.clear()
 
-            ret = main(["tag", "list"])
-            self.assertEqual(ret, 0)
+        ret = main(["tag", "list"])
+        self.assertEqual(ret, 0)
 
-            self.assertEqual("", logger.handlers[0].stream.getvalue())
+        self.assertEqual("", self._caplog.text)
 
         ret = main(["tag", "add", "v1"])
         self.assertEqual(ret, 0)
 
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_standard_output()
+        self._caplog.clear()
 
-            ret = main(["tag", "list"])
-            self.assertEqual(ret, 0)
+        ret = main(["tag", "list"])
+        self.assertEqual(ret, 0)
 
-            self.assertEqual(
-                logger.handlers[0].stream.getvalue(),
-                "bar.dvc:\n"
-                "  bar:\n"
-                "    v1:\n"
-                "      md5: 8978c98bb5a48c2fb5f2c4c905768afa\n"
-                "foo.dvc:\n"
-                "  foo:\n"
-                "    v1:\n"
-                "      md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
-                "\n",
-            )
+        expected = (
+            "bar.dvc:\n"
+            "  bar:\n"
+            "    v1:\n"
+            "      md5: 8978c98bb5a48c2fb5f2c4c905768afa\n"
+            "foo.dvc:\n"
+            "  foo:\n"
+            "    v1:\n"
+            "      md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
+        )
+
+        stdout = "\n".join(record.message for record in self._caplog.records)
+
+        assert expected == stdout
 
         ret = main(["tag", "remove", "v1"])
         self.assertEqual(ret, 0)
 
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_standard_output()
+        self._caplog.clear()
 
-            ret = main(["tag", "list"])
-            self.assertEqual(ret, 0)
+        ret = main(["tag", "list"])
+        self.assertEqual(ret, 0)
 
-            self.assertEqual("", logger.handlers[0].stream.getvalue())
+        self.assertEqual("", self._caplog.text)
 
 
 class TestTagAddNoChecksumInfo(TestDvc):
@@ -99,16 +95,13 @@ class TestTagAddNoChecksumInfo(TestDvc):
         ret = main(["run", "-o", self.FOO, "--no-exec"])
         self.assertEqual(ret, 0)
 
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_error_output()
+        self._caplog.clear()
 
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
             ret = main(["tag", "add", "v1", "foo.dvc"])
             self.assertEqual(ret, 0)
 
-            self.assertEqual(
-                "Warning: missing checksum info for 'foo'\n",
-                logger.handlers[1].stream.getvalue(),
-            )
+        assert "missing checksum info for 'foo'" in self._caplog.text
 
 
 class TestTagRemoveNoTag(TestDvc):
@@ -116,13 +109,10 @@ class TestTagRemoveNoTag(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
 
-        with MockLoggerHandlers(logger), ConsoleFontColorsRemover():
-            reset_logger_error_output()
+        self._caplog.clear()
 
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
             ret = main(["tag", "remove", "v1", "foo.dvc"])
             self.assertEqual(ret, 0)
 
-            self.assertEqual(
-                "Warning: tag 'v1' not found for 'foo'\n",
-                logger.handlers[1].stream.getvalue(),
-            )
+        assert "tag 'v1' not found for 'foo'" in self._caplog.text

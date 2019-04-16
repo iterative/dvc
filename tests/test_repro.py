@@ -1,4 +1,3 @@
-from dvc.logger import logger
 from dvc.utils.compat import str
 
 import os
@@ -33,10 +32,8 @@ from tests.basic_env import TestDvc
 from tests.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.test_data_cloud import _should_test_ssh, _should_test_hdfs
-from tests.utils import reset_logger_standard_output
 from tests.utils.httpd import StaticFileServer
 from mock import patch
-from tests.utils.logger import MockLoggerHandlers
 
 
 class TestRepro(TestDvc):
@@ -857,30 +854,6 @@ class TestReproExternalBase(TestDvc):
                         mock_download.assert_not_called()
                         mock_checkout.assert_called_once()
 
-    def corrupted_cache(self):
-        os.unlink("bar.dvc")
-
-        stage = self.dvc.run(
-            deps=[self.FOO], outs=[self.BAR], cmd="echo bar > bar"
-        )
-
-        with open(self.BAR, "w") as fd:
-            fd.write("corrupting the cache")
-
-        patch_checkout = patch.object(
-            stage.outs[0], "checkout", wraps=stage.outs[0].checkout
-        )
-
-        patch_run = patch.object(stage, "_run", wraps=stage._run)
-
-        with self.dvc.state:
-            with patch_checkout as mock_checkout:
-                with patch_run as mock_run:
-                    stage.run()
-
-                    mock_run.assert_called_once()
-                    mock_checkout.assert_not_called()
-
     @patch("dvc.prompt.confirm", return_value=True)
     def test(self, mock_prompt):
         if not self.should_test():
@@ -979,8 +952,6 @@ class TestReproExternalBase(TestDvc):
 
         self.dvc.checkout(cmd_stage.path, force=True)
         self.assertEqual(self.dvc.status(cmd_stage.path), {})
-
-        self.corrupted_cache()
 
 
 class TestReproExternalS3(TestReproExternalBase):
@@ -1394,21 +1365,16 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         )
         self.assertEqual(0, ret)
 
-        with MockLoggerHandlers(logger):
-            reset_logger_standard_output()
-            ret = main(
-                [
-                    "repro",
-                    "--force",
-                    "--metrics",
-                    metrics_file + Stage.STAGE_FILE_SUFFIX,
-                ]
-            )
-            self.assertEqual(0, ret)
+        self._caplog.clear()
+        ret = main(
+            [
+                "repro",
+                "--force",
+                "--metrics",
+                metrics_file + Stage.STAGE_FILE_SUFFIX,
+            ]
+        )
+        self.assertEqual(0, ret)
 
-            expected_metrics_display = "{}: {}".format(
-                metrics_file, metrics_value
-            )
-            self.assertIn(
-                expected_metrics_display, logger.handlers[0].stream.getvalue()
-            )
+        expected_metrics_display = "{}: {}".format(metrics_file, metrics_value)
+        self.assertIn(expected_metrics_display, self._caplog.text)

@@ -41,7 +41,7 @@ if [[ "$PY_VER" != '(2, 7)' ]]; then
     exit 0
 fi
 
-if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_OSX_IMAGE" != "xcode8.3" ]]; then
+if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_OSX_IMAGE" != "xcode7.3" ]]; then
     echo "Skipping building binary package because of a wrong xcode version."
     exit 0
 fi

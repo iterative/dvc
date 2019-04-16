@@ -3,14 +3,17 @@ from __future__ import unicode_literals
 import sys
 import os
 import time
+import logging
 import requests
 import colorama
 from pkg_resources import parse_version
 
 from dvc import __version__
-import dvc.logger as logger
 from dvc.lock import Lock, LockError
-from dvc.utils import is_binary
+from dvc.utils import is_binary, boxify
+
+
+logger = logging.getLogger(__name__)
 
 
 class Updater(object):  # pragma: no cover
@@ -110,7 +113,7 @@ class Updater(object):  # pragma: no cover
             latest=self.latest,
         )
 
-        logger.box(message, border_color="yellow")
+        logger.info(boxify(message, border_color="yellow"))
 
     def _get_update_instructions(self):
         instructions = {

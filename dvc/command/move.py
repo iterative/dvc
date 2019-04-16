@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdMove(CmdBase):
@@ -15,7 +18,7 @@ class CmdMove(CmdBase):
             msg = "failed to move '{}' -> '{}'".format(
                 self.args.src, self.args.dst
             )
-            logger.error(msg)
+            logger.exception(msg)
             return 1
         return 0
 

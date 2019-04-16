@@ -2,15 +2,17 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str, open, urlparse
 
 import os
 import errno
 import configobj
-from schema import Schema, Optional, And, Use, Regex
+import logging
 
-import dvc.logger as logger
+from schema import Schema, Optional, And, Use, Regex
 from dvc.exceptions import DvcException
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigError(DvcException):
@@ -481,6 +483,56 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             except Exception as exc:
                 msg = "failed to write config '{}'".format(conf.filename)
                 raise ConfigError(msg, exc)
+
+    def get_remote_settings(self, name):
+        import posixpath
+
+        """
+        Args:
+            name (str): The name of the remote that we want to retrieve
+
+        Returns:
+            dict: The content beneath the given remote name.
+
+        Example:
+            >>> config = {'remote "server"': {'url': 'ssh://localhost/'}}
+            >>> get_remote_settings("server")
+            {'url': 'ssh://localhost/'}
+        """
+        settings = self.config[self.SECTION_REMOTE_FMT.format(name)]
+        parsed = urlparse(settings["url"])
+
+        # Support for cross referenced remotes.
+        # This will merge the settings, giving priority to the outer reference.
+        # For example, having:
+        #
+        #       dvc remote add server ssh://localhost
+        #       dvc remote modify server user root
+        #       dvc remote modify server ask_password true
+        #
+        #       dvc remote add images remote://server/tmp/pictures
+        #       dvc remote modify images user alice
+        #       dvc remote modify images ask_password false
+        #       dvc remote modify images password asdf1234
+        #
+        # Results on a config dictionary like:
+        #
+        #       {
+        #           "url": "ssh://localhost/tmp/pictures",
+        #           "user": "alice",
+        #           "password": "asdf1234",
+        #           "ask_password": False,
+        #       }
+        #
+        if parsed.scheme == "remote":
+            reference = self.get_remote_settings(parsed.netloc)
+            url = posixpath.join(reference["url"], parsed.path.lstrip("/"))
+            merged = reference.copy()
+            merged.update(settings)
+            merged["url"] = url
+            return merged
+
+        return settings
 
     @staticmethod
     def unset(config, section, opt=None):

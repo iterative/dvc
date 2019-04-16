@@ -1,3 +1,5 @@
+from dvc.main import main
+from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 from dvc.scm.git import GitTree
@@ -44,3 +46,27 @@ class TestCollect(TestDvc):
         )
         result = self._check("new_branch", "buzz", False, [["buzz"]])
         self.assertEqual([i.rel_path for i in result[0].deps], ["bar"])
+
+
+class TestIgnore(TestDvc):
+    def _stage_name(self, file):
+        return file + Stage.STAGE_FILE_SUFFIX
+
+    def test_should_not_gather_stage_files_from_ignored_d(self):
+        ret = main(["add", self.FOO, self.BAR, self.DATA, self.DATA_SUB])
+        self.assertEqual(0, ret)
+
+        stages = self.dvc.stages()
+        self.assertEqual(4, len(stages))
+
+        with open(".dvcignore", "w") as fobj:
+            fobj.write("data_dir")
+
+        stages = self.dvc.stages()
+        self.assertEqual(2, len(stages))
+
+        stagenames = [s.relpath for s in stages]
+        self.assertIn(self._stage_name(self.FOO), stagenames)
+        self.assertIn(self._stage_name(self.BAR), stagenames)
+        self.assertNotIn(self._stage_name(self.DATA), stagenames)
+        self.assertNotIn(self._stage_name(self.DATA_SUB), stagenames)

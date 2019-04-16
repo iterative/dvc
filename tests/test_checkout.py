@@ -6,13 +6,13 @@ import yaml
 import shutil
 import filecmp
 import collections
+import logging
 
-from dvc.logger import logger
 from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files
+from dvc.utils import walk_files, load_stage_file
 from tests.basic_env import TestDvc
 from tests.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
@@ -25,7 +25,9 @@ from dvc.exceptions import (
 )
 
 from mock import patch
-from tests.utils.logger import MockLoggerHandlers, ConsoleFontColorsRemover
+
+
+logger = logging.getLogger("dvc")
 
 
 class TestCheckout(TestRepro):
@@ -132,7 +134,9 @@ class CheckoutBase(TestDvc):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
 
         paths = [
-            path for output in stage.outs for path in walk_files(output.path)
+            path
+            for output in stage["outs"]
+            for path in walk_files(output["path"])
         ]
 
         return [
@@ -208,14 +212,19 @@ class TestCheckoutSelectiveRemove(CheckoutBase):
         ret = main(["config", "cache.type", "copy"])
         self.assertEqual(ret, 0)
 
-        stages = self.dvc.add(self.DATA_DIR)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(0, ret)
+
+        stage_path = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
+        stage = load_stage_file(stage_path)
         staged_files = self.outs_info(stage)
 
-        os.remove(staged_files[0].path)
+        # move instead of remove, to lock inode assigned to stage_files[0].path
+        # if we were to use remove, we might end up with same inode assigned to
+        # newly checked out file
+        shutil.move(staged_files[0].path, "random_name")
 
-        ret = main(["checkout", "--force", stage.relpath])
+        ret = main(["checkout", "--force", stage_path])
         self.assertEqual(ret, 0)
 
         checkedout_files = self.outs_info(stage)
@@ -404,14 +413,22 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         self._prepare_repo()
 
     def test(self):
-        self._checkout_and_intercept_std_output()
+        with self._caplog.at_level(logging.INFO, logger="dvc"), patch.object(
+            sys, "stdout"
+        ) as stdout_mock:
+            self.stdout_mock = logger.handlers[0].stream = stdout_mock
+
+            ret = main(["checkout"])
+            self.assertEqual(0, ret)
 
         stdout_calls = self.stdout_mock.method_calls
         write_calls = self.filter_out_non_write_calls(stdout_calls)
         write_calls = self.filter_out_empty_write_calls(write_calls)
         self.write_args = [w_c[1][0] for w_c in write_calls]
 
-        progress_bars = self.get_progress_bars()
+        pattern = re.compile(".*\\[.{30}\\].*%.*")
+        progress_bars = [arg for arg in self.write_args if pattern.match(arg)]
+
         update_bars = progress_bars[:-1]
         finish_bar = progress_bars[-1]
 
@@ -466,21 +483,6 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         os.unlink(self.FOO)
         os.unlink(self.BAR)
 
-    def _checkout_and_intercept_std_output(self):
-        with MockLoggerHandlers(
-            logger
-        ), ConsoleFontColorsRemover(), patch.object(
-            sys, "stdout"
-        ) as stdout_mock:
-            self.stdout_mock = logger.handlers[0].stream = stdout_mock
-
-            ret = main(["checkout"])
-            self.assertEqual(0, ret)
-
-    def get_progress_bars(self):
-        pattern = re.compile(".*\\[.{30}\\].*%.*")
-        return [arg for arg in self.write_args if pattern.match(arg)]
-
     def assertCaretReturnFollowsEach(self, update_bars):
         for update_bar in update_bars:
 
@@ -522,3 +524,52 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
 
         with self.assertRaises(TargetNotDirectoryError):
             self.dvc.checkout(target=self.FOO, recursive=True)
+
+
+class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
+    def test(self):
+        ret = main(["config", "cache.type", "symlink"])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.DATA_DIR])
+        self.assertEqual(ret, 0)
+
+        if os.name == "nt":
+            from jaraco.windows.filesystem import readlink
+        else:
+            readlink = os.readlink
+
+        self.assertTrue(System.is_symlink(self.FOO))
+        old_foo_link = readlink(self.FOO)
+
+        self.assertTrue(System.is_symlink(self.DATA))
+        old_data_link = readlink(self.DATA)
+
+        old_cache_dir = self.dvc.cache.local.cache_dir
+        new_cache_dir = old_cache_dir + "_new"
+        os.rename(old_cache_dir, new_cache_dir)
+
+        ret = main(["cache", "dir", new_cache_dir])
+        self.assertEqual(ret, 0)
+
+        ret = main(["checkout", "-f"])
+        self.assertEqual(ret, 0)
+
+        self.assertTrue(System.is_symlink(self.FOO))
+        new_foo_link = readlink(self.FOO)
+
+        self.assertTrue(System.is_symlink(self.DATA))
+        new_data_link = readlink(self.DATA)
+
+        self.assertEqual(
+            os.path.relpath(old_foo_link, old_cache_dir),
+            os.path.relpath(new_foo_link, new_cache_dir),
+        )
+
+        self.assertEqual(
+            os.path.relpath(old_data_link, old_cache_dir),
+            os.path.relpath(new_data_link, new_cache_dir),
+        )

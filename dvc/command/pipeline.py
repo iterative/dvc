@@ -1,14 +1,16 @@
 from __future__ import unicode_literals
 
-import argparse
-
 from dvc.utils.compat import str
 
+import argparse
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdPipelineShow(CmdBase):
@@ -154,7 +156,7 @@ class CmdPipelineShow(CmdBase):
                     )
             except DvcException:
                 msg = "failed to show pipeline for '{}'".format(target)
-                logger.error(msg)
+                logger.exception(msg)
                 return 1
         return 0
 

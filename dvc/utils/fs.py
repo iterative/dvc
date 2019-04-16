@@ -1,12 +1,17 @@
 from __future__ import unicode_literals
 
-import nanotime
 import os
+import errno
+import nanotime
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
 from dvc.system import System
+from dvc.utils import dvc_walk
 from dvc.utils.compat import str
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_inode(path):
@@ -20,10 +25,16 @@ def get_mtime_and_size(path):
     mtime = os.path.getmtime(path)
 
     if os.path.isdir(path):
-        for root, dirs, files in os.walk(str(path)):
+        for root, dirs, files in dvc_walk(str(path)):
             for name in dirs + files:
                 entry = os.path.join(root, name)
-                stat = os.stat(entry)
+                try:
+                    stat = os.stat(entry)
+                except OSError as exc:
+                    # NOTE: broken symlink case.
+                    if exc.errno != errno.ENOENT:
+                        raise
+                    continue
                 size += stat.st_size
                 entry_mtime = stat.st_mtime
                 if entry_mtime > mtime:
@@ -53,3 +64,22 @@ def contains_symlink_up_to(path, base_path):
     if os.path.dirname(path) == path:
         return False
     return contains_symlink_up_to(os.path.dirname(path), base_path)
+
+
+def get_parent_dirs_up_to(wdir, root_dir):
+
+    assert os.path.isabs(wdir)
+    assert os.path.isabs(root_dir)
+
+    wdir = os.path.normpath(wdir)
+    root_dir = os.path.normpath(root_dir)
+    if root_dir not in wdir:
+        return []
+
+    dirs = []
+    dirs.append(wdir)
+    while wdir != root_dir:
+        wdir = os.path.dirname(wdir)
+        dirs.append(wdir)
+
+    return dirs

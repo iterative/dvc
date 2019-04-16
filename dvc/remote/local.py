@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+from copy import copy
+
 from dvc.utils.compat import str, makedirs
 
 import os
@@ -9,9 +11,9 @@ import json
 import ntpath
 import shutil
 import posixpath
+import logging
 from operator import itemgetter
 
-import dvc.logger as logger
 from dvc.system import System
 from dvc.remote.base import (
     RemoteBase,
@@ -38,6 +40,9 @@ from concurrent.futures import ThreadPoolExecutor
 from dvc.utils.fs import get_mtime_and_size, get_inode
 
 
+logger = logging.getLogger(__name__)
+
+
 class RemoteLOCAL(RemoteBase):
     scheme = "local"
     REGEX = r"^(?P<path>.*)$"
@@ -46,7 +51,7 @@ class RemoteLOCAL(RemoteBase):
     PARAM_RELPATH = "relpath"
     MD5_DIR_SUFFIX = ".dir"
 
-    CACHE_TYPES = ["reflink", "hardlink", "symlink", "copy"]
+    DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
         "copy": shutil.copyfile,
         "symlink": System.symlink,
@@ -71,7 +76,7 @@ class RemoteLOCAL(RemoteBase):
                 types = [t.strip() for t in types.split(",")]
             self.cache_types = types
         else:
-            self.cache_types = self.CACHE_TYPES
+            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
@@ -126,7 +131,7 @@ class RemoteLOCAL(RemoteBase):
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info["scheme"] == "local"
-        return os.path.exists(path_info["path"])
+        return os.path.lexists(path_info["path"])
 
     def changed_cache(self, md5):
         cache = self.get(md5)
@@ -269,7 +274,7 @@ class RemoteLOCAL(RemoteBase):
                 d = json.load(fd)
         except Exception:
             msg = "Failed to load dir cache '{}'"
-            logger.error(msg.format(os.path.relpath(path)))
+            logger.exception(msg.format(os.path.relpath(path)))
             return []
 
         if not isinstance(d, list):
@@ -313,7 +318,7 @@ class RemoteLOCAL(RemoteBase):
         cache = self.get(checksum)
 
         if not self.is_dir_cache(cache):
-            if os.path.exists(path):
+            if self.exists(path_info):
                 self.safe_remove(path_info, force=force)
 
             self.link(cache, path)
@@ -344,7 +349,7 @@ class RemoteLOCAL(RemoteBase):
             entry_checksum_info = {self.PARAM_CHECKSUM: m}
 
             if self.changed(entry_info, entry_checksum_info):
-                if os.path.exists(p):
+                if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
 
                 self.link(c, p)
@@ -508,7 +513,7 @@ class RemoteLOCAL(RemoteBase):
                 copyfile(from_info["path"], tmp_file, name=name)
                 os.rename(tmp_file, to_info["path"])
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to upload '{}' to '{}'".format(
                         from_info["path"], to_info["path"]
                     )
@@ -552,7 +557,7 @@ class RemoteLOCAL(RemoteBase):
 
                 move(tmp_file, to_info["path"])
             except Exception:
-                logger.error(
+                logger.exception(
                     "failed to download '{}' to '{}'".format(
                         from_info["path"], to_info["path"]
                     )

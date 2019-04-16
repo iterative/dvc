@@ -7,9 +7,12 @@ from dvc.utils.compat import str
 import os
 import json
 import errno
+import logging
 
-import dvc.logger as logger
 from dvc import __version__
+
+
+logger = logging.getLogger(__name__)
 
 
 class Analytics(object):
