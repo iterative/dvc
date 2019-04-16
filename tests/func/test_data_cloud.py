@@ -641,7 +641,6 @@ class TestWarnOnOutdatedStage(TestDvc):
 
             assert expected_warning in self._caplog.text
 
-    # ASK: why?
     def test(self):
         self._test()
 
