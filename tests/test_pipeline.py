@@ -164,8 +164,7 @@ class TestPipelineShow(TestRepro):
             self.assertEqual(ret, 0)
 
         expected_stdout = "foo.dvc"
-        stdout = "\n".join(record.message for record in self._caplog.records)
-        assert expected_stdout in stdout
+        assert expected_stdout in self._caplog.text
 
 
 class TestPipelineShowDeep(TestReproChangedDeepData):
