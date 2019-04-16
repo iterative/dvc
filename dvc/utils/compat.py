@@ -98,6 +98,7 @@ if is_py2:
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
     from io import open  # noqa: F401
+    from pathlib2 import Path  # noqa: F401
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -110,6 +111,7 @@ if is_py2:
     makedirs = _makedirs
 
 elif is_py3:
+    from pathlib import Path  # noqa: F401
     from os import makedirs  # noqa: F401
     from urllib.parse import urlparse, urljoin  # noqa: F401
     from io import StringIO, BytesIO  # noqa: F401

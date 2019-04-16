@@ -1,6 +1,7 @@
-from dvc.utils.compat import str
+from dvc.utils.compat import str, Path
 
 import os
+import re
 import shutil
 import filecmp
 import getpass
@@ -12,6 +13,7 @@ import uuid
 import paramiko
 from google.cloud import storage as gc
 from flaky.flaky_decorator import flaky
+import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
@@ -1369,11 +1371,6 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
 
 # Pytest style tests
 
-from itertools import chain  # noqa
-from pathlib import Path  # noqa
-import re  # noqa
-import pytest  # noqa
-
 
 @pytest.fixture
 def foo_copy(repo_dir, dvc):
@@ -1398,28 +1395,30 @@ def test_dvc_formatting_retained(dvc, foo_copy):
     stage_file = root / foo_copy["stage_fname"]
 
     # Add comments and custom formatting to stage file
-    stage_text = stage_file.read_text()
-    stage_text = re.sub(r"(^|cache:.*)\r?\n?", r"\1 # comment\n", stage_text)
-    stage_text = re.sub(
-        r"^(cmd:)\s*(.*)(\r?\n)", _yaml_line_format, stage_text, flags=re.M
-    )
+    lines = list(map(_format_dvc_line, stage_file.read_text().splitlines()))
+    lines.insert(0, "# Starting comment")
+    stage_text = "".join(l + "\n" for l in lines)
     stage_file.write_text(stage_text)
 
     # Rewrite data source and repro
     (root / "foo").write_text("new_foo")
     dvc.reproduce(foo_copy["stage_fname"])
 
-    # All differing lines should be only about md5
-    old_lines = stage_text.splitlines()
-    new_lines = stage_file.read_text().splitlines()
-    diff_lines = lcat((a, b) for a, b in zip(old_lines, new_lines) if a != b)
-    assert all(re.search(r"^\s*-?\s*md5:", line) for line in diff_lines)
+    # All differences should be only about md5
+    assert _hide_md5(stage_text) == _hide_md5(stage_file.read_text())
 
 
-def _yaml_line_format(m):
-    pre, words, post = m.groups()
-    return pre + " >\n" + "\n".join("  " + s for s in words.split()) + post
+def _format_dvc_line(line):
+    # Add line comment for all cache and md5 keys
+    if "cache:" in line or "md5:" in line:
+        return line + " # line comment"
+    # Format command as one word per line
+    elif line.startswith("cmd: "):
+        pre, command = line.split(None, 1)
+        return pre + " >\n" + "\n".join("  " + s for s in command.split())
+    else:
+        return line
 
 
-def lcat(seqs):
-    return list(chain.from_iterable(seqs))
+def _hide_md5(text):
+    return re.sub(r"\b[a-f0-9]{32}\b", "<md5>", text)

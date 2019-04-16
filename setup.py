@@ -85,7 +85,7 @@ setup(
         "azure": azure,
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ':python_version=="2.7"': ["futures"],
+        ':python_version=="2.7"': ["futures", "pathlib2"],
     },
     keywords="data science, data version control, machine learning",
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
