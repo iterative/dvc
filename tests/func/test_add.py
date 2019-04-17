@@ -12,7 +12,8 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5, load_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file
 from dvc.stage import Stage
 from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 from dvc.output.base import OutputAlreadyTrackedError

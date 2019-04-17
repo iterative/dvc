@@ -26,7 +26,8 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils import file_md5, load_stage_file, dump_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
 from tests.utils import spy

@@ -15,8 +15,9 @@ import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env, load_stage_fd, dump_stage_file
+from dvc.utils import dict_md5, fix_env
 from dvc.utils.collections import apply_diff
+from dvc.utils.stage import load_stage_fd, dump_stage_file
 
 
 logger = logging.getLogger(__name__)

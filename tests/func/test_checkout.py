@@ -11,7 +11,8 @@ from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files, load_stage_file, dump_stage_file
+from dvc.utils import walk_files
+from dvc.utils.stage import load_stage_file, dump_stage_file
 from tests.basic_env import TestDvc
 from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError

@@ -1,4 +1,4 @@
-from dvc.utils import load_stage_file, dump_stage_file
+from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
 from dvc.stage import StageCommitError

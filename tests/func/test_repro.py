@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str, Path
+from dvc.utils.compat import str, urljoin, Path
 
 import os
 import re
@@ -18,8 +18,8 @@ import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5, load_stage_file, dump_stage_file
-from dvc.utils.compat import urljoin
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System

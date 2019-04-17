@@ -18,7 +18,6 @@ import colorama
 import re
 import logging
 
-from ruamel.yaml.error import YAMLError
 from ruamel.yaml import YAML
 
 
@@ -241,28 +240,6 @@ def tmp_fname(fname):
 
 def current_timestamp():
     return int(nanotime.timestamp(time.time()))
-
-
-def load_stage_file(path):
-    with open(path, "r", encoding="utf-8") as fd:
-        return load_stage_fd(fd, path)
-
-
-def load_stage_fd(fd, path):
-    from dvc.exceptions import StageFileCorruptedError
-
-    try:
-        yaml = YAML()
-        return yaml.load(fd) or {}
-    except YAMLError as exc:
-        raise StageFileCorruptedError(path, cause=exc)
-
-
-def dump_stage_file(path, data):
-    with open(path, "w", encoding="utf-8") as fd:
-        yaml = YAML()
-        yaml.default_flow_style = False
-        yaml.dump(data, fd)
 
 
 def from_yaml_string(s):
