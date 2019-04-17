@@ -35,7 +35,6 @@ class Repo(object):
     from dvc.repo.status import status
     from dvc.repo.gc import gc
     from dvc.repo.commit import commit
-    from dvc.repo.pkg import install_pkg
     from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
 
@@ -50,6 +49,7 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
+        from dvc.repo.pkg import Pkg
 
         root_dir = self.find_root(root_dir)
 
@@ -80,6 +80,7 @@ class Repo(object):
 
         self.metrics = Metrics(self)
         self.tag = Tag(self)
+        self.pkg = Pkg(self)
 
         self._ignore()
 
