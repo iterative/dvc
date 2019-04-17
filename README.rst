@@ -1,4 +1,4 @@
-.. image:: https://dvc.org/static/img/logo-owl-readme.png
+.. image:: https://dvc.org/static/img/logo-github-readme.png
   :target: https://dvc.org
   :alt: DVC logo
 
