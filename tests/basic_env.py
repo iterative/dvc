@@ -7,6 +7,7 @@ import shutil
 import uuid
 import tempfile
 import logging
+import warnings
 
 from git import Repo
 from git.exc import GitCommandNotFound
@@ -60,7 +61,8 @@ class TestDirFixture(object):
         self._root_dir = os.path.realpath(root_dir)
 
     def _pushd(self, d):
-        self._saved_dir = os.path.realpath(os.curdir)
+        if not hasattr(self, "_saved_dir"):
+            self._saved_dir = os.path.realpath(os.curdir)
         os.chdir(d)
 
     def _popd(self):
@@ -98,6 +100,21 @@ class TestDirFixture(object):
 
     def tearDown(self):
         self._popd()
+        try:
+            shutil.rmtree(self._root_dir)
+        except OSError as exc:
+            # We ignore this under Windows with a warning because it happened
+            # to be really hard to trace all not properly closed files.
+            #
+            # Best guess so far is that gitpython is the culprit:
+            # it opens files and uses __del__ to close them, which can happen
+            # late in current pythons. TestGitFixture and TestDvcFixture try
+            # to close that and it works on most of the tests, but not all.
+            # Repos and thus git repos are created all over the dvc ;)
+            if os.name == "nt" and exc.winerror == 32:
+                warnings.warn("Failed to remove test dir: " + str(exc))
+            else:
+                raise
 
 
 class TestGitFixture(TestDirFixture):
@@ -195,6 +212,9 @@ class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
             ]
         )
         self.git.index.commit("Hello world commit")
+
+        # Return to the dir we started to not confuse parent fixture
+        os.chdir(self._saved_dir)
 
 
 # NOTE: Inheritance order in the classes below is important.
