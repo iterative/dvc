@@ -1370,9 +1370,6 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
         self.assertIn(expected_metrics_display, self._caplog.text)
 
 
-# Pytest style tests
-
-
 @pytest.fixture
 def foo_copy(repo_dir, dvc):
     stages = dvc.add(repo_dir.FOO)
