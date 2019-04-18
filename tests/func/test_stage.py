@@ -167,3 +167,19 @@ def test_md5_ignores_comments(repo_dir, dvc):
 
     new_stage = Stage.load(dvc, stage.path)
     assert not new_stage.changed_md5()
+
+
+def test_meta_is_preserved(dvc):
+    stage, = dvc.add("foo")
+
+    # Add meta to stage file
+    data = load_stage_file(stage.path)
+    data["meta"] = {"custom_key": 42}
+    dump_stage_file(stage.path, data)
+
+    # Loading and dumping to test that it works and meta is retained
+    new_stage = Stage.load(dvc, stage.path)
+    new_stage.dump()
+
+    new_data = load_stage_file(stage.path)
+    assert new_data["meta"] == data["meta"]
