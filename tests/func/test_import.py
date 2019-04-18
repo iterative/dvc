@@ -156,3 +156,31 @@ class TestShouldRemoveOutsBeforeImport(TestDvc):
             self.assertEqual(0, ret)
 
         self.assertEqual(1, remove_outs_call_counter.mock.call_count)
+
+
+class TestImportFilename(TestDvc):
+    def setUp(self):
+        super(TestImportFilename, self).setUp()
+        tmp_dir = self.mkdtemp()
+        self.external_source = os.path.join(tmp_dir, "file")
+        with open(self.external_source, "w") as fobj:
+            fobj.write("content")
+
+    def test(self):
+        ret = main(["import", "-f", "bar.dvc", self.external_source])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("bar.dvc"))
+
+        os.remove("bar.dvc")
+
+        ret = main(["import", "--file", "bar.dvc", self.external_source])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists("bar.dvc"))
+
+        os.remove("bar.dvc")
+        os.mkdir("sub")
+
+        path = os.path.join("sub", "bar.dvc")
+        ret = main(["import", "--file", path, self.external_source])
+        self.assertEqual(0, ret)
+        self.assertTrue(os.path.exists(path))

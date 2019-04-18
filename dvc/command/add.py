@@ -54,14 +54,7 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     add_parser.add_argument(
-        "-f",
-        "--file",
-        help="Specify name of the stage file. It should be "
-        "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
-        "'prepare.dvc', 'clean.dvc', etc) in order for "
-        "dvc to be able to find it later. By default "
-        "the output basename + .dvc is used as a stage filename. "
-        "(NOTE: It can't be used when specifying multiple targets)",
+        "-f", "--file", help="Specify name of the DVC file it generates."
     )
     add_parser.add_argument(
         "targets", nargs="+", help="Input files/directories."

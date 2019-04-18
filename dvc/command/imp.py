@@ -19,7 +19,9 @@ class CmdImport(CmdBase):
 
             out = self.args.out or default_out
 
-            self.repo.imp(self.args.url, out, self.args.resume)
+            self.repo.imp(
+                self.args.url, out, self.args.resume, fname=self.args.file
+            )
         except DvcException:
             logger.exception(
                 "failed to import {}. You could also try downloading "
@@ -61,5 +63,8 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "out", nargs="?", help="Destination path to put files to."
+    )
+    import_parser.add_argument(
+        "-f", "--file", help="Specify name of the DVC file it generates."
     )
     import_parser.set_defaults(func=CmdImport)
