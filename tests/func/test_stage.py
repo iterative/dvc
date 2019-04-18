@@ -157,3 +157,13 @@ class TestExternalRemoteResolution(TestDvc):
         assert main(["import", "remote://storage/file", "movie.txt"]) == 0
 
         assert os.path.exists("movie.txt")
+
+
+def test_md5_ignores_comments(repo_dir, dvc):
+    stage, = dvc.add("foo")
+
+    with open(stage.path, "a") as f:
+        f.write("# End comment\n")
+
+    new_stage = Stage.load(dvc, stage.path)
+    assert not new_stage.changed_md5()
