@@ -40,7 +40,7 @@ def apply_diff(src, dest):
                 elif value != dest[i]:
                     dest[i] = value
     else:
-        raise ValueError(
+        raise AssertionError(
             "Can't apply diff from {} to {}".format(
                 src.__class__.__name__, dest.__class__.__name__
             )
