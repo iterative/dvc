@@ -125,6 +125,7 @@ class Stage(object):
     PARAM_DEPS = "deps"
     PARAM_OUTS = "outs"
     PARAM_LOCKED = "locked"
+    PARAM_META = "meta"
 
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
@@ -133,6 +134,7 @@ class Stage(object):
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
         Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
         Optional(PARAM_LOCKED): bool,
+        Optional(PARAM_META): object,
     }
 
     TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
@@ -612,6 +614,7 @@ class Stage(object):
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
+                Stage.PARAM_META: self._state.get("meta"),
             }.items()
             if value
         }
