@@ -247,7 +247,16 @@ class Git(Base):
         return GitTree(self.git, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
+        """Private method for getting the trees and commit hashes of 2 git
+        references
 
+        Args:
+            a_ref(str) - git reference
+            b_ref(str) - second git reference. If None, uses HEAD
+
+        Returns:
+            tuple - tuple with elements: (trees, commits)
+        """
         from gitdb.exc import BadObject, BadName
 
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
@@ -282,8 +291,8 @@ class Git(Base):
         """
         diff_dct = {DIFF_EQUAL: False}
         trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
-        diff_dct[DIFF_A_REF] = commit_refs[0]
-        diff_dct[DIFF_B_REF] = commit_refs[1]
+        diff_dct[DIFF_A_REF] = commit_refs[0][:7]
+        diff_dct[DIFF_B_REF] = commit_refs[1][:7]
         if commit_refs[0] == commit_refs[1]:
             diff_dct[DIFF_EQUAL] = True
             return diff_dct
