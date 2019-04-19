@@ -5,7 +5,6 @@ import sys
 import os
 import errno
 
-
 # Syntax sugar.
 _ver = sys.version_info
 

@@ -225,7 +225,7 @@ class RemoteBase(object):
         try:
             with open(path, "r") as fobj:
                 d = json.load(fobj)
-        except json.JSONDecodeError:
+        except ValueError:
             logger.exception("Failed to load dir cache '{}'".format(path_info))
             return []
         finally:
