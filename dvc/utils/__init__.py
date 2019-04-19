@@ -2,8 +2,7 @@
 
 from __future__ import unicode_literals
 
-import yaml
-from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2
+from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
 
 import os
 import sys
@@ -19,7 +18,7 @@ import colorama
 import re
 import logging
 
-from yaml.scanner import ScannerError
+from ruamel.yaml import YAML
 
 
 logger = logging.getLogger(__name__)
@@ -243,18 +242,16 @@ def current_timestamp():
     return int(nanotime.timestamp(time.time()))
 
 
-def load_stage_file(path):
-    with open(path, "r") as fobj:
-        return load_stage_file_fobj(fobj, path)
+def from_yaml_string(s):
+    return YAML().load(StringIO(s))
 
 
-def load_stage_file_fobj(fobj, path):
-    from dvc.exceptions import StageFileCorruptedError
-
-    try:
-        return yaml.safe_load(fobj) or {}
-    except ScannerError:
-        raise StageFileCorruptedError(path)
+def to_yaml_string(data):
+    stream = StringIO()
+    yaml = YAML()
+    yaml.default_flow_style = False
+    yaml.dump(data, stream)
+    return stream.getvalue()
 
 
 def dvc_walk(

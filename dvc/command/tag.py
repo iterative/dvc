@@ -1,6 +1,6 @@
-import yaml
 import logging
 
+from dvc.utils import to_yaml_string
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
@@ -50,7 +50,7 @@ class CmdTagList(CmdBase):
                     recursive=self.args.recursive,
                 )
                 if tags:
-                    logger.info(yaml.dump(tags, default_flow_style=False))
+                    logger.info(to_yaml_string(tags))
             except DvcException:
                 logger.exception("failed list tags")
                 return 1

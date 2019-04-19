@@ -4,6 +4,7 @@ import filecmp
 import logging
 
 from dvc.main import main
+from dvc.utils import from_yaml_string
 
 from tests.basic_env import TestDvc
 
@@ -64,20 +65,19 @@ class TestTagAll(TestDvc):
         ret = main(["tag", "list"])
         self.assertEqual(ret, 0)
 
-        expected = (
-            "bar.dvc:\n"
-            "  bar:\n"
-            "    v1:\n"
-            "      md5: 8978c98bb5a48c2fb5f2c4c905768afa\n"
-            "foo.dvc:\n"
-            "  foo:\n"
-            "    v1:\n"
-            "      md5: acbd18db4cc2f85cedef654fccc4a4d8\n"
-        )
+        expected = {
+            "foo.dvc": {
+                "foo": {"v1": {"md5": "acbd18db4cc2f85cedef654fccc4a4d8"}}
+            },
+            "bar.dvc": {
+                "bar": {"v1": {"md5": "8978c98bb5a48c2fb5f2c4c905768afa"}}
+            },
+        }
 
         stdout = "\n".join(record.message for record in self._caplog.records)
+        received = from_yaml_string(stdout)
 
-        assert expected == stdout
+        assert expected == received
 
         ret = main(["tag", "remove", "v1"])
         self.assertEqual(ret, 0)

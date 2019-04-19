@@ -6,7 +6,6 @@ import uuid
 import shutil
 import getpass
 import platform
-import yaml
 import copy
 import logging
 
@@ -27,7 +26,8 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils import file_md5, load_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
 from tests.utils import spy
@@ -629,8 +629,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         stage_file_path = stage.relpath
         content = load_stage_file(stage_file_path)
         del content["outs"][0]["md5"]
-        with open(stage_file_path, "w") as stage_file:
-            yaml.dump(content, stage_file)
+        dump_stage_file(stage_file_path, content)
 
         with self._caplog.at_level(logging.WARNING, logger="dvc"):
             self._caplog.clear()

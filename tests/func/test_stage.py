@@ -1,4 +1,3 @@
-import yaml
 import tempfile
 import os
 
@@ -6,7 +5,7 @@ from dvc.main import main
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileFormatError
-from dvc.utils import load_stage_file
+from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
 
@@ -74,8 +73,6 @@ class TestSchemaDepsOuts(TestSchema):
 
 class TestReload(TestDvc):
     def test(self):
-        import yaml
-
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
         stage = stages[0]
@@ -86,9 +83,7 @@ class TestReload(TestDvc):
         # NOTE: checking that reloaded stage didn't change its checksum
         md5 = "11111111111111111111111111111111"
         d[stage.PARAM_MD5] = md5
-
-        with open(stage.relpath, "w") as fobj:
-            yaml.safe_dump(d, fobj, default_flow_style=False)
+        dump_stage_file(stage.relpath, d)
 
         stage = Stage.load(self.dvc, stage.relpath)
         self.assertTrue(stage is not None)
@@ -109,16 +104,13 @@ class TestDefaultWorkingDirectory(TestDvc):
         d = stage.dumpd()
         self.assertEqual(d[stage.PARAM_WDIR], ".")
 
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[stage.PARAM_WDIR], ".")
 
         del d[stage.PARAM_WDIR]
-        with open(stage.relpath, "w") as fobj:
-            yaml.safe_dump(d, fobj, default_flow_style=False)
+        dump_stage_file(stage.relpath, d)
 
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertIsNone(d.get(stage.PARAM_WDIR))
 
         with self.dvc.state:
@@ -165,3 +157,13 @@ class TestExternalRemoteResolution(TestDvc):
         assert main(["import", "remote://storage/file", "movie.txt"]) == 0
 
         assert os.path.exists("movie.txt")
+
+
+def test_md5_ignores_comments(repo_dir, dvc):
+    stage, = dvc.add("foo")
+
+    with open(stage.path, "a") as f:
+        f.write("# End comment\n")
+
+    new_stage = Stage.load(dvc, stage.path)
+    assert not new_stage.changed_md5()

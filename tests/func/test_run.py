@@ -5,12 +5,12 @@ import mock
 import shutil
 import filecmp
 import subprocess
-import yaml
 
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5, load_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file
 from dvc.system import System
 from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
 from dvc.stage import StageFileBadNameError, MissingDep
@@ -615,15 +615,13 @@ class TestCmdRunWorkingDirectory(TestDvc):
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
         )
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
 
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
         )
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
 
     def test_fname_changes_path_and_wdir(self):
@@ -640,8 +638,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         )
 
         # Check that it is dumped properly (relative to fname)
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], "..")
 
     def test_cwd_is_ignored(self):
