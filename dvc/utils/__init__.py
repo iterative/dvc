@@ -119,27 +119,21 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
-    fsrc = open(src, "rb")
-
     if os.path.isdir(dest):
-        fdest = open(os.path.join(dest, os.path.basename(src)), "wb+")
-    else:
-        fdest = open(dest, "wb+")
+        dest = os.path.join(dest, os.path.basename(src))
 
-    while True:
-        buf = fsrc.read(LOCAL_CHUNK_SIZE)
-        if not buf:
-            break
-        fdest.write(buf)
-        copied += len(buf)
-        if not no_progress_bar:
-            progress.update_target(name, copied, total)
+    with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+        while True:
+            buf = fsrc.read(LOCAL_CHUNK_SIZE)
+            if not buf:
+                break
+            fdest.write(buf)
+            copied += len(buf)
+            if not no_progress_bar:
+                progress.update_target(name, copied, total)
 
     if not no_progress_bar:
         progress.finish_target(name)
-
-    fsrc.close()
-    fdest.close()
 
 
 def move(src, dst):

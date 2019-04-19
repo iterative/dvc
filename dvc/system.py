@@ -102,22 +102,13 @@ class System(object):
 
         FICLONE = 0x40049409
 
-        s = open(src, "r")
-        d = open(dst, "w+")
-
         try:
-            ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
-        except IOError:
-            s.close()
-            d.close()
-            os.unlink(dst)
-            raise
-
-        s.close()
-        d.close()
-
-        if ret != 0:
-            os.unlink(dst)
+            ret = 255
+            with open(src, "r") as s, open(dst, "w+") as d:
+                ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
+        finally:
+            if ret != 0:
+                os.unlink(dst)
 
         return ret
 
