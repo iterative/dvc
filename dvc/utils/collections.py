@@ -1,9 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
+from dvc.utils.compat import Mapping
 
 
 # just simple check for Nones and emtpy strings
@@ -45,6 +41,7 @@ def apply_diff(src, dest):
                     dest[i] = value
     else:
         raise ValueError(
-            "Can't apply diff from %s to %s"
-            % (src.__class__.__name__, dest.__class__.__name__)
+            "Can't apply diff from {} to {}".format(
+                src.__class__.__name__, dest.__class__.__name__
+            )
         )

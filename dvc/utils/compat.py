@@ -1,4 +1,5 @@
 """Handle import compatibility between Python 2 and Python 3"""
+from __future__ import absolute_import
 
 import sys
 import os
@@ -97,6 +98,7 @@ if is_py2:
     import ConfigParser  # noqa: F401
     from io import open  # noqa: F401
     from pathlib2 import Path  # noqa: F401
+    from collections import Mapping  # noqa: F401
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -136,6 +138,7 @@ elif is_py3:
         SimpleHTTPRequestHandler,  # noqa: F401
     )  # noqa: F401
     import configparser as ConfigParser  # noqa: F401
+    from collections.abc import Mapping  # noqa: F401
 
     builtin_str = str  # noqa: F821
     str = str  # noqa: F821

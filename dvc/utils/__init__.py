@@ -245,17 +245,17 @@ def current_timestamp():
 
 def load_stage_file(path):
     with open(path, "r", encoding="utf-8") as fd:
-        return load_stage_file_fd(fd, path)
+        return load_stage_fd(fd, path)
 
 
-def load_stage_file_fd(fd, path):
+def load_stage_fd(fd, path):
     from dvc.exceptions import StageFileCorruptedError
 
     try:
         yaml = YAML()
         return yaml.load(fd) or {}
-    except YAMLError:
-        raise StageFileCorruptedError(path)
+    except YAMLError as exc:
+        raise StageFileCorruptedError(path, cause=exc)
 
 
 def dump_stage_file(path, data):

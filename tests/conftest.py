@@ -23,7 +23,7 @@ def repo_dir():
 
 
 # NOTE: this duplicates code from GitFixture,
-#       would fix itself once class-based fixtures are removed
+# would fix itself once class-based fixtures are removed
 @pytest.fixture
 def git(repo_dir):
     # NOTE: handles EAGAIN error on BSD systems (osx in our case).

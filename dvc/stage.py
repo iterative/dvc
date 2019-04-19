@@ -15,7 +15,7 @@ import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env, load_stage_file_fd, dump_stage_file
+from dvc.utils import dict_md5, fix_env, load_stage_fd, dump_stage_file
 from dvc.utils.collections import apply_diff
 
 
@@ -569,7 +569,7 @@ class Stage(object):
         Stage._check_isfile(repo, fname)
 
         with repo.tree.open(fname) as fd:
-            d = load_stage_file_fd(fd, fname)
+            d = load_stage_fd(fd, fname)
         # Making a deepcopy since the original structure
         # looses keys in deps and outs load
         state = copy.deepcopy(d)
