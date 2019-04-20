@@ -279,6 +279,33 @@ class TestMetrics(TestDvc):
         assert expected_txt in stdout
         assert expected_json in stdout
 
+    def test_show_all_should_be_current_dir_agnostic(self):
+        os.chdir(self.DATA_DIR)
+
+        metrics = self.dvc.metrics.show(all_branches=True)
+        self.assertMetricsHaveRelativePaths(metrics)
+
+    def assertMetricsHaveRelativePaths(self, metrics):
+        root_relpath = os.path.relpath(self.dvc.root_dir)
+        metric_path = os.path.join(root_relpath, "metric")
+        metric_json_path = os.path.join(root_relpath, "metric_json")
+        metric_tsv_path = os.path.join(root_relpath, "metric_tsv")
+        metric_htsv_path = os.path.join(root_relpath, "metric_htsv")
+        metric_csv_path = os.path.join(root_relpath, "metric_csv")
+        metric_hcsv_path = os.path.join(root_relpath, "metric_hcsv")
+        for branch in ["bar", "baz", "foo"]:
+            self.assertEqual(
+                set(metrics[branch].keys()),
+                {
+                    metric_path,
+                    metric_json_path,
+                    metric_tsv_path,
+                    metric_htsv_path,
+                    metric_csv_path,
+                    metric_hcsv_path,
+                },
+            )
+
 
 class TestMetricsRecursive(TestDvc):
     def setUp(self):

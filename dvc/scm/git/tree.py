@@ -109,7 +109,7 @@ class GitTree(BaseTree):
                     tree.abspath, ignore_file_handler=ignore_file_handler
                 )
             dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
-            yield os.path.normpath(tree.path), dirs, nondirs
+            yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
             for x in self._walk(
@@ -121,7 +121,7 @@ class GitTree(BaseTree):
                 yield x
 
         if not topdown:
-            yield os.path.normpath(tree.path), dirs, nondirs
+            yield os.path.normpath(tree.abspath), dirs, nondirs
 
     def walk(self, top, topdown=True, ignore_file_handler=None):
         """Directory tree generator.
