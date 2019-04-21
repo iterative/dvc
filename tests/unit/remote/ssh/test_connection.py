@@ -1,29 +1,13 @@
 from __future__ import unicode_literals
 
-import mockssh
 import os
 import posixpath
-import pytest
-
-from dvc.remote.ssh.connection import SSHConnection
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-user = "user"
-key_path = os.path.join(here, "{0}.key".format(user))
-
-
-@pytest.yield_fixture()
-def ssh():
-    users = {user: key_path}
-    with mockssh.Server(users) as s:
-        yield SSHConnection(
-            s.host, username=user, port=s.port, key_filename=key_path
-        )
-
 
 def test_connection(ssh):
-    assert ssh.execute("ls /")
+    assert ssh.execute("dir")
 
 
 def test_isdir(ssh):

@@ -1,7 +1,11 @@
+from __future__ import unicode_literals
+import mockssh
 import pytest
+import os
 from git import Repo
 from git.exc import GitCommandNotFound
 
+from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
 from .basic_env import TestDirFixture
 
@@ -57,3 +61,26 @@ def dvc(repo_dir, git):
         yield dvc
     finally:
         dvc.scm.git.close()
+
+
+here = os.path.abspath(os.path.dirname(__file__))
+
+user = "user"
+key_path = os.path.join(here, "{0}.key".format(user))
+
+
+@pytest.yield_fixture()
+def ssh_server():
+    users = {user: key_path}
+    with mockssh.Server(users) as s:
+        yield s
+
+
+@pytest.yield_fixture()
+def ssh(ssh_server):
+    yield SSHConnection(
+        ssh_server.host,
+        username=user,
+        port=ssh_server.port,
+        key_filename=key_path,
+    )
