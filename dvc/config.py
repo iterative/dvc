@@ -52,6 +52,20 @@ def supported_loglevel(level):
     return level in ["info", "debug", "warning", "error"]
 
 
+def supported_core_hash(hash_names):
+    """Checks if hash config option has a valid value.
+
+    Args:
+        hash_names (list/string): hash name(s).
+    """
+    if isinstance(hash_names, str):
+        hash_names = [h.strip() for h in hash_names.split(",")]
+    for h in hash_names:
+        if h not in ["sha256", "md5"]:
+            return False
+    return True
+
+
 def supported_cloud(cloud):
     """Checks if obsoleted cloud option has a valid value.
 
@@ -144,6 +158,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
     SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
+    SECTION_CORE_HASH = "hash"
+    SECTION_CORE_HASH_SCHEMA = supported_core_hash
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -190,6 +206,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         # backward compatibility
         Optional(SECTION_CORE_CLOUD, default=""): SECTION_CORE_CLOUD_SCHEMA,
         Optional(SECTION_CORE_STORAGEPATH, default=""): str,
+        Optional(SECTION_CORE_HASH, default=None): SECTION_CORE_HASH_SCHEMA,
     }
 
     # backward compatibility

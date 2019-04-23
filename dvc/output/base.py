@@ -143,7 +143,11 @@ class OutputBase(object):
 
     @property
     def checksum(self):
-        return self.info.get(self.remote.PARAM_CHECKSUM)
+        for h in self.remote.get_hash_list():
+            info = self.info.get(h)
+            if info:
+                return info
+        return None
 
     @property
     def is_dir_checksum(self):
@@ -154,8 +158,12 @@ class OutputBase(object):
         return self.remote.exists(self.path_info)
 
     def changed_checksum(self):
+        cs = self.checksum
+        if cs is None:
+            self.remote.update_state_checksum(self.path_info)
+            return True
         return (
-            self.checksum
+            cs
             != self.remote.save_info(self.path_info)[
                 self.remote.PARAM_CHECKSUM
             ]

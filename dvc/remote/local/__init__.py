@@ -74,6 +74,19 @@ class RemoteLOCAL(RemoteBase):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
+        conf = repo.config.config[Config.SECTION_CORE]
+        if conf:
+            core_hash = conf.get(Config.SECTION_CORE_HASH, None)
+            if core_hash:
+                if isinstance(core_hash, str):
+                    core_hash = [h.strip() for h in core_hash.split(",")]
+                self.hash = core_hash
+            else:
+                self.hash = ["md5"]
+        else:
+            self.hash = ["md5"]
+        RemoteLOCAL.PARAM_CHECKSUM = self.hash[0]
+
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
@@ -204,8 +217,11 @@ class RemoteLOCAL(RemoteBase):
     def walk(self, path_info):
         return os.walk(path_info["path"])
 
+    def get_hash_list(self):
+        return self.hash
+
     def get_file_checksum(self, path_info):
-        return file_md5(path_info["path"])[0]
+        return file_md5(path_info["path"], self.hash[0])[0]
 
     def remove(self, path_info):
         if path_info["scheme"] != "local":

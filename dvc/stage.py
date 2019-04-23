@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from dvc.config import Config
 from dvc.utils.compat import str
 
 import copy
@@ -120,6 +121,7 @@ class Stage(object):
     STAGE_FILE_SUFFIX = ".dvc"
 
     PARAM_MD5 = "md5"
+    PARAM_SHA256 = "sha256"
     PARAM_CMD = "cmd"
     PARAM_WDIR = "wdir"
     PARAM_DEPS = "deps"
@@ -129,6 +131,7 @@ class Stage(object):
 
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
+        Optional(PARAM_SHA256): Or(str, None),
         Optional(PARAM_CMD): Or(str, None),
         Optional(PARAM_WDIR): Or(str, None),
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
@@ -148,6 +151,7 @@ class Stage(object):
         deps=None,
         outs=None,
         md5=None,
+        sha256=None,
         locked=False,
         tag=None,
         state=None,
@@ -164,9 +168,22 @@ class Stage(object):
         self.outs = outs
         self.deps = deps
         self.md5 = md5
+        self.sha256 = sha256
         self.locked = locked
         self.tag = tag
         self._state = state or {}
+
+        conf = repo.config.config[Config.SECTION_CORE]
+        if conf:
+            core_hash = conf.get(Config.SECTION_CORE_HASH, None)
+            if core_hash:
+                if isinstance(core_hash, str):
+                    core_hash = [h.strip() for h in core_hash.split(",")]
+                self.hash = core_hash
+            else:
+                self.hash = ["md5"]
+        else:
+            self.hash = ["md5"]
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -197,7 +214,12 @@ class Stage(object):
         return os.path.isfile(path) and Stage.is_valid_filename(path)
 
     def changed_md5(self):
-        return self.md5 != self._compute_md5()
+        for h in self.hash:
+            checksum = getattr(self, h)
+            if checksum:
+                return checksum != self._compute_md5(h)
+
+        return self._compute_md5(self.hash[0]) is not None
 
     @property
     def is_callback(self):
@@ -608,6 +630,7 @@ class Stage(object):
             ),
             cmd=d.get(Stage.PARAM_CMD),
             md5=d.get(Stage.PARAM_MD5),
+            sha256=d.get(Stage.PARAM_SHA256),
             locked=d.get(Stage.PARAM_LOCKED, False),
             tag=tag,
             state=state,
@@ -625,6 +648,7 @@ class Stage(object):
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
+                Stage.PARAM_SHA256: self.sha256,
                 Stage.PARAM_CMD: self.cmd,
                 Stage.PARAM_WDIR: RemoteBase.to_posixpath(
                     os.path.relpath(self.wdir, os.path.dirname(self.path))
@@ -653,7 +677,7 @@ class Stage(object):
 
         self.repo.scm.track_file(os.path.relpath(fname))
 
-    def _compute_md5(self):
+    def _compute_md5(self, checksum_type=PARAM_MD5):
         from dvc.output.base import OutputBase
 
         d = self.dumpd()
@@ -661,6 +685,8 @@ class Stage(object):
         # NOTE: removing md5 manually in order to not affect md5s in deps/outs
         if self.PARAM_MD5 in d.keys():
             del d[self.PARAM_MD5]
+        if self.PARAM_SHA256 in d.keys():
+            del d[self.PARAM_SHA256]
 
         # Ignore the wdir default value. In this case stage file w/o
         # wdir has the same md5 as a file with the default value specified.
@@ -680,8 +706,13 @@ class Stage(object):
                 OutputBase.PARAM_TAGS,
                 OutputBase.PARAM_PERSIST,
             ],
+            checksum_type=checksum_type,
         )
-        logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
+        logger.debug(
+            "Computed stage '{}' {}: '{}'".format(
+                self.relpath, checksum_type, m
+            )
+        )
         return m
 
     def save(self):
@@ -691,7 +722,8 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-        self.md5 = self._compute_md5()
+        hash_type = self.hash[0]
+        setattr(self, hash_type, self._compute_md5(hash_type))
 
     @staticmethod
     def _changed_entries(entries):

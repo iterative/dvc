@@ -153,6 +153,9 @@ class RemoteBase(object):
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
+    def get_hash_list(self):
+        raise [self.PARAM_CHECKSUM]
+
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
@@ -267,6 +270,20 @@ class RemoteBase(object):
         checksum = self.state.get(path_info)
         if checksum:
             return checksum
+
+        if self.isdir(path_info):
+            checksum = self.get_dir_checksum(path_info)
+        else:
+            checksum = self.get_file_checksum(path_info)
+
+        if checksum:
+            self.state.save(path_info, checksum)
+
+        return checksum
+
+    def update_state_checksum(self, path_info):
+        if not self.exists(path_info):
+            return None
 
         if self.isdir(path_info):
             checksum = self.get_dir_checksum(path_info)
