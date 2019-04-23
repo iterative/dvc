@@ -27,18 +27,22 @@ LOCAL_CHUNK_SIZE = 1024 * 1024
 LARGE_FILE_SIZE = 1024 * 1024 * 1024
 LARGE_DIR_SIZE = 100
 
+CHECKSUM_MD5 = "md5"
+CHECKSUM_SHA256 = "sha256"
+CHECKSUM_MAP = {CHECKSUM_MD5: hashlib.md5, CHECKSUM_SHA256: hashlib.sha256}
+
 
 def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
-def file_md5(fname):
+def file_md5(fname, checksum_type=CHECKSUM_MD5):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import progress
     from dvc.istextfile import istextfile
 
     if os.path.exists(fname):
-        hash_md5 = hashlib.md5()
+        hash_md5 = CHECKSUM_MAP[checksum_type]()
         binary = not istextfile(fname)
         size = os.path.getsize(fname)
         bar = False
@@ -74,12 +78,6 @@ def file_md5(fname):
         return (None, None)
 
 
-def bytes_md5(byts):
-    hasher = hashlib.md5()
-    hasher.update(byts)
-    return hasher.hexdigest()
-
-
 def dict_filter(d, exclude=[]):
     """
     Exclude specified keys from a nested dict
@@ -105,10 +103,12 @@ def dict_filter(d, exclude=[]):
     return d
 
 
-def dict_md5(d, exclude=[]):
+def dict_md5(d, exclude=[], checksum_type=CHECKSUM_MD5):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
-    return bytes_md5(byts)
+    hasher = CHECKSUM_MAP[checksum_type]()
+    hasher.update(byts)
+    return hasher.hexdigest()
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):

@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import schema
 
 from dvc.scheme import Schemes
+from dvc import utils
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
@@ -15,7 +16,6 @@ from dvc.output.ssh import OutputSSH
 from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.local import RemoteLOCAL
 
 OUTS = [
     OutputHDFS,
@@ -42,7 +42,8 @@ OUTS_MAP = {
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUM_SCHEMA = {
-    schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
+    schema.Optional(utils.CHECKSUM_MD5): schema.Or(str, None),
+    schema.Optional(utils.CHECKSUM_SHA256): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
 }
