@@ -8,7 +8,14 @@ def compact(args):
 
 
 def apply_diff(src, dest):
-    """Recursively apply changes from stc to dest"""
+    """Recursively apply changes from src to dest.
+
+    Preserves dest type and hidden info in dest structure,
+    like ruamel.yaml leaves when parses files. This includes comments,
+    ordering and line foldings.
+
+    Used in Stage load/dump cycle to preserve comments and custom formatting.
+    """
     Seq = (list, tuple)
     Container = (Mapping, list, tuple)
 
