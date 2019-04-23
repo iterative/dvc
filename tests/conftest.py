@@ -3,12 +3,13 @@ from git import Repo
 from git.exc import GitCommandNotFound
 
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture, logger
+from .basic_env import TestDirFixture
 
 
 @pytest.fixture(autouse=True)
-def debug():
-    logger.setLevel("DEBUG")
+def debug(caplog):
+    with caplog.at_level("DEBUG", logger="dvc"):
+        yield
 
 
 # Wrap class like fixture as pytest-like one to avoid code duplication
