@@ -16,7 +16,7 @@ import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env
+from dvc.utils import dict_checksum, fix_env
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import load_stage_fd, dump_stage_file
 
@@ -698,7 +698,7 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        m = dict_md5(
+        m = dict_checksum(
             d,
             exclude=[
                 self.PARAM_LOCKED,

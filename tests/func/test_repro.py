@@ -18,7 +18,7 @@ import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5
+from dvc.utils import file_checksum
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
@@ -623,7 +623,9 @@ class TestReproDataSource(TestReproChangedData):
         stages = self.dvc.reproduce(self.foo_stage.path)
 
         self.assertTrue(filecmp.cmp(self.FOO, self.BAR, shallow=False))
-        self.assertEqual(stages[0].outs[0].checksum, file_md5(self.BAR)[0])
+        self.assertEqual(
+            stages[0].outs[0].checksum, file_checksum(self.BAR)[0]
+        )
 
 
 class TestReproChangedDir(TestDvc):

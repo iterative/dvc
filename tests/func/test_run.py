@@ -10,7 +10,7 @@ import subprocess
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5
+from dvc.utils import file_checksum
 from dvc.utils.stage import load_stage_file
 from dvc.system import System
 from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
@@ -53,7 +53,7 @@ class TestRun(TestDvc):
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
         self.assertEqual(stage.outs[0].path, outs[0])
-        self.assertEqual(stage.outs[0].checksum, file_md5(self.FOO)[0])
+        self.assertEqual(stage.outs[0].checksum, file_checksum(self.FOO)[0])
         self.assertTrue(stage.path, fname)
 
         with self.assertRaises(OutputDuplicationError):

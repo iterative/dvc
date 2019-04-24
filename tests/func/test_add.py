@@ -14,7 +14,7 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5, LARGE_DIR_SIZE
+from dvc.utils import file_checksum, LARGE_DIR_SIZE
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage
@@ -28,7 +28,7 @@ from tests.utils import spy, get_gitignore_content
 
 class TestAdd(TestDvc):
     def test(self):
-        md5 = file_md5(self.FOO)[0]
+        md5 = file_checksum(self.FOO)[0]
 
         stages = self.dvc.add(self.FOO)
         self.assertEqual(len(stages), 1)
@@ -251,8 +251,8 @@ class TestDoubleAddUnchanged(TestDvc):
 
 class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
     def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
-        with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
+        file_md5_counter = spy(dvc.remote.local.file_checksum)
+        with patch.object(dvc.remote.local, "file_checksum", file_md5_counter):
             ret = main(["config", "cache.type", "copy"])
             self.assertEqual(ret, 0)
 
@@ -271,8 +271,8 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
 
 class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
     def test(self):
-        file_md5_counter = spy(dvc.remote.local.file_md5)
-        with patch.object(dvc.remote.local, "file_md5", file_md5_counter):
+        file_md5_counter = spy(dvc.remote.local.file_checksum)
+        with patch.object(dvc.remote.local, "file_checksum", file_md5_counter):
 
             ret = main(["config", "cache.type", "copy"])
             self.assertEqual(ret, 0)

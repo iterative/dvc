@@ -36,7 +36,7 @@ def dos2unix(data):
     return data.replace(b"\r\n", b"\n")
 
 
-def file_md5(fname, checksum_type=CHECKSUM_MD5):
+def file_checksum(fname, checksum_type=CHECKSUM_MD5):
     """ get the (md5 hexdigest, md5 digest) of a file """
     from dvc.progress import progress
     from dvc.istextfile import istextfile
@@ -103,7 +103,7 @@ def dict_filter(d, exclude=[]):
     return d
 
 
-def dict_md5(d, exclude=[], checksum_type=CHECKSUM_MD5):
+def dict_checksum(d, exclude=[], checksum_type=CHECKSUM_MD5):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
     hasher = CHECKSUM_MAP[checksum_type]()

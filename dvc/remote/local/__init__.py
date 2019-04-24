@@ -28,7 +28,7 @@ from dvc.utils import (
     copyfile,
     to_chunks,
     tmp_fname,
-    file_md5,
+    file_checksum,
     walk_files,
 )
 from dvc.config import Config
@@ -222,7 +222,7 @@ class RemoteLOCAL(RemoteBase):
         return self.hash
 
     def get_file_checksum(self, path_info):
-        return file_md5(path_info["path"], self.hash[0])[0]
+        return file_checksum(path_info["path"], self.hash[0])[0]
 
     def remove(self, path_info):
         if path_info["scheme"] != "local":
