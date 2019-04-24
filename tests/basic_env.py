@@ -139,6 +139,9 @@ class TestGitFixture(TestDirFixture):
         self.git.index.add([self.CODE])
         self.git.index.commit("add code")
 
+    def tearDown(self):
+        self.git.close()
+
 
 class TestGitSubmoduleFixture(TestGitFixture):
     def __init__(self, root_dir=None):
@@ -161,6 +164,9 @@ class TestDvcFixture(TestGitFixture):
         self.dvc = DvcRepo.init(self._root_dir)
         self.dvc.scm.commit("init dvc")
         logger.setLevel("DEBUG")
+
+    def tearDown(self):
+        self.dvc.scm.git.close()
 
 
 class TestDvcGitInitializedFixture(TestDvcFixture):
