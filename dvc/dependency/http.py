@@ -16,4 +16,5 @@ class DependencyHTTP(DependencyBase, OutputBase):
         if path.startswith("remote"):
             path = urljoin(self.remote.cache_dir, urlparse(path).path)
 
-        self.path_info = {"scheme": urlparse(path).scheme, "path": path}
+        self.path_info["scheme"] = urlparse(path).scheme
+        self.path_info["path"] = path

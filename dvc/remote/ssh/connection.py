@@ -2,6 +2,7 @@ import errno
 import os
 import posixpath
 import logging
+from stat import S_ISDIR
 
 try:
     import paramiko
@@ -72,7 +73,7 @@ class SSHConnection:
 
         self._ssh.close()
 
-    def file_exists(self, path):
+    def exists(self, path):
         self._sftp_connect()
         try:
             return self._sftp.stat(path)
@@ -118,7 +119,7 @@ class SSHConnection:
                 "a file with the same name '{}' already exists".format(path)
             )
 
-        head, tail = os.path.split(path)
+        head, tail = posixpath.split(path)
 
         if head:
             self.makedirs(head)
@@ -126,8 +127,11 @@ class SSHConnection:
         if tail:
             self._sftp.mkdir(path)
 
-    def walk_files(self, directory):
-        from stat import S_ISLNK, S_ISDIR, S_ISREG
+    def walk(self, directory, topdown=True):
+        # NOTE: original os.walk() implementation [1] with default options was
+        # used as a template.
+        #
+        # [1] https://github.com/python/cpython/blob/master/Lib/os.py
 
         self._sftp_connect()
 
@@ -141,27 +145,60 @@ class SSHConnection:
                 cause=exc,
             )
 
+        dirs = []
+        nondirs = []
         for entry in dir_entries:
-            path = posixpath.join(directory, entry.filename)
-
-            if S_ISLNK(entry.st_mode):
-                path = self._sftp.readlink(directory)
-                entry = self._sftp.stat(path)
-
+            name = entry.filename
             if S_ISDIR(entry.st_mode):
-                for inner_path in self.walk_files(path):
-                    yield inner_path
+                dirs.append(name)
+            else:
+                nondirs.append(name)
 
-            elif S_ISREG(entry.st_mode):
-                yield path
+        if topdown:
+            yield directory, dirs, nondirs
 
-    def remove(self, path):
-        self._sftp_connect()
+        for dname in dirs:
+            newpath = posixpath.join(directory, dname)
+            for entry in self.walk(newpath, topdown=topdown):
+                yield entry
+
+        if not topdown:
+            yield directory, dirs, nondirs
+
+    def walk_files(self, directory):
+        for root, dirs, files in self.walk(directory):
+            for fname in files:
+                yield posixpath.join(root, fname)
+
+    def _remove_file(self, path):
         try:
             self._sftp.remove(path)
         except IOError as exc:
             if exc.errno != errno.ENOENT:
                 raise
+
+    def _remove_dir(self, path):
+        for root, dirs, files in self.walk(path, topdown=False):
+            for fname in files:
+                path = posixpath.join(root, fname)
+                self._remove_file(path)
+
+            for dname in dirs:
+                path = posixpath.join(root, dname)
+                self._sftp.rmdir(dname)
+        try:
+            self._sftp.rmdir(path)
+        except IOError as exc:
+            if exc.errno != errno.ENOENT:
+                raise
+
+    def remove(self, path):
+        self._sftp_connect()
+
+        if self.isdir(path):
+            self._remove_dir(path)
+        else:
+            self._remove_file(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
@@ -182,6 +219,11 @@ class SSHConnection:
             os.remove(dest)
 
         os.rename(tmp_file, dest)
+
+    def move(self, src, dst):
+        self.makedirs(posixpath.dirname(dst))
+        self._sftp_connect()
+        self._sftp.rename(src, dst)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()

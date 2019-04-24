@@ -133,9 +133,9 @@ def _check_local_cache(a_out, is_checked):
 
 def _is_dir(path, a_outs, b_outs):
     if a_outs.get(path):
-        return a_outs[path].is_dir_cache
+        return a_outs[path].is_dir_checksum
     else:
-        return b_outs[path].is_dir_cache
+        return b_outs[path].is_dir_checksum
 
 
 def _get_diff_outs(self, diff_dct):

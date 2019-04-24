@@ -34,4 +34,5 @@ class OutputHDFS(OutputBase):
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip("/"))
         user = remote.user if remote else self.group("user")
-        self.path_info = {"scheme": "hdfs", "user": user, "path": path}
+        self.path_info["user"] = user
+        self.path_info["path"] = path
