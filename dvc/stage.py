@@ -217,9 +217,9 @@ class Stage(object):
         for h in self.hash:
             checksum = getattr(self, h)
             if checksum:
-                return checksum != self._compute_md5(h)
+                return checksum != self._compute_checksum(h)
 
-        return self._compute_md5(self.hash[0]) is not None
+        return self._compute_checksum(self.hash[0]) is not None
 
     @property
     def is_callback(self):
@@ -677,7 +677,7 @@ class Stage(object):
 
         self.repo.scm.track_file(os.path.relpath(fname))
 
-    def _compute_md5(self, checksum_type=PARAM_MD5):
+    def _compute_checksum(self, checksum_type=PARAM_MD5):
         from dvc.output.base import OutputBase
 
         d = self.dumpd()
@@ -723,7 +723,7 @@ class Stage(object):
             out.save()
 
         hash_type = self.hash[0]
-        setattr(self, hash_type, self._compute_md5(hash_type))
+        setattr(self, hash_type, self._compute_checksum(hash_type))
 
     @staticmethod
     def _changed_entries(entries):
