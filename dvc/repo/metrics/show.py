@@ -1,14 +1,19 @@
 from __future__ import unicode_literals
 
+import errno
 import os
 import csv
 import json
 import logging
+
 from jsonpath_ng.ext import parse
 
 from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
+NO_METRICS_FILE_AT_REFERENCE_WARNING = (
+    "Metrics file '{}' does not exist at reference: '{}'"
+)
 
 logger = logging.getLogger(__name__)
 
@@ -195,16 +200,7 @@ def _collect_metrics(self, path, recursive, typ, xpath, branch):
     return res
 
 
-def _read_metrics_filesystem(path, typ, xpath, rel_path, branch):
-    if not os.path.exists(path):
-        return None
-    with open(path, "r") as fd:
-        return _read_metric(
-            fd, typ=typ, xpath=xpath, rel_path=rel_path, branch=branch
-        )
-
-
-def _read_metrics(self, metrics, branch):
+def _read_metrics(repo, metrics, branch):
     """Read the content of each metric file and format it.
 
     Args:
@@ -226,15 +222,14 @@ def _read_metrics(self, metrics, branch):
         if not typ:
             typ = os.path.splitext(out.path.lower())[1].replace(".", "")
         if out.use_cache:
-            metric = _read_metrics_filesystem(
-                self.cache.local.get(out.checksum),
-                typ=typ,
-                xpath=xpath,
-                rel_path=out.rel_path,
-                branch=branch,
-            )
+            open_fun = open
+            path = repo.cache.local.get(out.checksum)
         else:
-            with self.tree.open(out.path) as fd:
+            open_fun = repo.tree.open
+            path = out.path
+        try:
+
+            with open_fun(path) as fd:
                 metric = _read_metric(
                     fd,
                     typ=typ,
@@ -242,6 +237,16 @@ def _read_metrics(self, metrics, branch):
                     rel_path=out.rel_path,
                     branch=branch,
                 )
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                logger.warning(
+                    NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
+                        out.rel_path, branch
+                    )
+                )
+                metric = None
+            else:
+                raise
 
         if not metric:
             continue
