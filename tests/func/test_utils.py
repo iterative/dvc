@@ -35,7 +35,9 @@ class TestUtils(TestDvc):
         with open("crlf", "wb+") as fd:
             fd.write(b"a\r\nb\r\nc")
 
-        self.assertEqual(utils.file_md5("cr")[0], utils.file_md5("crlf")[0])
+        self.assertEqual(
+            utils.file_checksum("cr")[0], utils.file_checksum("crlf")[0]
+        )
 
     def test_dict_md5(self):
         d = {
@@ -57,7 +59,9 @@ class TestUtils(TestDvc):
 
         md5 = "8b263fa05ede6c3145c164829be694b4"
 
-        self.assertEqual(md5, utils.dict_md5(d, exclude=["metric", "locked"]))
+        self.assertEqual(
+            md5, utils.dict_checksum(d, exclude=["metric", "locked"])
+        )
 
     def test_boxify(self):
         expected = (

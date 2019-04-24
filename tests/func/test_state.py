@@ -5,7 +5,7 @@ from dvc.path.local import PathLOCAL
 from dvc.utils.compat import str
 
 from dvc.state import State
-from dvc.utils import file_md5
+from dvc.utils import file_checksum
 from dvc.main import main
 from dvc.utils.fs import get_inode
 
@@ -16,7 +16,7 @@ class TestState(TestDvc):
     def test_update(self):
         path = os.path.join(self.dvc.root_dir, self.FOO)
         path_info = PathLOCAL(path=path)
-        md5 = file_md5(path)[0]
+        md5 = file_checksum(path)[0]
 
         state = State(self.dvc, self.dvc.config.config)
 
@@ -32,7 +32,7 @@ class TestState(TestDvc):
             entry_md5 = state.get(path_info)
             self.assertTrue(entry_md5 is None)
 
-            md5 = file_md5(path)[0]
+            md5 = file_checksum(path)[0]
             state.save(path_info, md5)
 
             entry_md5 = state.get(path_info)
@@ -74,7 +74,7 @@ class TestGetStateRecordForInode(TestDvc):
         self.assertNotEqual(inode, state._to_sqlite(inode))
 
         path = os.path.join(self.dvc.root_dir, self.FOO)
-        md5 = file_md5(path)[0]
+        md5 = file_checksum(path)[0]
         get_inode_mock.side_effect = self.mock_get_inode(path, inode)
 
         with state:

@@ -27,7 +27,7 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils import file_md5
+from dvc.utils import file_checksum
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
@@ -816,8 +816,8 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         self._setup_cloud()
         self._prepare_repo()
 
-        data_md5 = file_md5(self.DATA)[0]
-        data_sub_md5 = file_md5(self.DATA_SUB)[0]
+        data_md5 = file_checksum(self.DATA)[0]
+        data_sub_md5 = file_checksum(self.DATA_SUB)[0]
 
         self._test_recursive_push(data_md5, data_sub_md5)
 
@@ -863,8 +863,8 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         ret = main(["remote", "add", "remote_name", "-d", cache_dir])
         self.assertEqual(0, ret)
 
-        checksum_foo = file_md5(self.FOO)[0]
-        checksum_bar = file_md5(self.BAR)[0]
+        checksum_foo = file_checksum(self.FOO)[0]
+        checksum_bar = file_checksum(self.BAR)[0]
         self.message_header = (
             "Some of the cache files do not exist neither locally "
             "nor on remote. Missing cache files: \n"

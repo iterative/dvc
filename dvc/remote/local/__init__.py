@@ -31,7 +31,7 @@ from dvc.utils import (
     copyfile,
     to_chunks,
     tmp_fname,
-    file_md5,
+    file_checksum,
     walk_files,
 )
 from dvc.config import Config
