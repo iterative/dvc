@@ -1,6 +1,7 @@
 import os
 import uuid
 
+import logging
 import mock
 import shutil
 import filecmp
@@ -948,3 +949,33 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
                     mock_run.assert_called_once()
                     mock_checkout.assert_not_called()
+
+
+class TestPersistentOutput(TestDvc):
+    def test_ignore_build_cache(self):
+        warning = "Build cache is ignored when persisting outputs."
+
+        with open("immutable", "w") as fobj:
+            fobj.write("1")
+
+        cmd = [
+            "run",
+            "--overwrite-dvcfile",
+            "--deps",
+            "immutable",
+            "--outs-persist",
+            "greetings",
+            "echo hello>>greetings",
+        ]
+
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
+            assert main(cmd) == 0
+            assert warning not in self._caplog.text
+
+            assert main(cmd) == 0
+            assert warning in self._caplog.text
+
+        # Even if the "immutable" dependency didn't change
+        # it should run the command again, as it is "ignoring build cache"
+        with open("greetings", "r") as fobj:
+            assert "hello\nhello\n" == fobj.read()
