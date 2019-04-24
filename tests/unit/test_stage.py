@@ -16,7 +16,7 @@ class TestStageChecksum(TestCase):
 
         with mock.patch.object(stage, "dumpd", return_value=d):
             self.assertEqual(
-                stage._compute_md5(), "e9521a22111493406ea64a88cda63e0b"
+                stage._compute_checksum(), "e9521a22111493406ea64a88cda63e0b"
             )
 
     def test_wdir_default_ignored(self):
@@ -33,7 +33,7 @@ class TestStageChecksum(TestCase):
 
         with mock.patch.object(stage, "dumpd", return_value=d):
             self.assertEqual(
-                stage._compute_md5(), "e9521a22111493406ea64a88cda63e0b"
+                stage._compute_checksum(), "e9521a22111493406ea64a88cda63e0b"
             )
 
     def test_wdir_non_default_is_not_ignored(self):
@@ -50,7 +50,7 @@ class TestStageChecksum(TestCase):
 
         with mock.patch.object(stage, "dumpd", return_value=d):
             self.assertEqual(
-                stage._compute_md5(), "2ceba15e87f6848aa756502c1e6d24e9"
+                stage._compute_checksum(), "2ceba15e87f6848aa756502c1e6d24e9"
             )
 
 
