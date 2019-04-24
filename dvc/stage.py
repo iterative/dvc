@@ -394,7 +394,21 @@ class Stage(object):
             out.pop(RemoteLOCAL.PARAM_CHECKSUM, None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
-        return old_d == new_d
+        if old_d != new_d:
+            return False
+
+        # NOTE: committing to prevent potential data duplication. For example
+        #
+        #    $ dvc config cache.type hardlink
+        #    $ echo foo > foo
+        #    $ dvc add foo
+        #    $ rm -f foo
+        #    $ echo foo > foo
+        #    $ dvc add foo # should replace foo with a link to cache
+        #
+        old.commit()
+
+        return True
 
     @staticmethod
     def create(

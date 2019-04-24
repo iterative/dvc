@@ -475,3 +475,24 @@ class TestShouldNotTrackGitInternalFiles(TestDvc):
         created_stages_filenames = stage_creator_spy.mock.call_args[0][0]
         for fname in created_stages_filenames:
             self.assertNotIn(".git", fname)
+
+
+class TestAddUnprotected(TestDvc):
+    def test(self):
+        ret = main(["config", "cache.type", "hardlink"])
+        self.assertEqual(ret, 0)
+
+        ret = main(["config", "cache.protected", "true"])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["unprotect", self.FOO])
+        self.assertEqual(ret, 0)
+
+        ret = main(["add", self.FOO])
+        self.assertEqual(ret, 0)
+
+        self.assertFalse(os.access(self.FOO, os.W_OK))
+        self.assertTrue(System.is_hardlink(self.FOO))
