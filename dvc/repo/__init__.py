@@ -443,17 +443,6 @@ class Repo(object):
                     outs.append(out.path + out.sep)
                 stages.append(stage)
 
-            def filter_dirs(dname, root=root):
-                path = os.path.join(root, dname)
-                if path in (self.dvc_dir, self.scm.dir):
-                    return False
-                for out in outs:
-                    if path == os.path.normpath(out) or path.startswith(out):
-                        return False
-                return True
-
-            dirs[:] = list(filter(filter_dirs, dirs))
-
         if check_dag:
             self.check_dag(stages)
 
