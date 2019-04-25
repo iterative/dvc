@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from copy import copy
 
 from dvc.remote.local.slow_link_detection import slow_link_guard
+from dvc import utils
 from dvc.utils.compat import str, makedirs
 
 import os
@@ -74,17 +75,17 @@ class RemoteLOCAL(RemoteBase):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
-        conf = repo.config.config[Config.SECTION_CORE]
-        if conf:
-            core_hash = conf.get(Config.SECTION_CORE_HASH, None)
+        if repo and repo.config and repo.config.config:
+            conf = repo.config.config[Config.SECTION_HASH]
+            core_hash = conf.get(Config.SECTION_HASH_LOCAL, None)
             if core_hash:
                 if isinstance(core_hash, str):
                     core_hash = [h.strip() for h in core_hash.split(",")]
                 self.hash = core_hash
             else:
-                self.hash = ["md5"]
+                self.hash = [utils.CHECKSUM_MD5]
         else:
-            self.hash = ["md5"]
+            self.hash = [utils.CHECKSUM_MD5]
         RemoteLOCAL.PARAM_CHECKSUM = self.hash[0]
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):

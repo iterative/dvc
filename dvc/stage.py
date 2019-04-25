@@ -173,17 +173,17 @@ class Stage(object):
         self.tag = tag
         self._state = state or {}
 
-        conf = repo.config.config[Config.SECTION_CORE]
-        if conf:
-            core_hash = conf.get(Config.SECTION_CORE_HASH, None)
+        if repo and repo.config and repo.config.config:
+            conf = repo.config.config[Config.SECTION_HASH]
+            core_hash = conf.get(Config.SECTION_HASH_LOCAL, None)
             if core_hash:
                 if isinstance(core_hash, str):
                     core_hash = [h.strip() for h in core_hash.split(",")]
                 self.hash = core_hash
             else:
-                self.hash = ["md5"]
+                self.hash = [self.PARAM_MD5]
         else:
-            self.hash = ["md5"]
+            self.hash = [self.PARAM_MD5]
 
     def __repr__(self):
         return "Stage: '{path}'".format(
