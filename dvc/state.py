@@ -85,9 +85,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.dvc_dir = repo.dvc_dir
         self.root_dir = repo.root_dir
 
-        self.row_limit = 100
-        self.row_cleanup_quota = 50
-
         state_config = config.get(Config.SECTION_STATE, {})
         self.row_limit = state_config.get(
             Config.SECTION_STATE_ROW_LIMIT, self.STATE_ROW_LIMIT
