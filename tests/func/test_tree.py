@@ -17,10 +17,10 @@ class TestWorkingTree(TestDir):
         self.tree = WorkingTree()
 
     def test_open(self):
-        self.assertEqual(self.tree.open(self.FOO).read(), self.FOO_CONTENTS)
-        self.assertEqual(
-            self.tree.open(self.UNICODE).read(), self.UNICODE_CONTENTS
-        )
+        with self.tree.open(self.FOO) as fd:
+            self.assertEqual(fd.read(), self.FOO_CONTENTS)
+        with self.tree.open(self.UNICODE) as fd:
+            self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
 
     def test_exists(self):
         self.assertTrue(self.tree.exists(self.FOO))
@@ -47,10 +47,10 @@ class TestGitTree(TestGit):
     def test_open(self):
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
-        self.assertEqual(self.tree.open(self.FOO).read(), self.FOO_CONTENTS)
-        self.assertEqual(
-            self.tree.open(self.UNICODE).read(), self.UNICODE_CONTENTS
-        )
+        with self.tree.open(self.FOO) as fd:
+            self.assertEqual(fd.read(), self.FOO_CONTENTS)
+        with self.tree.open(self.UNICODE) as fd:
+            self.assertEqual(fd.read(), self.UNICODE_CONTENTS)
         with self.assertRaises(IOError):
             self.tree.open("not-existing-file")
         with self.assertRaises(IOError):

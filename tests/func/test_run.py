@@ -381,7 +381,8 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -399,7 +400,8 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsSymlink(TestDvc):
@@ -432,7 +434,8 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -451,7 +454,8 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsHardlink(TestDvc):
@@ -484,7 +488,8 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -503,7 +508,8 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestCmdRunOverwrite(TestDvc):
@@ -603,12 +609,14 @@ class TestCmdRunCliMetrics(TestDvc):
     def test_cached(self):
         ret = main(["run", "-m", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
-        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+        with open("metrics.txt", "r") as fd:
+            self.assertEqual(fd.read().rstrip(), "test")
 
     def test_not_cached(self):
         ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
-        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+        with open("metrics.txt", "r") as fd:
+            self.assertEqual(fd.read().rstrip(), "test")
 
 
 class TestCmdRunWorkingDirectory(TestDvc):

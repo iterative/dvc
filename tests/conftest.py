@@ -41,13 +41,19 @@ def git(repo_dir):
             continue
         break
 
-    git.index.add([repo_dir.CODE])
-    git.index.commit("add code")
-    return git
+    try:
+        git.index.add([repo_dir.CODE])
+        git.index.commit("add code")
+        yield git
+    finally:
+        git.close()
 
 
 @pytest.fixture
 def dvc(repo_dir, git):
-    dvc = DvcRepo.init(repo_dir._root_dir)
-    dvc.scm.commit("init dvc")
-    return dvc
+    try:
+        dvc = DvcRepo.init(repo_dir._root_dir)
+        dvc.scm.commit("init dvc")
+        yield dvc
+    finally:
+        dvc.scm.git.close()

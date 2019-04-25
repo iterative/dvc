@@ -126,9 +126,8 @@ class CheckoutBase(TestDvc):
         self.dvc.scm.commit("adding " + fname)
 
     def read_ignored(self):
-        return list(
-            map(lambda s: s.strip("\n"), open(self.GIT_IGNORE).readlines())
-        )
+        with open(self.GIT_IGNORE) as f:
+            return [s.strip("\n") for s in f.readlines()]
 
     def outs_info(self, stage):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
