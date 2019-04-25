@@ -8,7 +8,7 @@ class TestHash(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        ret = main(["config", "core.hash", "sha256,md5"])
+        ret = main(["config", "hash.local", "sha256,md5"])
         self.assertEqual(0, ret)
 
         ret = main(["status"])
@@ -30,7 +30,7 @@ class TestHash(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        ret = main(["config", "core.hash", "sha256"])
+        ret = main(["config", "hash.local", "sha256"])
         self.assertEqual(0, ret)
 
         ret = main(["status"])
