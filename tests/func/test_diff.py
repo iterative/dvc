@@ -33,8 +33,8 @@ class TestDiff(TestDvc):
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
         self.test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_A_REF: str(self.a_ref)[:7],
+            diff.DIFF_B_REF: str(self.git.head.commit)[:7],
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_TARGET: self.new_file,
@@ -48,8 +48,8 @@ class TestDiff(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
+        self.assertEqual(str(self.a_ref)[:7], out[diff.DIFF_A_REF])
+        self.assertEqual(str(self.git.head.commit)[:7], out[diff.DIFF_B_REF])
 
 
 class TestDiffRepo(TestDiff):
@@ -97,7 +97,7 @@ class TestDiffDir(TestDvc):
         self.dvc.add(self.DATA_DIR)
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
-        self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.a_ref = str(self.dvc.scm.repo.head.commit)[:7]
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
@@ -109,8 +109,8 @@ class TestDiffDir(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
+        self.assertEqual(str(self.a_ref)[:7], out[diff.DIFF_A_REF])
+        self.assertEqual(str(self.git.head.commit)[:7], out[diff.DIFF_B_REF])
 
 
 class TestDiffDirRepo(TestDiffDir):
@@ -119,8 +119,8 @@ class TestDiffDirRepo(TestDiffDir):
     def test(self):
         result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
         test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_A_REF: str(self.a_ref)[:7],
+            diff.DIFF_B_REF: str(self.git.head.commit)[:7],
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_CHANGE: 0,
@@ -149,7 +149,7 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
 
         self.b_ref = self.a_ref
         self.new_checksum = self.old_checksum
-        self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.a_ref = str(self.dvc.scm.repo.head.commit)
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
 
     def test(self):
@@ -157,8 +157,8 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
             self.a_ref, b_ref=self.b_ref, target=self.DATA_DIR
         )
         test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.b_ref),
+            diff.DIFF_A_REF: str(self.a_ref)[:7],
+            diff.DIFF_B_REF: str(self.b_ref)[:7],
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_CHANGE: 0,

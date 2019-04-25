@@ -33,13 +33,16 @@ class Git(Base):
     GIT_DIR = ".git"
 
     def __init__(self, root_dir=os.curdir, repo=None):
+        """Git class constructor.
+        Requires `Repo` class from `git` module (from gitpython package).
+        """
         super(Git, self).__init__(root_dir, repo=repo)
 
-        import git
+        from git import Repo
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.git = git.Repo(root_dir)
+            self.repo = Repo(root_dir)
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
             raise SCMError(msg.format(root_dir))
@@ -48,7 +51,7 @@ class Git(Base):
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
         libpath = env.get("LD_LIBRARY_PATH", None)
-        self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
+        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
 
         self.ignored_paths = []
         self.files_to_track = []
@@ -67,7 +70,7 @@ class Git(Base):
 
     @property
     def dir(self):
-        return self.git.git_dir
+        return self.repo.git_dir
 
     @property
     def ignore_file(self):
@@ -155,7 +158,7 @@ class Git(Base):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
-            self.git.index.add(paths)
+            self.repo.index.add(paths)
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files"
@@ -167,41 +170,41 @@ class Git(Base):
             logger.exception(msg)
 
     def commit(self, msg):
-        self.git.index.commit(msg)
+        self.repo.index.commit(msg)
 
     def checkout(self, branch, create_new=False):
         if create_new:
-            self.git.git.checkout("HEAD", b=branch)
+            self.repo.git.checkout("HEAD", b=branch)
         else:
-            self.git.git.checkout(branch)
+            self.repo.git.checkout(branch)
 
     def branch(self, branch):
-        self.git.git.branch(branch)
+        self.repo.git.branch(branch)
 
     def tag(self, tag):
-        self.git.git.tag(tag)
+        self.repo.git.tag(tag)
 
     def untracked_files(self):
-        files = self.git.untracked_files
-        return [os.path.join(self.git.working_dir, fname) for fname in files]
+        files = self.repo.untracked_files
+        return [os.path.join(self.repo.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
-        # it is equivalent to `bool(self.git.git.ls_files(path))` by
+        # it is equivalent to `bool(self.repo.git.ls_files(path))` by
         # functionality, but ls_files fails on unicode filenames
         path = os.path.relpath(path, self.root_dir)
-        return path in [i[0] for i in self.git.index.entries]
+        return path in [i[0] for i in self.repo.index.entries]
 
     def is_dirty(self):
-        return self.git.is_dirty()
+        return self.repo.is_dirty()
 
     def active_branch(self):
-        return self.git.active_branch.name
+        return self.repo.active_branch.name
 
     def list_branches(self):
-        return [h.name for h in self.git.heads]
+        return [h.name for h in self.repo.heads]
 
     def list_tags(self):
-        return [t.name for t in self.git.tags]
+        return [t.name for t in self.repo.tags]
 
     def _install_hook(self, name, cmd):
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
@@ -244,11 +247,12 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        return GitTree(self.git, rev)
+        return GitTree(self.repo, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
         """Private method for getting the trees and commit hashes of 2 git
-        references
+        references.
+        Requires `gitdb` module (from gitpython package).
 
         Args:
             a_ref(str) - git reference
@@ -261,17 +265,15 @@ class Git(Base):
 
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
+        if b_ref is None:
+            b_ref = self.repo.head.commit
         try:
-            if b_ref is not None:
-                a_commit = self.git.commit(a_ref)
-                b_commit = self.git.commit(b_ref)
-                commits.append(str(a_commit))
-                commits.append(str(b_commit))
-            else:
-                a_commit = self.git.commit(a_ref)
-                b_commit = self.git.head.commit
-                commits.append(str(a_commit))
-                commits.append(str(b_commit))
+            a_commit = self.repo.commit(a_ref)
+            b_commit = self.repo.commit(b_ref)
+            # See https://gitpython.readthedocs.io
+            # /en/2.1.11/reference.html#git.objects.base.Object.__str__
+            commits.append(str(a_commit)[:7])
+            commits.append(str(b_commit)[:7])
             trees[DIFF_A_TREE] = self.get_tree(commits[0])
             trees[DIFF_B_TREE] = self.get_tree(commits[1])
         except (BadName, BadObject) as e:
@@ -279,8 +281,8 @@ class Git(Base):
         return trees, commits
 
     def get_diff_trees(self, a_ref, b_ref=None):
-        """Method for getting two repo trees between two git tag commits
-        returns the dvc hash names of changed file/directory
+        """Method for getting two repo trees between two git tag commits.
+        Returns the dvc hash names of changed file/directory
 
         Args:
             a_ref(str) - git reference
@@ -290,10 +292,10 @@ class Git(Base):
             dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
         """
         diff_dct = {DIFF_EQUAL: False}
-        trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
-        diff_dct[DIFF_A_REF] = commit_refs[0][:7]
-        diff_dct[DIFF_B_REF] = commit_refs[1][:7]
-        if commit_refs[0] == commit_refs[1]:
+        trees, commits = self._get_diff_trees(a_ref, b_ref)
+        diff_dct[DIFF_A_REF] = commits[0]
+        diff_dct[DIFF_B_REF] = commits[1]
+        if commits[0] == commits[1]:
             diff_dct[DIFF_EQUAL] = True
             return diff_dct
         diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
