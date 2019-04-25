@@ -691,7 +691,7 @@ class TestCachedMetrics(TestDvc):
 
         # TestDvc currently is based on TestGit, so it is safe to use
         # scm.git for now
-        self.dvc.scm.git.git.clean("-fd")
+        self.dvc.scm.repo.git.clean("-fd")
 
         self.dvc = DvcRepo(".")
 

@@ -29,7 +29,7 @@ class TestCollect(TestDvc):
 
     def _check(self, branch, target, with_deps, expected):
         if branch:
-            self.dvc.tree = GitTree(self.dvc.scm.git, branch)
+            self.dvc.tree = GitTree(self.dvc.scm.repo, branch)
         else:
             self.dvc.tree = WorkingTree()
         result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
