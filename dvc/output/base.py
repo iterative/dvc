@@ -165,7 +165,7 @@ class OutputBase(object):
         return (
             cs
             != self.remote.save_info(self.path_info)[
-                self.remote.PARAM_CHECKSUM
+                self.remote.get_prefer_hash_type()
             ]
         )
 
