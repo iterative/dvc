@@ -8,6 +8,7 @@ import getpass
 import platform
 import copy
 import logging
+import pytest
 
 from mock import patch
 
@@ -29,6 +30,8 @@ from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
+from tests.conftest import user
+from tests.conftest import key_path
 from tests.utils import spy
 
 
@@ -149,6 +152,25 @@ def get_ssh_url():
     )
 
 
+def get_ssh_url_mocked(user, port):
+    path = get_local_storagepath()
+    if os.name == "nt":
+        # NOTE: On Windows get_local_storagepath() will return an ntpath
+        # that looks something like `C:\some\path`, which is not compatible
+        # with SFTP paths [1], so we need to convert it to a proper posixpath.
+        # To do that, we should construct a posixpath that would be relative
+        # to the server's root. In our case our ssh server is running with
+        # `c:/` as a root, and our URL format requires absolute paths, so the
+        # resulting path would look like `/some/path`.
+        #
+        # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
+        drive, path = os.path.splitdrive(path)
+        assert drive == "c:"
+        path = path.replace("\\", "/")
+    url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
+    return url
+
+
 def get_hdfs_url():
     return "hdfs://{}@127.0.0.1{}".format(
         getpass.getuser(), get_local_storagepath()
@@ -219,6 +241,9 @@ class TestDataCloudBase(TestDvc):
     def _get_url(self):
         return ""
 
+    def _get_keyfile(self):
+        return None
+
     def _ensure_should_run(self):
         if not self._should_test():
             raise SkipTest(
@@ -229,9 +254,11 @@ class TestDataCloudBase(TestDvc):
         self._ensure_should_run()
 
         repo = self._get_url()
+        keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
         self.cloud = DataCloud(self.dvc, config)
 
         self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
@@ -390,6 +417,26 @@ class TestRemoteSSH(TestDataCloudBase):
 
     def _get_url(self):
         return get_ssh_url()
+
+    def _get_cloud_class(self):
+        return RemoteSSH
+
+
+@pytest.mark.usefixtures("ssh_server")
+class TestRemoteSSHMocked(TestDataCloudBase):
+    @pytest.fixture(autouse=True)
+    def setup_method_fixture(self, request, ssh_server):
+        self.ssh_server = ssh_server
+        self.method_name = request.function.__name__
+
+    def _get_url(self):
+        return get_ssh_url_mocked(user, self.ssh_server.port)
+
+    def _get_keyfile(self):
+        return key_path
+
+    def _should_test(self):
+        return True
 
     def _get_cloud_class(self):
         return RemoteSSH
