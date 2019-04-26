@@ -165,7 +165,10 @@ class RemoteSSH(RemoteBase):
 
             try:
                 ssh.download(
-                    from_info["path"], to_info["path"], progress_title=name
+                    from_info["path"],
+                    to_info["path"],
+                    progress_title=name,
+                    no_progress_bar=no_progress_bar,
                 )
             except Exception:
                 logger.exception(
@@ -192,7 +195,10 @@ class RemoteSSH(RemoteBase):
 
                 try:
                     ssh.upload(
-                        from_info["path"], to_info["path"], progress_title=name
+                        from_info["path"],
+                        to_info["path"],
+                        progress_title=name,
+                        no_progress_bar=no_progress_bar,
                     )
                 except Exception:
                     logger.exception(
