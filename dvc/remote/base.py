@@ -157,7 +157,7 @@ class RemoteBASE(object):
         return getattr(self.repo.cache, self.scheme)
 
     def get_hash_list(self):
-        raise [self.PARAM_CHECKSUM]
+        return [self.PARAM_CHECKSUM]
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError
