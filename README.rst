@@ -24,6 +24,10 @@
 .. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/iterative/dvc
   :alt: Codecov
+  
+.. image:: https://img.shields.io/badge/patreon-donate-green.svg
+  :target: https://www.patreon.com/DVCorg/overview
+  :alt: Donate
 
 |
 
