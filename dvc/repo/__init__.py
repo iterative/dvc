@@ -285,12 +285,14 @@ class Repo(object):
 
                 for out in stage.outs:
                     scheme = out.path_info["scheme"]
-                    cache[scheme] += self._collect_used_cache(
-                        out,
-                        branch=branch,
-                        remote=remote,
-                        force=force,
-                        jobs=jobs,
+                    cache[scheme].extend(
+                        self._collect_used_cache(
+                            out,
+                            branch=branch,
+                            remote=remote,
+                            force=force,
+                            jobs=jobs,
+                        )
                     )
 
         return cache
