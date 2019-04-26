@@ -78,18 +78,14 @@ class RemoteLOCAL(RemoteBASE):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
+        self.hash = [utils.CHECKSUM_MD5]
         if repo and repo.config and repo.config.config:
             conf = repo.config.config[Config.SECTION_HASH]
-            core_hash = conf.get(Config.SECTION_HASH_LOCAL, None)
-            if core_hash:
-                if isinstance(core_hash, str):
-                    core_hash = [h.strip() for h in core_hash.split(",")]
-                self.hash = core_hash
-            else:
-                self.hash = [utils.CHECKSUM_MD5]
-        else:
-            self.hash = [utils.CHECKSUM_MD5]
-        RemoteLOCAL.PARAM_CHECKSUM = self.hash[0]
+            hash_local = conf.get(Config.SECTION_HASH_LOCAL, None)
+            if hash_local:
+                if isinstance(hash_local, str):
+                    hash_local = [h.strip() for h in hash_local.split(",")]
+                self.hash = hash_local
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
@@ -223,6 +219,9 @@ class RemoteLOCAL(RemoteBASE):
     def get_hash_list(self):
         return self.hash
 
+    def get_prefer_hash_type(self):
+        return self.hash[0]
+
     def get_file_checksum(self, path_info):
         return file_md5(path_info.path, self.hash[0])[0]
 
@@ -333,7 +332,7 @@ class RemoteLOCAL(RemoteBASE):
         by_md5 = {}
 
         for info in checksum_infos:
-            md5 = info[self.PARAM_CHECKSUM]
+            md5 = info[self.get_prefer_hash_type()]
 
             if show_checksums:
                 by_md5[md5] = {"name": md5}

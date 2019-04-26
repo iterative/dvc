@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-from dvc.config import Config
 from dvc.utils.compat import str
 
 import copy
@@ -173,17 +172,9 @@ class Stage(object):
         self.tag = tag
         self._state = state or {}
 
-        if repo and repo.config and repo.config.config:
-            conf = repo.config.config[Config.SECTION_HASH]
-            core_hash = conf.get(Config.SECTION_HASH_LOCAL, None)
-            if core_hash:
-                if isinstance(core_hash, str):
-                    core_hash = [h.strip() for h in core_hash.split(",")]
-                self.hash = core_hash
-            else:
-                self.hash = [self.PARAM_MD5]
-        else:
-            self.hash = [self.PARAM_MD5]
+        self.hash = [self.PARAM_MD5]
+        if repo and repo.cache and repo.cache.local and repo.cache.local.hash:
+            self.hash = repo.cache.local.hash
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -392,7 +383,6 @@ class Stage(object):
         """
         Checks if this stage has been already ran and stored
         """
-        from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
 
         old = Stage.load(self.repo, self.path)
@@ -413,7 +403,7 @@ class Stage(object):
         new_d.pop(self.PARAM_MD5, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(RemoteLOCAL.PARAM_CHECKSUM, None)
+            out.pop(self.hash[0], None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
         if old_d != new_d:

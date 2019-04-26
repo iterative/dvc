@@ -159,6 +159,9 @@ class RemoteBASE(object):
     def get_hash_list(self):
         return [self.PARAM_CHECKSUM]
 
+    def get_prefer_hash_type(self):
+        return self.PARAM_CHECKSUM
+
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
@@ -186,7 +189,7 @@ class RemoteBASE(object):
                 dir_info.append(
                     {
                         self.PARAM_RELPATH: relpath,
-                        self.PARAM_CHECKSUM: checksum,
+                        self.get_prefer_hash_type(): checksum,
                     }
                 )
 
@@ -298,7 +301,7 @@ class RemoteBASE(object):
 
     def save_info(self, path_info):
         assert path_info.scheme == self.scheme
-        return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
+        return {self.get_prefer_hash_type(): self.get_checksum(path_info)}
 
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
@@ -327,7 +330,7 @@ class RemoteBASE(object):
             logger.debug("'{}' doesn't exist.".format(path_info))
             return True
 
-        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        checksum = checksum_info.get(self.get_prefer_hash_type())
         if checksum is None:
             logger.debug("checksum for '{}' is missing.".format(path_info))
             return True
@@ -338,7 +341,7 @@ class RemoteBASE(object):
             )
             return True
 
-        actual = self.save_info(path_info)[self.PARAM_CHECKSUM]
+        actual = self.save_info(path_info)[self.get_prefer_hash_type()]
         if checksum != actual:
             logger.debug(
                 "checksum '{}'(actual '{}') for '{}' has changed.".format(
@@ -379,11 +382,10 @@ class RemoteBASE(object):
 
         entry_info = copy(path_info)
         for entry in dir_info:
-            entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_checksum = entry[self.get_prefer_hash_type()]
             entry_info.path = self.ospath.join(
                 path_info.path, entry[self.PARAM_RELPATH]
             )
-
             self._save_file(entry_info, entry_checksum, save_link=False)
 
         self.state.save_link(path_info)
@@ -412,7 +414,7 @@ class RemoteBASE(object):
                 self.scheme,
             )
 
-        checksum = checksum_info[self.PARAM_CHECKSUM]
+        checksum = checksum_info[self.get_prefer_hash_type()]
         if not self.changed_cache(checksum):
             self._checkout(path_info, checksum)
             return
@@ -500,13 +502,15 @@ class RemoteBASE(object):
         )
 
     def gc(self, cinfos):
-        from dvc.remote.local import RemoteLOCAL
 
-        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+        used = {
+            info[self.repo.cache.local.get_prefer_hash_type()]
+            for info in cinfos["local"]
+        }
 
-        if self.scheme != "":
+        if self.scheme != "local":
             used |= {
-                info[self.PARAM_CHECKSUM]
+                info[self.get_prefer_hash_type()]
                 for info in cinfos.get(self.scheme, [])
             }
 
@@ -557,7 +561,7 @@ class RemoteBASE(object):
             return True
 
         for entry in self.get_dir_cache(checksum):
-            checksum = entry[self.PARAM_CHECKSUM]
+            checksum = entry[self.get_prefer_hash_type()]
             if self.changed_cache_file(checksum):
                 return True
 
@@ -635,12 +639,12 @@ class RemoteBASE(object):
         entry_info = copy(path_info)
         for entry in dir_info:
             relpath = entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_checksum = entry[self.get_prefer_hash_type()]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info.url = self.ospath.join(path_info.url, relpath)
             entry_info.path = self.ospath.join(path_info.path, relpath)
 
-            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
+            entry_checksum_info = {self.get_prefer_hash_type(): entry_checksum}
             if self.changed(entry_info, entry_checksum_info):
                 if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
@@ -682,7 +686,7 @@ class RemoteBASE(object):
         ):
             raise NotImplementedError
 
-        checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        checksum = checksum_info.get(self.get_prefer_hash_type())
         if not checksum:
             msg = "No checksum info for '{}'."
             logger.debug(msg.format(str(path_info)))

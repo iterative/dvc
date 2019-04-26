@@ -78,6 +78,12 @@ def file_checksum(fname, checksum_type=CHECKSUM_MD5):
         return (None, None)
 
 
+def bytes_checksum(byts, checksum_type=CHECKSUM_MD5):
+    hasher = CHECKSUM_MAP[checksum_type]()
+    hasher.update(byts)
+    return hasher.hexdigest()
+
+
 def dict_filter(d, exclude=[]):
     """
     Exclude specified keys from a nested dict
@@ -106,9 +112,7 @@ def dict_filter(d, exclude=[]):
 def dict_checksum(d, exclude=[], checksum_type=CHECKSUM_MD5):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
-    hasher = CHECKSUM_MAP[checksum_type]()
-    hasher.update(byts)
-    return hasher.hexdigest()
+    return bytes_checksum(byts, checksum_type)
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
