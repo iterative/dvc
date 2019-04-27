@@ -179,7 +179,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_STORAGEPATH = "storagepath"
 
     SECTION_CORE_SCHEMA = {
-        Optional(SECTION_CORE_LOGLEVEL, default="info"): And(
+        Optional(SECTION_CORE_LOGLEVEL): And(
             str, Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA
         ),
         Optional(SECTION_CORE_REMOTE, default=""): And(str, Use(str.lower)),
