@@ -15,7 +15,7 @@ nanotime>=0.5.2
 pyasn1>=0.4.1
 schema>=0.6.7
 paramiko>=2.4.1
-jsonpath-rw==1.4.0
+jsonpath-ng>=1.4.3
 requests>=2.18.4
 wheel>=0.31.1
 futures>=3.2.0; python_version == "2.7"

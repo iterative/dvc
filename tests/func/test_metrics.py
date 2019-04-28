@@ -37,6 +37,35 @@ class TestMetrics(TestDvc):
                 fd.write("branch\n")
                 fd.write(branch)
 
+            if branch == "foo":
+                deviation_mse_train = 0.173461
+            else:
+                deviation_mse_train = 0.356245
+
+            with open("metric_json_ext", "w+") as fd:
+                json.dump(
+                    {
+                        "metrics": [
+                            {
+                                "dataset": "train",
+                                "deviation_mse": deviation_mse_train,
+                                "value_mse": 0.421601,
+                            },
+                            {
+                                "dataset": "testing",
+                                "deviation_mse": 0.289545,
+                                "value_mse": 0.297848,
+                            },
+                            {
+                                "dataset": "validation",
+                                "deviation_mse": 0.67528,
+                                "value_mse": 0.671502,
+                            },
+                        ]
+                    },
+                    fd,
+                )
+
             files = [
                 "metric",
                 "metric_json",
@@ -44,6 +73,7 @@ class TestMetrics(TestDvc):
                 "metric_htsv",
                 "metric_csv",
                 "metric_hcsv",
+                "metric_json_ext",
             ]
 
             self.dvc.run(metrics_no_cache=files, overwrite=True)
@@ -100,6 +130,26 @@ class TestMetrics(TestDvc):
         self.assertSequenceEqual(ret["foo"]["metric_hcsv"], ["foo"])
         self.assertSequenceEqual(ret["bar"]["metric_hcsv"], ["bar"])
         self.assertSequenceEqual(ret["baz"]["metric_hcsv"], ["baz"])
+
+        ret = self.dvc.metrics.show(
+            "metric_json_ext",
+            typ="json",
+            xpath="$.metrics[?(@.deviation_mse<0.30) & (@.value_mse>0.4)]",
+            all_branches=True,
+        )
+        self.assertEqual(len(ret), 1)
+        self.assertSequenceEqual(
+            ret["foo"]["metric_json_ext"],
+            [
+                {
+                    "dataset": "train",
+                    "deviation_mse": 0.173461,
+                    "value_mse": 0.421601,
+                }
+            ],
+        )
+        self.assertRaises(KeyError, lambda: ret["bar"])
+        self.assertRaises(KeyError, lambda: ret["baz"])
 
     def test_unknown_type_ignored(self):
         ret = self.dvc.metrics.show(

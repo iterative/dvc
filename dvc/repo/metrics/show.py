@@ -4,7 +4,7 @@ import os
 import csv
 import json
 import logging
-from jsonpath_rw import parse
+from jsonpath_ng.ext import parse
 
 from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
