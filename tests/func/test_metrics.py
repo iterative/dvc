@@ -343,6 +343,7 @@ class TestMetrics(TestDvc):
         metric_htsv_path = os.path.join(root_relpath, "metric_htsv")
         metric_csv_path = os.path.join(root_relpath, "metric_csv")
         metric_hcsv_path = os.path.join(root_relpath, "metric_hcsv")
+        metric_json_ext_path = os.path.join(root_relpath, "metric_json_ext")
         for branch in ["bar", "baz", "foo"]:
             self.assertEqual(
                 set(metrics[branch].keys()),
@@ -353,6 +354,7 @@ class TestMetrics(TestDvc):
                     metric_htsv_path,
                     metric_csv_path,
                     metric_hcsv_path,
+                    metric_json_ext_path,
                 },
             )
 
