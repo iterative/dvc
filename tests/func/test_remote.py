@@ -1,5 +1,6 @@
 import os
 import configobj
+from mock import patch
 
 from dvc.main import main
 from dvc.command.remote import CmdRemoteAdd
@@ -169,3 +170,16 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
         ret = main(["push", "-r", self.upper_case_remote_name])
         self.assertEqual(ret, 0)
+
+
+def test_large_dir_progress(repo_dir, dvc):
+    from dvc.utils import LARGE_DIR_SIZE
+    from dvc.progress import progress
+
+    # Create a "large dir"
+    for i in range(LARGE_DIR_SIZE + 1):
+        repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
+
+    with patch.object(progress, "update_target") as update_target:
+        dvc.add("gen")
+        assert update_target.called
