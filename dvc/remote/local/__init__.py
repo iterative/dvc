@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from copy import copy
 
+from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.utils.compat import str, makedirs
 
 import os
@@ -122,6 +123,7 @@ class RemoteLOCAL(RemoteBase):
         if not self.exists(path_info):
             os.makedirs(path_info["path"])
 
+    @slow_link_guard
     def link(self, cache_info, path_info):
         cache = cache_info["path"]
         path = path_info["path"]

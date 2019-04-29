@@ -154,6 +154,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CACHE_SSH = "ssh"
     SECTION_CACHE_HDFS = "hdfs"
     SECTION_CACHE_AZURE = "azure"
+    SECTION_CACHE_SLOW_LINK_WARNING = "slow_link_warning"
     SECTION_CACHE_SCHEMA = {
         Optional(SECTION_CACHE_LOCAL): str,
         Optional(SECTION_CACHE_S3): str,
@@ -167,6 +168,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             str, is_bool, Use(to_bool)
         ),
         Optional(PRIVATE_CWD): str,
+        Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): And(
+            str, is_bool, Use(to_bool)
+        ),
     }
 
     # backward compatibility
