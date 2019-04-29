@@ -6,6 +6,8 @@ import logging
 from dvc.repo import Repo as DvcRepo
 from dvc.main import main
 from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
+from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
+from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 
@@ -775,3 +777,50 @@ class TestMetricsType(TestDvc):
                 self.assertSequenceEqual(ret[branch][file_name], [branch])
             else:
                 self.assertSequenceEqual(ret[branch][file_name], branch)
+
+
+class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
+    BRANCH_MISSING_METRIC = "missing_metric_branch"
+    METRIC_FILE = "metric"
+    METRIC_FILE_STAGE = METRIC_FILE + Stage.STAGE_FILE_SUFFIX
+
+    def _write_metric(self):
+        with open(self.METRIC_FILE, "w+") as fd:
+            fd.write("0.5")
+            fd.flush()
+
+    def _commit_metric(self, dvc, branch):
+        dvc.scm.add([self.METRIC_FILE_STAGE])
+        dvc.scm.commit("{} commit".format(branch))
+
+    def setUp(self, dvc):
+        dvc.scm.branch(self.BRANCH_MISSING_METRIC)
+
+        self._write_metric()
+
+        ret = main(["run", "-m", self.METRIC_FILE])
+        assert 0 == ret
+
+        self._commit_metric(dvc, "master")
+
+    def test(self, dvc, caplog):
+        self.setUp(dvc)
+
+        dvc.scm.checkout(self.BRANCH_MISSING_METRIC)
+
+        self._write_metric()
+        ret = main(["run", "-M", self.METRIC_FILE])
+        assert 0 == ret
+
+        self._commit_metric(dvc, self.BRANCH_MISSING_METRIC)
+        os.remove(self.METRIC_FILE)
+
+        ret = main(["metrics", "show", "-a"])
+
+        assert (
+            NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
+                self.METRIC_FILE, self.BRANCH_MISSING_METRIC
+            )
+            in caplog.text
+        )
+        assert 0 == ret
