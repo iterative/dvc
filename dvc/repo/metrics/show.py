@@ -12,7 +12,7 @@ from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
-    "Metrics file '{}' does not exist at reference: '{}'"
+    "Metrics file '{}' does not exist at the reference '{}'."
 )
 
 logger = logging.getLogger(__name__)
