@@ -80,9 +80,11 @@ class TestReload(TestDvc):
 
         d = load_stage_file(stage.relpath)
 
+        from dvc.utils import hash
+
         # NOTE: checking that reloaded stage didn't change its checksum
         md5 = "11111111111111111111111111111111"
-        d[stage.PARAM_MD5] = md5
+        d[hash.CHECKSUM_MD5] = md5
         dump_stage_file(stage.relpath, d)
 
         stage = Stage.load(self.dvc, stage.relpath)
@@ -90,7 +92,7 @@ class TestReload(TestDvc):
         stage.dump()
 
         d = load_stage_file(stage.relpath)
-        self.assertEqual(d[stage.PARAM_MD5], md5)
+        self.assertEqual(d[hash.CHECKSUM_MD5], md5)
 
 
 class TestDefaultWorkingDirectory(TestDvc):

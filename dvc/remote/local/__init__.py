@@ -6,7 +6,7 @@ from dvc.scheme import Schemes
 from dvc.path.base import PathBASE
 from dvc.path.local import PathLOCAL
 from dvc.remote.local.slow_link_detection import slow_link_guard
-from dvc import utils
+from dvc.utils import hash
 from dvc.utils.compat import str, makedirs
 
 import os
@@ -25,15 +25,8 @@ from dvc.remote.base import (
     STATUS_DELETED,
     STATUS_MISSING,
 )
-from dvc.utils import (
-    remove,
-    move,
-    copyfile,
-    to_chunks,
-    tmp_fname,
-    file_checksum,
-    walk_files,
-)
+from dvc.utils import remove, move, copyfile, to_chunks, tmp_fname, walk_files
+from dvc.utils.hash import file_checksum
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.progress import progress
@@ -78,14 +71,14 @@ class RemoteLOCAL(RemoteBASE):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
-        self.hash = [utils.CHECKSUM_MD5]
+        self.hash = [hash.CHECKSUM_MD5]
         if repo and repo.config and repo.config.config:
             conf = repo.config.config[Config.SECTION_HASH]
             hash_local = conf.get(Config.SECTION_HASH_LOCAL, None)
             if hash_local:
-                if isinstance(hash_local, str):
-                    hash_local = [h.strip() for h in hash_local.split(",")]
-                self.hash = hash_local
+                self.hash = (
+                    hash.checksum_types_from_str(hash_local) or self.hash
+                )
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
