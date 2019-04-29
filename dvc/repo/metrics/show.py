@@ -152,7 +152,7 @@ def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
         return None
 
 
-def _collect_metrics(self, path, recursive, typ, xpath, branch):
+def _collect_metrics(repo, path, recursive, typ, xpath, branch):
     """Gather all the metric outputs.
 
     Args:
@@ -170,11 +170,11 @@ def _collect_metrics(self, path, recursive, typ, xpath, branch):
             - typ:
             - xpath:
     """
-    outs = [out for stage in self.stages() for out in stage.outs]
+    outs = [out for stage in repo.stages() for out in stage.outs]
 
     if path:
         try:
-            outs = self.find_outs_by_path(path, outs=outs, recursive=recursive)
+            outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
         except OutputNotFoundError:
             logger.debug(
                 "stage file not for found for '{}' in branch '{}'".format(
@@ -257,7 +257,7 @@ def _read_metrics(repo, metrics, branch):
 
 
 def show(
-    self,
+    repo,
     path=None,
     typ=None,
     xpath=None,
@@ -267,9 +267,9 @@ def show(
 ):
     res = {}
 
-    for branch in self.brancher(all_branches=all_branches, all_tags=all_tags):
-        entries = _collect_metrics(self, path, recursive, typ, xpath, branch)
-        metrics = _read_metrics(self, entries, branch)
+    for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
+        entries = _collect_metrics(repo, path, recursive, typ, xpath, branch)
+        metrics = _read_metrics(repo, entries, branch)
         if metrics:
             res[branch] = metrics
 
