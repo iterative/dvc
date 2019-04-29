@@ -3,6 +3,7 @@ import shutil
 import filecmp
 
 from dvc import utils
+from dvc.utils import hash
 from tests.basic_env import TestDvc
 
 
@@ -36,7 +37,7 @@ class TestUtils(TestDvc):
             fd.write(b"a\r\nb\r\nc")
 
         self.assertEqual(
-            utils.file_checksum("cr")[0], utils.file_checksum("crlf")[0]
+            hash.file_checksum("cr")[0], hash.file_checksum("crlf")[0]
         )
 
     def test_dict_md5(self):
@@ -60,7 +61,7 @@ class TestUtils(TestDvc):
         md5 = "8b263fa05ede6c3145c164829be694b4"
 
         self.assertEqual(
-            md5, utils.dict_checksum(d, exclude=["metric", "locked"])
+            md5, hash.dict_checksum(d, exclude=["metric", "locked"])
         )
 
     def test_boxify(self):

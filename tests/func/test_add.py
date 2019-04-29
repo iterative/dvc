@@ -14,7 +14,8 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_checksum, LARGE_DIR_SIZE
+from dvc.utils import LARGE_DIR_SIZE
+from dvc.utils.hash import file_checksum
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage
@@ -41,7 +42,9 @@ class TestAdd(TestDvc):
         self.assertEqual(len(stage.deps), 0)
         self.assertEqual(stage.cmd, None)
         self.assertEqual(stage.outs[0].info["md5"], md5)
-        self.assertEqual(stage.md5, "ee343f2482f53efffc109be83cc976ac")
+        self.assertEqual(
+            stage.checksum["md5"], "ee343f2482f53efffc109be83cc976ac"
+        )
 
     def test_unicode(self):
         fname = "\xe1"

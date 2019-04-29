@@ -8,10 +8,8 @@ import os
 import sys
 import stat
 import math
-import json
 import errno
 import shutil
-import hashlib
 import nanotime
 import time
 import colorama
@@ -24,95 +22,7 @@ from ruamel.yaml import YAML
 logger = logging.getLogger(__name__)
 
 LOCAL_CHUNK_SIZE = 1024 * 1024
-LARGE_FILE_SIZE = 1024 * 1024 * 1024
 LARGE_DIR_SIZE = 100
-
-CHECKSUM_MD5 = "md5"
-CHECKSUM_SHA256 = "sha256"
-CHECKSUM_MAP = {CHECKSUM_MD5: hashlib.md5, CHECKSUM_SHA256: hashlib.sha256}
-
-
-def dos2unix(data):
-    return data.replace(b"\r\n", b"\n")
-
-
-def file_checksum(fname, checksum_type=CHECKSUM_MD5):
-    """ get the (md5 hexdigest, md5 digest) of a file """
-    from dvc.progress import progress
-    from dvc.istextfile import istextfile
-
-    if os.path.exists(fname):
-        hash_md5 = CHECKSUM_MAP[checksum_type]()
-        binary = not istextfile(fname)
-        size = os.path.getsize(fname)
-        bar = False
-        if size >= LARGE_FILE_SIZE:
-            bar = True
-            msg = "Computing md5 for a large file {}. This is only done once."
-            logger.info(msg.format(os.path.relpath(fname)))
-            name = os.path.relpath(fname)
-            total = 0
-
-        with open(fname, "rb") as fobj:
-            while True:
-                data = fobj.read(LOCAL_CHUNK_SIZE)
-                if not data:
-                    break
-
-                if bar:
-                    total += len(data)
-                    progress.update_target(name, total, size)
-
-                if binary:
-                    chunk = data
-                else:
-                    chunk = dos2unix(data)
-
-                hash_md5.update(chunk)
-
-        if bar:
-            progress.finish_target(name)
-
-        return (hash_md5.hexdigest(), hash_md5.digest())
-    else:
-        return (None, None)
-
-
-def bytes_checksum(byts, checksum_type=CHECKSUM_MD5):
-    hasher = CHECKSUM_MAP[checksum_type]()
-    hasher.update(byts)
-    return hasher.hexdigest()
-
-
-def dict_filter(d, exclude=[]):
-    """
-    Exclude specified keys from a nested dict
-    """
-
-    if isinstance(d, list):
-        ret = []
-        for e in d:
-            ret.append(dict_filter(e, exclude))
-        return ret
-    elif isinstance(d, dict):
-        ret = {}
-        for k, v in d.items():
-            if isinstance(k, builtin_str):
-                k = str(k)
-
-            assert isinstance(k, str)
-            if k in exclude:
-                continue
-            ret[k] = dict_filter(v, exclude)
-        return ret
-
-    return d
-
-
-def dict_checksum(d, exclude=[], checksum_type=CHECKSUM_MD5):
-    filtered = dict_filter(d, exclude)
-    byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
-    return bytes_checksum(byts, checksum_type)
 
 
 def copyfile(src, dest, no_progress_bar=False, name=None):

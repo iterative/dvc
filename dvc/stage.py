@@ -15,7 +15,9 @@ import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_checksum, fix_env
+from dvc.utils import fix_env
+from dvc.utils import hash
+from dvc.utils.hash import dict_checksum
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import load_stage_fd, dump_stage_file
 
@@ -119,8 +121,6 @@ class Stage(object):
     STAGE_FILE = "Dvcfile"
     STAGE_FILE_SUFFIX = ".dvc"
 
-    PARAM_MD5 = "md5"
-    PARAM_SHA256 = "sha256"
     PARAM_CMD = "cmd"
     PARAM_WDIR = "wdir"
     PARAM_DEPS = "deps"
@@ -129,8 +129,8 @@ class Stage(object):
     PARAM_META = "meta"
 
     SCHEMA = {
-        Optional(PARAM_MD5): Or(str, None),
-        Optional(PARAM_SHA256): Or(str, None),
+        Optional(hash.CHECKSUM_MD5): Or(str, None),
+        Optional(hash.CHECKSUM_SHA256): Or(str, None),
         Optional(PARAM_CMD): Or(str, None),
         Optional(PARAM_WDIR): Or(str, None),
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
@@ -149,8 +149,7 @@ class Stage(object):
         wdir=os.curdir,
         deps=None,
         outs=None,
-        md5=None,
-        sha256=None,
+        checksum={},
         locked=False,
         tag=None,
         state=None,
@@ -166,13 +165,12 @@ class Stage(object):
         self.wdir = wdir
         self.outs = outs
         self.deps = deps
-        self.md5 = md5
-        self.sha256 = sha256
+        self.checksum = checksum
         self.locked = locked
         self.tag = tag
         self._state = state or {}
 
-        self.hash = [self.PARAM_MD5]
+        self.hash = [hash.CHECKSUM_MD5]
         if repo and repo.cache and repo.cache.local and repo.cache.local.hash:
             self.hash = repo.cache.local.hash
 
@@ -206,9 +204,8 @@ class Stage(object):
 
     def changed_md5(self):
         for h in self.hash:
-            checksum = getattr(self, h)
-            if checksum:
-                return checksum != self._compute_checksum(h)
+            if h in self.checksum:
+                return self.checksum[h] != self._compute_checksum(h)
 
         return self._compute_checksum(self.hash[0]) is not None
 
@@ -399,8 +396,9 @@ class Stage(object):
 
         # NOTE: need to remove checksums from old dict in order to compare
         # it to the new one, since the new one doesn't have checksums yet.
-        old_d.pop(self.PARAM_MD5, None)
-        new_d.pop(self.PARAM_MD5, None)
+        for k in hash.CHECKSUM_MAP.keys():
+            old_d.pop(k, None)
+            new_d.pop(k, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
             out.pop(self.hash[0], None)
@@ -610,6 +608,12 @@ class Stage(object):
         Stage.validate(d, fname=os.path.relpath(fname))
         path = os.path.abspath(fname)
 
+        checksum = {}
+        for k in hash.CHECKSUM_MAP.keys():
+            v = d.get(k)
+            if v:
+                checksum[k] = v
+
         stage = Stage(
             repo=repo,
             path=path,
@@ -619,8 +623,7 @@ class Stage(object):
                 )
             ),
             cmd=d.get(Stage.PARAM_CMD),
-            md5=d.get(Stage.PARAM_MD5),
-            sha256=d.get(Stage.PARAM_SHA256),
+            checksum=checksum,
             locked=d.get(Stage.PARAM_LOCKED, False),
             tag=tag,
             state=state,
@@ -634,22 +637,24 @@ class Stage(object):
     def dumpd(self):
         from dvc.remote.base import RemoteBase
 
-        return {
-            key: value
-            for key, value in {
-                Stage.PARAM_MD5: self.md5,
-                Stage.PARAM_SHA256: self.sha256,
-                Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: RemoteBase.to_posixpath(
-                    os.path.relpath(self.wdir, os.path.dirname(self.path))
-                ),
-                Stage.PARAM_LOCKED: self.locked,
-                Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
-                Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
-                Stage.PARAM_META: self._state.get("meta"),
-            }.items()
-            if value
-        }
+        d = {}
+        for key, value in self.checksum.items():
+            if value:
+                d[key] = value
+        for key, value in {
+            Stage.PARAM_CMD: self.cmd,
+            Stage.PARAM_WDIR: RemoteBase.to_posixpath(
+                os.path.relpath(self.wdir, os.path.dirname(self.path))
+            ),
+            Stage.PARAM_LOCKED: self.locked,
+            Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
+            Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
+            Stage.PARAM_META: self._state.get("meta"),
+        }.items():
+            if value:
+                d[key] = value
+
+        return d
 
     def dump(self):
         fname = self.path
@@ -667,16 +672,15 @@ class Stage(object):
 
         self.repo.scm.track_file(os.path.relpath(fname))
 
-    def _compute_checksum(self, checksum_type=PARAM_MD5):
+    def _compute_checksum(self, checksum_type=hash.CHECKSUM_MD5):
         from dvc.output.base import OutputBase
 
         d = self.dumpd()
 
         # NOTE: removing md5 manually in order to not affect md5s in deps/outs
-        if self.PARAM_MD5 in d.keys():
-            del d[self.PARAM_MD5]
-        if self.PARAM_SHA256 in d.keys():
-            del d[self.PARAM_SHA256]
+        for k in hash.CHECKSUM_MAP.keys():
+            if k in d.keys():
+                del d[k]
 
         # Ignore the wdir default value. In this case stage file w/o
         # wdir has the same md5 as a file with the default value specified.
@@ -713,7 +717,7 @@ class Stage(object):
             out.save()
 
         hash_type = self.hash[0]
-        setattr(self, hash_type, self._compute_checksum(hash_type))
+        self.checksum = {hash_type: self._compute_checksum(hash_type)}
 
     @staticmethod
     def _changed_entries(entries):

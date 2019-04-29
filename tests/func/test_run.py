@@ -10,7 +10,7 @@ import subprocess
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_checksum
+from dvc.utils.hash import file_checksum
 from dvc.utils.stage import load_stage_file
 from dvc.system import System
 from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
