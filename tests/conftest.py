@@ -5,9 +5,14 @@ import os
 from git import Repo
 from git.exc import GitCommandNotFound
 
+from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
 from .basic_env import TestDirFixture
+
+
+# Prevent updater and analytics from running their processes
+os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")
 
 
 @pytest.fixture(autouse=True)
