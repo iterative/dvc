@@ -24,6 +24,7 @@ def main(argv=None):
     args = None
     cmd = None
 
+    outerLogLevel = logger.level
     try:
         args = parse_args(argv)
 
@@ -46,6 +47,8 @@ def main(argv=None):
     except Exception:  # pylint: disable=broad-except
         logger.exception("unexpected error")
         ret = 255
+    finally:
+        logger.setLevel(outerLogLevel)
 
     Analytics().send_cmd(cmd, args, ret)
 
