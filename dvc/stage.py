@@ -170,10 +170,6 @@ class Stage(object):
         self.tag = tag
         self._state = state or {}
 
-        self.hash = [hash.CHECKSUM_MD5]
-        if repo and repo.cache and repo.cache.local and repo.cache.local.hash:
-            self.hash = repo.cache.local.hash
-
     def __repr__(self):
         return "Stage: '{path}'".format(
             path=self.relpath if self.path else "No path"
@@ -203,11 +199,16 @@ class Stage(object):
         return os.path.isfile(path) and Stage.is_valid_filename(path)
 
     def changed_md5(self):
-        for h in self.hash:
+        for h in self.repo.cache.local.get_hash_list():
             if h in self.checksum:
                 return self.checksum[h] != self._compute_checksum(h)
 
-        return self._compute_checksum(self.hash[0]) is not None
+        return (
+            self._compute_checksum(
+                self.repo.cache.local.get_prefer_hash_type()
+            )
+            is not None
+        )
 
     @property
     def is_callback(self):
@@ -401,7 +402,7 @@ class Stage(object):
             new_d.pop(k, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(self.hash[0], None)
+            out.pop(self.repo.cache.local.get_prefer_hash_type(), None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
         if old_d != new_d:
@@ -716,7 +717,7 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-        hash_type = self.hash[0]
+        hash_type = self.repo.cache.local.get_prefer_hash_type()
         self.checksum = {hash_type: self._compute_checksum(hash_type)}
 
     @staticmethod
