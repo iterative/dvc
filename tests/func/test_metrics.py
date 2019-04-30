@@ -11,9 +11,9 @@ from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 
-class TestMetrics(TestDvc):
+class TestMetricsBase(TestDvc):
     def setUp(self):
-        super(TestMetrics, self).setUp()
+        super(TestMetricsBase, self).setUp()
         self.dvc.scm.commit("init")
 
         for branch in ["foo", "bar", "baz"]:
@@ -86,6 +86,8 @@ class TestMetrics(TestDvc):
 
         self.dvc.scm.checkout("master")
 
+
+class TestMetrics(TestMetricsBase):
     def test_show(self):
         ret = self.dvc.metrics.show("metric", all_branches=True)
         self.assertEqual(len(ret), 3)
@@ -464,7 +466,7 @@ class TestMetricsReproCLI(TestDvc):
             self.dvc.run(metrics_no_cache=["metrics_bin"])
 
 
-class TestMetricsCLI(TestMetrics):
+class TestMetricsCLI(TestMetricsBase):
     def test(self):
         # FIXME check output
         ret = main(["metrics", "show", "-a", "metric", "-v"])
