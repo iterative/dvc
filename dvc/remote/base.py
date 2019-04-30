@@ -503,10 +503,16 @@ class RemoteBase(object):
 
     def gc(self, cinfos):
 
-        used = {info[self.repo.cache.local.get_prefer_hash_type()] for info in cinfos["local"]}
+        used = {
+            info[self.repo.cache.local.get_prefer_hash_type()]
+            for info in cinfos["local"]
+        }
 
         if self.scheme != "":
-            used |= {info[self.get_prefer_hash_type()] for info in cinfos[self.scheme]}
+            used |= {
+                info[self.get_prefer_hash_type()]
+                for info in cinfos[self.scheme]
+            }
 
         removed = False
         for checksum in self.all():
