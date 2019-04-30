@@ -108,6 +108,7 @@ if is_py2:
     input = raw_input  # noqa: F821
     cast_bytes_py2 = cast_bytes
     makedirs = _makedirs
+    range = xrange  # noqa: F821
 
     import StringIO
     import io
@@ -148,3 +149,4 @@ elif is_py3:
     input = input  # noqa: F821
     open = open  # noqa: F821
     cast_bytes_py2 = no_code
+    range = range  # noqa: F821
