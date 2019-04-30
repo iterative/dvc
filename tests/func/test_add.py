@@ -7,13 +7,16 @@ import time
 import shutil
 import filecmp
 import posixpath
+import logging
+import colorama
 
 from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5
+from dvc.utils import file_md5, LARGE_DIR_SIZE
 from dvc.utils.stage import load_stage_file
+from dvc.utils.compat import range
 from dvc.stage import Stage
 from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 from dvc.output.base import OutputAlreadyTrackedError
@@ -86,6 +89,30 @@ class TestAddCmdDirectoryRecursive(TestDvc):
     def test(self):
         ret = main(["add", "--recursive", self.DATA_DIR])
         self.assertEqual(ret, 0)
+
+    def test_warn_about_large_directories(self):
+        warning = (
+            "You are adding a large directory 'large-dir' recursively,"
+            " consider tracking it as a whole instead.\n"
+            "{purple}HINT:{nc} Remove the generated stage files and then"
+            " run {cyan}dvc add large-dir{nc}".format(
+                purple=colorama.Fore.MAGENTA,
+                cyan=colorama.Fore.CYAN,
+                nc=colorama.Style.RESET_ALL,
+            )
+        )
+
+        os.mkdir("large-dir")
+
+        # Create a lot of files
+        for iteration in range(LARGE_DIR_SIZE + 1):
+            path = os.path.join("large-dir", str(iteration))
+            with open(path, "w") as fobj:
+                fobj.write(path)
+
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
+            assert main(["add", "--recursive", "large-dir"]) == 0
+            assert warning in self._caplog.text
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
