@@ -68,11 +68,9 @@ class Repo(object):
 
         core = self.config.config[Config.SECTION_CORE]
 
-        logger.setLevel(
-            logging.getLevelName(
-                core.get(Config.SECTION_CORE_LOGLEVEL, "info").upper()
-            )
-        )
+        level = core.get(Config.SECTION_CORE_LOGLEVEL)
+        if level:
+            logger.setLevel(level.upper())
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config.config)
