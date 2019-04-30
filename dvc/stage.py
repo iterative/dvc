@@ -655,6 +655,8 @@ class Stage(object):
             if value:
                 r[key] = value
 
+        return r
+
     def dump(self):
         fname = self.path
 
