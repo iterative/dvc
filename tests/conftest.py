@@ -11,8 +11,16 @@ from .basic_env import TestDirFixture
 
 
 @pytest.fixture(autouse=True)
-def debug(caplog):
-    with caplog.at_level("DEBUG", logger="dvc"):
+def reset_loglevel(request, caplog):
+    """
+    Use it to ensure log level at the start of each test
+    regardless of dvc.logger.setup(), Repo configs or whatever.
+    """
+    level = request.config.getoption("--log-level")
+    if level:
+        with caplog.at_level(level.upper(), logger="dvc"):
+            yield
+    else:
         yield
 
 

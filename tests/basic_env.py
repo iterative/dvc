@@ -163,7 +163,6 @@ class TestDvcFixture(TestGitFixture):
         super(TestDvcFixture, self).setUp()
         self.dvc = DvcRepo.init(self._root_dir)
         self.dvc.scm.commit("init dvc")
-        logger.setLevel("DEBUG")
 
     def tearDown(self):
         self.dvc.scm.git.close()
