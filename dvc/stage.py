@@ -638,10 +638,10 @@ class Stage(object):
     def dumpd(self):
         from dvc.remote.base import RemoteBase
 
-        d = {}
+        r = {}
         for key, value in self.checksum.items():
             if value:
-                d[key] = value
+                r[key] = value
         for key, value in {
             Stage.PARAM_CMD: self.cmd,
             Stage.PARAM_WDIR: RemoteBase.to_posixpath(
@@ -653,9 +653,9 @@ class Stage(object):
             Stage.PARAM_META: self._state.get("meta"),
         }.items():
             if value:
-                d[key] = value
+                r[key] = value
 
-        return d
+        return r
 
     def dump(self):
         fname = self.path
