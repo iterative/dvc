@@ -15,7 +15,8 @@ from multiprocessing import cpu_count
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
-from dvc.utils import tmp_fname
+from dvc.progress import progress
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname
 from dvc.state import StateBase
 
 
@@ -161,6 +162,15 @@ class RemoteBase(object):
         p_info = path_info.copy()
         dpath = p_info["path"]
         for root, dirs, files in self.walk(path_info):
+            if len(files) > LARGE_DIR_SIZE:
+                msg = (
+                    "Computing md5 for a large directory {}. "
+                    "This is only done once."
+                )
+                relpath = self.ospath.relpath(root)
+                logger.info(msg.format(relpath))
+                files = progress(files, name=relpath)
+
             for fname in files:
                 path = self.ospath.join(root, fname)
                 p_info["path"] = path
