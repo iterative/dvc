@@ -9,7 +9,7 @@ from dvc.stage import Stage
 
 
 @pytest.mark.skipif(
-    sys.platform == "win32", reason="Git hooks aren't " "supported on Windows"
+    sys.platform == "win32", reason="Git hooks aren't supported on Windows"
 )
 class TestInstall(object):
     def _hook(self, name):
