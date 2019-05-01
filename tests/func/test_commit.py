@@ -1,86 +1,82 @@
+import pytest
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
-from tests.basic_env import TestDvc
 from dvc.stage import StageCommitError
 
 
-class TestCommitRecursive(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_DIR, recursive=True, no_commit=True)
-        self.assertEqual(len(stages), 2)
+def test_commit_recursive(dvc, repo_dir):
+    stages = dvc.add(repo_dir.DATA_DIR, recursive=True, no_commit=True)
+    assert len(stages) == 2
 
-        self.assertNotEqual(self.dvc.status(), {})
+    assert dvc.status() != {}
 
-        self.dvc.commit(self.DATA_DIR, recursive=True)
+    dvc.commit(repo_dir.DATA_DIR, recursive=True)
 
-        self.assertEqual(self.dvc.status(), {})
-
-
-class TestCommitForce(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO, no_commit=True)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-
-        with self.dvc.state:
-            self.assertTrue(stage.outs[0].changed_cache())
-
-        with open(self.FOO, "a") as fobj:
-            fobj.write(self.FOO_CONTENTS)
-
-        with self.dvc.state:
-            self.assertTrue(stage.outs[0].changed_cache())
-
-        with self.assertRaises(StageCommitError):
-            self.dvc.commit(stage.path)
-
-        with self.dvc.state:
-            self.assertTrue(stage.outs[0].changed_cache())
-
-        self.dvc.commit(stage.path, force=True)
-
-        self.assertEqual(self.dvc.status(stage.path), {})
+    assert dvc.status() == {}
 
 
-class TestCommitWithDeps(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO, no_commit=True)
-        self.assertEqual(len(stages), 1)
-        foo_stage = stages[0]
-        self.assertTrue(foo_stage is not None)
-        self.assertEqual(len(foo_stage.outs), 1)
+def test_commit_force(dvc, repo_dir):
+    stages = dvc.add(repo_dir.FOO, no_commit=True)
+    assert len(stages) == 1
+    stage = stages[0]
 
-        fname = "file"
-        stage = self.dvc.run(
-            cmd="python {} {} {}".format(self.CODE, self.FOO, fname),
-            outs=[fname],
-            deps=[self.FOO, self.CODE],
-            no_commit=True,
-        )
-        self.assertTrue(stage is not None)
-        self.assertEqual(len(stage.outs), 1)
+    with dvc.state:
+        assert stage.outs[0].changed_cache()
 
-        with self.dvc.state:
-            self.assertTrue(foo_stage.outs[0].changed_cache())
-            self.assertTrue(stage.outs[0].changed_cache())
+    with open(repo_dir.FOO, "a") as fobj:
+        fobj.write(repo_dir.FOO_CONTENTS)
 
-        self.dvc.commit(stage.path, with_deps=True)
-        with self.dvc.state:
-            self.assertFalse(foo_stage.outs[0].changed_cache())
-            self.assertFalse(stage.outs[0].changed_cache())
+    with dvc.state:
+        assert stage.outs[0].changed_cache()
+
+    with pytest.raises(StageCommitError):
+        dvc.commit(stage.path)
+
+    with dvc.state:
+        assert stage.outs[0].changed_cache()
+
+    dvc.commit(stage.path, force=True)
+
+    assert dvc.status(stage.path) == {}
 
 
-class TestCommitChangedMd5(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.FOO, no_commit=True)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
+def test_commit_with_deps(dvc, repo_dir):
+    stages = dvc.add(repo_dir.FOO, no_commit=True)
+    assert len(stages) == 1
+    foo_stage = stages[0]
+    assert foo_stage is not None
+    assert len(foo_stage.outs) == 1
 
-        st = load_stage_file(stage.path)
-        st["md5"] = "1111111111"
-        dump_stage_file(stage.path, st)
+    fname = "file"
+    stage = dvc.run(
+        cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, fname),
+        outs=[fname],
+        deps=[repo_dir.FOO, repo_dir.CODE],
+        no_commit=True,
+    )
+    assert stage is not None
+    assert len(stage.outs) == 1
 
-        with self.assertRaises(StageCommitError):
-            self.dvc.commit(stage.path)
+    with dvc.state:
+        assert foo_stage.outs[0].changed_cache()
+        assert stage.outs[0].changed_cache()
 
-        self.dvc.commit(stage.path, force=True)
+    dvc.commit(stage.path, with_deps=True)
+    with dvc.state:
+        assert not foo_stage.outs[0].changed_cache()
+        assert not stage.outs[0].changed_cache()
+
+
+def test_commit_changed_md5(dvc, repo_dir):
+    stages = dvc.add(repo_dir.FOO, no_commit=True)
+    assert len(stages) == 1
+    stage = stages[0]
+
+    stage_file_content = load_stage_file(stage.path)
+    stage_file_content["md5"] = "1111111111"
+    dump_stage_file(stage.path, stage_file_content)
+
+    with pytest.raises(StageCommitError):
+        dvc.commit(stage.path)
+
+    dvc.commit(stage.path, force=True)
