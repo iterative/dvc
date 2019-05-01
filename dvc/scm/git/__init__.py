@@ -215,6 +215,7 @@ class Git(Base):
     def install(self):
         self._install_hook("post-checkout", "checkout")
         self._install_hook("pre-commit", "status")
+        self._install_hook("pre-push", "push")
 
     def cleanup_ignores(self):
         for path in self.ignored_paths:
