@@ -48,8 +48,10 @@ class DataCloud(object):
 
     @property
     def _cloud(self):
+        """Returns a Remote instance using the `core.remote` config"""
         remote = self._core.get(Config.SECTION_CORE_REMOTE, "")
-        if remote != "":
+
+        if remote:
             return self._init_remote(remote)
 
         if self._core.get(Config.SECTION_CORE_CLOUD, None):

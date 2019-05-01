@@ -336,7 +336,14 @@ class RemoteLOCAL(RemoteBase):
 
         return by_md5
 
-    def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
+    def status(
+        self,
+        checksum_infos,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        download=False,
+    ):
         logger.info("Preparing to collect status from {}".format(remote.url))
         title = "Collecting information"
 
@@ -352,11 +359,20 @@ class RemoteLOCAL(RemoteBase):
 
         progress.update_target(title, 30, 100)
 
-        remote_exists = list(remote.cache_exists(md5s))
+        local_exists = self.cache_exists(md5s)
+
+        progress.update_target(title, 40, 100)
+
+        # This is a performance optimization. We can safely assume that,
+        # if the resources that we want to fetch are already cached,
+        # there's no need to check the remote storage for the existance of
+        # those files.
+        if download and sorted(local_exists) == sorted(md5s):
+            remote_exists = local_exists
+        else:
+            remote_exists = list(remote.cache_exists(md5s))
 
         progress.update_target(title, 90, 100)
-
-        local_exists = self.cache_exists(md5s)
 
         progress.finish_target(title)
 
@@ -436,7 +452,11 @@ class RemoteLOCAL(RemoteBase):
             jobs = remote.JOBS
 
         status_info = self.status(
-            checksum_infos, remote, jobs=jobs, show_checksums=show_checksums
+            checksum_infos,
+            remote,
+            jobs=jobs,
+            show_checksums=show_checksums,
+            download=download,
         )
 
         chunks = self._get_chunks(download, remote, status_info, status, jobs)
