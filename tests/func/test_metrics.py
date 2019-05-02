@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import os
 import json
 import logging
@@ -16,36 +18,29 @@ class TestMetricsBase(TestDvc):
         super(TestMetricsBase, self).setUp()
         self.dvc.scm.commit("init")
 
-        for branch in ["foo", "bar", "baz"]:
-            self.dvc.scm.checkout(branch, create_new=True)
+        branches = ["foo", "bar", "baz"]
 
-            with open("metric", "w+") as fd:
-                fd.write(branch)
+        for branch in branches:
+            self.dvc.scm.git.create_head(branch)
 
-            with open("metric_json", "w+") as fd:
-                json.dump({"branch": branch}, fd)
+        for branch in branches:
+            self.dvc.scm.checkout(branch)
 
-            with open("metric_csv", "w+") as fd:
-                fd.write(branch)
-
-            with open("metric_hcsv", "w+") as fd:
-                fd.write("branch\n")
-                fd.write(branch)
-
-            with open("metric_tsv", "w+") as fd:
-                fd.write(branch)
-
-            with open("metric_htsv", "w+") as fd:
-                fd.write("branch\n")
-                fd.write(branch)
+            self.create("metric", branch)
+            self.create("metric_json", json.dumps({"branch": branch}))
+            self.create("metric_csv", branch)
+            self.create("metric_hcsv", "branch\n" + branch)
+            self.create("metric_tsv", branch)
+            self.create("metric_htsv", "branch\n" + branch)
 
             if branch == "foo":
                 deviation_mse_train = 0.173461
             else:
                 deviation_mse_train = 0.356245
 
-            with open("metric_json_ext", "w+") as fd:
-                json.dump(
+            self.create(
+                "metric_json_ext",
+                json.dumps(
                     {
                         "metrics": [
                             {
@@ -64,9 +59,9 @@ class TestMetricsBase(TestDvc):
                                 "value_mse": 0.671502,
                             },
                         ]
-                    },
-                    fd,
-                )
+                    }
+                ),
+            )
 
             files = [
                 "metric",
@@ -220,26 +215,31 @@ class TestMetrics(TestMetricsBase):
             self.assertSequenceEqual(ret[b]["metric_hcsv"], [[b]])
 
     def test_formatted_output(self):
-        with open("metrics.csv", "w") as fobj:
-            # Labels are in Spanish to test unicode characters
-            fobj.write(
+        # Labels are in Spanish to test UTF-8
+        self.create(
+            "metrics.csv",
+            (
                 "valor_mse,desviación_mse,data_set\n"
                 "0.421601,0.173461,entrenamiento\n"
                 "0.67528,0.289545,pruebas\n"
                 "0.671502,0.297848,validación\n"
-            )
+            ),
+        )
 
-        with open("metrics.tsv", "w") as fobj:
-            # Contains quoted newlines to test output correctness
-            fobj.write(
+        # Contains quoted newlines to test output correctness
+        self.create(
+            "metrics.tsv",
+            (
                 "value_mse\tdeviation_mse\tdata_set\n"
                 "0.421601\t0.173461\ttrain\n"
                 '0.67528\t0.289545\t"test\\ning"\n'
                 "0.671502\t0.297848\tvalidation\n"
-            )
+            ),
+        )
 
-        with open("metrics.json", "w") as fobj:
-            fobj.write(
+        self.create(
+            "metrics.json",
+            (
                 "{\n"
                 '     "data_set": [\n'
                 '          "train",\n'
@@ -257,10 +257,12 @@ class TestMetrics(TestMetricsBase):
                 '          "0.671502"\n'
                 "     ]\n"
                 "}"
-            )
+            ),
+        )
 
-        with open("metrics.txt", "w") as fobj:
-            fobj.write("ROC_AUC: 0.64\nKS: 78.9999999996\nF_SCORE: 77\n")
+        self.create(
+            "metrics.txt", "ROC_AUC: 0.64\nKS: 78.9999999996\nF_SCORE: 77\n"
+        )
 
         self.dvc.run(
             fname="testing_metrics_output.dvc",
@@ -283,11 +285,11 @@ class TestMetrics(TestMetricsBase):
             self.assertEqual(ret, 0)
 
         expected_csv = (
-            u"\tmetrics.csv:\n"
-            u"\t\tvalor_mse   desviación_mse   data_set       \n"
-            u"\t\t0.421601    0.173461         entrenamiento  \n"
-            u"\t\t0.67528     0.289545         pruebas        \n"
-            u"\t\t0.671502    0.297848         validación"
+            "\tmetrics.csv:\n"
+            "\t\tvalor_mse   desviación_mse   data_set       \n"
+            "\t\t0.421601    0.173461         entrenamiento  \n"
+            "\t\t0.67528     0.289545         pruebas        \n"
+            "\t\t0.671502    0.297848         validación"
         )
 
         expected_tsv = (
