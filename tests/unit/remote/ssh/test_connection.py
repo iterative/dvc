@@ -6,10 +6,6 @@ import posixpath
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-def test_connection(ssh):
-    assert ssh.execute("dir")
-
-
 def test_isdir(ssh):
     assert ssh.isdir(here)
     assert not ssh.isdir(__file__)
