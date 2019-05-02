@@ -532,8 +532,11 @@ class TestDataCloudCLIBase(TestDvc):
         pass
 
     def test(self):
-        if self._should_test():
-            self._test()
+        if not self._should_test():
+            raise SkipTest(
+                "Test {} is disabled".format(self.__class__.__name__)
+            )
+        self._test()
 
 
 class TestCompatRemoteLOCALCLI(TestDataCloudCLIBase):
