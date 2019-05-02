@@ -134,14 +134,16 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
+    BOOL_SCHEMA = And(str, is_bool, Use(to_bool))
+
     SECTION_CORE = "core"
     SECTION_CORE_LOGLEVEL = "loglevel"
     SECTION_CORE_LOGLEVEL_SCHEMA = And(Use(str.lower), supported_loglevel)
     SECTION_CORE_REMOTE = "remote"
-    SECTION_CORE_INTERACTIVE_SCHEMA = And(str, is_bool, Use(to_bool))
+    SECTION_CORE_INTERACTIVE_SCHEMA = BOOL_SCHEMA
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
-    SECTION_CORE_ANALYTICS_SCHEMA = And(str, is_bool, Use(to_bool))
+    SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -164,13 +166,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_AZURE): str,
         Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
-        Optional(SECTION_CACHE_PROTECTED, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
         Optional(PRIVATE_CWD): str,
-        Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): BOOL_SCHEMA,
     }
 
     # backward compatibility
@@ -209,12 +207,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_LIST_OBJECTS, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
-        Optional(SECTION_AWS_USE_SSL, default=True): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
+        Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
     }
 
     # backward compatibility
@@ -249,23 +243,17 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_LIST_OBJECTS, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
-        Optional(SECTION_AWS_USE_SSL, default=True): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
+        Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
-        Optional(SECTION_CACHE_PROTECTED, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
         Optional(SECTION_REMOTE_USER): str,
         Optional(SECTION_REMOTE_PORT): Use(int),
         Optional(SECTION_REMOTE_KEY_FILE): str,
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
         Optional(SECTION_REMOTE_PASSWORD): str,
-        Optional(SECTION_REMOTE_ASK_PASSWORD): And(str, is_bool, Use(to_bool)),
+        Optional(SECTION_REMOTE_ASK_PASSWORD): BOOL_SCHEMA,
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
         Optional(PRIVATE_CWD): str,
     }
