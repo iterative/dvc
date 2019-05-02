@@ -17,7 +17,7 @@ from mock import patch
 
 from dvc.main import main
 from dvc.utils import LARGE_DIR_SIZE
-from dvc.utils.hash import file_checksum
+from dvc.utils.checksum import file_checksum
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage

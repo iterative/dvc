@@ -27,7 +27,7 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils.hash import file_checksum
+from dvc.utils.checksum import file_checksum
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc

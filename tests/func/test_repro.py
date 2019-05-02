@@ -18,7 +18,7 @@ import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils.hash import file_checksum
+from dvc.utils.checksum import file_checksum
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError

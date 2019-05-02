@@ -16,8 +16,8 @@ import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
 from dvc.utils import fix_env
-from dvc.utils import hash
-from dvc.utils.hash import dict_checksum
+from dvc.utils import checksum as modchecksum
+from dvc.utils.checksum import dict_checksum
 from dvc.utils.collections import apply_diff
 from dvc.utils.stage import load_stage_fd, dump_stage_file
 
@@ -129,8 +129,8 @@ class Stage(object):
     PARAM_META = "meta"
 
     SCHEMA = {
-        Optional(hash.CHECKSUM_MD5): Or(str, None),
-        Optional(hash.CHECKSUM_SHA256): Or(str, None),
+        Optional(modchecksum.CHECKSUM_MD5): Or(str, None),
+        Optional(modchecksum.CHECKSUM_SHA256): Or(str, None),
         Optional(PARAM_CMD): Or(str, None),
         Optional(PARAM_WDIR): Or(str, None),
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
@@ -397,7 +397,7 @@ class Stage(object):
 
         # NOTE: need to remove checksums from old dict in order to compare
         # it to the new one, since the new one doesn't have checksums yet.
-        for k in hash.CHECKSUM_MAP.keys():
+        for k in modchecksum.CHECKSUM_MAP.keys():
             old_d.pop(k, None)
             new_d.pop(k, None)
         outs = old_d.get(self.PARAM_OUTS, [])
@@ -610,7 +610,7 @@ class Stage(object):
         path = os.path.abspath(fname)
 
         checksum = {}
-        for k in hash.CHECKSUM_MAP.keys():
+        for k in modchecksum.CHECKSUM_MAP.keys():
             v = d.get(k)
             if v:
                 checksum[k] = v
@@ -673,13 +673,13 @@ class Stage(object):
 
         self.repo.scm.track_file(os.path.relpath(fname))
 
-    def _compute_checksum(self, checksum_type=hash.CHECKSUM_MD5):
+    def _compute_checksum(self, checksum_type=modchecksum.CHECKSUM_MD5):
         from dvc.output.base import OutputBase
 
         d = self.dumpd()
 
         # NOTE: removing md5 manually in order to not affect md5s in deps/outs
-        for k in hash.CHECKSUM_MAP.keys():
+        for k in modchecksum.CHECKSUM_MAP.keys():
             if k in d.keys():
                 del d[k]
 

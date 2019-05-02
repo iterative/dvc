@@ -5,7 +5,7 @@ from dvc.path.local import PathLOCAL
 from dvc.utils.compat import str
 
 from dvc.state import State
-from dvc.utils.hash import file_checksum
+from dvc.utils.checksum import file_checksum
 from dvc.main import main
 from dvc.utils.fs import get_inode
 
