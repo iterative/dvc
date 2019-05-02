@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.utils import hash
+from dvc.utils import checksum as modchecksum
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
@@ -41,8 +41,8 @@ OUTS_MAP = {
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUM_SCHEMA = {
-    schema.Optional(hash.CHECKSUM_MD5): schema.Or(str, None),
-    schema.Optional(hash.CHECKSUM_SHA256): schema.Or(str, None),
+    schema.Optional(modchecksum.CHECKSUM_MD5): schema.Or(str, None),
+    schema.Optional(modchecksum.CHECKSUM_SHA256): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
 }

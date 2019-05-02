@@ -3,7 +3,7 @@
 from __future__ import unicode_literals
 
 from dvc.utils.compat import str, open, urlparse
-from dvc.utils import hash
+from dvc.utils import checksum as modchecksum
 
 import os
 import errno
@@ -59,7 +59,7 @@ def supported_hash_local(hash_names):
     Args:
         hash_names (list/string): hash name(s).
     """
-    if hash.checksum_types_from_str(hash_names):
+    if modchecksum.checksum_types_from_str(hash_names):
         return True
     return False
 
