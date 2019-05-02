@@ -189,22 +189,9 @@ class RemoteBase(object):
 
     def get_dir_checksum(self, path_info):
         dir_info = self._collect_dir(path_info)
-        to_info = path_info.copy()
-        to_info["path"] = self.cache.ospath.join(
-            self.cache.prefix, tmp_fname("")
+        checksum, from_info, to_info = self._get_dir_info_checksum(
+            dir_info, path_info
         )
-
-        tmp = tempfile.NamedTemporaryFile(delete=False).name
-        with open(tmp, "w+") as fobj:
-            json.dump(dir_info, fobj)
-
-        from_info = {"scheme": "local", "path": tmp}
-        self.cache.upload([from_info], [to_info], no_progress_bar=True)
-
-        checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
-
-        from_info = to_info.copy()
-        to_info["path"] = self.cache.checksum_to_path(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.move(from_info, to_info)
 
@@ -212,6 +199,24 @@ class RemoteBase(object):
         self.state.save(to_info, checksum)
 
         return checksum
+
+    def _get_dir_info_checksum(self, dir_info, path_info):
+        to_info = path_info.copy()
+        to_info["path"] = self.cache.ospath.join(
+            self.cache.prefix, tmp_fname("")
+        )
+
+        tmp = tempfile.NamedTemporaryFile(delete=False).name
+        with open(tmp, "w+") as fobj:
+            json.dump(dir_info, fobj, sort_keys=True)
+
+        from_info = {"scheme": "local", "path": tmp}
+        self.cache.upload([from_info], [to_info], no_progress_bar=True)
+
+        checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
+        from_info = to_info.copy()
+        to_info["path"] = self.cache.checksum_to_path(checksum)
+        return checksum, from_info, to_info
 
     def get_dir_cache(self, checksum):
         assert checksum
