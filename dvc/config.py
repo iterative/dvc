@@ -156,6 +156,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CACHE_SSH = "ssh"
     SECTION_CACHE_HDFS = "hdfs"
     SECTION_CACHE_AZURE = "azure"
+    SECTION_CACHE_OSS = "oss"
     SECTION_CACHE_SLOW_LINK_WARNING = "slow_link_warning"
     SECTION_CACHE_SCHEMA = {
         Optional(SECTION_CACHE_LOCAL): str,
@@ -164,6 +165,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_HDFS): str,
         Optional(SECTION_CACHE_SSH): str,
         Optional(SECTION_CACHE_AZURE): str,
+        Optional(SECTION_CACHE_OSS): str,
         Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
@@ -227,6 +229,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_LOCAL_SCHEMA = {SECTION_LOCAL_STORAGEPATH: str}
 
     SECTION_AZURE_CONNECTION_STRING = "connection_string"
+    # Alibabacloud oss options
+    SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
+    SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -255,6 +260,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_REMOTE_PASSWORD): str,
         Optional(SECTION_REMOTE_ASK_PASSWORD): BOOL_SCHEMA,
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
+        Optional(SECTION_OSS_ACCESS_KEY_ID): str,
+        Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
         Optional(PRIVATE_CWD): str,
     }
 

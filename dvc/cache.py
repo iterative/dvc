@@ -45,6 +45,7 @@ class Cache(object):
         self.local = Remote(repo, settings)
         self.s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
         self.gs = self._get_remote(config, Config.SECTION_CACHE_GS)
+        self.oss = self._get_remote(config, Config.SECTION_CACHE_OSS)
         self.ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
         self.hdfs = self._get_remote(config, Config.SECTION_CACHE_HDFS)
         self.azure = self._get_remote(config, Config.SECTION_CACHE_AZURE)

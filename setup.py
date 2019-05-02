@@ -65,8 +65,9 @@ install_requires = [
 gs = ["google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==1.3.0"]
+oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.4.1"]
-all_remotes = gs + s3 + azure + ssh
+all_remotes = gs + s3 + azure + ssh + oss
 
 setup(
     name="dvc",
@@ -83,6 +84,7 @@ setup(
         "gs": gs,
         "s3": s3,
         "azure": azure,
+        "oss": oss,
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ':python_version=="2.7"': ["futures", "pathlib2"],
