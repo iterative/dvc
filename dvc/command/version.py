@@ -5,7 +5,7 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.version import _BASE_VERSION
+from dvc.version import __version__
 
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class CmdVersion(CmdBase):
             "Python version: {python_version}\n"
             "Platform: {platform_type}"
         ).format(
-            dvc_version=_BASE_VERSION,
+            dvc_version=__version__,
             python_version=platform.python_version(),
             platform_type=platform.platform(),
         )
