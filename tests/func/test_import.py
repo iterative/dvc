@@ -41,7 +41,8 @@ class TestDefaultOutput(TestDvc):
         ret = main(["import", tmpfile])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.exists(filename))
-        self.assertEqual(open(filename).read(), "content")
+        with open(filename) as fd:
+            self.assertEqual(fd.read(), "content")
 
 
 class TestFailedImportMessage(TestDvc):

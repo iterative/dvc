@@ -43,13 +43,12 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "networkx>=2.1",
-    "pyyaml>=3.12",
     "gitpython>=2.1.8",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
     "schema>=0.6.7",
-    "jsonpath-rw==1.4.0",
+    "jsonpath-ng>=1.4.3",
     "requests>=2.18.4",
     "grandalf==0.6",
     "asciimatics>=1.10.0",
@@ -59,6 +58,7 @@ install_requires = [
     "inflect>=2.1.0",
     "humanize>=0.5.1",
     "dulwich>=0.19.11",
+    "ruamel.yaml==0.15.91",
 ]
 
 # Extra dependencies for remote integrations
@@ -85,7 +85,7 @@ setup(
         "azure": azure,
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ':python_version=="2.7"': ["futures"],
+        ':python_version=="2.7"': ["futures", "pathlib2"],
     },
     keywords="data science, data version control, machine learning",
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",

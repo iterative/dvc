@@ -93,14 +93,18 @@ class RemoteSSH(RemoteBase):
         assert path_info["scheme"] == self.scheme
 
         with self.ssh(**path_info) as ssh:
-            return ssh.file_exists(path_info["path"])
+            return ssh.exists(path_info["path"])
 
-    def md5(self, path_info):
+    def get_file_checksum(self, path_info):
         if path_info["scheme"] != self.scheme:
             raise NotImplementedError
 
         with self.ssh(**path_info) as ssh:
             return ssh.md5(path_info["path"])
+
+    def isdir(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            return ssh.isdir(path_info["path"])
 
     def copy(self, from_info, to_info):
         if (
@@ -112,18 +116,22 @@ class RemoteSSH(RemoteBase):
         with self.ssh(**from_info) as ssh:
             ssh.cp(from_info["path"], to_info["path"])
 
-    def save_info(self, path_info):
-        if path_info["scheme"] != self.scheme:
-            raise NotImplementedError
-
-        return {self.PARAM_CHECKSUM: self.md5(path_info)}
-
     def remove(self, path_info):
         if path_info["scheme"] != self.scheme:
             raise NotImplementedError
 
         with self.ssh(**path_info) as ssh:
             ssh.remove(path_info["path"])
+
+    def move(self, from_info, to_info):
+        if (
+            from_info["scheme"] != self.scheme
+            or to_info["scheme"] != self.scheme
+        ):
+            raise NotImplementedError
+
+        with self.ssh(**from_info) as ssh:
+            ssh.move(from_info["path"], to_info["path"])
 
     def download(
         self,
@@ -157,7 +165,10 @@ class RemoteSSH(RemoteBase):
 
             try:
                 ssh.download(
-                    from_info["path"], to_info["path"], progress_title=name
+                    from_info["path"],
+                    to_info["path"],
+                    progress_title=name,
+                    no_progress_bar=no_progress_bar,
                 )
             except Exception:
                 logger.exception(
@@ -171,7 +182,7 @@ class RemoteSSH(RemoteBase):
 
         ssh.close()
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         with self.ssh(**to_infos[0]) as ssh:
@@ -184,7 +195,10 @@ class RemoteSSH(RemoteBase):
 
                 try:
                     ssh.upload(
-                        from_info["path"], to_info["path"], progress_title=name
+                        from_info["path"],
+                        to_info["path"],
+                        progress_title=name,
+                        no_progress_bar=no_progress_bar,
                     )
                 except Exception:
                     logger.exception(
@@ -199,3 +213,12 @@ class RemoteSSH(RemoteBase):
     def list_cache_paths(self):
         with self.ssh(**self.path_info) as ssh:
             return list(ssh.walk_files(self.prefix))
+
+    def walk(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            for entry in ssh.walk(path_info["path"]):
+                yield entry
+
+    def makedirs(self, path_info):
+        with self.ssh(**path_info) as ssh:
+            ssh.makedirs(path_info["path"])

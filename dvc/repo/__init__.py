@@ -68,11 +68,9 @@ class Repo(object):
 
         core = self.config.config[Config.SECTION_CORE]
 
-        logger.setLevel(
-            logging.getLevelName(
-                core.get(Config.SECTION_CORE_LOGLEVEL, "info").upper()
-            )
-        )
+        level = core.get(Config.SECTION_CORE_LOGLEVEL)
+        if level:
+            logger.setLevel(level.upper())
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self, config=self.config.config)
@@ -205,7 +203,7 @@ class Repo(object):
             else:
                 return ret
 
-        for i in self.cache.local.load_dir_cache(md5):
+        for i in out.dir_cache:
             i["branch"] = branch
             i[r.PARAM_PATH] = os.path.join(
                 info[r.PARAM_PATH], i[r.PARAM_RELPATH]
@@ -234,9 +232,7 @@ class Repo(object):
         if out.scheme != "local":
             return ret
 
-        md5 = info[out.remote.PARAM_CHECKSUM]
-        cache = self.cache.local.get(md5)
-        if not out.remote.is_dir_cache(cache):
+        if not out.is_dir_checksum:
             return ret
 
         return self._collect_dir_cache(
@@ -287,17 +283,60 @@ class Repo(object):
 
                 for out in stage.outs:
                     scheme = out.path_info["scheme"]
-                    cache[scheme] += self._collect_used_cache(
-                        out,
-                        branch=branch,
-                        remote=remote,
-                        force=force,
-                        jobs=jobs,
+                    cache[scheme].extend(
+                        self._collect_used_cache(
+                            out,
+                            branch=branch,
+                            remote=remote,
+                            force=force,
+                            jobs=jobs,
+                        )
                     )
 
         return cache
 
     def graph(self, stages=None, from_directory=None):
+        """Generate a graph by using the given stages on the given directory
+
+        The nodes of the graph are the stage's path relative to the root.
+
+        Edges are created when the output of one stage is used as a
+        dependency in other stage.
+
+        The direction of the edges goes from the stage to its dependency:
+
+        For example, running the following:
+
+            $ dvc run -o A "echo A > A"
+            $ dvc run -d A -o B "echo B > B"
+            $ dvc run -d B -o C "echo C > C"
+
+        Will create the following graph:
+
+               ancestors <--
+                           |
+                C.dvc -> B.dvc -> A.dvc
+                |          |
+                |          --> descendants
+                |
+                ------- pipeline ------>
+                           |
+                           v
+              (weakly connected components)
+
+        Args:
+            stages (list): used to build a graph, if None given, use the ones
+                on the `from_directory`.
+
+            from_directory (str): directory where to look at for stages, if
+                None is given, use the current working directory
+
+        Raises:
+            OutputDuplicationError: two outputs with the same path
+            StagePathAsOutputError: stage inside an output directory
+            OverlappingOutputPathsError: output inside output directory
+            CyclicGraphError: resulting graph has cycles
+        """
         import networkx as nx
         from dvc.exceptions import (
             OutputDuplicationError,
@@ -335,7 +374,6 @@ class Repo(object):
                 if path_dir.startswith(out.path + os.sep):
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
-        # collect the whole DAG
         for stage in stages:
             node = os.path.relpath(stage.path, self.root_dir)
 

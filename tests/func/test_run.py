@@ -1,16 +1,17 @@
 import os
 import uuid
 
+import logging
 import mock
 import shutil
 import filecmp
 import subprocess
-import yaml
 
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5, load_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file
 from dvc.system import System
 from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
 from dvc.stage import StageFileBadNameError, MissingDep
@@ -380,7 +381,8 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -398,7 +400,8 @@ class TestRunUnprotectOutsCopy(TestDvc):
         )
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsSymlink(TestDvc):
@@ -431,7 +434,8 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -450,7 +454,8 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_symlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestRunUnprotectOutsHardlink(TestDvc):
@@ -483,7 +488,8 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
         ret = main(
             [
@@ -502,7 +508,8 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         self.assertEqual(ret, 0)
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
-        self.assertEqual(open(self.FOO, "r").read(), "foo")
+        with open(self.FOO, "r") as fd:
+            self.assertEqual(fd.read(), "foo")
 
 
 class TestCmdRunOverwrite(TestDvc):
@@ -602,12 +609,14 @@ class TestCmdRunCliMetrics(TestDvc):
     def test_cached(self):
         ret = main(["run", "-m", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
-        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+        with open("metrics.txt", "r") as fd:
+            self.assertEqual(fd.read().rstrip(), "test")
 
     def test_not_cached(self):
         ret = main(["run", "-M", "metrics.txt", "echo test > metrics.txt"])
         self.assertEqual(ret, 0)
-        self.assertEqual(open("metrics.txt", "r").read().rstrip(), "test")
+        with open("metrics.txt", "r") as fd:
+            self.assertEqual(fd.read().rstrip(), "test")
 
 
 class TestCmdRunWorkingDirectory(TestDvc):
@@ -615,15 +624,13 @@ class TestCmdRunWorkingDirectory(TestDvc):
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
         )
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
 
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
         )
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
 
     def test_fname_changes_path_and_wdir(self):
@@ -640,8 +647,7 @@ class TestCmdRunWorkingDirectory(TestDvc):
         )
 
         # Check that it is dumped properly (relative to fname)
-        with open(stage.relpath, "r") as fobj:
-            d = yaml.safe_load(fobj)
+        d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], "..")
 
     def test_cwd_is_ignored(self):
@@ -951,3 +957,33 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
                     mock_run.assert_called_once()
                     mock_checkout.assert_not_called()
+
+
+class TestPersistentOutput(TestDvc):
+    def test_ignore_build_cache(self):
+        warning = "Build cache is ignored when persisting outputs."
+
+        with open("immutable", "w") as fobj:
+            fobj.write("1")
+
+        cmd = [
+            "run",
+            "--overwrite-dvcfile",
+            "--deps",
+            "immutable",
+            "--outs-persist",
+            "greetings",
+            "echo hello>>greetings",
+        ]
+
+        with self._caplog.at_level(logging.WARNING, logger="dvc"):
+            assert main(cmd) == 0
+            assert warning not in self._caplog.text
+
+            assert main(cmd) == 0
+            assert warning in self._caplog.text
+
+        # Even if the "immutable" dependency didn't change
+        # it should run the command again, as it is "ignoring build cache"
+        with open("greetings", "r") as fobj:
+            assert "hello\nhello\n" == fobj.read()

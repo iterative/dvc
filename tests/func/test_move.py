@@ -3,7 +3,7 @@ import os
 from dvc.main import main
 from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.stage import Stage
-from dvc.utils import load_stage_file
+from dvc.utils.stage import load_stage_file
 
 from tests.basic_env import TestDvc
 from tests.func.test_repro import TestRepro
@@ -124,23 +124,31 @@ class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
 
 class TestMoveDirectoryShouldNotOverwriteExisting(TestDvc):
     def test(self):
-        new_dir_name = "data_dir2"
-        os.mkdir(new_dir_name)
+        dir_name = "dir"
+        orig_listdir = set(os.listdir(self.DATA_DIR))
+
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        ret = main(["move", self.DATA_DIR, new_dir_name])
+        os.mkdir(dir_name)
+        new_dir_name = os.path.join(dir_name, self.DATA_DIR)
+
+        ret = main(["move", self.DATA_DIR, dir_name])
         self.assertEqual(ret, 0)
 
+        data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
         self.assertFalse(os.path.exists(self.DATA_DIR))
-        self.assertFalse(
-            os.path.exists(self.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+        self.assertFalse(os.path.exists(data_dir_stage))
+
+        self.assertTrue(os.path.exists(dir_name))
+        self.assertEqual(
+            set(os.listdir(dir_name)),
+            set([".gitignore", data_dir_stage, self.DATA_DIR]),
         )
 
         self.assertTrue(os.path.exists(new_dir_name))
         self.assertTrue(os.path.isfile(new_dir_name + Stage.STAGE_FILE_SUFFIX))
-
-        self.assertEqual(os.listdir(new_dir_name), [self.DATA_DIR])
+        self.assertEqual(set(os.listdir(new_dir_name)), orig_listdir)
 
 
 class TestMoveFileBetweenDirectories(TestDvc):

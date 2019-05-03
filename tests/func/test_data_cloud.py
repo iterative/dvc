@@ -6,11 +6,10 @@ import uuid
 import shutil
 import getpass
 import platform
-import yaml
 import copy
 import logging
+import pytest
 
-from dvc.state import State
 from mock import patch
 
 from dvc.utils.compat import str
@@ -27,9 +26,12 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
-from dvc.utils import file_md5, load_stage_file
+from dvc.utils import file_md5
+from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
+from tests.conftest import user
+from tests.conftest import key_path
 from tests.utils import spy
 
 
@@ -150,6 +152,25 @@ def get_ssh_url():
     )
 
 
+def get_ssh_url_mocked(user, port):
+    path = get_local_storagepath()
+    if os.name == "nt":
+        # NOTE: On Windows get_local_storagepath() will return an ntpath
+        # that looks something like `C:\some\path`, which is not compatible
+        # with SFTP paths [1], so we need to convert it to a proper posixpath.
+        # To do that, we should construct a posixpath that would be relative
+        # to the server's root. In our case our ssh server is running with
+        # `c:/` as a root, and our URL format requires absolute paths, so the
+        # resulting path would look like `/some/path`.
+        #
+        # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
+        drive, path = os.path.splitdrive(path)
+        assert drive == "c:"
+        path = path.replace("\\", "/")
+    url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
+    return url
+
+
 def get_hdfs_url():
     return "hdfs://{}@127.0.0.1{}".format(
         getpass.getuser(), get_local_storagepath()
@@ -220,6 +241,9 @@ class TestDataCloudBase(TestDvc):
     def _get_url(self):
         return ""
 
+    def _get_keyfile(self):
+        return None
+
     def _ensure_should_run(self):
         if not self._should_test():
             raise SkipTest(
@@ -230,9 +254,11 @@ class TestDataCloudBase(TestDvc):
         self._ensure_should_run()
 
         repo = self._get_url()
+        keyfile = self._get_keyfile()
 
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
         self.cloud = DataCloud(self.dvc, config)
 
         self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
@@ -244,7 +270,7 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        cache = stage.outs[0].cache
+        cache = stage.outs[0].cache_path
         info = stage.outs[0].dumpd()
         md5 = info["md5"]
 
@@ -253,7 +279,7 @@ class TestDataCloudBase(TestDvc):
         stage_dir = stages[0]
         self.assertTrue(stage_dir is not None)
 
-        cache_dir = stage_dir.outs[0].cache
+        cache_dir = stage_dir.outs[0].cache_path
         info_dir = stage_dir.outs[0].dumpd()
         md5_dir = info_dir["md5"]
 
@@ -396,6 +422,26 @@ class TestRemoteSSH(TestDataCloudBase):
         return RemoteSSH
 
 
+@pytest.mark.usefixtures("ssh_server")
+class TestRemoteSSHMocked(TestDataCloudBase):
+    @pytest.fixture(autouse=True)
+    def setup_method_fixture(self, request, ssh_server):
+        self.ssh_server = ssh_server
+        self.method_name = request.function.__name__
+
+    def _get_url(self):
+        return get_ssh_url_mocked(user, self.ssh_server.port)
+
+    def _get_keyfile(self):
+        return key_path
+
+    def _should_test(self):
+        return True
+
+    def _get_cloud_class(self):
+        return RemoteSSH
+
+
 class TestRemoteHDFS(TestDataCloudBase):
     def _should_test(self):
         return _should_test_hdfs()
@@ -423,13 +469,13 @@ class TestDataCloudCLIBase(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        cache = stage.outs[0].cache
+        cache = stage.outs[0].cache_path
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage_dir = stages[0]
         self.assertTrue(stage_dir is not None)
-        cache_dir = stage_dir.outs[0].cache
+        cache_dir = stage_dir.outs[0].cache_path
 
         # FIXME check status output
         self.main(["status", "-c", "--show-checksums"] + args)
@@ -486,8 +532,11 @@ class TestDataCloudCLIBase(TestDvc):
         pass
 
     def test(self):
-        if self._should_test():
-            self._test()
+        if not self._should_test():
+            raise SkipTest(
+                "Test {} is disabled".format(self.__class__.__name__)
+            )
+        self._test()
 
 
 class TestCompatRemoteLOCALCLI(TestDataCloudCLIBase):
@@ -629,8 +678,7 @@ class TestWarnOnOutdatedStage(TestDvc):
         stage_file_path = stage.relpath
         content = load_stage_file(stage_file_path)
         del content["outs"][0]["md5"]
-        with open(stage_file_path, "w") as stage_file:
-            yaml.dump(content, stage_file)
+        dump_stage_file(stage_file_path, content)
 
         with self._caplog.at_level(logging.WARNING, logger="dvc"):
             self._caplog.clear()
@@ -731,8 +779,10 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
 
 class TestCheckSumRecalculation(TestDvc):
     def test(self):
-        test_collect = spy(State._collect)
-        with patch.object(State, "_collect", test_collect):
+        test_get_file_checksum = spy(RemoteLOCAL.get_file_checksum)
+        with patch.object(
+            RemoteLOCAL, "get_file_checksum", test_get_file_checksum
+        ):
             url = get_local_url()
             ret = main(["remote", "add", "-d", TEST_REMOTE, url])
             self.assertEqual(ret, 0)
@@ -744,7 +794,7 @@ class TestCheckSumRecalculation(TestDvc):
             self.assertEqual(ret, 0)
             ret = main(["run", "-d", self.FOO, "echo foo"])
             self.assertEqual(ret, 0)
-        self.assertEqual(test_collect.mock.call_count, 1)
+        self.assertEqual(test_get_file_checksum.mock.call_count, 1)
 
 
 class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):

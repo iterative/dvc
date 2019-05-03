@@ -39,6 +39,7 @@ class CmdRepro(CmdBase):
                     all_pipelines=self.args.all_pipelines,
                     ignore_build_cache=self.args.ignore_build_cache,
                     no_commit=self.args.no_commit,
+                    downstream=self.args.downstream,
                 )
 
                 if len(stages) == 0:
@@ -139,5 +140,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
+    )
+    repro_parser.add_argument(
+        "--downstream",
+        action="store_true",
+        default=False,
+        help="Reproduce the pipeline starting from the specified stage.",
     )
     repro_parser.set_defaults(func=CmdRepro)

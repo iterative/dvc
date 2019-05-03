@@ -1,5 +1,7 @@
 import os
 import configobj
+from dvc.remote.base import RemoteBase
+from mock import patch
 
 from dvc.main import main
 from dvc.command.remote import CmdRemoteAdd
@@ -169,3 +171,53 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
         ret = main(["push", "-r", self.upper_case_remote_name])
         self.assertEqual(ret, 0)
+
+
+def test_large_dir_progress(repo_dir, dvc):
+    from dvc.utils import LARGE_DIR_SIZE
+    from dvc.progress import progress
+
+    # Create a "large dir"
+    for i in range(LARGE_DIR_SIZE + 1):
+        repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
+
+    with patch.object(progress, "update_target") as update_target:
+        dvc.add("gen")
+        assert update_target.called
+
+
+def test_dir_checksum_should_be_key_order_agnostic(dvc):
+    data_dir = os.path.join(dvc.root_dir, "data")
+    file1 = os.path.join(data_dir, "1")
+    file2 = os.path.join(data_dir, "2")
+
+    os.mkdir(data_dir)
+    with open(file1, "w") as fobj:
+        fobj.write("1")
+
+    with open(file2, "w") as fobj:
+        fobj.write("2")
+
+    path_info = {"scheme": "local", "path": data_dir}
+    with dvc.state:
+        with patch.object(
+            RemoteBase,
+            "_collect_dir",
+            return_value=[
+                {"relpath": "1", "md5": "1"},
+                {"relpath": "2", "md5": "2"},
+            ],
+        ):
+            checksum1 = dvc.cache.local.get_dir_checksum(path_info)
+
+        with patch.object(
+            RemoteBase,
+            "_collect_dir",
+            return_value=[
+                {"md5": "1", "relpath": "1"},
+                {"md5": "2", "relpath": "2"},
+            ],
+        ):
+            checksum2 = dvc.cache.local.get_dir_checksum(path_info)
+
+    assert checksum1 == checksum2

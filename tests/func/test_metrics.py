@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import os
 import json
 import logging
@@ -6,36 +8,60 @@ import logging
 from dvc.repo import Repo as DvcRepo
 from dvc.main import main
 from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
+from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
+from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 
-class TestMetrics(TestDvc):
+class TestMetricsBase(TestDvc):
     def setUp(self):
-        super(TestMetrics, self).setUp()
+        super(TestMetricsBase, self).setUp()
         self.dvc.scm.commit("init")
 
-        for branch in ["foo", "bar", "baz"]:
-            self.dvc.scm.checkout(branch, create_new=True)
+        branches = ["foo", "bar", "baz"]
 
-            with open("metric", "w+") as fd:
-                fd.write(branch)
+        for branch in branches:
+            self.dvc.scm.git.create_head(branch)
 
-            with open("metric_json", "w+") as fd:
-                json.dump({"branch": branch}, fd)
+        for branch in branches:
+            self.dvc.scm.checkout(branch)
 
-            with open("metric_csv", "w+") as fd:
-                fd.write(branch)
+            self.create("metric", branch)
+            self.create("metric_json", json.dumps({"branch": branch}))
+            self.create("metric_csv", branch)
+            self.create("metric_hcsv", "branch\n" + branch)
+            self.create("metric_tsv", branch)
+            self.create("metric_htsv", "branch\n" + branch)
 
-            with open("metric_hcsv", "w+") as fd:
-                fd.write("branch\n")
-                fd.write(branch)
+            if branch == "foo":
+                deviation_mse_train = 0.173461
+            else:
+                deviation_mse_train = 0.356245
 
-            with open("metric_tsv", "w+") as fd:
-                fd.write(branch)
-
-            with open("metric_htsv", "w+") as fd:
-                fd.write("branch\n")
-                fd.write(branch)
+            self.create(
+                "metric_json_ext",
+                json.dumps(
+                    {
+                        "metrics": [
+                            {
+                                "dataset": "train",
+                                "deviation_mse": deviation_mse_train,
+                                "value_mse": 0.421601,
+                            },
+                            {
+                                "dataset": "testing",
+                                "deviation_mse": 0.289545,
+                                "value_mse": 0.297848,
+                            },
+                            {
+                                "dataset": "validation",
+                                "deviation_mse": 0.67528,
+                                "value_mse": 0.671502,
+                            },
+                        ]
+                    }
+                ),
+            )
 
             files = [
                 "metric",
@@ -44,6 +70,7 @@ class TestMetrics(TestDvc):
                 "metric_htsv",
                 "metric_csv",
                 "metric_hcsv",
+                "metric_json_ext",
             ]
 
             self.dvc.run(metrics_no_cache=files, overwrite=True)
@@ -54,6 +81,8 @@ class TestMetrics(TestDvc):
 
         self.dvc.scm.checkout("master")
 
+
+class TestMetrics(TestMetricsBase):
     def test_show(self):
         ret = self.dvc.metrics.show("metric", all_branches=True)
         self.assertEqual(len(ret), 3)
@@ -100,6 +129,26 @@ class TestMetrics(TestDvc):
         self.assertSequenceEqual(ret["foo"]["metric_hcsv"], ["foo"])
         self.assertSequenceEqual(ret["bar"]["metric_hcsv"], ["bar"])
         self.assertSequenceEqual(ret["baz"]["metric_hcsv"], ["baz"])
+
+        ret = self.dvc.metrics.show(
+            "metric_json_ext",
+            typ="json",
+            xpath="$.metrics[?(@.deviation_mse<0.30) & (@.value_mse>0.4)]",
+            all_branches=True,
+        )
+        self.assertEqual(len(ret), 1)
+        self.assertSequenceEqual(
+            ret["foo"]["metric_json_ext"],
+            [
+                {
+                    "dataset": "train",
+                    "deviation_mse": 0.173461,
+                    "value_mse": 0.421601,
+                }
+            ],
+        )
+        self.assertRaises(KeyError, lambda: ret["bar"])
+        self.assertRaises(KeyError, lambda: ret["baz"])
 
     def test_unknown_type_ignored(self):
         ret = self.dvc.metrics.show(
@@ -166,26 +215,31 @@ class TestMetrics(TestDvc):
             self.assertSequenceEqual(ret[b]["metric_hcsv"], [[b]])
 
     def test_formatted_output(self):
-        with open("metrics.csv", "w") as fobj:
-            # Labels are in Spanish to test unicode characters
-            fobj.write(
+        # Labels are in Spanish to test UTF-8
+        self.create(
+            "metrics.csv",
+            (
                 "valor_mse,desviación_mse,data_set\n"
                 "0.421601,0.173461,entrenamiento\n"
                 "0.67528,0.289545,pruebas\n"
                 "0.671502,0.297848,validación\n"
-            )
+            ),
+        )
 
-        with open("metrics.tsv", "w") as fobj:
-            # Contains quoted newlines to test output correctness
-            fobj.write(
+        # Contains quoted newlines to test output correctness
+        self.create(
+            "metrics.tsv",
+            (
                 "value_mse\tdeviation_mse\tdata_set\n"
                 "0.421601\t0.173461\ttrain\n"
                 '0.67528\t0.289545\t"test\\ning"\n'
                 "0.671502\t0.297848\tvalidation\n"
-            )
+            ),
+        )
 
-        with open("metrics.json", "w") as fobj:
-            fobj.write(
+        self.create(
+            "metrics.json",
+            (
                 "{\n"
                 '     "data_set": [\n'
                 '          "train",\n'
@@ -203,10 +257,12 @@ class TestMetrics(TestDvc):
                 '          "0.671502"\n'
                 "     ]\n"
                 "}"
-            )
+            ),
+        )
 
-        with open("metrics.txt", "w") as fobj:
-            fobj.write("ROC_AUC: 0.64\nKS: 78.9999999996\nF_SCORE: 77\n")
+        self.create(
+            "metrics.txt", "ROC_AUC: 0.64\nKS: 78.9999999996\nF_SCORE: 77\n"
+        )
 
         self.dvc.run(
             fname="testing_metrics_output.dvc",
@@ -229,11 +285,11 @@ class TestMetrics(TestDvc):
             self.assertEqual(ret, 0)
 
         expected_csv = (
-            u"\tmetrics.csv:\n"
-            u"\t\tvalor_mse   desviación_mse   data_set       \n"
-            u"\t\t0.421601    0.173461         entrenamiento  \n"
-            u"\t\t0.67528     0.289545         pruebas        \n"
-            u"\t\t0.671502    0.297848         validación"
+            "\tmetrics.csv:\n"
+            "\t\tvalor_mse   desviación_mse   data_set       \n"
+            "\t\t0.421601    0.173461         entrenamiento  \n"
+            "\t\t0.67528     0.289545         pruebas        \n"
+            "\t\t0.671502    0.297848         validación"
         )
 
         expected_tsv = (
@@ -278,6 +334,35 @@ class TestMetrics(TestDvc):
         assert expected_csv in stdout
         assert expected_txt in stdout
         assert expected_json in stdout
+
+    def test_show_all_should_be_current_dir_agnostic(self):
+        os.chdir(self.DATA_DIR)
+
+        metrics = self.dvc.metrics.show(all_branches=True)
+        self.assertMetricsHaveRelativePaths(metrics)
+
+    def assertMetricsHaveRelativePaths(self, metrics):
+        root_relpath = os.path.relpath(self.dvc.root_dir)
+        metric_path = os.path.join(root_relpath, "metric")
+        metric_json_path = os.path.join(root_relpath, "metric_json")
+        metric_tsv_path = os.path.join(root_relpath, "metric_tsv")
+        metric_htsv_path = os.path.join(root_relpath, "metric_htsv")
+        metric_csv_path = os.path.join(root_relpath, "metric_csv")
+        metric_hcsv_path = os.path.join(root_relpath, "metric_hcsv")
+        metric_json_ext_path = os.path.join(root_relpath, "metric_json_ext")
+        for branch in ["bar", "baz", "foo"]:
+            self.assertEqual(
+                set(metrics[branch].keys()),
+                {
+                    metric_path,
+                    metric_json_path,
+                    metric_tsv_path,
+                    metric_htsv_path,
+                    metric_csv_path,
+                    metric_hcsv_path,
+                    metric_json_ext_path,
+                },
+            )
 
 
 class TestMetricsRecursive(TestDvc):
@@ -383,7 +468,7 @@ class TestMetricsReproCLI(TestDvc):
             self.dvc.run(metrics_no_cache=["metrics_bin"])
 
 
-class TestMetricsCLI(TestMetrics):
+class TestMetricsCLI(TestMetricsBase):
     def test(self):
         # FIXME check output
         ret = main(["metrics", "show", "-a", "metric", "-v"])
@@ -555,6 +640,7 @@ class TestCachedMetrics(TestDvc):
     def _do_add(self, branch):
         self.dvc.scm.checkout(branch)
         self.dvc.checkout(force=True)
+        assert not os.path.exists("metrics.json")
 
         with open("metrics.json", "w+") as fd:
             json.dump({"metrics": branch}, fd)
@@ -695,3 +781,50 @@ class TestMetricsType(TestDvc):
                 self.assertSequenceEqual(ret[branch][file_name], [branch])
             else:
                 self.assertSequenceEqual(ret[branch][file_name], branch)
+
+
+class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
+    BRANCH_MISSING_METRIC = "missing_metric_branch"
+    METRIC_FILE = "metric"
+    METRIC_FILE_STAGE = METRIC_FILE + Stage.STAGE_FILE_SUFFIX
+
+    def _write_metric(self):
+        with open(self.METRIC_FILE, "w+") as fd:
+            fd.write("0.5")
+            fd.flush()
+
+    def _commit_metric(self, dvc, branch):
+        dvc.scm.add([self.METRIC_FILE_STAGE])
+        dvc.scm.commit("{} commit".format(branch))
+
+    def setUp(self, dvc):
+        dvc.scm.branch(self.BRANCH_MISSING_METRIC)
+
+        self._write_metric()
+
+        ret = main(["run", "-m", self.METRIC_FILE])
+        assert 0 == ret
+
+        self._commit_metric(dvc, "master")
+
+    def test(self, dvc, caplog):
+        self.setUp(dvc)
+
+        dvc.scm.checkout(self.BRANCH_MISSING_METRIC)
+
+        self._write_metric()
+        ret = main(["run", "-M", self.METRIC_FILE])
+        assert 0 == ret
+
+        self._commit_metric(dvc, self.BRANCH_MISSING_METRIC)
+        os.remove(self.METRIC_FILE)
+
+        ret = main(["metrics", "show", "-a"])
+
+        assert (
+            NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
+                self.METRIC_FILE, self.BRANCH_MISSING_METRIC
+            )
+            in caplog.text
+        )
+        assert 0 == ret

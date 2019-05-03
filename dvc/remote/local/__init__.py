@@ -2,17 +2,16 @@ from __future__ import unicode_literals
 
 from copy import copy
 
+from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.utils.compat import str, makedirs
 
 import os
 import stat
 import uuid
-import json
 import ntpath
 import shutil
 import posixpath
 import logging
-from operator import itemgetter
 
 from dvc.system import System
 from dvc.remote.base import (
@@ -26,12 +25,11 @@ from dvc.utils import (
     remove,
     move,
     copyfile,
-    dict_md5,
     to_chunks,
     tmp_fname,
+    file_md5,
     walk_files,
 )
-from dvc.utils import LARGE_DIR_SIZE
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.progress import progress
@@ -48,8 +46,6 @@ class RemoteLOCAL(RemoteBase):
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
-    PARAM_RELPATH = "relpath"
-    MD5_DIR_SUFFIX = ".dir"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
@@ -116,44 +112,22 @@ class RemoteLOCAL(RemoteBase):
         if not md5:
             return None
 
-        return os.path.join(self.cache_dir, md5[0:2], md5[2:])
-
-    def changed_cache_file(self, md5):
-        cache = self.get(md5)
-        if self.state.changed(cache, md5=md5):
-            if os.path.exists(cache):
-                msg = "Corrupted cache file {}."
-                logger.warning(msg.format(os.path.relpath(cache)))
-                remove(cache)
-            return True
-        return False
+        return self.checksum_to_path(md5)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
         assert path_info["scheme"] == "local"
         return os.path.lexists(path_info["path"])
 
-    def changed_cache(self, md5):
-        cache = self.get(md5)
-        clist = [(cache, md5)]
+    def makedirs(self, path_info):
+        if not self.exists(path_info):
+            os.makedirs(path_info["path"])
 
-        while True:
-            if len(clist) == 0:
-                break
+    @slow_link_guard
+    def link(self, cache_info, path_info):
+        cache = cache_info["path"]
+        path = path_info["path"]
 
-            cache, md5 = clist.pop()
-            if self.changed_cache_file(md5):
-                return True
-
-            if self.is_dir_cache(cache) and self._cache_metadata_changed():
-                for entry in self.load_dir_cache(md5):
-                    md5 = entry[self.PARAM_CHECKSUM]
-                    cache = self.get(md5)
-                    clist.append((cache, md5))
-
-        return False
-
-    def link(self, cache, path):
         assert os.path.isfile(cache)
 
         dname = os.path.dirname(path)
@@ -174,7 +148,7 @@ class RemoteLOCAL(RemoteBase):
                 self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
 
                 if self.protected:
-                    os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+                    self.protect(path_info)
 
                 msg = "Created {}'{}': {} -> {}".format(
                     "protected " if self.protected else "",
@@ -200,276 +174,38 @@ class RemoteLOCAL(RemoteBase):
             return ntpath
         return posixpath
 
-    @classmethod
-    def to_ospath(cls, path):
-        if os.name == "nt":
-            return cls.ntpath(path)
-        return cls.unixpath(path)
-
-    @staticmethod
-    def unixpath(path):
-        assert not ntpath.isabs(path)
-        assert not posixpath.isabs(path)
-        return path.replace("\\", "/")
-
-    @staticmethod
-    def ntpath(path):
-        assert not ntpath.isabs(path)
-        assert not posixpath.isabs(path)
-        return path.replace("/", "\\")
-
-    def collect_dir_cache(self, dname):
-        dir_info = []
-
-        for root, dirs, files in os.walk(str(dname)):
-            bar = False
-
-            if len(files) > LARGE_DIR_SIZE:
-                msg = (
-                    "Computing md5 for a large directory {}. "
-                    "This is only done once."
-                )
-                logger.info(msg.format(os.path.relpath(root)))
-                bar = True
-                title = os.path.relpath(root)
-                processed = 0
-                total = len(files)
-                progress.update_target(title, 0, total)
-
-            for fname in files:
-                path = os.path.join(root, fname)
-                relpath = self.unixpath(os.path.relpath(path, dname))
-
-                if bar:
-                    progress.update_target(title, processed, total)
-                    processed += 1
-
-                md5 = self.state.update(path)
-                dir_info.append(
-                    {self.PARAM_RELPATH: relpath, self.PARAM_CHECKSUM: md5}
-                )
-
-            if bar:
-                progress.finish_target(title)
-
-        # NOTE: sorting the list by path to ensure reproducibility
-        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
-
-        md5 = dict_md5(dir_info) + self.MD5_DIR_SUFFIX
-        if self.changed_cache_file(md5):
-            self.dump_dir_cache(md5, dir_info)
-
-        return (md5, dir_info)
-
-    def load_dir_cache(self, md5):
-        path = self.get(md5)
-        assert self.is_dir_cache(path)
-
-        dir_info = self._dir_info.get(md5)
-        if dir_info:
-            return dir_info
-
-        try:
-            with open(path, "r") as fd:
-                d = json.load(fd)
-        except Exception:
-            msg = "Failed to load dir cache '{}'"
-            logger.exception(msg.format(os.path.relpath(path)))
-            return []
-
-        if not isinstance(d, list):
-            msg = "dir cache file format error '{}' [skipping the file]"
-            logger.error(msg.format(os.path.relpath(path)))
-            return []
-
-        for info in d:
-            info["relpath"] = self.to_ospath(info["relpath"])
-
-        self._dir_info[md5] = d
-
-        return d
-
-    def dump_dir_cache(self, md5, dir_info):
-        path = self.get(md5)
-        dname = os.path.dirname(path)
-
-        assert self.is_dir_cache(path)
-        assert isinstance(dir_info, list)
-
-        if not os.path.isdir(dname):
-            os.makedirs(dname)
-
-        # NOTE: Writing first and renaming after that
-        # to make sure that the operation is atomic.
-        tmp = "{}.{}".format(path, str(uuid.uuid4()))
-
-        with open(tmp, "w+") as fd:
-            json.dump(dir_info, fd, sort_keys=True)
-        move(tmp, path)
-
-    @classmethod
-    def is_dir_cache(cls, cache):
-        return cache.endswith(cls.MD5_DIR_SUFFIX)
-
-    def do_checkout(
-        self, path_info, checksum, force=False, progress_callback=None
-    ):
-        path = path_info["path"]
-        cache = self.get(checksum)
-
-        if not self.is_dir_cache(cache):
-            if self.exists(path_info):
-                self.safe_remove(path_info, force=force)
-
-            self.link(cache, path)
-            self.state.update_link(path)
-            if progress_callback:
-                progress_callback.update(os.path.relpath(path))
-            return
-
-        # Create dir separately so that dir is created
-        # even if there are no files in it
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        dir_relpath = os.path.relpath(path)
-
-        logger.debug("Linking directory '{}'.".format(dir_relpath))
-
-        dir_info = self.load_dir_cache(checksum)
-
-        for processed, entry in enumerate(dir_info):
-            relpath = entry[self.PARAM_RELPATH]
-            m = entry[self.PARAM_CHECKSUM]
-            p = os.path.join(path, relpath)
-            c = self.get(m)
-
-            entry_info = {"scheme": path_info["scheme"], self.PARAM_PATH: p}
-
-            entry_checksum_info = {self.PARAM_CHECKSUM: m}
-
-            if self.changed(entry_info, entry_checksum_info):
-                if self.exists(entry_info):
-                    self.safe_remove(entry_info, force=force)
-
-                self.link(c, p)
-
-            if progress_callback:
-                progress_callback.update(os.path.relpath(p))
-
-        self._discard_working_directory_changes(path, dir_info, force=force)
-
-        self.state.update_link(path)
-
     def already_cached(self, path_info):
         assert path_info["scheme"] in ["", "local"]
 
-        current_md5 = self.state.update(path_info["path"])
+        current_md5 = self.get_checksum(path_info)
 
         if not current_md5:
             return False
 
         return not self.changed_cache(current_md5)
 
-    def _discard_working_directory_changes(self, path, dir_info, force=False):
-        working_dir_files = set(path for path in walk_files(path))
-
-        cached_files = set(
-            os.path.join(path, file["relpath"]) for file in dir_info
-        )
-
-        delta = working_dir_files - cached_files
-
-        for file in delta:
-            self.safe_remove({"scheme": "local", "path": file}, force=force)
-
-    def _move(self, inp, outp):
-        # moving in two stages to make the whole operation atomic in
-        # case inp and outp are in different filesystems and actual
-        # physical copying of data is happening
-        tmp = "{}.{}".format(outp, str(uuid.uuid4()))
-        move(inp, tmp)
-        move(tmp, outp)
-
-    def _save_file(self, path, md5):
-        assert md5 is not None
-
-        cache = self.get(md5)
-
-        if self.changed_cache(md5):
-            self._move(path, cache)
-        else:
-            remove(path)
-
-        self.link(cache, path)
-        self.state.update_link(path)
-
-        # we need to update path and cache, since in case of reflink,
-        # or copy cache type moving original file results in updates on
-        # next executed command, which causes md5 recalculation
-        self.state.update(path, md5)
-        self.state.update(cache, md5)
-
-        return {self.PARAM_CHECKSUM: md5}
-
-    def _save_dir(self, path, md5):
-        dir_info = self.load_dir_cache(md5)
-        dir_relpath = os.path.relpath(path)
-        dir_size = len(dir_info)
-        bar = dir_size > LARGE_DIR_SIZE
-
-        logger.info("Linking directory '{}'.".format(dir_relpath))
-
-        for processed, entry in enumerate(dir_info):
-            relpath = entry[self.PARAM_RELPATH]
-            m = entry[self.PARAM_CHECKSUM]
-            p = os.path.join(path, relpath)
-            c = self.get(m)
-
-            if self.changed_cache(m):
-                self._move(p, c)
-            else:
-                remove(p)
-
-            self.link(c, p)
-
-            self.state.update(p, m)
-            self.state.update(c, m)
-
-            if bar:
-                progress.update_target(dir_relpath, processed, dir_size)
-
-        self.state.update_link(path)
-
-        cache = self.get(md5)
-        self.state.update(cache)
-        self.state.update(path, md5)
-
-        if bar:
-            progress.finish_target(dir_relpath)
-
-    def save(self, path_info, checksum_info):
-        if path_info["scheme"] != "local":
-            raise NotImplementedError
-
+    def is_empty(self, path_info):
         path = path_info["path"]
 
-        msg = "Saving '{}' to cache '{}'."
-        logger.info(
-            msg.format(os.path.relpath(path), os.path.relpath(self.cache_dir))
-        )
+        if self.isfile(path_info) and os.path.getsize(path) == 0:
+            return True
 
-        md5 = checksum_info[self.PARAM_CHECKSUM]
-        if os.path.isdir(path):
-            self._save_dir(path, md5)
-        else:
-            self._save_file(path, md5)
+        if self.isdir(path_info) and len(os.listdir(path)) == 0:
+            return True
 
-    def save_info(self, path_info):
-        if path_info["scheme"] != "local":
-            raise NotImplementedError
+        return False
 
-        return {self.PARAM_CHECKSUM: self.state.update(path_info["path"])}
+    def isfile(self, path_info):
+        return os.path.isfile(path_info["path"])
+
+    def isdir(self, path_info):
+        return os.path.isdir(path_info["path"])
+
+    def walk(self, path_info):
+        return os.walk(path_info["path"])
+
+    def get_file_checksum(self, path_info):
+        return file_md5(path_info["path"])[0]
 
     def remove(self, path_info):
         if path_info["scheme"] != "local":
@@ -481,13 +217,21 @@ class RemoteLOCAL(RemoteBase):
         if from_info["scheme"] != "local" or to_info["scheme"] != "local":
             raise NotImplementedError
 
-        move(from_info["path"], to_info["path"])
+        inp = from_info["path"]
+        outp = to_info["path"]
+
+        # moving in two stages to make the whole operation atomic in
+        # case inp and outp are in different filesystems and actual
+        # physical copying of data is happening
+        tmp = "{}.{}".format(outp, str(uuid.uuid4()))
+        move(inp, tmp)
+        move(tmp, outp)
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
         return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
 
-    def upload(self, from_infos, to_infos, names=None):
+    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
@@ -510,7 +254,12 @@ class RemoteLOCAL(RemoteBase):
             tmp_file = tmp_fname(to_info["path"])
 
             try:
-                copyfile(from_info["path"], tmp_file, name=name)
+                copyfile(
+                    from_info["path"],
+                    tmp_file,
+                    name=name,
+                    no_progress_bar=no_progress_bar,
+                )
                 os.rename(tmp_file, to_info["path"])
             except Exception:
                 logger.exception(
@@ -587,7 +336,14 @@ class RemoteLOCAL(RemoteBase):
 
         return by_md5
 
-    def status(self, checksum_infos, remote, jobs=None, show_checksums=False):
+    def status(
+        self,
+        checksum_infos,
+        remote,
+        jobs=None,
+        show_checksums=False,
+        download=False,
+    ):
         logger.info("Preparing to collect status from {}".format(remote.url))
         title = "Collecting information"
 
@@ -603,11 +359,20 @@ class RemoteLOCAL(RemoteBase):
 
         progress.update_target(title, 30, 100)
 
-        remote_exists = list(remote.cache_exists(md5s))
+        local_exists = self.cache_exists(md5s)
+
+        progress.update_target(title, 40, 100)
+
+        # This is a performance optimization. We can safely assume that,
+        # if the resources that we want to fetch are already cached,
+        # there's no need to check the remote storage for the existance of
+        # those files.
+        if download and sorted(local_exists) == sorted(md5s):
+            remote_exists = local_exists
+        else:
+            remote_exists = list(remote.cache_exists(md5s))
 
         progress.update_target(title, 90, 100)
-
-        local_exists = self.cache_exists(md5s)
 
         progress.finish_target(title)
 
@@ -687,7 +452,11 @@ class RemoteLOCAL(RemoteBase):
             jobs = remote.JOBS
 
         status_info = self.status(
-            checksum_infos, remote, jobs=jobs, show_checksums=show_checksums
+            checksum_infos,
+            remote,
+            jobs=jobs,
+            show_checksums=show_checksums,
+            download=download,
         )
 
         chunks = self._get_chunks(download, remote, status_info, status, jobs)
@@ -724,17 +493,18 @@ class RemoteLOCAL(RemoteBase):
             download=True,
         )
 
-    def _cache_metadata_changed(self):
+    def _changed_cache_dir(self):
         mtime, size = get_mtime_and_size(self.cache_dir)
         inode = get_inode(self.cache_dir)
 
         existing_record = self.state.get_state_record_for_inode(inode)
-
         if existing_record:
             cached_mtime, cached_size, _, _ = existing_record
-            return not (mtime == cached_mtime and size == cached_size)
+            changed = not (mtime == cached_mtime and size == cached_size)
+        else:
+            changed = True
 
-        return True
+        return changed
 
     def _log_missing_caches(self, checksum_info_dict):
         missing_caches = [
@@ -799,3 +569,7 @@ class RemoteLOCAL(RemoteBase):
             RemoteLOCAL._unprotect_dir(path)
         else:
             RemoteLOCAL._unprotect_file(path)
+
+    @staticmethod
+    def protect(path_info):
+        os.chmod(path_info["path"], stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)

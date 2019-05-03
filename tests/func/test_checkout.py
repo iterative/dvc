@@ -2,7 +2,6 @@ import os
 import sys
 import re
 
-import yaml
 import shutil
 import filecmp
 import collections
@@ -12,7 +11,8 @@ from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files, load_stage_file
+from dvc.utils import walk_files
+from dvc.utils.stage import load_stage_file, dump_stage_file
 from tests.basic_env import TestDvc
 from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
@@ -69,7 +69,7 @@ class TestCheckoutSingleStage(TestCheckout):
 
 class TestCheckoutCorruptedCacheFile(TestRepro):
     def test(self):
-        cache = self.foo_stage.outs[0].cache
+        cache = self.foo_stage.outs[0].cache_path
 
         with open(cache, "a") as fd:
             fd.write("1")
@@ -126,9 +126,8 @@ class CheckoutBase(TestDvc):
         self.dvc.scm.commit("adding " + fname)
 
     def read_ignored(self):
-        return list(
-            map(lambda s: s.strip("\n"), open(self.GIT_IGNORE).readlines())
-        )
+        with open(self.GIT_IGNORE) as f:
+            return [s.strip("\n") for s in f.readlines()]
 
     def outs_info(self, stage):
         FileInfo = collections.namedtuple("FileInfo", "path inode")
@@ -298,14 +297,10 @@ class TestGitIgnoreWhenCheckout(CheckoutBase):
 
 class TestCheckoutMissingMd5InStageFile(TestRepro):
     def test(self):
-        with open(self.file1_stage, "r") as fd:
-            d = yaml.load(fd)
-
+        d = load_stage_file(self.file1_stage)
         del d[Stage.PARAM_OUTS][0][RemoteLOCAL.PARAM_CHECKSUM]
         del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
-
-        with open(self.file1_stage, "w") as fd:
-            yaml.dump(d, fd)
+        dump_stage_file(self.file1_stage, d)
 
         self.dvc.checkout(force=True)
 

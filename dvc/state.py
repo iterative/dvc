@@ -7,7 +7,7 @@ import sqlite3
 import logging
 
 from dvc.config import Config
-from dvc.utils import file_md5, remove, current_timestamp
+from dvc.utils import remove, current_timestamp
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
 
@@ -29,11 +29,18 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-def _file_metadata_changed(actual_mtime, mtime, actual_size, size):
-    return actual_mtime != mtime or actual_size != size
+class StateBase(object):
+    def save(self, path_info, checksum):
+        pass
+
+    def get(self, path_info):
+        return None
+
+    def save_link(self, path_info):
+        pass
 
 
-class State(object):  # pylint: disable=too-many-instance-attributes
+class State(StateBase):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -78,9 +85,6 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self.dvc_dir = repo.dvc_dir
         self.root_dir = repo.root_dir
 
-        self.row_limit = 100
-        self.row_cleanup_quota = 50
-
         state_config = config.get(Config.SECTION_STATE, {})
         self.row_limit = state_config.get(
             Config.SECTION_STATE_ROW_LIMIT, self.STATE_ROW_LIMIT
@@ -111,11 +115,6 @@ class State(object):  # pylint: disable=too-many-instance-attributes
 
     def __exit__(self, typ, value, tbck):
         self.dump()
-
-    def _collect(self, path):
-        if os.path.isdir(path):
-            return self.repo.cache.local.collect_dir_cache(path)
-        return (file_md5(path)[0], None)
 
     def changed(self, path, md5):
         """Check if file/directory has the expected md5.
@@ -299,53 +298,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self.cursor = None
         self.inserts = 0
 
-    def _do_update(self, path, known_checksum=None):
-        """
-        Make sure the stored info for the given path is up to date.
-        """
-        if not os.path.exists(path):
-            return None, None
-
-        actual_mtime, actual_size = get_mtime_and_size(path)
-        actual_inode = get_inode(path)
-
-        existing_record = self.get_state_record_for_inode(actual_inode)
-
-        if existing_record:
-            md5, info = self._update_existing_state_record(
-                path,
-                actual_inode,
-                actual_mtime,
-                actual_size,
-                existing_record,
-                known_checksum,
-            )
-        else:
-            md5, info = self._insert_new_state_record(
-                path, actual_inode, actual_mtime, actual_size, known_checksum
-            )
-
-        return md5, info
-
-    def _update_existing_state_record(
-        self,
-        path,
-        actual_inode,
-        actual_mtime,
-        actual_size,
-        existing_record,
-        known_checksum=None,
-    ):
-
-        mtime, size, md5, _ = existing_record
-        if _file_metadata_changed(actual_mtime, mtime, actual_size, size):
-            md5, info = self._update_state_for_path_changed(
-                path, actual_inode, actual_mtime, actual_size, known_checksum
-            )
-        else:
-            info = None
-            self._update_state_record_timestamp_for_inode(actual_inode)
-        return md5, info
+    @staticmethod
+    def _file_metadata_changed(actual_mtime, mtime, actual_size, size):
+        return actual_mtime != mtime or actual_size != size
 
     def _update_state_record_timestamp_for_inode(self, actual_inode):
         cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
@@ -358,17 +313,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         )
 
     def _update_state_for_path_changed(
-        self,
-        path,
-        actual_inode,
-        actual_mtime,
-        actual_size,
-        known_checksum=None,
+        self, path, actual_inode, actual_mtime, actual_size, checksum
     ):
-        if known_checksum:
-            md5, info = known_checksum, None
-        else:
-            md5, info = self._collect(path)
         cmd = (
             "UPDATE {} SET "
             'mtime = "{}", size = "{}", '
@@ -380,20 +326,17 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 self.STATE_TABLE,
                 actual_mtime,
                 actual_size,
-                md5,
+                checksum,
                 current_timestamp(),
                 self._to_sqlite(actual_inode),
             )
         )
-        return md5, info
 
     def _insert_new_state_record(
-        self, path, actual_inode, actual_mtime, actual_size, known_checksum
+        self, path, actual_inode, actual_mtime, actual_size, checksum
     ):
-        if known_checksum:
-            md5, info = known_checksum, None
-        else:
-            md5, info = self._collect(path)
+        assert checksum is not None
+
         cmd = (
             "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
             'VALUES ({}, "{}", "{}", "{}", "{}")'
@@ -404,12 +347,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 self._to_sqlite(actual_inode),
                 actual_mtime,
                 actual_size,
-                md5,
+                checksum,
                 current_timestamp(),
             )
         )
         self.inserts += 1
-        return md5, info
 
     def get_state_record_for_inode(self, inode):
         cmd = "SELECT mtime, size, md5, timestamp from {} " "WHERE inode={}"
@@ -422,43 +364,74 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def update(self, path, known_checksum=None):
-        """Gets the checksum for the specified path. Checksum will be
-        retrieved from the state database if available, otherwise it will be
-        computed and cached in the state database for the further use.
+    def save(self, path_info, checksum):
+        """Save checksum for the specified path info.
 
         Args:
-            path (str): path to get the checksum for.
-
-        Returns:
-            str: checksum for the specified path.
+            path_info (dict): path_info to save checksum for.
+            checksum (str): checksum to save.
         """
-        return self._do_update(path, known_checksum)[0]
+        assert path_info["scheme"] == "local"
+        assert checksum is not None
 
-    def update_info(self, path):
-        """Gets the checksum and the directory info (if applicable) for the
-        specified path.
+        path = path_info["path"]
+        assert os.path.exists(path)
+
+        actual_mtime, actual_size = get_mtime_and_size(path)
+        actual_inode = get_inode(path)
+
+        existing_record = self.get_state_record_for_inode(actual_inode)
+        if not existing_record:
+            self._insert_new_state_record(
+                path, actual_inode, actual_mtime, actual_size, checksum
+            )
+            return
+
+        self._update_state_for_path_changed(
+            path, actual_inode, actual_mtime, actual_size, checksum
+        )
+
+    def get(self, path_info):
+        """Gets the checksum for the specified path info. Checksum will be
+        retrieved from the state database if available.
 
         Args:
-            path (str): path to get the checksum and the directory info for.
+            path_info (dict): path info to get the checksum for.
 
         Returns:
-            tuple: checksum for the specified path along with a directory info
-            (list of {relative_path: checksum} entries for each file in the
-            directory) if applicable, otherwise None.
+            str or None: checksum for the specified path info or None if it
+            doesn't exist in the state database.
         """
-        md5, info = self._do_update(path)
-        if not info:
-            info = self.repo.cache.local.load_dir_cache(md5)
-        return (md5, info)
+        assert path_info["scheme"] == "local"
+        path = path_info["path"]
 
-    def update_link(self, path):
+        if not os.path.exists(path):
+            return None
+
+        actual_mtime, actual_size = get_mtime_and_size(path)
+        actual_inode = get_inode(path)
+
+        existing_record = self.get_state_record_for_inode(actual_inode)
+        if not existing_record:
+            return None
+
+        mtime, size, checksum, _ = existing_record
+        if self._file_metadata_changed(actual_mtime, mtime, actual_size, size):
+            return None
+
+        self._update_state_record_timestamp_for_inode(actual_inode)
+        return checksum
+
+    def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This
         list is later used on `dvc checkout` to cleanup old links.
 
         Args:
-            path (str): path to add to the list of links.
+            path_info (dict): path info to add to the list of links.
         """
+        assert path_info["scheme"] == "local"
+        path = path_info["path"]
+
         if not os.path.exists(path):
             return
 

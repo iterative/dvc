@@ -14,8 +14,7 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     # NOTE: used to install and run our style checking tools
     osx_python_ver=3.6.2
     eval "$(pyenv init -)"
-    pyenv install --list
-    pyenv install --skip-existing --keep --verbose $osx_python_ver
+    pyenv install --skip-existing --keep --verbose $osx_python_ver &> pyenv.log || tail -n 50 pyenv.log
     pyenv shell $osx_python_ver
     python --version
 fi
@@ -60,7 +59,7 @@ fi
 
 if [[ -n "$PYTHON_VER" ]]; then
     eval "$(pyenv init -)"
-    pyenv install --skip-existing --keep --verbose "$PYTHON_VER"
+    pyenv install --skip-existing --keep --verbose "$PYTHON_VER" &> pyenv.log || tail -n 50 pyenv.log
     echo 'eval "$(pyenv init -)"' >> env.sh
     echo "pyenv shell $PYTHON_VER" >> env.sh
 fi

@@ -48,10 +48,7 @@ class OutputSSH(OutputBase):
         else:
             path = parsed.path
 
-        self.path_info = {
-            "scheme": "ssh",
-            "host": host,
-            "port": port,
-            "user": user,
-            "path": path,
-        }
+        self.path_info["host"] = host
+        self.path_info["port"] = port
+        self.path_info["user"] = user
+        self.path_info["path"] = path

@@ -1,9 +1,9 @@
 """Handle import compatibility between Python 2 and Python 3"""
+from __future__ import absolute_import
 
 import sys
 import os
 import errno
-
 
 # Syntax sugar.
 _ver = sys.version_info
@@ -92,12 +92,12 @@ def _makedirs(name, mode=0o777, exist_ok=False):
 
 if is_py2:
     from urlparse import urlparse, urljoin  # noqa: F401
-    from StringIO import StringIO  # noqa: F401
-    from io import BytesIO  # noqa: F401
     from BaseHTTPServer import HTTPServer  # noqa: F401
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
     from io import open  # noqa: F401
+    from pathlib2 import Path  # noqa: F401
+    from collections import Mapping  # noqa: F401
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -108,8 +108,28 @@ if is_py2:
     input = raw_input  # noqa: F821
     cast_bytes_py2 = cast_bytes
     makedirs = _makedirs
+    range = xrange  # noqa: F821
+
+    import StringIO
+    import io
+
+    class StringIO(StringIO.StringIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.close()
+
+    class BytesIO(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.close()
+
 
 elif is_py3:
+    from pathlib import Path  # noqa: F401
     from os import makedirs  # noqa: F401
     from urllib.parse import urlparse, urljoin  # noqa: F401
     from io import StringIO, BytesIO  # noqa: F401
@@ -118,6 +138,7 @@ elif is_py3:
         SimpleHTTPRequestHandler,  # noqa: F401
     )  # noqa: F401
     import configparser as ConfigParser  # noqa: F401
+    from collections.abc import Mapping  # noqa: F401
 
     builtin_str = str  # noqa: F821
     str = str  # noqa: F821
@@ -128,3 +149,4 @@ elif is_py3:
     input = input  # noqa: F821
     open = open  # noqa: F821
     cast_bytes_py2 = no_code
+    range = range  # noqa: F821

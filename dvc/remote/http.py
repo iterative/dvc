@@ -109,16 +109,11 @@ class RemoteHTTP(RemoteBase):
 
         return list(filter(func, md5s))
 
-    def save_info(self, path_info):
-        if path_info["scheme"] not in ["http", "https"]:
-            raise NotImplementedError
-
-        return {self.PARAM_CHECKSUM: self._etag(path_info["path"])}
-
     def _content_length(self, url):
         return self._request("HEAD", url).headers.get("Content-Length")
 
-    def _etag(self, url):
+    def get_file_checksum(self, path_info):
+        url = path_info["path"]
         etag = self._request("HEAD", url).headers.get("ETag") or self._request(
             "HEAD", url
         ).headers.get("Content-MD5")

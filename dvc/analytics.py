@@ -96,10 +96,11 @@ class Analytics(object):
         with open(self.user_id_file, "r") as fobj:
             try:
                 info = json.load(fobj)
-                return info[self.PARAM_USER_ID]
-            except json.JSONDecodeError as exc:
+            except ValueError as exc:
                 logger.debug("Failed to load user_id: {}".format(exc))
                 return None
+
+            return info[self.PARAM_USER_ID]
 
     def _get_user_id(self):
         from dvc.lock import LockError
