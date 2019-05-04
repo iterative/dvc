@@ -20,12 +20,17 @@ environment:
     secure: XN4jRtmGE5Bqg8pPZkwNs7kn3UEI73Rkldqc0MGsQISZBm5TNJZOPofDMc1QnUsf
   AZURE_STORAGE_CONTAINER_NAME: appveyor-tests
   AZURE_STORAGE_CONNECTION_STRING: DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;
+  OSS_BUCKET: my-bucket
+  OSS_ENDPOINT: localhost:50004
+  OSS_ACCESS_KEY_ID: AccessKeyID
+  OSS_ACCESS_KEY_SECRET: AccessKeySecret
 
   matrix:
 
     - PYTHON: "C:\\Python27"
       PYTHON_VERSION: "2.7.x" # currently 2.7.9
       PYTHON_ARCH: "32"
+      RUBY: C:\Ruby25\bin
 
 # Disabled as unnecessary
 #    - PYTHON: "C:\\Python27-x64"
@@ -33,7 +38,12 @@ environment:
 #      PYTHON_ARCH: "64"
 
 install:
-  - ps: Install-Product node
+  - SET PATH=%RUBY%;%PATH%
+  - git clone -q https://github.com/nanaya-tachibana/oss-emulator.git
+  - gem install thor builder
+  - ps: cd oss-emulator
+  - ps: $OSSProcess = Start-Process -FilePath ruby -ArgumentList "bin\emulator -r store -p 50004" -PassThru -NoNewWindow
+  - ps: cd ..
   - npm install -g azurite
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
   - cinst wget
@@ -66,6 +76,7 @@ after_test:
 
 on_finish:
   - ps: Stop-Process $AzuriteProcess
+  - ps: Stop-Process $OSSProcess
 
 artifacts:
   - path: dvc*.exe
