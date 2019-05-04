@@ -78,17 +78,17 @@ class RemoteOSS(RemoteBase):
         path = match.group("path")
         self.prefix = urlparse(self.url).path.lstrip("/") if path else ""
 
-        self.key_id = config.get(
-            Config.SECTION_OSS_ACCESS_KEY_ID
-        ) or os.getenv("OSS_ACCESS_KEY_ID")
-        if not self.key_id:
-            raise ValueError("oss access key id is missing")
+        self.key_id = (
+            config.get(Config.SECTION_OSS_ACCESS_KEY_ID)
+            or os.getenv("OSS_ACCESS_KEY_ID")
+            or "defaultId"
+        )
 
-        self.key_secret = config.get(
-            Config.SECTION_OSS_ACCESS_KEY_SECRET
-        ) or os.getenv("OSS_ACCESS_KEY_SECRET")
-        if not self.key_secret:
-            raise ValueError("oss access key secret is missing")
+        self.key_secret = (
+            config.get(Config.SECTION_OSS_ACCESS_KEY_SECRET)
+            or os.getenv("OSS_ACCESS_KEY_SECRET")
+            or "defaultSecret"
+        )
 
         self._bucket = None
         self.path_info = {
