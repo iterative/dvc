@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import os
 import getpass
 import logging
 
@@ -38,15 +39,27 @@ class RemoteSSH(RemoteBase):
 
         parsed = urlparse(self.url)
         self.host = parsed.hostname
+
+        user_config_file = os.path.expanduser("~/.ssh/config")
+        user_ssh_config = dict()
+        if self.host:
+            if os.path.exists(user_config_file):
+                with open(user_config_file) as f:
+                    ssh_config = paramiko.SSHConfig()
+                    ssh_config.parse(f)
+                    user_ssh_config = ssh_config.lookup(self.host)
+
         self.user = (
             config.get(Config.SECTION_REMOTE_USER)
             or parsed.username
+            or user_ssh_config.get("user")
             or getpass.getuser()
         )
         self.prefix = parsed.path or "/"
         self.port = (
             config.get(Config.SECTION_REMOTE_PORT)
             or parsed.port
+            or user_ssh_config.get("port")
             or self.DEFAULT_PORT
         )
         self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
