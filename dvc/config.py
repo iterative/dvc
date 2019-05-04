@@ -156,7 +156,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CACHE_SSH = "ssh"
     SECTION_CACHE_HDFS = "hdfs"
     SECTION_CACHE_AZURE = "azure"
-    SECTION_CACHE_OSS = "oss"
     SECTION_CACHE_SLOW_LINK_WARNING = "slow_link_warning"
     SECTION_CACHE_SCHEMA = {
         Optional(SECTION_CACHE_LOCAL): str,
@@ -165,7 +164,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_HDFS): str,
         Optional(SECTION_CACHE_SSH): str,
         Optional(SECTION_CACHE_AZURE): str,
-        Optional(SECTION_CACHE_OSS): str,
         Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,

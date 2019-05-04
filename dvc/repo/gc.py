@@ -109,8 +109,5 @@ def gc(
         if self.cache.azure:
             _do_gc("azure", self.cache.azure.gc, clist)
 
-        if self.cache.oss:
-            _do_gc("oss", self.cache.oss.gc, clist)
-
         if cloud:
             _do_gc("remote", self.cloud._get_cloud(remote, "gc -c").gc, clist)

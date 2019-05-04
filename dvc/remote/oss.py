@@ -16,17 +16,10 @@ from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBase
+from dvc.remote.azure import Callback
 
 
 logger = logging.getLogger(__name__)
-
-
-class Callback(object):
-    def __init__(self, name):
-        self.name = name
-
-    def __call__(self, current, total):
-        progress.update_target(self.name, current, total)
 
 
 class RemoteOSS(RemoteBase):
@@ -187,11 +180,9 @@ class RemoteOSS(RemoteBase):
         resume=False,
     ):
         names = self._verify_path_args(from_infos, to_infos, names)
-
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info["scheme"] != self.scheme:
                 raise NotImplementedError
-
             if to_info["scheme"] != "local":
                 raise NotImplementedError
 

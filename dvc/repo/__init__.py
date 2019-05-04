@@ -255,7 +255,6 @@ class Repo(object):
         cache["local"] = []
         cache["s3"] = []
         cache["gs"] = []
-        cache["oss"] = []
         cache["hdfs"] = []
         cache["ssh"] = []
         cache["azure"] = []
