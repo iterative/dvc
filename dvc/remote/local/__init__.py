@@ -69,12 +69,14 @@ class RemoteLOCAL(RemoteBase):
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
         self._hash = [modchecksum.CHECKSUM_MD5]
-        conf = repo.config.config[Config.SECTION_CHECKSUM]
-        hash_local = conf.get(Config.SECTION_CHECKSUM_LOCAL, None)
-        if hash_local:
-            self._hash = (
-                modchecksum.checksum_types_from_str(hash_local) or self._hash
-            )
+        if repo is not None:
+            conf = repo.config.config[Config.SECTION_CHECKSUM]
+            hash_local = conf.get(Config.SECTION_CHECKSUM_LOCAL, None)
+            if hash_local:
+                self._hash = (
+                    modchecksum.checksum_types_from_str(hash_local)
+                    or self._hash
+                )
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)

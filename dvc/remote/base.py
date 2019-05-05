@@ -201,8 +201,8 @@ class RemoteBase(object):
         if self.cache.changed_cache_file(checksum):
             self.cache.move(from_info, to_info)
 
-        self.state.save(path_info, checksum, self.get_prefer_hash_type())
-        self.state.save(to_info, checksum, self.get_prefer_hash_type())
+        self.state.save(path_info, checksum, self.get_prefer_checksum_type())
+        self.state.save(to_info, checksum, self.get_prefer_checksum_type())
 
         return checksum
 

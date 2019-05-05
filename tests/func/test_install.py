@@ -2,7 +2,7 @@ import os
 import sys
 
 import pytest
-from dvc.utils import file_md5
+from dvc.utils.checksum import file_checksum
 
 from dvc.main import main
 from dvc.stage import Stage
@@ -46,7 +46,7 @@ class TestInstall(object):
         git_remote = os.path.join(temp, "project.git")
         storage_path = os.path.join(temp, "dvc_storage")
 
-        foo_checksum = file_md5(repo_dir.FOO)[0]
+        foo_checksum = file_checksum(repo_dir.FOO)[0]
         expected_cache_path = dvc.cache.local.get(foo_checksum)
 
         ret = main(["remote", "add", "-d", "store", storage_path])
