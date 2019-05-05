@@ -128,16 +128,16 @@ class Stage(object):
     PARAM_LOCKED = "locked"
     PARAM_META = "meta"
 
-    SCHEMA = {
-        Optional(modchecksum.CHECKSUM_MD5): Or(str, None),
-        Optional(modchecksum.CHECKSUM_SHA256): Or(str, None),
+    SCHEMA = modchecksum.CHECKSUM_LOCAL_SCHEMA.copy()
+    for k, v in {
         Optional(PARAM_CMD): Or(str, None),
         Optional(PARAM_WDIR): Or(str, None),
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
         Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
         Optional(PARAM_LOCKED): bool,
         Optional(PARAM_META): object,
-    }
+    }.items():
+        SCHEMA[k] = v
 
     TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 

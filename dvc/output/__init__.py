@@ -13,8 +13,6 @@ from dvc.output.hdfs import OutputHDFS
 from dvc.output.ssh import OutputSSH
 
 from dvc.remote import Remote
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.hdfs import RemoteHDFS
 
 OUTS = [
     OutputHDFS,
@@ -32,24 +30,9 @@ OUTS_MAP = {
     "local": OutputLOCAL,
 }
 
-# NOTE: currently there are only 3 possible checksum names:
-#
-#    1) md5 (LOCAL, SSH, GS);
-#    2) etag (S3);
-#    3) checksum (HDFS);
-#
-# so when a few types of outputs share the same name, we only need
-# specify it once.
-CHECKSUM_SCHEMA = {
-    schema.Optional(modchecksum.CHECKSUM_MD5): schema.Or(str, None),
-    schema.Optional(modchecksum.CHECKSUM_SHA256): schema.Or(str, None),
-    schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
-}
+TAGS_SCHEMA = {schema.Optional(str): modchecksum.CHECKSUM_SCHEMA}
 
-TAGS_SCHEMA = {schema.Optional(str): CHECKSUM_SCHEMA}
-
-SCHEMA = CHECKSUM_SCHEMA.copy()
+SCHEMA = modchecksum.CHECKSUM_SCHEMA.copy()
 SCHEMA[OutputBase.PARAM_PATH] = str
 SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)] = bool
 SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)] = OutputBase.METRIC_SCHEMA

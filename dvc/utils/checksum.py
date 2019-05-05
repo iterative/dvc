@@ -8,6 +8,7 @@ import os
 import json
 import hashlib
 import logging
+import schema
 
 
 logger = logging.getLogger(__name__)
@@ -18,6 +19,28 @@ LARGE_FILE_SIZE = 1024 * 1024 * 1024
 CHECKSUM_MD5 = "md5"
 CHECKSUM_SHA256 = "sha256"
 CHECKSUM_MAP = {CHECKSUM_MD5: hashlib.md5, CHECKSUM_SHA256: hashlib.sha256}
+
+
+CHECKSUM_LOCAL_SCHEMA = {
+    schema.Optional(CHECKSUM_MD5): schema.Or(str, None),
+    schema.Optional(CHECKSUM_SHA256): schema.Or(str, None),
+}
+
+# NOTE: currently there are only 4 possible checksum names:
+#
+#    1) md5 (LOCAL, SSH, GS);
+#    2) etag (S3);
+#    3) checksum (HDFS);
+#    4) sha256 (LOCAL);
+#
+# so when a few types of outputs share the same name, we only need
+# specify it once.
+REMOTE_S3_CHECKSUM = "etag"
+REMOTE_HDFS_CHECKSUM = "checksum"
+
+CHECKSUM_SCHEMA = CHECKSUM_LOCAL_SCHEMA.copy()
+CHECKSUM_SCHEMA[schema.Optional(REMOTE_S3_CHECKSUM)] = schema.Or(str, None)
+CHECKSUM_SCHEMA[schema.Optional(REMOTE_HDFS_CHECKSUM)] = schema.Or(str, None)
 
 
 def checksum_types_from_str(hash_names):
