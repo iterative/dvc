@@ -5,9 +5,11 @@ from __future__ import unicode_literals
 import os
 import sqlite3
 import logging
+import json
 
 from dvc.config import Config
 from dvc.utils import remove, current_timestamp
+from dvc.utils import checksum as modchecksum
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
 
@@ -30,10 +32,10 @@ class StateVersionTooNewError(DvcException):
 
 
 class StateBase(object):
-    def save(self, path_info, checksum):
+    def save(self, path_info, checksum, checksum_type):
         pass
 
-    def get(self, path_info):
+    def get(self, path_info, checksum_type):
         return None
 
     def save_link(self, path_info):
@@ -59,7 +61,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         "inode INTEGER PRIMARY KEY, "
         "mtime TEXT NOT NULL, "
         "size TEXT NOT NULL, "
-        "md5 TEXT NOT NULL, "
+        "checksums TEXT NOT NULL, "
         "timestamp TEXT NOT NULL"
     )
 
@@ -298,7 +300,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         cmd = (
             "UPDATE {} SET "
             'mtime = "{}", size = "{}", '
-            'md5 = "{}", timestamp = "{}" '
+            "checksums = '{}', timestamp = \"{}\" "
             "WHERE inode = {}"
         )
         self._execute(
@@ -318,8 +320,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert checksum is not None
 
         cmd = (
-            "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
-            'VALUES ({}, "{}", "{}", "{}", "{}")'
+            "INSERT INTO {}(inode, mtime, size, checksums, timestamp) "
+            'VALUES ({}, "{}", "{}", \'{}\', "{}")'
         )
         self._execute(
             cmd.format(
@@ -334,7 +336,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.inserts += 1
 
     def get_state_record_for_inode(self, inode):
-        cmd = "SELECT mtime, size, md5, timestamp from {} " "WHERE inode={}"
+        cmd = (
+            "SELECT mtime, size, checksums, timestamp from {} "
+            "WHERE inode={}"
+        )
         cmd = cmd.format(self.STATE_TABLE, self._to_sqlite(inode))
         self._execute(cmd)
         results = self._fetchall()
@@ -344,12 +349,15 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def save(self, path_info, checksum):
+    def save(
+        self, path_info, checksum, checksum_type=modchecksum.CHECKSUM_MD5
+    ):
         """Save checksum for the specified path info.
 
         Args:
             path_info (dict): path_info to save checksum for.
             checksum (str): checksum to save.
+            checksum_type (str): checksum type to save.
         """
         assert path_info.scheme == "local"
         assert checksum is not None
@@ -360,23 +368,33 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         actual_mtime, actual_size = get_mtime_and_size(path)
         actual_inode = get_inode(path)
 
+        d = {checksum_type: checksum}
+        checksum_json = json.dumps(d)
+
         existing_record = self.get_state_record_for_inode(actual_inode)
         if not existing_record:
             self._insert_new_state_record(
-                actual_inode, actual_mtime, actual_size, checksum
+                actual_inode, actual_mtime, actual_size, checksum_json
             )
             return
 
+        existing_json = existing_record[2]
+        if existing_json:
+            checksums = json.loads(existing_json)
+            checksums[checksum_type] = checksum
+            checksum_json = json.dumps(checksums)
+
         self._update_state_for_path_changed(
-            actual_inode, actual_mtime, actual_size, checksum
+            actual_inode, actual_mtime, actual_size, checksum_json
         )
 
-    def get(self, path_info):
+    def get(self, path_info, checksum_type=modchecksum.CHECKSUM_MD5):
         """Gets the checksum for the specified path info. Checksum will be
         retrieved from the state database if available.
 
         Args:
             path_info (dict): path info to get the checksum for.
+            checksum_type (str): type to get the checksum for.
 
         Returns:
             str or None: checksum for the specified path info or None if it
@@ -395,12 +413,17 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not existing_record:
             return None
 
-        mtime, size, checksum, _ = existing_record
+        mtime, size, checksum_json, _ = existing_record
         if self._file_metadata_changed(actual_mtime, mtime, actual_size, size):
             return None
 
+        if checksum_json:
+            checksums = json.loads(checksum_json)
+            if checksum_type not in checksums:
+                return None
+
         self._update_state_record_timestamp_for_inode(actual_inode)
-        return checksum
+        return checksums[checksum_type]
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This
@@ -465,7 +488,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         inode = get_inode(cache_path)
 
         cmd = (
-            "INSERT OR REPLACE INTO {}(inode, size, mtime, timestamp, md5) "
+            "INSERT OR REPLACE INTO {}"
+            "(inode, size, mtime, timestamp, checksums) "
             'VALUES ({}, "{}", "{}", "{}", "")'.format(
                 self.STATE_TABLE,
                 self._to_sqlite(inode),

@@ -142,9 +142,16 @@ class OutputBase(object):
         return "/"
 
     @property
+    def checksum_type(self):
+        for t in self.remote.get_hash_list():
+            if t in self.info:
+                return t
+        return None
+
+    @property
     def checksum(self):
-        for h in self.remote.get_hash_list():
-            info = self.info.get(h)
+        for t in self.remote.get_hash_list():
+            info = self.info.get(t)
             if info:
                 return info
         return None
@@ -158,22 +165,20 @@ class OutputBase(object):
         return self.remote.exists(self.path_info)
 
     def changed_checksum(self):
-        cs = self.checksum
-        if cs is None:
-            self.remote.update_state_checksum(self.path_info)
-            return True
         return (
-            cs
-            != self.remote.save_info(self.path_info)[
-                self.remote.get_prefer_hash_type()
-            ]
+            self.checksum
+            != tuple(
+                self.remote.save_info(
+                    self.path_info, self.checksum_type
+                ).items()
+            )[0][1]
         )
 
     def changed_cache(self):
         if not self.use_cache or not self.checksum:
             return True
 
-        return self.cache.changed_cache(self.checksum)
+        return self.cache.changed_cache(self.checksum, self.checksum_type)
 
     def status(self):
         if self.checksum and self.use_cache and self.changed_cache():
