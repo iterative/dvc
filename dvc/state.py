@@ -54,7 +54,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             state database version.
     """
 
-    VERSION = 3
+    VERSION = 4
     STATE_FILE = "state"
     STATE_TABLE = "state"
     STATE_TABLE_LAYOUT = (
