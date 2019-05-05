@@ -201,8 +201,8 @@ class RemoteBase(object):
         if self.cache.changed_cache_file(checksum):
             self.cache.move(from_info, to_info)
 
-        self.state.save(path_info, checksum)
-        self.state.save(to_info, checksum)
+        self.state.save(path_info, checksum, self.get_prefer_hash_type())
+        self.state.save(to_info, checksum, self.get_prefer_hash_type())
 
         return checksum
 
@@ -266,11 +266,13 @@ class RemoteBase(object):
     def is_dir_checksum(cls, checksum):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info):
+    def get_checksum(self, path_info, checksum_type=None):
         if not self.exists(path_info):
             return None
 
-        checksum = self.state.get(path_info)
+        if checksum_type is None:
+            checksum_type = self.get_prefer_hash_type()
+        checksum = self.state.get(path_info, checksum_type)
         if checksum:
             return checksum
 
@@ -280,27 +282,18 @@ class RemoteBase(object):
             checksum = self.get_file_checksum(path_info)
 
         if checksum:
-            self.state.save(path_info, checksum)
+            self.state.save(path_info, checksum, checksum_type)
 
         return checksum
 
-    def update_state_checksum(self, path_info):
-        if not self.exists(path_info):
-            return None
-
-        if self.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info)
-        else:
-            checksum = self.get_file_checksum(path_info)
-
-        if checksum:
-            self.state.save(path_info, checksum)
-
-        return checksum
-
-    def save_info(self, path_info):
+    def save_info(self, path_info, checksum_type=None):
         assert path_info["scheme"] == self.scheme
-        return {self.get_prefer_hash_type(): self.get_checksum(path_info)}
+        return {
+            checksum_type
+            or self.get_prefer_hash_type(): self.get_checksum(
+                path_info, checksum_type
+            )
+        }
 
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
@@ -329,18 +322,23 @@ class RemoteBase(object):
             logger.debug("'{}' doesn't exist.".format(path_info))
             return True
 
-        checksum = checksum_info.get(self.get_prefer_hash_type())
+        checksum = None
+        for t in self.get_hash_list():
+            checksum = checksum_info.get(t)
+            if checksum:
+                break
+
         if checksum is None:
             logger.debug("checksum for '{}' is missing.".format(path_info))
             return True
 
-        if self.changed_cache(checksum):
+        if self.changed_cache(checksum, t):
             logger.debug(
                 "cache for '{}'('{}') has changed.".format(path_info, checksum)
             )
             return True
 
-        actual = self.save_info(path_info)[self.get_prefer_hash_type()]
+        actual = self.save_info(path_info, t)[t]
         if checksum != actual:
             logger.debug(
                 "checksum '{}'(actual '{}') for '{}' has changed.".format(
@@ -372,8 +370,8 @@ class RemoteBase(object):
         # we need to update path and cache, since in case of reflink,
         # or copy cache type moving original file results in updates on
         # next executed command, which causes md5 recalculation
-        self.state.save(path_info, checksum)
-        self.state.save(cache_info, checksum)
+        self.state.save(path_info, checksum, self.get_prefer_hash_type())
+        self.state.save(cache_info, checksum, self.get_prefer_hash_type())
 
     def _save_dir(self, path_info, checksum):
         cache_info = self.checksum_to_path_info(checksum)
@@ -389,8 +387,8 @@ class RemoteBase(object):
             self._save_file(entry_info, entry_checksum, save_link=False)
 
         self.state.save_link(path_info)
-        self.state.save(cache_info, checksum)
-        self.state.save(path_info, checksum)
+        self.state.save(cache_info, checksum, self.get_prefer_hash_type())
+        self.state.save(path_info, checksum, self.get_prefer_hash_type())
 
     def is_empty(self, path_info):
         return False
@@ -415,7 +413,7 @@ class RemoteBase(object):
             )
 
         checksum = checksum_info[self.get_prefer_hash_type()]
-        if not self.changed_cache(checksum):
+        if not self.changed_cache(checksum, self.get_prefer_hash_type()):
             self._checkout(path_info, checksum)
             return
 
@@ -523,9 +521,11 @@ class RemoteBase(object):
             removed = True
         return removed
 
-    def changed_cache_file(self, checksum):
+    def changed_cache_file(self, checksum, checksum_type=None):
+        if checksum_type is None:
+            checksum_type = self.get_prefer_hash_type()
         cache_info = self.checksum_to_path_info(checksum)
-        actual = self.get_checksum(cache_info)
+        actual = self.get_checksum(cache_info, checksum_type)
 
         logger.debug(
             "cache '{}' expected '{}' actual '{}'".format(
@@ -549,7 +549,7 @@ class RemoteBase(object):
         # NOTE: only implemented for RemoteLOCAL
         return True
 
-    def _changed_dir_cache(self, checksum):
+    def _changed_dir_cache(self, checksum, checksum_type):
         if not self._changed_cache_dir():
             return False
 
@@ -557,16 +557,18 @@ class RemoteBase(object):
             return True
 
         for entry in self.get_dir_cache(checksum):
-            checksum = entry[self.get_prefer_hash_type()]
-            if self.changed_cache_file(checksum):
+            checksum = entry[checksum_type]
+            if self.changed_cache_file(checksum, checksum_type):
                 return True
 
         return False
 
-    def changed_cache(self, checksum):
+    def changed_cache(self, checksum, checksum_type=None):
+        if checksum_type is None:
+            checksum_type = self.get_prefer_hash_type()
         if self.is_dir_checksum(checksum):
-            return self._changed_dir_cache(checksum)
-        return self.changed_cache_file(checksum)
+            return self._changed_dir_cache(checksum, checksum_type)
+        return self.changed_cache_file(checksum, checksum_type)
 
     def cache_exists(self, checksums):
         # NOTE: The reason for such an odd logic is that most of the remotes
