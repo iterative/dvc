@@ -143,14 +143,14 @@ class OutputBase(object):
 
     @property
     def checksum_type(self):
-        for t in self.remote.get_hash_list():
+        for t in self.remote.get_checksum_type_list():
             if t in self.info:
                 return t
         return None
 
     @property
     def checksum(self):
-        for t in self.remote.get_hash_list():
+        for t in self.remote.get_checksum_type_list():
             info = self.info.get(t)
             if info:
                 return info

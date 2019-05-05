@@ -168,7 +168,7 @@ def test_md5_ignores_comments(repo_dir, dvc_repo):
         f.write("# End comment\n")
 
     new_stage = Stage.load(dvc_repo, stage.path)
-    assert not new_stage.changed_md5()
+    assert not new_stage.changed_checksum()
 
 
 def test_meta_is_preserved(dvc_repo):

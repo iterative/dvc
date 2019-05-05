@@ -200,7 +200,7 @@ class Repo(object):
         info = out.dumpd()
         ret = [info]
         r = out.remote
-        md5 = info[r.get_prefer_hash_type()]
+        md5 = info[r.get_prefer_checksum_type()]
 
         if self.cache.local.changed_cache_file(md5):
             try:
