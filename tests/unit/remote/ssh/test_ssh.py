@@ -1,28 +1,15 @@
 import getpass
+import os
 
 from unittest import TestCase
+
+from mock import patch, mock_open
+import pytest
 
 from dvc.remote.ssh import RemoteSSH
 
 
 class TestRemoteSSH(TestCase):
-    def test_user(self):
-        url = "ssh://127.0.0.1:/path/to/dir"
-        config = {"url": url}
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.user, getpass.getuser())
-
-        user = "test1"
-        url = "ssh://{}@127.0.0.1:/path/to/dir".format(user)
-        config = {"url": url}
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.user, user)
-
-        user = "test2"
-        config["user"] = user
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.user, user)
-
     def test_url(self):
         user = "test"
         host = "123.45.67.89"
@@ -56,19 +43,96 @@ class TestRemoteSSH(TestCase):
         remote = RemoteSSH(None, config)
         self.assertEqual(remote.prefix, "/")
 
-    def test_port(self):
-        url = "ssh://127.0.0.1/path/to/dir"
-        config = {"url": url}
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.port, remote.DEFAULT_PORT)
 
-        port = 1234
-        url = "ssh://127.0.0.1:{}/path/to/dir".format(port)
-        config = {"url": url}
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.port, port)
+mock_ssh_config = """
+Host example.com
+   User ubuntu
+   HostName 1.2.3.4
+   Port 1234
+   IdentityFile ~/.ssh/not_default.key
+"""
 
-        port = 4321
-        config["port"] = port
-        remote = RemoteSSH(None, config)
-        self.assertEqual(remote.port, port)
+
+@pytest.mark.parametrize(
+    "config,expected_host",
+    [
+        ({"url": "ssh://example.com"}, "1.2.3.4"),
+        ({"url": "ssh://not_in_ssh_config.com"}, "not_in_ssh_config.com"),
+    ],
+)
+@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+def test_ssh_host_override_from_config(mock_file, config, expected_host):
+    remote = RemoteSSH(None, config)
+
+    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    assert remote.host == expected_host
+
+
+@pytest.mark.parametrize(
+    "config,expected_user",
+    [
+        ({"url": "ssh://test1@example.com"}, "test1"),
+        ({"url": "ssh://example.com", "user": "test2"}, "test2"),
+        ({"url": "ssh://example.com"}, "ubuntu"),
+        ({"url": "ssh://test1@not_in_ssh_config.com"}, "test1"),
+        (
+            {"url": "ssh://test1@not_in_ssh_config.com", "user": "test2"},
+            "test2",
+        ),
+        ({"url": "ssh://not_in_ssh_config.com"}, getpass.getuser()),
+    ],
+)
+@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+def test_ssh_user(mock_file, config, expected_user):
+    remote = RemoteSSH(None, config)
+
+    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    assert remote.user == expected_user
+
+
+@pytest.mark.parametrize(
+    "config,expected_port",
+    [
+        ({"url": "ssh://example.com:2222"}, 2222),
+        ({"url": "ssh://example.com"}, 1234),
+        ({"url": "ssh://example.com", "port": 4321}, 4321),
+        ({"url": "ssh://not_in_ssh_config.com"}, RemoteSSH.DEFAULT_PORT),
+        ({"url": "ssh://not_in_ssh_config.com:2222"}, 2222),
+        ({"url": "ssh://not_in_ssh_config.com:2222", "port": 4321}, 4321),
+    ],
+)
+@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+def test_ssh_port(mock_file, config, expected_port):
+    remote = RemoteSSH(None, config)
+
+    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    assert remote.port == expected_port
+
+
+@pytest.mark.parametrize(
+    "config,expected_keyfile",
+    [
+        (
+            {"url": "ssh://example.com", "keyfile": "dvc_config.key"},
+            "dvc_config.key",
+        ),
+        (
+            {"url": "ssh://example.com"},
+            os.path.expanduser("~/.ssh/not_default.key"),
+        ),
+        (
+            {
+                "url": "ssh://not_in_ssh_config.com",
+                "keyfile": "dvc_config.key",
+            },
+            "dvc_config.key",
+        ),
+        ({"url": "ssh://not_in_ssh_config.com"}, None),
+    ],
+)
+@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+def test_ssh_keyfile(mock_file, config, expected_keyfile):
+    remote = RemoteSSH(None, config)
+
+    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    assert remote.keyfile == expected_keyfile
