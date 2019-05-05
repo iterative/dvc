@@ -69,8 +69,8 @@ class RemoteLOCAL(RemoteBase):
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
         self._hash = [modchecksum.CHECKSUM_MD5]
-        conf = repo.config.config[Config.SECTION_HASH]
-        hash_local = conf.get(Config.SECTION_HASH_LOCAL, None)
+        conf = repo.config.config[Config.SECTION_CHECKSUM]
+        hash_local = conf.get(Config.SECTION_CHECKSUM_LOCAL, None)
         if hash_local:
             self._hash = (
                 modchecksum.checksum_types_from_str(hash_local) or self._hash
@@ -179,12 +179,12 @@ class RemoteLOCAL(RemoteBase):
     def already_cached(self, path_info):
         assert path_info["scheme"] in ["", "local"]
 
-        current_md5 = self.get_checksum(path_info)
+        cs = self.get_checksum(path_info)
 
-        if not current_md5:
+        if not cs:
             return False
 
-        return not self.changed_cache(current_md5)
+        return not self.changed_cache(cs)
 
     def is_empty(self, path_info):
         path = path_info["path"]
@@ -206,10 +206,10 @@ class RemoteLOCAL(RemoteBase):
     def walk(self, path_info):
         return os.walk(path_info["path"])
 
-    def get_hash_list(self):
+    def get_checksum_type_list(self):
         return self._hash
 
-    def get_prefer_hash_type(self):
+    def get_prefer_checksum_type(self):
         return self._hash[0]
 
     def get_file_checksum(self, path_info):
@@ -326,7 +326,7 @@ class RemoteLOCAL(RemoteBase):
         by_md5 = {}
 
         for info in checksum_infos:
-            md5 = info[self.get_prefer_hash_type()]
+            md5 = info[self.get_prefer_checksum_type()]
 
             if show_checksums:
                 by_md5[md5] = {"name": md5}

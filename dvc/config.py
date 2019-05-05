@@ -53,7 +53,7 @@ def supported_loglevel(level):
     return level in ["info", "debug", "warning", "error"]
 
 
-def supported_hash_local(hash_names):
+def supported_checksum_local(hash_names):
     """Checks if hash config option has a valid value.
 
     Args:
@@ -157,11 +157,13 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_ANALYTICS = "analytics"
     SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
 
-    SECTION_HASH = "hash"
-    SECTION_HASH_LOCAL = "local"
-    SECTION_HASH_LOCAL_SCHEMA = supported_hash_local
-    SECTION_HASH_SCHEMA = {
-        Optional(SECTION_HASH_LOCAL, default=None): SECTION_HASH_LOCAL_SCHEMA
+    SECTION_CHECKSUM = "checksum"
+    SECTION_CHECKSUM_LOCAL = "local"
+    SECTION_CHECKSUM_LOCAL_SCHEMA = supported_checksum_local
+    SECTION_CHECKSUM_SCHEMA = {
+        Optional(
+            SECTION_CHECKSUM_LOCAL, default=None
+        ): SECTION_CHECKSUM_LOCAL_SCHEMA
     }
 
     SECTION_CACHE = "cache"
@@ -290,7 +292,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(Regex(SECTION_REMOTE_REGEX)): SECTION_REMOTE_SCHEMA,
         Optional(SECTION_CACHE, default={}): SECTION_CACHE_SCHEMA,
         Optional(SECTION_STATE, default={}): SECTION_STATE_SCHEMA,
-        Optional(SECTION_HASH, default={}): SECTION_HASH_SCHEMA,
+        Optional(SECTION_CHECKSUM, default={}): SECTION_CHECKSUM_SCHEMA,
         # backward compatibility
         Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,
         Optional(SECTION_GCP, default={}): SECTION_GCP_SCHEMA,

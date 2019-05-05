@@ -198,14 +198,14 @@ class Stage(object):
     def is_stage_file(path):
         return os.path.isfile(path) and Stage.is_valid_filename(path)
 
-    def changed_md5(self):
-        for h in self.repo.cache.local.get_hash_list():
+    def changed_checksum(self):
+        for h in self.repo.cache.local.get_checksum_type_list():
             if h in self.checksum:
                 return self.checksum[h] != self._compute_checksum(h)
 
         return (
             self._compute_checksum(
-                self.repo.cache.local.get_prefer_hash_type()
+                self.repo.cache.local.get_prefer_checksum_type()
             )
             is not None
         )
@@ -262,15 +262,19 @@ class Stage(object):
 
         return False
 
-    def _changed_md5(self):
-        if self.changed_md5():
+    def _changed_checksum(self):
+        if self.changed_checksum():
             logger.warning("Dvc file '{}' changed.".format(self.relpath))
             return True
         return False
 
     def changed(self):
         ret = any(
-            [self._changed_deps(), self._changed_outs(), self._changed_md5()]
+            [
+                self._changed_deps(),
+                self._changed_outs(),
+                self._changed_checksum(),
+            ]
         )
 
         if ret:
@@ -402,7 +406,7 @@ class Stage(object):
             new_d.pop(k, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(self.repo.cache.local.get_prefer_hash_type(), None)
+            out.pop(self.repo.cache.local.get_prefer_checksum_type(), None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
         if old_d != new_d:
@@ -717,7 +721,7 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-        hash_type = self.repo.cache.local.get_prefer_hash_type()
+        hash_type = self.repo.cache.local.get_prefer_checksum_type()
         self.checksum = {hash_type: self._compute_checksum(hash_type)}
 
     @staticmethod
@@ -732,7 +736,7 @@ class Stage(object):
         changed_deps = self._changed_entries(self.deps)
         changed_outs = self._changed_entries(self.outs)
 
-        if changed_deps or changed_outs or self.changed_md5():
+        if changed_deps or changed_outs or self.changed_checksum():
             msg = (
                 "dependencies {}".format(changed_deps) if changed_deps else ""
             )
@@ -899,7 +903,7 @@ class Stage(object):
         if outs_status:
             ret.append({"changed outs": outs_status})
 
-        if self.changed_md5():
+        if self.changed_checksum():
             ret.append("changed checksum")
 
         if self.is_callback:
@@ -912,7 +916,7 @@ class Stage(object):
 
     def _already_cached(self):
         return (
-            not self.changed_md5()
+            not self.changed_checksum()
             and all(not dep.changed() for dep in self.deps)
             and all(
                 not out.changed_cache() if out.use_cache else not out.changed()
