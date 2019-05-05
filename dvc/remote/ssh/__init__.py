@@ -40,14 +40,7 @@ class RemoteSSH(RemoteBase):
         parsed = urlparse(self.url)
         self.host = parsed.hostname
 
-        user_config_file = os.path.expanduser("~/.ssh/config")
-        user_ssh_config = dict()
-        if self.host:
-            if os.path.exists(user_config_file):
-                with open(user_config_file) as f:
-                    ssh_config = paramiko.SSHConfig()
-                    ssh_config.parse(f)
-                    user_ssh_config = ssh_config.lookup(self.host)
+        user_ssh_config = self._load_user_ssh_config(self.host)
 
         self.user = (
             config.get(Config.SECTION_REMOTE_USER)
@@ -75,6 +68,17 @@ class RemoteSSH(RemoteBase):
             "user": self.user,
             "port": self.port,
         }
+
+    @staticmethod
+    def _load_user_ssh_config(hostname):
+        user_config_file = os.path.expanduser("~/.ssh/config")
+        user_ssh_config = dict()
+        if hostname and os.path.exists(user_config_file):
+            with open(user_config_file) as f:
+                ssh_config = paramiko.SSHConfig()
+                ssh_config.parse(f)
+                user_ssh_config = ssh_config.lookup(hostname)
+        return user_ssh_config
 
     def ssh(self, host=None, user=None, port=None, **kwargs):
         logger.debug(
