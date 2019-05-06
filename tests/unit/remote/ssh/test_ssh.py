@@ -1,5 +1,6 @@
 import getpass
 import os
+import sys
 
 from unittest import TestCase
 
@@ -45,7 +46,8 @@ class TestRemoteSSH(TestCase):
         self.assertEqual(remote.prefix, "/")
 
 
-mock_ssh_config = """Host example.com
+mock_ssh_config = """
+Host example.com
    User ubuntu
    HostName 1.2.3.4
    Port 1234
@@ -58,13 +60,22 @@ if mock.version_info[0] < 3:
 
     def mock_open_compat(*args, **kargs):
         f_open = mock.mock_open(*args, **kargs)
-        f_open.return_value.__iter__ = lambda self: self
-        f_open.return_value.__next__ = lambda self: self.readline()
+        if sys.version_info.major == 3:
+            f_open.return_value.__iter__ = lambda self: self
+            f_open.return_value.__next__ = lambda self: self.readline()
+        else:
+            f_open.return_value.__iter__ = lambda self: iter(self.readline, "")
+
         return f_open
 
     mock_open = mock_open_compat
 else:
     mock_open = mock.mock_open
+
+if sys.version_info.major == 3:
+    builtin_module_name = "builtins"
+else:
+    builtin_module_name = "__builtin__"
 
 
 @pytest.mark.parametrize(
@@ -75,7 +86,11 @@ else:
     ],
 )
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+@patch(
+    "{}.open".format(builtin_module_name),
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
 def test_ssh_host_override_from_config(
     mock_file, mock_exists, config, expected_host
 ):
@@ -101,7 +116,11 @@ def test_ssh_host_override_from_config(
     ],
 )
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+@patch(
+    "{}.open".format(builtin_module_name),
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
 def test_ssh_user(mock_file, mock_exists, config, expected_user):
     remote = RemoteSSH(None, config)
 
@@ -122,7 +141,11 @@ def test_ssh_user(mock_file, mock_exists, config, expected_user):
     ],
 )
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+@patch(
+    "{}.open".format(builtin_module_name),
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
 def test_ssh_port(mock_file, mock_exists, config, expected_port):
     remote = RemoteSSH(None, config)
 
@@ -153,7 +176,11 @@ def test_ssh_port(mock_file, mock_exists, config, expected_port):
     ],
 )
 @patch("os.path.exists", return_value=True)
-@patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
+@patch(
+    "{}.open".format(builtin_module_name),
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
 def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
     remote = RemoteSSH(None, config)
 
