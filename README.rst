@@ -68,7 +68,7 @@ made right and tailored specifically for ML and Data Science scenarios.
 DVC usually runs along with Git. Git is used as usual to store and version code and DVC meta-files. DVC helps
 to store data and model files seamlessly out of Git while preserving almost the same user experience as if they
 were stored in Git itself. To store and share data files cache DVC supports remotes - any cloud (S3, Azure,
-Google Cloud, etc) or any on-premise network storage (via SSH, for example). It does not require 
+Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
 .. image:: https://dvc.org/static/img/flow.gif
    :target: https://dvc.org/static/img/flow.gif
