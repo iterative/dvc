@@ -63,10 +63,11 @@ Host example.com
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
 def test_ssh_host_override_from_config(
-    mock_exists, mock_file, config, expected_host
+    mock_file, mock_exists, config, expected_host
 ):
     remote = RemoteSSH(None, config)
 
+    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
     mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
     assert remote.host == expected_host
 
@@ -87,9 +88,10 @@ def test_ssh_host_override_from_config(
 )
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
-def test_ssh_user(mock_exists, mock_file, config, expected_user):
+def test_ssh_user(mock_file, mock_exists, config, expected_user):
     remote = RemoteSSH(None, config)
 
+    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
     mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
     assert remote.user == expected_user
 
@@ -107,9 +109,10 @@ def test_ssh_user(mock_exists, mock_file, config, expected_user):
 )
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
-def test_ssh_port(mock_exists, mock_file, config, expected_port):
+def test_ssh_port(mock_file, mock_exists, config, expected_port):
     remote = RemoteSSH(None, config)
 
+    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
     mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
     assert remote.port == expected_port
 
@@ -137,7 +140,7 @@ def test_ssh_port(mock_exists, mock_file, config, expected_port):
 )
 @patch("os.path.exists", return_value=True)
 @patch("builtins.open", new_callable=mock_open, read_data=mock_ssh_config)
-def test_ssh_keyfile(mock_exists, mock_file, config, expected_keyfile):
+def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
     remote = RemoteSSH(None, config)
 
     mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
