@@ -96,8 +96,8 @@ def test_ssh_host_override_from_config(
 ):
     remote = RemoteSSH(None, config)
 
-    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
-    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.host == expected_host
 
 
@@ -124,8 +124,8 @@ def test_ssh_host_override_from_config(
 def test_ssh_user(mock_file, mock_exists, config, expected_user):
     remote = RemoteSSH(None, config)
 
-    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
-    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.user == expected_user
 
 
@@ -149,8 +149,8 @@ def test_ssh_user(mock_file, mock_exists, config, expected_user):
 def test_ssh_port(mock_file, mock_exists, config, expected_port):
     remote = RemoteSSH(None, config)
 
-    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
-    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.port == expected_port
 
 
@@ -184,6 +184,6 @@ def test_ssh_port(mock_file, mock_exists, config, expected_port):
 def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
     remote = RemoteSSH(None, config)
 
-    mock_exists.assert_called_with(os.path.expanduser("~/.ssh/config"))
-    mock_file.assert_called_with(os.path.expanduser("~/.ssh/config"))
+    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.keyfile == expected_keyfile

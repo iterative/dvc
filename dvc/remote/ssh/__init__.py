@@ -73,8 +73,12 @@ class RemoteSSH(RemoteBase):
         }
 
     @staticmethod
+    def ssh_config_filename():
+        return os.path.expanduser(os.path.join("~", ".ssh", "config"))
+
+    @staticmethod
     def _load_user_ssh_config(hostname):
-        user_config_file = os.path.expanduser("~/.ssh/config")
+        user_config_file = RemoteSSH.ssh_config_filename()
         user_ssh_config = dict()
         if hostname and os.path.exists(user_config_file):
             with open(user_config_file) as f:
