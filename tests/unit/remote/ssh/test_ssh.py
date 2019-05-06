@@ -3,7 +3,8 @@ import os
 
 from unittest import TestCase
 
-from mock import patch, mock_open
+import mock
+from mock import patch
 import pytest
 
 from dvc.remote.ssh import RemoteSSH
@@ -44,13 +45,26 @@ class TestRemoteSSH(TestCase):
         self.assertEqual(remote.prefix, "/")
 
 
-mock_ssh_config = """
-Host example.com
+mock_ssh_config = """Host example.com
    User ubuntu
    HostName 1.2.3.4
    Port 1234
    IdentityFile ~/.ssh/not_default.key
 """
+
+# compat version for mock library version 2
+# mock 2.0.0 can't iterate in mock_open
+if mock.version_info[0] < 3:
+
+    def mock_open_compat(*args, **kargs):
+        f_open = mock.mock_open(*args, **kargs)
+        f_open.return_value.__iter__ = lambda self: self
+        f_open.return_value.__next__ = lambda self: self.readline()
+        return f_open
+
+    mock_open = mock_open_compat
+else:
+    mock_open = mock.mock_open
 
 
 @pytest.mark.parametrize(
