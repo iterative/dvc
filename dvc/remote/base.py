@@ -156,10 +156,10 @@ class RemoteBASE(object):
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    def get_checksum_type_list(self):
+    def checksum_types(self):
         return [self.PARAM_CHECKSUM]
 
-    def get_prefer_checksum_type(self):
+    def checksum_type(self):
         return self.PARAM_CHECKSUM
 
     def get_file_checksum(self, path_info):
@@ -189,7 +189,7 @@ class RemoteBASE(object):
                 dir_info.append(
                     {
                         self.PARAM_RELPATH: relpath,
-                        self.get_prefer_checksum_type(): checksum,
+                        self.checksum_type(): checksum,
                     }
                 )
 
@@ -204,8 +204,8 @@ class RemoteBASE(object):
         if self.cache.changed_cache_file(checksum):
             self.cache.move(from_info, to_info)
 
-        self.state.save(path_info, checksum, self.get_prefer_checksum_type())
-        self.state.save(to_info, checksum, self.get_prefer_checksum_type())
+        self.state.save(path_info, checksum, self.checksum_type())
+        self.state.save(to_info, checksum, self.checksum_type())
 
         return checksum
 
@@ -272,7 +272,7 @@ class RemoteBASE(object):
             return None
 
         if checksum_type is None:
-            checksum_type = self.get_prefer_checksum_type()
+            checksum_type = self.checksum_type()
         checksum = self.state.get(path_info, checksum_type)
         if checksum:
             return checksum
@@ -301,7 +301,7 @@ class RemoteBASE(object):
             return True
 
         types = set(checksum_info.keys())
-        supported_types = set(self.get_checksum_type_list())
+        supported_types = set(self.checksum_types())
         intersection = supported_types.intersection(types)
         if not supported_types.intersection(types):
             logger.debug(
@@ -386,8 +386,8 @@ class RemoteBASE(object):
         # we need to update path and cache, since in case of reflink,
         # or copy cache type moving original file results in updates on
         # next executed command, which causes md5 recalculation
-        self.state.save(path_info, checksum, self.get_prefer_checksum_type())
-        self.state.save(cache_info, checksum, self.get_prefer_checksum_type())
+        self.state.save(path_info, checksum, self.checksum_type())
+        self.state.save(cache_info, checksum, self.checksum_type())
 
     def _save_dir(self, path_info, checksum):
         cache_info = self.checksum_to_path_info(checksum)
@@ -395,15 +395,15 @@ class RemoteBASE(object):
 
         entry_info = copy(path_info)
         for entry in dir_info:
-            entry_checksum = entry[self.get_prefer_checksum_type()]
+            entry_checksum = entry[self.checksum_type()]
             entry_info.path = self.ospath.join(
                 path_info.path, entry[self.PARAM_RELPATH]
             )
             self._save_file(entry_info, entry_checksum, save_link=False)
 
         self.state.save_link(path_info)
-        self.state.save(cache_info, checksum, self.get_prefer_checksum_type())
-        self.state.save(path_info, checksum, self.get_prefer_checksum_type())
+        self.state.save(cache_info, checksum, self.checksum_type())
+        self.state.save(path_info, checksum, self.checksum_type())
 
     def is_empty(self, path_info):
         return False
@@ -427,8 +427,8 @@ class RemoteBASE(object):
                 self.scheme,
             )
 
-        checksum = checksum_info[self.get_prefer_checksum_type()]
-        if not self.changed_cache(checksum, self.get_prefer_checksum_type()):
+        checksum = checksum_info[self.checksum_type()]
+        if not self.changed_cache(checksum, self.checksum_type()):
             self._checkout(path_info, checksum)
             return
 
@@ -517,14 +517,13 @@ class RemoteBASE(object):
     def gc(self, cinfos):
 
         used = {
-            info[self.repo.cache.local.get_prefer_checksum_type()]
+            info[self.repo.cache.local.checksum_type()]
             for info in cinfos["local"]
         }
 
         if self.scheme != "local":
             used |= {
-                info[self.get_prefer_hash_type()]
-                for info in cinfos.get(self.scheme, [])
+                info[self.checksum_type()] for info in cinfos[self.scheme]
             }
 
         removed = False
@@ -549,7 +548,7 @@ class RemoteBASE(object):
         - Remove the file from cache if it doesn't match the actual checksum
         """
         if checksum_type is None:
-            checksum_type = self.get_prefer_checksum_type()
+            checksum_type = self.checksum_type()
         cache_info = self.checksum_to_path_info(checksum)
         actual = self.get_checksum(cache_info, checksum_type)
 
@@ -591,7 +590,7 @@ class RemoteBASE(object):
 
     def changed_cache(self, checksum, checksum_type=None):
         if checksum_type is None:
-            checksum_type = self.get_prefer_checksum_type()
+            checksum_type = self.checksum_type()
         if self.is_dir_checksum(checksum):
             return self._changed_dir_cache(checksum, checksum_type)
         return self.changed_cache_file(checksum, checksum_type)
@@ -663,14 +662,12 @@ class RemoteBASE(object):
         entry_info = copy(path_info)
         for entry in dir_info:
             relpath = entry[self.PARAM_RELPATH]
-            entry_checksum = entry[self.get_prefer_checksum_type()]
+            entry_checksum = entry[self.checksum_type()]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info.url = self.ospath.join(path_info.url, relpath)
             entry_info.path = self.ospath.join(path_info.path, relpath)
 
-            entry_checksum_info = {
-                self.get_prefer_checksum_type(): entry_checksum
-            }
+            entry_checksum_info = {self.checksum_type(): entry_checksum}
             if self.changed(entry_info, entry_checksum_info):
                 if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
@@ -712,7 +709,7 @@ class RemoteBASE(object):
         ):
             raise NotImplementedError
 
-        checksum = checksum_info.get(self.get_prefer_checksum_type())
+        checksum = checksum_info.get(self.checksum_type())
         if not checksum:
             msg = "No checksum info for '{}'."
             logger.debug(msg.format(str(path_info)))
