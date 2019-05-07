@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 from copy import copy
 
+from dvc.path import BasePathInfo, Schemes
+from dvc.path.local import LocalPathInfo
 from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.utils.compat import str, makedirs
 
@@ -42,7 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class RemoteLOCAL(RemoteBase):
-    scheme = "local"
+    scheme = Schemes.LOCAL
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
@@ -77,9 +79,8 @@ class RemoteLOCAL(RemoteBase):
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
 
-        self.path_info = {"scheme": "local"}
-
         self._dir_info = {}
+        self.path_info = LocalPathInfo()
 
     @staticmethod
     def compat_config(config):
@@ -115,18 +116,18 @@ class RemoteLOCAL(RemoteBase):
         return self.checksum_to_path(md5)
 
     def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info["scheme"] == "local"
-        return os.path.lexists(path_info["path"])
+        assert isinstance(path_info, BasePathInfo)
+        assert path_info.scheme == "local"
+        return os.path.lexists(path_info.path)
 
     def makedirs(self, path_info):
         if not self.exists(path_info):
-            os.makedirs(path_info["path"])
+            os.makedirs(path_info.path)
 
     @slow_link_guard
     def link(self, cache_info, path_info):
-        cache = cache_info["path"]
-        path = path_info["path"]
+        cache = cache_info.path
+        path = path_info.path
 
         assert os.path.isfile(cache)
 
@@ -175,7 +176,7 @@ class RemoteLOCAL(RemoteBase):
         return posixpath
 
     def already_cached(self, path_info):
-        assert path_info["scheme"] in ["", "local"]
+        assert path_info.scheme in ["", "local"]
 
         current_md5 = self.get_checksum(path_info)
 
@@ -185,7 +186,7 @@ class RemoteLOCAL(RemoteBase):
         return not self.changed_cache(current_md5)
 
     def is_empty(self, path_info):
-        path = path_info["path"]
+        path = path_info.path
 
         if self.isfile(path_info) and os.path.getsize(path) == 0:
             return True
@@ -196,29 +197,29 @@ class RemoteLOCAL(RemoteBase):
         return False
 
     def isfile(self, path_info):
-        return os.path.isfile(path_info["path"])
+        return os.path.isfile(path_info.path)
 
     def isdir(self, path_info):
-        return os.path.isdir(path_info["path"])
+        return os.path.isdir(path_info.path)
 
     def walk(self, path_info):
-        return os.walk(path_info["path"])
+        return os.walk(path_info.path)
 
     def get_file_checksum(self, path_info):
-        return file_md5(path_info["path"])[0]
+        return file_md5(path_info.path)[0]
 
     def remove(self, path_info):
-        if path_info["scheme"] != "local":
+        if path_info.scheme != "local":
             raise NotImplementedError
 
-        remove(path_info["path"])
+        remove(path_info.path)
 
     def move(self, from_info, to_info):
-        if from_info["scheme"] != "local" or to_info["scheme"] != "local":
+        if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
-        inp = from_info["path"]
-        outp = to_info["path"]
+        inp = from_info.path
+        outp = to_info.path
 
         # moving in two stages to make the whole operation atomic in
         # case inp and outp are in different filesystems and actual
@@ -235,36 +236,34 @@ class RemoteLOCAL(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
-            if from_info["scheme"] != "local":
+            if from_info.scheme != "local":
                 raise NotImplementedError
 
             logger.debug(
-                "Uploading '{}' to '{}'".format(
-                    from_info["path"], to_info["path"]
-                )
+                "Uploading '{}' to '{}'".format(from_info.path, to_info.path)
             )
 
             if not name:
-                name = os.path.basename(from_info["path"])
+                name = os.path.basename(from_info.path)
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
-            tmp_file = tmp_fname(to_info["path"])
+            makedirs(os.path.dirname(to_info.path), exist_ok=True)
+            tmp_file = tmp_fname(to_info.path)
 
             try:
                 copyfile(
-                    from_info["path"],
+                    from_info.path,
                     tmp_file,
                     name=name,
                     no_progress_bar=no_progress_bar,
                 )
-                os.rename(tmp_file, to_info["path"])
+                os.rename(tmp_file, to_info.path)
             except Exception:
                 logger.exception(
                     "failed to upload '{}' to '{}'".format(
-                        from_info["path"], to_info["path"]
+                        from_info.path, to_info.path
                     )
                 )
 
@@ -279,36 +278,34 @@ class RemoteLOCAL(RemoteBase):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info["scheme"] != "local":
+            if from_info.scheme != "local":
                 raise NotImplementedError
 
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
             logger.debug(
-                "Downloading '{}' to '{}'".format(
-                    from_info["path"], to_info["path"]
-                )
+                "Downloading '{}' to '{}'".format(from_info.path, to_info.path)
             )
 
             if not name:
-                name = os.path.basename(to_info["path"])
+                name = os.path.basename(to_info.path)
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
-            tmp_file = tmp_fname(to_info["path"])
+            makedirs(os.path.dirname(to_info.path), exist_ok=True)
+            tmp_file = tmp_fname(to_info.path)
             try:
                 copyfile(
-                    from_info["path"],
+                    from_info.path,
                     tmp_file,
                     no_progress_bar=no_progress_bar,
                     name=name,
                 )
 
-                move(tmp_file, to_info["path"])
+                move(tmp_file, to_info.path)
             except Exception:
                 logger.exception(
                     "failed to download '{}' to '{}'".format(
-                        from_info["path"], to_info["path"]
+                        from_info.path, to_info.path
                     )
                 )
 
@@ -563,7 +560,7 @@ class RemoteLOCAL(RemoteBase):
 
     @staticmethod
     def unprotect(path_info):
-        path = path_info["path"]
+        path = path_info.path
         if not os.path.exists(path):
             raise DvcException(
                 "can't unprotect non-existing data '{}'".format(path)
@@ -576,4 +573,4 @@ class RemoteLOCAL(RemoteBase):
 
     @staticmethod
     def protect(path_info):
-        os.chmod(path_info["path"], stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+        os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)

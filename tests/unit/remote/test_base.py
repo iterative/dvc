@@ -1,6 +1,7 @@
 import mock
 from unittest import TestCase
 
+from dvc.path import BasePathInfo
 from dvc.remote.base import RemoteBase, RemoteCmdError, RemoteMissingDepsError
 
 
@@ -43,10 +44,10 @@ class TestCacheExists(TestCase):
         remote = RemoteBase(None, config)
 
         remote.PARAM_CHECKSUM = "checksum"
-        remote.path_info = {}
+        remote.path_info = BasePathInfo(None, None)
         remote.url = ""
         remote.prefix = ""
-        path_info = {"scheme": None, "path": "example"}
+        path_info = BasePathInfo("example", None)
         checksum_info = {remote.PARAM_CHECKSUM: "1234567890"}
 
         with mock.patch.object(remote, "_checkout") as mock_checkout:

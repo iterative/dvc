@@ -4,6 +4,9 @@ from __future__ import unicode_literals
 import os
 import logging
 
+from dvc.path import Schemes
+from dvc.path.oss import OSSPathInfo
+
 try:
     import oss2
 except ImportError:
@@ -39,7 +42,7 @@ class RemoteOSS(RemoteBase):
     $ export OSS_ENDPOINT="endpoint"
     """
 
-    scheme = "oss"
+    scheme = Schemes.OSS
     REGEX = r"^oss://(?P<path>.*)?$"
     REQUIRES = {"oss2": oss2}
     PARAM_CHECKSUM = "etag"
@@ -70,7 +73,7 @@ class RemoteOSS(RemoteBase):
         )
 
         self._bucket = None
-        self.path_info = {"scheme": self.scheme, "bucket": self.bucket}
+        self.path_info = OSSPathInfo(bucket=self.bucket)
 
     @property
     def oss_service(self):
@@ -93,16 +96,14 @@ class RemoteOSS(RemoteBase):
         return self._bucket
 
     def remove(self, path_info):
-        if path_info["scheme"] != self.scheme:
+        if path_info.scheme != self.scheme:
             raise NotImplementedError
 
         logger.debug(
-            "Removing oss://{}/{}".format(
-                path_info["bucket"], path_info["path"]
-            )
+            "Removing oss://{}/{}".format(path_info.bucket, path_info.path)
         )
 
-        self.oss_service.delete_object(path_info["path"])
+        self.oss_service.delete_object(path_info.path)
 
     def _list_paths(self, prefix):
         for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
@@ -115,32 +116,32 @@ class RemoteOSS(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info["scheme"] != self.scheme:
+            if to_info.scheme != self.scheme:
                 raise NotImplementedError
 
-            if from_info["scheme"] != "local":
+            if from_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = to_info["bucket"]
-            path = to_info["path"]
+            bucket = to_info.bucket
+            path = to_info.path
 
             logger.debug(
                 "Uploading '{}' to 'oss://{}/{}'".format(
-                    from_info["path"], bucket, path
+                    from_info.path, bucket, path
                 )
             )
 
             if not name:
-                name = os.path.basename(from_info["path"])
+                name = os.path.basename(from_info.path)
 
             cb = None if no_progress_bar else Callback(name)
 
             try:
                 self.oss_service.put_object_from_file(
-                    path, from_info["path"], progress_callback=cb
+                    path, from_info.path, progress_callback=cb
                 )
             except Exception:
-                msg = "failed to upload '{}'".format(from_info["path"])
+                msg = "failed to upload '{}'".format(from_info.path)
                 logger.warning(msg)
             else:
                 progress.finish_target(name)
@@ -155,27 +156,27 @@ class RemoteOSS(RemoteBase):
     ):
         names = self._verify_path_args(from_infos, to_infos, names)
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info["scheme"] != self.scheme:
+            if from_info.scheme != self.scheme:
                 raise NotImplementedError
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = from_info["bucket"]
-            path = from_info["path"]
+            bucket = from_info.bucket
+            path = from_info.path
 
             logger.debug(
                 "Downloading 'oss://{}/{}' to '{}'".format(
-                    bucket, path, to_info["path"]
+                    bucket, path, to_info.path
                 )
             )
 
-            tmp_file = tmp_fname(to_info["path"])
+            tmp_file = tmp_fname(to_info.path)
             if not name:
-                name = os.path.basename(to_info["path"])
+                name = os.path.basename(to_info.path)
 
             cb = None if no_progress_bar else Callback(name)
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
+            makedirs(os.path.dirname(to_info.path), exist_ok=True)
 
             try:
                 self.oss_service.get_object_to_file(
@@ -185,7 +186,7 @@ class RemoteOSS(RemoteBase):
                 msg = "failed to download 'oss://{}/{}'".format(bucket, path)
                 logger.warning(msg)
             else:
-                move(tmp_file, to_info["path"])
+                move(tmp_file, to_info.path)
 
                 if not no_progress_bar:
                     progress.finish_target(name)

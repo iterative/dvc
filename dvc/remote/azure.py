@@ -5,6 +5,9 @@ import os
 import re
 import logging
 
+from dvc.path import Schemes
+from dvc.path.azure import AzurePathInfo
+
 try:
     from azure.storage.blob import BlockBlobService
     from azure.common import AzureMissingResourceHttpError
@@ -30,7 +33,7 @@ class Callback(object):
 
 
 class RemoteAzure(RemoteBase):
-    scheme = "azure"
+    scheme = Schemes.AZURE
     REGEX = (
         r"azure://((?P<path>[^=;]*)?|("
         # backward compatibility
@@ -69,8 +72,7 @@ class RemoteAzure(RemoteBase):
             raise ValueError("azure storage connection string missing")
 
         self.__blob_service = None
-
-        self.path_info = {"scheme": self.scheme, "bucket": self.bucket}
+        self.path_info = AzurePathInfo(bucket=self.bucket)
 
     @property
     def blob_service(self):
@@ -90,16 +92,14 @@ class RemoteAzure(RemoteBase):
         return self.__blob_service
 
     def remove(self, path_info):
-        if path_info["scheme"] != self.scheme:
+        if path_info.scheme != self.scheme:
             raise NotImplementedError
 
         logger.debug(
-            "Removing azure://{}/{}".format(
-                path_info["bucket"], path_info["path"]
-            )
+            "Removing azure://{}/{}".format(path_info.bucket, path_info.path)
         )
 
-        self.blob_service.delete_blob(path_info["bucket"], path_info["path"])
+        self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
     def _list_paths(self, bucket, prefix):
         blob_service = self.blob_service
@@ -124,32 +124,32 @@ class RemoteAzure(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info["scheme"] != self.scheme:
+            if to_info.scheme != self.scheme:
                 raise NotImplementedError
 
-            if from_info["scheme"] != "local":
+            if from_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = to_info["bucket"]
-            path = to_info["path"]
+            bucket = to_info.bucket
+            path = to_info.path
 
             logger.debug(
                 "Uploading '{}' to '{}/{}'".format(
-                    from_info["path"], bucket, path
+                    from_info.path, bucket, path
                 )
             )
 
             if not name:
-                name = os.path.basename(from_info["path"])
+                name = os.path.basename(from_info.path)
 
             cb = None if no_progress_bar else Callback(name)
 
             try:
                 self.blob_service.create_blob_from_path(
-                    bucket, path, from_info["path"], progress_callback=cb
+                    bucket, path, from_info.path, progress_callback=cb
                 )
             except Exception:
-                msg = "failed to upload '{}'".format(from_info["path"])
+                msg = "failed to upload '{}'".format(from_info.path)
                 logger.warning(msg)
             else:
                 progress.finish_target(name)
@@ -165,28 +165,28 @@ class RemoteAzure(RemoteBase):
         names = self._verify_path_args(from_infos, to_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info["scheme"] != self.scheme:
+            if from_info.scheme != self.scheme:
                 raise NotImplementedError
 
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = from_info["bucket"]
-            path = from_info["path"]
+            bucket = from_info.bucket
+            path = from_info.path
 
             logger.debug(
                 "Downloading '{}/{}' to '{}'".format(
-                    bucket, path, to_info["path"]
+                    bucket, path, to_info.path
                 )
             )
 
-            tmp_file = tmp_fname(to_info["path"])
+            tmp_file = tmp_fname(to_info.path)
             if not name:
-                name = os.path.basename(to_info["path"])
+                name = os.path.basename(to_info.path)
 
             cb = None if no_progress_bar else Callback(name)
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
+            makedirs(os.path.dirname(to_info.path), exist_ok=True)
 
             try:
                 self.blob_service.get_blob_to_path(
@@ -196,7 +196,7 @@ class RemoteAzure(RemoteBase):
                 msg = "failed to download '{}/{}'".format(bucket, path)
                 logger.warning(msg)
             else:
-                move(tmp_file, to_info["path"])
+                move(tmp_file, to_info.path)
 
                 if not no_progress_bar:
                     progress.finish_target(name)

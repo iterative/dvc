@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import re
 import logging
+from copy import copy
+
 from schema import Or, Optional
 
 from dvc.exceptions import DvcException
@@ -84,8 +86,6 @@ class OutputBase(object):
                 )
             )
 
-        self.path_info = {"scheme": self.scheme, "url": self.url}
-
     def __repr__(self):
         return "{class_name}: '{url}'".format(
             class_name=type(self).__name__, url=(self.url or "No url")
@@ -131,7 +131,7 @@ class OutputBase(object):
 
     @property
     def path(self):
-        return self.path_info["path"]
+        return self.path_info.path
 
     @property
     def cache_path(self):
@@ -241,7 +241,7 @@ class OutputBase(object):
             self.cache.save(self.path_info, self.info)
 
     def dumpd(self):
-        ret = self.info.copy()
+        ret = copy(self.info)
         ret[self.PARAM_PATH] = self.url
 
         if self.IS_DEPENDENCY:
@@ -302,7 +302,7 @@ class OutputBase(object):
 
         self.remote.move(self.path_info, out.path_info)
         self.url = out.url
-        self.path_info = out.path_info.copy()
+        self.path_info = copy(out.path_info)
         self.save()
         self.commit()
 

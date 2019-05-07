@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import schema
 
+from dvc.path import Schemes
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
@@ -25,11 +26,11 @@ OUTS = [
 ]
 
 OUTS_MAP = {
-    "hdfs": OutputHDFS,
-    "s3": OutputS3,
-    "gs": OutputGS,
-    "ssh": OutputSSH,
-    "local": OutputLOCAL,
+    Schemes.HDFS: OutputHDFS,
+    Schemes.S3: OutputS3,
+    Schemes.GS: OutputGS,
+    Schemes.SSH: OutputSSH,
+    Schemes.LOCAL: OutputLOCAL,
 }
 
 # NOTE: currently there are only 3 possible checksum names:

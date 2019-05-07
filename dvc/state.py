@@ -371,10 +371,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path_info to save checksum for.
             checksum (str): checksum to save.
         """
-        assert path_info["scheme"] == "local"
+        assert path_info.scheme == "local"
         assert checksum is not None
 
-        path = path_info["path"]
+        path = path_info.path
         assert os.path.exists(path)
 
         actual_mtime, actual_size = get_mtime_and_size(path)
@@ -402,8 +402,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             str or None: checksum for the specified path info or None if it
             doesn't exist in the state database.
         """
-        assert path_info["scheme"] == "local"
-        path = path_info["path"]
+        assert path_info.scheme == "local"
+        path = path_info.path
 
         if not os.path.exists(path):
             return None
@@ -429,8 +429,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         Args:
             path_info (dict): path info to add to the list of links.
         """
-        assert path_info["scheme"] == "local"
-        path = path_info["path"]
+        assert path_info.scheme == "local"
+        path = path_info.path
 
         if not os.path.exists(path):
             return

@@ -4,6 +4,9 @@ import os
 import getpass
 import logging
 
+from dvc.path import Schemes
+from dvc.path.ssh import SSHPathInfo
+
 try:
     import paramiko
 except ImportError:
@@ -20,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class RemoteSSH(RemoteBase):
-    scheme = "ssh"
+    scheme = Schemes.SSH
 
     # NOTE: we support both URL-like (ssh://[user@]host.xz[:port]/path) and
     # SCP-like (ssh://[user@]host.xz:/absolute/path) urls.
@@ -65,12 +68,9 @@ class RemoteSSH(RemoteBase):
             Config.SECTION_REMOTE_ASK_PASSWORD, False
         )
 
-        self.path_info = {
-            "scheme": "ssh",
-            "host": self.host,
-            "user": self.user,
-            "port": self.port,
-        }
+        self.path_info = SSHPathInfo(
+            host=self.host, user=self.user, port=self.port
+        )
 
     @staticmethod
     def ssh_config_filename():
@@ -101,7 +101,9 @@ class RemoteSSH(RemoteBase):
             return identity_file[0]
         return None
 
-    def ssh(self, host=None, user=None, port=None, **kwargs):
+    def ssh(self, path_info):
+        host, user, port = path_info.host, path_info.user, path_info.port
+
         logger.debug(
             "Establishing ssh connection with '{host}' "
             "through port '{port}' as user '{user}'".format(
@@ -128,48 +130,42 @@ class RemoteSSH(RemoteBase):
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
-        assert path_info["scheme"] == self.scheme
+        assert path_info.scheme == self.scheme
 
-        with self.ssh(**path_info) as ssh:
-            return ssh.exists(path_info["path"])
+        with self.ssh(path_info) as ssh:
+            return ssh.exists(path_info.path)
 
     def get_file_checksum(self, path_info):
-        if path_info["scheme"] != self.scheme:
+        if path_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(**path_info) as ssh:
-            return ssh.md5(path_info["path"])
+        with self.ssh(path_info) as ssh:
+            return ssh.md5(path_info.path)
 
     def isdir(self, path_info):
-        with self.ssh(**path_info) as ssh:
-            return ssh.isdir(path_info["path"])
+        with self.ssh(path_info) as ssh:
+            return ssh.isdir(path_info.path)
 
     def copy(self, from_info, to_info):
-        if (
-            from_info["scheme"] != self.scheme
-            or to_info["scheme"] != self.scheme
-        ):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(**from_info) as ssh:
-            ssh.cp(from_info["path"], to_info["path"])
+        with self.ssh(from_info) as ssh:
+            ssh.cp(from_info.path, to_info.path)
 
     def remove(self, path_info):
-        if path_info["scheme"] != self.scheme:
+        if path_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(**path_info) as ssh:
-            ssh.remove(path_info["path"])
+        with self.ssh(path_info) as ssh:
+            ssh.remove(path_info.path)
 
     def move(self, from_info, to_info):
-        if (
-            from_info["scheme"] != self.scheme
-            or to_info["scheme"] != self.scheme
-        ):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(**from_info) as ssh:
-            ssh.move(from_info["path"], to_info["path"])
+        with self.ssh(from_info) as ssh:
+            ssh.move(from_info.path, to_info.path)
 
     def download(
         self,
@@ -180,40 +176,38 @@ class RemoteSSH(RemoteBase):
         resume=False,
     ):
         names = self._verify_path_args(from_infos, to_infos, names)
-        ssh = self.ssh(**from_infos[0])
+        ssh = self.ssh(from_infos[0])
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info["scheme"] != self.scheme:
+            if from_info.scheme != self.scheme:
                 raise NotImplementedError
 
-            if to_info["scheme"] == self.scheme:
-                ssh.cp(from_info["path"], to_info["path"])
+            if to_info.scheme == self.scheme:
+                ssh.cp(from_info.path, to_info.path)
                 continue
 
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
             logger.debug(
                 "Downloading '{host}/{path}' to '{dest}'".format(
-                    host=from_info["host"],
-                    path=from_info["path"],
-                    dest=to_info["path"],
+                    host=from_info.host, path=from_info.path, dest=to_info.path
                 )
             )
 
             try:
                 ssh.download(
-                    from_info["path"],
-                    to_info["path"],
+                    from_info.path,
+                    to_info.path,
                     progress_title=name,
                     no_progress_bar=no_progress_bar,
                 )
             except Exception:
                 logger.exception(
                     "failed to download '{host}/{path}' to '{dest}'".format(
-                        host=from_info["host"],
-                        path=from_info["path"],
-                        dest=to_info["path"],
+                        host=from_info.host,
+                        path=from_info.path,
+                        dest=to_info.path,
                     )
                 )
                 continue
@@ -223,40 +217,40 @@ class RemoteSSH(RemoteBase):
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
 
-        with self.ssh(**to_infos[0]) as ssh:
+        with self.ssh(to_infos[0]) as ssh:
             for from_info, to_info, name in zip(from_infos, to_infos, names):
-                if to_info["scheme"] != self.scheme:
+                if to_info.scheme != self.scheme:
                     raise NotImplementedError
 
-                if from_info["scheme"] != "local":
+                if from_info.scheme != "local":
                     raise NotImplementedError
 
                 try:
                     ssh.upload(
-                        from_info["path"],
-                        to_info["path"],
+                        from_info.path,
+                        to_info.path,
                         progress_title=name,
                         no_progress_bar=no_progress_bar,
                     )
                 except Exception:
                     logger.exception(
                         "failed to upload '{host}/{path}' to '{dest}'".format(
-                            host=from_info["host"],
-                            path=from_info["path"],
-                            dest=to_info["path"],
+                            host=from_info.host,
+                            path=from_info.path,
+                            dest=to_info.path,
                         )
                     )
                     pass
 
     def list_cache_paths(self):
-        with self.ssh(**self.path_info) as ssh:
+        with self.ssh(self.path_info) as ssh:
             return list(ssh.walk_files(self.prefix))
 
     def walk(self, path_info):
-        with self.ssh(**path_info) as ssh:
-            for entry in ssh.walk(path_info["path"]):
+        with self.ssh(path_info) as ssh:
+            for entry in ssh.walk(path_info.path):
                 yield entry
 
     def makedirs(self, path_info):
-        with self.ssh(**path_info) as ssh:
-            ssh.makedirs(path_info["path"])
+        with self.ssh(path_info) as ssh:
+            ssh.makedirs(path_info.path)
