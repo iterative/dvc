@@ -68,14 +68,14 @@ class RemoteLOCAL(RemoteBase):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
-        self._hash = [modchecksum.CHECKSUM_MD5]
+        self._checksum_types = [modchecksum.CHECKSUM_MD5]
         if repo is not None:
             conf = repo.config.config[Config.SECTION_CHECKSUM]
             hash_local = conf.get(Config.SECTION_CHECKSUM_LOCAL, None)
             if hash_local:
-                self._hash = (
+                self._checksum_types = (
                     modchecksum.checksum_types_from_str(hash_local)
-                    or self._hash
+                    or self._checksum_types
                 )
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
@@ -208,14 +208,14 @@ class RemoteLOCAL(RemoteBase):
     def walk(self, path_info):
         return os.walk(path_info["path"])
 
-    def get_checksum_type_list(self):
-        return self._hash
+    def checksum_types(self):
+        return self._checksum_types
 
-    def get_prefer_checksum_type(self):
-        return self._hash[0]
+    def checksum_type(self):
+        return self._checksum_types[0]
 
     def get_file_checksum(self, path_info):
-        return file_checksum(path_info["path"], self._hash[0])[0]
+        return file_checksum(path_info["path"], self._checksum_types[0])[0]
 
     def remove(self, path_info):
         if path_info["scheme"] != "local":
@@ -328,7 +328,7 @@ class RemoteLOCAL(RemoteBase):
         by_md5 = {}
 
         for info in checksum_infos:
-            md5 = info[self.get_prefer_checksum_type()]
+            md5 = info[self.checksum_type()]
 
             if show_checksums:
                 by_md5[md5] = {"name": md5}

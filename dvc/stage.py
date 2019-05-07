@@ -199,14 +199,12 @@ class Stage(object):
         return os.path.isfile(path) and Stage.is_valid_filename(path)
 
     def changed_checksum(self):
-        for h in self.repo.cache.local.get_checksum_type_list():
+        for h in self.repo.cache.local.checksum_types():
             if h in self.checksum:
                 return self.checksum[h] != self._compute_checksum(h)
 
         return (
-            self._compute_checksum(
-                self.repo.cache.local.get_prefer_checksum_type()
-            )
+            self._compute_checksum(self.repo.cache.local.checksum_type())
             is not None
         )
 
@@ -406,7 +404,7 @@ class Stage(object):
             new_d.pop(k, None)
         outs = old_d.get(self.PARAM_OUTS, [])
         for out in outs:
-            out.pop(self.repo.cache.local.get_prefer_checksum_type(), None)
+            out.pop(self.repo.cache.local.checksum_type(), None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
         if old_d != new_d:
@@ -721,7 +719,7 @@ class Stage(object):
         for out in self.outs:
             out.save()
 
-        hash_type = self.repo.cache.local.get_prefer_checksum_type()
+        hash_type = self.repo.cache.local.checksum_type()
         self.checksum = {hash_type: self._compute_checksum(hash_type)}
 
     @staticmethod
