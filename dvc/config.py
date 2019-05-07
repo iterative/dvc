@@ -230,6 +230,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # Alibabacloud oss options
     SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
     SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
+    SECTION_OSS_ENDPOINT = "oss_endpoint"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -260,6 +261,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
         Optional(SECTION_OSS_ACCESS_KEY_ID): str,
         Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
+        Optional(SECTION_OSS_ENDPOINT): str,
         Optional(PRIVATE_CWD): str,
     }
 

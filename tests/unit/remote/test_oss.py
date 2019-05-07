@@ -11,11 +11,12 @@ class TestRemoteOSS(TestCase):
 
     def test_init(self):
         prefix = "some/prefix"
-        url = "oss://{}.{}/{}".format(self.bucket_name, self.endpoint, prefix)
+        url = "oss://{}/{}".format(self.bucket_name, prefix)
         config = {
             "url": url,
             "oss_key_id": self.key_id,
             "oss_key_secret": self.key_secret,
+            "oss_endpoint": self.endpoint,
         }
         remote = RemoteOSS(None, config)
         self.assertEqual(remote.url, url)

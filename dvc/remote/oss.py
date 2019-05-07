@@ -2,8 +2,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import os
-import re
-import string
 import logging
 
 try:
@@ -30,19 +28,19 @@ class RemoteOSS(RemoteBase):
 
     Examples
     ----------
-    $ dvc remote add myremote oss://my-bucket.endpoint/path
-    Set key id and key secret using modify command
+    $ dvc remote add myremote oss://my-bucket/path
+    Set key id, key secret and endpoint using modify command
     $ dvc remote modify myremote oss_key_id my-key-id
     $ dvc remote modify myremote oss_key_secret my-key-secret
+    $ dvc remote modify myremote oss_endpoint endpoint
     or environment variables
     $ export OSS_ACCESS_KEY_ID="my-key-id"
     $ export OSS_ACCESS_KEY_SECRET="my-key-secret"
+    $ export OSS_ENDPOINT="endpoint"
     """
 
     scheme = "oss"
-    REGEX = (
-        r"^oss://(?P<url>(?P<bucket>.*?)\.(?P<endpoint>.*?))?(?P<path>/.*)?$"
-    )
+    REGEX = r"^oss://(?P<path>.*)?$"
     REQUIRES = {"oss2": oss2}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
@@ -51,32 +49,13 @@ class RemoteOSS(RemoteBase):
         super(RemoteOSS, self).__init__(repo, config)
 
         self.url = config.get(Config.SECTION_REMOTE_URL)
-        match = re.match(self.REGEX, self.url)  # backward compatibility
+        parsed = urlparse(self.url)
+        self.bucket = parsed.netloc
+        self.prefix = parsed.path.lstrip("/")
 
-        self.bucket = match.group("bucket") or os.getenv("OSS_BUCKET")
-        if not self.bucket:
-            raise ValueError("oss bucket name is missing")
-        self.bucket = self.bucket.lower()
-        valid_chars = set(string.ascii_lowercase) | set(string.digits) | {"-"}
-        if (
-            len(set(self.bucket) - valid_chars) != 0
-            or self.bucket[0] == "-"
-            or self.bucket[-1] == "-"
-            or len(self.bucket) < 3
-            or len(self.bucket) > 63
-        ):
-            raise ValueError(
-                "oss bucket name should only contrains lowercase "
-                "alphabet letters, digits and - with length "
-                "between 3 and 63"
-            )
-
-        self.endpoint = match.group("endpoint") or os.getenv("OSS_ENDPOINT")
-        if not self.endpoint:
-            raise ValueError("oss endpoint is missing")
-
-        path = match.group("path")
-        self.prefix = urlparse(self.url).path.lstrip("/") if path else ""
+        self.endpoint = config.get(Config.SECTION_OSS_ENDPOINT) or os.getenv(
+            "OSS_ENDPOINT"
+        )
 
         self.key_id = (
             config.get(Config.SECTION_OSS_ACCESS_KEY_ID)
@@ -91,11 +70,7 @@ class RemoteOSS(RemoteBase):
         )
 
         self._bucket = None
-        self.path_info = {
-            "scheme": self.scheme,
-            "bucket": self.bucket,
-            "endpoint": self.endpoint,
-        }
+        self.path_info = {"scheme": self.scheme, "bucket": self.bucket}
 
     @property
     def oss_service(self):
@@ -122,8 +97,8 @@ class RemoteOSS(RemoteBase):
             raise NotImplementedError
 
         logger.debug(
-            "Removing oss://{}.{}/{}".format(
-                path_info["bucket"], path_info["endpoint"], path_info["path"]
+            "Removing oss://{}/{}".format(
+                path_info["bucket"], path_info["path"]
             )
         )
 
@@ -148,11 +123,10 @@ class RemoteOSS(RemoteBase):
 
             bucket = to_info["bucket"]
             path = to_info["path"]
-            endpoint = to_info["endpoint"]
 
             logger.debug(
-                "Uploading '{}' to 'oss://{}.{}/{}'".format(
-                    from_info["path"], bucket, endpoint, path
+                "Uploading '{}' to 'oss://{}/{}'".format(
+                    from_info["path"], bucket, path
                 )
             )
 
@@ -188,11 +162,10 @@ class RemoteOSS(RemoteBase):
 
             bucket = from_info["bucket"]
             path = from_info["path"]
-            endpoint = from_info["endpoint"]
 
             logger.debug(
-                "Downloading 'oss://{}.{}/{}' to '{}'".format(
-                    bucket, endpoint, path, to_info["path"]
+                "Downloading 'oss://{}/{}' to '{}'".format(
+                    bucket, path, to_info["path"]
                 )
             )
 
@@ -209,9 +182,7 @@ class RemoteOSS(RemoteBase):
                     path, tmp_file, progress_callback=cb
                 )
             except Exception:
-                msg = "failed to download 'oss://{}.{}/{}'".format(
-                    bucket, endpoint, path
-                )
+                msg = "failed to download 'oss://{}/{}'".format(bucket, path)
                 logger.warning(msg)
             else:
                 move(tmp_file, to_info["path"])
