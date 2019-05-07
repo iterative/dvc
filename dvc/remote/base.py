@@ -295,6 +295,48 @@ class RemoteBase(object):
             )
         }
 
+    def changed_checksum(self, path_info, checksum_info, addition_check=None):
+        if not checksum_info:
+            logger.debug(
+                "checksum for '{}' is missing({}).".format(
+                    path_info, checksum_info
+                )
+            )
+            return True
+
+        types = set(checksum_info.keys())
+        supported_types = set(self.get_checksum_type_list())
+        intersection = supported_types.intersection(types)
+        if not supported_types.intersection(types):
+            logger.debug(
+                "checksum for '{}' is not supported({}).".format(
+                    path_info, checksum_info
+                )
+            )
+            return True
+
+        for typ in intersection:
+            expected = checksum_info.get(typ)
+            if addition_check:
+                if addition_check(expected, typ):
+                    logger.debug(
+                        "{} for '{}'('{}') has changed.".format(
+                            addition_check, path_info, checksum_info
+                        )
+                    )
+                    return True
+
+            actual = self.get_checksum(path_info, typ)
+            if actual != expected:
+                logger.debug(
+                    "checksum '{}'(actual '{}') for '{}' has changed.".format(
+                        expected, actual, path_info
+                    )
+                )
+                return True
+
+        return False
+
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
 
@@ -322,29 +364,7 @@ class RemoteBase(object):
             logger.debug("'{}' doesn't exist.".format(path_info))
             return True
 
-        checksum = None
-        for t in self.get_checksum_type_list():
-            checksum = checksum_info.get(t)
-            if checksum:
-                break
-
-        if checksum is None:
-            logger.debug("checksum for '{}' is missing.".format(path_info))
-            return True
-
-        if self.changed_cache(checksum, t):
-            logger.debug(
-                "cache for '{}'('{}') has changed.".format(path_info, checksum)
-            )
-            return True
-
-        actual = self.save_info(path_info, t)[t]
-        if checksum != actual:
-            logger.debug(
-                "checksum '{}'(actual '{}') for '{}' has changed.".format(
-                    checksum, actual, path_info
-                )
-            )
+        if self.changed_checksum(path_info, checksum_info, self.changed_cache):
             return True
 
         logger.debug("'{}' hasn't changed.".format(path_info))
