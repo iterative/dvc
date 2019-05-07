@@ -45,6 +45,7 @@ TEST_CONFIG = {
 
 TEST_AWS_REPO_BUCKET = "dvc-test"
 TEST_GCP_REPO_BUCKET = "dvc-test"
+TEST_OSS_REPO_BUCKET = "dvc-test"
 
 
 def _should_test_aws():
@@ -107,8 +108,7 @@ def _should_test_oss():
         return False
 
     return (
-        os.getenv("OSS_BUCKET")
-        and os.getenv("OSS_ENDPOINT")
+        os.getenv("OSS_ENDPOINT")
         and os.getenv("OSS_ACCESS_KEY_ID")
         and os.getenv("OSS_ACCESS_KEY_SECRET")
     )
@@ -224,9 +224,7 @@ def get_azure_url():
 
 
 def get_oss_storagepath():
-    return "{}.{}/{}".format(
-        os.getenv("OSS_BUCKET"), os.getenv("OSS_ENDPOINT"), str(uuid.uuid4())
-    )
+    return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
 
 
 def get_oss_url():
@@ -247,7 +245,7 @@ class TestDataCloud(TestDvc):
             ("ssh://user@localhost:/", RemoteSSH),
             ("http://localhost:8000/", RemoteHTTP),
             ("azure://ContainerName=mybucket;conn_string;", RemoteAzure),
-            ("oss://bucket.endpoint/path", RemoteOSS),
+            ("oss://mybucket/", RemoteOSS),
             (TestDvc.mkdtemp(), RemoteLOCAL),
         ]
 
@@ -685,18 +683,6 @@ class TestRemoteAzureCLI(TestDataCloudCLIBase):
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
-
-
-# class TestRemoteOSSCLI(TestDataCloudCLIBase):
-#     def _should_test(self):
-#         return _should_test_oss()
-
-#     def _test(self):
-#         url = get_oss_url()
-
-#         self.main(["remote", "add", TEST_REMOTE, url])
-
-#         self._test_cloud(TEST_REMOTE)
 
 
 class TestDataCloudErrorCLI(TestDvc):
