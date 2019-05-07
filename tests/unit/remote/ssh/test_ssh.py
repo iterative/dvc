@@ -4,8 +4,7 @@ import sys
 
 from unittest import TestCase
 
-import mock
-from mock import patch
+from mock import patch, mock_open
 import pytest
 
 from dvc.remote.ssh import RemoteSSH
@@ -53,24 +52,6 @@ Host example.com
    Port 1234
    IdentityFile ~/.ssh/not_default.key
 """
-
-# compat version for mock library version 2
-# mock 2.0.0 can't iterate in mock_open
-if mock.version_info[0] < 3:
-
-    def mock_open_compat(*args, **kargs):
-        f_open = mock.mock_open(*args, **kargs)
-        if sys.version_info.major == 3:
-            f_open.return_value.__iter__ = lambda self: self
-            f_open.return_value.__next__ = lambda self: self.readline()
-        else:
-            f_open.return_value.__iter__ = lambda self: iter(self.readline, "")
-
-        return f_open
-
-    mock_open = mock_open_compat
-else:
-    mock_open = mock.mock_open
 
 if sys.version_info.major == 3:
     builtin_module_name = "builtins"
