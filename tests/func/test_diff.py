@@ -161,7 +161,7 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
 
         self.b_ref = self.a_ref
         self.new_checksum = self.old_checksum
-        self.a_ref = str(self.dvc.scm.repo.head.commit)
+        self.a_ref = str(self.dvc.scm.git.head.commit)
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
 
     def test(self):
