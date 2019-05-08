@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import os
 import getpass
 import logging
 
@@ -38,18 +39,26 @@ class RemoteSSH(RemoteBase):
 
         parsed = urlparse(self.url)
         self.host = parsed.hostname
+
+        user_ssh_config = self._load_user_ssh_config(self.host)
+
+        self.host = user_ssh_config.get("hostname", self.host)
         self.user = (
             config.get(Config.SECTION_REMOTE_USER)
             or parsed.username
+            or user_ssh_config.get("user")
             or getpass.getuser()
         )
         self.prefix = parsed.path or "/"
         self.port = (
             config.get(Config.SECTION_REMOTE_PORT)
             or parsed.port
+            or self._try_get_ssh_config_port(user_ssh_config)
             or self.DEFAULT_PORT
         )
-        self.keyfile = config.get(Config.SECTION_REMOTE_KEY_FILE, None)
+        self.keyfile = config.get(
+            Config.SECTION_REMOTE_KEY_FILE
+        ) or self._try_get_ssh_config_keyfile(user_ssh_config)
         self.timeout = config.get(Config.SECTION_REMOTE_TIMEOUT, self.TIMEOUT)
         self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
         self.ask_password = config.get(
@@ -62,6 +71,35 @@ class RemoteSSH(RemoteBase):
             "user": self.user,
             "port": self.port,
         }
+
+    @staticmethod
+    def ssh_config_filename():
+        return os.path.expanduser(os.path.join("~", ".ssh", "config"))
+
+    @staticmethod
+    def _load_user_ssh_config(hostname):
+        user_config_file = RemoteSSH.ssh_config_filename()
+        user_ssh_config = dict()
+        if hostname and os.path.exists(user_config_file):
+            with open(user_config_file) as f:
+                ssh_config = paramiko.SSHConfig()
+                ssh_config.parse(f)
+                user_ssh_config = ssh_config.lookup(hostname)
+        return user_ssh_config
+
+    @staticmethod
+    def _try_get_ssh_config_port(user_ssh_config):
+        try:
+            return int(user_ssh_config.get("port"))
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
+    def _try_get_ssh_config_keyfile(user_ssh_config):
+        identity_file = user_ssh_config.get("identityfile")
+        if identity_file and len(identity_file) > 0:
+            return identity_file[0]
+        return None
 
     def ssh(self, host=None, user=None, port=None, **kwargs):
         logger.debug(
