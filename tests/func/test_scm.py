@@ -41,7 +41,7 @@ class TestSCMGit(TestGit):
         G.commit("add")
         self.assertTrue(G.is_tracked(foo))
         self.assertTrue(G.is_tracked(self.FOO))
-        G.repo.index.remove([self.FOO], working_tree=True)
+        G.git.index.remove([self.FOO], working_tree=True)
         self.assertFalse(G.is_tracked(foo))
         self.assertFalse(G.is_tracked(self.FOO))
         self.assertFalse(G.is_tracked("not-existing-file"))

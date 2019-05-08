@@ -38,11 +38,11 @@ class Git(Base):
         """
         super(Git, self).__init__(root_dir, repo=repo)
 
-        from git import Repo
+        import git
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.repo = Repo(root_dir)
+            self.git = git.Repo(root_dir)
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
             raise SCMError(msg.format(root_dir))
@@ -51,7 +51,7 @@ class Git(Base):
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
         libpath = env.get("LD_LIBRARY_PATH", None)
-        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
+        self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
 
         self.ignored_paths = []
         self.files_to_track = []
@@ -70,7 +70,7 @@ class Git(Base):
 
     @property
     def dir(self):
-        return self.repo.git_dir
+        return self.git.git_dir
 
     @property
     def ignore_file(self):
@@ -158,7 +158,7 @@ class Git(Base):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
-            self.repo.index.add(paths)
+            self.git.index.add(paths)
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files"
@@ -170,41 +170,41 @@ class Git(Base):
             logger.exception(msg)
 
     def commit(self, msg):
-        self.repo.index.commit(msg)
+        self.git.index.commit(msg)
 
     def checkout(self, branch, create_new=False):
         if create_new:
-            self.repo.git.checkout("HEAD", b=branch)
+            self.git.git.checkout("HEAD", b=branch)
         else:
-            self.repo.git.checkout(branch)
+            self.git.git.checkout(branch)
 
     def branch(self, branch):
-        self.repo.git.branch(branch)
+        self.git.git.branch(branch)
 
     def tag(self, tag):
-        self.repo.git.tag(tag)
+        self.git.git.tag(tag)
 
     def untracked_files(self):
-        files = self.repo.untracked_files
-        return [os.path.join(self.repo.working_dir, fname) for fname in files]
+        files = self.git.untracked_files
+        return [os.path.join(self.git.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
-        # it is equivalent to `bool(self.repo.git.ls_files(path))` by
+        # it is equivalent to `bool(self.git.git.ls_files(path))` by
         # functionality, but ls_files fails on unicode filenames
         path = os.path.relpath(path, self.root_dir)
-        return path in [i[0] for i in self.repo.index.entries]
+        return path in [i[0] for i in self.git.index.entries]
 
     def is_dirty(self):
-        return self.repo.is_dirty()
+        return self.git.is_dirty()
 
     def active_branch(self):
-        return self.repo.active_branch.name
+        return self.git.active_branch.name
 
     def list_branches(self):
-        return [h.name for h in self.repo.heads]
+        return [h.name for h in self.git.heads]
 
     def list_tags(self):
-        return [t.name for t in self.repo.tags]
+        return [t.name for t in self.git.tags]
 
     def _install_hook(self, name, cmd):
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
@@ -248,7 +248,7 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        return GitTree(self.repo, rev)
+        return GitTree(self.git, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
         """Private method for getting the trees and commit hashes of 2 git
@@ -267,10 +267,10 @@ class Git(Base):
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
         if b_ref is None:
-            b_ref = self.repo.head.commit
+            b_ref = self.git.head.commit
         try:
-            a_commit = self.repo.commit(a_ref)
-            b_commit = self.repo.commit(b_ref)
+            a_commit = self.git.commit(a_ref)
+            b_commit = self.git.commit(b_ref)
             # See https://gitpython.readthedocs.io
             # /en/2.1.11/reference.html#git.objects.base.Object.__str__
             commits.append(str(a_commit)[:7])
