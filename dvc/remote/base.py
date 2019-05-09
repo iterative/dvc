@@ -301,14 +301,9 @@ class RemoteBase(object):
 
         return checksum
 
-    def save_info(self, path_info, checksum_type=None):
+    def save_info(self, path_info):
         assert path_info["scheme"] == self.scheme
-        return {
-            checksum_type
-            or self.checksum_type(): self.get_checksum(
-                path_info, checksum_type
-            )
-        }
+        return {self.checksum_type(): self.get_checksum(path_info)}
 
     def changed_checksum(self, path_info, checksum_info, addition_check=None):
         if not checksum_info:
