@@ -12,6 +12,7 @@ except ImportError:
     BlockBlobService = None
 
 from dvc.utils import tmp_fname, move
+from dvc.utils import checksum as modchecksum
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
@@ -40,6 +41,8 @@ class RemoteAzure(RemoteBase):
     REQUIRES = {"azure-storage-blob": BlockBlobService}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
+
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.AZURE_SUPPORTED_CHECKSUM_TYPES
 
     def __init__(self, repo, config):
         super(RemoteAzure, self).__init__(repo, config)

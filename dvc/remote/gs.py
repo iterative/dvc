@@ -9,6 +9,7 @@ except ImportError:
     storage = None
 
 from dvc.utils import tmp_fname, move
+from dvc.utils import checksum as modchecksum
 from dvc.utils.compat import urlparse, makedirs
 from dvc.remote.base import RemoteBase
 from dvc.config import Config
@@ -24,6 +25,8 @@ class RemoteGS(RemoteBase):
     REGEX = r"^gs://(?P<path>.*)$"
     REQUIRES = {"google.cloud.storage": storage}
     PARAM_CHECKSUM = "md5"
+
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.GS_SUPPORTED_CHECKSUM_TYPES
 
     def __init__(self, repo, config):
         super(RemoteGS, self).__init__(repo, config)

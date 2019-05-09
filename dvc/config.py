@@ -53,13 +53,15 @@ def supported_loglevel(level):
     return level in ["info", "debug", "warning", "error"]
 
 
-def supported_checksum_local(hash_names):
+def supported_checksum_local(checksum_types):
     """Checks if hash config option has a valid value.
 
     Args:
-        hash_names (list/string): hash name(s).
+        checksum_types (list/string): hash name(s).
     """
-    if modchecksum.checksum_types_from_str(hash_names):
+    if modchecksum.checksum_types_from_str(
+        checksum_types, modchecksum.LOCAL_SUPPORTED_CHECKSUM_TYPES
+    ):
         return True
     return False
 

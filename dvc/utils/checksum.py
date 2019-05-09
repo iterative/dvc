@@ -35,23 +35,33 @@ CHECKSUM_LOCAL_SCHEMA = {
 #
 # so when a few types of outputs share the same name, we only need
 # specify it once.
-REMOTE_S3_CHECKSUM = "etag"
-REMOTE_HDFS_CHECKSUM = "checksum"
+CHECKSUM_ETAG = "etag"
+CHECKSUM_CHECKSUM = "checksum"
 
 CHECKSUM_SCHEMA = CHECKSUM_LOCAL_SCHEMA.copy()
-CHECKSUM_SCHEMA[schema.Optional(REMOTE_S3_CHECKSUM)] = schema.Or(str, None)
-CHECKSUM_SCHEMA[schema.Optional(REMOTE_HDFS_CHECKSUM)] = schema.Or(str, None)
+CHECKSUM_SCHEMA[schema.Optional(CHECKSUM_ETAG)] = schema.Or(str, None)
+CHECKSUM_SCHEMA[schema.Optional(CHECKSUM_CHECKSUM)] = schema.Or(str, None)
+
+LOCAL_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_MD5, CHECKSUM_SHA256]
+HTTP_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_ETAG, CHECKSUM_MD5]
+SSH_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_MD5]
+AZURE_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_ETAG]
+GS_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_MD5]
+HDFS_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_CHECKSUM]
+S3_SUPPORTED_CHECKSUM_TYPES = [CHECKSUM_ETAG]
 
 
-def checksum_types_from_str(hash_names):
-    if isinstance(hash_names, str):
-        hash_names = [h.strip().lower() for h in hash_names.split(",")]
-    if not isinstance(hash_names, list) or len(hash_names) < 1:
+def checksum_types_from_str(checksum_types, supported_types):
+    if not supported_types:
         return None
-    for h in hash_names:
-        if h not in CHECKSUM_MAP.keys():
+    if isinstance(checksum_types, str):
+        checksum_types = [h.strip().lower() for h in checksum_types.split(",")]
+    if not isinstance(checksum_types, list) or len(checksum_types) < 1:
+        return None
+    for h in checksum_types:
+        if h not in supported_types:
             return None
-    return hash_names
+    return checksum_types
 
 
 def dos2unix(data):

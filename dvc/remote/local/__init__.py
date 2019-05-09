@@ -49,6 +49,8 @@ class RemoteLOCAL(RemoteBase):
         "reflink": System.reflink,
     }
 
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.LOCAL_SUPPORTED_CHECKSUM_TYPES
+
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
         self.state = self.repo.state if self.repo else None
@@ -67,16 +69,6 @@ class RemoteLOCAL(RemoteBase):
             self.cache_types = types
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
-
-        self._checksum_types = [modchecksum.CHECKSUM_MD5]
-        if repo is not None:
-            conf = repo.config.config[Config.SECTION_CHECKSUM]
-            hash_local = conf.get(Config.SECTION_CHECKSUM_LOCAL, None)
-            if hash_local:
-                self._checksum_types = (
-                    modchecksum.checksum_types_from_str(hash_local)
-                    or self._checksum_types
-                )
 
         if self.cache_dir is not None and not os.path.exists(self.cache_dir):
             os.mkdir(self.cache_dir)
@@ -207,12 +199,6 @@ class RemoteLOCAL(RemoteBase):
 
     def walk(self, path_info):
         return os.walk(path_info["path"])
-
-    def checksum_types(self):
-        return self._checksum_types
-
-    def checksum_type(self):
-        return self._checksum_types[0]
 
     def get_file_checksum(self, path_info):
         return file_checksum(path_info["path"], self._checksum_types[0])[0]
