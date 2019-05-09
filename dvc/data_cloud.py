@@ -9,6 +9,7 @@ from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
 from dvc.remote.azure import RemoteAzure
+from dvc.remote.oss import RemoteOSS
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
@@ -34,6 +35,7 @@ class DataCloud(object):
         "aws": RemoteS3,
         "gcp": RemoteGS,
         "azure": RemoteAzure,
+        "oss": RemoteOSS,
         "ssh": RemoteSSH,
         "hdfs": RemoteHDFS,
         "local": RemoteLOCAL,
