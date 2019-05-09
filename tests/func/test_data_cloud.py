@@ -20,6 +20,7 @@ from dvc.data_cloud import (
     RemoteS3,
     RemoteGS,
     RemoteAzure,
+    RemoteOSS,
     RemoteLOCAL,
     RemoteSSH,
     RemoteHDFS,
@@ -44,6 +45,7 @@ TEST_CONFIG = {
 
 TEST_AWS_REPO_BUCKET = "dvc-test"
 TEST_GCP_REPO_BUCKET = "dvc-test"
+TEST_OSS_REPO_BUCKET = "dvc-test"
 
 
 def _should_test_aws():
@@ -96,6 +98,19 @@ def _should_test_azure():
 
     return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
         "AZURE_STORAGE_CONNECTION_STRING"
+    )
+
+
+def _should_test_oss():
+    if os.getenv("DVC_TEST_OSS") == "true":
+        return True
+    elif os.getenv("DVC_TEST_OSS") == "false":
+        return False
+
+    return (
+        os.getenv("OSS_ENDPOINT")
+        and os.getenv("OSS_ACCESS_KEY_ID")
+        and os.getenv("OSS_ACCESS_KEY_SECRET")
     )
 
 
@@ -208,6 +223,14 @@ def get_azure_url():
     return "azure://{}/{}".format(container_name, str(uuid.uuid4()))
 
 
+def get_oss_storagepath():
+    return "{}/{}".format(TEST_OSS_REPO_BUCKET, (uuid.uuid4()))
+
+
+def get_oss_url():
+    return "oss://{}".format(get_oss_storagepath())
+
+
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
         cloud = DataCloud(self.dvc, config=config)
@@ -222,6 +245,7 @@ class TestDataCloud(TestDvc):
             ("ssh://user@localhost:/", RemoteSSH),
             ("http://localhost:8000/", RemoteHTTP),
             ("azure://ContainerName=mybucket;conn_string;", RemoteAzure),
+            ("oss://mybucket/", RemoteOSS),
             (TestDvc.mkdtemp(), RemoteLOCAL),
         ]
 
@@ -393,6 +417,17 @@ class TestRemoteAzureCompat(TestDataCloudBase):
 class TestRemoteAzure(TestRemoteAzureCompat):
     def _get_url(self):
         return get_azure_url()
+
+
+class TestRemoteOSS(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_oss()
+
+    def _get_url(self):
+        return get_oss_url()
+
+    def _get_cloud_class(self):
+        return RemoteOSS
 
 
 class TestRemoteLOCAL(TestDataCloudBase):
@@ -644,6 +679,18 @@ class TestRemoteAzureCLI(TestDataCloudCLIBase):
 
     def _test(self):
         url = get_azure_url()
+
+        self.main(["remote", "add", TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestRemoteOSSCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_oss()
+
+    def _test(self):
+        url = get_oss_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
 

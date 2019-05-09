@@ -487,7 +487,10 @@ class RemoteBase(object):
         used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
 
         if self.scheme != "":
-            used |= {info[self.PARAM_CHECKSUM] for info in cinfos[self.scheme]}
+            used |= {
+                info[self.PARAM_CHECKSUM]
+                for info in cinfos.get(self.scheme, [])
+            }
 
         removed = False
         for checksum in self.all():

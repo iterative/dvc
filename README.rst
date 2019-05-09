@@ -24,7 +24,7 @@
 .. image:: https://codecov.io/gh/iterative/dvc/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/iterative/dvc
   :alt: Codecov
-  
+
 .. image:: https://img.shields.io/badge/patreon-donate-green.svg
   :target: https://www.patreon.com/DVCorg/overview
   :alt: Donate
@@ -38,7 +38,7 @@ machine learning projects. Key features:
    any databases. Does not depend on any proprietary online services;
 
 #. it manages and versions **datasets** and **machine learning models**. Data is saved in
-   S3, Google cloud, Azure, SSH server, HDFS or even local HDD RAID;
+   S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS or even local HDD RAID;
 
 #. it makes projects **reproducible** and **shareable**, it helps answering question how
    the model was build;
@@ -63,7 +63,7 @@ made right and tailored specifically for ML and Data Science scenarios.
 
 #. ``Git/Git-lfs`` part - DVC helps you storing and sharing data artifacts, models. It connects them with your
    Git repository.
-#. ``Makefiles`` part - DVC describes how one data or model artifact was build from another data. 
+#. ``Makefiles`` part - DVC describes how one data or model artifact was build from another data.
 
 DVC usually runs along with Git. Git is used as usual to store and version code and DVC meta-files. DVC helps
 to store data and model files seamlessly out of Git while preserving almost the same user experience as if they
@@ -118,7 +118,7 @@ pip (PyPI)
    pip install dvc
 
 Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
-one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``ssh``. Or ``all_remotes`` to include them all.
+one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all_remotes`` to include them all.
 The command should look like this: ``pip install dvc[s3]`` - it installs the ``boto3`` library along with
 DVC to support the AWS S3 storage.
 
