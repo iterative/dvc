@@ -57,6 +57,9 @@ class RemoteLOCAL(RemoteBASE):
         "hardlink": System.hardlink,
         "reflink": System.reflink,
     }
+    NO_CACHE_FOR_FILE_WARNING = (
+        "Cache for file: '{}' does not exist. File will " "not be created."
+    )
 
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
@@ -130,7 +133,13 @@ class RemoteLOCAL(RemoteBASE):
         cache = cache_info.path
         path = path_info.path
 
-        assert os.path.isfile(cache)
+        if not os.path.isfile(cache):
+            logger.warning(
+                self.NO_CACHE_FOR_FILE_WARNING.format(
+                    os.path.relpath(path, self.repo.root_dir)
+                )
+            )
+            return
 
         dname = os.path.dirname(path)
         if not os.path.exists(dname):

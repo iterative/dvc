@@ -375,7 +375,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert checksum is not None
 
         path = path_info.path
-        assert os.path.exists(path)
+        if not os.path.exists(path):
+            return
+        # assert os.path.exists(path)
 
         actual_mtime, actual_size = get_mtime_and_size(path)
         actual_inode = get_inode(path)

@@ -4,6 +4,8 @@ import configobj
 
 from dvc.cache import Cache
 from dvc.main import main
+from dvc.remote import RemoteLOCAL
+from dvc.utils import file_md5
 
 from tests.basic_env import TestDvc, TestDir
 
@@ -173,3 +175,26 @@ class TestCmdCacheDir(TestDvc):
 class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
     def test(self):
         self.assertEqual(self.dvc.cache.local.cache_types, ["reflink", "copy"])
+
+
+def test_should_allow_checkout_when_cache_partially_incomplete(
+    repo_dir, dvc, caplog
+):
+    ret = main(["add", repo_dir.DATA_DIR])
+    assert ret == 0
+
+    checksum = file_md5(repo_dir.DATA)[0]
+    data_cache_path = dvc.cache.local.checksum_to_path(checksum)
+
+    shutil.rmtree(repo_dir.DATA_DIR)
+
+    os.unlink(data_cache_path)
+
+    ret = main(["checkout", "data_dir.dvc"])
+    assert ret == 0
+
+    ret = main(["checkout", "data_dir.dvc"])
+    assert ret == 0
+
+    warning_msg = RemoteLOCAL.NO_CACHE_FOR_FILE_WARNING.format(repo_dir.DATA)
+    assert warning_msg in caplog.text
