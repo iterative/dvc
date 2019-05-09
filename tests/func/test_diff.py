@@ -34,9 +34,9 @@ class TestDiff(TestDvc):
         self.git.index.commit("adds new_file")
         self.test_dct = {
             diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.git.git.rev_parse(
-                self.git.head.commit,
-                short=True)),
+            diff.DIFF_B_REF: str(
+                self.git.git.rev_parse(self.git.head.commit, short=True)
+            ),
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_TARGET: self.new_file,
@@ -53,7 +53,8 @@ class TestDiff(TestDvc):
         self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
         self.assertEqual(
             self.git.git.rev_parse(self.git.head.commit, short=True),
-            out[diff.DIFF_B_REF])
+            out[diff.DIFF_B_REF],
+        )
 
 
 class TestDiffRepo(TestDiff):
@@ -102,8 +103,8 @@ class TestDiffDir(TestDvc):
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
         self.a_ref = self.git.git.rev_parse(
-            self.dvc.scm.git.head.commit,
-            short=True)
+            self.dvc.scm.git.head.commit, short=True
+        )
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
@@ -118,7 +119,8 @@ class TestDiffDir(TestDvc):
         self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
         self.assertEqual(
             str(self.git.git.rev_parse(self.git.head.commit, short=True)),
-            out[diff.DIFF_B_REF])
+            out[diff.DIFF_B_REF],
+        )
 
 
 class TestDiffDirRepo(TestDiffDir):
@@ -129,8 +131,8 @@ class TestDiffDirRepo(TestDiffDir):
         test_dct = {
             diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
             diff.DIFF_B_REF: self.git.git.rev_parse(
-                self.git.head.commit,
-                short=True),
+                self.git.head.commit, short=True
+            ),
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_CHANGE: 0,
