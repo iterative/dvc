@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from dvc.scheme import Schemes
 from dvc.path import Path
 from dvc.utils.compat import open, makedirs
+from dvc.utils import checksum as modchecksum
 
 import os
 import threading
@@ -38,6 +39,8 @@ class RemoteHTTP(RemoteBASE):
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
+
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.HTTP_SUPPORTED_CHECKSUM_TYPES
 
     def __init__(self, repo, config):
         super(RemoteHTTP, self).__init__(repo, config)

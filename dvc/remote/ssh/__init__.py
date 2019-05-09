@@ -17,6 +17,7 @@ from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
 from dvc.utils.compat import urlparse
 from dvc.remote.base import RemoteBASE
+from dvc.utils import checksum as modchecksum
 
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ class RemoteSSH(RemoteBASE):
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800
+
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.SSH_SUPPORTED_CHECKSUM_TYPES
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)

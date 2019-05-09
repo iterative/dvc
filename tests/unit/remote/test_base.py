@@ -41,14 +41,18 @@ class TestCacheExists(TestCase):
             "url": "base://example/prefix",
             "connection_string": "1234567",
         }
-        remote = RemoteBASE(None, config)
+
+        class RemoteTest(RemoteBASE):
+            SUPPORTED_CHECKSUM_TYPES = ["checksum"]
+
+        remote = RemoteTest(None, config)
 
         remote.PARAM_CHECKSUM = "checksum"
         remote.path_info = PathBASE(None, None)
         remote.url = ""
         remote.prefix = ""
         path_info = PathBASE("example", None)
-        checksum_info = {remote.PARAM_CHECKSUM: "1234567890"}
+        checksum_info = {remote.checksum_type(): "1234567890"}
 
         with mock.patch.object(remote, "_checkout") as mock_checkout:
             with mock.patch.object(remote, "_save") as mock_save:

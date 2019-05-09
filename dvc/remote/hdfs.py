@@ -12,6 +12,7 @@ from dvc.scheme import Schemes
 from dvc.path.hdfs import PathHDFS
 from dvc.remote.base import RemoteBASE, RemoteCmdError
 from dvc.utils import fix_env, tmp_fname
+from dvc.utils import checksum as modchecksum
 
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,8 @@ class RemoteHDFS(RemoteBASE):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
+
+    SUPPORTED_CHECKSUM_TYPES = modchecksum.HDFS_SUPPORTED_CHECKSUM_TYPES
 
     def __init__(self, repo, config):
         super(RemoteHDFS, self).__init__(repo, config)

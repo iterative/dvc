@@ -20,6 +20,7 @@ from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
 from dvc.progress import progress
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname
+from dvc.utils import checksum as modchecksum
 from dvc.state import StateBase
 
 
@@ -75,6 +76,8 @@ class RemoteBASE(object):
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
 
+    SUPPORTED_CHECKSUM_TYPES = None
+
     def __init__(self, repo, config):
         self.repo = repo
         deps_ok = all(self.REQUIRES.values())
@@ -107,6 +110,18 @@ class RemoteBASE(object):
         self.state = StateBase()
 
         self._dir_info = {}
+
+        self._checksum_types = self.SUPPORTED_CHECKSUM_TYPES
+        if repo is not None:
+            conf = repo.config.config[Config.SECTION_CHECKSUM]
+            types = conf.get(self.scheme, None)
+            if types:
+                self._checksum_types = (
+                    modchecksum.checksum_types_from_str(
+                        types, self.SUPPORTED_CHECKSUM_TYPES
+                    )
+                    or self._checksum_types
+                )
 
     def __repr__(self):
         return "{class_name}: '{url}'".format(
@@ -157,10 +172,10 @@ class RemoteBASE(object):
         return getattr(self.repo.cache, self.scheme)
 
     def checksum_types(self):
-        return [self.PARAM_CHECKSUM]
+        return self._checksum_types
 
     def checksum_type(self):
-        return self.PARAM_CHECKSUM
+        return self._checksum_types[0]
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError
