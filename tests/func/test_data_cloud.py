@@ -685,6 +685,18 @@ class TestRemoteAzureCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
+class TestRemoteOSSCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_oss()
+
+    def _test(self):
+        url = get_oss_url()
+
+        self.main(["remote", "add", TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
 class TestDataCloudErrorCLI(TestDvc):
     def main_fail(self, args):
         ret = main(args)
