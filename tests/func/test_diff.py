@@ -28,13 +28,15 @@ class TestDiff(TestDvc):
         self.new_file = "new_test_file"
         self.create(self.new_file, self.new_file)
         self.dvc.add(self.new_file)
-        self.a_ref = self.git.head.commit
+        self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
         self.new_checksum = _get_checksum(self.dvc, self.new_file)
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
         self.test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_A_REF: self.a_ref,
+            diff.DIFF_B_REF: self.git.git.rev_parse(
+                self.git.head.commit, short=True
+            ),
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_TARGET: self.new_file,
@@ -48,8 +50,11 @@ class TestDiff(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
+        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
+        self.assertEqual(
+            self.git.git.rev_parse(self.git.head.commit, short=True),
+            out[diff.DIFF_B_REF],
+        )
 
 
 class TestDiffRepo(TestDiff):
@@ -63,7 +68,7 @@ class TestDiffCmdLine(TestDiff):
         with patch("dvc.cli.diff.CmdDiff._show", autospec=True):
             with patch("dvc.repo.Repo", config="testing") as MockRepo:
                 MockRepo.return_value.diff.return_value = "testing"
-                ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
+                ret = main(["diff", "-t", self.new_file, self.a_ref])
                 self.assertEqual(ret, 0)
 
 
@@ -97,7 +102,9 @@ class TestDiffDir(TestDvc):
         self.dvc.add(self.DATA_DIR)
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
-        self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.a_ref = self.git.git.rev_parse(
+            self.dvc.scm.git.head.commit, short=True
+        )
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
@@ -109,8 +116,11 @@ class TestDiffDir(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
-        self.assertEqual(str(self.git.head.commit), out[diff.DIFF_B_REF])
+        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
+        self.assertEqual(
+            self.git.git.rev_parse(self.git.head.commit, short=True),
+            out[diff.DIFF_B_REF],
+        )
 
 
 class TestDiffDirRepo(TestDiffDir):
@@ -119,8 +129,10 @@ class TestDiffDirRepo(TestDiffDir):
     def test(self):
         result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
         test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.git.head.commit),
+            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
+            diff.DIFF_B_REF: self.git.git.rev_parse(
+                self.git.head.commit, short=True
+            ),
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_CHANGE: 0,
@@ -157,8 +169,8 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
             self.a_ref, b_ref=self.b_ref, target=self.DATA_DIR
         )
         test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(self.b_ref),
+            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
+            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
             diff.DIFF_LIST: [
                 {
                     diff.DIFF_CHANGE: 0,

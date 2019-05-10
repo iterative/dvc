@@ -33,6 +33,9 @@ class Git(Base):
     GIT_DIR = ".git"
 
     def __init__(self, root_dir=os.curdir, repo=None):
+        """Git class constructor.
+        Requires `Repo` class from `git` module (from gitpython package).
+        """
         super(Git, self).__init__(root_dir, repo=repo)
 
         import git
@@ -248,22 +251,30 @@ class Git(Base):
         return GitTree(self.git, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
+        """Private method for getting the trees and commit hashes of 2 git
+        references.
+        Requires `gitdb` module (from gitpython package).
 
+        Args:
+            a_ref(str) - git reference
+            b_ref(str) - second git reference. If None, uses HEAD
+
+        Returns:
+            tuple - tuple with elements: (trees, commits)
+        """
         from gitdb.exc import BadObject, BadName
 
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
+        if b_ref is None:
+            b_ref = self.git.head.commit
         try:
-            if b_ref is not None:
-                a_commit = self.git.commit(a_ref)
-                b_commit = self.git.commit(b_ref)
-                commits.append(str(a_commit))
-                commits.append(str(b_commit))
-            else:
-                a_commit = self.git.commit(a_ref)
-                b_commit = self.git.head.commit
-                commits.append(str(a_commit))
-                commits.append(str(b_commit))
+            a_commit = self.git.git.rev_parse(a_ref, short=True)
+            b_commit = self.git.git.rev_parse(b_ref, short=True)
+            # See https://gitpython.readthedocs.io
+            # /en/2.1.11/reference.html#git.objects.base.Object.__str__
+            commits.append(a_commit)
+            commits.append(b_commit)
             trees[DIFF_A_TREE] = self.get_tree(commits[0])
             trees[DIFF_B_TREE] = self.get_tree(commits[1])
         except (BadName, BadObject) as e:
@@ -271,8 +282,8 @@ class Git(Base):
         return trees, commits
 
     def get_diff_trees(self, a_ref, b_ref=None):
-        """Method for getting two repo trees between two git tag commits
-        returns the dvc hash names of changed file/directory
+        """Method for getting two repo trees between two git tag commits.
+        Returns the dvc hash names of changed file/directory
 
         Args:
             a_ref(str) - git reference
@@ -282,10 +293,10 @@ class Git(Base):
             dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref, equal)
         """
         diff_dct = {DIFF_EQUAL: False}
-        trees, commit_refs = self._get_diff_trees(a_ref, b_ref)
-        diff_dct[DIFF_A_REF] = commit_refs[0]
-        diff_dct[DIFF_B_REF] = commit_refs[1]
-        if commit_refs[0] == commit_refs[1]:
+        trees, commits = self._get_diff_trees(a_ref, b_ref)
+        diff_dct[DIFF_A_REF] = commits[0]
+        diff_dct[DIFF_B_REF] = commits[1]
+        if commits[0] == commits[1]:
             diff_dct[DIFF_EQUAL] = True
             return diff_dct
         diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
