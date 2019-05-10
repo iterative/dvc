@@ -33,9 +33,9 @@ class TestDiff(TestDvc):
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
         self.test_dct = {
-            diff.DIFF_A_REF: str(self.a_ref),
-            diff.DIFF_B_REF: str(
-                self.git.git.rev_parse(self.git.head.commit, short=True)
+            diff.DIFF_A_REF: self.a_ref,
+            diff.DIFF_B_REF: self.git.git.rev_parse(
+                self.git.head.commit, short=True
             ),
             diff.DIFF_LIST: [
                 {
@@ -50,7 +50,7 @@ class TestDiff(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
+        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
         self.assertEqual(
             self.git.git.rev_parse(self.git.head.commit, short=True),
             out[diff.DIFF_B_REF],
@@ -68,7 +68,7 @@ class TestDiffCmdLine(TestDiff):
         with patch("dvc.cli.diff.CmdDiff._show", autospec=True):
             with patch("dvc.repo.Repo", config="testing") as MockRepo:
                 MockRepo.return_value.diff.return_value = "testing"
-                ret = main(["diff", "-t", self.new_file, str(self.a_ref)])
+                ret = main(["diff", "-t", self.new_file, self.a_ref])
                 self.assertEqual(ret, 0)
 
 
@@ -116,9 +116,9 @@ class TestDiffDir(TestDvc):
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
         self.assertFalse(out[diff.DIFF_EQUAL])
-        self.assertEqual(str(self.a_ref), out[diff.DIFF_A_REF])
+        self.assertEqual(self.a_ref, out[diff.DIFF_A_REF])
         self.assertEqual(
-            str(self.git.git.rev_parse(self.git.head.commit, short=True)),
+            self.git.git.rev_parse(self.git.head.commit, short=True),
             out[diff.DIFF_B_REF],
         )
 
