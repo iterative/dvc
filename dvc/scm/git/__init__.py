@@ -207,12 +207,20 @@ class Git(Base):
         return [t.name for t in self.git.tags]
 
     def _install_hook(self, name, cmd):
+        command = "dvc {}".format(cmd)
+
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
+
         if os.path.isfile(hook):
-            msg = "git hook '{}' already exists."
-            raise SCMError(msg.format(os.path.relpath(hook)))
-        with open(hook, "w+") as fobj:
-            fobj.write("#!/bin/sh\nexec dvc {}\n".format(cmd))
+            with open(hook, "r+") as fobj:
+                if command not in fobj.read():
+                    fobj.write("exec {command}\n".format(command=command))
+        else:
+            with open(hook, "w+") as fobj:
+                fobj.write(
+                    "#!/bin/sh\n" "exec {command}\n".format(command=command)
+                )
+
         os.chmod(hook, 0o777)
 
     def install(self):
