@@ -87,7 +87,7 @@ class RemoteHDFS(RemoteBase):
         if path_info.scheme != "hdfs":
             raise NotImplementedError
 
-        assert path_info.get("path")
+        assert path_info.path
 
         logger.debug("Removing {}".format(path_info.path))
 
