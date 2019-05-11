@@ -4,18 +4,16 @@ import argparse
 import os
 import logging
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.repo import Repo
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 
 logger = logging.getLogger(__name__)
 
 
-class CmdRoot(CmdBase):
-    def run_cmd(self):
-        return self.run()
-
+class CmdRoot(CmdBaseNoRepo):
     def run(self):
-        logger.info(os.path.relpath(self.repo.root_dir))
+        logger.info(os.path.relpath(Repo.find_root()))
         return 0
 
 

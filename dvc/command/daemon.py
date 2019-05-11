@@ -1,15 +1,10 @@
 from __future__ import unicode_literals
 
-from dvc.command.base import CmdBase, fix_subparsers
+from dvc.command.base import CmdBaseNoRepo, fix_subparsers
 
 
-class CmdDaemonBase(CmdBase):
-    def __init__(self, args):
-        self.args = args
-        self.config = None
-
-    def run_cmd(self):
-        return self.run()
+class CmdDaemonBase(CmdBaseNoRepo):
+    pass
 
 
 class CmdDaemonUpdater(CmdDaemonBase):

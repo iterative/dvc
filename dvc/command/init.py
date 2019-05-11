@@ -3,17 +3,14 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
-from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 
 logger = logging.getLogger(__name__)
 
 
-class CmdInit(object):
-    def __init__(self, args):
-        self.args = args
-
-    def run_cmd(self):
+class CmdInit(CmdBaseNoRepo):
+    def run(self):
         from dvc.repo import Repo
         from dvc.exceptions import InitError
 
