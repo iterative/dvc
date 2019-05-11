@@ -1,8 +1,10 @@
 import uuid
 import posixpath
+from copy import copy
 
 import boto3
 import pytest
+from dvc.path.s3 import S3PathInfo
 
 from dvc.remote.s3 import RemoteS3
 from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
@@ -10,13 +12,11 @@ from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
 
 def _get_src_dst():
     prefix = str(uuid.uuid4())
-    from_info = {
-        "scheme": "s3",
-        "bucket": TEST_AWS_REPO_BUCKET,
-        "path": posixpath.join(prefix, "from"),
-    }
-    to_info = from_info.copy()
-    to_info["path"] = posixpath.join(prefix, "to")
+    from_info = S3PathInfo(
+        bucket=TEST_AWS_REPO_BUCKET, path=posixpath.join(prefix, "from")
+    )
+    to_info = copy(from_info)
+    to_info.path = posixpath.join(prefix, "to")
     return from_info, to_info
 
 
@@ -27,9 +27,7 @@ def test_copy_singlepart_preserve_etag():
         pytest.skip()
 
     s3 = boto3.client("s3")
-    s3.put_object(
-        Bucket=from_info["bucket"], Key=from_info["path"], Body="data"
-    )
+    s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
     RemoteS3._copy(s3, from_info, to_info)
 
@@ -71,5 +69,5 @@ def test_copy_multipart_preserve_etag():
         pytest.skip()
 
     s3 = boto3.client("s3")
-    _upload_multipart(s3, from_info["bucket"], from_info["path"])
+    _upload_multipart(s3, from_info.bucket, from_info.path)
     RemoteS3._copy(s3, from_info, to_info)

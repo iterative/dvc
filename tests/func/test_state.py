@@ -1,5 +1,6 @@
 import os
 import mock
+from dvc.path.local import LocalPathInfo
 
 from dvc.utils.compat import str
 
@@ -14,7 +15,7 @@ from tests.basic_env import TestDvc
 class TestState(TestDvc):
     def test_update(self):
         path = os.path.join(self.dvc.root_dir, self.FOO)
-        path_info = {"scheme": "local", "path": path}
+        path_info = LocalPathInfo(path=path)
         md5 = file_md5(path)[0]
 
         state = State(self.dvc, self.dvc.config.config)
@@ -77,6 +78,6 @@ class TestGetStateRecordForInode(TestDvc):
         get_inode_mock.side_effect = self.mock_get_inode(path, inode)
 
         with state:
-            state.save({"scheme": "local", "path": path}, md5)
+            state.save(LocalPathInfo(path=path), md5)
             ret = state.get_state_record_for_inode(inode)
             self.assertIsNotNone(ret)

@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import getpass
 import posixpath
 
+from dvc.path.ssh import SSHPathInfo
 from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
 from dvc.remote.ssh import RemoteSSH
@@ -48,7 +49,6 @@ class OutputSSH(OutputBase):
         else:
             path = parsed.path
 
-        self.path_info["host"] = host
-        self.path_info["port"] = port
-        self.path_info["user"] = user
-        self.path_info["path"] = path
+        self.path_info = SSHPathInfo(
+            host=host, user=user, port=port, url=self.url, path=path
+        )

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import posixpath
 
+from dvc.path.utils import PathInfo
 from dvc.remote.s3 import RemoteS3
 from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
@@ -36,5 +37,6 @@ class OutputS3(OutputBase):
         if remote:
             path = posixpath.join(remote.prefix, path)
 
-        self.path_info["bucket"] = bucket
-        self.path_info["path"] = path
+        self.path_info = PathInfo(
+            self.scheme, bucket=bucket, path=path, url=self.url
+        )
