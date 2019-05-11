@@ -4,7 +4,7 @@ import os
 import argparse
 import logging
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.config import Config
 from dvc.exceptions import DvcException
 
@@ -12,11 +12,11 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-class CmdConfig(CmdBase):
+class CmdConfig(CmdBaseNoRepo):
     def __init__(self, args):
         from dvc.repo import Repo, NotDvcRepoError
 
-        self.args = args
+        super(CmdConfig, self).__init__(args)
 
         try:
             dvc_dir = os.path.join(Repo.find_root(), Repo.DVC_DIR)
@@ -38,9 +38,6 @@ class CmdConfig(CmdBase):
             if dvc_dir is None:
                 raise saved_exc
             self.configobj = self.config._repo_config
-
-    def run_cmd(self):
-        return self.run()
 
     def _unset(self, section, opt=None, configobj=None):
         if configobj is None:

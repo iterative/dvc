@@ -65,3 +65,11 @@ class CmdBase(object):
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):
         pass
+
+
+class CmdBaseNoRepo(CmdBase):
+    def __init__(self, args):
+        self.args = args
+
+    def run_cmd(self):
+        return self.run()
