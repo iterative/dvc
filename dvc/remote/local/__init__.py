@@ -383,8 +383,12 @@ class RemoteLOCAL(RemoteBase):
         return ret
 
     def _fill_statuses(self, checksum_info_dir, local_exists, remote_exists):
+        # Using sets because they are way faster for lookups
+        local = set(local_exists)
+        remote = set(remote_exists)
+
         for md5, info in checksum_info_dir.items():
-            status = STATUS_MAP[(md5 in local_exists, md5 in remote_exists)]
+            status = STATUS_MAP[(md5 in local, md5 in remote)]
             info["status"] = status
 
     def _get_chunks(self, download, remote, status_info, status, jobs):
