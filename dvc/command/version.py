@@ -4,14 +4,14 @@ import platform
 import argparse
 import logging
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 
 
 logger = logging.getLogger(__name__)
 
 
-class CmdVersion(CmdBase):
+class CmdVersion(CmdBaseNoRepo):
     def run(self):
         info = (
             "DVC version: {dvc_version}\n"
