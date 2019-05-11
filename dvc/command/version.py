@@ -27,9 +27,7 @@ class CmdVersion(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    VERSION_HELP = (
-        "Output the system/environment information along with the DVC version"
-    )
+    VERSION_HELP = "Show DVC version and system/environment informaion."
 
     version_parser = subparsers.add_parser(
         "version",
