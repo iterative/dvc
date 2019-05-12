@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from dvc.remote.azure import RemoteAzure
+from dvc.remote.azure import RemoteAZURE
 from dvc.remote.gs import RemoteGS
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
@@ -12,7 +12,7 @@ from dvc.remote.oss import RemoteOSS
 
 
 REMOTES = [
-    RemoteAzure,
+    RemoteAZURE,
     RemoteGS,
     RemoteHDFS,
     RemoteHTTP,

@@ -8,7 +8,7 @@ from dvc.config import Config, ConfigError
 from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
-from dvc.remote.azure import RemoteAzure
+from dvc.remote.azure import RemoteAZURE
 from dvc.remote.oss import RemoteOSS
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.hdfs import RemoteHDFS
@@ -34,7 +34,7 @@ class DataCloud(object):
     CLOUD_MAP = {
         "aws": RemoteS3,
         "gcp": RemoteGS,
-        "azure": RemoteAzure,
+        "azure": RemoteAZURE,
         "oss": RemoteOSS,
         "ssh": RemoteSSH,
         "hdfs": RemoteHDFS,
@@ -124,7 +124,7 @@ class DataCloud(object):
         Args:
             targets (list): list of targets to push to the cloud.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBase): optional remote to push to.
+            remote (dvc.remote.base.RemoteBASE): optional remote to push to.
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
@@ -142,7 +142,7 @@ class DataCloud(object):
         Args:
             targets (list): list of targets to pull from the cloud.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBase): optional remote to pull from.
+            remote (dvc.remote.base.RemoteBASE): optional remote to pull from.
                 By default remote from core.remote config option is used.
             show_checksums (bool): show checksums instead of file names in
                 information messages.
@@ -160,7 +160,7 @@ class DataCloud(object):
         Args:
             targets (list): list of targets to check status for.
             jobs (int): number of jobs that can be running simultaneously.
-            remote (dvc.remote.base.RemoteBase): optional remote to compare
+            remote (dvc.remote.base.RemoteBASE): optional remote to compare
                 targets to. By default remote from core.remote config option
                 is used.
             show_checksums (bool): show checksums instead of file names in

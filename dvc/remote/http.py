@@ -12,7 +12,7 @@ import logging
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 from dvc.utils import move
 
 
@@ -32,7 +32,7 @@ class ProgressBarCallback(object):
             progress.update_target(self.name, self.current, self.total)
 
 
-class RemoteHTTP(RemoteBase):
+class RemoteHTTP(RemoteBASE):
     scheme = Schemes.HTTP
     REGEX = r"^http://.*$"
     REQUEST_TIMEOUT = 10

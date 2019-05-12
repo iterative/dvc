@@ -18,7 +18,7 @@ import logging
 
 from dvc.system import System
 from dvc.remote.base import (
-    RemoteBase,
+    RemoteBASE,
     STATUS_MAP,
     STATUS_NEW,
     STATUS_DELETED,
@@ -44,7 +44,7 @@ from dvc.utils.fs import get_mtime_and_size, get_inode
 logger = logging.getLogger(__name__)
 
 
-class RemoteLOCAL(RemoteBase):
+class RemoteLOCAL(RemoteBASE):
     scheme = Schemes.LOCAL
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"

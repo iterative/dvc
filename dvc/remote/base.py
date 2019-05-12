@@ -66,7 +66,7 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class RemoteBase(object):
+class RemoteBASE(object):
     scheme = None
     REGEX = None
     REQUIRES = {}

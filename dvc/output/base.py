@@ -8,7 +8,7 @@ from schema import Or, Optional
 
 from dvc.exceptions import DvcException
 from dvc.utils.compat import str
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class OutputAlreadyTrackedError(DvcException):
 class OutputBase(object):
     IS_DEPENDENCY = False
 
-    REMOTE = RemoteBase
+    REMOTE = RemoteBASE
 
     PARAM_PATH = "path"
     PARAM_CACHE = "cache"

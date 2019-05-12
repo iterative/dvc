@@ -619,14 +619,14 @@ class Stage(object):
         return stage
 
     def dumpd(self):
-        from dvc.remote.base import RemoteBase
+        from dvc.remote.base import RemoteBASE
 
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: RemoteBase.to_posixpath(
+                Stage.PARAM_WDIR: RemoteBASE.to_posixpath(
                     os.path.relpath(self.wdir, os.path.dirname(self.path))
                 ),
                 Stage.PARAM_LOCKED: self.locked,

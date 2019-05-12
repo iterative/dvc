@@ -16,7 +16,7 @@ from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
 
 logger = logging.getLogger(__name__)
@@ -35,7 +35,7 @@ class Callback(object):
             progress.update_target(self.name, self.current, self.total)
 
 
-class RemoteS3(RemoteBase):
+class RemoteS3(RemoteBASE):
     scheme = Schemes.S3
     REGEX = r"^s3://(?P<path>.*)$"
     REQUIRES = {"boto3": boto3}
