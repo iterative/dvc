@@ -15,21 +15,44 @@ class TestInstall(object):
     def _hook(self, name):
         return os.path.join(".git", "hooks", name)
 
-    @pytest.fixture(autouse=True)
-    def setUp(self, dvc):
-        ret = main(["install"])
-        assert ret == 0
+    def test_should_create_hooks(self, dvc):
+        assert main(["install"]) == 0
 
-    def test_should_not_install_twice(self, dvc):
-        ret = main(["install"])
-        assert ret != 0
+        hooks_with_commands = [
+            ("post-checkout", "exec dvc checkout"),
+            ("pre-commit", "exec dvc status"),
+            ("pre-push", "exec dvc push"),
+        ]
 
-    def test_should_create_hooks(self):
-        assert os.path.isfile(self._hook("post-checkout"))
-        assert os.path.isfile(self._hook("pre-commit"))
-        assert os.path.isfile(self._hook("pre-push"))
+        for fname, command in hooks_with_commands:
+            assert os.path.isfile(self._hook(fname))
+
+            with open(self._hook(fname), "r") as fobj:
+                assert command in fobj.read()
+
+    def test_should_append_hooks_if_file_already_exists(self, dvc):
+        with open(self._hook("post-checkout"), "w") as fobj:
+            fobj.write("#!/bin/sh\n" "echo hello\n")
+
+        assert main(["install"]) == 0
+
+        expected_script = "#!/bin/sh\n" "echo hello\n" "exec dvc checkout\n"
+
+        with open(self._hook("post-checkout"), "r") as fobj:
+            assert fobj.read() == expected_script
+
+    def test_should_be_idempotent(self, dvc):
+        assert main(["install"]) == 0
+        assert main(["install"]) == 0
+
+        expected_script = "#!/bin/sh\n" "exec dvc checkout\n"
+
+        with open(self._hook("post-checkout"), "r") as fobj:
+            assert fobj.read() == expected_script
 
     def test_should_post_checkout_hook_checkout(self, repo_dir, dvc):
+        assert main(["install"]) == 0
+
         stage_file = repo_dir.FOO + Stage.STAGE_FILE_SUFFIX
 
         dvc.add(repo_dir.FOO)
@@ -42,6 +65,8 @@ class TestInstall(object):
         assert os.path.isfile(repo_dir.FOO)
 
     def test_should_pre_push_hook_push(self, repo_dir, dvc):
+        assert main(["install"]) == 0
+
         temp = repo_dir.mkdtemp()
         git_remote = os.path.join(temp, "project.git")
         storage_path = os.path.join(temp, "dvc_storage")

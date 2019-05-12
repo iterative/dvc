@@ -58,7 +58,7 @@ install_requires = [
     "inflect>=2.1.0",
     "humanize>=0.5.1",
     "dulwich>=0.19.11",
-    "ruamel.yaml==0.15.91",
+    "ruamel.yaml>=0.15.91",
 ]
 
 # Extra dependencies for remote integrations

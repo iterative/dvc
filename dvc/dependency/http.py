@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from dvc.path import Path
 from dvc.utils.compat import urlparse, urljoin
 from dvc.output.base import OutputBase
 from dvc.remote.http import RemoteHTTP
@@ -16,5 +17,4 @@ class DependencyHTTP(DependencyBase, OutputBase):
         if path.startswith("remote"):
             path = urljoin(self.remote.cache_dir, urlparse(path).path)
 
-        self.path_info["scheme"] = urlparse(path).scheme
-        self.path_info["path"] = path
+        self.path_info = Path(self.scheme, url=self.url, path=path)

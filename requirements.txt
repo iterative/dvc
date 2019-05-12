@@ -5,7 +5,7 @@ configparser>=3.5.0
 zc.lockfile>=1.2.1
 future>=0.16.0
 google-cloud-storage==1.13.0
-PyInstaller==3.3.1
+PyInstaller==3.4
 colorama>=0.3.9
 configobj>=5.0.6
 networkx>=2.1

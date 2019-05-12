@@ -1,6 +1,7 @@
 import os
 import configobj
-from dvc.remote.base import RemoteBase
+from dvc.path.local import PathLOCAL
+from dvc.remote.base import RemoteBASE
 from mock import patch
 
 from dvc.main import main
@@ -198,10 +199,10 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc):
     with open(file2, "w") as fobj:
         fobj.write("2")
 
-    path_info = {"scheme": "local", "path": data_dir}
+    path_info = PathLOCAL(path=data_dir)
     with dvc.state:
         with patch.object(
-            RemoteBase,
+            RemoteBASE,
             "_collect_dir",
             return_value=[
                 {"relpath": "1", "md5": "1"},
@@ -211,7 +212,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc):
             checksum1 = dvc.cache.local.get_dir_checksum(path_info)
 
         with patch.object(
-            RemoteBase,
+            RemoteBASE,
             "_collect_dir",
             return_value=[
                 {"md5": "1", "relpath": "1"},

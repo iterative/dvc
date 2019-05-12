@@ -1,5 +1,8 @@
 from __future__ import unicode_literals
 
+from copy import copy
+
+from dvc.path.local import PathLOCAL
 from dvc.utils.compat import str
 
 import os
@@ -63,7 +66,7 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class RemoteBase(object):
+class RemoteBASE(object):
     scheme = None
     REGEX = None
     REQUIRES = {}
@@ -159,8 +162,8 @@ class RemoteBase(object):
     def _collect_dir(self, path_info):
         dir_info = []
 
-        p_info = path_info.copy()
-        dpath = p_info["path"]
+        p_info = copy(path_info)
+        dpath = p_info.path
         for root, dirs, files in self.walk(path_info):
             if len(files) > LARGE_DIR_SIZE:
                 msg = (
@@ -173,7 +176,7 @@ class RemoteBase(object):
 
             for fname in files:
                 path = self.ospath.join(root, fname)
-                p_info["path"] = path
+                p_info.path = path
                 relpath = self.to_posixpath(self.ospath.relpath(path, dpath))
 
                 checksum = self.get_file_checksum(p_info)
@@ -201,21 +204,19 @@ class RemoteBase(object):
         return checksum
 
     def _get_dir_info_checksum(self, dir_info, path_info):
-        to_info = path_info.copy()
-        to_info["path"] = self.cache.ospath.join(
-            self.cache.prefix, tmp_fname("")
-        )
+        to_info = copy(path_info)
+        to_info.path = self.cache.ospath.join(self.cache.prefix, tmp_fname(""))
 
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
             json.dump(dir_info, fobj, sort_keys=True)
 
-        from_info = {"scheme": "local", "path": tmp}
+        from_info = PathLOCAL(path=tmp)
         self.cache.upload([from_info], [to_info], no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
-        from_info = to_info.copy()
-        to_info["path"] = self.cache.checksum_to_path(checksum)
+        from_info = copy(to_info)
+        to_info.path = self.cache.checksum_to_path(checksum)
         return checksum, from_info, to_info
 
     def get_dir_cache(self, checksum):
@@ -234,7 +235,7 @@ class RemoteBase(object):
 
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
-        to_info = {"scheme": "local", "path": path}
+        to_info = PathLOCAL(path=path)
         self.cache.download([path_info], [to_info], no_progress_bar=True)
 
         try:
@@ -279,7 +280,7 @@ class RemoteBase(object):
         return checksum
 
     def save_info(self, path_info):
-        assert path_info["scheme"] == self.scheme
+        assert path_info.scheme == self.scheme
         return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
 
     def changed(self, path_info, checksum_info):
@@ -359,11 +360,11 @@ class RemoteBase(object):
         cache_info = self.checksum_to_path_info(checksum)
         dir_info = self.get_dir_cache(checksum)
 
-        entry_info = path_info.copy()
+        entry_info = copy(path_info)
         for entry in dir_info:
             entry_checksum = entry[self.PARAM_CHECKSUM]
-            entry_info["path"] = self.ospath.join(
-                path_info["path"], entry[self.PARAM_RELPATH]
+            entry_info.path = self.ospath.join(
+                path_info.path, entry[self.PARAM_RELPATH]
             )
 
             self._save_file(entry_info, entry_checksum, save_link=False)
@@ -388,9 +389,9 @@ class RemoteBase(object):
         pass
 
     def save(self, path_info, checksum_info):
-        if path_info["scheme"] != self.scheme:
+        if path_info.scheme != self.scheme:
             raise RemoteActionNotImplemented(
-                "save {} -> {}".format(path_info["scheme"], self.scheme),
+                "save {} -> {}".format(path_info.scheme, self.scheme),
                 self.scheme,
             )
 
@@ -462,8 +463,8 @@ class RemoteBase(object):
         return self.ospath.dirname(relpath) + self.ospath.basename(relpath)
 
     def checksum_to_path_info(self, checksum):
-        path_info = self.path_info.copy()
-        path_info["path"] = self.checksum_to_path(checksum)
+        path_info = copy(self.path_info)
+        path_info.path = self.checksum_to_path(checksum)
         return path_info
 
     def md5s_to_path_infos(self, md5s):
@@ -592,7 +593,7 @@ class RemoteBase(object):
         self.link(cache_info, path_info)
         self.state.save_link(path_info)
         if progress_callback:
-            progress_callback.update(path_info["url"])
+            progress_callback.update(path_info.url)
 
     def makedirs(self, path_info):
         raise NotImplementedError
@@ -609,13 +610,13 @@ class RemoteBase(object):
 
         logger.debug("Linking directory '{}'.".format(path_info))
 
-        entry_info = path_info.copy()
+        entry_info = copy(path_info)
         for entry in dir_info:
             relpath = entry[self.PARAM_RELPATH]
             checksum = entry[self.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(checksum)
-            entry_info["url"] = self.ospath.join(path_info["url"], relpath)
-            entry_info["path"] = self.ospath.join(path_info["path"], relpath)
+            entry_info.url = self.ospath.join(path_info.url, relpath)
+            entry_info.path = self.ospath.join(path_info.path, relpath)
 
             entry_checksum_info = {self.PARAM_CHECKSUM: checksum}
             if self.changed(entry_info, entry_checksum_info):
@@ -623,7 +624,7 @@ class RemoteBase(object):
                     self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
             if progress_callback:
-                progress_callback.update(entry_info["url"])
+                progress_callback.update(entry_info.url)
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -637,22 +638,24 @@ class RemoteBase(object):
         )
 
         needed_files = set(
-            self.ospath.join(path_info["path"], entry[self.PARAM_RELPATH])
+            self.ospath.join(path_info.path, entry[self.PARAM_RELPATH])
             for entry in dir_info
         )
 
         delta = existing_files - needed_files
 
-        d_info = path_info.copy()
+        d_info = copy(path_info)
         for path in delta:
-            d_info["path"] = path
+            d_info.path = path
             self.safe_remove(d_info, force)
 
     def checkout(
         self, path_info, checksum_info, force=False, progress_callback=None
     ):
-        scheme = path_info["scheme"]
-        if scheme not in ["", "local"] and scheme != self.scheme:
+        if (
+            path_info.scheme not in ["local"]
+            and path_info.scheme != self.scheme
+        ):
             raise NotImplementedError
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)

@@ -91,7 +91,7 @@ def _makedirs(name, mode=0o777, exist_ok=False):
 
 
 if is_py2:
-    from urlparse import urlparse, urljoin  # noqa: F401
+    from urlparse import urlparse, urljoin, urlsplit, urlunsplit  # noqa: F401
     from BaseHTTPServer import HTTPServer  # noqa: F401
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
@@ -131,7 +131,12 @@ if is_py2:
 elif is_py3:
     from pathlib import Path  # noqa: F401
     from os import makedirs  # noqa: F401
-    from urllib.parse import urlparse, urljoin  # noqa: F401
+    from urllib.parse import (  # noqa: F401
+        urlparse,  # noqa: F401
+        urljoin,  # noqa: F401
+        urlsplit,  # noqa: F401
+        urlunsplit,  # noqa: F401
+    )
     from io import StringIO, BytesIO  # noqa: F401
     from http.server import (  # noqa: F401
         HTTPServer,  # noqa: F401

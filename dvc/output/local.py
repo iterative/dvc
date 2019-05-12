@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 import logging
 
+from dvc.path.local import PathLOCAL
 from dvc.utils.compat import urlparse
 from dvc.istextfile import istextfile
 from dvc.exceptions import DvcException
@@ -49,7 +50,7 @@ class OutputLOCAL(OutputBase):
             p = os.path.join(stage.wdir, p)
         p = os.path.abspath(os.path.normpath(p))
 
-        self.path_info["path"] = p
+        self.path_info = PathLOCAL(url=self.url, path=p)
 
     def __str__(self):
         return self.rel_path
@@ -64,7 +65,7 @@ class OutputLOCAL(OutputBase):
         from dvc.repo import Repo
 
         fullpath = os.path.abspath(stage.wdir)
-        self.path_info["path"] = os.path.join(fullpath, self.stage_path)
+        self.path_info.path = os.path.join(fullpath, self.stage_path)
 
         self.repo = Repo(self.path)
 
