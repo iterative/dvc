@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.path import Schemes
+from dvc.scheme import Schemes
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase

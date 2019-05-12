@@ -1,8 +1,10 @@
-from dvc.path import BasePathInfo, Schemes
+from dvc.scheme import Schemes
 from dvc.utils.compat import urlunsplit
 
+from .base import PathBASE
 
-class HTTPPathInfo(BasePathInfo):
+
+class PathHTTP(PathBASE):
     scheme = Schemes.HTTP
 
     def __str__(self):

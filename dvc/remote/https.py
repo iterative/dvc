@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from dvc.path import Schemes
+from dvc.scheme import Schemes
 
 from .http import RemoteHTTP
 

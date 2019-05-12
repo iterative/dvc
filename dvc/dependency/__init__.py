@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import schema
 
+from dvc.scheme import Schemes
+
 import dvc.output as output
 from dvc.output.base import OutputBase
 from dvc.dependency.s3 import DependencyS3
@@ -25,13 +27,13 @@ DEPS = [
 ]
 
 DEP_MAP = {
-    "local": DependencyLOCAL,
-    "ssh": DependencySSH,
-    "s3": DependencyS3,
-    "gs": DependencyGS,
-    "hdfs": DependencyHDFS,
-    "http": DependencyHTTP,
-    "https": DependencyHTTPS,
+    Schemes.LOCAL: DependencyLOCAL,
+    Schemes.SSH: DependencySSH,
+    Schemes.S3: DependencyS3,
+    Schemes.GS: DependencyGS,
+    Schemes.HDFS: DependencyHDFS,
+    Schemes.HTTP: DependencyHTTP,
+    Schemes.HTTPS: DependencyHTTPS,
 }
 
 

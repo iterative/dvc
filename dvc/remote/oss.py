@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
-from dvc.path import Schemes
-from dvc.path.oss import OSSPathInfo
+from dvc.scheme import Schemes
+from dvc.path.oss import PathOSS
 
 try:
     import oss2
@@ -73,7 +73,7 @@ class RemoteOSS(RemoteBase):
         )
 
         self._bucket = None
-        self.path_info = OSSPathInfo(bucket=self.bucket)
+        self.path_info = PathOSS(bucket=self.bucket)
 
     @property
     def oss_service(self):

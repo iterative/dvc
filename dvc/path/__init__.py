@@ -1,35 +1,29 @@
-from dvc.utils.compat import urlunsplit
+from dvc.scheme import Schemes
+
+from dvc.path.azure import PathAZURE
+from dvc.path.gs import PathGS
+from dvc.path.hdfs import PathHDFS
+from dvc.path.http import PathHTTP
+from dvc.path.https import PathHTTPS
+from dvc.path.local import PathLOCAL
+from dvc.path.oss import PathOSS
+from dvc.path.s3 import PathS3
+from dvc.path.ssh import PathSSH
 
 
-class Schemes:
-    SSH = "ssh"
-    HDFS = "hdfs"
-    S3 = "s3"
-    AZURE = "azure"
-    HTTP = "http"
-    HTTPS = "https"
-    GS = "gs"
-    LOCAL = "local"
-    OSS = "oss"
+PATH_MAP = {
+    Schemes.SSH: PathSSH,
+    Schemes.HDFS: PathHDFS,
+    Schemes.S3: PathS3,
+    Schemes.AZURE: PathAZURE,
+    Schemes.HTTP: PathHTTP,
+    Schemes.HTTPS: PathHTTPS,
+    Schemes.GS: PathGS,
+    Schemes.LOCAL: PathLOCAL,
+    Schemes.OSS: PathOSS,
+}
 
 
-class BasePathInfo(object):
-    scheme = None
-
-    def __init__(self, url=None, path=None):
-        self.url = url
-        self.path = path
-
-    def __str__(self):
-        return self.url
-
-
-class DefaultCloudPathInfo(BasePathInfo):
-    def __init__(self, bucket, url=None, path=None):
-        super(DefaultCloudPathInfo, self).__init__(url, path)
-        self.bucket = bucket
-
-    def __str__(self):
-        if not self.url:
-            return urlunsplit((self.scheme, self.bucket, self.path, "", ""))
-        return self.url
+def Path(scheme, *args, **kwargs):
+    cls = PATH_MAP[scheme]
+    return cls(*args, **kwargs)

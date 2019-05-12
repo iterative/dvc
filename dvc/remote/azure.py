@@ -5,8 +5,8 @@ import os
 import re
 import logging
 
-from dvc.path import Schemes
-from dvc.path.azure import AzurePathInfo
+from dvc.scheme import Schemes
+from dvc.path.azure import PathAZURE
 
 try:
     from azure.storage.blob import BlockBlobService
@@ -72,7 +72,7 @@ class RemoteAzure(RemoteBase):
             raise ValueError("azure storage connection string missing")
 
         self.__blob_service = None
-        self.path_info = AzurePathInfo(bucket=self.bucket)
+        self.path_info = PathAZURE(bucket=self.bucket)
 
     @property
     def blob_service(self):

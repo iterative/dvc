@@ -1,5 +1,6 @@
-from dvc.path import Schemes, DefaultCloudPathInfo
+from dvc.scheme import Schemes
+from .base import PathCloudBASE
 
 
-class OSSPathInfo(DefaultCloudPathInfo):
+class PathOSS(PathCloudBASE):
     scheme = Schemes.OSS

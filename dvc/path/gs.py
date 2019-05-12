@@ -1,5 +1,6 @@
-from dvc.path import Schemes, DefaultCloudPathInfo
+from dvc.scheme import Schemes
+from .base import PathCloudBASE
 
 
-class GSPathInfo(DefaultCloudPathInfo):
+class PathGS(PathCloudBASE):
     scheme = Schemes.GS

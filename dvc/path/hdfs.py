@@ -1,12 +1,13 @@
 from dvc.utils.compat import urlunsplit
-from dvc.path import BasePathInfo, Schemes
+from dvc.scheme import Schemes
+from .base import PathBASE
 
 
-class HDFSPathInfo(BasePathInfo):
+class PathHDFS(PathBASE):
     scheme = Schemes.HDFS
 
     def __init__(self, user, url=None, path=None):
-        super(HDFSPathInfo, self).__init__(url, path)
+        super(PathHDFS, self).__init__(url, path)
         self.user = user
 
     def __str__(self):

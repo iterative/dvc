@@ -5,7 +5,7 @@ import getpass
 import logging
 
 from dvc.path import Schemes
-from dvc.path.ssh import SSHPathInfo
+from dvc.path.ssh import PathSSH
 
 try:
     import paramiko
@@ -68,7 +68,7 @@ class RemoteSSH(RemoteBase):
             Config.SECTION_REMOTE_ASK_PASSWORD, False
         )
 
-        self.path_info = SSHPathInfo(
+        self.path_info = PathSSH(
             host=self.host, user=self.user, port=self.port
         )
 

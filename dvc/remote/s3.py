@@ -4,8 +4,8 @@ import os
 import threading
 import logging
 
-from dvc.path import Schemes
-from dvc.path.s3 import S3PathInfo
+from dvc.scheme import Schemes
+from dvc.path.s3 import PathS3
 
 try:
     import boto3
@@ -72,7 +72,7 @@ class RemoteS3(RemoteBase):
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip("/")
 
-        self.path_info = S3PathInfo(bucket=self.bucket)
+        self.path_info = PathS3(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):

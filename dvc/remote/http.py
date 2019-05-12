@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.path import Schemes
-from dvc.path.utils import PathInfo
+from dvc.scheme import Schemes
+from dvc.path import Path
 from dvc.utils.compat import open, makedirs
 
 import os
@@ -44,7 +44,7 @@ class RemoteHTTP(RemoteBase):
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
 
-        self.path_info = PathInfo(self.scheme)
+        self.path_info = Path(self.scheme)
 
     @property
     def prefix(self):

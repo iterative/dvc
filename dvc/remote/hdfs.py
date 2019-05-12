@@ -8,8 +8,8 @@ import logging
 from subprocess import Popen, PIPE
 
 from dvc.config import Config
-from dvc.path import Schemes
-from dvc.path.hdfs import HDFSPathInfo
+from dvc.scheme import Schemes
+from dvc.path.hdfs import PathHDFS
 from dvc.remote.base import RemoteBase, RemoteCmdError
 from dvc.utils import fix_env, tmp_fname
 
@@ -32,7 +32,7 @@ class RemoteHDFS(RemoteBase):
                 Config.SECTION_REMOTE_USER, getpass.getuser()
             )
 
-        self.path_info = HDFSPathInfo(user=self.user)
+        self.path_info = PathHDFS(user=self.user)
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd

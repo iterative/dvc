@@ -4,7 +4,7 @@ from copy import copy
 
 import boto3
 import pytest
-from dvc.path.s3 import S3PathInfo
+from dvc.path.s3 import PathS3
 
 from dvc.remote.s3 import RemoteS3
 from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
@@ -12,7 +12,7 @@ from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
 
 def _get_src_dst():
     prefix = str(uuid.uuid4())
-    from_info = S3PathInfo(
+    from_info = PathS3(
         bucket=TEST_AWS_REPO_BUCKET, path=posixpath.join(prefix, "from")
     )
     to_info = copy(from_info)

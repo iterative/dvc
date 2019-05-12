@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
-from dvc.path import Schemes
-from dvc.path.gs import GSPathInfo
+from dvc.scheme import Schemes
+from dvc.path.gs import PathGS
 
 try:
     from google.cloud import storage
@@ -41,7 +41,7 @@ class RemoteGS(RemoteBase):
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip("/")
 
-        self.path_info = GSPathInfo(bucket=self.bucket)
+        self.path_info = PathGS(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):

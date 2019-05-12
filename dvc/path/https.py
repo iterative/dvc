@@ -1,6 +1,6 @@
-from . import Schemes
-from .http import HTTPPathInfo
+from dvc.scheme import Schemes
+from .http import PathHTTP
 
 
-class HTTPSPathInfo(HTTPPathInfo):
+class PathHTTPS(PathHTTP):
     scheme = Schemes.HTTPS

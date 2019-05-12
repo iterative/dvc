@@ -1,5 +1,6 @@
-from dvc.path import Schemes, DefaultCloudPathInfo
+from dvc.scheme import Schemes
+from .base import PathCloudBASE
 
 
-class AzurePathInfo(DefaultCloudPathInfo):
+class PathAZURE(PathCloudBASE):
     scheme = Schemes.AZURE
