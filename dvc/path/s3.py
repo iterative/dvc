@@ -1,5 +1,6 @@
-from dvc.path import Schemes, DefaultCloudPathInfo
+from dvc.scheme import Schemes
+from .base import PathCloudBASE
 
 
-class S3PathInfo(DefaultCloudPathInfo):
+class PathS3(PathCloudBASE):
     scheme = Schemes.S3

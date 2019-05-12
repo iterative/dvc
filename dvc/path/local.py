@@ -1,9 +1,10 @@
 import os
 
-from dvc.path import BasePathInfo, Schemes
+from dvc.scheme import Schemes
+from .base import PathBASE
 
 
-class LocalPathInfo(BasePathInfo):
+class PathLOCAL(PathBASE):
     scheme = Schemes.LOCAL
 
     def __str__(self):

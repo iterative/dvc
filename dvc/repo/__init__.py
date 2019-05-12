@@ -12,7 +12,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
 )
 from dvc.ignore import DvcIgnoreFileHandler
-from dvc.path.local import LocalPathInfo
+from dvc.path.local import PathLOCAL
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ class Repo(object):
         return Repo(root_dir)
 
     def unprotect(self, target):
-        path_info = LocalPathInfo(path=target)
+        path_info = PathLOCAL(path=target)
         return self.cache.local.unprotect(path_info)
 
     def _ignore(self):

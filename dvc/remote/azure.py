@@ -5,8 +5,8 @@ import os
 import re
 import logging
 
-from dvc.path import Schemes
-from dvc.path.azure import AzurePathInfo
+from dvc.scheme import Schemes
+from dvc.path.azure import PathAZURE
 
 try:
     from azure.storage.blob import BlockBlobService
@@ -18,7 +18,7 @@ from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class Callback(object):
         progress.update_target(self.name, current, total)
 
 
-class RemoteAzure(RemoteBase):
+class RemoteAZURE(RemoteBASE):
     scheme = Schemes.AZURE
     REGEX = (
         r"azure://((?P<path>[^=;]*)?|("
@@ -45,7 +45,7 @@ class RemoteAzure(RemoteBase):
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
-        super(RemoteAzure, self).__init__(repo, config)
+        super(RemoteAZURE, self).__init__(repo, config)
 
         self.url = config.get(Config.SECTION_REMOTE_URL, "azure://")
         match = re.match(self.REGEX, self.url)  # backward compatibility
@@ -72,7 +72,7 @@ class RemoteAzure(RemoteBase):
             raise ValueError("azure storage connection string missing")
 
         self.__blob_service = None
-        self.path_info = AzurePathInfo(bucket=self.bucket)
+        self.path_info = PathAZURE(bucket=self.bucket)
 
     @property
     def blob_service(self):

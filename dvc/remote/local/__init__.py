@@ -2,8 +2,9 @@ from __future__ import unicode_literals
 
 from copy import copy
 
-from dvc.path import BasePathInfo, Schemes
-from dvc.path.local import LocalPathInfo
+from dvc.scheme import Schemes
+from dvc.path.base import PathBASE
+from dvc.path.local import PathLOCAL
 from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.utils.compat import str, makedirs
 
@@ -17,7 +18,7 @@ import logging
 
 from dvc.system import System
 from dvc.remote.base import (
-    RemoteBase,
+    RemoteBASE,
     STATUS_MAP,
     STATUS_NEW,
     STATUS_DELETED,
@@ -43,7 +44,7 @@ from dvc.utils.fs import get_mtime_and_size, get_inode
 logger = logging.getLogger(__name__)
 
 
-class RemoteLOCAL(RemoteBase):
+class RemoteLOCAL(RemoteBASE):
     scheme = Schemes.LOCAL
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"
@@ -80,7 +81,7 @@ class RemoteLOCAL(RemoteBase):
             os.mkdir(self.cache_dir)
 
         self._dir_info = {}
-        self.path_info = LocalPathInfo()
+        self.path_info = PathLOCAL()
 
     @staticmethod
     def compat_config(config):
@@ -116,7 +117,7 @@ class RemoteLOCAL(RemoteBase):
         return self.checksum_to_path(md5)
 
     def exists(self, path_info):
-        assert isinstance(path_info, BasePathInfo)
+        assert isinstance(path_info, PathBASE)
         assert path_info.scheme == "local"
         return os.path.lexists(path_info.path)
 

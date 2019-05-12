@@ -4,8 +4,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
-from dvc.path import Schemes
-from dvc.path.oss import OSSPathInfo
+from dvc.scheme import Schemes
+from dvc.path.oss import PathOSS
 
 try:
     import oss2
@@ -16,14 +16,14 @@ from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
 from dvc.progress import progress
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 from dvc.remote.azure import Callback
 
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteOSS(RemoteBase):
+class RemoteOSS(RemoteBASE):
     """
     oss2 document:
     https://www.alibabacloud.com/help/doc-detail/32026.htm
@@ -73,7 +73,7 @@ class RemoteOSS(RemoteBase):
         )
 
         self._bucket = None
-        self.path_info = OSSPathInfo(bucket=self.bucket)
+        self.path_info = PathOSS(bucket=self.bucket)
 
     @property
     def oss_service(self):

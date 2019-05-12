@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
-from dvc.path import Schemes
-from dvc.path.gs import GSPathInfo
+from dvc.scheme import Schemes
+from dvc.path.gs import PathGS
 
 try:
     from google.cloud import storage
@@ -13,7 +13,7 @@ except ImportError:
 
 from dvc.utils import tmp_fname, move
 from dvc.utils.compat import urlparse, makedirs
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.progress import progress
 from dvc.exceptions import DvcException
@@ -22,7 +22,7 @@ from dvc.exceptions import DvcException
 logger = logging.getLogger(__name__)
 
 
-class RemoteGS(RemoteBase):
+class RemoteGS(RemoteBASE):
     scheme = Schemes.GS
     REGEX = r"^gs://(?P<path>.*)$"
     REQUIRES = {"google.cloud.storage": storage}
@@ -41,7 +41,7 @@ class RemoteGS(RemoteBase):
         self.bucket = parsed.netloc
         self.prefix = parsed.path.lstrip("/")
 
-        self.path_info = GSPathInfo(bucket=self.bucket)
+        self.path_info = PathGS(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):

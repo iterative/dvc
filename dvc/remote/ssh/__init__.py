@@ -5,7 +5,7 @@ import getpass
 import logging
 
 from dvc.path import Schemes
-from dvc.path.ssh import SSHPathInfo
+from dvc.path.ssh import PathSSH
 
 try:
     import paramiko
@@ -16,13 +16,13 @@ import dvc.prompt as prompt
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
 from dvc.utils.compat import urlparse
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
 
 
 logger = logging.getLogger(__name__)
 
 
-class RemoteSSH(RemoteBase):
+class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
 
     # NOTE: we support both URL-like (ssh://[user@]host.xz[:port]/path) and
@@ -68,7 +68,7 @@ class RemoteSSH(RemoteBase):
             Config.SECTION_REMOTE_ASK_PASSWORD, False
         )
 
-        self.path_info = SSHPathInfo(
+        self.path_info = PathSSH(
             host=self.host, user=self.user, port=self.port
         )
 

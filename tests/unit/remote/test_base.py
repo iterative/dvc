@@ -1,15 +1,15 @@
 import mock
 from unittest import TestCase
 
-from dvc.path import BasePathInfo
-from dvc.remote.base import RemoteBase, RemoteCmdError, RemoteMissingDepsError
+from dvc.path.base import PathBASE
+from dvc.remote.base import RemoteBASE, RemoteCmdError, RemoteMissingDepsError
 
 
-class TestRemoteBase(object):
-    REMOTE_CLS = RemoteBase
+class TestRemoteBASE(object):
+    REMOTE_CLS = RemoteBASE
 
 
-class TestMissingDeps(TestCase, TestRemoteBase):
+class TestMissingDeps(TestCase, TestRemoteBASE):
     def test(self):
         REQUIRES = {"foo": None, "bar": None, "mock": mock}
         with mock.patch.object(self.REMOTE_CLS, "REQUIRES", REQUIRES):
@@ -17,7 +17,7 @@ class TestMissingDeps(TestCase, TestRemoteBase):
                 self.REMOTE_CLS(None, {})
 
 
-class TestCmdError(TestCase, TestRemoteBase):
+class TestCmdError(TestCase, TestRemoteBASE):
     def test(self):
         repo = None
         config = {}
@@ -41,13 +41,13 @@ class TestCacheExists(TestCase):
             "url": "base://example/prefix",
             "connection_string": "1234567",
         }
-        remote = RemoteBase(None, config)
+        remote = RemoteBASE(None, config)
 
         remote.PARAM_CHECKSUM = "checksum"
-        remote.path_info = BasePathInfo(None, None)
+        remote.path_info = PathBASE(None, None)
         remote.url = ""
         remote.prefix = ""
-        path_info = BasePathInfo("example", None)
+        path_info = PathBASE("example", None)
         checksum_info = {remote.PARAM_CHECKSUM: "1234567890"}
 
         with mock.patch.object(remote, "_checkout") as mock_checkout:

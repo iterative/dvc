@@ -19,7 +19,7 @@ from dvc.data_cloud import (
     DataCloud,
     RemoteS3,
     RemoteGS,
-    RemoteAzure,
+    RemoteAZURE,
     RemoteOSS,
     RemoteLOCAL,
     RemoteSSH,
@@ -244,7 +244,7 @@ class TestDataCloud(TestDvc):
             ("gs://mybucket/", RemoteGS),
             ("ssh://user@localhost:/", RemoteSSH),
             ("http://localhost:8000/", RemoteHTTP),
-            ("azure://ContainerName=mybucket;conn_string;", RemoteAzure),
+            ("azure://ContainerName=mybucket;conn_string;", RemoteAZURE),
             ("oss://mybucket/", RemoteOSS),
             (TestDvc.mkdtemp(), RemoteLOCAL),
         ]
@@ -403,7 +403,7 @@ class TestRemoteGS(TestDataCloudBase):
         return RemoteGS
 
 
-class TestRemoteAzureCompat(TestDataCloudBase):
+class TestRemoteAZURECompat(TestDataCloudBase):
     def _should_test(self):
         return _should_test_azure()
 
@@ -411,10 +411,10 @@ class TestRemoteAzureCompat(TestDataCloudBase):
         return get_azure_url_compat()
 
     def _get_cloud_class(self):
-        return RemoteAzure
+        return RemoteAZURE
 
 
-class TestRemoteAzure(TestRemoteAzureCompat):
+class TestRemoteAZURE(TestRemoteAZURECompat):
     def _get_url(self):
         return get_azure_url()
 
@@ -673,7 +673,7 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestRemoteAzureCLI(TestDataCloudCLIBase):
+class TestRemoteAZURECLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_azure()
 

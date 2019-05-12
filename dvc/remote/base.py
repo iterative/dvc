@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 from copy import copy
 
-from dvc.path.local import LocalPathInfo
+from dvc.path.local import PathLOCAL
 from dvc.utils.compat import str
 
 import os
@@ -66,7 +66,7 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class RemoteBase(object):
+class RemoteBASE(object):
     scheme = None
     REGEX = None
     REQUIRES = {}
@@ -211,7 +211,7 @@ class RemoteBase(object):
         with open(tmp, "w+") as fobj:
             json.dump(dir_info, fobj, sort_keys=True)
 
-        from_info = LocalPathInfo(path=tmp)
+        from_info = PathLOCAL(path=tmp)
         self.cache.upload([from_info], [to_info], no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
@@ -235,7 +235,7 @@ class RemoteBase(object):
 
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
-        to_info = LocalPathInfo(path=path)
+        to_info = PathLOCAL(path=path)
         self.cache.download([path_info], [to_info], no_progress_bar=True)
 
         try:

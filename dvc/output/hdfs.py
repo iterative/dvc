@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import posixpath
 
-from dvc.path.hdfs import HDFSPathInfo
+from dvc.path.hdfs import PathHDFS
 from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
 from dvc.remote.hdfs import RemoteHDFS
@@ -35,4 +35,4 @@ class OutputHDFS(OutputBase):
         if remote:
             path = posixpath.join(remote.url, urlparse(path).path.lstrip("/"))
         user = remote.user if remote else self.group("user")
-        self.path_info = HDFSPathInfo(user=user, url=self.url, path=path)
+        self.path_info = PathHDFS(user=user, url=self.url, path=path)
