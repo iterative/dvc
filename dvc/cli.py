@@ -51,7 +51,6 @@ COMMANDS = [
     repro,
     data_sync,
     gc,
-    add,
     imp,
     config,
     checkout,
