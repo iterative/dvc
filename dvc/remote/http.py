@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from dvc.path import Schemes
-from dvc.path.http import HTTPPathInfo
+from dvc.path.utils import PathInfo
 from dvc.utils.compat import open, makedirs
 
 import os
@@ -34,7 +34,7 @@ class ProgressBarCallback(object):
 
 class RemoteHTTP(RemoteBase):
     scheme = Schemes.HTTP
-    REGEX = r"^https?://.*$"
+    REGEX = r"^http://.*$"
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
@@ -44,7 +44,7 @@ class RemoteHTTP(RemoteBase):
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
 
-        self.path_info = HTTPPathInfo()
+        self.path_info = PathInfo(self.scheme)
 
     @property
     def prefix(self):
@@ -61,7 +61,7 @@ class RemoteHTTP(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme not in ["http", "https"]:
+            if from_info.scheme != self.scheme:
                 raise NotImplementedError
 
             if to_info.scheme != "local":
@@ -99,7 +99,7 @@ class RemoteHTTP(RemoteBase):
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
-        assert path_info.scheme in ["http", "https"]
+        assert path_info.scheme == self.scheme
         return bool(self._request("HEAD", path_info.path))
 
     def cache_exists(self, md5s):

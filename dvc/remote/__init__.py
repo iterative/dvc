@@ -7,6 +7,7 @@ from dvc.remote.local import RemoteLOCAL
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.ssh import RemoteSSH
 from dvc.remote.http import RemoteHTTP
+from dvc.remote.https import RemoteHTTPS
 from dvc.remote.oss import RemoteOSS
 
 
@@ -15,6 +16,7 @@ REMOTES = [
     RemoteGS,
     RemoteHDFS,
     RemoteHTTP,
+    RemoteHTTPS,
     RemoteS3,
     RemoteSSH,
     RemoteOSS,

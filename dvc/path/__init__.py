@@ -7,6 +7,7 @@ class Schemes:
     S3 = "s3"
     AZURE = "azure"
     HTTP = "http"
+    HTTPS = "https"
     GS = "gs"
     LOCAL = "local"
     OSS = "oss"

@@ -10,6 +10,7 @@ from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
+from dvc.dependency.https import DependencyHTTPS
 
 from dvc.remote import Remote
 
@@ -17,6 +18,7 @@ DEPS = [
     DependencyGS,
     DependencyHDFS,
     DependencyHTTP,
+    DependencyHTTPS,
     DependencyS3,
     DependencySSH,
     # NOTE: DependencyLOCAL is the default choice
@@ -29,7 +31,7 @@ DEP_MAP = {
     "gs": DependencyGS,
     "hdfs": DependencyHDFS,
     "http": DependencyHTTP,
-    "https": DependencyHTTP,
+    "https": DependencyHTTPS,
 }
 
 

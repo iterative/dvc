@@ -1,14 +1,9 @@
 from dvc.path import BasePathInfo, Schemes
-from dvc.utils.compat import urlparse, urlunsplit
+from dvc.utils.compat import urlunsplit
 
 
 class HTTPPathInfo(BasePathInfo):
-    @property
-    def scheme(self):
-        if self.path:
-            return urlparse(self.path).scheme
-        else:
-            return Schemes.HTTP
+    scheme = Schemes.HTTP
 
     def __str__(self):
         if not self.url:

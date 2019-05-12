@@ -3,6 +3,7 @@ from dvc.path.azure import AzurePathInfo
 from dvc.path.gs import GSPathInfo
 from dvc.path.hdfs import HDFSPathInfo
 from dvc.path.http import HTTPPathInfo
+from dvc.path.https import HTTPSPathInfo
 from dvc.path.local import LocalPathInfo
 from dvc.path.oss import OSSPathInfo
 from dvc.path.s3 import S3PathInfo
@@ -14,6 +15,7 @@ PATH_MAP = {
     Schemes.S3: S3PathInfo,
     Schemes.AZURE: AzurePathInfo,
     Schemes.HTTP: HTTPPathInfo,
+    Schemes.HTTPS: HTTPSPathInfo,
     Schemes.GS: GSPathInfo,
     Schemes.LOCAL: LocalPathInfo,
     Schemes.OSS: OSSPathInfo,
