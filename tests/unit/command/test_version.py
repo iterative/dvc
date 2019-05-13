@@ -4,7 +4,7 @@ from dvc.command.version import CmdVersion
 from dvc.cli import parse_args
 
 
-def test_run_in_repo(repo_dir, dvc_repo):
+def test_run_in_repo(dvc):
     cmd = CmdVersion(parse_args(["version"]))
     ret = cmd.run_cmd()
     assert ret == 0
