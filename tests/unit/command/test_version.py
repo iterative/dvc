@@ -13,7 +13,7 @@ def test_run_in_repo(repo_dir, dvc_repo):
 def test_run_outside_of_repo(repo_dir):
     cmd = CmdVersion(parse_args(["version"]))
     ret = cmd.run_cmd()
-    assert ret == 0
+    assert ret == 1
 
 
 def test_info(caplog):
@@ -23,3 +23,5 @@ def test_info(caplog):
     assert re.search(re.compile(r"DVC version: \d+\.\d+\.\d+"), caplog.text)
     assert re.search(re.compile(r"Python version: \d\.\d\.\d"), caplog.text)
     assert re.search(re.compile(r"Platform: .*"), caplog.text)
+    assert re.search(re.compile(r"Filesystem Type: .*"), caplog.text)
+    assert re.search(re.compile(r"Symlink: (True|False)"), caplog.text)
