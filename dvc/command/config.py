@@ -98,7 +98,7 @@ parent_config_parser.add_argument(
 
 
 def add_parser(subparsers, parent_parser):
-    CONFIG_HELP = "Get or set config options."
+    CONFIG_HELP = "Get or set config settings."
 
     config_parser = subparsers.add_parser(
         "config",
@@ -114,8 +114,8 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         help="Unset option.",
     )
-    config_parser.add_argument("name", help="Option name.")
+    config_parser.add_argument("name", help="Setting name.")
     config_parser.add_argument(
-        "value", nargs="?", default=None, help="Option value."
+        "value", nargs="?", default=None, help="Setting value."
     )
     config_parser.set_defaults(func=CmdConfig)
