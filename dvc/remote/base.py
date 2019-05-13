@@ -592,6 +592,7 @@ class RemoteBASE(object):
 
         self.link(cache_info, path_info)
         self.state.save_link(path_info)
+        self.state.save(path_info, checksum)
         if progress_callback:
             progress_callback.update(path_info.url)
 
@@ -613,22 +614,24 @@ class RemoteBASE(object):
         entry_info = copy(path_info)
         for entry in dir_info:
             relpath = entry[self.PARAM_RELPATH]
-            checksum = entry[self.PARAM_CHECKSUM]
-            entry_cache_info = self.checksum_to_path_info(checksum)
+            entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info.url = self.ospath.join(path_info.url, relpath)
             entry_info.path = self.ospath.join(path_info.path, relpath)
 
-            entry_checksum_info = {self.PARAM_CHECKSUM: checksum}
+            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if self.changed(entry_info, entry_checksum_info):
                 if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
+                self.state.save(entry_info, entry_checksum)
             if progress_callback:
                 progress_callback.update(entry_info.url)
 
         self._remove_redundant_files(path_info, dir_info, force)
 
         self.state.save_link(path_info)
+        self.state.save(path_info, checksum)
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(
