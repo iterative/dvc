@@ -268,6 +268,15 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
+            os.rename(self.FOO, self.FOO + ".back")
+            ret = main(["checkout"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 1)
+
+            ret = main(["status"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 1)
+
 
 class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
     def test(self):
@@ -288,6 +297,15 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
             ret = main(
                 ["run", "-d", self.DATA_DIR, "ls {}".format(self.DATA_DIR)]
             )
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 3)
+
+            os.rename(self.DATA_DIR, self.DATA_DIR + ".back")
+            ret = main(["checkout"])
+            self.assertEqual(ret, 0)
+            self.assertEqual(file_md5_counter.mock.call_count, 3)
+
+            ret = main(["status"])
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
 
