@@ -234,12 +234,10 @@ class RemoteSSH(RemoteBASE):
                     )
                 except Exception:
                     logger.exception(
-                        "failed to upload '{host}/{path}' to '{dest}'".format(
-                            host=from_info.host,
-                            path=from_info.path,
-                            dest=to_info.path,
+                        "failed to upload '{}' to '{}'".format(
+                                              from_info, to_info
+                            )
                         )
-                    )
                     pass
 
     def list_cache_paths(self):
