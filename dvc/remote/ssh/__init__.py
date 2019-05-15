@@ -238,7 +238,6 @@ class RemoteSSH(RemoteBASE):
                             from_info, to_info
                         )
                     )
-                pass
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
