@@ -257,7 +257,6 @@ case $words[1] in
   metrics)   _arguments $_dvc_global_options   $_dvc_metrics   ;;
   move)      _arguments $_dvc_global_options   $_dvc_move      ;;
   pipeline)  _arguments $_dvc_global_options   $_dvc_pipeline  ;;
-    # pkg?
   pull)      _arguments $_dvc_global_options   $_dvc_pull      ;;
   push)      _arguments $_dvc_global_options   $_dvc_push      ;;
   remote)    _arguments $_dvc_global_options   $_dvc_remote    ;;
