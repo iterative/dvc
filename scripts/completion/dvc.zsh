@@ -244,7 +244,6 @@ case $words[1] in
   # cache?
   checkout)  _arguments $_dvc_global_options   $_dvc_checkout  ;;
   commit)    _arguments $_dvc_global_options   $_dvc_commit    ;;
-  # daemon?
   config)    _arguments $_dvc_global_options   $_dvc_config    ;;
   destroy)   _arguments $_dvc_global_options   $_dvc_destroy   ;;
   # diff?
