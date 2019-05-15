@@ -43,8 +43,8 @@ TEST_CONFIG = {
     TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
 }
 
-TEST_AWS_REPO_BUCKET = "dvc-test"
-TEST_GCP_REPO_BUCKET = "dvc-test"
+TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
+TEST_GCP_REPO_BUCKET = os.environ.get("DVC_TEST_GCP_REPO_BUCKET", "dvc-test")
 TEST_OSS_REPO_BUCKET = "dvc-test"
 
 
@@ -68,6 +68,8 @@ def _should_test_gcp():
     if not os.path.exists(TestDvc.GCP_CREDS_FILE):
         return False
 
+    # NOTE: we copy because GOOGLE_APPLICATION_CREDENTIALS uses rel path.
+    #       This is only my guess and I don't know why won't we use absolute.
     creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     if creds and os.getenv("GCP_CREDS"):
         if os.path.exists(creds):
