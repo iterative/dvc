@@ -235,10 +235,10 @@ class RemoteSSH(RemoteBASE):
                 except Exception:
                     logger.exception(
                         "failed to upload '{}' to '{}'".format(
-                                              from_info, to_info
-                            )
+                            from_info, to_info
                         )
-                    pass
+                    )
+                pass
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
