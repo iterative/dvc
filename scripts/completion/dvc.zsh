@@ -266,5 +266,4 @@ case $words[1] in
   status)    _arguments $_dvc_global_options   $_dvc_status    ;;
   unlock)    _arguments $_dvc_global_options   $_dvc_unlock    ;;
   unprotect) _arguments $_dvc_global_options   $_dvc_unprotect ;;
-  # version?
 esac
