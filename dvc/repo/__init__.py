@@ -259,6 +259,7 @@ class Repo(object):
         cache["hdfs"] = []
         cache["ssh"] = []
         cache["azure"] = []
+        cache["oss"] = []
 
         for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
