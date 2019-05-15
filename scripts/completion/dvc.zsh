@@ -264,7 +264,6 @@ case $words[1] in
   repro)     _arguments $_dvc_global_options   $_dvc_repro     ;;
   root)      _arguments $_dvc_global_options   $_dvc_root      ;;
   run)       _arguments $_dvc_global_options   $_dvc_run       ;;
-  # tag?
   status)    _arguments $_dvc_global_options   $_dvc_status    ;;
   unlock)    _arguments $_dvc_global_options   $_dvc_unlock    ;;
   unprotect) _arguments $_dvc_global_options   $_dvc_unprotect ;;
