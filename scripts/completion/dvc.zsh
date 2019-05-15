@@ -16,10 +16,9 @@ _dvc_commands() {
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
     "commit:Save changed data to cache and update DVC files."
-    # daemon?
     "config:Get or set config settings."
     "destroy:Remove DVC files, local DVC config and data cache."
-    # diff?
+    "diff:Show a diff of a DVC controlled data file or a directory."
     "fetch:Fetch data files from a DVC remote storage."
     "gc:Collect unused data from DVC cache or a remote storage."
     "import:Download or copy files from URL and take under DVC control."
@@ -29,7 +28,6 @@ _dvc_commands() {
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "pipeline:Manage pipelines."
-    # pkg?
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "remote:Manage remote storage configuration."
@@ -37,11 +35,10 @@ _dvc_commands() {
     "repro:Check for changes and reproduce DVC file and dependencies."
     "root:Relative path to project's directory."
     "run:Generate a stage file from a command and execute the command."
-    # tag?
     "status:Show changed stages, compare local cache and a remote storage."
     "unlock:Unlock DVC file."
     "unprotect:Unprotect data file/directory."
-    # version?
+    "version:Show DVC version and system/environment informaion."
   )
 
   _describe 'dvc commands' _commands
@@ -91,6 +88,10 @@ _dvc_config=(
 
 _dvc_destroy=(
   {-f,--force}"[Overwrite '.dvc' if it exists. Will remove all local cache.]"
+)
+
+_dvc_diff=(
+  {-t,--target}"[Source path to a data file or directory.]:Target file(s):"
 )
 
 _dvc_fetch=(
@@ -241,12 +242,12 @@ _arguments \
 
 case $words[1] in
   add)       _arguments $_dvc_global_options   $_dvc_add       ;;
-  # cache?
+  cache)     _arguments $_dvc_global_options   $_dvc_cache     ;;
   checkout)  _arguments $_dvc_global_options   $_dvc_checkout  ;;
   commit)    _arguments $_dvc_global_options   $_dvc_commit    ;;
   config)    _arguments $_dvc_global_options   $_dvc_config    ;;
   destroy)   _arguments $_dvc_global_options   $_dvc_destroy   ;;
-  # diff?
+  diff)      _arguments $_dvc_global_options   $_dvc_diff      ;;
   fetch)     _arguments $_dvc_global_options   $_dvc_fetch     ;;
   gc)        _arguments $_dvc_global_options   $_dvc_gc        ;;
   import)    _arguments $_dvc_global_options   $_dvc_import    ;;
