@@ -524,14 +524,7 @@ class RemoteBASE(object):
 
         return True
 
-    def _changed_cache_dir(self):
-        # NOTE: only implemented for RemoteLOCAL
-        return True
-
     def _changed_dir_cache(self, checksum):
-        if not self._changed_cache_dir():
-            return False
-
         if self.changed_cache_file(checksum):
             return True
 
