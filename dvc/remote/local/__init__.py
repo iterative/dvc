@@ -495,7 +495,7 @@ class RemoteLOCAL(RemoteBASE):
             download=True,
         )
 
-    def _changed_cache_dir(self):
+    def _changed_dir_cache(self, checksum):
         mtime, size = get_mtime_and_size(self.cache_dir)
         inode = get_inode(self.cache_dir)
 
@@ -506,7 +506,10 @@ class RemoteLOCAL(RemoteBASE):
         else:
             changed = True
 
-        return changed
+        if not changed:
+            return False
+
+        return super(RemoteLOCAL, self)._changed_dir_cache(checksum)
 
     def _log_missing_caches(self, checksum_info_dict):
         missing_caches = [
