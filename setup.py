@@ -49,7 +49,7 @@ install_requires = [
     "pyasn1>=0.4.1",
     "schema>=0.6.7",
     "jsonpath-ng>=1.4.3",
-    "requests>=2.18.4",
+    "requests>=2.22.0",
     "grandalf==0.6",
     "asciimatics>=1.10.0",
     "distro>=1.3.0",
