@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import os
 
+import pytest
+
 import dvc
 import time
 import shutil
@@ -541,3 +543,14 @@ class TestAddUnprotected(TestDvc):
 
         self.assertFalse(os.access(self.FOO, os.W_OK))
         self.assertTrue(System.is_hardlink(self.FOO))
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows specific")
+def test_windows_should_add_when_cache_on_different_drive(
+    dvc, repo_dir, temporary_windows_drive
+):
+    ret = main(["config", "cache.dir", temporary_windows_drive])
+    assert ret == 0
+
+    ret = main(["add", repo_dir.DATA])
+    assert ret == 0
