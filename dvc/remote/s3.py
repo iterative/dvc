@@ -64,6 +64,12 @@ class RemoteS3(RemoteBASE):
 
         self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
 
+        self.extra_args = {}
+
+        self.sse = config.get(Config.SECTION_AWS_SSE, "")
+        if self.sse:
+            self.extra_args["ServerSideEncryption"] = self.sse
+
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
@@ -112,9 +118,11 @@ class RemoteS3(RemoteBASE):
         return obj
 
     @classmethod
-    def _copy_multipart(cls, s3, from_info, to_info, size, n_parts):
+    def _copy_multipart(
+        cls, s3, from_info, to_info, size, n_parts, extra_args={}
+    ):
         mpu = s3.create_multipart_upload(
-            Bucket=to_info.bucket, Key=to_info.path
+            Bucket=to_info.bucket, Key=to_info.path, **extra_args
         )
         mpu_id = mpu["UploadId"]
 
@@ -154,7 +162,7 @@ class RemoteS3(RemoteBASE):
         )
 
     @classmethod
-    def _copy(cls, s3, from_info, to_info):
+    def _copy(cls, s3, from_info, to_info, extra_args={}):
         # NOTE: object's etag depends on the way it was uploaded to s3 or the
         # way it was copied within the s3. More specifically, it depends on
         # the chunk size that was used to transfer it, which would affect
@@ -182,10 +190,12 @@ class RemoteS3(RemoteBASE):
         _, _, parts_suffix = etag.partition("-")
         if parts_suffix:
             n_parts = int(parts_suffix)
-            cls._copy_multipart(s3, from_info, to_info, size, n_parts)
+            cls._copy_multipart(
+                s3, from_info, to_info, size, n_parts, extra_args
+            )
         else:
             source = {"Bucket": from_info.bucket, "Key": from_info.path}
-            s3.copy(source, to_info.bucket, to_info.path)
+            s3.copy(source, to_info.bucket, to_info.path, ExtraArgs=extra_args)
 
         cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
@@ -193,7 +203,7 @@ class RemoteS3(RemoteBASE):
 
     def copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
-        self._copy(s3, from_info, to_info)
+        self._copy(s3, from_info, to_info, extra_args=self.extra_args)
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
@@ -257,7 +267,11 @@ class RemoteS3(RemoteBASE):
 
             try:
                 s3.upload_file(
-                    from_info.path, to_info.bucket, to_info.path, Callback=cb
+                    from_info.path,
+                    to_info.bucket,
+                    to_info.path,
+                    Callback=cb,
+                    ExtraArgs=self.extra_args,
                 )
             except Exception:
                 msg = "failed to upload '{}'".format(from_info.path)
