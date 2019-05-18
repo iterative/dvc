@@ -41,10 +41,6 @@ install_requires = []
 with open("requirements.txt") as fobj:
     install_requires += fobj.read().splitlines()
 
-# Requirements to test working of dvc
-with open("tests/requirements.txt") as fobj:
-    install_requires += fobj.read().splitlines()
-
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
