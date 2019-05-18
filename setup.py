@@ -35,31 +35,15 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-install_requires = [
-    "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
-    "configparser>=3.5.0",
-    "zc.lockfile>=1.2.1",
-    "future>=0.16.0",
-    "colorama>=0.3.9",
-    "configobj>=5.0.6",
-    "networkx>=2.1",
-    "gitpython>=2.1.8",
-    "setuptools>=34.0.0",
-    "nanotime>=0.5.2",
-    "pyasn1>=0.4.1",
-    "schema>=0.6.7",
-    "jsonpath-ng>=1.4.3",
-    "requests>=2.22.0",
-    "grandalf==0.6",
-    "asciimatics>=1.10.0",
-    "distro>=1.3.0",
-    "appdirs>=1.4.3",
-    "treelib>=1.5.5",
-    "inflect>=2.1.0",
-    "humanize>=0.5.1",
-    "dulwich>=0.19.11",
-    "ruamel.yaml>=0.15.91",
-]
+install_requires = []
+
+# Requirements to run dvc
+with open("requirements.txt") as fobj:
+    install_requires += fobj.read().splitlines()
+
+# Requirements to test working of dvc
+with open("tests/requirements.txt") as fobj:
+    install_requires += fobj.read().splitlines()
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
