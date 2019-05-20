@@ -32,4 +32,8 @@ if [[ "$TRAVIS_OS_NAME" == "osx" && "$TRAVIS_OSX_IMAGE" != "xcode7.3" ]]; then
     exit 0
 fi
 
-./scripts/build_posix.sh
+if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    ./scripts/build_windows.cmd
+else
+    ./scripts/build_posix.sh
+fi
