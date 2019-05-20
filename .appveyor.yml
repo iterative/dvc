@@ -23,10 +23,6 @@ environment:
   OSS_ENDPOINT: localhost:50004
   OSS_ACCESS_KEY_ID: AccessKeyID
   OSS_ACCESS_KEY_SECRET: AccessKeySecret
-  TWINE_USERNAME:
-    secure: EAZ5orh6F5xpdHFPMY7qMQ==
-  TWINE_PASSWORD:
-    secure: puvABn5L2hnP5MKwv3JCbfcg6/7eL7wmJ5ZbFOGxPNE=
 
   matrix:
 
@@ -76,7 +72,6 @@ after_test:
   - if "%APPVEYOR_PULL_REQUEST_NUMBER%"=="" codecov
 
 before_deploy:
-  - if "%APPVEYOR_REPO_TAG%"=="true" python setup.py sdist bdist_wheel --universal
   - if "%APPVEYOR_REPO_TAG%"=="true" python -m dvc pull
   - if "%APPVEYOR_REPO_TAG%"=="true" .\scripts\build_windows.cmd
 
@@ -87,10 +82,6 @@ on_finish:
 artifacts:
   - path: dvc*.exe
     name: DVC Installer
-
-deploy_script:
-  - if "%APPVEYOR_REPO_TAG%"=="true" pip install twine
-  - if "%APPVEYOR_REPO_TAG%"=="true" twine upload dist/*
 
 deploy:
   provider: GitHub
