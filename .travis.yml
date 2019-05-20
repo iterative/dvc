@@ -86,6 +86,7 @@ script:
   - bash ./scripts/ci/script.sh
 before_deploy:
   - bash ./scripts/ci/before_deploy.sh
+  - pip install twine
 deploy:
   - provider: releases
     condition: "[[ $(./scripts/ci/deploy_condition.sh) == 'true' ]]"
