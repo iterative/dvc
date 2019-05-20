@@ -46,6 +46,7 @@ fpm_build()
 	fpm -s dir \
 	    -f \
 	    -t $1 \
+		--description "Data Version Control - datasets, models, and experiments versioning for ML or data science projects"
 	    $FPM_FLAGS \
 	    -n dvc \
 	    -v $VERSION \
