@@ -517,8 +517,10 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        with self.assertRaises(TargetNotDirectoryError):
-            self.dvc.checkout(target=self.FOO, recursive=True)
+        try:
+            self.dvc.checkout(target=self.FOO + ".dvc", recursive=True)
+        except TargetNotDirectoryError:
+            self.fail("should not raise TargetNotDirectoryError")
 
 
 class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):

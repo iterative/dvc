@@ -10,7 +10,8 @@ default_arguments = {
     "interactive": False,
     "no_commit": False,
     "pipeline": False,
-    "recursive": True,
+    "single_item": False,
+    "recursive": False,
 }
 
 
