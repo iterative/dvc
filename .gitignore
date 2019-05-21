@@ -28,3 +28,9 @@ innosetup/config.ini
 
 pip-wheel-metadata/
 .vscode/
+
+azurite
+env.sh
+tests/remotes_env
+scripts/ci/gcp-creds.json
+.gcp-creds.json

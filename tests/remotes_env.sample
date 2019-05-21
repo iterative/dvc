@@ -1,0 +1,13 @@
+# Uncomment and fill in to test against S3
+# export AWS_ACCESS_KEY_ID="...SET-ME..."
+# export AWS_SECRET_ACCESS_KEY="...SET-ME..."
+# export DVC_TEST_AWS_REPO_BUCKET="...SET-ME..."
+
+# Uncomment and set a bucket name to test against Google Storage
+# export GOOGLE_APPLICATION_CREDENTIALS=".gcp-creds.json"
+# export GCP_CREDS="yes"
+# export DVC_TEST_GCP_REPO_BUCKET="...SET-ME..."
+
+# Uncomment to test against Microsoft Azure via Azurite
+# export AZURE_STORAGE_CONTAINER_NAME="dvc-test"
+# export AZURE_STORAGE_CONNECTION_STRING="DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
