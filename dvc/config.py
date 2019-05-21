@@ -154,6 +154,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
     SECTION_CORE_CHECKSUM_JOBS = "checksum_jobs"
     SECTION_CORE_CHECKSUM_JOBS_SCHEMA = And(Use(int), lambda x: x > 0)
+    SECTION_CORE_OAUTH2_FLOW_RUNNER = "oauth2_flow_runner"
+    SECTION_CORE_OAUTH2_FLOW_RUNNER_SCHEMA = Choices("console", "local")
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -195,6 +197,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(
             SECTION_CORE_CHECKSUM_JOBS, default=None
         ): SECTION_CORE_CHECKSUM_JOBS_SCHEMA,
+        Optional(
+            SECTION_CORE_OAUTH2_FLOW_RUNNER, default="console"
+        ): SECTION_CORE_OAUTH2_FLOW_RUNNER_SCHEMA,
     }
 
     # backward compatibility
@@ -228,6 +233,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_GCP_PROJECTNAME): str,
     }
 
+    SECTION_GDRIVE_SCOPES = "scopes"
+    SECTION_GDRIVE_CREDENTIALPATH = SECTION_AWS_CREDENTIALPATH
+    SECTION_GDRIVE_OAUTH_ID = "oauth_id"
+
     # backward compatibility
     SECTION_LOCAL = "local"
     SECTION_LOCAL_STORAGEPATH = SECTION_AWS_STORAGEPATH
@@ -259,6 +268,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
         Optional(SECTION_AWS_SSE): str,
         Optional(SECTION_GCP_PROJECTNAME): str,
+        Optional(SECTION_GDRIVE_SCOPES): str,
+        Optional(SECTION_GDRIVE_OAUTH_ID, default="default"): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
         Optional(SECTION_REMOTE_USER): str,

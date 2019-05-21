@@ -71,6 +71,7 @@ else:
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
+gdrive = ["google-auth-oauthlib==0.3.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.0.1"]
 oss = ["oss2==2.6.1"]
@@ -98,6 +99,7 @@ tests_requirements = [
     "xmltodict>=0.11.0",
     "awscli>=1.16.125",
     "google-compute-engine",
+    "google-auth-oauthlib",
     "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
@@ -125,6 +127,7 @@ setup(
     extras_require={
         "all": all_remotes,
         "gs": gs,
+        "gdrive": gdrive,
         "s3": s3,
         "azure": azure,
         "oss": oss,

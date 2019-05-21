@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from dvc.remote.azure import RemoteAZURE
+from dvc.remote.gdrive import RemoteGDrive
 from dvc.remote.gs import RemoteGS
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
@@ -15,6 +16,7 @@ from .config import RemoteConfig
 
 REMOTES = [
     RemoteAZURE,
+    RemoteGDrive,
     RemoteGS,
     RemoteHDFS,
     RemoteHTTP,
