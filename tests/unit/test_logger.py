@@ -150,10 +150,10 @@ class TestColorFormatter:
 
             assert expected == formatter.format(caplog.records[0])
 
-    def test_progress_awareness(self, mock, capsys, caplog):
+    def test_progress_awareness(self, mocker, capsys, caplog):
         from dvc.progress import progress
 
-        with mock.patch("sys.stdout.isatty", return_value=True):
+        with mocker.patch("sys.stdout.isatty", return_value=True):
             progress.set_n_total(100)
             progress.update_target("progress", 1, 10)
 

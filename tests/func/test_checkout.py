@@ -428,10 +428,10 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         finish_bar = progress_bars[-1]
 
         self.assertEqual(4, len(update_bars))
-        self.assertRegexpMatches(progress_bars[0], ".*\\[#{7} {23}\\] 25%.*")
-        self.assertRegexpMatches(progress_bars[1], ".*\\[#{15} {15}\\] 50%.*")
-        self.assertRegexpMatches(progress_bars[2], ".*\\[#{22} {8}\\] 75%.*")
-        self.assertRegexpMatches(progress_bars[3], ".*\\[#{30}\\] 100%.*")
+        self.assertTrue(re.match(".*\\[#{7} {23}\\] 25%.*", progress_bars[0]))
+        self.assertTrue(re.match(".*\\[#{15} {15}\\] 50%.*", progress_bars[1]))
+        self.assertTrue(re.match(".*\\[#{22} {8}\\] 75%.*", progress_bars[2]))
+        self.assertTrue(re.match(".*\\[#{30}\\] 100%.*", progress_bars[3]))
 
         self.assertCaretReturnFollowsEach(update_bars)
         self.assertNewLineFollows(finish_bar)
