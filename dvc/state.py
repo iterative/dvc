@@ -313,7 +313,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         )
 
     def _update_state_for_path_changed(
-        self, path, actual_inode, actual_mtime, actual_size, checksum
+        self, actual_inode, actual_mtime, actual_size, checksum
     ):
         cmd = (
             "UPDATE {} SET "
@@ -333,7 +333,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         )
 
     def _insert_new_state_record(
-        self, path, actual_inode, actual_mtime, actual_size, checksum
+        self, actual_inode, actual_mtime, actual_size, checksum
     ):
         assert checksum is not None
 
@@ -383,12 +383,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         existing_record = self.get_state_record_for_inode(actual_inode)
         if not existing_record:
             self._insert_new_state_record(
-                path, actual_inode, actual_mtime, actual_size, checksum
+                actual_inode, actual_mtime, actual_size, checksum
             )
             return
 
         self._update_state_for_path_changed(
-            path, actual_inode, actual_mtime, actual_size, checksum
+            actual_inode, actual_mtime, actual_size, checksum
         )
 
     def get(self, path_info):
