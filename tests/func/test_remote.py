@@ -174,7 +174,7 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
         self.assertEqual(ret, 0)
 
 
-def test_large_dir_progress(repo_dir, dvc):
+def test_large_dir_progress(repo_dir, dvc_repo):
     from dvc.utils import LARGE_DIR_SIZE
     from dvc.progress import progress
 
@@ -183,12 +183,12 @@ def test_large_dir_progress(repo_dir, dvc):
         repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
 
     with patch.object(progress, "update_target") as update_target:
-        dvc.add("gen")
+        dvc_repo.add("gen")
         assert update_target.called
 
 
-def test_dir_checksum_should_be_key_order_agnostic(dvc):
-    data_dir = os.path.join(dvc.root_dir, "data")
+def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
+    data_dir = os.path.join(dvc_repo.root_dir, "data")
     file1 = os.path.join(data_dir, "1")
     file2 = os.path.join(data_dir, "2")
 
@@ -200,7 +200,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc):
         fobj.write("2")
 
     path_info = PathLOCAL(path=data_dir)
-    with dvc.state:
+    with dvc_repo.state:
         with patch.object(
             RemoteBASE,
             "_collect_dir",
@@ -209,7 +209,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc):
                 {"relpath": "2", "md5": "2"},
             ],
         ):
-            checksum1 = dvc.cache.local.get_dir_checksum(path_info)
+            checksum1 = dvc_repo.cache.local.get_dir_checksum(path_info)
 
         with patch.object(
             RemoteBASE,
@@ -219,6 +219,6 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc):
                 {"md5": "2", "relpath": "2"},
             ],
         ):
-            checksum2 = dvc.cache.local.get_dir_checksum(path_info)
+            checksum2 = dvc_repo.cache.local.get_dir_checksum(path_info)
 
     assert checksum1 == checksum2

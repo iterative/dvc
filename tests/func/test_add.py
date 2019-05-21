@@ -547,7 +547,7 @@ class TestAddUnprotected(TestDvc):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
 def test_windows_should_add_when_cache_on_different_drive(
-    dvc, repo_dir, temporary_windows_drive
+    dvc_repo, repo_dir, temporary_windows_drive
 ):
     ret = main(["config", "cache.dir", temporary_windows_drive])
     assert ret == 0

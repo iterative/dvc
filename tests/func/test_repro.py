@@ -1371,15 +1371,15 @@ class TestShouldDisplayMetricsOnReproWithMetricsOption(TestDvc):
 
 
 @pytest.fixture
-def foo_copy(repo_dir, dvc):
-    stages = dvc.add(repo_dir.FOO)
+def foo_copy(repo_dir, dvc_repo):
+    stages = dvc_repo.add(repo_dir.FOO)
     assert len(stages) == 1
     foo_stage = stages[0]
     assert foo_stage is not None
 
     fname = "foo_copy"
     stage_fname = fname + ".dvc"
-    dvc.run(
+    dvc_repo.run(
         fname=stage_fname,
         outs=[fname],
         deps=[repo_dir.FOO, repo_dir.CODE],
@@ -1388,8 +1388,8 @@ def foo_copy(repo_dir, dvc):
     return {"fname": fname, "stage_fname": stage_fname}
 
 
-def test_dvc_formatting_retained(dvc, foo_copy):
-    root = Path(dvc.root_dir)
+def test_dvc_formatting_retained(dvc_repo, foo_copy):
+    root = Path(dvc_repo.root_dir)
     stage_file = root / foo_copy["stage_fname"]
 
     # Add comments and custom formatting to stage file
@@ -1400,7 +1400,7 @@ def test_dvc_formatting_retained(dvc, foo_copy):
 
     # Rewrite data source and repro
     (root / "foo").write_text("new_foo")
-    dvc.reproduce(foo_copy["stage_fname"])
+    dvc_repo.reproduce(foo_copy["stage_fname"])
 
     # All differences should be only about md5
     assert _hide_md5(stage_text) == _hide_md5(stage_file.read_text())
