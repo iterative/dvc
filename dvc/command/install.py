@@ -1,7 +1,12 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
-from dvc.command.base import CmdBase
+import argparse
+import logging
+
+from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdInstall(CmdBase):
@@ -9,17 +14,18 @@ class CmdInstall(CmdBase):
         try:
             self.repo.install()
         except Exception:
-            logger.error("failed to install dvc hooks")
+            logger.exception("failed to install dvc hooks")
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    INSTALL_HELP = "Install dvc hooks into the repository."
+    INSTALL_HELP = "Install DVC git hooks into the repository."
     install_parser = subparsers.add_parser(
         "install",
         parents=[parent_parser],
-        description=INSTALL_HELP,
+        description=append_doc_link(INSTALL_HELP, "install"),
         help=INSTALL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     install_parser.set_defaults(func=CmdInstall)

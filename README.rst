@@ -1,4 +1,4 @@
-.. image:: https://dvc.org/static/img/logo-owl-readme.png
+.. image:: https://dvc.org/static/img/logo-github-readme.png
   :target: https://dvc.org
   :alt: DVC logo
 
@@ -6,7 +6,7 @@
 • `Docs <https://dvc.org/doc>`_
 • `Twitter <https://twitter.com/iterativeai>`_
 • `Chat (Community & Support) <https://dvc.org/chat>`_
-• `Tutorial <https://dvc.org/doc/tutorial>`_
+• `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
 
 .. image:: https://travis-ci.com/iterative/dvc.svg?branch=master
@@ -25,20 +25,25 @@
   :target: https://codecov.io/gh/iterative/dvc
   :alt: Codecov
 
+.. image:: https://img.shields.io/badge/patreon-donate-green.svg
+  :target: https://www.patreon.com/DVCorg/overview
+  :alt: Donate
+
 |
 
 **Data Science Version Control** or **DVC** is an **open-source** tool for data science and
-machine learning projects. With a simple and flexible Git-like architecture and interface it
-helps data scientists:
+machine learning projects. Key features:
 
-#. manage **machine learning models** - versioning, including data sets and transformations (scripts) that were
-   used to generate models;
+#. simple **command line** Git-like experience. Does not require installing and maintaining
+   any databases. Does not depend on any proprietary online services;
 
-#. make projects **reproducible**;
+#. it manages and versions **datasets** and **machine learning models**. Data is saved in
+   S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS or even local HDD RAID;
 
-#. make projects **shareable**;
+#. it makes projects **reproducible** and **shareable**, it helps answering question how
+   the model was build;
 
-#. manage experiments with branching and **metrics** tracking;
+#. it helps manage experiments with Git tags or branches and **metrics** tracking;
 
 It aims to replace tools like Excel and Docs that are being commonly used as a knowledge repo and
 a ledger for the team, ad-hoc scripts to track and move deploy different model versions, ad-hoc
@@ -50,13 +55,29 @@ data file suffixes and prefixes.
 How DVC works
 =============
 
-DVC is compatible with Git for storing code and the dependency graph (DAG), but not data files cache.
-To store and share data files cache DVC supports remotes - any cloud (S3, Azure, Google Cloud, etc) or any on-premise
-network storage (via SSH, for example).
+We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ to better understand what DVC
+is and how does it fit your scenarios.
+
+The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-lfs to be precise) + ``makefiles``
+made right and tailored specifically for ML and Data Science scenarios.
+
+#. ``Git/Git-lfs`` part - DVC helps you storing and sharing data artifacts, models. It connects them with your
+   Git repository.
+#. ``Makefiles`` part - DVC describes how one data or model artifact was build from another data.
+
+DVC usually runs along with Git. Git is used as usual to store and version code and DVC meta-files. DVC helps
+to store data and model files seamlessly out of Git while preserving almost the same user experience as if they
+were stored in Git itself. To store and share data files cache DVC supports remotes - any cloud (S3, Azure,
+Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
 .. image:: https://dvc.org/static/img/flow.gif
    :target: https://dvc.org/static/img/flow.gif
    :alt: how_dvc_works
+
+DVC pipelines (aka computational graph) feature connects code and data together. In a very explicit way you can
+specify, run, and save information that a certain command with certain dependencies needs to be run to produce
+a model. See the quick start section below or check `Get Started <https://dvc.org/doc/get-started>`_ tutorial to
+learn more.
 
 Quick start
 ===========
@@ -66,7 +87,7 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full versio
 +-----------------------------------+-------------------------------------------------------------------+
 | Step                              | Command                                                           |
 +===================================+===================================================================+
-| Track code and data together      | | ``$ git add train.py``                                          |
+| Track data                        | | ``$ git add train.py``                                          |
 |                                   | | ``$ dvc add images.zip``                                        |
 +-----------------------------------+-------------------------------------------------------------------+
 | Connect code and data by commands | | ``$ dvc run -d images.zip -o images/ unzip -q images.zip``      |
@@ -79,27 +100,30 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full versio
 |                                   | | ``$ git commit -m 'The baseline model'``                        |
 |                                   | | ``$ git push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
-| Share data and ML models          | | ``$ dvc remote add myremote s3://mybucket/image_cnn``           |
-|                                   | | ``$ dvc config core.remote myremote``                           |
+| Share data and ML models          | | ``$ dvc remote add myremote -d s3://mybucket/image_cnn``        |
 |                                   | | ``$ dvc push``                                                  |
 +-----------------------------------+-------------------------------------------------------------------+
 
 Installation
 ============
 
-There are three options to install DVC: ``pip``, Homebrew, or an OS-specific package:
+Read this `instruction <https://dvc.org/doc/get-started/install>`_ to get more details. There are three
+options to install DVC: ``pip``, Homebrew, or an OS-specific package:
 
 pip (PyPI)
 ----------
 
-Stable
-^^^^^^
 .. code-block:: bash
 
    pip install dvc
 
-Development
-^^^^^^^^^^^
+Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
+one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all_remotes`` to include them all.
+The command should look like this: ``pip install dvc[s3]`` - it installs the ``boto3`` library along with
+DVC to support the AWS S3 storage.
+
+To install the development version, run:
+
 .. code-block:: bash
 
    pip install git+git://github.com/iterative/dvc
@@ -123,7 +147,7 @@ Package
 Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
 GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
-Ubuntu / Debian (apt)
+Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
 .. code-block:: bash
 
@@ -139,7 +163,7 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Arch linux (AUR)
+Arch Linux (AUR)
 ^^^^^^^^^^^^^^^^
 *Unofficial package*, any inquiries regarding the AUR package,
 `refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.

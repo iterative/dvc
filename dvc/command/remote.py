@@ -1,12 +1,16 @@
 from __future__ import unicode_literals
 
+import argparse
 import os
 import re
+import logging
 
-import dvc.logger as logger
-from dvc.command.base import fix_subparsers
-from dvc.config import Config
+from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
+from dvc.config import Config
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRemoteAdd(CmdConfig):
@@ -32,12 +36,20 @@ class CmdRemoteAdd(CmdConfig):
         from dvc.remote import _get, RemoteLOCAL
 
         remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
-        if remote == RemoteLOCAL:
+        if remote == RemoteLOCAL and not self.args.url.startswith("remote://"):
             self.args.url = self.resolve_path(
                 self.args.url, self.configobj.filename
             )
 
         section = Config.SECTION_REMOTE_FMT.format(self.args.name)
+        if (section in self.configobj.keys()) and not self.args.force:
+            logger.error(
+                "Remote with name {} already exists. "
+                "Use -f (--force) to overwrite remote "
+                "with new value".format(self.args.name)
+            )
+            return 1
+
         ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
         if ret != 0:
             return ret
@@ -119,12 +131,13 @@ class CmdRemoteList(CmdConfig):
 def add_parser(subparsers, parent_parser):
     from dvc.command.config import parent_config_parser
 
-    REMOTE_HELP = "Manage set of tracked repositories."
+    REMOTE_HELP = "Manage remote storage configuration."
     remote_parser = subparsers.add_parser(
         "remote",
         parents=[parent_parser],
-        description=REMOTE_HELP,
+        description=append_doc_link(REMOTE_HELP, "remote"),
         help=REMOTE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     remote_subparsers = remote_parser.add_subparsers(
@@ -138,14 +151,14 @@ def add_parser(subparsers, parent_parser):
     remote_add_parser = remote_subparsers.add_parser(
         "add",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_ADD_HELP,
+        description=append_doc_link(REMOTE_ADD_HELP, "remote-add"),
         help=REMOTE_ADD_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_add_parser.add_argument("name", help="Name.")
     remote_add_parser.add_argument(
         "url",
-        help="URL. See full list of supported urls at "
-        "https://dvc.org/doc/commands-reference/remote",
+        help="URL. See full list of supported urls at " "man.dvc.org/remote",
     )
     remote_add_parser.add_argument(
         "-d",
@@ -154,14 +167,22 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Set as default remote.",
     )
+    remote_add_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Force overwriting existing configs",
+    )
     remote_add_parser.set_defaults(func=CmdRemoteAdd)
 
     REMOTE_DEFAULT_HELP = "Set/unset default remote."
     remote_default_parser = remote_subparsers.add_parser(
         "default",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_DEFAULT_HELP,
+        description=append_doc_link(REMOTE_DEFAULT_HELP, "remote-default"),
         help=REMOTE_DEFAULT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_default_parser.add_argument(
         "name", nargs="?", help="Name of the remote."
@@ -179,8 +200,9 @@ def add_parser(subparsers, parent_parser):
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_REMOVE_HELP,
+        description=append_doc_link(REMOTE_REMOVE_HELP, "remote-remove"),
         help=REMOTE_REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_remove_parser.add_argument("name", help="Name")
     remote_remove_parser.set_defaults(func=CmdRemoteRemove)
@@ -189,8 +211,9 @@ def add_parser(subparsers, parent_parser):
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_MODIFY_HELP,
+        description=append_doc_link(REMOTE_MODIFY_HELP, "remote-modify"),
         help=REMOTE_MODIFY_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_modify_parser.add_argument("name", help="Name.")
     remote_modify_parser.add_argument("option", help="Option.")
@@ -204,11 +227,12 @@ def add_parser(subparsers, parent_parser):
     )
     remote_modify_parser.set_defaults(func=CmdRemoteModify)
 
-    REMOTE_LIST_HELP = "List remotes."
+    REMOTE_LIST_HELP = "List available remotes."
     remote_list_parser = remote_subparsers.add_parser(
         "list",
         parents=[parent_config_parser, parent_parser],
-        description=REMOTE_LIST_HELP,
+        description=append_doc_link(REMOTE_LIST_HELP, "remote-list"),
         help=REMOTE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remote_list_parser.set_defaults(func=CmdRemoteList)

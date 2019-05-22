@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import argparse
+import logging
+
+from dvc.command.base import CmdBaseNoRepo, append_doc_link
 
 
-class CmdInit(object):
-    def __init__(self, args):
-        self.args = args
+logger = logging.getLogger(__name__)
 
-    def run_cmd(self):
+
+class CmdInit(CmdBaseNoRepo):
+    def run(self):
         from dvc.repo import Repo
         from dvc.exceptions import InitError
 
@@ -17,18 +20,25 @@ class CmdInit(object):
             )
             self.config = self.repo.config
         except InitError:
-            logger.error("failed to initiate dvc")
+            logger.exception("failed to initiate dvc")
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
     """Setup parser for `dvc init`."""
-    INIT_HELP = (
-        "Initialize dvc over a directory " "(should already be a git dir)."
+    INIT_HELP = "Initialize DVC in the current directory."
+    INIT_DESCRIPTION = (
+        "Initialize DVC in the current directory. Expects directory\n"
+        "to be a Git repository unless --no-scm option is specified."
     )
+
     init_parser = subparsers.add_parser(
-        "init", parents=[parent_parser], description=INIT_HELP, help=INIT_HELP
+        "init",
+        parents=[parent_parser],
+        description=append_doc_link(INIT_DESCRIPTION, "init"),
+        help=INIT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     init_parser.add_argument(
         "--no-scm",
@@ -42,6 +52,9 @@ def add_parser(subparsers, parent_parser):
         "--force",
         action="store_true",
         default=False,
-        help="Overwrite '.dvc' if it exists. Will remove all local cache.",
+        help=(
+            "Overwrite existing '.dvc' directory. "
+            "This operation removes local cache."
+        ),
     )
     init_parser.set_defaults(func=CmdInit)

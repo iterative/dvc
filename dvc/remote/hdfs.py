@@ -4,16 +4,21 @@ import os
 import re
 import getpass
 import posixpath
+import logging
 from subprocess import Popen, PIPE
 
-import dvc.logger as logger
 from dvc.config import Config
-from dvc.remote.base import RemoteBase, RemoteCmdError
-from dvc.utils import fix_env, tmp_fname
+from dvc.scheme import Schemes
+from dvc.path.hdfs import PathHDFS
+from dvc.remote.base import RemoteBASE, RemoteCmdError
+from dvc.utils import fix_env
 
 
-class RemoteHDFS(RemoteBase):
-    scheme = "hdfs"
+logger = logging.getLogger(__name__)
+
+
+class RemoteHDFS(RemoteBASE):
+    scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
 
@@ -27,7 +32,7 @@ class RemoteHDFS(RemoteBase):
                 Config.SECTION_REMOTE_USER, getpass.getuser()
             )
 
-        self.path_info = {"scheme": "hdfs", "user": self.user}
+        self.path_info = PathHDFS(user=self.user)
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
@@ -60,77 +65,76 @@ class RemoteHDFS(RemoteBase):
         assert match is not None
         return match.group(gname)
 
-    def checksum(self, path_info):
+    def get_file_checksum(self, path_info):
         regex = r".*\t.*\t(?P<checksum>.*)"
         stdout = self.hadoop_fs(
-            "checksum {}".format(path_info["path"]), user=path_info["user"]
+            "checksum {}".format(path_info.path), user=path_info.user
         )
         return self._group(regex, stdout, "checksum")
 
     def copy(self, from_info, to_info):
-        dname = posixpath.dirname(to_info["path"])
-        self.hadoop_fs("mkdir -p {}".format(dname), user=to_info["user"])
+        dname = posixpath.dirname(to_info.path)
+        self.hadoop_fs("mkdir -p {}".format(dname), user=to_info.user)
         self.hadoop_fs(
-            "cp -f {} {}".format(from_info["path"], to_info["path"]),
-            user=to_info["user"],
+            "cp -f {} {}".format(from_info.path, to_info.path),
+            user=to_info.user,
         )
 
     def rm(self, path_info):
-        self.hadoop_fs(
-            "rm {}".format(path_info["path"]), user=path_info["user"]
-        )
-
-    def save_info(self, path_info):
-        if path_info["scheme"] != "hdfs":
-            raise NotImplementedError
-
-        assert path_info.get("path")
-
-        return {self.PARAM_CHECKSUM: self.checksum(path_info)}
+        self.hadoop_fs("rm -f {}".format(path_info.path), user=path_info.user)
 
     def remove(self, path_info):
-        if path_info["scheme"] != "hdfs":
+        if path_info.scheme != "hdfs":
             raise NotImplementedError
 
-        assert path_info.get("path")
+        assert path_info.path
 
-        logger.debug("Removing {}".format(path_info["path"]))
+        logger.debug("Removing {}".format(path_info.path))
 
         self.rm(path_info)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
-        assert path_info["scheme"] == "hdfs"
+        assert path_info.scheme == "hdfs"
 
         try:
-            self.hadoop_fs("test -e {}".format(path_info["path"]))
+            self.hadoop_fs("test -e {}".format(path_info.path))
             return True
         except RemoteCmdError:
             return False
 
-    def upload(self, from_infos, to_infos, tmp_infos, names=None):
+    def upload(
+        self,
+        from_infos,
+        to_infos,
+        tmp_infos,
+        names=None,
+        no_progress_bar=False,
+    ):
         names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
-        for from_info, to_info, tmp_infos, name in zip(from_infos, to_infos, tmp_infos, names):
-            if to_info["scheme"] != "hdfs" or tmp_info["scheme"] != "hdfs":
+        for from_info, to_info, tmp_info, name in zip(
+            from_infos, to_infos, tmp_infos, names
+        ):
+            if to_info.scheme != "hdfs" or tmp_info.scheme != "hdfs":
                 raise NotImplementedError
 
-            if from_info["scheme"] != "local":
+            if from_info.scheme != "local":
                 raise NotImplementedError
 
             self.hadoop_fs(
-                "mkdir -p {}".format(posixpath.dirname(to_info["path"])),
+                "mkdir -p {}".format(posixpath.dirname(to_info.path)),
+                user=to_info.user,
+            )
+
+            self.hadoop_fs(
+                "copyFromLocal {} {}".format(from_info.path, tmp_info.path),
                 user=to_info["user"],
             )
 
             self.hadoop_fs(
-                "copyFromLocal {} {}".format(from_info["path"], tmp_info["path"]),
-                user=to_info["user"],
-            )
-
-            self.hadoop_fs(
-                "mv {} {}".format(tmp_info["path"], to_info["path"]),
-                user=to_info["user"],
+                "mv {} {}".format(tmp_info.path, to_info.path),
+                user=to_info.user,
             )
 
     def download(
@@ -144,27 +148,29 @@ class RemoteHDFS(RemoteBase):
     ):
         names = self._verify_path_args(from_infos, to_infos, tmp_infos, names)
 
-        for to_info, from_info, tmp_infos, name in zip(to_infos, from_infos, tmp_infos, names):
-            if from_info["scheme"] != "hdfs":
+        for to_info, from_info, tmp_info, name in zip(
+            to_infos, from_infos, tmp_infos, names
+        ):
+            if from_info.scheme != "hdfs":
                 raise NotImplementedError
 
-            if to_info["scheme"] == "hdfs":
+            if to_info.scheme == "hdfs":
                 self.copy(from_info, to_info)
                 continue
 
-            if to_info["scheme"] != "local" or tmp_info["scheme"] != "local":
+            if to_info.scheme != "local" or tmp_info.scheme != "local":
                 raise NotImplementedError
 
-            dname = os.path.dirname(to_info["path"])
+            dname = os.path.dirname(to_info.path)
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
             self.hadoop_fs(
-                "copyToLocal {} {}".format(from_info["path"], tmp_info["path"]),
-                user=from_info["user"],
+                "copyToLocal {} {}".format(from_info.path, tmp_info.path),
+                user=from_info.user,
             )
 
-            os.rename(tmp_info["path"], to_info["path"])
+            os.rename(tmp_info.path, to_info.path)
 
     def list_cache_paths(self):
         try:

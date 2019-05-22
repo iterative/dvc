@@ -1,14 +1,16 @@
 import os
 
 from dvc.exceptions import MoveNotDataSourceError
+from dvc.repo.scm_context import scm_context
 
 
 def _expand_target_path(from_path, to_path):
-    if os.path.isdir(to_path) and not os.path.isdir(from_path):
+    if os.path.isdir(to_path):
         return os.path.join(to_path, os.path.basename(from_path))
     return to_path
 
 
+@scm_context
 def move(self, from_path, to_path):
     """
     Renames an output file and modifies the stage associated
@@ -57,12 +59,10 @@ def move(self, from_path, to_path):
         )
 
     to_out = Output.loads_from(
-        stage, [os.path.basename(to_path)], out.cache, out.metric
+        stage, [os.path.basename(to_path)], out.use_cache, out.metric
     )[0]
 
     with self.state:
         out.move(to_out)
 
     stage.dump()
-
-    self.remind_to_git_add()

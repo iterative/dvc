@@ -1,13 +1,21 @@
 from __future__ import unicode_literals
 
+import errno
 import os
 import csv
 import json
-from jsonpath_rw import parse
+import logging
 
-import dvc.logger as logger
+from jsonpath_ng.ext import parse
+
 from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
-from dvc.utils.compat import builtin_str, open
+from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
+
+NO_METRICS_FILE_AT_REFERENCE_WARNING = (
+    "Metrics file '{}' does not exist at the reference '{}'."
+)
+
+logger = logging.getLogger(__name__)
 
 
 def _read_metric_json(fd, json_path):
@@ -66,38 +74,107 @@ def _read_typed_metric(typ, xpath, fd):
     return ret
 
 
-def _read_metric(path, typ=None, xpath=None, branch=None):
-    ret = None
-    if not os.path.exists(path):
-        return ret
+def _format_csv(content, delimiter):
+    """Format delimited text to have same column width.
 
+    Args:
+        content (str): The content of a metric.
+        delimiter (str): Value separator
+
+    Returns:
+        str: Formatted content.
+
+    Example:
+
+        >>> content = (
+            "value_mse,deviation_mse,data_set\n"
+            "0.421601,0.173461,train\n"
+            "0.67528,0.289545,testing\n"
+            "0.671502,0.297848,validation\n"
+        )
+        >>> _format_csv(content, ",")
+
+        "value_mse  deviation_mse   data_set\n"
+        "0.421601   0.173461        train\n"
+        "0.67528    0.289545        testing\n"
+        "0.671502   0.297848        validation\n"
+    """
+    reader = csv_reader(StringIO(content), delimiter=builtin_str(delimiter))
+    rows = [row for row in reader]
+    max_widths = [max(map(len, column)) for column in zip(*rows)]
+
+    lines = [
+        " ".join(
+            "{entry:{width}}".format(entry=entry, width=width + 2)
+            for entry, width in zip(row, max_widths)
+        )
+        for row in rows
+    ]
+
+    return "\n".join(lines)
+
+
+def _format_output(content, typ):
+    """Tabularize the content according to its type.
+
+    Args:
+        content (str): The content of a metric.
+        typ (str): The type of metric -- (raw|json|tsv|htsv|csv|hcsv).
+
+    Returns:
+        str: Content in a raw or tabular format.
+    """
+
+    if "csv" in str(typ):
+        return _format_csv(content, delimiter=",")
+
+    if "tsv" in str(typ):
+        return _format_csv(content, delimiter="\t")
+
+    return content
+
+
+def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     typ = typ.lower().strip() if typ else typ
-    xpath = xpath.strip() if xpath else xpath
     try:
-        with open(path, "r") as fd:
-            if not xpath:
-                ret = fd.read().strip()
-            else:
-                ret = _read_typed_metric(typ, xpath, fd)
+        if xpath:
+            return _read_typed_metric(typ, xpath.strip(), fd)
+        else:
+            return _format_output(fd.read().strip(), typ)
     # Json path library has to be replaced or wrapped in
     # order to fix this too broad except clause.
     except Exception:
-        logger.warning(
+        logger.exception(
             "unable to read metric in '{}' in branch '{}'".format(
-                path, branch
-            ),
-            parse_exception=True,
+                rel_path, branch
+            )
         )
+        return None
 
-    return ret
 
+def _collect_metrics(repo, path, recursive, typ, xpath, branch):
+    """Gather all the metric outputs.
 
-def _collect_metrics(self, path, recursive, typ, xpath, branch):
-    outs = [out for stage in self.stages() for out in stage.outs]
+    Args:
+        path (str): Path to a metric file or a directory.
+        recursive (bool): If path is a directory, do a recursive search for
+            metrics on the given path.
+        typ (str): The type of metric to search for, could be one of the
+            following (raw|json|tsv|htsv|csv|hcsv).
+        xpath (str): Path to search for.
+        branch (str): Branch to look up for metrics.
+
+    Returns:
+        list(tuple): (output, typ, xpath)
+            - output:
+            - typ:
+            - xpath:
+    """
+    outs = [out for stage in repo.stages() for out in stage.outs]
 
     if path:
         try:
-            outs = self.find_outs_by_path(path, outs=outs, recursive=recursive)
+            outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
         except OutputNotFoundError:
             logger.debug(
                 "stage file not for found for '{}' in branch '{}'".format(
@@ -123,16 +200,54 @@ def _collect_metrics(self, path, recursive, typ, xpath, branch):
     return res
 
 
-def _read_metrics(self, metrics, branch):
+def _read_metrics(repo, metrics, branch):
+    """Read the content of each metric file and format it.
+
+    Args:
+        metrics (list): List of metric touples
+        branch (str): Branch to look up for metrics.
+
+    Returns:
+        A dict mapping keys with metrics path name and content.
+        For example:
+
+        {'metric.csv': ("value_mse  deviation_mse   data_set\n"
+                        "0.421601   0.173461        train\n"
+                        "0.67528    0.289545        testing\n"
+                        "0.671502   0.297848        validation\n")}
+    """
     res = {}
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
+        if not typ:
+            typ = os.path.splitext(out.path.lower())[1].replace(".", "")
         if out.use_cache:
-            path = self.cache.local.get(out.checksum)
+            open_fun = open
+            path = repo.cache.local.get(out.checksum)
         else:
+            open_fun = repo.tree.open
             path = out.path
+        try:
 
-        metric = _read_metric(path, typ=typ, xpath=xpath, branch=branch)
+            with open_fun(path) as fd:
+                metric = _read_metric(
+                    fd,
+                    typ=typ,
+                    xpath=xpath,
+                    rel_path=out.rel_path,
+                    branch=branch,
+                )
+        except IOError as e:
+            if e.errno == errno.ENOENT:
+                logger.warning(
+                    NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
+                        out.rel_path, branch
+                    )
+                )
+                metric = None
+            else:
+                raise
+
         if not metric:
             continue
 
@@ -142,7 +257,7 @@ def _read_metrics(self, metrics, branch):
 
 
 def show(
-    self,
+    repo,
     path=None,
     typ=None,
     xpath=None,
@@ -151,11 +266,10 @@ def show(
     recursive=False,
 ):
     res = {}
-    for branch in self.scm.brancher(
-        all_branches=all_branches, all_tags=all_tags
-    ):
-        entries = _collect_metrics(self, path, recursive, typ, xpath, branch)
-        metrics = _read_metrics(self, entries, branch)
+
+    for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
+        entries = _collect_metrics(repo, path, recursive, typ, xpath, branch)
+        metrics = _read_metrics(repo, entries, branch)
         if metrics:
             res[branch] = metrics
 

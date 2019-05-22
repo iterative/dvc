@@ -5,10 +5,11 @@ from __future__ import unicode_literals
 
 import sys
 import argparse
+import logging
 
-import dvc.logger as logger
 from dvc.command.base import fix_subparsers
 import dvc.command.init as init
+import dvc.command.pkg as pkg
 import dvc.command.destroy as destroy
 import dvc.command.remove as remove
 import dvc.command.move as move
@@ -30,12 +31,17 @@ import dvc.command.lock as lock
 import dvc.command.pipeline as pipeline
 import dvc.command.daemon as daemon
 import dvc.command.commit as commit
+import dvc.command.tag as tag
+import dvc.command.diff as diff
+import dvc.command.version as version
 from dvc.exceptions import DvcParserError
-from dvc import VERSION
 
+
+logger = logging.getLogger(__name__)
 
 COMMANDS = [
     init,
+    pkg,
     destroy,
     add,
     remove,
@@ -45,7 +51,6 @@ COMMANDS = [
     repro,
     data_sync,
     gc,
-    add,
     imp,
     config,
     checkout,
@@ -58,6 +63,9 @@ COMMANDS = [
     pipeline,
     daemon,
     commit,
+    tag,
+    diff,
+    version,
 ]
 
 
@@ -82,7 +90,9 @@ class VersionAction(argparse.Action):  # pragma: no cover
     """Shows dvc version and exits."""
 
     def __call__(self, parser, namespace, values, option_string=None):
-        print(VERSION)
+        from dvc import __version__
+
+        print(__version__)
         sys.exit(0)
 
 

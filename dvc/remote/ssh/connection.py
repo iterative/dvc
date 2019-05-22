@@ -1,17 +1,22 @@
+import errno
 import os
 import posixpath
+import logging
+from stat import S_ISDIR
 
 try:
     import paramiko
 except ImportError:
     paramiko = None
 
-import dvc.logger as logger
 from dvc.utils import tmp_fname
 from dvc.utils.compat import makedirs
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
+
+
+logger = logging.getLogger(__name__)
 
 
 def sizeof_fmt(num, suffix="B"):
@@ -68,7 +73,7 @@ class SSHConnection:
 
         self._ssh.close()
 
-    def file_exists(self, path):
+    def exists(self, path):
         self._sftp_connect()
         try:
             return self._sftp.stat(path)
@@ -114,7 +119,7 @@ class SSHConnection:
                 "a file with the same name '{}' already exists".format(path)
             )
 
-        head, tail = os.path.split(path)
+        head, tail = posixpath.split(path)
 
         if head:
             self.makedirs(head)
@@ -122,33 +127,83 @@ class SSHConnection:
         if tail:
             self._sftp.mkdir(path)
 
-    def walk_files(self, directory):
-        from stat import S_ISLNK, S_ISDIR, S_ISREG
+    def walk(self, directory, topdown=True):
+        # NOTE: original os.walk() implementation [1] with default options was
+        # used as a template.
+        #
+        # [1] https://github.com/python/cpython/blob/master/Lib/os.py
 
         self._sftp_connect()
 
-        for entry in self._sftp.listdir_attr(directory):
-            path = os.path.join(directory, entry.filename)
+        try:
+            dir_entries = self._sftp.listdir_attr(directory)
+        except IOError as exc:
+            raise DvcException(
+                "couldn't get the '{}' remote directory files list".format(
+                    directory
+                ),
+                cause=exc,
+            )
 
-            if S_ISLNK(entry.st_mode):
-                path = self._sftp.readlink(directory)
-                entry = self._sftp.stat(path)
-
+        dirs = []
+        nondirs = []
+        for entry in dir_entries:
+            name = entry.filename
             if S_ISDIR(entry.st_mode):
-                for inner_path in self.walk_files(path):
-                    yield inner_path
+                dirs.append(name)
+            else:
+                nondirs.append(name)
 
-            elif S_ISREG(entry.st_mode):
-                yield path
+        if topdown:
+            yield directory, dirs, nondirs
+
+        for dname in dirs:
+            newpath = posixpath.join(directory, dname)
+            for entry in self.walk(newpath, topdown=topdown):
+                yield entry
+
+        if not topdown:
+            yield directory, dirs, nondirs
+
+    def walk_files(self, directory):
+        for root, dirs, files in self.walk(directory):
+            for fname in files:
+                yield posixpath.join(root, fname)
+
+    def _remove_file(self, path):
+        try:
+            self._sftp.remove(path)
+        except IOError as exc:
+            if exc.errno != errno.ENOENT:
+                raise
+
+    def _remove_dir(self, path):
+        for root, dirs, files in self.walk(path, topdown=False):
+            for fname in files:
+                path = posixpath.join(root, fname)
+                self._remove_file(path)
+
+            for dname in dirs:
+                path = posixpath.join(root, dname)
+                self._sftp.rmdir(dname)
+        try:
+            self._sftp.rmdir(path)
+        except IOError as exc:
+            if exc.errno != errno.ENOENT:
+                raise
 
     def remove(self, path):
         self._sftp_connect()
-        self._sftp.remove(path)
+
+        if self.isdir(path):
+            self._remove_dir(path)
+        else:
+            self._remove_file(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
 
-        makedirs(posixpath.dirname(dest), exist_ok=True)
+        makedirs(os.path.dirname(dest), exist_ok=True)
         tmp_file = tmp_fname(dest)
 
         if no_progress_bar:
@@ -160,7 +215,15 @@ class SSHConnection:
             self._sftp.get(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
 
+        if os.path.exists(dest):
+            os.remove(dest)
+
         os.rename(tmp_file, dest)
+
+    def move(self, src, dst):
+        self.makedirs(posixpath.dirname(dst))
+        self._sftp_connect()
+        self._sftp.rename(src, dst)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
@@ -172,7 +235,7 @@ class SSHConnection:
             self._sftp.put(src, tmp_file)
         else:
             if not progress_title:
-                progress_title = os.path.basename(dest)
+                progress_title = posixpath.basename(dest)
 
             self._sftp.put(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)

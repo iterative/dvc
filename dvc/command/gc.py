@@ -1,10 +1,14 @@
 from __future__ import unicode_literals
 
+import argparse
 import os
 import dvc.prompt as prompt
-import dvc.logger as logger
+import logging
 
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdGC(CmdBase):
@@ -46,13 +50,17 @@ class CmdGC(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    GC_HELP = (
-        "Collect garbage from your DVC cache. \n"
-        "Deletes all files in the cache which are not in use by the "
-        "specified git references (defaults to just HEAD)."
+    GC_HELP = "Collect unused data from DVC cache or a remote storage."
+    GC_DESCRIPTION = (
+        "Deletes all files in the cache or a remote which are not in\n"
+        "use by the specified git references (defaults to just HEAD)."
     )
     gc_parser = subparsers.add_parser(
-        "gc", parents=[parent_parser], description=GC_HELP, help=GC_HELP
+        "gc",
+        parents=[parent_parser],
+        description=append_doc_link(GC_DESCRIPTION, "gc"),
+        help=GC_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     gc_parser.add_argument(
         "-a",
@@ -76,7 +84,7 @@ def add_parser(subparsers, parent_parser):
         help="Collect garbage in remote repository.",
     )
     gc_parser.add_argument(
-        "-r", "--remote", help="Remote repository to collect garbage in."
+        "-r", "--remote", help="Remote storage to collect garbage in."
     )
     gc_parser.add_argument(
         "-f",

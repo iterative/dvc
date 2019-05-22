@@ -3,13 +3,17 @@ from __future__ import unicode_literals
 import sys
 import os
 import time
+import logging
 import requests
 import colorama
+from pkg_resources import parse_version
 
-import dvc.logger as logger
-from dvc import VERSION_BASE
+from dvc import __version__
 from dvc.lock import Lock, LockError
-from dvc.utils import is_binary
+from dvc.utils import is_binary, boxify
+
+
+logger = logging.getLogger(__name__)
 
 
 class Updater(object):  # pragma: no cover
@@ -22,7 +26,7 @@ class Updater(object):  # pragma: no cover
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
         self.lock = Lock(dvc_dir, self.updater_file + ".lock")
-        self.current = VERSION_BASE
+        self.current = parse_version(__version__).base_version
 
     def _is_outdated_file(self):
         ctime = os.path.getmtime(self.updater_file)
@@ -89,16 +93,7 @@ class Updater(object):  # pragma: no cover
             json.dump(info, fobj)
 
     def _is_outdated(self):
-        l_major, l_minor, l_patch = [int(x) for x in self.latest.split(".")]
-        c_major, c_minor, c_patch = [int(x) for x in self.current.split(".")]
-
-        if l_major != c_major:
-            return l_major > c_major
-
-        if l_minor != c_minor:
-            return l_minor > c_minor
-
-        return l_patch > c_patch
+        return parse_version(self.current) < parse_version(self.latest)
 
     def _notify(self):
         if not sys.stdout.isatty():
@@ -118,7 +113,7 @@ class Updater(object):  # pragma: no cover
             latest=self.latest,
         )
 
-        logger.box(message, border_color="yellow")
+        logger.info(boxify(message, border_color="yellow"))
 
     def _get_update_instructions(self):
         instructions = {

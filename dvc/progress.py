@@ -8,6 +8,8 @@ from dvc.utils.compat import str
 import sys
 import threading
 
+CLEARLINE_PATTERN = "\r\x1b[K"
+
 
 class Progress(object):
     """
@@ -30,13 +32,19 @@ class Progress(object):
         """Returns if all targets have finished."""
         return self._n_total == self._n_finished
 
-    def _clearln(self):
-        self._print("\r\x1b[K", end="")
+    def clearln(self):
+        self._print(CLEARLINE_PATTERN, end="")
 
     def _writeln(self, line):
-        self._clearln()
+        self.clearln()
         self._print(line, end="")
         sys.stdout.flush()
+
+    def reset(self):
+        with self._lock:
+            self._n_total = 0
+            self._n_finished = 0
+            self._line = None
 
     def refresh(self, line=None):
         """Refreshes progress bar."""
@@ -64,7 +72,7 @@ class Progress(object):
             pbar = self._bar(name, 100, 100)
 
             if sys.stdout.isatty():
-                self._clearln()
+                self.clearln()
 
             self._print(pbar)
 
@@ -99,9 +107,11 @@ class Progress(object):
 
     @staticmethod
     def _print(*args, **kwargs):
-        import dvc.logger as logger
+        import logging
 
-        if logger.is_quiet():
+        logger = logging.getLogger(__name__)
+
+        if logger.getEffectiveLevel() == "CRITICAL":
             return
 
         print(*args, **kwargs)
@@ -109,26 +119,36 @@ class Progress(object):
     def __enter__(self):
         self._lock.acquire(True)
         if self._line is not None:
-            self._clearln()
+            self.clearln()
 
     def __exit__(self, typ, value, tbck):
         if self._line is not None:
             self.refresh()
         self._lock.release()
 
+    def __call__(self, seq, name="", total=None):
+        if total is None:
+            total = len(seq)
 
-def progress_aware(f):
-    """ Decorator to add a new line if progress bar hasn't finished  """
-    from functools import wraps
+        self.update_target(name, 0, total)
+        for done, item in enumerate(seq, start=1):
+            yield item
+            self.update_target(name, done, total)
+        self.finish_target(name)
 
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        if not progress.is_finished:
-            progress._print()
 
-        return f(*args, **kwargs)
+class ProgressCallback(object):
+    def __init__(self, total):
+        self.total = total
+        self.current = 0
+        progress.reset()
 
-    return wrapper
+    def update(self, name, progress_to_add=1):
+        self.current += progress_to_add
+        progress.update_target(name, self.current, self.total)
+
+    def finish(self, name):
+        progress.finish_target(name)
 
 
 progress = Progress()  # pylint: disable=invalid-name

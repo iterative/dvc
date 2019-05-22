@@ -1,6 +1,10 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import colorama
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def fix_subparsers(subparsers):
@@ -18,6 +22,19 @@ def fix_subparsers(subparsers):
         subparsers.dest = "cmd"
 
 
+def append_doc_link(help_message, path):
+    if not path:
+        return help_message
+    doc_base = "https://man.dvc.org/"
+    return "{message}\ndocumentation: {blue}{base}{path}{nc}".format(
+        message=help_message,
+        base=doc_base,
+        path=path,
+        blue=colorama.Fore.CYAN,
+        nc=colorama.Fore.RESET,
+    )
+
+
 class CmdBase(object):
     def __init__(self, args):
         from dvc.repo import Repo
@@ -25,7 +42,6 @@ class CmdBase(object):
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args
-        self.set_loglevel(args)
 
     @property
     def default_targets(self):
@@ -36,15 +52,6 @@ class CmdBase(object):
         logger.warning(msg)
         return [Stage.STAGE_FILE]
 
-    @staticmethod
-    def set_loglevel(args):
-        """Sets log level from CLI arguments."""
-        if args.quiet:
-            logger.be_quiet()
-
-        elif args.verbose:
-            logger.be_verbose()
-
     def run_cmd(self):
         from dvc.lock import LockError
 
@@ -52,9 +59,17 @@ class CmdBase(object):
             with self.repo.lock:
                 return self.run()
         except LockError:
-            logger.error("failed to lock before running a command")
+            logger.exception("failed to lock before running a command")
             return 1
 
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):
         pass
+
+
+class CmdBaseNoRepo(CmdBase):
+    def __init__(self, args):
+        self.args = args
+
+    def run_cmd(self):
+        return self.run()

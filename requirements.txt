@@ -1,23 +1,22 @@
 azure-storage-blob==1.3.0
-boto3==1.9.86
+boto3==1.9.115
 ply>=3.9 # See https://github.com/pyinstaller/pyinstaller/issues/1945
 configparser>=3.5.0
 zc.lockfile>=1.2.1
 future>=0.16.0
 google-cloud-storage==1.13.0
-PyInstaller==3.3.1
+PyInstaller==3.4
 colorama>=0.3.9
 configobj>=5.0.6
 networkx>=2.1
-pyyaml>=3.12
 gitpython>=2.1.8
 setuptools>=34.0.0
 nanotime>=0.5.2
 pyasn1>=0.4.1
 schema>=0.6.7
 paramiko>=2.4.1
-jsonpath-rw==1.4.0
-requests>=2.18.4
+jsonpath-ng>=1.4.3
+requests>=2.22.0
 wheel>=0.31.1
 futures>=3.2.0; python_version == "2.7"
 grandalf==0.6
@@ -25,3 +24,10 @@ pydot>=1.2.4
 asciimatics>=1.10.0
 distro>=1.3.0
 appdirs>=1.4.3
+treelib>=1.5.5
+inflect>=2.1.0
+humanize>=0.5.1
+dulwich>=0.19.11
+ruamel.yaml>=0.15.91
+pathlib2==2.3.3; python_version == "2.7"
+oss2==2.6.1

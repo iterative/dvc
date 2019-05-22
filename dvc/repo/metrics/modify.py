@@ -11,7 +11,7 @@ def modify(repo, path, typ=None, xpath=None, delete=False):
 
     if out.scheme != "local":
         msg = "output '{}' scheme '{}' is not supported for metrics"
-        raise DvcException(msg.format(out.path, out.path_info["scheme"]))
+        raise DvcException(msg.format(out.path, out.path_info.scheme))
 
     if typ is not None:
         typ = typ.lower().strip()

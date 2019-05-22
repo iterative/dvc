@@ -1,8 +1,12 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import logging
+
 from dvc.command.data_sync import CmdDataBase
 from dvc.utils.compat import str
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDataStatus(CmdDataBase):
@@ -58,6 +62,6 @@ class CmdDataStatus(CmdDataBase):
                 logger.info(self.UP_TO_DATE_MSG)
 
         except Exception:
-            logger.error("failed to obtain data status")
+            logger.exception("failed to obtain data status")
             return 1
         return 0

@@ -1,9 +1,14 @@
 from __future__ import unicode_literals
 
+import argparse
+import logging
+
 import dvc.prompt as prompt
-import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDestroy(CmdBase):
@@ -24,21 +29,20 @@ class CmdDestroy(CmdBase):
 
             self.repo.destroy()
         except Exception:
-            logger.error("failed to destroy DVC")
+            logger.exception("failed to destroy DVC")
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    DESTROY_HELP = (
-        "Destroy dvc. Will remove all repo's information, "
-        "data files and cache."
-    )
+    DESTROY_HELP = "Remove DVC files, local DVC config and data cache."
+
     destroy_parser = subparsers.add_parser(
         "destroy",
         parents=[parent_parser],
-        description=DESTROY_HELP,
+        description=append_doc_link(DESTROY_HELP, "destroy"),
         help=DESTROY_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     destroy_parser.add_argument(
         "-f",

@@ -1,11 +1,16 @@
 from __future__ import unicode_literals
 
+import argparse
 import os
+import logging
 
-import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRepro(CmdBase):
@@ -34,15 +39,17 @@ class CmdRepro(CmdBase):
                     all_pipelines=self.args.all_pipelines,
                     ignore_build_cache=self.args.ignore_build_cache,
                     no_commit=self.args.no_commit,
+                    downstream=self.args.downstream,
                 )
 
                 if len(stages) == 0:
                     logger.info(CmdDataStatus.UP_TO_DATE_MSG)
 
                 if self.args.metrics:
-                    self.repo.metrics.show()
+                    metrics = self.repo.metrics.show()
+                    show_metrics(metrics)
             except DvcException:
-                logger.error()
+                logger.exception("")
                 ret = 1
                 break
 
@@ -51,15 +58,18 @@ class CmdRepro(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = "Reproduce DVC file. Default file name - 'Dvcfile'."
+    REPRO_HELP = "Check for changes and reproduce DVC file and dependencies."
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],
-        description=REPRO_HELP,
+        description=append_doc_link(REPRO_HELP, "repro"),
         help=REPRO_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     repro_parser.add_argument(
-        "targets", nargs="*", help="DVC file to reproduce."
+        "targets",
+        nargs="*",
+        help="DVC file to reproduce (default - 'Dvcfile').",
     )
     repro_parser.add_argument(
         "-f",
@@ -80,7 +90,7 @@ def add_parser(subparsers, parent_parser):
         "-c",
         "--cwd",
         default=os.path.curdir,
-        help="Directory within your repo to reroduce from.",
+        help="Directory within your repo to reproduce from.",
     )
     repro_parser.add_argument(
         "-m",
@@ -130,5 +140,11 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
+    )
+    repro_parser.add_argument(
+        "--downstream",
+        action="store_true",
+        default=False,
+        help="Reproduce the pipeline starting from the specified stage.",
     )
     repro_parser.set_defaults(func=CmdRepro)

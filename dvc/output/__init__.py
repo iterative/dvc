@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.config import Config
+from dvc.scheme import Schemes
 from dvc.utils.compat import urlparse, str
 
 from dvc.output.base import OutputBase
@@ -26,45 +26,76 @@ OUTS = [
 ]
 
 OUTS_MAP = {
-    "hdfs": OutputHDFS,
-    "s3": OutputS3,
-    "gs": OutputGS,
-    "ssh": OutputSSH,
-    "local": OutputLOCAL,
+    Schemes.HDFS: OutputHDFS,
+    Schemes.S3: OutputS3,
+    Schemes.GS: OutputGS,
+    Schemes.SSH: OutputSSH,
+    Schemes.LOCAL: OutputLOCAL,
 }
 
-SCHEMA = {
-    OutputBase.PARAM_PATH: str,
-    # NOTE: currently there are only 3 possible checksum names:
-    #
-    #    1) md5 (LOCAL, SSH, GS);
-    #    2) etag (S3);
-    #    3) checksum (HDFS);
-    #
-    # so when a few types of outputs share the same name, we only need
-    # specify it once.
+# NOTE: currently there are only 3 possible checksum names:
+#
+#    1) md5 (LOCAL, SSH, GS);
+#    2) etag (S3);
+#    3) checksum (HDFS);
+#
+# so when a few types of outputs share the same name, we only need
+# specify it once.
+CHECKSUM_SCHEMA = {
     schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
     schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
     schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(OutputBase.PARAM_CACHE): bool,
-    schema.Optional(OutputBase.PARAM_METRIC): OutputBase.METRIC_SCHEMA,
 }
 
+TAGS_SCHEMA = {schema.Optional(str): CHECKSUM_SCHEMA}
 
-def _get(stage, p, info, cache, metric):
+SCHEMA = CHECKSUM_SCHEMA.copy()
+SCHEMA[OutputBase.PARAM_PATH] = str
+SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)] = bool
+SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)] = OutputBase.METRIC_SCHEMA
+SCHEMA[schema.Optional(OutputBase.PARAM_TAGS)] = TAGS_SCHEMA
+SCHEMA[schema.Optional(OutputBase.PARAM_PERSIST)] = bool
+
+
+def _get(stage, p, info, cache, metric, persist=False, tags=None):
     parsed = urlparse(p)
+
     if parsed.scheme == "remote":
-        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.repo.config.config[name]
-        remote = Remote(stage.repo, sect)
+        settings = stage.repo.config.get_remote_settings(parsed.netloc)
+        remote = Remote(stage.repo, settings)
         return OUTS_MAP[remote.scheme](
-            stage, p, info, cache=cache, remote=remote, metric=metric
+            stage,
+            p,
+            info,
+            cache=cache,
+            remote=remote,
+            metric=metric,
+            persist=persist,
+            tags=tags,
         )
 
     for o in OUTS:
         if o.supported(p):
-            return o(stage, p, info, cache=cache, remote=None, metric=metric)
-    return OutputLOCAL(stage, p, info, cache=cache, remote=None, metric=metric)
+            return o(
+                stage,
+                p,
+                info,
+                cache=cache,
+                remote=None,
+                metric=metric,
+                persist=persist,
+                tags=tags,
+            )
+    return OutputLOCAL(
+        stage,
+        p,
+        info,
+        cache=cache,
+        remote=None,
+        metric=metric,
+        persist=persist,
+        tags=tags,
+    )
 
 
 def loadd_from(stage, d_list):
@@ -73,12 +104,33 @@ def loadd_from(stage, d_list):
         p = d.pop(OutputBase.PARAM_PATH)
         cache = d.pop(OutputBase.PARAM_CACHE, True)
         metric = d.pop(OutputBase.PARAM_METRIC, False)
-        ret.append(_get(stage, p, info=d, cache=cache, metric=metric))
+        persist = d.pop(OutputBase.PARAM_PERSIST, False)
+        tags = d.pop(OutputBase.PARAM_TAGS, None)
+        ret.append(
+            _get(
+                stage,
+                p,
+                info=d,
+                cache=cache,
+                metric=metric,
+                persist=persist,
+                tags=tags,
+            )
+        )
     return ret
 
 
-def loads_from(stage, s_list, use_cache=True, metric=False):
+def loads_from(stage, s_list, use_cache=True, metric=False, persist=False):
     ret = []
     for s in s_list:
-        ret.append(_get(stage, s, info={}, cache=use_cache, metric=metric))
+        ret.append(
+            _get(
+                stage,
+                s,
+                info={},
+                cache=use_cache,
+                metric=metric,
+                persist=persist,
+            )
+        )
     return ret

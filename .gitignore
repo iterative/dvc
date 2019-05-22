@@ -24,6 +24,13 @@ innosetup/config.ini
 
 .coverage
 
-dvc/version.py
-
 *.swp
+
+pip-wheel-metadata/
+.vscode/
+
+azurite
+env.sh
+tests/remotes_env
+scripts/ci/gcp-creds.json
+.gcp-creds.json

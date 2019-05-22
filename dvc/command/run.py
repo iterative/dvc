@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRun(CmdBase):
@@ -18,12 +21,15 @@ class CmdRun(CmdBase):
                 self.args.outs_no_cache,
                 self.args.metrics,
                 self.args.metrics_no_cache,
+                self.args.outs_persist,
+                self.args.outs_persist_no_cache,
                 self.args.command,
             ]
         ):  # pragma: no cover
             logger.error(
-                "too few arguments. Specify at least one: '-d', "
-                "'-o', '-O', '-m', '-M', 'command'."
+                "too few arguments. Specify at least one: '-d', '-o', '-O',"
+                " '-m', '-M', '--outs-persist', '--outs-persist-no-cache',"
+                " 'command'."
             )
             return 1
 
@@ -43,9 +49,11 @@ class CmdRun(CmdBase):
                 ignore_build_cache=self.args.ignore_build_cache,
                 remove_outs=self.args.remove_outs,
                 no_commit=self.args.no_commit,
+                outs_persist=self.args.outs_persist,
+                outs_persist_no_cache=self.args.outs_persist_no_cache,
             )
         except DvcException:
-            logger.error("failed to run command")
+            logger.exception("failed to run command")
             return 1
 
         return 0
@@ -73,12 +81,13 @@ class CmdRun(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    RUN_HELP = (
-        "Generate a stage file from a given "
-        "command and execute the command."
-    )
+    RUN_HELP = "Generate a stage file from a command and execute the command."
     run_parser = subparsers.add_parser(
-        "run", parents=[parent_parser], description=RUN_HELP, help=RUN_HELP
+        "run",
+        parents=[parent_parser],
+        description=append_doc_link(RUN_HELP, "run"),
+        help=RUN_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     run_parser.add_argument(
         "-d",
@@ -118,14 +127,7 @@ def add_parser(subparsers, parent_parser):
         "(do not put into DVC cache).",
     )
     run_parser.add_argument(
-        "-f",
-        "--file",
-        help="Specify name of the stage file. It should be "
-        "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
-        "'prepare.dvc', 'clean.dvc', etc) in order for "
-        "dvc to be able to find it later. By default "
-        "the first output basename + .dvc is used as "
-        "a stage filename.",
+        "-f", "--file", help="Specify name of the DVC file it generates."
     )
     run_parser.add_argument(
         "-c", "--cwd", default=None, help="Deprecated, use -w and -f instead."
@@ -166,13 +168,27 @@ def add_parser(subparsers, parent_parser):
         "--remove-outs",
         action="store_true",
         default=False,
-        help="Remove outputs before running the command.",
+        help="Deprecated, this is now the default behavior",
     )
     run_parser.add_argument(
         "--no-commit",
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
+    )
+    run_parser.add_argument(
+        "--outs-persist",
+        action="append",
+        default=[],
+        help="Declare output file or directory that will not be "
+        "removed upon repro.",
+    )
+    run_parser.add_argument(
+        "--outs-persist-no-cache",
+        action="append",
+        default=[],
+        help="Declare output file or directory that will not be "
+        "removed upon repro (do not put into DVC cache).",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

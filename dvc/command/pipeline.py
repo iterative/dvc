@@ -2,15 +2,19 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str
 
+import argparse
 import os
+import logging
 
-import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers
+from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdPipelineShow(CmdBase):
-    def _show(self, target, commands, outs):
+    def _show(self, target, commands, outs, locked):
         import networkx
         from dvc.stage import Stage
 
@@ -18,8 +22,12 @@ class CmdPipelineShow(CmdBase):
         G = self.repo.graph()[0]
         stages = networkx.get_node_attributes(G, "stage")
         node = os.path.relpath(stage.path, self.repo.root_dir)
+        nodes = networkx.dfs_postorder_nodes(G, node)
 
-        for n in networkx.dfs_postorder_nodes(G, node):
+        if locked:
+            nodes = [n for n in nodes if stages[n].locked]
+
+        for n in nodes:
             if commands:
                 logger.info(stages[n].cmd)
             elif outs:
@@ -71,30 +79,54 @@ class CmdPipelineShow(CmdBase):
             else:
                 edges.append((from_stage.relpath, to_stage.relpath))
 
-        return nodes, edges
+        return nodes, edges, networkx.is_tree(G)
 
     def _show_ascii(self, target, commands, outs):
         from dvc.dagascii import draw
 
-        nodes, edges = self.__build_graph(target, commands, outs)
+        nodes, edges, _ = self.__build_graph(target, commands, outs)
 
         if not nodes:
             return
 
         draw(nodes, edges)
 
+    def _show_dependencies_tree(self, target, commands, outs):
+        from treelib import Tree
+
+        nodes, edges, is_tree = self.__build_graph(target, commands, outs)
+        if not nodes:
+            return
+        if not is_tree:
+            raise DvcException(
+                "DAG is not a tree, can not print it in tree-structure way, "
+                "please use --ascii instead"
+            )
+
+        tree = Tree()
+        tree.create_node(target, target)  # Root node
+        observe_list = [target]
+        while len(observe_list) > 0:
+            current_root = observe_list[0]
+            for edge in edges:
+                if edge[0] == current_root:
+                    tree.create_node(edge[1], edge[1], parent=current_root)
+                    observe_list.append(edge[1])
+            observe_list.pop(0)
+        tree.show()
+
     def __write_dot(self, target, commands, outs, filename):
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
-        _, edges = self.__build_graph(target, commands, outs)
+        _, edges, _ = self.__build_graph(target, commands, outs)
         edges = [edge[::-1] for edge in edges]
 
         simple_g = networkx.DiGraph()
         simple_g.add_edges_from(edges)
         write_dot(simple_g, filename)
 
-    def run(self, unlock=False):
+    def run(self):
         if not self.args.targets:
             self.args.targets = self.default_targets
 
@@ -111,11 +143,20 @@ class CmdPipelineShow(CmdBase):
                         self.args.outs,
                         self.args.dot,
                     )
+                elif self.args.tree:
+                    self._show_dependencies_tree(
+                        target, self.args.commands, self.args.outs
+                    )
                 else:
-                    self._show(target, self.args.commands, self.args.outs)
+                    self._show(
+                        target,
+                        self.args.commands,
+                        self.args.outs,
+                        self.args.locked,
+                    )
             except DvcException:
                 msg = "failed to show pipeline for '{}'".format(target)
-                logger.error(msg)
+                logger.exception(msg)
                 return 1
         return 0
 
@@ -137,12 +178,13 @@ class CmdPipelineList(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    PIPELINE_HELP = "Manage pipeline."
+    PIPELINE_HELP = "Manage pipelines."
     pipeline_parser = subparsers.add_parser(
         "pipeline",
         parents=[parent_parser],
-        description=PIPELINE_HELP,
+        description=append_doc_link(PIPELINE_HELP, "pipeline"),
         help=PIPELINE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
     pipeline_subparsers = pipeline_parser.add_subparsers(
@@ -156,8 +198,9 @@ def add_parser(subparsers, parent_parser):
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=PIPELINE_SHOW_HELP,
+        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline-show"),
         help=PIPELINE_SHOW_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pipeline_show_group = pipeline_show_parser.add_mutually_exclusive_group()
     pipeline_show_group.add_argument(
@@ -175,6 +218,13 @@ def add_parser(subparsers, parent_parser):
         help="Print output files instead of paths to DVC files.",
     )
     pipeline_show_parser.add_argument(
+        "-l",
+        "--locked",
+        action="store_true",
+        default=False,
+        help="Print locked DVC stages",
+    )
+    pipeline_show_parser.add_argument(
         "--ascii",
         action="store_true",
         default=False,
@@ -182,6 +232,12 @@ def add_parser(subparsers, parent_parser):
     )
     pipeline_show_parser.add_argument(
         "--dot", help="Write DAG in .dot format."
+    )
+    pipeline_show_parser.add_argument(
+        "--tree",
+        action="store_true",
+        default=False,
+        help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
         "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
@@ -192,7 +248,8 @@ def add_parser(subparsers, parent_parser):
     pipeline_list_parser = pipeline_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=PIPELINE_LIST_HELP,
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline-list"),
         help=PIPELINE_LIST_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pipeline_list_parser.set_defaults(func=CmdPipelineList)

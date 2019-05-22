@@ -1,65 +1,73 @@
 import os
+import logging
+import colorama
+
+from dvc.repo.scm_context import scm_context
 from dvc.stage import Stage
+from dvc.utils import walk_files, LARGE_DIR_SIZE
+from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
 
-def add(repo, fname, recursive=False, no_commit=False):
-    fnames = _collect_filenames_to_add(repo, fname, recursive)
+logger = logging.getLogger(__name__)
 
-    stages = _create_stagefiles(repo, fnames, no_commit)
+
+@scm_context
+def add(repo, target, recursive=False, no_commit=False, fname=None):
+    if recursive and fname:
+        raise RecursiveAddingWhileUsingFilename()
+
+    targets = _find_all_targets(repo, target, recursive)
+
+    if os.path.isdir(target) and len(targets) > LARGE_DIR_SIZE:
+        logger.warning(
+            "You are adding a large directory '{target}' recursively,"
+            " consider tracking it as a whole instead.\n"
+            "{purple}HINT:{nc} Remove the generated stage files and then"
+            " run {cyan}dvc add {target}{nc}".format(
+                purple=colorama.Fore.MAGENTA,
+                cyan=colorama.Fore.CYAN,
+                nc=colorama.Style.RESET_ALL,
+                target=target,
+            )
+        )
+
+    stages = _create_stages(repo, targets, fname, no_commit)
 
     repo.check_dag(repo.stages() + stages)
 
     for stage in stages:
         stage.dump()
-
-    repo.remind_to_git_add()
-
     return stages
 
 
-def _collect_filenames_to_add(repo, fname, recursive):
-    if recursive and os.path.isdir(fname):
-        fnames = _collect_valid_filenames_from_directory(repo, fname)
-    else:
-        fnames = [fname]
-    return fnames
+def _find_all_targets(repo, target, recursive):
+    if os.path.isdir(target) and recursive:
+        return [
+            fname
+            for fname in walk_files(target)
+            if not repo.is_dvc_internal(fname)
+            if not Stage.is_stage_file(fname)
+            if not repo.scm.belongs_to_scm(fname)
+            if not repo.scm.is_tracked(fname)
+        ]
+    return [target]
 
 
-def _collect_valid_filenames_from_directory(repo, fname):
-    fnames = []
-    for file_path in _file_paths(fname):
-        if _is_valid_file_to_add(file_path, repo):
-            fnames.append(file_path)
-    return fnames
-
-
-def _file_paths(directory):
-    for root, _, files in os.walk(directory):
-        for f in files:
-            yield os.path.join(root, f)
-
-
-def _is_valid_file_to_add(file_path, repo):
-    if Stage.is_stage_file(file_path):
-        return False
-    if os.path.basename(file_path) == repo.scm.ignore_file:
-        return False
-    if repo.scm.is_tracked(file_path):
-        return False
-    return True
-
-
-def _create_stagefiles(repo, fnames, no_commit):
+def _create_stages(repo, targets, fname, no_commit):
     stages = []
-    with repo.state:
-        for f in fnames:
-            stage = Stage.create(repo=repo, outs=[f], add=True)
 
-            if stage is None:
+    with repo.state:
+        for out in targets:
+            stage = Stage.create(repo=repo, outs=[out], add=True, fname=fname)
+
+            if not stage:
                 continue
 
             stage.save()
+
             if not no_commit:
                 stage.commit()
+
             stages.append(stage)
+
     return stages

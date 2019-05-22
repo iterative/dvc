@@ -1,8 +1,13 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import argparse
+import logging
+
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdCommit(CmdBase):
@@ -19,7 +24,7 @@ class CmdCommit(CmdBase):
                     force=self.args.force,
                 )
             except DvcException:
-                logger.error(
+                logger.exception(
                     "failed to commit{}".format(
                         (" " + target) if target else ""
                     )
@@ -29,12 +34,14 @@ class CmdCommit(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    COMMIT_HELP = "Record changes to the repository."
+    COMMIT_HELP = "Save changed data to cache and update DVC files."
+
     commit_parser = subparsers.add_parser(
         "commit",
         parents=[parent_parser],
-        description=COMMIT_HELP,
+        description=append_doc_link(COMMIT_HELP, "commit"),
         help=COMMIT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     commit_parser.add_argument(
         "-f",

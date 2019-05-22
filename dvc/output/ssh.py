@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import getpass
 import posixpath
 
+from dvc.path.ssh import PathSSH
 from dvc.utils.compat import urlparse
 from dvc.output.base import OutputBase
 from dvc.remote.ssh import RemoteSSH
@@ -12,10 +13,25 @@ class OutputSSH(OutputBase):
     REMOTE = RemoteSSH
 
     def __init__(
-        self, stage, path, info=None, remote=None, cache=True, metric=False
+        self,
+        stage,
+        path,
+        info=None,
+        remote=None,
+        cache=True,
+        metric=False,
+        persist=False,
+        tags=None,
     ):
         super(OutputSSH, self).__init__(
-            stage, path, info=info, remote=remote, cache=cache, metric=metric
+            stage,
+            path,
+            info=info,
+            remote=remote,
+            cache=cache,
+            metric=metric,
+            persist=persist,
+            tags=tags,
         )
         parsed = urlparse(path)
         host = remote.host if remote else parsed.hostname
@@ -33,10 +49,6 @@ class OutputSSH(OutputBase):
         else:
             path = parsed.path
 
-        self.path_info = {
-            "scheme": "ssh",
-            "host": host,
-            "port": port,
-            "user": user,
-            "path": path,
-        }
+        self.path_info = PathSSH(
+            host=host, user=user, port=port, url=self.url, path=path
+        )

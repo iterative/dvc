@@ -1,20 +1,26 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str
 
+import copy
+import re
 import os
-import yaml
 import subprocess
+import logging
 
 from dvc.utils.fs import contains_symlink_up_to
 from schema import Schema, SchemaError, Optional, Or, And
 
 import dvc.prompt as prompt
-import dvc.logger as logger
 import dvc.dependency as dependency
 import dvc.output as output
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env, load_stage_file
+from dvc.utils import dict_md5, fix_env
+from dvc.utils.collections import apply_diff
+from dvc.utils.stage import load_stage_fd, dump_stage_file
+
+
+logger = logging.getLogger(__name__)
 
 
 class StageCmdFailedError(DvcException):
@@ -119,6 +125,7 @@ class Stage(object):
     PARAM_DEPS = "deps"
     PARAM_OUTS = "outs"
     PARAM_LOCKED = "locked"
+    PARAM_META = "meta"
 
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
@@ -127,7 +134,10 @@ class Stage(object):
         Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
         Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
         Optional(PARAM_LOCKED): bool,
+        Optional(PARAM_META): object,
     }
+
+    TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
     def __init__(
         self,
@@ -139,6 +149,8 @@ class Stage(object):
         outs=None,
         md5=None,
         locked=False,
+        tag=None,
+        state=None,
     ):
         if deps is None:
             deps = []
@@ -153,6 +165,8 @@ class Stage(object):
         self.deps = deps
         self.md5 = md5
         self.locked = locked
+        self.tag = tag
+        self._state = state or {}
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -171,7 +185,10 @@ class Stage(object):
     @staticmethod
     def is_valid_filename(path):
         return (
-            path.endswith(Stage.STAGE_FILE_SUFFIX)
+            # path.endswith doesn't work for encoded unicode filenames on
+            # Python 2 and since Stage.STAGE_FILE_SUFFIX is ascii then it is
+            # not needed to decode the path from py2's str
+            path[-len(Stage.STAGE_FILE_SUFFIX) :] == Stage.STAGE_FILE_SUFFIX
             or os.path.basename(path) == Stage.STAGE_FILE
         )
 
@@ -208,10 +225,12 @@ class Stage(object):
             return True
 
         for dep in self.deps:
-            if dep.changed():
+            status = dep.status()
+            if status:
                 logger.warning(
-                    "Dependency '{dep}' of '{stage}' changed.".format(
-                        dep=dep, stage=self.relpath
+                    "Dependency '{dep}' of '{stage}' changed because it is "
+                    "'{status}'.".format(
+                        dep=dep, stage=self.relpath, status=status[str(dep)]
                     )
                 )
                 return True
@@ -220,10 +239,12 @@ class Stage(object):
 
     def _changed_outs(self):
         for out in self.outs:
-            if out.changed():
+            status = out.status()
+            if status:
                 logger.warning(
-                    "Output '{out}' of '{stage}' changed.".format(
-                        out=out, stage=self.relpath
+                    "Output '{out}' of '{stage}' changed because it is "
+                    "'{status}'".format(
+                        out=out, stage=self.relpath, status=status[str(out)]
                     )
                 )
                 return True
@@ -242,31 +263,31 @@ class Stage(object):
         )
 
         if ret:
-            msg = "Stage '{}' changed.".format(self.relpath)
-            color = "yellow"
+            logger.warning("Stage '{}' changed.".format(self.relpath))
         else:
-            msg = "Stage '{}' didn't change.".format(self.relpath)
-            color = "green"
-
-        logger.info(logger.colorize(msg, color))
+            logger.info("Stage '{}' didn't change.".format(self.relpath))
 
         return ret
 
-    def remove_outs(self, ignore_remove=False):
-        """
-        Used mainly for `dvc remove --outs`
-        """
+    def remove_outs(self, ignore_remove=False, force=False):
+        """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
-            out.remove(ignore_remove=ignore_remove)
+            if out.persist and not force:
+                out.unprotect()
+            else:
+                logger.debug(
+                    "Removing output '{out}' of '{stage}'.".format(
+                        out=out, stage=self.relpath
+                    )
+                )
+                out.remove(ignore_remove=ignore_remove)
 
     def unprotect_outs(self):
         for out in self.outs:
-            if out.scheme != "local" or not out.exists:
-                continue
-            self.repo.unprotect(out.path)
+            out.unprotect()
 
-    def remove(self):
-        self.remove_outs(ignore_remove=True)
+    def remove(self, force=False):
+        self.remove_outs(ignore_remove=True, force=force)
         os.unlink(self.path)
 
     def reproduce(
@@ -274,10 +295,6 @@ class Stage(object):
     ):
         if not self.changed() and not force:
             return None
-
-        if (self.cmd or self.is_import) and not self.locked and not dry:
-            # Removing outputs only if we actually have command to reproduce
-            self.remove_outs(ignore_remove=False)
 
         msg = (
             "Going to reproduce '{stage}'. "
@@ -289,7 +306,7 @@ class Stage(object):
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
-        self.run(dry=dry, no_commit=no_commit)
+        self.run(dry=dry, no_commit=no_commit, force=force)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
@@ -327,7 +344,7 @@ class Stage(object):
     def _expand_to_path_on_add_local(add, fname, out, path_handler):
         if (
             add
-            and out.is_local
+            and out.is_in_repo
             and not contains_symlink_up_to(out.path, out.repo.root_dir)
         ):
             fname = path_handler.join(path_handler.dirname(out.path), fname)
@@ -377,7 +394,21 @@ class Stage(object):
             out.pop(RemoteLOCAL.PARAM_CHECKSUM, None)
             out.pop(RemoteS3.PARAM_CHECKSUM, None)
 
-        return old_d == new_d
+        if old_d != new_d:
+            return False
+
+        # NOTE: committing to prevent potential data duplication. For example
+        #
+        #    $ dvc config cache.type hardlink
+        #    $ echo foo > foo
+        #    $ dvc add foo
+        #    $ rm -f foo
+        #    $ echo foo > foo
+        #    $ dvc add foo # should replace foo with a link to cache
+        #
+        old.commit()
+
+        return True
 
     @staticmethod
     def create(
@@ -396,6 +427,9 @@ class Stage(object):
         overwrite=True,
         ignore_build_cache=False,
         remove_outs=False,
+        validate_state=True,
+        outs_persist=None,
+        outs_persist_no_cache=None,
     ):
         if outs is None:
             outs = []
@@ -407,6 +441,10 @@ class Stage(object):
             metrics = []
         if metrics_no_cache is None:
             metrics_no_cache = []
+        if outs_persist is None:
+            outs_persist = []
+        if outs_persist_no_cache is None:
+            outs_persist_no_cache = []
 
         # Backward compatibility for `cwd` option
         if wdir is None and cwd is not None:
@@ -423,13 +461,14 @@ class Stage(object):
 
         stage = Stage(repo=repo, wdir=wdir, cmd=cmd, locked=locked)
 
-        stage.outs = output.loads_from(stage, outs, use_cache=True)
-        stage.outs += output.loads_from(
-            stage, metrics, use_cache=True, metric=True
-        )
-        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.outs += output.loads_from(
-            stage, metrics_no_cache, use_cache=False, metric=True
+        Stage._fill_stage_outputs(
+            stage,
+            outs,
+            outs_no_cache,
+            metrics,
+            metrics_no_cache,
+            outs_persist,
+            outs_persist_no_cache,
         )
         stage.deps = dependency.loads_from(stage, deps)
 
@@ -452,28 +491,63 @@ class Stage(object):
 
         # NOTE: remove outs before we check build cache
         if remove_outs:
+            logger.warning(
+                "--remove-outs is deprecated."
+                " It is now the default behavior,"
+                " so there's no need to use this option anymore."
+            )
             stage.remove_outs(ignore_remove=False)
             logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True
         else:
             stage.unprotect_outs()
 
-        if os.path.exists(path):
-            if not ignore_build_cache and stage.is_cached:
-                logger.info("Stage is cached, skipping.")
-                return None
+        if os.path.exists(path) and any(out.persist for out in stage.outs):
+            logger.warning("Build cache is ignored when persisting outputs.")
+            ignore_build_cache = True
 
-            msg = (
-                "'{}' already exists. Do you wish to run the command and "
-                "overwrite it?".format(stage.relpath)
-            )
+        if validate_state:
+            if os.path.exists(path):
+                if not ignore_build_cache and stage.is_cached:
+                    logger.info("Stage is cached, skipping.")
+                    return None
 
-            if not overwrite and not prompt.confirm(msg):
-                raise StageFileAlreadyExistsError(stage.relpath)
+                msg = (
+                    "'{}' already exists. Do you wish to run the command and "
+                    "overwrite it?".format(stage.relpath)
+                )
 
-            os.unlink(path)
+                if not overwrite and not prompt.confirm(msg):
+                    raise StageFileAlreadyExistsError(stage.relpath)
+
+                os.unlink(path)
 
         return stage
+
+    @staticmethod
+    def _fill_stage_outputs(
+        stage,
+        outs,
+        outs_no_cache,
+        metrics,
+        metrics_no_cache,
+        outs_persist,
+        outs_persist_no_cache,
+    ):
+        stage.outs = output.loads_from(stage, outs, use_cache=True)
+        stage.outs += output.loads_from(
+            stage, metrics, use_cache=True, metric=True
+        )
+        stage.outs += output.loads_from(
+            stage, outs_persist, use_cache=True, persist=True
+        )
+        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
+        stage.outs += output.loads_from(
+            stage, metrics_no_cache, use_cache=False, metric=True
+        )
+        stage.outs += output.loads_from(
+            stage, outs_persist_no_cache, use_cache=False, persist=True
+        )
 
     @staticmethod
     def _check_dvc_filename(fname):
@@ -486,19 +560,40 @@ class Stage(object):
             )
 
     @staticmethod
-    def _check_file_exists(fname):
-        if not os.path.exists(fname):
+    def _check_file_exists(repo, fname):
+        if not repo.tree.exists(fname):
             raise StageFileDoesNotExistError(fname)
 
     @staticmethod
-    def load(repo, fname):
-        Stage._check_file_exists(fname)
-        Stage._check_dvc_filename(fname)
-
-        if not Stage.is_stage_file(fname):
+    def _check_isfile(repo, fname):
+        if not repo.tree.isfile(fname):
             raise StageFileIsNotDvcFileError(fname)
 
-        d = load_stage_file(fname)
+    @classmethod
+    def _get_path_tag(cls, s):
+        regex = re.compile(cls.TAG_REGEX)
+        match = regex.match(s)
+        if not match:
+            return s, None
+        return match.group("path"), match.group("tag")
+
+    @staticmethod
+    def load(repo, fname):
+        fname, tag = Stage._get_path_tag(fname)
+
+        # it raises the proper exceptions by priority:
+        # 1. when the file doesn't exists
+        # 2. filename is not a dvc filename
+        # 3. path doesn't represent a regular file
+        Stage._check_file_exists(repo, fname)
+        Stage._check_dvc_filename(fname)
+        Stage._check_isfile(repo, fname)
+
+        with repo.tree.open(fname) as fd:
+            d = load_stage_fd(fd, fname)
+        # Making a deepcopy since the original structure
+        # looses keys in deps and outs load
+        state = copy.deepcopy(d)
 
         Stage.validate(d, fname=os.path.relpath(fname))
         path = os.path.abspath(fname)
@@ -514,6 +609,8 @@ class Stage(object):
             cmd=d.get(Stage.PARAM_CMD),
             md5=d.get(Stage.PARAM_MD5),
             locked=d.get(Stage.PARAM_LOCKED, False),
+            tag=tag,
+            state=state,
         )
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
@@ -522,17 +619,20 @@ class Stage(object):
         return stage
 
     def dumpd(self):
+        from dvc.remote.base import RemoteBASE
+
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: os.path.relpath(
-                    self.wdir, os.path.dirname(self.path)
+                Stage.PARAM_WDIR: RemoteBASE.to_posixpath(
+                    os.path.relpath(self.wdir, os.path.dirname(self.path))
                 ),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
+                Stage.PARAM_META: self._state.get("meta"),
             }.items()
             if value
         }
@@ -548,14 +648,13 @@ class Stage(object):
             )
         )
         d = self.dumpd()
+        apply_diff(d, self._state)
+        dump_stage_file(fname, self._state)
 
-        with open(fname, "w") as fd:
-            yaml.safe_dump(d, fd, default_flow_style=False)
-
-        self.repo.files_to_git_add.append(os.path.relpath(fname))
+        self.repo.scm.track_file(os.path.relpath(fname))
 
     def _compute_md5(self):
-        from dvc.output.local import OutputLOCAL
+        from dvc.output.base import OutputBase
 
         d = self.dumpd()
 
@@ -573,7 +672,15 @@ class Stage(object):
         # NOTE: excluding parameters that don't affect the state of the
         # pipeline. Not excluding `OutputLOCAL.PARAM_CACHE`, because if
         # it has changed, we might not have that output in our cache.
-        m = dict_md5(d, exclude=[self.PARAM_LOCKED, OutputLOCAL.PARAM_METRIC])
+        m = dict_md5(
+            d,
+            exclude=[
+                self.PARAM_LOCKED,
+                OutputBase.PARAM_METRIC,
+                OutputBase.PARAM_TAGS,
+                OutputBase.PARAM_PERSIST,
+            ],
+        )
         logger.debug("Computed stage '{}' md5: '{}'".format(self.relpath, m))
         return m
 
@@ -678,7 +785,10 @@ class Stage(object):
         if p.returncode != 0:
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False, resume=False, no_commit=False):
+    def run(self, dry=False, resume=False, no_commit=False, force=False):
+        if (self.cmd or self.is_import) and not self.locked and not dry:
+            self.remove_outs(ignore_remove=False, force=False)
+
         if self.locked:
             logger.info(
                 "Verifying outputs in locked stage '{stage}'".format(
@@ -695,7 +805,7 @@ class Stage(object):
                 )
             )
             if not dry:
-                if self._already_cached():
+                if self._already_cached() and not force:
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(
@@ -711,7 +821,11 @@ class Stage(object):
         else:
             logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
-                if not self.is_callback and self._already_cached():
+                if (
+                    not force
+                    and not self.is_callback
+                    and self._already_cached()
+                ):
                     self.checkout()
                 else:
                     self._run()
@@ -731,9 +845,11 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
-    def checkout(self, force=False):
+    def checkout(self, force=False, progress_callback=None):
         for out in self.outs:
-            out.checkout(force=force)
+            out.checkout(
+                force=force, tag=self.tag, progress_callback=progress_callback
+            )
 
     @staticmethod
     def _status(entries):
@@ -776,3 +892,6 @@ class Stage(object):
                 for out in self.outs
             )
         )
+
+    def get_all_files_number(self):
+        return sum(out.get_files_number() for out in self.outs)

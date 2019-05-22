@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from dvc.utils.compat import str, open
 
 import os
+import errno
 
 
 class System(object):
@@ -61,8 +62,22 @@ class System(object):
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
+        import dvc.logger as logger
 
-        clib = ctypes.CDLL("libc.dylib")
+        LIBC = "libc.dylib"
+        LIBC_FALLBACK = "/usr/lib/libSystem.dylib"
+        try:
+            clib = ctypes.CDLL(LIBC)
+        except OSError as exc:
+            logger.debug(
+                "unable to access '{}' (errno '{}'). "
+                "Falling back to '{}'.".format(LIBC, exc.errno, LIBC_FALLBACK)
+            )
+            if exc.errno != errno.ENOENT:
+                raise
+            # NOTE: trying to bypass System Integrity Protection (SIP)
+            clib = ctypes.CDLL(LIBC_FALLBACK)
+
         if not hasattr(clib, "clonefile"):
             return -1
 
@@ -87,22 +102,13 @@ class System(object):
 
         FICLONE = 0x40049409
 
-        s = open(src, "r")
-        d = open(dst, "w+")
-
         try:
-            ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
-        except IOError:
-            s.close()
-            d.close()
-            os.unlink(dst)
-            raise
-
-        s.close()
-        d.close()
-
-        if ret != 0:
-            os.unlink(dst)
+            ret = 255
+            with open(src, "r") as s, open(dst, "w+") as d:
+                ret = fcntl.ioctl(d.fileno(), FICLONE, s.fileno())
+        finally:
+            if ret != 0:
+                os.unlink(dst)
 
         return ret
 
@@ -132,15 +138,16 @@ class System(object):
         import ctypes
         from ctypes import c_void_p, c_wchar_p, Structure, WinError, POINTER
         from ctypes.wintypes import DWORD, HANDLE, BOOL
+        from win32file import (
+            FILE_FLAG_BACKUP_SEMANTICS,
+            FILE_FLAG_OPEN_REPARSE_POINT,
+            FILE_SHARE_READ,
+            OPEN_EXISTING,
+        )
 
-        # NOTE: use this flag to open symlink itself and not the target
-        # See https://docs.microsoft.com/en-us/windows/desktop/api/
+        # NOTE: use FILE_FLAG_OPEN_REPARSE_POINT to open symlink itself and not
+        # the target See https://docs.microsoft.com/en-us/windows/desktop/api/
         # fileapi/nf-fileapi-createfilew#symbolic-link-behavior
-        FILE_FLAG_OPEN_REPARSE_POINT = 0x00200000
-
-        FILE_FLAG_BACKUP_SEMANTICS = 0x02000000
-        FILE_SHARE_READ = 0x00000001
-        OPEN_EXISTING = 3
 
         class FILETIME(Structure):
             _fields_ = [("dwLowDateTime", DWORD), ("dwHighDateTime", DWORD)]
@@ -231,8 +238,7 @@ class System(object):
         from ctypes.wintypes import DWORD, HANDLE
 
         # https://docs.microsoft.com/en-us/windows/desktop/api/synchapi/nf-synchapi-waitforsingleobject
-        WAIT_OBJECT_0 = 0
-        WAIT_TIMEOUT = 0x00000102
+        from win32event import WAIT_OBJECT_0, WAIT_TIMEOUT
 
         func = ctypes.windll.kernel32.WaitForSingleObject
         func.argtypes = [HANDLE, DWORD]
@@ -266,7 +272,7 @@ class System(object):
 
         # https://docs.microsoft.com/en-us/windows/desktop/fileio/
         # file-attribute-constants
-        FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+        from winnt import FILE_ATTRIBUTE_REPARSE_POINT
 
         if os.path.lexists(path):
             info = System.getdirinfo(path)

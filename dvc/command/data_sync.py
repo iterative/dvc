@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
 
 import argparse
+import logging
 
-import dvc.logger as logger
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
@@ -43,7 +46,7 @@ class CmdDataPull(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to pull data from the cloud")
+            logger.exception("failed to pull data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0
@@ -63,7 +66,7 @@ class CmdDataPush(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to push data to the cloud")
+            logger.exception("failed to push data to the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0
@@ -83,7 +86,7 @@ class CmdDataFetch(CmdDataBase):
                 recursive=self.args.recursive,
             )
         except Exception:
-            logger.error("failed to fetch data from the cloud")
+            logger.exception("failed to fetch data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
         return 0
@@ -120,12 +123,14 @@ def add_parser(subparsers, _parent_parser):
     from dvc.command.status import CmdDataStatus
 
     # Pull
-    PULL_HELP = "Pull data files from the cloud."
+    PULL_HELP = "Pull data files from a DVC remote storage."
+
     pull_parser = subparsers.add_parser(
         "pull",
         parents=[shared_parent_parser()],
-        description=PULL_HELP,
+        description=append_doc_link(PULL_HELP, "pull"),
         help=PULL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     pull_parser.add_argument(
         "-r", "--remote", help="Remote repository to pull from."
@@ -168,12 +173,14 @@ def add_parser(subparsers, _parent_parser):
     pull_parser.set_defaults(func=CmdDataPull)
 
     # Push
-    PUSH_HELP = "Push data files to the cloud."
+    PUSH_HELP = "Push data files to a DVC remote storage."
+
     push_parser = subparsers.add_parser(
         "push",
         parents=[shared_parent_parser()],
-        description=PUSH_HELP,
+        description=append_doc_link(PUSH_HELP, "push"),
         help=PUSH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     push_parser.add_argument(
         "-r", "--remote", help="Remote repository to push to."
@@ -209,12 +216,14 @@ def add_parser(subparsers, _parent_parser):
     push_parser.set_defaults(func=CmdDataPush)
 
     # Fetch
-    FETCH_HELP = "Fetch data files from the cloud."
+    FETCH_HELP = "Fetch data files from a DVC remote storage."
+
     fetch_parser = subparsers.add_parser(
         "fetch",
         parents=[shared_parent_parser()],
-        description=FETCH_HELP,
+        description=append_doc_link(FETCH_HELP, "fetch"),
         help=FETCH_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     fetch_parser.add_argument(
         "-r", "--remote", help="Remote repository to fetch from."
@@ -250,13 +259,17 @@ def add_parser(subparsers, _parent_parser):
     fetch_parser.set_defaults(func=CmdDataFetch)
 
     # Status
-    STATUS_HELP = "Show the repo status."
+    STATUS_HELP = (
+        "Show changed stages, compare local cache and a remote storage."
+    )
+
     status_parser = subparsers.add_parser(
         "status",
         parents=[shared_parent_parser()],
-        description=STATUS_HELP,
+        description=append_doc_link(STATUS_HELP, "status"),
         help=STATUS_HELP,
         conflict_handler="resolve",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     status_parser.add_argument(
         "-q",

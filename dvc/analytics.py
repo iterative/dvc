@@ -7,9 +7,12 @@ from dvc.utils.compat import str
 import os
 import json
 import errno
+import logging
 
-import dvc.logger as logger
-from dvc import VERSION
+from dvc import __version__
+
+
+logger = logging.getLogger(__name__)
 
 
 class Analytics(object):
@@ -93,10 +96,11 @@ class Analytics(object):
         with open(self.user_id_file, "r") as fobj:
             try:
                 info = json.load(fobj)
-                return info[self.PARAM_USER_ID]
-            except json.JSONDecodeError as exc:
+            except ValueError as exc:
                 logger.debug("Failed to load user_id: {}".format(exc))
                 return None
+
+            return info[self.PARAM_USER_ID]
 
     def _get_user_id(self):
         from dvc.lock import LockError
@@ -164,7 +168,7 @@ class Analytics(object):
         from dvc.repo import Repo
         from dvc.exceptions import NotDvcRepoError
 
-        self.info[self.PARAM_DVC_VERSION] = VERSION
+        self.info[self.PARAM_DVC_VERSION] = __version__
         self.info[self.PARAM_IS_BINARY] = is_binary()
         self.info[self.PARAM_USER_ID] = self._get_user_id()
 
@@ -202,6 +206,13 @@ class Analytics(object):
             return fobj.name
 
     @staticmethod
+    def _is_enabled_config(config):
+        from dvc.config import Config
+
+        core = config.config.get(Config.SECTION_CORE, {})
+        return core.get(Config.SECTION_CORE_ANALYTICS, True)
+
+    @staticmethod
     def _is_enabled(cmd=None):
         from dvc.config import Config
         from dvc.repo import Repo
@@ -226,10 +237,9 @@ class Analytics(object):
             config = cmd.config
             assert config is not None
 
-        core = config.config.get(Config.SECTION_CORE, {})
-        enabled = core.get(Config.SECTION_CORE_ANALYTICS, True)
+        enabled = Analytics._is_enabled_config(config)
         logger.debug(
-            "Analytics is {}abled.".format("en" if enabled else "dis")
+            "Analytics is {}.".format("enabled" if enabled else "disabled")
         )
         return enabled
 

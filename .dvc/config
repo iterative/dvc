@@ -1,4 +1,4 @@
 ['remote "dvc"']
-url = s3://dvc-share/dvc/
+url = https://dvc.org/s3/dvc
 [core]
 remote = dvc

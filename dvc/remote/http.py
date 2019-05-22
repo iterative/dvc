@@ -1,15 +1,22 @@
 from __future__ import unicode_literals
+
+from dvc.scheme import Schemes
+from dvc.path import Path
 from dvc.utils.compat import open, makedirs
 
 import os
 import threading
 import requests
+import logging
 
-import dvc.logger as logger
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
-from dvc.remote.base import RemoteBase
+from dvc.remote.base import RemoteBASE
+from dvc.utils import move
+
+
+logger = logging.getLogger(__name__)
 
 
 class ProgressBarCallback(object):
@@ -25,9 +32,9 @@ class ProgressBarCallback(object):
             progress.update_target(self.name, self.current, self.total)
 
 
-class RemoteHTTP(RemoteBase):
-    scheme = "http"
-    REGEX = r"^https?://.*$"
+class RemoteHTTP(RemoteBASE):
+    scheme = Schemes.HTTP
+    REGEX = r"^http://.*$"
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
@@ -36,7 +43,8 @@ class RemoteHTTP(RemoteBase):
         super(RemoteHTTP, self).__init__(repo, config)
         self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
         self.url = self.cache_dir
-        self.path_info = {"scheme": "http"}
+
+        self.path_info = Path(self.scheme)
 
     @property
     def prefix(self):
@@ -54,23 +62,23 @@ class RemoteHTTP(RemoteBase):
         names = self._verify_path_args(to_infos, from_infos, tmp_infos, names)
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info["scheme"] not in ["http", "https"]:
+            if from_info.scheme != self.scheme:
                 raise NotImplementedError
 
-            if to_info["scheme"] != "local":
+            if to_info.scheme != "local":
                 raise NotImplementedError
 
             msg = "Downloading '{}' to '{}'".format(
-                from_info["path"], to_info["path"]
+                from_info.path, to_info.path
             )
             logger.debug(msg)
 
             if not name:
-                name = os.path.basename(to_info["path"])
+                name = os.path.basename(to_info.path)
 
-            makedirs(os.path.dirname(to_info["path"]), exist_ok=True)
+            makedirs(os.path.dirname(to_info.path), exist_ok=True)
 
-            total = self._content_length(from_info["path"])
+            total = self._content_length(from_info.path)
 
             if no_progress_bar or not total:
                 cb = None
@@ -79,15 +87,12 @@ class RemoteHTTP(RemoteBase):
 
             try:
                 self._download_to(
-                    from_info["path"],
-                    to_info["path"],
-                    callback=cb,
-                    resume=resume,
+                    from_info.path, to_info.path, callback=cb, resume=resume
                 )
 
             except Exception:
-                msg = "failed to download '{}'".format(from_info["path"])
-                logger.error(msg)
+                msg = "failed to download '{}'".format(from_info.path)
+                logger.exception(msg)
                 continue
 
             if not no_progress_bar:
@@ -95,8 +100,8 @@ class RemoteHTTP(RemoteBase):
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
-        assert path_info["scheme"] in ["http", "https"]
-        return bool(self._request("HEAD", path_info.get("path")))
+        assert path_info.scheme == self.scheme
+        return bool(self._request("HEAD", path_info.path))
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
@@ -106,16 +111,11 @@ class RemoteHTTP(RemoteBase):
 
         return list(filter(func, md5s))
 
-    def save_info(self, path_info):
-        if path_info["scheme"] not in ["http", "https"]:
-            raise NotImplementedError
-
-        return {self.PARAM_CHECKSUM: self._etag(path_info["path"])}
-
     def _content_length(self, url):
         return self._request("HEAD", url).headers.get("Content-Length")
 
-    def _etag(self, url):
+    def get_file_checksum(self, path_info):
+        url = path_info.path
         etag = self._request("HEAD", url).headers.get("ETag") or self._request(
             "HEAD", url
         ).headers.get("Content-MD5")
@@ -148,7 +148,7 @@ class RemoteHTTP(RemoteBase):
             mode, partial_file, request, transferred_bytes, callback
         )
 
-        os.rename(partial_file, target_file)
+        move(partial_file, target_file)
 
     def _write_request_content(
         self, mode, partial_file, request, transferred_bytes, callback=None

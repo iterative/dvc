@@ -1,15 +1,15 @@
 from __future__ import unicode_literals
 
-import dvc.logger as logger
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def _local_status(self, target=None, with_deps=False):
     status = {}
 
-    if target:
-        stages = self.collect(target, with_deps=with_deps)
-    else:
-        stages = self.active_stages()
+    stages = self.collect(target, with_deps=with_deps)
 
     for stage in stages:
         if stage.locked:
@@ -54,7 +54,7 @@ def _cloud_status(
     for md5, info in status_info.items():
         name = info["name"]
         status = info["status"]
-        if status == cloud.STATUS_OK:
+        if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
             continue
 
         prefix_map = {cloud.STATUS_DELETED: "deleted", cloud.STATUS_NEW: "new"}

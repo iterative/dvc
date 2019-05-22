@@ -1,22 +1,28 @@
 import os
 import shutil
 import colorama
+import logging
 
-import dvc.logger as logger
 from dvc.repo import Repo
-from dvc.scm import SCM, Base
+from dvc.scm import SCM, NoSCM
 from dvc.config import Config
 from dvc.exceptions import InitError
+from dvc.utils import boxify
+
+
+logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
-    logger.box(
-        "DVC has enabled anonymous aggregate usage analytics.\n"
-        "Read the analytics documentation (and how to opt-out) here:\n"
-        "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
-            blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
-        ),
-        border_color="red",
+    logger.info(
+        boxify(
+            "DVC has enabled anonymous aggregate usage analytics.\n"
+            "Read the analytics documentation (and how to opt-out) here:\n"
+            "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
+                blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
+            ),
+            border_color="red",
+        )
     )
 
     msg = (
@@ -56,7 +62,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     root_dir = os.path.abspath(root_dir)
     dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
     scm = SCM(root_dir)
-    if type(scm) == Base and not no_scm:
+    if isinstance(scm, NoSCM) and not no_scm:
         raise InitError(
             "{repo} is not tracked by any supported scm tool (e.g. git). "
             "Use '--no-scm' if you don't want to use any scm.".format(

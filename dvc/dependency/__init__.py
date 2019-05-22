@@ -2,8 +2,7 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.config import Config
-from dvc.utils.compat import urlparse
+from dvc.scheme import Schemes
 
 import dvc.output as output
 from dvc.output.base import OutputBase
@@ -13,6 +12,7 @@ from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
+from dvc.dependency.https import DependencyHTTPS
 
 from dvc.remote import Remote
 
@@ -20,19 +20,20 @@ DEPS = [
     DependencyGS,
     DependencyHDFS,
     DependencyHTTP,
+    DependencyHTTPS,
     DependencyS3,
     DependencySSH,
     # NOTE: DependencyLOCAL is the default choice
 ]
 
 DEP_MAP = {
-    "local": DependencyLOCAL,
-    "ssh": DependencySSH,
-    "s3": DependencyS3,
-    "gs": DependencyGS,
-    "hdfs": DependencyHDFS,
-    "http": DependencyHTTP,
-    "https": DependencyHTTP,
+    Schemes.LOCAL: DependencyLOCAL,
+    Schemes.SSH: DependencySSH,
+    Schemes.S3: DependencyS3,
+    Schemes.GS: DependencyGS,
+    Schemes.HDFS: DependencyHDFS,
+    Schemes.HTTP: DependencyHTTP,
+    Schemes.HTTPS: DependencyHTTPS,
 }
 
 
@@ -46,11 +47,13 @@ del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
 
 
 def _get(stage, p, info):
+    from dvc.utils.compat import urlparse
+
     parsed = urlparse(p)
+
     if parsed.scheme == "remote":
-        name = Config.SECTION_REMOTE_FMT.format(parsed.netloc)
-        sect = stage.repo.config.config[name]
-        remote = Remote(stage.repo, sect)
+        settings = stage.repo.config.get_remote_settings(parsed.netloc)
+        remote = Remote(stage.repo, settings)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
     for d in DEPS:

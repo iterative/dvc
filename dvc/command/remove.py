@@ -1,9 +1,14 @@
 from __future__ import unicode_literals
 
+import argparse
+import logging
+
 import dvc.prompt as prompt
-import dvc.logger as logger
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase
+from dvc.command.base import CmdBase, append_doc_link
+
+
+logger = logging.getLogger(__name__)
 
 
 class CmdRemove(CmdBase):
@@ -32,7 +37,7 @@ class CmdRemove(CmdBase):
                 outs_only = self._is_outs_only(target)
                 self.repo.remove(target, outs_only=outs_only)
             except DvcException:
-                logger.error("failed to remove {}".format(target))
+                logger.exception("failed to remove {}".format(target))
                 return 1
         return 0
 
@@ -42,8 +47,9 @@ def add_parser(subparsers, parent_parser):
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
-        description=REMOVE_HELP,
+        description=append_doc_link(REMOVE_HELP, "remove"),
         help=REMOVE_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     remove_parser_group = remove_parser.add_mutually_exclusive_group()
     remove_parser_group.add_argument(

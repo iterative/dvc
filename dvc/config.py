@@ -2,15 +2,17 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str, open, urlparse
 
 import os
 import errno
 import configobj
-from schema import Schema, Optional, And, Use, Regex
+import logging
 
-import dvc.logger as logger
+from schema import Schema, Optional, And, Use, Regex
 from dvc.exceptions import DvcException
+
+logger = logging.getLogger(__name__)
 
 
 class ConfigError(DvcException):
@@ -132,14 +134,16 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
+    BOOL_SCHEMA = And(str, is_bool, Use(to_bool))
+
     SECTION_CORE = "core"
     SECTION_CORE_LOGLEVEL = "loglevel"
     SECTION_CORE_LOGLEVEL_SCHEMA = And(Use(str.lower), supported_loglevel)
     SECTION_CORE_REMOTE = "remote"
-    SECTION_CORE_INTERACTIVE_SCHEMA = And(str, is_bool, Use(to_bool))
+    SECTION_CORE_INTERACTIVE_SCHEMA = BOOL_SCHEMA
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
-    SECTION_CORE_ANALYTICS_SCHEMA = And(str, is_bool, Use(to_bool))
+    SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -152,6 +156,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CACHE_SSH = "ssh"
     SECTION_CACHE_HDFS = "hdfs"
     SECTION_CACHE_AZURE = "azure"
+    SECTION_CACHE_SLOW_LINK_WARNING = "slow_link_warning"
     SECTION_CACHE_SCHEMA = {
         Optional(SECTION_CACHE_LOCAL): str,
         Optional(SECTION_CACHE_S3): str,
@@ -161,10 +166,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_AZURE): str,
         Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
-        Optional(SECTION_CACHE_PROTECTED, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
         Optional(PRIVATE_CWD): str,
+        Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): BOOL_SCHEMA,
     }
 
     # backward compatibility
@@ -173,7 +177,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_STORAGEPATH = "storagepath"
 
     SECTION_CORE_SCHEMA = {
-        Optional(SECTION_CORE_LOGLEVEL, default="info"): And(
+        Optional(SECTION_CORE_LOGLEVEL): And(
             str, Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA
         ),
         Optional(SECTION_CORE_REMOTE, default=""): And(str, Use(str.lower)),
@@ -193,6 +197,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_STORAGEPATH = "storagepath"
     SECTION_AWS_CREDENTIALPATH = "credentialpath"
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
+    SECTION_AWS_LIST_OBJECTS = "listobjects"
     SECTION_AWS_REGION = "region"
     SECTION_AWS_PROFILE = "profile"
     SECTION_AWS_USE_SSL = "use_ssl"
@@ -202,9 +207,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_USE_SSL, default=True): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
+        Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
     }
 
     # backward compatibility
@@ -223,6 +227,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_LOCAL_SCHEMA = {SECTION_LOCAL_STORAGEPATH: str}
 
     SECTION_AZURE_CONNECTION_STRING = "connection_string"
+    # Alibabacloud oss options
+    SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
+    SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
+    SECTION_OSS_ENDPOINT = "oss_endpoint"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -239,21 +247,21 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_PROFILE): str,
         Optional(SECTION_AWS_CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
-        Optional(SECTION_AWS_USE_SSL, default=True): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
+        Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
-        Optional(SECTION_CACHE_PROTECTED, default=False): And(
-            str, is_bool, Use(to_bool)
-        ),
+        Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
         Optional(SECTION_REMOTE_USER): str,
         Optional(SECTION_REMOTE_PORT): Use(int),
         Optional(SECTION_REMOTE_KEY_FILE): str,
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
         Optional(SECTION_REMOTE_PASSWORD): str,
-        Optional(SECTION_REMOTE_ASK_PASSWORD): And(str, is_bool, Use(to_bool)),
+        Optional(SECTION_REMOTE_ASK_PASSWORD): BOOL_SCHEMA,
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
+        Optional(SECTION_OSS_ACCESS_KEY_ID): str,
+        Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
+        Optional(SECTION_OSS_ENDPOINT): str,
         Optional(PRIVATE_CWD): str,
     }
 
@@ -474,6 +482,56 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             except Exception as exc:
                 msg = "failed to write config '{}'".format(conf.filename)
                 raise ConfigError(msg, exc)
+
+    def get_remote_settings(self, name):
+        import posixpath
+
+        """
+        Args:
+            name (str): The name of the remote that we want to retrieve
+
+        Returns:
+            dict: The content beneath the given remote name.
+
+        Example:
+            >>> config = {'remote "server"': {'url': 'ssh://localhost/'}}
+            >>> get_remote_settings("server")
+            {'url': 'ssh://localhost/'}
+        """
+        settings = self.config[self.SECTION_REMOTE_FMT.format(name)]
+        parsed = urlparse(settings["url"])
+
+        # Support for cross referenced remotes.
+        # This will merge the settings, giving priority to the outer reference.
+        # For example, having:
+        #
+        #       dvc remote add server ssh://localhost
+        #       dvc remote modify server user root
+        #       dvc remote modify server ask_password true
+        #
+        #       dvc remote add images remote://server/tmp/pictures
+        #       dvc remote modify images user alice
+        #       dvc remote modify images ask_password false
+        #       dvc remote modify images password asdf1234
+        #
+        # Results on a config dictionary like:
+        #
+        #       {
+        #           "url": "ssh://localhost/tmp/pictures",
+        #           "user": "alice",
+        #           "password": "asdf1234",
+        #           "ask_password": False,
+        #       }
+        #
+        if parsed.scheme == "remote":
+            reference = self.get_remote_settings(parsed.netloc)
+            url = posixpath.join(reference["url"], parsed.path.lstrip("/"))
+            merged = reference.copy()
+            merged.update(settings)
+            merged["url"] = url
+            return merged
+
+        return settings
 
     @staticmethod
     def unset(config, section, opt=None):
