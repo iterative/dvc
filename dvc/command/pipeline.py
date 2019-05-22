@@ -116,7 +116,7 @@ class CmdPipelineShow(CmdBase):
         tree.show()
 
     def __write_dot(self, target, commands, outs):
-        from io import StringIO
+        from dvc.utils.compat import StringIO
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
