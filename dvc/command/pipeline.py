@@ -115,7 +115,8 @@ class CmdPipelineShow(CmdBase):
             observe_list.pop(0)
         tree.show()
 
-    def __write_dot(self, target, commands, outs, filename):
+    def __write_dot(self, target, commands, outs):
+        from io import StringIO
         import networkx
         from networkx.drawing.nx_pydot import write_dot
 
@@ -124,7 +125,10 @@ class CmdPipelineShow(CmdBase):
 
         simple_g = networkx.DiGraph()
         simple_g.add_edges_from(edges)
-        write_dot(simple_g, filename)
+
+        dot_file = StringIO()
+        write_dot(simple_g, dot_file)
+        logger.info(dot_file.getvalue())
 
     def run(self):
         if not self.args.targets:
@@ -138,10 +142,7 @@ class CmdPipelineShow(CmdBase):
                     )
                 elif self.args.dot:
                     self.__write_dot(
-                        target,
-                        self.args.commands,
-                        self.args.outs,
-                        self.args.dot,
+                        target, self.args.commands, self.args.outs
                     )
                 elif self.args.tree:
                     self._show_dependencies_tree(
@@ -231,7 +232,10 @@ def add_parser(subparsers, parent_parser):
         help="Output DAG as ASCII.",
     )
     pipeline_show_parser.add_argument(
-        "--dot", help="Write DAG in .dot format."
+        "--dot",
+        action="store_true",
+        default=False,
+        help="Print DAG with .dot format.",
     )
     pipeline_show_parser.add_argument(
         "--tree",
