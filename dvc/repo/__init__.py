@@ -176,6 +176,26 @@ class Repo(object):
     def _collect_dir_cache(
         self, out, branch=None, remote=None, force=False, jobs=None
     ):
+        """Get a list of `info`s retaled to the given directory.
+
+        - Pull the directory entry from the remote cache if it was changed.
+
+        Example:
+
+            Given the following commands:
+
+            $ echo "foo" > directory/foo
+            $ echo "bar" > directory/bar
+            $ dvc add directory
+
+            It will return something similar to the following list:
+
+            [
+                { 'path': 'directory',     'md5': '168fd6761b9c.dir', ... },
+                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
+                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
+            ]
+        """
         info = out.dumpd()
         ret = [info]
         r = out.remote
@@ -216,6 +236,13 @@ class Repo(object):
     def _collect_used_cache(
         self, out, branch=None, remote=None, force=False, jobs=None
     ):
+        """Get a dumpd of the given `out`, with an entry including the branch.
+
+        The `used_cache` of an output is no more than its `info`.
+
+        In case that the given output is a directory, it will also
+        include the `info` of its files.
+        """
         if not out.use_cache or not out.info:
             if not out.info:
                 logger.warning(
@@ -252,6 +279,20 @@ class Repo(object):
         jobs=None,
         recursive=False,
     ):
+        """Get the stages related to the given target and collect
+        the `info` of its outputs.
+
+        This is useful to know what files from the cache are _in use_
+        (namely, a file described as an output on a stage).
+
+        The scope is, by default, the working directory, but you can use
+        `all_branches` or `all_tags` to expand scope.
+
+        Returns:
+            A dictionary with Schemes (representing output's location) as keys,
+            and a list with the outputs' `dumpd` as values.
+        """
+
         cache = {}
         cache["local"] = []
         cache["s3"] = []
