@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 import threading
 import logging
+import itertools
 
 from dvc.scheme import Schemes
 
@@ -207,9 +208,9 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_paths(self, bucket, prefix):
+    def _list_paths(self, bucket, prefix, s3=None):
         """ Read config for list object api, paginate through list objects."""
-        s3 = self.s3
+        s3 = s3 or self.s3
         kwargs = {"Bucket": bucket, "Prefix": prefix}
         if self.list_objects:
             list_objects_api = "list_objects"
@@ -226,12 +227,28 @@ class RemoteS3(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == "s3"
+    def exists(self, path_infos):
+        single_path = False
 
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
+        if not isinstance(path_infos, list):
+            single_path = True
+            path_infos = [path_infos]
+
+        s3 = self.s3
+
+        paths = itertools.chain.from_iterable(
+            self._list_paths(path_info.bucket, path_info.path, s3)
+            for path_info in path_infos
+        )
+
+        paths = set(paths)
+
+        results = [path_info.path in paths for path_info in path_infos]
+
+        if single_path and results:
+            return all(results)
+
+        return results
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)

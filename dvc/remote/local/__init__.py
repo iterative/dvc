@@ -248,8 +248,11 @@ class RemoteLOCAL(RemoteBASE):
         move(tmp, outp)
 
     def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-        return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
+        return [
+            checksum
+            for checksum in md5s
+            if not self.changed_cache_file(checksum)
+        ]
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -367,7 +370,7 @@ class RemoteLOCAL(RemoteBASE):
         progress.update_target(title, 10, 100)
 
         ret = self._group(checksum_infos, show_checksums=show_checksums)
-        md5s = list(ret.keys())
+        md5s = list(ret)
 
         progress.update_target(title, 30, 100)
 

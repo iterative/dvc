@@ -44,6 +44,7 @@ class RemoteAZURE(RemoteBASE):
     REQUIRES = {"azure-storage-blob": BlockBlobService}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
+    SUPPORTS_NO_TRAVERSE = False
 
     def __init__(self, repo, config):
         super(RemoteAZURE, self).__init__(repo, config)

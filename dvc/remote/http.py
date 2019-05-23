@@ -89,10 +89,22 @@ class RemoteHTTP(RemoteBASE):
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == self.scheme
-        return bool(self._request("HEAD", path_info.url))
+    def exists(self, path_infos):
+        single_path = False
+
+        if not isinstance(path_infos, list):
+            single_path = True
+            path_infos = [path_infos]
+
+        results = [
+            bool(self._request("HEAD", path_info.url))
+            for path_info in path_infos
+        ]
+
+        if single_path and results:
+            return all(results)
+
+        return results
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)

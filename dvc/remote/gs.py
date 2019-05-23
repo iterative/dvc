@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
+import itertools
 
 from dvc.scheme import Schemes
 
@@ -90,19 +91,37 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix):
-        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
+    def _list_paths(self, bucket, prefix, gs=None):
+        gs = gs or self.gs
+
+        for blob in gs.bucket(bucket).list_blobs(prefix=prefix):
             yield blob.name
 
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == "gs"
+    def exists(self, path_infos):
+        single_path = False
 
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
+        if not isinstance(path_infos, list):
+            single_path = True
+            path_infos = [path_infos]
+
+        gs = self.gs
+
+        paths = itertools.chain.from_iterable(
+            self._list_paths(path_info.bucket, path_info.path, gs)
+            for path_info in path_infos
+        )
+
+        paths = set(paths)
+
+        results = [path_info.path in paths for path_info in path_infos]
+
+        if single_path and results:
+            return all(results)
+
+        return results
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)

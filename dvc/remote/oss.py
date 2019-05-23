@@ -46,6 +46,7 @@ class RemoteOSS(RemoteBASE):
     path_cls = CloudURLInfo
     REQUIRES = {"oss2": oss2}
     PARAM_CHECKSUM = "etag"
+    SUPPORTS_NO_TRAVERSE = False
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
