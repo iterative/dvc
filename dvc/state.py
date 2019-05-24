@@ -116,26 +116,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def __exit__(self, typ, value, tbck):
         self.dump()
 
-    def changed(self, path, md5):
-        """Check if file/directory has the expected md5.
-
-        Args:
-            path (str): path to the file/directory to check.
-            md5 (str): expected md5.
-
-        Returns:
-            bool: True if path has the expected md5, False otherwise.
-        """
-        actual = self.update(path)
-
-        msg = "File '{}', md5 '{}', actual '{}'"
-        logger.debug(msg.format(path, md5, actual))
-
-        if not md5 or not actual:
-            return True
-
-        return actual.split(".")[0] != md5.split(".")[0]
-
     def _execute(self, cmd):
         logger.debug(cmd)
         return self.cursor.execute(cmd)
