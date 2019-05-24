@@ -263,10 +263,11 @@ class Git(Base):
         references. Requires `gitdb` module (from gitpython package).
 
         Args:
-            a_ref(str) - git reference
-            b_ref(str) - second git reference. If None, uses HEAD
+            a_ref (str): git reference
+            b_ref (str): second git reference. If None, uses HEAD
 
-        Returns: tuple - tuple with elements: (trees, commits)
+        Returns:
+            tuple: tuple with elements: (trees, commits)
         """
         from gitdb.exc import BadObject, BadName
 
@@ -292,10 +293,11 @@ class Git(Base):
         Returns the dvc hash names of changed file/directory
 
         Args:
-            a_ref(str) - git reference
-            b_ref(str) - optional second git reference, default None
+            a_ref (str): git reference
+            b_ref (str): optional second git reference, default None
 
-        Returns: dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref,
+        Returns:
+            dict: dictionary with keys: (a_tree, b_tree, a_ref, b_ref,
             equal)
         """
         diff_dct = {DIFF_EQUAL: False}
