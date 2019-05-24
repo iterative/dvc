@@ -31,13 +31,12 @@ class SlowLinkDetectorDecorator(object):
             and self.should_display()
         ):
             msg = (
-                "You can cut execution time considerably. Check:\n"
+                "You can cut execution time considerably by using a different"
+                " `cache.type` configuration.\nSee "
                 "{blue}https://dvc.org/doc/commands-reference/config#cache{"
-                "reset}"
-                "\nfor "
-                "more information.\nTo disable this message, run:\n'dvc "
-                "config "
-                "cache.slow_link_warning False'".format(
+                "reset} for more information.\n"
+                "To disable this message, run:\n"
+                "'dvc config cache.slow_link_warning false'".format(
                     blue=colorama.Fore.BLUE, reset=colorama.Fore.RESET
                 )
             )
