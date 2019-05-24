@@ -67,7 +67,7 @@ def git(repo_dir):
 
 
 @pytest.fixture
-def dvc(repo_dir, git):
+def dvc_repo(repo_dir, git):
     try:
         dvc = DvcRepo.init(repo_dir._root_dir)
         dvc.scm.commit("init dvc")

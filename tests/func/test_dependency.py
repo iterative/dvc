@@ -17,5 +17,5 @@ def _get_dep(dvc, path):
 
 
 @pytest.mark.parametrize("url,scheme", TESTS)
-def test_scheme(dvc, url, scheme):
-    assert type(_get_dep(dvc, url)) == DEP_MAP[scheme]
+def test_scheme(dvc_repo, url, scheme):
+    assert type(_get_dep(dvc_repo, url)) == DEP_MAP[scheme]
