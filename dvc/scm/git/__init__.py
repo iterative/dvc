@@ -262,8 +262,9 @@ class Git(Base):
         """Private method for getting the trees and commit hashes of 2 git
         references. Requires `gitdb` module (from gitpython package).
 
-        Args: a_ref(str) - git reference
-              b_ref(str) - second git reference. If None, uses HEAD
+        Args:
+            a_ref(str) - git reference
+            b_ref(str) - second git reference. If None, uses HEAD
 
         Returns: tuple - tuple with elements: (trees, commits)
         """
@@ -290,8 +291,9 @@ class Git(Base):
         """Method for getting two repo trees between two git tag commits.
         Returns the dvc hash names of changed file/directory
 
-        Args: a_ref(str) - git reference
-              b_ref(str) - optional second git reference, default None
+        Args:
+            a_ref(str) - git reference
+            b_ref(str) - optional second git reference, default None
 
         Returns: dict - dictionary with keys: (a_tree, b_tree, a_ref, b_ref,
             equal)
