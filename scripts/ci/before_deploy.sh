@@ -27,7 +27,7 @@ if [[ -n "$TRAVIS_TAG" ]]; then
 fi
 
 PY_VER=$(python -c 'import sys; print(sys.version_info[0:2])')
-if [[ "$PY_VER" != '(2, 7)' ]]; then
+if [[ "$PY_VER" != '(3, 7)' ]]; then
     echo "Skipping building binary package because of a wrong python version."
     exit 0
 fi

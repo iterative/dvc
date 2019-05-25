@@ -48,7 +48,7 @@ matrix:
     language: ruby
     rvm: 2.4.0
     env:
-    - PYTHON_VER=3.6.2
+    - PYTHON_VER=3.7.3
     - PYTHON_CONFIGURE_OPTS="--enable-framework"
   - if: type = cron OR tag is present
     os: osx

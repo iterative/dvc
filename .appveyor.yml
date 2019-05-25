@@ -26,15 +26,10 @@ environment:
 
   matrix:
 
-    - PYTHON: "C:\\Python27"
-      PYTHON_VERSION: "2.7.x" # currently 2.7.9
+    - PYTHON: "C:\\Python37"
+      PYTHON_VERSION: "3.7.x"
       PYTHON_ARCH: "32"
       RUBY: C:\Ruby25\bin
-
-# Disabled as unnecessary
-#    - PYTHON: "C:\\Python27-x64"
-#      PYTHON_VERSION: "2.7.x" # currently 2.7.9
-#      PYTHON_ARCH: "64"
 
 install:
   - SET PATH=%RUBY%;%PATH%
