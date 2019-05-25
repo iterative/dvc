@@ -164,7 +164,7 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return "ssh://{}@127.0.0.1:{}".format(
+    return "ssh://{}@127.0.0.1:22{}".format(
         getpass.getuser(), get_local_storagepath()
     )
 
@@ -236,7 +236,7 @@ def get_oss_url():
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
         cloud = DataCloud(self.dvc, config=config)
-        self.assertIsInstance(cloud._cloud, cl)
+        self.assertIsInstance(cloud.get_remote(), cl)
 
     def test(self):
         config = copy.deepcopy(TEST_CONFIG)
@@ -287,7 +287,7 @@ class TestDataCloudBase(TestDvc):
         config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
         self.cloud = DataCloud(self.dvc, config)
 
-        self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _test_cloud(self):
         self._setup_cloud()
@@ -396,7 +396,7 @@ class TestRemoteGS(TestDataCloudBase):
         ] = TEST_GCP_CREDS_FILE
         self.cloud = DataCloud(self.dvc, config)
 
-        self.assertIsInstance(self.cloud._cloud, self._get_cloud_class())
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_url(self):
         return get_gcp_url()
@@ -760,9 +760,8 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         return RemoteLOCAL
 
     def _prepare_repo(self):
-        self.main(
-            ["remote", "add", "-d", TEST_REMOTE, self.cloud._cloud.cache_dir]
-        )
+        remote = self.cloud.get_remote()
+        self.main(["remote", "add", "-d", TEST_REMOTE, remote.cache_dir])
 
         self.dvc.add(self.DATA)
         self.dvc.add(self.DATA_SUB)
@@ -801,8 +800,9 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
         self.assertTrue(os.path.exists(local_cache_data_sub_path))
 
     def _test_recursive_push(self, data_md5, data_sub_md5):
-        cloud_data_path = self.cloud._cloud.get(data_md5)
-        cloud_data_sub_path = self.cloud._cloud.get(data_sub_md5)
+        remote = self.cloud.get_remote()
+        cloud_data_path = remote.get(data_md5)
+        cloud_data_sub_path = remote.get(data_sub_md5)
 
         self.assertFalse(os.path.exists(cloud_data_path))
         self.assertFalse(os.path.exists(cloud_data_sub_path))
