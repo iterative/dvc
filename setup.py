@@ -49,6 +49,11 @@ oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.4.1"]
 all_remotes = gs + s3 + azure + ssh + oss
 
+# Dependecies to run tests
+tests_requirements = []
+with open("tests/requirements.txt") as fobj:
+    tests_requirements += fobj.read.splitlines()
+
 setup(
     name="dvc",
     version=version,
@@ -68,6 +73,7 @@ setup(
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ':python_version=="2.7"': ["futures", "pathlib2"],
+        "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",
     python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
