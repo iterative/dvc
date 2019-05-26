@@ -5,11 +5,13 @@ import psutil
 import platform
 import argparse
 import logging
+import uuid
 
 from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
-from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import DvcException, NotDvcRepoError
+from dvc.system import System
 
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 class CmdVersion(CmdBaseNoRepo):
     def run(self):
+        dvc_version = __version__
+        python_version = platform.python_version()
+        platform_type = platform.platform()
+        root_directory = os.getcwd()
+
         try:
             root_directory = Repo.find_root()
 
@@ -25,22 +32,34 @@ class CmdVersion(CmdBaseNoRepo):
                 "Python version: {python_version}\n"
                 "Platform: {platform_type}\n"
                 "Filesystem Type: {filesystem_type}\n"
-                "Symlink: {symlink}"
+                "Cache: {cache}"
             ).format(
-                dvc_version=__version__,
-                python_version=platform.python_version(),
-                platform_type=platform.platform(),
+                dvc_version=dvc_version,
+                python_version=python_version,
+                platform_type=platform_type,
                 filesystem_type=self.get_fs_type(
                     os.path.abspath(root_directory)
                 ),
-                symlink=os.path.islink(os.path.abspath(root_directory)),
+                cache=self.get_linktype_support_info(),
             )
-            logger.info(info)
-            return 0
 
         except NotDvcRepoError:
-            logger.info("Not inside a dvc directory.")
-            return 1
+            info = (
+                "DVC version: {dvc_version}\n"
+                "Python version: {python_version}\n"
+                "Platform: {platform_type}\n"
+                "Filesystem Type: {filesystem_type}"
+            ).format(
+                dvc_version=dvc_version,
+                python_version=python_version,
+                platform_type=platform_type,
+                filesystem_type=self.get_fs_type(
+                    os.path.abspath(root_directory)
+                ),
+            )
+
+        logger.info(info)
+        return 0
 
     def get_fs_type(self, path):
         partition = {}
@@ -57,6 +76,35 @@ class CmdVersion(CmdBaseNoRepo):
             if path in partition:
                 return partition[path]
         return ("unkown", "none")
+
+    def get_linktype_support_info(self):
+        links = {
+            "reflink": System.reflink,
+            "hardlink": System.hardlink,
+            "symlink": System.symlink,
+        }
+
+        repo = Repo()
+        fname = "." + str(uuid.uuid4())
+        src = os.path.join(repo.cache.local.cache_dir, fname)
+        dst = os.path.join(repo.root_dir, fname)
+
+        cache = []
+
+        for name, link in links.items():
+            try:
+                link(src, dst)
+                os.unlink(dst)
+                supported = True
+            except DvcException:
+                supported = False
+            cache.append(
+                "{name} - {supported}".format(
+                    name=name, supported=True if supported else False
+                )
+            )
+
+        return ", ".join(cache)
 
 
 def add_parser(subparsers, parent_parser):
