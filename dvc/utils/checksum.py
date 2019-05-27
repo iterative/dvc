@@ -2,7 +2,8 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open
+from dvc.utils.collections import dict_filter
+from dvc.utils.compat import str, open
 
 import os
 import json
@@ -116,32 +117,7 @@ def bytes_checksum(byts, checksum_type=CHECKSUM_MD5):
     return hasher.hexdigest()
 
 
-def dict_filter(d, exclude=[]):
-    """
-    Exclude specified keys from a nested dict
-    """
-
-    if isinstance(d, list):
-        ret = []
-        for e in d:
-            ret.append(dict_filter(e, exclude))
-        return ret
-    elif isinstance(d, dict):
-        ret = {}
-        for k, v in d.items():
-            if isinstance(k, builtin_str):
-                k = str(k)
-
-            assert isinstance(k, str)
-            if k in exclude:
-                continue
-            ret[k] = dict_filter(v, exclude)
-        return ret
-
-    return d
-
-
-def dict_checksum(d, exclude=[], checksum_type=CHECKSUM_MD5):
+def dict_checksum(d, exclude=None, checksum_type=CHECKSUM_MD5):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
     return bytes_checksum(byts, checksum_type)

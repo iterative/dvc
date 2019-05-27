@@ -120,7 +120,7 @@ def is_percent(val):
     Returns:
         bool: True if 0<=value<=100, False otherwise.
     """
-    return int(val) >= 0 and int(val) <= 100
+    return 0 <= int(val) <= 100
 
 
 class Config(object):  # pylint: disable=too-many-instance-attributes

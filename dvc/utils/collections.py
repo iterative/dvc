@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
-from dvc.utils.compat import Mapping
+
+from dvc.utils.compat import Mapping, builtin_str
 
 
 # just simple check for Nones and emtpy strings
@@ -52,3 +53,31 @@ def apply_diff(src, dest):
                 src.__class__.__name__, dest.__class__.__name__
             )
         )
+
+
+def dict_filter(d, exclude=None):
+    """
+    Exclude specified keys from a nested dict
+    """
+
+    if not exclude:
+        return d
+
+    if isinstance(d, list):
+        ret = []
+        for e in d:
+            ret.append(dict_filter(e, exclude))
+        return ret
+    elif isinstance(d, dict):
+        ret = {}
+        for k, v in d.items():
+            if isinstance(k, builtin_str):
+                k = str(k)
+
+            assert isinstance(k, str)
+            if k in exclude:
+                continue
+            ret[k] = dict_filter(v, exclude)
+        return ret
+
+    return d
