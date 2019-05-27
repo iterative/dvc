@@ -4,9 +4,7 @@
 # export DVC_TEST_AWS_REPO_BUCKET="...SET-ME..."
 
 # Uncomment and set a bucket name to test against Google Storage
-# export GOOGLE_APPLICATION_CREDENTIALS=".gcp-creds.json"
-# export GCP_CREDS="yes"
-# export DVC_TEST_GCP_REPO_BUCKET="...SET-ME..."
+# export GOOGLE_APPLICATION_CREDENTIALS="scripts/ci/gcp-creds.json"
 
 # Uncomment to test against Microsoft Azure via Azurite
 # export AZURE_STORAGE_CONTAINER_NAME="dvc-test"

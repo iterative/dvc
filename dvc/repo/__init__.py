@@ -13,6 +13,7 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path.local import PathLOCAL
+from dvc.utils.compat import open as _open
 
 logger = logging.getLogger(__name__)
 
@@ -538,3 +539,16 @@ class Repo(object):
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
+
+    def open(self, path, remote=None, mode="r", encoding=None):
+        """Opens a specified resource as a file descriptor"""
+        out, = self.find_outs_by_path(path)
+        if out.isdir():
+            raise ValueError("Can't open a dir")
+
+        with self.state:
+            cache_info = self._collect_used_cache(out, remote=remote)
+            self.cloud.pull(cache_info, remote=remote)
+
+        cache_filename = self.cache.local.checksum_to_path(out.checksum)
+        return _open(cache_filename, mode=mode, encoding=encoding)

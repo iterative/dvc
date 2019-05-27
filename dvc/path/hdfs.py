@@ -1,4 +1,3 @@
-from dvc.utils.compat import urlunsplit
 from dvc.scheme import Schemes
 from .base import PathBASE
 
@@ -11,6 +10,4 @@ class PathHDFS(PathBASE):
         self.user = user
 
     def __str__(self):
-        if not self.url:
-            return urlunsplit((self.scheme, self.user, self.path, "", ""))
-        return self.url
+        return self.path
