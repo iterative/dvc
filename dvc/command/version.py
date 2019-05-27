@@ -22,21 +22,23 @@ class CmdVersion(CmdBaseNoRepo):
         dvc_version = __version__
         python_version = platform.python_version()
         platform_type = platform.platform()
-        root_directory = os.getcwd()
+
+        info = (
+            "DVC version: {dvc_version}\n"
+            "Python version: {python_version}\n"
+            "Platform: {platform_type}\n"
+        ).format(
+            dvc_version=dvc_version,
+            python_version=python_version,
+            platform_type=platform_type,
+        )
 
         try:
             root_directory = Repo.find_root()
 
-            info = (
-                "DVC version: {dvc_version}\n"
-                "Python version: {python_version}\n"
-                "Platform: {platform_type}\n"
-                "Filesystem Type: {filesystem_type}\n"
-                "Cache: {cache}"
+            info += (
+                "Filesystem type: {filesystem_type}\n" "Cache: {cache}"
             ).format(
-                dvc_version=dvc_version,
-                python_version=python_version,
-                platform_type=platform_type,
                 filesystem_type=self.get_fs_type(
                     os.path.abspath(root_directory)
                 ),
@@ -44,18 +46,12 @@ class CmdVersion(CmdBaseNoRepo):
             )
 
         except NotDvcRepoError:
-            info = (
-                "DVC version: {dvc_version}\n"
-                "Python version: {python_version}\n"
-                "Platform: {platform_type}\n"
-                "Filesystem Type: {filesystem_type}"
-            ).format(
-                dvc_version=dvc_version,
-                python_version=python_version,
-                platform_type=platform_type,
+            root_directory = os.getcwd()
+
+            info += ("Filesystem type: {filesystem_type}").format(
                 filesystem_type=self.get_fs_type(
                     os.path.abspath(root_directory)
-                ),
+                )
             )
 
         logger.info(info)
