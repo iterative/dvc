@@ -35,7 +35,7 @@ def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
 def reproduce(
     self,
     target=None,
-    recursive=True,
+    single_item=False,
     force=False,
     dry=False,
     interactive=False,
@@ -44,7 +44,9 @@ def reproduce(
     ignore_build_cache=False,
     no_commit=False,
     downstream=False,
+    recursive=False,
 ):
+    import networkx as nx
     from dvc.stage import Stage
 
     if not target and not all_pipelines:
@@ -56,7 +58,13 @@ def reproduce(
         interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
 
     targets = []
-    if pipeline or all_pipelines:
+    if recursive and os.path.isdir(target):
+        G = self.graph(from_directory=target)[1]
+        dir_targets = [
+            os.path.join(self.root_dir, n) for n in nx.dfs_postorder_nodes(G)
+        ]
+        targets.extend(dir_targets)
+    elif pipeline or all_pipelines:
         if pipeline:
             stage = Stage.load(self, target)
             node = os.path.relpath(stage.path, self.root_dir)
@@ -77,7 +85,7 @@ def reproduce(
             stages = _reproduce(
                 self,
                 target,
-                recursive=recursive,
+                single_item=single_item,
                 force=force,
                 dry=dry,
                 interactive=interactive,
@@ -93,7 +101,7 @@ def reproduce(
 def _reproduce(
     self,
     target,
-    recursive=True,
+    single_item=False,
     force=False,
     dry=False,
     interactive=False,
@@ -109,7 +117,11 @@ def _reproduce(
     stages = nx.get_node_attributes(G, "stage")
     node = os.path.relpath(stage.path, self.root_dir)
 
-    if recursive:
+    if single_item:
+        ret = _reproduce_stage(
+            stages, node, force, dry, interactive, no_commit
+        )
+    else:
         ret = _reproduce_stages(
             G,
             stages,
@@ -120,10 +132,6 @@ def _reproduce(
             ignore_build_cache,
             no_commit,
             downstream,
-        )
-    else:
-        ret = _reproduce_stage(
-            stages, node, force, dry, interactive, no_commit
         )
 
     return ret

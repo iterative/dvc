@@ -158,7 +158,7 @@ class Repo(object):
         import networkx as nx
         from dvc.stage import Stage
 
-        if not target or recursive:
+        if not target or (recursive and os.path.isdir(target)):
             return self.active_stages(target)
 
         stage = Stage.load(self, target)
@@ -306,7 +306,7 @@ class Repo(object):
             all_branches=all_branches, all_tags=all_tags
         ):
             if target:
-                if recursive:
+                if recursive and os.path.isdir(target):
                     stages = self.stages(target)
                 else:
                     stages = self.collect(target, with_deps=with_deps)

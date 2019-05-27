@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 class CmdRepro(CmdBase):
     def run(self):
-        recursive = not self.args.single_item
         saved_dir = os.path.realpath(os.curdir)
         if self.args.cwd:
             os.chdir(self.args.cwd)
@@ -31,7 +30,7 @@ class CmdRepro(CmdBase):
             try:
                 stages = self.repo.reproduce(
                     target,
-                    recursive=recursive,
+                    single_item=self.args.single_item,
                     force=self.args.force,
                     dry=self.args.dry,
                     interactive=self.args.interactive,
@@ -40,6 +39,7 @@ class CmdRepro(CmdBase):
                     ignore_build_cache=self.args.ignore_build_cache,
                     no_commit=self.args.no_commit,
                     downstream=self.args.downstream,
+                    recursive=self.args.recursive,
                 )
 
                 if len(stages) == 0:
@@ -127,6 +127,13 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Reproduce all pipelines in the repo.",
+    )
+    repro_parser.add_argument(
+        "-R",
+        "--recursive",
+        action="store_true",
+        default=False,
+        help="Reproduce all stages in the specified directory.",
     )
     repro_parser.add_argument(
         "--ignore-build-cache",
