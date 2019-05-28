@@ -113,7 +113,9 @@ def dict_md5(d, exclude=[]):
 
 def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
+    from dvc.exceptions import DvcException
     from dvc.progress import progress
+    from dvc.system import System
 
     copied = 0
     name = name if name else os.path.basename(dest)
@@ -122,15 +124,18 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     if os.path.isdir(dest):
         dest = os.path.join(dest, os.path.basename(src))
 
-    with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-        while True:
-            buf = fsrc.read(LOCAL_CHUNK_SIZE)
-            if not buf:
-                break
-            fdest.write(buf)
-            copied += len(buf)
-            if not no_progress_bar:
-                progress.update_target(name, copied, total)
+    try:
+        System.reflink(src, dest)
+    except DvcException:
+        with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+            while True:
+                buf = fsrc.read(LOCAL_CHUNK_SIZE)
+                if not buf:
+                    break
+                fdest.write(buf)
+                copied += len(buf)
+                if not no_progress_bar:
+                    progress.update_target(name, copied, total)
 
     if not no_progress_bar:
         progress.finish_target(name)
