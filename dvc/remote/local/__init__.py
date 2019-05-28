@@ -38,8 +38,6 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
-from dvc.utils.fs import get_mtime_and_size, get_inode
-
 
 logger = logging.getLogger(__name__)
 
@@ -494,22 +492,6 @@ class RemoteLOCAL(RemoteBASE):
             show_checksums=show_checksums,
             download=True,
         )
-
-    def _changed_dir_cache(self, checksum):
-        mtime, size = get_mtime_and_size(self.cache_dir)
-        inode = get_inode(self.cache_dir)
-
-        existing_record = self.state.get_state_record_for_inode(inode)
-        if existing_record:
-            cached_mtime, cached_size, _, _ = existing_record
-            changed = not (mtime == cached_mtime and size == cached_size)
-        else:
-            changed = True
-
-        if not changed:
-            return False
-
-        return super(RemoteLOCAL, self)._changed_dir_cache(checksum)
 
     def _log_missing_caches(self, checksum_info_dict):
         missing_caches = [
