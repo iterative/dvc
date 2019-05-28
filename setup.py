@@ -35,11 +35,31 @@ class build_py(_build_py):
         _build_py.run(self)
 
 
-install_requires = []
-
-# Requirements to run dvc
-with open("requirements.txt") as fobj:
-    install_requires += fobj.read().splitlines()
+install_requires = [
+    "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
+    "configparser>=3.5.0",
+    "zc.lockfile>=1.2.1",
+    "future>=0.16.0",
+    "colorama>=0.3.9",
+    "configobj>=5.0.6",
+    "networkx>=2.1",
+    "gitpython>=2.1.8",
+    "setuptools>=34.0.0",
+    "nanotime>=0.5.2",
+    "pyasn1>=0.4.1",
+    "schema>=0.6.7",
+    "jsonpath-ng>=1.4.3",
+    "requests>=2.22.0",
+    "grandalf==0.6",
+    "asciimatics>=1.10.0",
+    "distro>=1.3.0",
+    "appdirs>=1.4.3",
+    "treelib>=1.5.5",
+    "inflect>=2.1.0",
+    "humanize>=0.5.1",
+    "dulwich>=0.19.11",
+    "ruamel.yaml>=0.15.91",
+]
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
@@ -49,10 +69,33 @@ oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.4.1"]
 all_remotes = gs + s3 + azure + ssh + oss
 
-# Dependecies to run tests
-tests_requirements = []
-with open("tests/requirements.txt") as fobj:
-    tests_requirements += fobj.read.splitlines()
+# Extra dependecies to run tests
+tests_requirements = [
+    "PyInstaller==3.4",
+    "wheel>=0.31.1",
+    'futures>=3.2.0; python_version == "2.7"',
+    "pydot>=1.2.4",
+    'pathlib2==2.3.3; python_version == "2.7"',
+    # Test requirements:
+    "pytest>=4.4.0",
+    "pytest-timeout>=1.3.3",
+    "pytest-cov>=2.6.1",
+    "pytest-xdist>=1.26.1",
+    "pytest-mock>=1.10.4",
+    "flaky>=3.5.3",
+    "mock>=3.0.0",
+    "xmltodict>=0.11.0",
+    "awscli>=1.16.125",
+    "google-compute-engine",
+    "pywin32; sys_platform == 'win32'",
+    "Pygments"  # required by collective.checkdocs,
+    "collective.checkdocs",
+    "black==19.3b0 ; python_version >= '3.6'",
+    "flake8",
+    "flake8-docstrings",
+    "jaraco.windows==3.9.2",
+    "mock-ssh-server >= 0.5.0",
+]
 
 setup(
     name="dvc",
