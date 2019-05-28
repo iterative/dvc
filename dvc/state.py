@@ -269,8 +269,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             )
         )
 
-        self._update_cache_directory_state()
-
         self.database.commit()
         self.cursor.close()
         self.database.close()
@@ -458,20 +456,3 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         for relpath in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
             self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
-
-    def _update_cache_directory_state(self):
-        cache_path = self.repo.cache.local.cache_dir
-        mtime, size = get_mtime_and_size(cache_path)
-        inode = get_inode(cache_path)
-
-        cmd = (
-            "INSERT OR REPLACE INTO {}(inode, size, mtime, timestamp, md5) "
-            'VALUES ({}, "{}", "{}", "{}", "")'.format(
-                self.STATE_TABLE,
-                self._to_sqlite(inode),
-                size,
-                mtime,
-                current_timestamp(),
-            )
-        )
-        self._execute(cmd)
