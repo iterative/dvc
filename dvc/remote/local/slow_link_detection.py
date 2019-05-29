@@ -48,7 +48,7 @@ class SlowLinkDetectorDecorator(object):
 def slow_link_guard(method):
     def call(remote_local, *args, **kwargs):
         cache_config = remote_local.repo.config.config.get(
-            Config.SECTION_CACHE
+            Config.SECTION_CACHE, {}
         )
         should_warn = cache_config.get(
             Config.SECTION_CACHE_SLOW_LINK_WARNING, True
