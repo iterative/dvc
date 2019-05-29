@@ -47,7 +47,7 @@ install:
   - cinst gsutil
   - cinst openssl.light --version 1.1.1
   - python -m pip install -U pip setuptools wheel
-  - pip install -r requirements.txt
+  - pip install -e .[all]
   - python setup.py install
 
 build: false
@@ -57,7 +57,7 @@ before_test:
   - aws configure set aws_secret_access_key "%aws_secret_access_key%"
   - aws configure set region us-east-2
   - openssl enc -d -aes-256-cbc -md md5 -k "%GCP_CREDS%" -in scripts\ci\gcp-creds.json.enc -out scripts\ci\gcp-creds.json & exit 0
-  - pip install -r tests/requirements.txt
+  - pip install -e .[tests]
 
 test_script:
   - python -mtests
