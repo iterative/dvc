@@ -33,7 +33,7 @@ environment:
 
 install:
   - SET PATH=%RUBY%;%PATH%
-  - git clone -q https://github.com/nanaya-tachibana/oss-emulator.git
+  - git clone -q https://github.com/iterative/oss-emulator.git
   - gem install thor builder
   - ps: cd oss-emulator
   - ps: $OSSProcess = Start-Process -FilePath ruby -ArgumentList "bin\emulator -r store -p 50004" -PassThru -NoNewWindow
