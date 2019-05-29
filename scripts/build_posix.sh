@@ -78,7 +78,7 @@ install_dependencies()
 	gem install --no-document fpm
 
 	print_info "Installing requirements..."
-	pip install -e .
+	pip install -e .[all]
 
 	print_info "Installing pyinstaller..."
 	pip install pyinstaller

@@ -1,6 +1,7 @@
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py as _build_py
 import os
+import sys
 
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
@@ -94,6 +95,9 @@ tests_requirements = [
     "mock-ssh-server>=0.5.0",
 ]
 
+if (sys.version_info) >= (3, 6):
+    tests_requirements.append("black==19.3b0")
+
 setup(
     name="dvc",
     version=version,
@@ -113,7 +117,6 @@ setup(
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ":python_version=='2.7'": ["futures", "pathlib2"],
-        ":python_version>='3.6'": ["black==19.3b0"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",

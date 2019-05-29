@@ -15,7 +15,7 @@ function retry {
 # networking issues. Thus, let's retry a few times to see if it will eventially
 # work or not.
 retry pip install --upgrade pip setuptools wheel
-retry pip install -e .
+retry pip install -e .[all]
 retry pip install -e .[tests]
 
 git config --global user.email "dvctester@example.com"
