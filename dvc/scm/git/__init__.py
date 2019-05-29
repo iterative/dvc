@@ -297,8 +297,8 @@ class Git(Base):
             b_ref (str): optional second git reference, default None
 
         Returns:
-            dict: dictionary with keys: (a_tree, b_tree, a_ref, b_ref,
-            equal)
+            dict: dictionary with keys: {a_ref, b_ref, equal}
+                or {a_ref, b_ref, a_tree, b_tree}
         """
         diff_dct = {DIFF_EQUAL: False}
         trees, commits = self._get_diff_trees(a_ref, b_ref)
