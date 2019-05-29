@@ -88,7 +88,6 @@ tests_requirements = [
     "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
-    "black==19.3b0",
     "flake8",
     "flake8-docstrings",
     "jaraco.windows==3.9.2",
@@ -114,6 +113,7 @@ setup(
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ":python_version=='2.7'": ["futures", "pathlib2"],
+        ":python_version>='3.6'": ["black==19.3b0"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",
