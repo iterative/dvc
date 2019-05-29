@@ -43,10 +43,16 @@ class DataCloud(object):
         "https": RemoteHTTP,
     }
 
-    def __init__(self, repo, config=None):
+    def __init__(self, repo):
         self.repo = repo
-        self._config = config
-        self._core = self._config[Config.SECTION_CORE]
+
+    @property
+    def _config(self):
+        return self.repo.config.config
+
+    @property
+    def _core(self):
+        return self._config.get(Config.SECTION_CORE, {})
 
     def get_remote(self, remote=None, command="<command>"):
         if not remote:
@@ -69,13 +75,8 @@ class DataCloud(object):
         )
 
     def _init_remote(self, remote):
-        section = Config.SECTION_REMOTE_FMT.format(remote).lower()
-        cloud_config = self._config.get(section, None)
-        if not cloud_config:
-            msg = "can't find remote section '{}' in config"
-            raise ConfigError(msg.format(section))
-
-        return Remote(self.repo, cloud_config)
+        config = self.repo.config.get_remote_settings(remote)
+        return Remote(self.repo, config)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()

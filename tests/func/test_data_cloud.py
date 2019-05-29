@@ -235,7 +235,8 @@ def get_oss_url():
 
 class TestDataCloud(TestDvc):
     def _test_cloud(self, config, cl):
-        cloud = DataCloud(self.dvc, config=config)
+        self.dvc.config.config = config
+        cloud = DataCloud(self.dvc)
         self.assertIsInstance(cloud.get_remote(), cl)
 
     def test(self):
@@ -285,7 +286,8 @@ class TestDataCloudBase(TestDvc):
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
-        self.cloud = DataCloud(self.dvc, config)
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
@@ -394,7 +396,8 @@ class TestRemoteGS(TestDataCloudBase):
         config[TEST_SECTION][
             Config.SECTION_GCP_CREDENTIALPATH
         ] = TEST_GCP_CREDS_FILE
-        self.cloud = DataCloud(self.dvc, config)
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
 
         self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 

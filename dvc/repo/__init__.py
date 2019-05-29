@@ -75,7 +75,7 @@ class Repo(object):
             logger.setLevel(level.upper())
 
         self.cache = Cache(self)
-        self.cloud = DataCloud(self, config=self.config.config)
+        self.cloud = DataCloud(self)
         self.updater = Updater(self.dvc_dir)
 
         self.metrics = Metrics(self)
