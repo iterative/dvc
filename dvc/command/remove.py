@@ -57,7 +57,7 @@ def add_parser(subparsers, parent_parser):
         "--outs",
         action="store_true",
         default=True,
-        help="Only remove DVC file outputs.(default)",
+        help="Only remove DVC file outputs. (Default)",
     )
     remove_parser_group.add_argument(
         "-p",
