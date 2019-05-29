@@ -73,9 +73,7 @@ all_remotes = gs + s3 + azure + ssh + oss
 tests_requirements = [
     "PyInstaller==3.4",
     "wheel>=0.31.1",
-    'futures>=3.2.0; python_version == "2.7"',
     "pydot>=1.2.4",
-    'pathlib2==2.3.3; python_version == "2.7"',
     # Test requirements:
     "pytest>=4.4.0",
     "pytest-timeout>=1.3.3",
@@ -88,13 +86,13 @@ tests_requirements = [
     "awscli>=1.16.125",
     "google-compute-engine",
     "pywin32; sys_platform == 'win32'",
-    "Pygments"  # required by collective.checkdocs,
+    "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
-    "black==19.3b0 ; python_version >= '3.6'",
+    "black==19.3b0",
     "flake8",
     "flake8-docstrings",
     "jaraco.windows==3.9.2",
-    "mock-ssh-server >= 0.5.0",
+    "mock-ssh-server>=0.5.0",
 ]
 
 setup(
@@ -115,7 +113,7 @@ setup(
         "oss": oss,
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ':python_version=="2.7"': ["futures", "pathlib2"],
+        ":python_version=='2.7'": ["futures", "pathlib2"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",
