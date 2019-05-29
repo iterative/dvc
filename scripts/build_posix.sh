@@ -15,6 +15,7 @@ fi
 
 BUILD_DIR=build
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
+DESC='Data Version Control - datasets, models, and experime    nts versioning for ML or data science projects'
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 print_error()
@@ -46,7 +47,7 @@ fpm_build()
 	fpm -s dir \
 	    -f \
 	    -t $1 \
-		--description "Data Version Control - datasets, models, and experiments versioning for ML or data science projects"
+		--description $DESC \
 	    $FPM_FLAGS \
 	    -n dvc \
 	    -v $VERSION \
