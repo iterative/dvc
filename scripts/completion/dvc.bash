@@ -16,12 +16,9 @@ _dvc_options="-h --help -v --version"
 _dvc_global_options="-h --help -q --quiet -V --verbose"
 
 _dvc_add="-R --recursive -f --file --no-commit"
-#_dvc_cache=?
 _dvc_checkout="$(compgen -G '*.dvc')"
-#_dvc_commit=?
 _dvc_config="-u --unset --local --system --global"
 _dvc_destroy="-f --force"
-#_dvc_diff=?
 _dvc_fetch="--show-checksums -j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive"
 _dvc_gc="-a --all-branches -T --all-tags -c --cloud -r --remote -f --force -p --project"
 _dvc_import="--resume"
@@ -40,8 +37,6 @@ _dvc_root=""
 _dvc_run="--no-exec -f --file -c --cwd -d --deps -o --outs -O --outs-no-cache -M --metrics-no-cache -y --yes --overwrite-dvc-file --ignore-build-cache --remove-outs --no-commit -w --wdir"
 _dvc_status="--show-checksums -j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -c --cloud -q --quiet"
 _dvc_unlock="$(compgen -G '*.dvc')"
-#_dvc_unprotect=?
-#_dvc_version=?
 
 # Notes:
 #
