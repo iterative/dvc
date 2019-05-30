@@ -464,14 +464,20 @@ class RemoteLOCAL(RemoteBASE):
         if len(chunks) == 0:
             return 0
 
-        futures = []
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            for from_infos, to_infos, names in chunks:
-                res = executor.submit(func, from_infos, to_infos, names=names)
-                futures.append(res)
+        if jobs > 1:
+            futures = []
+            with ThreadPoolExecutor(max_workers=jobs) as executor:
+                for from_infos, to_infos, names in chunks:
+                    res = executor.submit(
+                        func, from_infos, to_infos, names=names
+                    )
+                    futures.append(res)
 
-        for f in futures:
-            f.result()
+            for f in futures:
+                f.result()
+        else:
+            for from_infos, to_infos, names in chunks:
+                func(from_infos, to_infos, names=names)
 
         return len(chunks)
 
