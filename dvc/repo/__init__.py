@@ -13,7 +13,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
 )
 from dvc.ignore import DvcIgnoreFileHandler
-from dvc.path.local import PathLOCAL
+from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open
 
 logger = logging.getLogger(__name__)
@@ -118,8 +118,7 @@ class Repo(object):
         return Repo(root_dir)
 
     def unprotect(self, target):
-        path_info = PathLOCAL(path=target)
-        return self.cache.local.unprotect(path_info)
+        return self.cache.local.unprotect(PathInfo(target))
 
     def _ignore(self):
         flist = [
@@ -397,24 +396,24 @@ class Repo(object):
             for out in stage.outs:
                 existing = []
                 for o in outs:
-                    if o.path == out.path:
+                    if o.path_info == out.path_info:
                         existing.append(o.stage)
 
-                    in_o_dir = out.path.startswith(o.path + o.sep)
-                    in_out_dir = o.path.startswith(out.path + out.sep)
+                    in_o_dir = out.path_info.isin(o.path_info)
+                    in_out_dir = o.path_info.isin(out.path_info)
                     if in_o_dir or in_out_dir:
                         raise OverlappingOutputPathsError(o, out)
 
                 if existing:
                     stages = [stage.relpath, existing[0].relpath]
-                    raise OutputDuplicationError(out.path, stages)
+                    raise OutputDuplicationError(str(out), stages)
 
                 outs.append(out)
 
         for stage in stages:
-            path_dir = os.path.dirname(stage.path) + os.sep
+            stage_path_info = PathInfo(stage.path)
             for out in outs:
-                if path_dir.startswith(out.path + os.sep):
+                if stage_path_info.isin(out.path_info):
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
         for stage in stages:
@@ -426,9 +425,9 @@ class Repo(object):
             for dep in stage.deps:
                 for out in outs:
                     if (
-                        out.path != dep.path
-                        and not dep.path.startswith(out.path + out.sep)
-                        and not out.path.startswith(dep.path + dep.sep)
+                        out.path_info != dep.path_info
+                        and not dep.path_info.isin(out.path_info)
+                        and not out.path_info.isin(dep.path_info)
                     ):
                         continue
 
@@ -483,7 +482,8 @@ class Repo(object):
                     continue
                 stage = Stage.load(self, path)
                 for out in stage.outs:
-                    outs.append(out.path + out.sep)
+                    if out.scheme == "local":
+                        outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
             def filter_dirs(dname, root=root):
@@ -522,10 +522,10 @@ class Repo(object):
         is_dir = self.tree.isdir(abs_path)
 
         def func(out):
-            if out.path == abs_path:
+            if out.scheme == "local" and out.fspath == abs_path:
                 return True
 
-            if is_dir and recursive and out.path.startswith(abs_path + os.sep):
+            if is_dir and recursive and out.path_info.isin(abs_path):
                 return True
 
             return False
@@ -550,5 +550,5 @@ class Repo(object):
             cache_info = self._collect_used_cache(out, remote=remote)
             self.cloud.pull(cache_info, remote=remote)
 
-        cache_filename = self.cache.local.checksum_to_path(out.checksum)
-        return _open(cache_filename, mode=mode, encoding=encoding)
+        cache_file = self.cache.local.checksum_to_path_info(out.checksum)
+        return _open(cache_file.fspath, mode=mode, encoding=encoding)

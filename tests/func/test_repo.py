@@ -33,9 +33,7 @@ class TestCollect(TestDvc):
         else:
             self.dvc.tree = WorkingTree()
         result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
-        self.assertEqual(
-            [[j.rel_path for j in i.outs] for i in result], expected
-        )
+        self.assertEqual([[str(j) for j in i.outs] for i in result], expected)
         return result
 
     def test(self):
@@ -45,7 +43,7 @@ class TestCollect(TestDvc):
             "new_branch", "buzz", True, [[self.FOO], [self.BAR], ["buzz"]]
         )
         result = self._check("new_branch", "buzz", False, [["buzz"]])
-        self.assertEqual([i.rel_path for i in result[0].deps], ["bar"])
+        self.assertEqual([str(i) for i in result[0].deps], ["bar"])
 
 
 class TestIgnore(TestDvc):

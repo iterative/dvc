@@ -17,7 +17,7 @@ from tests.basic_env import TestDvc
 def _get_checksum(repo, file_name):
     outs = [out for s in repo.stages() for out in s.outs]
     for out in outs:
-        if out.url == file_name:
+        if out.def_path == file_name:
             return out.checksum
 
 

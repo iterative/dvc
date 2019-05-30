@@ -61,6 +61,7 @@ install_requires = [
     "dulwich>=0.19.11",
     "ruamel.yaml>=0.15.91",
     "psutil==5.6.2",
+    "funcy>=1.12",
 ]
 
 # Extra dependencies for remote integrations

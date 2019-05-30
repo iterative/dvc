@@ -15,8 +15,8 @@ class TestUnpackedDirStatusOptimization(object):
         stages = dvc_repo.add(repo_dir.DATA_DIR)
         assert len(stages) == 1
         self.dir_out = stages[0].outs[0]
-        self.unpacked_dir = RemoteLOCAL._append_unpacked_suffix(
-            self.dir_out.cache_path
+        self.unpacked_dir = (
+            self.dir_out.cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
         )
 
     def test_should_not_fail_add_on_unpacked_dir_creation_exception(

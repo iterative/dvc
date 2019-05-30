@@ -5,7 +5,6 @@ import threading
 import logging
 
 from dvc.scheme import Schemes
-from dvc.path.s3 import PathS3
 
 try:
     import boto3
@@ -13,11 +12,12 @@ except ImportError:
     boto3 = None
 
 from dvc.utils import tmp_fname, move
-from dvc.utils.compat import urlparse, makedirs
+from dvc.utils.compat import makedirs, fspath_py35
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
+from dvc.path_info import CloudURLInfo
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ class Callback(object):
 
 class RemoteS3(RemoteBASE):
     scheme = Schemes.S3
-    REGEX = r"^s3://(?P<path>.*)$"
+    path_cls = CloudURLInfo
     REQUIRES = {"boto3": boto3}
     PARAM_CHECKSUM = "etag"
 
@@ -48,7 +48,8 @@ class RemoteS3(RemoteBASE):
             config.get(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
         )
 
-        self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        self.path_info = self.path_cls(url)
 
         self.region = os.environ.get("AWS_DEFAULT_REGION") or config.get(
             Config.SECTION_AWS_REGION
@@ -73,12 +74,6 @@ class RemoteS3(RemoteBASE):
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
-
-        parsed = urlparse(self.url)
-        self.bucket = parsed.netloc
-        self.prefix = parsed.path.lstrip("/")
-
-        self.path_info = PathS3(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):
@@ -205,10 +200,7 @@ class RemoteS3(RemoteBASE):
         if path_info.scheme != "s3":
             raise NotImplementedError
 
-        logger.debug(
-            "Removing s3://{}/{}".format(path_info.bucket, path_info.path)
-        )
-
+        logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
     def _list_paths(self, bucket, prefix):
@@ -228,7 +220,7 @@ class RemoteS3(RemoteBASE):
                 yield item["Key"]
 
     def list_cache_paths(self):
-        return self._list_paths(self.bucket, self.prefix)
+        return self._list_paths(self.path_info.bucket, self.path_info.path)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
@@ -249,28 +241,24 @@ class RemoteS3(RemoteBASE):
             if from_info.scheme != "local":
                 raise NotImplementedError
 
-            logger.debug(
-                "Uploading '{}' to '{}/{}'".format(
-                    from_info.path, to_info.bucket, to_info.path
-                )
-            )
+            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(from_info.path)
+                name = from_info.name
 
-            total = os.path.getsize(from_info.path)
+            total = os.path.getsize(fspath_py35(from_info))
             cb = None if no_progress_bar else Callback(name, total)
 
             try:
                 s3.upload_file(
-                    from_info.path,
+                    from_info.fspath,
                     to_info.bucket,
                     to_info.path,
                     Callback=cb,
                     ExtraArgs=self.extra_args,
                 )
             except Exception:
-                msg = "failed to upload '{}'".format(from_info.path)
+                msg = "failed to upload '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
@@ -299,17 +287,14 @@ class RemoteS3(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}/{}' to '{}'".format(
-                from_info.bucket, from_info.path, to_info.path
-            )
+            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
             logger.debug(msg)
 
-            tmp_file = tmp_fname(to_info.path)
+            tmp_file = tmp_fname(to_info)
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
             try:
                 if no_progress_bar:
                     cb = None
@@ -323,13 +308,11 @@ class RemoteS3(RemoteBASE):
                     from_info.bucket, from_info.path, tmp_file, Callback=cb
                 )
             except Exception:
-                msg = "failed to download '{}/{}'".format(
-                    from_info.bucket, from_info.path
-                )
+                msg = "failed to download '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
-            move(tmp_file, to_info.path)
+            move(tmp_file, fspath_py35(to_info))
 
             if not no_progress_bar:
                 progress.finish_target(name)

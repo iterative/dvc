@@ -134,7 +134,7 @@ def _format_output(content, typ):
     return content
 
 
-def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
+def _read_metric(fd, typ=None, xpath=None, fname=None, branch=None):
     typ = typ.lower().strip() if typ else typ
     try:
         if xpath:
@@ -146,7 +146,7 @@ def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     except Exception:
         logger.exception(
             "unable to read metric in '{}' in branch '{}'".format(
-                rel_path, branch
+                fname, branch
             )
         )
         return None
@@ -220,28 +220,24 @@ def _read_metrics(repo, metrics, branch):
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
         if not typ:
-            typ = os.path.splitext(out.path.lower())[1].replace(".", "")
+            typ = os.path.splitext(out.fspath.lower())[1].replace(".", "")
         if out.use_cache:
             open_fun = open
             path = repo.cache.local.get(out.checksum)
         else:
             open_fun = repo.tree.open
-            path = out.path
+            path = out.fspath
         try:
 
             with open_fun(path) as fd:
                 metric = _read_metric(
-                    fd,
-                    typ=typ,
-                    xpath=xpath,
-                    rel_path=out.rel_path,
-                    branch=branch,
+                    fd, typ=typ, xpath=xpath, fname=str(out), branch=branch
                 )
         except IOError as e:
             if e.errno == errno.ENOENT:
                 logger.warning(
                     NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
-                        out.rel_path, branch
+                        out.path_info, branch
                     )
                 )
                 metric = None
@@ -251,7 +247,7 @@ def _read_metrics(repo, metrics, branch):
         if not metric:
             continue
 
-        res[out.rel_path] = metric
+        res[str(out)] = metric
 
     return res
 

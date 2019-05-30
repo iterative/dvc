@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
+from dvc.utils.compat import fspath
 
 import os
 import sys
@@ -234,7 +235,7 @@ def tmp_fname(fname):
     """ Temporary name for a partial download """
     from uuid import uuid4
 
-    return fname + "." + str(uuid4()) + ".tmp"
+    return fspath(fname) + "." + str(uuid4()) + ".tmp"
 
 
 def current_timestamp():

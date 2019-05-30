@@ -1,13 +1,12 @@
 from __future__ import unicode_literals
 
-import re
 import logging
 from copy import copy
 
 from schema import Or, Optional
 
 from dvc.exceptions import DvcException
-from dvc.utils.compat import str
+from dvc.utils.compat import str, urlparse
 from dvc.remote.base import RemoteBASE
 
 
@@ -58,6 +57,8 @@ class OutputBase(object):
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
 
+    sep = "/"
+
     def __init__(
         self,
         stage,
@@ -69,9 +70,19 @@ class OutputBase(object):
         persist=False,
         tags=None,
     ):
+        # This output (and dependency) objects have too many paths/urls
+        # here is a list and comments:
+        #
+        #   .def_path - path from definition in stage file
+        #   .path_info - PathInfo/URLInfo structured resolved path
+        #   .fspath - local only, resolved
+        #   .__str__ - for presentation purposes, def_path/relpath
+        #
+        # By resolved path, which contains actual location,
+        # should be absolute and don't contain remote:// refs.
         self.stage = stage
         self.repo = stage.repo
-        self.url = path
+        self.def_path = path
         self.info = info
         self.remote = remote or self.REMOTE(self.repo, {})
         self.use_cache = False if self.IS_DEPENDENCY else cache
@@ -86,13 +97,26 @@ class OutputBase(object):
                 )
             )
 
+        self.path_info = self._parse_path(remote, path)
+
+    def _parse_path(self, remote, path):
+        if remote:
+            parsed = urlparse(path)
+            return remote.path_info / parsed.path.lstrip("/")
+        else:
+            return self.REMOTE.path_cls(path)
+
     def __repr__(self):
-        return "{class_name}: '{url}'".format(
-            class_name=type(self).__name__, url=(self.url or "No url")
+        return "{class_name}: '{def_path}'".format(
+            class_name=type(self).__name__, def_path=self.def_path
         )
 
     def __str__(self):
-        return self.url
+        return self.def_path
+
+    @property
+    def scheme(self):
+        return self.REMOTE.scheme
 
     @property
     def is_in_repo(self):
@@ -112,34 +136,12 @@ class OutputBase(object):
         )
 
     @classmethod
-    def match(cls, url):
-        return re.match(cls.REMOTE.REGEX, url)
-
-    def group(self, name):
-        match = self.match(self.url)
-        if not match:
-            return None
-        return match.group(name)
-
-    @classmethod
     def supported(cls, url):
-        return cls.match(url) is not None
-
-    @property
-    def scheme(self):
-        return self.REMOTE.scheme
-
-    @property
-    def path(self):
-        return self.path_info.path
+        return cls.REMOTE.supported(url)
 
     @property
     def cache_path(self):
-        return self.cache.checksum_to_path(self.checksum)
-
-    @property
-    def sep(self):
-        return "/"
+        return self.cache.checksum_to_path_info(self.checksum).url
 
     @property
     def checksum(self):
@@ -228,11 +230,11 @@ class OutputBase(object):
             return
 
         if self.is_in_repo:
-            if self.repo.scm.is_tracked(self.path):
+            if self.repo.scm.is_tracked(self.fspath):
                 raise OutputAlreadyTrackedError(self)
 
             if self.use_cache:
-                self.repo.scm.ignore(self.path)
+                self.repo.scm.ignore(self.fspath)
 
         self.info = self.remote.save_info(self.path_info)
 
@@ -242,7 +244,7 @@ class OutputBase(object):
 
     def dumpd(self):
         ret = copy(self.info)
-        ret[self.PARAM_PATH] = self.url
+        ret[self.PARAM_PATH] = self.def_path
 
         if self.IS_DEPENDENCY:
             return ret
@@ -294,20 +296,20 @@ class OutputBase(object):
             return
 
         if ignore_remove and self.use_cache and self.is_in_repo:
-            self.repo.scm.ignore_remove(self.path)
+            self.repo.scm.ignore_remove(self.fspath)
 
     def move(self, out):
         if self.scheme == "local" and self.use_cache and self.is_in_repo:
-            self.repo.scm.ignore_remove(self.path)
+            self.repo.scm.ignore_remove(self.fspath)
 
         self.remote.move(self.path_info, out.path_info)
-        self.url = out.url
-        self.path_info = copy(out.path_info)
+        self.def_path = out.def_path
+        self.path_info = out.path_info
         self.save()
         self.commit()
 
         if self.scheme == "local" and self.use_cache and self.is_in_repo:
-            self.repo.scm.ignore(self.path)
+            self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self):
         if not self.use_cache or not self.checksum:

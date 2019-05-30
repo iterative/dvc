@@ -1,23 +1,13 @@
-import uuid
-import posixpath
-from copy import copy
-
 import boto3
 import pytest
-from dvc.path.s3 import PathS3
 
 from dvc.remote.s3 import RemoteS3
-from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
+from tests.func.test_data_cloud import _should_test_aws, get_aws_url
 
 
 def _get_src_dst():
-    prefix = str(uuid.uuid4())
-    from_info = PathS3(
-        bucket=TEST_AWS_REPO_BUCKET, path=posixpath.join(prefix, "from")
-    )
-    to_info = copy(from_info)
-    to_info.path = posixpath.join(prefix, "to")
-    return from_info, to_info
+    base_info = RemoteS3.path_cls(get_aws_url())
+    return base_info / "from", base_info / "to"
 
 
 def test_copy_singlepart_preserve_etag():

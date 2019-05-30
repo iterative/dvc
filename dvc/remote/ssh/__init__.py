@@ -4,8 +4,7 @@ import os
 import getpass
 import logging
 
-from dvc.path import Schemes
-from dvc.path.ssh import PathSSH
+from dvc.scheme import Schemes
 
 try:
     import paramiko
@@ -15,7 +14,7 @@ except ImportError:
 import dvc.prompt as prompt
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 
 
@@ -24,11 +23,6 @@ logger = logging.getLogger(__name__)
 
 class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
-
-    # NOTE: we support both URL-like (ssh://[user@]host.xz[:port]/path) and
-    # SCP-like (ssh://[user@]host.xz:/absolute/path) urls.
-    REGEX = r"^ssh://.*$"
-
     REQUIRES = {"paramiko": paramiko}
 
     JOBS = 4
@@ -38,27 +32,36 @@ class RemoteSSH(RemoteBASE):
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
-        self.url = config.get(Config.SECTION_REMOTE_URL, "ssh://")
 
-        parsed = urlparse(self.url)
-        self.host = parsed.hostname
+        url = config.get(Config.SECTION_REMOTE_URL)
+        if url:
+            parsed = urlparse(url)
+            user_ssh_config = self._load_user_ssh_config(parsed.hostname)
 
-        user_ssh_config = self._load_user_ssh_config(self.host)
+            host = user_ssh_config.get("hostname", parsed.hostname)
+            user = (
+                config.get(Config.SECTION_REMOTE_USER)
+                or parsed.username
+                or user_ssh_config.get("user")
+                or getpass.getuser()
+            )
+            port = (
+                config.get(Config.SECTION_REMOTE_PORT)
+                or parsed.port
+                or self._try_get_ssh_config_port(user_ssh_config)
+                or self.DEFAULT_PORT
+            )
+            self.path_info = self.path_cls.from_parts(
+                scheme=self.scheme,
+                host=host,
+                user=user,
+                port=port,
+                path=parsed.path,
+            )
+        else:
+            self.path_info = None
+            user_ssh_config = {}
 
-        self.host = user_ssh_config.get("hostname", self.host)
-        self.user = (
-            config.get(Config.SECTION_REMOTE_USER)
-            or parsed.username
-            or user_ssh_config.get("user")
-            or getpass.getuser()
-        )
-        self.prefix = parsed.path or "/"
-        self.port = (
-            config.get(Config.SECTION_REMOTE_PORT)
-            or parsed.port
-            or self._try_get_ssh_config_port(user_ssh_config)
-            or self.DEFAULT_PORT
-        )
         self.keyfile = config.get(
             Config.SECTION_REMOTE_KEY_FILE
         ) or self._try_get_ssh_config_keyfile(user_ssh_config)
@@ -66,10 +69,6 @@ class RemoteSSH(RemoteBASE):
         self.password = config.get(Config.SECTION_REMOTE_PASSWORD, None)
         self.ask_password = config.get(
             Config.SECTION_REMOTE_ASK_PASSWORD, False
-        )
-
-        self.path_info = PathSSH(
-            host=self.host, user=self.user, port=self.port
         )
 
     @staticmethod
@@ -81,10 +80,12 @@ class RemoteSSH(RemoteBASE):
         user_config_file = RemoteSSH.ssh_config_filename()
         user_ssh_config = dict()
         if hostname and os.path.exists(user_config_file):
+            ssh_config = paramiko.SSHConfig()
             with open(user_config_file) as f:
-                ssh_config = paramiko.SSHConfig()
-                ssh_config.parse(f)
-                user_ssh_config = ssh_config.lookup(hostname)
+                # For whatever reason parsing directly from f is unreliable
+                f_copy = StringIO(f.read())
+                ssh_config.parse(f_copy)
+            user_ssh_config = ssh_config.lookup(hostname)
         return user_ssh_config
 
     @staticmethod
@@ -190,24 +191,22 @@ class RemoteSSH(RemoteBASE):
                 raise NotImplementedError
 
             logger.debug(
-                "Downloading '{host}/{path}' to '{dest}'".format(
-                    host=from_info.host, path=from_info.path, dest=to_info.path
+                "Downloading '{src}' to '{dest}'".format(
+                    src=from_info, dest=to_info
                 )
             )
 
             try:
                 ssh.download(
                     from_info.path,
-                    to_info.path,
+                    to_info.fspath,
                     progress_title=name,
                     no_progress_bar=no_progress_bar,
                 )
             except Exception:
                 logger.exception(
-                    "failed to download '{host}/{path}' to '{dest}'".format(
-                        host=from_info.host,
-                        path=from_info.path,
-                        dest=to_info.path,
+                    "failed to download '{src}' to '{dest}'".format(
+                        src=from_info, dest=to_info
                     )
                 )
                 continue
@@ -227,7 +226,7 @@ class RemoteSSH(RemoteBASE):
 
                 try:
                     ssh.upload(
-                        from_info.path,
+                        from_info.fspath,
                         to_info.path,
                         progress_title=name,
                         no_progress_bar=no_progress_bar,
@@ -241,7 +240,7 @@ class RemoteSSH(RemoteBASE):
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
-            return list(ssh.walk_files(self.prefix))
+            return list(ssh.walk_files(self.path_info.path))
 
     def walk(self, path_info):
         with self.ssh(path_info) as ssh:
