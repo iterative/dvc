@@ -32,7 +32,7 @@ environment:
       RUBY: C:\Ruby25\bin
 
 install:
-  - "SET PATH=%PYTHON%;%PYTHON\\Scripts;%RUBY%;%PATH%"
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%RUBY%;%PATH%"
   - cinst git
   - git clone -q https://github.com/iterative/oss-emulator.git
   - gem install thor builder
