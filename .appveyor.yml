@@ -33,6 +33,7 @@ environment:
 
 install:
   - "SET PATH=%PYTHON%;%PYTHON\\Scripts;%RUBY%;%PATH%"
+  - cinst git
   - git clone -q https://github.com/iterative/oss-emulator.git
   - gem install thor builder
   - ps: cd oss-emulator
