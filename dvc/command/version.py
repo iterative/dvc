@@ -6,6 +6,7 @@ import platform
 import argparse
 import logging
 import uuid
+from pathlib import Path
 
 from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
@@ -36,41 +37,27 @@ class CmdVersion(CmdBaseNoRepo):
         try:
             root_directory = Repo.find_root()
 
-            info += (
-                "Filesystem type: {filesystem_type}\n" "Cache: {cache}"
-            ).format(
-                filesystem_type=self.get_fs_type(
-                    os.path.abspath(root_directory)
-                ),
-                cache=self.get_linktype_support_info(),
+            info += ("Cache: {cache}\n").format(
+                cache=self.get_linktype_support_info()
             )
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
 
-            info += ("Filesystem type: {filesystem_type}").format(
-                filesystem_type=self.get_fs_type(
-                    os.path.abspath(root_directory)
-                )
-            )
-
+        info += ("Filesystem type: {filesystem_type}").format(
+            filesystem_type=self.get_fs_type(os.path.abspath(root_directory))
+        )
         logger.info(info)
         return 0
 
     def get_fs_type(self, path):
-        partition = {}
-        for part in psutil.disk_partitions():
-            partition[part.mountpoint] = (part.fstype, part.device)
-        if path in partition:
-            return partition[path]
-        splitpath = path.split(os.sep)
-        for i in range(len(splitpath), 0, -1):
-            path = os.sep.join(splitpath[:i]) + os.sep
-            if path in partition:
-                return partition[path]
-            path = os.sep.join(splitpath[:i])
-            if path in partition:
-                return partition[path]
+        partition = {
+            Path(part.mountpoint): (part.fstype, part.device)
+            for part in psutil.disk_partitions()
+        }
+        for parent in list(Path(path).parents):
+            if parent in partition:
+                return partition[parent]
         return ("unkown", "none")
 
     def get_linktype_support_info(self):
@@ -83,6 +70,7 @@ class CmdVersion(CmdBaseNoRepo):
         repo = Repo()
         fname = "." + str(uuid.uuid4())
         src = os.path.join(repo.cache.local.cache_dir, fname)
+        cache_file = open(src, "w")
         dst = os.path.join(repo.root_dir, fname)
 
         cache = []
@@ -99,6 +87,8 @@ class CmdVersion(CmdBaseNoRepo):
                     name=name, supported=True if supported else False
                 )
             )
+        cache_file.close()
+        os.remove(src)
 
         return ", ".join(cache)
 
