@@ -35,17 +35,22 @@ class CmdVersion(CmdBaseNoRepo):
         )
 
         try:
-            root_directory = Repo.find_root()
+            repo = Repo()
+            root_directory = repo.find_root()
 
-            info += ("Cache: {cache}\n").format(
-                cache=self.get_linktype_support_info()
+            info += (
+                "Cache: {cache}\n"
+                "Filesystem type (cache directory): {fs_cache}\n"
+            ).format(
+                cache=self.get_linktype_support_info(repo),
+                fs_cache=self.get_fs_type(repo.cache.local.cache_dir),
             )
 
         except NotDvcRepoError:
             root_directory = os.getcwd()
 
-        info += ("Filesystem type: {filesystem_type}").format(
-            filesystem_type=self.get_fs_type(os.path.abspath(root_directory))
+        info += ("Filesystem type (root directory): {fs_root}").format(
+            fs_root=self.get_fs_type(os.path.abspath(root_directory))
         )
         logger.info(info)
         return 0
@@ -60,17 +65,16 @@ class CmdVersion(CmdBaseNoRepo):
                 return partition[parent]
         return ("unkown", "none")
 
-    def get_linktype_support_info(self):
+    def get_linktype_support_info(self, repo):
         links = {
             "reflink": System.reflink,
             "hardlink": System.hardlink,
             "symlink": System.symlink,
         }
 
-        repo = Repo()
         fname = "." + str(uuid.uuid4())
         src = os.path.join(repo.cache.local.cache_dir, fname)
-        cache_file = open(src, "w")
+        open(src, "w").close()
         dst = os.path.join(repo.root_dir, fname)
 
         cache = []
@@ -87,7 +91,6 @@ class CmdVersion(CmdBaseNoRepo):
                     name=name, supported=True if supported else False
                 )
             )
-        cache_file.close()
         os.remove(src)
 
         return ", ".join(cache)
