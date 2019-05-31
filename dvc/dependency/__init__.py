@@ -52,8 +52,7 @@ def _get(stage, p, info):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        settings = stage.repo.config.get_remote_settings(parsed.netloc)
-        remote = Remote(stage.repo, settings)
+        remote = Remote(stage.repo, name=parsed.netloc)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
     for d in DEPS:

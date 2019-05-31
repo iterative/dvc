@@ -1,7 +1,6 @@
 import configobj
 
 from dvc.main import main
-from dvc.command.config import CmdConfig
 from tests.basic_env import TestDvc
 
 
@@ -70,35 +69,19 @@ class TestConfigCLI(TestDvc):
         # FIXME check stdout/err
 
         ret = main(["config", "non_existing_section.field"])
-        self.assertEqual(ret, 1)
+        self.assertEqual(ret, 251)
 
         ret = main(["config", "global.non_existing_field"])
-        self.assertEqual(ret, 1)
+        self.assertEqual(ret, 251)
 
         ret = main(["config", "non_existing_section.field", "-u"])
-        self.assertEqual(ret, 1)
+        self.assertEqual(ret, 251)
 
         ret = main(["config", "global.non_existing_field", "-u"])
-        self.assertEqual(ret, 1)
+        self.assertEqual(ret, 251)
 
         ret = main(["config", "core.remote", "myremote"])
         self.assertEqual(ret, 0)
 
         ret = main(["config", "core.non_existing_field", "-u"])
-        self.assertEqual(ret, 1)
-
-    def test_failed_write(self):
-        class A(object):
-            system = False
-            glob = False
-            local = False
-            name = "core.remote"
-            value = "myremote"
-            unset = False
-
-        args = A()
-        cmd = CmdConfig(args)
-
-        cmd.configobj.write = None
-        ret = cmd.run()
-        self.assertNotEqual(ret, 0)
+        self.assertEqual(ret, 251)

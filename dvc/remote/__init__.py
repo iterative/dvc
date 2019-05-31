@@ -10,6 +10,8 @@ from dvc.remote.http import RemoteHTTP
 from dvc.remote.https import RemoteHTTPS
 from dvc.remote.oss import RemoteOSS
 
+from .config import get_remote_settings
+
 
 REMOTES = [
     RemoteAZURE,
@@ -31,5 +33,10 @@ def _get(config):
     return RemoteLOCAL
 
 
-def Remote(repo, config):
-    return _get(config)(repo, config)
+def Remote(repo, **kwargs):
+    name = kwargs.get("name")
+    if name:
+        settings = get_remote_settings(repo.config, name)
+    else:
+        settings = kwargs
+    return _get(settings)(repo, settings)

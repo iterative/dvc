@@ -5,7 +5,6 @@ from dvc.remote.base import RemoteBASE
 from mock import patch
 
 from dvc.main import main
-from dvc.command.remote import CmdRemoteAdd
 from dvc.config import Config
 
 from tests.basic_env import TestDvc
@@ -33,22 +32,6 @@ class TestRemote(TestDvc):
 
         self.assertEqual(main(["remote", "list"]), 0)
 
-    def test_failed_write(self):
-        class A(object):
-            system = False
-            glob = False
-            local = False
-            name = "myremote"
-            url = "s3://remote"
-            unset = False
-
-        args = A()
-        cmd = CmdRemoteAdd(args)
-
-        cmd.configobj.write = None
-        ret = cmd.run()
-        self.assertNotEqual(ret, 0)
-
     def test_relative_path(self):
         dname = os.path.join("..", "path", "to", "dir")
         ret = main(["remote", "add", "mylocal", dname])
@@ -64,7 +47,7 @@ class TestRemote(TestDvc):
         remote_name = "a"
         remote_url = "s3://bucket/name"
         self.assertEqual(main(["remote", "add", remote_name, remote_url]), 0)
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 1)
+        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 251)
         self.assertEqual(
             main(["remote", "add", "-f", remote_name, remote_url]), 0
         )

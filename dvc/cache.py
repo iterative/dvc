@@ -42,7 +42,7 @@ class Cache(object):
                 Config.SECTION_CACHE_PROTECTED: protected,
             }
 
-        self.local = Remote(repo, settings)
+        self.local = Remote(repo, **settings)
         self.s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
         self.gs = self._get_remote(config, Config.SECTION_CACHE_GS)
         self.ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
@@ -87,5 +87,4 @@ class Cache(object):
         if not remote:
             return None
 
-        settings = self.repo.config.get_remote_settings(remote)
-        return Remote(self.repo, settings)
+        return Remote(self.repo, name=remote)
