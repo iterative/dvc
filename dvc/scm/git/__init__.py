@@ -242,7 +242,7 @@ class Git(Base):
 
         logger.info(
             "\n"
-            "To track the changes with git run:\n"
+            "To track the changes with git, run:\n"
             "\n"
             "\tgit add {files}".format(files=" ".join(self.files_to_track))
         )
