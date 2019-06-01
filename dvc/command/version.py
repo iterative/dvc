@@ -6,8 +6,8 @@ import platform
 import argparse
 import logging
 import uuid
-from pathlib import Path
 
+from dvc.utils.compat import Path
 from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__

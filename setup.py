@@ -61,7 +61,6 @@ install_requires = [
     "dulwich>=0.19.11",
     "ruamel.yaml>=0.15.91",
     "psutil==5.6.2",
-    "pathlib2",
 ]
 
 # Extra dependencies for remote integrations
@@ -118,7 +117,7 @@ setup(
         "oss": oss,
         "ssh": ssh,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ":python_version=='2.7'": ["futures", "pathlib"],
+        ":python_version=='2.7'": ["futures", "pathlib2"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",
