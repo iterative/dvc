@@ -60,6 +60,7 @@ install_requires = [
     "humanize>=0.5.1",
     "dulwich>=0.19.11",
     "ruamel.yaml>=0.15.91",
+    "psutil==5.6.2",
 ]
 
 # Extra dependencies for remote integrations
