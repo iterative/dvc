@@ -36,7 +36,7 @@ class CmdVersion(CmdBaseNoRepo):
 
         try:
             repo = Repo()
-            root_directory = repo.find_root()
+            root_directory = repo.root_dir
 
             info += (
                 "Cache: {cache}\n"
@@ -49,13 +49,14 @@ class CmdVersion(CmdBaseNoRepo):
         except NotDvcRepoError:
             root_directory = os.getcwd()
 
-        info += ("Filesystem type (root directory): {fs_root}").format(
+        info += ("Filesystem type (workspace): {fs_root}").format(
             fs_root=self.get_fs_type(os.path.abspath(root_directory))
         )
         logger.info(info)
         return 0
 
-    def get_fs_type(self, path):
+    @staticmethod
+    def get_fs_type(path):
         partition = {
             Path(part.mountpoint): (part.fstype, part.device)
             for part in psutil.disk_partitions()
@@ -65,7 +66,8 @@ class CmdVersion(CmdBaseNoRepo):
                 return partition[parent]
         return ("unkown", "none")
 
-    def get_linktype_support_info(self, repo):
+    @staticmethod
+    def get_linktype_support_info(repo):
         links = {
             "reflink": System.reflink,
             "hardlink": System.hardlink,
