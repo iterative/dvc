@@ -5,6 +5,11 @@
 set -x
 set -e
 
+if [[ -z "$TRAVIS_TAG" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
+    echo "Skipping installing hadoop."
+    exit 0
+fi
+
 sudo apt-get update -y
 sudo apt-get install openjdk-8-jdk
 java -version
