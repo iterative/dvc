@@ -870,12 +870,12 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         checksum_bar = file_md5(self.BAR)[0]
         self.message_header = (
             "Some of the cache files do not exist neither locally "
-            "nor on remote. Missing cache files: \n"
+            "nor on remote. Missing cache files: "
         )
-        self.message_bar_part = "\nname: {}, md5: {}\n".format(
+        self.message_bar_part = "name: {}, md5: {}".format(
             self.BAR, checksum_bar
         )
-        self.message_foo_part = "\nname: {}, md5: {}\n".format(
+        self.message_foo_part = "name: {}, md5: {}".format(
             self.FOO, checksum_foo
         )
 
