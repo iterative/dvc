@@ -38,6 +38,7 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
+from dvc.utils.fs import get_mtime_and_size, get_inode
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,8 @@ class RemoteLOCAL(RemoteBASE):
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
+
+    STATUS_VERIFICATION_DIR_SUFFIX = "unpacked"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
@@ -566,3 +569,96 @@ class RemoteLOCAL(RemoteBASE):
     @staticmethod
     def protect(path_info):
         os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+
+    def append_verififcation_suffix(self, string):
+        return string + "." + self.STATUS_VERIFICATION_DIR_SUFFIX
+
+    def get_verification_dir_info(self, checksum):
+        verification_dir_info = self.checksum_to_path_info(checksum)
+        verification_dir_info.path = self.append_verififcation_suffix(
+            verification_dir_info.path
+        )
+
+        return verification_dir_info
+
+    def create_status_verification_dir(self, checksum, dir_info):
+        verification_dir_info = self.get_verification_dir_info(checksum)
+
+        self.makedirs(verification_dir_info)
+
+        for entry in dir_info:
+            entry_cache_info = self.checksum_to_path_info(
+                entry[self.PARAM_CHECKSUM]
+            )
+            relpath = entry[self.PARAM_RELPATH]
+
+            verification_entry_info = copy(entry_cache_info)
+            verification_entry_info.path = self.ospath.join(
+                verification_dir_info.path, relpath
+            )
+            self.hardlink(entry_cache_info, verification_entry_info)
+
+        self.state.save(verification_dir_info, checksum)
+
+    def _path_metadata_up_to_date(self, path):
+        mtime, size = get_mtime_and_size(path)
+        inode = get_inode(path)
+
+        entry = self.state.get_state_record_for_inode(inode)
+
+        if entry:
+            state_mtime, state_size, _, _ = entry
+            if state_mtime == mtime and state_size == size:
+                return True
+        return False
+
+    def _is_verification_dir_up_to_date(self, checksum):
+        status_verification_dir_info = self.get_verification_dir_info(checksum)
+
+        if os.path.exists(status_verification_dir_info.path):
+            return self._path_metadata_up_to_date(
+                status_verification_dir_info.path
+            )
+        return False
+
+    def _changed_dir_cache(self, checksum):
+        if self._is_verification_dir_up_to_date(checksum):
+            return False
+        return super(RemoteLOCAL, self)._changed_dir_cache(checksum)
+
+    def _save_dir(self, path_info, checksum):
+        dir_info = super(RemoteLOCAL, self)._save_dir(path_info, checksum)
+        self.create_status_verification_dir(checksum, dir_info)
+        return dir_info
+
+    def _checkout_dir(
+        self, path_info, checksum, force, progress_callback=None
+    ):
+        dir_info = super(RemoteLOCAL, self)._checkout_dir(
+            path_info, checksum, force, progress_callback
+        )
+        self.create_status_verification_dir(checksum, dir_info)
+        return dir_info
+
+    def extract_used_local_checksums(self, cinfos):
+        used = super(RemoteLOCAL, self).extract_used_local_checksums(cinfos)
+        verification_dirs = set()
+        for checksum in used:
+            if self.is_dir_checksum(checksum):
+                verification_dirs.add(
+                    self.append_verififcation_suffix(checksum)
+                )
+        return used | verification_dirs
+
+    def hardlink(self, from_info, to_info):
+        cache = from_info.path
+        path = to_info.path
+
+        assert os.path.isfile(cache)
+
+        dname = os.path.dirname(path)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        if not os.path.lexists(path):
+            System.hardlink(cache, path)

@@ -372,6 +372,7 @@ class RemoteBASE(object):
         self.state.save_link(path_info)
         self.state.save(cache_info, checksum)
         self.state.save(path_info, checksum)
+        return dir_info
 
     def is_empty(self, path_info):
         return False
@@ -483,9 +484,7 @@ class RemoteBASE(object):
         )
 
     def gc(self, cinfos):
-        from dvc.remote.local import RemoteLOCAL
-
-        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+        used = self.extract_used_local_checksums(cinfos)
 
         if self.scheme != "":
             used |= {
@@ -636,6 +635,7 @@ class RemoteBASE(object):
 
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
+        return dir_info
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(
@@ -701,3 +701,9 @@ class RemoteBASE(object):
     @staticmethod
     def unprotect(path_info):
         pass
+
+    def extract_used_local_checksums(self, cinfos):
+        from dvc.remote import RemoteLOCAL
+
+        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+        return used
