@@ -212,7 +212,11 @@ class RemoteBASE(object):
             json.dump(dir_info, fobj, sort_keys=True)
 
         from_info = PathLOCAL(path=tmp)
-        self.cache.upload([from_info], [to_info], no_progress_bar=True)
+        tmp_info = copy(to_info)
+        tmp_info.path = tmp_fname(tmp_info.path)
+        self.cache.upload(
+            [from_info], [to_info], [tmp_info], no_progress_bar=True
+        )
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
         from_info = copy(to_info)
