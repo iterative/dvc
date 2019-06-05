@@ -43,40 +43,44 @@ class DataCloud(object):
         "https": RemoteHTTP,
     }
 
-    def __init__(self, repo, config=None):
+    def __init__(self, repo):
         self.repo = repo
-        self._config = config
-        self._core = self._config[Config.SECTION_CORE]
 
     @property
-    def _cloud(self):
-        """Returns a Remote instance using the `core.remote` config"""
-        remote = self._core.get(Config.SECTION_CORE_REMOTE, "")
+    def _config(self):
+        return self.repo.config.config
+
+    @property
+    def _core(self):
+        return self._config.get(Config.SECTION_CORE, {})
+
+    def get_remote(self, remote=None, command="<command>"):
+        if not remote:
+            remote = self._core.get(Config.SECTION_CORE_REMOTE)
 
         if remote:
             return self._init_remote(remote)
 
-        if self._core.get(Config.SECTION_CORE_CLOUD, None):
-            # backward compatibility
+        # Old config format support for backward compatibility
+        if Config.SECTION_CORE_CLOUD in self._core:
             msg = "using obsoleted config format. Consider updating."
             logger.warning(msg)
             return self._init_compat()
 
-        return None
+        raise ConfigError(
+            "No remote repository specified. Setup default repository with\n"
+            "    dvc config core.remote <name>\n"
+            "or use:\n"
+            "    dvc {} -r <name>\n".format(command)
+        )
 
     def _init_remote(self, remote):
-        section = Config.SECTION_REMOTE_FMT.format(remote).lower()
-        cloud_config = self._config.get(section, None)
-        if not cloud_config:
-            msg = "can't find remote section '{}' in config"
-            raise ConfigError(msg.format(section))
-
-        return Remote(self.repo, cloud_config)
+        config = self.repo.config.get_remote_settings(remote)
+        return Remote(self.repo, config)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()
         if name == "":
-            self._cloud = None
             return None
 
         cloud_type = self.CLOUD_MAP.get(name, None)
@@ -104,20 +108,6 @@ class DataCloud(object):
         cloud = cloud_type(self.repo, cloud_config)
         return cloud
 
-    def _get_cloud(self, remote, cmd):
-        if remote:
-            return self._init_remote(remote)
-
-        if self._cloud:
-            return self._cloud
-
-        raise ConfigError(
-            "No remote repository specified. Setup default repository with\n"
-            "    dvc config core.remote <name>\n"
-            "or use:\n"
-            "    dvc {} -r <name>\n".format(cmd)
-        )
-
     def push(self, targets, jobs=None, remote=None, show_checksums=False):
         """Push data items in a cloud-agnostic way.
 
@@ -132,7 +122,7 @@ class DataCloud(object):
         return self.repo.cache.local.push(
             targets,
             jobs=jobs,
-            remote=self._get_cloud(remote, "push"),
+            remote=self.get_remote(remote, "push"),
             show_checksums=show_checksums,
         )
 
@@ -150,7 +140,7 @@ class DataCloud(object):
         return self.repo.cache.local.pull(
             targets,
             jobs=jobs,
-            remote=self._get_cloud(remote, "pull"),
+            remote=self.get_remote(remote, "pull"),
             show_checksums=show_checksums,
         )
 
@@ -166,7 +156,7 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        cloud = self._get_cloud(remote, "status")
+        remote = self.get_remote(remote, "status")
         return self.repo.cache.local.status(
-            targets, jobs=jobs, remote=cloud, show_checksums=show_checksums
+            targets, jobs=jobs, remote=remote, show_checksums=show_checksums
         )

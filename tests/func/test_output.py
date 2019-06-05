@@ -25,5 +25,5 @@ def _get_out(dvc, path):
 
 
 @pytest.mark.parametrize("url,scheme", TESTS)
-def test_scheme(dvc, url, scheme):
-    assert type(_get_out(dvc, url)) == OUTS_MAP[scheme]
+def test_scheme(dvc_repo, url, scheme):
+    assert type(_get_out(dvc_repo, url)) == OUTS_MAP[scheme]

@@ -110,4 +110,4 @@ def gc(
             _do_gc("azure", self.cache.azure.gc, clist)
 
         if cloud:
-            _do_gc("remote", self.cloud._get_cloud(remote, "gc -c").gc, clist)
+            _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, clist)

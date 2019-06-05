@@ -428,10 +428,10 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         finish_bar = progress_bars[-1]
 
         self.assertEqual(4, len(update_bars))
-        self.assertRegexpMatches(progress_bars[0], ".*\\[#{7} {23}\\] 25%.*")
-        self.assertRegexpMatches(progress_bars[1], ".*\\[#{15} {15}\\] 50%.*")
-        self.assertRegexpMatches(progress_bars[2], ".*\\[#{22} {8}\\] 75%.*")
-        self.assertRegexpMatches(progress_bars[3], ".*\\[#{30}\\] 100%.*")
+        assert re.search(".*\\[#{7} {23}\\] 25%.*", progress_bars[0])
+        assert re.search(".*\\[#{15} {15}\\] 50%.*", progress_bars[1])
+        assert re.search(".*\\[#{22} {8}\\] 75%.*", progress_bars[2])
+        assert re.search(".*\\[#{30}\\] 100%.*", progress_bars[3])
 
         self.assertCaretReturnFollowsEach(update_bars)
         self.assertNewLineFollows(finish_bar)
@@ -517,8 +517,10 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        with self.assertRaises(TargetNotDirectoryError):
-            self.dvc.checkout(target=self.FOO, recursive=True)
+        try:
+            self.dvc.checkout(target=self.FOO + ".dvc", recursive=True)
+        except TargetNotDirectoryError:
+            self.fail("should not raise TargetNotDirectoryError")
 
 
 class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):

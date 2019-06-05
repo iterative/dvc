@@ -21,8 +21,9 @@ def get_inode(path):
 
 
 def get_mtime_and_size(path):
-    size = os.path.getsize(path)
-    mtime = os.path.getmtime(path)
+    stat = os.stat(path)
+    size = stat.st_size
+    mtime = stat.st_mtime
 
     if os.path.isdir(path):
         for root, dirs, files in dvc_walk(str(path)):

@@ -13,6 +13,7 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path.local import PathLOCAL
+from dvc.utils.compat import open as _open
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +75,7 @@ class Repo(object):
             logger.setLevel(level.upper())
 
         self.cache = Cache(self)
-        self.cloud = DataCloud(self, config=self.config.config)
+        self.cloud = DataCloud(self)
         self.updater = Updater(self.dvc_dir)
 
         self.metrics = Metrics(self)
@@ -157,7 +158,7 @@ class Repo(object):
         import networkx as nx
         from dvc.stage import Stage
 
-        if not target or recursive:
+        if not target or (recursive and os.path.isdir(target)):
             return self.active_stages(target)
 
         stage = Stage.load(self, target)
@@ -176,6 +177,26 @@ class Repo(object):
     def _collect_dir_cache(
         self, out, branch=None, remote=None, force=False, jobs=None
     ):
+        """Get a list of `info`s retaled to the given directory.
+
+        - Pull the directory entry from the remote cache if it was changed.
+
+        Example:
+
+            Given the following commands:
+
+            $ echo "foo" > directory/foo
+            $ echo "bar" > directory/bar
+            $ dvc add directory
+
+            It will return something similar to the following list:
+
+            [
+                { 'path': 'directory',     'md5': '168fd6761b9c.dir', ... },
+                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
+                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
+            ]
+        """
         info = out.dumpd()
         ret = [info]
         r = out.remote
@@ -216,6 +237,13 @@ class Repo(object):
     def _collect_used_cache(
         self, out, branch=None, remote=None, force=False, jobs=None
     ):
+        """Get a dumpd of the given `out`, with an entry including the branch.
+
+        The `used_cache` of an output is no more than its `info`.
+
+        In case that the given output is a directory, it will also
+        include the `info` of its files.
+        """
         if not out.use_cache or not out.info:
             if not out.info:
                 logger.warning(
@@ -252,6 +280,20 @@ class Repo(object):
         jobs=None,
         recursive=False,
     ):
+        """Get the stages related to the given target and collect
+        the `info` of its outputs.
+
+        This is useful to know what files from the cache are _in use_
+        (namely, a file described as an output on a stage).
+
+        The scope is, by default, the working directory, but you can use
+        `all_branches` or `all_tags` to expand scope.
+
+        Returns:
+            A dictionary with Schemes (representing output's location) as keys,
+            and a list with the outputs' `dumpd` as values.
+        """
+
         cache = {}
         cache["local"] = []
         cache["s3"] = []
@@ -264,7 +306,7 @@ class Repo(object):
             all_branches=all_branches, all_tags=all_tags
         ):
             if target:
-                if recursive:
+                if recursive and os.path.isdir(target):
                     stages = self.stages(target)
                 else:
                     stages = self.collect(target, with_deps=with_deps)
@@ -497,3 +539,16 @@ class Repo(object):
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
         return self.DVC_DIR in path_parts
+
+    def open(self, path, remote=None, mode="r", encoding=None):
+        """Opens a specified resource as a file descriptor"""
+        out, = self.find_outs_by_path(path)
+        if out.isdir():
+            raise ValueError("Can't open a dir")
+
+        with self.state:
+            cache_info = self._collect_used_cache(out, remote=remote)
+            self.cloud.pull(cache_info, remote=remote)
+
+        cache_filename = self.cache.local.checksum_to_path(out.checksum)
+        return _open(cache_filename, mode=mode, encoding=encoding)

@@ -514,6 +514,17 @@ class RemoteBASE(object):
         return removed
 
     def changed_cache_file(self, checksum):
+        """Compare the given checksum with the (corresponding) actual one.
+
+        - Use `State` as a cache for computed checksums
+            + The entries are invalidated by taking into account the following:
+                * mtime
+                * inode
+                * size
+                * checksum
+
+        - Remove the file from cache if it doesn't match the actual checksum
+        """
         cache_info = self.checksum_to_path_info(checksum)
         actual = self.get_checksum(cache_info)
 

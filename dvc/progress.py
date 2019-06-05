@@ -111,7 +111,7 @@ class Progress(object):
 
         logger = logging.getLogger(__name__)
 
-        if logger.getEffectiveLevel() == "CRITICAL":
+        if logger.getEffectiveLevel() == logging.CRITICAL:
             return
 
         print(*args, **kwargs)

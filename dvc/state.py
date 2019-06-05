@@ -116,26 +116,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def __exit__(self, typ, value, tbck):
         self.dump()
 
-    def changed(self, path, md5):
-        """Check if file/directory has the expected md5.
-
-        Args:
-            path (str): path to the file/directory to check.
-            md5 (str): expected md5.
-
-        Returns:
-            bool: True if path has the expected md5, False otherwise.
-        """
-        actual = self.update(path)
-
-        msg = "File '{}', md5 '{}', actual '{}'"
-        logger.debug(msg.format(path, md5, actual))
-
-        if not md5 or not actual:
-            return True
-
-        return actual.split(".")[0] != md5.split(".")[0]
-
     def _execute(self, cmd):
         logger.debug(cmd)
         return self.cursor.execute(cmd)
@@ -288,8 +268,6 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 self.STATE_INFO_ROW,
             )
         )
-
-        self._update_cache_directory_state()
 
         self.database.commit()
         self.cursor.close()
@@ -478,20 +456,3 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         for relpath in unused:
             cmd = 'DELETE FROM {} WHERE path = "{}"'
             self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
-
-    def _update_cache_directory_state(self):
-        cache_path = self.repo.cache.local.cache_dir
-        mtime, size = get_mtime_and_size(cache_path)
-        inode = get_inode(cache_path)
-
-        cmd = (
-            "INSERT OR REPLACE INTO {}(inode, size, mtime, timestamp, md5) "
-            'VALUES ({}, "{}", "{}", "{}", "")'.format(
-                self.STATE_TABLE,
-                self._to_sqlite(inode),
-                size,
-                mtime,
-                current_timestamp(),
-            )
-        )
-        self._execute(cmd)

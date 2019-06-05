@@ -10,18 +10,19 @@ default_arguments = {
     "interactive": False,
     "no_commit": False,
     "pipeline": False,
-    "recursive": True,
+    "single_item": False,
+    "recursive": False,
 }
 
 
-def test_default_arguments(dvc, mocker):
+def test_default_arguments(dvc_repo, mocker):
     cmd = CmdRepro(parse_args(["repro"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()
     cmd.repo.reproduce.assert_called_with("Dvcfile", **default_arguments)
 
 
-def test_downstream(dvc, mocker):
+def test_downstream(dvc_repo, mocker):
     cmd = CmdRepro(parse_args(["repro", "--downstream"]))
     mocker.patch.object(cmd.repo, "reproduce")
     cmd.run()

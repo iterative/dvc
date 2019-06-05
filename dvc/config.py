@@ -498,7 +498,15 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             >>> get_remote_settings("server")
             {'url': 'ssh://localhost/'}
         """
-        settings = self.config[self.SECTION_REMOTE_FMT.format(name)]
+        settings = self.config.get(
+            self.SECTION_REMOTE_FMT.format(name.lower())
+        )
+
+        if settings is None:
+            raise ConfigError(
+                "unable to find remote section '{}'".format(name)
+            )
+
         parsed = urlparse(settings["url"])
 
         # Support for cross referenced remotes.

@@ -38,8 +38,6 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
-from dvc.utils.fs import get_mtime_and_size, get_inode
-
 
 logger = logging.getLogger(__name__)
 
@@ -486,22 +484,26 @@ class RemoteLOCAL(RemoteBASE):
         if len(chunks) == 0:
             return 0
 
-        futures = []
-        tmp_files = []
-        try:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
-                for from_infos, to_infos, tmp_infos, names in chunks:
-                    tmp_files.extend(tmp_infos)
-                    res = executor.submit(
-                        func, from_infos, to_infos, tmp_infos, names=names
-                    )
-                    futures.append(res)
-        except (KeyboardInterrupt, Exception):
-            logger.error("Cleaning up temporary files...")
-            self._cleanup_tmp_files(remote, tmp_files)
-            raise
-        for f in futures:
-            f.result()
+        if jobs > 1:
+            futures = []
+            tmp_files = []
+            try:
+                with ThreadPoolExecutor(max_workers=jobs) as executor:
+                    for from_infos, to_infos, tmp_infos, names in chunks:
+                        tmp_files.extend(tmp_infos)
+                        res = executor.submit(
+                            func, from_infos, to_infos, tmp_infos, names=names
+                        )
+                        futures.append(res)
+            except (KeyboardInterrupt, Exception):
+                logger.error("Cleaning up temporary files...")
+                self._cleanup_tmp_files(remote, tmp_files)
+                raise
+            for f in futures:
+                f.result()
+        else:
+            for from_infos, to_infos, tmp_infos, names in chunks:
+                func(from_infos, to_infos, tmp_infos, names=names)
 
         return len(chunks)
 
@@ -530,22 +532,6 @@ class RemoteLOCAL(RemoteBASE):
             show_checksums=show_checksums,
             download=True,
         )
-
-    def _changed_dir_cache(self, checksum):
-        mtime, size = get_mtime_and_size(self.cache_dir)
-        inode = get_inode(self.cache_dir)
-
-        existing_record = self.state.get_state_record_for_inode(inode)
-        if existing_record:
-            cached_mtime, cached_size, _, _ = existing_record
-            changed = not (mtime == cached_mtime and size == cached_size)
-        else:
-            changed = True
-
-        if not changed:
-            return False
-
-        return super(RemoteLOCAL, self)._changed_dir_cache(checksum)
 
     def _log_missing_caches(self, checksum_info_dict):
         missing_caches = [

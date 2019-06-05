@@ -807,16 +807,16 @@ class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
 
         self._commit_metric(dvc, "master")
 
-    def test(self, dvc, caplog):
-        self.setUp(dvc)
+    def test(self, dvc_repo, caplog):
+        self.setUp(dvc_repo)
 
-        dvc.scm.checkout(self.BRANCH_MISSING_METRIC)
+        dvc_repo.scm.checkout(self.BRANCH_MISSING_METRIC)
 
         self._write_metric()
         ret = main(["run", "-M", self.METRIC_FILE])
         assert 0 == ret
 
-        self._commit_metric(dvc, self.BRANCH_MISSING_METRIC)
+        self._commit_metric(dvc_repo, self.BRANCH_MISSING_METRIC)
         os.remove(self.METRIC_FILE)
 
         ret = main(["metrics", "show", "-a"])

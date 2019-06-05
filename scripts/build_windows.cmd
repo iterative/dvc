@@ -15,7 +15,7 @@ if %errorlevel% neq 0 (echo Error: pip not found && goto :error)
 if not exist "C:\Program Files (x86)\Inno Setup 5\ISCC.exe" (echo Error: Couldn't find Inno Setup compiler. Please go to jrsoftware.org/isinfo.php and install Inno Setup 5 && goto :error)
 
 echo ====== Installing requirements... ======
-call pip install -r requirements.txt || goto :error
+call pip install -e .[all] || goto :error
 call pip install pyinstaller || goto :error
 
 echo ====== Building dvc binary... ======

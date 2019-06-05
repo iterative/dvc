@@ -114,7 +114,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
 
         with self._caplog.at_level(logging.WARNING, logger="dvc"):
             assert main(["add", "--recursive", "large-dir"]) == 0
-            assert warning in self._caplog.text
+            assert warning in self._caplog.messages
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):
@@ -325,29 +325,6 @@ class TestAddCommit(TestDvc):
         self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 1)
 
 
-class TestShouldNotCheckCacheForDirIfCacheMetadataDidNotChange(TestDvc):
-    def test(self):
-        remote_local_loader_spy = spy(
-            dvc.remote.local.RemoteLOCAL.load_dir_cache
-        )
-        with patch.object(
-            dvc.remote.local.RemoteLOCAL,
-            "load_dir_cache",
-            remote_local_loader_spy,
-        ):
-
-            ret = main(["config", "cache.type", "copy"])
-            self.assertEqual(ret, 0)
-
-            ret = main(["add", self.DATA_DIR])
-            self.assertEqual(ret, 0)
-            self.assertEqual(1, remote_local_loader_spy.mock.call_count)
-
-            ret = main(["status", "{}.dvc".format(self.DATA_DIR)])
-            self.assertEqual(ret, 0)
-            self.assertEqual(1, remote_local_loader_spy.mock.call_count)
-
-
 class TestShouldCollectDirCacheOnlyOnce(TestDvc):
     def test(self):
         from dvc.remote.local import RemoteLOCAL
@@ -547,7 +524,7 @@ class TestAddUnprotected(TestDvc):
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
 def test_windows_should_add_when_cache_on_different_drive(
-    dvc, repo_dir, temporary_windows_drive
+    dvc_repo, repo_dir, temporary_windows_drive
 ):
     ret = main(["config", "cache.dir", temporary_windows_drive])
     assert ret == 0
