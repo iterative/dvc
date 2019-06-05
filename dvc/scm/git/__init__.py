@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import os
 import logging
+import re
 
 from dvc.utils.compat import str, open
 from dvc.utils import fix_env
@@ -133,6 +134,7 @@ class Git(Base):
     @staticmethod
     def _add_entry_to_gitignore(entry, gitignore, ignore_list):
         content = entry
+        re.escape(content)
         if ignore_list:
             content = "\n" + content
         with open(gitignore, "a", encoding="utf-8") as fobj:
