@@ -271,8 +271,8 @@ class OutputBase(object):
         )
 
     def download(self, to_info, resume=False):
-        tmp_info = dict(self.path_info)
-        tmp_info["path"] = tmp_fname(tmp_info["path"])
+        tmp_info = copy(self.path_info)
+        tmp_info.path = tmp_fname(tmp_info.path)
         self.remote.download(
             [self.path_info], [to_info], [tmp_info], resume=resume
         )

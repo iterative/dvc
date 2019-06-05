@@ -400,8 +400,8 @@ class RemoteLOCAL(RemoteBASE):
     def _create_tmp_infos(self, infos):
         result = []
         for info in infos:
-            tmp_info = dict(info)
-            tmp_info["path"] = tmp_fname(tmp_info["path"])
+            tmp_info = copy(info)
+            tmp_info.path = tmp_fname(tmp_info.path)
             result.append(tmp_info)
         return result
 
