@@ -240,7 +240,13 @@ class RemoteBASE(object):
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
         to_info = PathLOCAL(path=path)
-        self.cache.download([path_info], [to_info], no_progress_bar=True)
+
+        tmp_info = copy(to_info)
+        tmp_info.path = tmp_fname(to_info.path)
+
+        self.cache.download(
+            [path_info], [to_info], [tmp_info], no_progress_bar=True
+        )
 
         try:
             with open(path, "r") as fobj:
