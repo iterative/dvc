@@ -1044,7 +1044,6 @@ class TestReproExternalHDFS(TestReproExternalBase):
         self.assertEqual(p.returncode, 0)
 
 
-@pytest.mark.skip
 @flaky(max_runs=3, min_passes=1)
 class TestReproExternalSSH(TestReproExternalBase):
     _dir = None

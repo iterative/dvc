@@ -38,7 +38,6 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
-from dvc.utils.fs import get_mtime_and_size, get_inode
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class RemoteLOCAL(RemoteBASE):
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
 
-    STATUS_VERIFICATION_DIR_SUFFIX = "unpacked"
+    UNPACKED_DIR_SUFFIX = ".unpacked"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
@@ -145,10 +144,10 @@ class RemoteLOCAL(RemoteBASE):
             return
 
         if not link_type:
-            self._default_link(from_path, to_path)
+            self._default_link(from_info, to_info)
         else:
             link_method = self._get_link_method(link_type)
-            self._link(from_path, to_path, link_method)
+            self._link(from_info, to_info, link_method)
 
     @classmethod
     def _get_link_method(cls, link_type):
@@ -159,31 +158,32 @@ class RemoteLOCAL(RemoteBASE):
                 "Cache type: '{}' not supported!".format(link_type)
             )
 
-    def _link(self, from_path, to_path, link_method):
-        if os.path.lexists(to_path):
-            # TODO handle existing link
-            pass
+    def _link(self, from_info, to_info, link_method):
+        if os.path.lexists(to_info.path):
+            raise DvcException(
+                "Link '{}' already exists!".format(to_info.path)
+            )
         else:
-            link_method(from_path, to_path)
+            link_method(from_info.path, to_info.path)
         if self.protected:
-            self.protect(to_path)
+            self.protect(to_info)
 
         msg = "Created {}'{}': {} -> {}".format(
             "protected " if self.protected else "",
             self.cache_types[0],
-            from_path,
-            to_path,
+            from_info.path,
+            to_info.path,
         )
 
         logger.debug(msg)
 
     @slow_link_guard
-    def _default_link(self, from_path, to_path):
+    def _default_link(self, from_info, to_info):
         i = len(self.cache_types)
         while i > 0:
             link_method = self._get_link_method(self.cache_types[0])
             try:
-                self._link(from_path, to_path, link_method)
+                self._link(from_info, to_info, link_method)
                 return
 
             except DvcException as exc:
@@ -590,68 +590,63 @@ class RemoteLOCAL(RemoteBASE):
             RemoteLOCAL._unprotect_file(path)
 
     @staticmethod
-    def protect(path):
-        os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+    def protect(path_info):
+        os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
-    def append_verififcation_suffix(self, string):
-        return string + "." + self.STATUS_VERIFICATION_DIR_SUFFIX
+    @classmethod
+    def _append_unpacked_suffix(cls, string):
+        return string + cls.UNPACKED_DIR_SUFFIX
 
-    def get_verification_dir_info(self, checksum):
-        verification_dir_info = self.checksum_to_path_info(checksum)
-        verification_dir_info.path = self.append_verififcation_suffix(
-            verification_dir_info.path
+    def _get_unpacked_dir_path_info(self, checksum):
+        unpacked_dir_info = self.checksum_to_path_info(checksum)
+        unpacked_dir_info.path = self._append_unpacked_suffix(
+            unpacked_dir_info.path
         )
 
-        return verification_dir_info
+        return unpacked_dir_info
 
-    def create_status_verification_dir(self, checksum, dir_info):
-        verification_dir_info = self.get_verification_dir_info(checksum)
+    def _update_unpacked_dir(self, checksum, dir_info):
+        unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
 
-        self.makedirs(verification_dir_info)
+        if self.exists(unpacked_dir_info):
+            if self.state.get(unpacked_dir_info):
+                return
 
+            shutil.rmtree(unpacked_dir_info.path)
+
+        try:
+            self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
+        except Exception:
+            logger.warning(
+                "Could not create '{}'".format(unpacked_dir_info.path)
+            )
+
+            if self.exists(unpacked_dir_info):
+                self.remove(unpacked_dir_info)
+
+    def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
+        self.makedirs(unpacked_dir_info)
         for entry in dir_info:
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
             relpath = entry[self.PARAM_RELPATH]
 
-            verification_entry_info = copy(entry_cache_info)
-            verification_entry_info.path = self.ospath.join(
-                verification_dir_info.path, relpath
+            unpacked_entry_info = copy(entry_cache_info)
+            unpacked_entry_info.path = self.ospath.join(
+                unpacked_dir_info.path, relpath
             )
-            self.link(entry_cache_info, verification_entry_info, "hardlink")
+            self.link(entry_cache_info, unpacked_entry_info, "hardlink")
+        self.state.save(unpacked_dir_info, checksum)
 
-        self.state.save(verification_dir_info, checksum)
+    def _changed_unpacked_dir(self, checksum):
+        status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
 
-    def _path_metadata_up_to_date(self, path):
-        mtime, size = get_mtime_and_size(path)
-        inode = get_inode(path)
-
-        entry = self.state.get_state_record_for_inode(inode)
-
-        if entry:
-            state_mtime, state_size, _, _ = entry
-            if state_mtime == mtime and state_size == size:
-                return True
-        return False
-
-    def _is_verification_dir_up_to_date(self, checksum):
-        status_verification_dir_info = self.get_verification_dir_info(checksum)
-
-        if os.path.exists(status_verification_dir_info.path):
-            return self._path_metadata_up_to_date(
-                status_verification_dir_info.path
-            )
-        return False
-
-    def _changed_dir_cache(self, checksum):
-        if self._is_verification_dir_up_to_date(checksum):
-            return False
-        return super(RemoteLOCAL, self)._changed_dir_cache(checksum)
+        return not self.state.get(status_unpacked_dir_info)
 
     def _save_dir(self, path_info, checksum):
         dir_info = super(RemoteLOCAL, self)._save_dir(path_info, checksum)
-        self.create_status_verification_dir(checksum, dir_info)
+        self._update_unpacked_dir(checksum, dir_info)
         return dir_info
 
     def _checkout_dir(
@@ -660,15 +655,13 @@ class RemoteLOCAL(RemoteBASE):
         dir_info = super(RemoteLOCAL, self)._checkout_dir(
             path_info, checksum, force, progress_callback
         )
-        self.create_status_verification_dir(checksum, dir_info)
+        self._update_unpacked_dir(checksum, dir_info)
         return dir_info
 
     def extract_used_local_checksums(self, cinfos):
         used = super(RemoteLOCAL, self).extract_used_local_checksums(cinfos)
-        verification_dirs = set()
+        unpacked_dir = set()
         for checksum in used:
             if self.is_dir_checksum(checksum):
-                verification_dirs.add(
-                    self.append_verififcation_suffix(checksum)
-                )
-        return used | verification_dirs
+                unpacked_dir.add(self._append_unpacked_suffix(checksum))
+        return used | unpacked_dir

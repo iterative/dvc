@@ -386,7 +386,8 @@ class RemoteBASE(object):
     def walk(self, path_info):
         raise NotImplementedError
 
-    def protect(self, path_info):
+    @staticmethod
+    def protect(path_info):
         pass
 
     def save(self, path_info, checksum_info):
@@ -537,6 +538,9 @@ class RemoteBASE(object):
     def _changed_dir_cache(self, checksum):
         if self.changed_cache_file(checksum):
             return True
+
+        if not self._changed_unpacked_dir(checksum):
+            return False
 
         for entry in self.get_dir_cache(checksum):
             checksum = entry[self.PARAM_CHECKSUM]
@@ -707,3 +711,6 @@ class RemoteBASE(object):
 
         used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
         return used
+
+    def _changed_unpacked_dir(self, checksum):
+        return True
