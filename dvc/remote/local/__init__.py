@@ -126,41 +126,64 @@ class RemoteLOCAL(RemoteBASE):
         if not self.exists(path_info):
             os.makedirs(path_info.path)
 
-    @slow_link_guard
-    def link(self, cache_info, path_info):
-        cache = cache_info.path
-        path = path_info.path
+    def link(self, from_info, to_info, link_type=None):
+        from_path = from_info.path
+        to_path = to_info.path
 
-        assert os.path.isfile(cache)
+        assert os.path.isfile(from_path)
 
-        dname = os.path.dirname(path)
+        dname = os.path.dirname(to_path)
         if not os.path.exists(dname):
             os.makedirs(dname)
 
         # NOTE: just create an empty file for an empty cache
-        if os.path.getsize(cache) == 0:
-            open(path, "w+").close()
+        if os.path.getsize(from_path) == 0:
+            open(to_path, "w+").close()
 
-            msg = "Created empty file: {} -> {}".format(cache, path)
+            msg = "Created empty file: {} -> {}".format(from_path, to_path)
             logger.debug(msg)
             return
 
+        if not link_type:
+            self._default_link(from_path, to_path)
+        else:
+            link_method = self._get_link_method(link_type)
+            self._link(from_path, to_path, link_method)
+
+    @classmethod
+    def _get_link_method(cls, link_type):
+        try:
+            return cls.CACHE_TYPE_MAP[link_type]
+        except KeyError:
+            raise DvcException(
+                "Cache type: '{}' not supported!".format(link_type)
+            )
+
+    def _link(self, from_path, to_path, link_method):
+        if os.path.lexists(to_path):
+            # TODO handle existing link
+            pass
+        else:
+            link_method(from_path, to_path)
+        if self.protected:
+            self.protect(to_path)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_path,
+            to_path,
+        )
+
+        logger.debug(msg)
+
+    @slow_link_guard
+    def _default_link(self, from_path, to_path):
         i = len(self.cache_types)
         while i > 0:
+            link_method = self._get_link_method(self.cache_types[0])
             try:
-                self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
-
-                if self.protected:
-                    self.protect(path_info)
-
-                msg = "Created {}'{}': {} -> {}".format(
-                    "protected " if self.protected else "",
-                    self.cache_types[0],
-                    cache,
-                    path,
-                )
-
-                logger.debug(msg)
+                self._link(from_path, to_path, link_method)
                 return
 
             except DvcException as exc:
@@ -567,8 +590,8 @@ class RemoteLOCAL(RemoteBASE):
             RemoteLOCAL._unprotect_file(path)
 
     @staticmethod
-    def protect(path_info):
-        os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+    def protect(path):
+        os.chmod(path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
 
     def append_verififcation_suffix(self, string):
         return string + "." + self.STATUS_VERIFICATION_DIR_SUFFIX
@@ -596,7 +619,7 @@ class RemoteLOCAL(RemoteBASE):
             verification_entry_info.path = self.ospath.join(
                 verification_dir_info.path, relpath
             )
-            self.hardlink(entry_cache_info, verification_entry_info)
+            self.link(entry_cache_info, verification_entry_info, "hardlink")
 
         self.state.save(verification_dir_info, checksum)
 
@@ -649,16 +672,3 @@ class RemoteLOCAL(RemoteBASE):
                     self.append_verififcation_suffix(checksum)
                 )
         return used | verification_dirs
-
-    def hardlink(self, from_info, to_info):
-        cache = from_info.path
-        path = to_info.path
-
-        assert os.path.isfile(cache)
-
-        dname = os.path.dirname(path)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
-
-        if not os.path.lexists(path):
-            System.hardlink(cache, path)

@@ -333,7 +333,7 @@ class RemoteBASE(object):
         logger.debug("'{}' hasn't changed.".format(path_info))
         return False
 
-    def link(self, from_info, to_info):
+    def link(self, from_info, to_info, link_type=None):
         self.copy(from_info, to_info)
 
     def _save_file(self, path_info, checksum, save_link=True):
