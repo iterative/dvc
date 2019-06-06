@@ -133,23 +133,23 @@ class Git(Base):
 
     @staticmethod
     def _add_entry_to_gitignore(entry, gitignore, ignore_list):
-        content = entry
+        def escape_gitignore_special_characters(gitignore_entry):
+            def exclamation_or_asterisk(matchobj):
+                if matchobj.group(0) == "!":
+                    return "\!"
+                elif matchobj.group(0) == "*":
+                    return "\*"
+                else:
+                    return matchobj.group(0)
+                gitignore_entry = re.sub(
+                    "^([!*])", exclamation_or_asterisk, gitignore_entry
+                )
+                escaped = gitignore_entry.translate(
+                    str.maketrans({"[": r"\[", "]": r"\]", "?": r"\?"})
+                )
 
-    def escape_gitignore_special_characters(gitignore_entry):
-        def exclamation_or_asterisk(matchobj):
-            if matchobj.group(0) == "!":
-                return "\!"
-            elif matchobj.group(0) == "*":
-                return "\*"
+            return gitignore_entry
 
-        # gitignore_entry = re.sub("^([!*])", exclamation_or_asterisk, gitignore_entry)
-        # escaped = gitignore_entry.translate(str.maketrans({"[":  r"\[",
-        #                                               "]":  r"\]",
-        #                                               "?":  r"\?"}))
-        return gitignore_entry
-
-    @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
         content = escape_gitignore_special_characters(entry)
 
         if ignore_list:
