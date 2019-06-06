@@ -10,7 +10,7 @@ from dvc.remote.http import RemoteHTTP
 from dvc.remote.https import RemoteHTTPS
 from dvc.remote.oss import RemoteOSS
 
-from .config import get_remote_settings
+from .config import RemoteConfig
 
 
 REMOTES = [
@@ -36,7 +36,8 @@ def _get(config):
 def Remote(repo, **kwargs):
     name = kwargs.get("name")
     if name:
-        settings = get_remote_settings(repo.config, name)
+        remote_config = RemoteConfig(repo.config)
+        settings = remote_config.get_settings(name)
     else:
         settings = kwargs
     return _get(settings)(repo, settings)

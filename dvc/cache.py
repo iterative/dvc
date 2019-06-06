@@ -7,6 +7,20 @@ import os
 from dvc.config import Config
 
 
+class CacheConfig(object):
+    def __init__(self, config):
+        self.config = config
+
+    def set_dir(self, dname, level=None):
+        from dvc.remote.config import RemoteConfig
+
+        configobj = self.config.get_configobj(level)
+        path = RemoteConfig.resolve_path(dname, configobj.filename)
+        self.config.set(
+            Config.SECTION_CACHE, Config.SECTION_CACHE_DIR, path, level=level
+        )
+
+
 class Cache(object):
     """Class that manages cache locations of a dvc repo.
 

@@ -5,16 +5,20 @@ import logging
 
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.remote.config import remote_add, remote_remove, remote_modify
-from dvc.remote.config import remote_list, remote_default
+from dvc.remote.config import RemoteConfig
 
 logger = logging.getLogger(__name__)
 
 
-class CmdRemoteAdd(CmdConfig):
+class CmdRemoteConfig(CmdConfig):
+    def __init__(self, args):
+        super(CmdRemoteConfig, self).__init__(args)
+        self.config = RemoteConfig(self.config)
+
+
+class CmdRemoteAdd(CmdRemoteConfig):
     def run(self):
-        remote_add(
-            self.config,
+        self.config.add(
             self.args.name,
             self.args.url,
             force=self.args.force,
@@ -24,16 +28,15 @@ class CmdRemoteAdd(CmdConfig):
         return 0
 
 
-class CmdRemoteRemove(CmdConfig):
+class CmdRemoteRemove(CmdRemoteConfig):
     def run(self):
-        remote_remove(self.config, self.args.name, level=self.args.level)
+        self.config.remove(self.args.name, level=self.args.level)
         return 0
 
 
-class CmdRemoteModify(CmdConfig):
+class CmdRemoteModify(CmdRemoteConfig):
     def run(self):
-        remote_modify(
-            self.config,
+        self.config.modify(
             self.args.name,
             self.args.option,
             self.args.value,
@@ -42,21 +45,17 @@ class CmdRemoteModify(CmdConfig):
         return 0
 
 
-class CmdRemoteDefault(CmdConfig):
+class CmdRemoteDefault(CmdRemoteConfig):
     def run(self):
-        remote_default(
-            self.config,
-            self.args.name,
-            unset=self.args.unset,
-            level=self.args.level,
+        self.config.set_default(
+            self.args.name, unset=self.args.unset, level=self.args.level
         )
         return 0
 
 
-class CmdRemoteList(CmdConfig):
+class CmdRemoteList(CmdRemoteConfig):
     def run(self):
-        remotes = remote_list(self.config, level=self.args.level)
-        for name, url in remotes.items():
+        for name, url in self.config.list(level=self.args.level).items():
             logger.info("{}\t{}".format(name, url))
         return 0
 

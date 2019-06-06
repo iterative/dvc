@@ -534,7 +534,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         config[section][opt] = value
         self.save(config)
 
-    def get(self, section, opt, level=None):
+    def get(self, section, opt=None, level=None):
         """Return option value from the config.
 
         Args:
