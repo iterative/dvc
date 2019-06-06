@@ -68,12 +68,14 @@ def git(repo_dir):
 
 @pytest.fixture
 def dvc_repo(repo_dir, git):
+    dvc = None
     try:
         dvc = DvcRepo.init(repo_dir._root_dir)
         dvc.scm.commit("init dvc")
         yield dvc
     finally:
-        dvc.scm.git.close()
+        if dvc:
+            dvc.scm.git.close()
 
 
 here = os.path.abspath(os.path.dirname(__file__))
