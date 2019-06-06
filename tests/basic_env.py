@@ -57,6 +57,10 @@ class TestDirFixture(object):
             root_dir = self.mkdtemp()
         self._root_dir = os.path.realpath(root_dir)
 
+    @property
+    def root_dir(self):
+        return self._root_dir
+
     def _pushd(self, d):
         if not hasattr(self, "_saved_dir"):
             self._saved_dir = os.path.realpath(os.curdir)
@@ -193,9 +197,8 @@ class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
             shutil.copytree(self.dvc.cache.local.cache_dir, self.cache_dir)
 
             class MockConfig:
-                system = None
-                glob = None
-                local = None
+                level = 1
+                force = False
                 default = True
                 name = self.REMOTE
                 url = self.cache_dir

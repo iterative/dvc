@@ -39,6 +39,7 @@ from tests.utils import spy
 TEST_REMOTE = "upstream"
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
+    Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
     TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
 }
