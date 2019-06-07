@@ -14,7 +14,7 @@ def _local_status(self, target=None, with_deps=False):
     for stage in stages:
         if stage.locked:
             logger.warning(
-                "DVC file '{path}' is locked. Its dependencies are"
+                "DVC-file '{path}' is locked. Its dependencies are"
                 " not going to be shown in the status output.".format(
                     path=stage.relpath
                 )

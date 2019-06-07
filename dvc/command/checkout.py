@@ -51,5 +51,5 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Checkout all subdirectories of the specified directory.",
     )
-    checkout_parser.add_argument("targets", nargs="*", help="DVC files.")
+    checkout_parser.add_argument("targets", nargs="*", help="DVC-files.")
     checkout_parser.set_defaults(func=CmdCheckout)
