@@ -209,14 +209,14 @@ def add_parser(subparsers, parent_parser):
         "--commands",
         action="store_true",
         default=False,
-        help="Print commands instead of paths to DVC files.",
+        help="Print commands instead of paths to DVC-files.",
     )
     pipeline_show_group.add_argument(
         "-o",
         "--outs",
         action="store_true",
         default=False,
-        help="Print output files instead of paths to DVC files.",
+        help="Print output files instead of paths to DVC-files.",
     )
     pipeline_show_parser.add_argument(
         "-l",
@@ -244,7 +244,7 @@ def add_parser(subparsers, parent_parser):
         help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
-        "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
+        "targets", nargs="*", help="DVC-files. 'Dvcfile' by default."
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 

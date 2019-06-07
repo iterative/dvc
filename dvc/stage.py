@@ -54,7 +54,7 @@ class StageFileAlreadyExistsError(DvcException):
 
 class StageFileIsNotDvcFileError(DvcException):
     def __init__(self, fname):
-        msg = "'{}' is not a dvc file".format(fname)
+        msg = "'{}' is not a DVC-file".format(fname)
 
         sname = fname + Stage.STAGE_FILE_SUFFIX
         if Stage.is_stage_file(sname):
@@ -218,7 +218,7 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "Dvc file '{fname}' is a 'callback' stage "
+                "DVC-file '{fname}' is a 'callback' stage "
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )
@@ -253,7 +253,7 @@ class Stage(object):
 
     def _changed_md5(self):
         if self.changed_md5():
-            logger.warning("Dvc file '{}' changed.".format(self.relpath))
+            logger.warning("DVC-file '{}' changed.".format(self.relpath))
             return True
         return False
 
@@ -583,7 +583,7 @@ class Stage(object):
 
         # it raises the proper exceptions by priority:
         # 1. when the file doesn't exists
-        # 2. filename is not a dvc filename
+        # 2. filename is not a DVC-file
         # 3. path doesn't represent a regular file
         Stage._check_file_exists(repo, fname)
         Stage._check_dvc_filename(fname)

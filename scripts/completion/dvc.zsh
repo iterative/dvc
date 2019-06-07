@@ -15,28 +15,28 @@ _dvc_commands() {
     "add:Take data files or directories under DVC control."
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
-    "commit:Save changed data to cache and update DVC files."
+    "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
-    "destroy:Remove DVC files, local DVC config and data cache."
+    "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show a diff of a DVC controlled data file or a directory."
     "fetch:Fetch data files from a DVC remote storage."
     "gc:Collect unused data from DVC cache or a remote storage."
     "import:Download or copy files from URL and take under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
-    "lock:Lock DVC file."
+    "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "remote:Manage remote storage configuration."
-    "remove:Remove outputs of DVC file."
-    "repro:Check for changes and reproduce DVC file and dependencies."
+    "remove:Remove outputs of DVC-file."
+    "repro:Check for changes and reproduce DVC-file and dependencies."
     "root:Relative path to project's directory."
     "run:Generate a stage file from a command and execute the command."
     "status:Show changed stages, compare local cache and a remote storage."
-    "unlock:Unlock DVC file."
+    "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
     "version:Show DVC version and system/environment informaion."
   )
@@ -58,7 +58,7 @@ _dvc_global_options=(
 _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
   "--no-commit[Don't put files/directories into cache.]"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:File:_files"
 )
 
@@ -118,7 +118,7 @@ _dvc_gc=(
 
 _dvc_import=(
   "--resume[Resume previously started download.]"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"
 )
@@ -177,8 +177,8 @@ _dvc_remote=(
 _dvc_remove=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
   "--dry[Only print the commands that would be executed without actually executing]"
-  {-o,--outs}"[Only remove DVC file outputs. (Default)]"
-  {-p,--purge}"[Remove DVC file and all its outputs.]"
+  {-o,--outs}"[Only remove DVC-file outputs. (Default)]"
+  {-p,--purge}"[Remove DVC-file and all its outputs.]"
   {-f,--force}"[Force purge.]"
 )
 
@@ -206,12 +206,12 @@ _dvc_run=(
   "*"{-O,--outs-no-cache}"[Declare output file or directory (do not put into DVC cache).]:Output regular:_files"
   "*"{-m,--metrics}"[Declare output metric file or directory.]:Metrics:_files"
   "*"{-M,--metrics-no-cache}"[Declare output metric file or directory (do not put into DVC cache).]:Metrics (no cache):_files"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   {-c,--cwd}"[Deprecated, use -w and -f instead.]:CWD:_files -/"
   {-w,--wdir}"[Directory within your repo to run your command in.]:WDIR:_files -/"
   "--no-exec[Only create stage file without actually running it.]"
   {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
-  "--overwrite-dvcfile[Overwrite existing dvc file without asking for confirmation.]"
+  "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
   "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
   "--remove-outs[Deprecated, this is now the default behavior]"
   "--no-commit[Don't put files/directories into cache.]"

@@ -127,7 +127,7 @@ def add_parser(subparsers, parent_parser):
         "(do not put into DVC cache).",
     )
     run_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC file it generates."
+        "-f", "--file", help="Specify name of the DVC-file it generates."
     )
     run_parser.add_argument(
         "-c", "--cwd", default=None, help="Deprecated, use -w and -f instead."
@@ -155,7 +155,7 @@ def add_parser(subparsers, parent_parser):
         "--overwrite-dvcfile",
         action="store_true",
         default=False,
-        help="Overwrite existing dvc file without asking for confirmation.",
+        help="Overwrite existing DVC-file without asking for confirmation.",
     )
     run_parser.add_argument(
         "--ignore-build-cache",

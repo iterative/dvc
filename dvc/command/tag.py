@@ -82,14 +82,14 @@ def add_parser(subparsers, parent_parser):
     )
     tag_add_parser.add_argument("tag", help="Dvc tag.")
     tag_add_parser.add_argument(
-        "targets", nargs="*", default=[None], help="Dvc files."
+        "targets", nargs="*", default=[None], help="DVC-files."
     )
     tag_add_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
         default=False,
-        help="Add tag for all dependencies of the specified DVC file.",
+        help="Add tag for all dependencies of the specified DVC-file.",
     )
     tag_add_parser.add_argument(
         "-R",
@@ -109,14 +109,14 @@ def add_parser(subparsers, parent_parser):
     )
     tag_remove_parser.add_argument("tag", help="Dvc tag.")
     tag_remove_parser.add_argument(
-        "targets", nargs="*", default=[None], help="Dvc files."
+        "targets", nargs="*", default=[None], help="DVC-files."
     )
     tag_remove_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
         default=False,
-        help="Remove tag for all dependencies of the specified DVC file.",
+        help="Remove tag for all dependencies of the specified DVC-file.",
     )
     tag_remove_parser.add_argument(
         "-R",
@@ -135,14 +135,14 @@ def add_parser(subparsers, parent_parser):
         help=TAG_LIST_HELP,
     )
     tag_list_parser.add_argument(
-        "targets", nargs="*", default=[None], help="Dvc files."
+        "targets", nargs="*", default=[None], help="DVC-files."
     )
     tag_list_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
         default=False,
-        help="List tags for all dependencies of the specified DVC file.",
+        help="List tags for all dependencies of the specified DVC-file.",
     )
     tag_list_parser.add_argument(
         "-R",

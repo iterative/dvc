@@ -318,7 +318,7 @@ class Repo(object):
             for stage in stages:
                 if active and not target and stage.locked:
                     logger.warning(
-                        "DVC file '{path}' is locked. Its dependencies are"
+                        "DVC-file '{path}' is locked. Its dependencies are"
                         " not going to be pushed/pulled/fetched.".format(
                             path=stage.relpath
                         )
