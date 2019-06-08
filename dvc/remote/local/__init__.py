@@ -237,7 +237,8 @@ class RemoteLOCAL(RemoteBASE):
         if path_info.scheme != "local":
             raise NotImplementedError
 
-        remove(path_info.path)
+        if self.exists(path_info):
+            remove(path_info.path)
 
     def move(self, from_info, to_info):
         if from_info.scheme != "local" or to_info.scheme != "local":
@@ -605,24 +606,28 @@ class RemoteLOCAL(RemoteBASE):
 
         return unpacked_dir_info
 
-    def _update_unpacked_dir(self, checksum, dir_info):
+    def _path_info_changed(self, path_info):
+        if self.exists(path_info) and self.state.get(path_info):
+            return False
+        return True
+
+    def _update_unpacked_dir(self, checksum):
         unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
 
-        if self.exists(unpacked_dir_info):
-            if self.state.get(unpacked_dir_info):
-                return
+        if not self._path_info_changed(unpacked_dir_info):
+            return
 
-            shutil.rmtree(unpacked_dir_info.path)
+        self.remove(unpacked_dir_info)
 
         try:
+            dir_info = self.get_dir_cache(checksum)
             self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
         except Exception:
             logger.warning(
                 "Could not create '{}'".format(unpacked_dir_info.path)
             )
 
-            if self.exists(unpacked_dir_info):
-                self.remove(unpacked_dir_info)
+            self.remove(unpacked_dir_info)
 
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
         self.makedirs(unpacked_dir_info)
@@ -645,18 +650,16 @@ class RemoteLOCAL(RemoteBASE):
         return not self.state.get(status_unpacked_dir_info)
 
     def _save_dir(self, path_info, checksum):
-        dir_info = super(RemoteLOCAL, self)._save_dir(path_info, checksum)
-        self._update_unpacked_dir(checksum, dir_info)
-        return dir_info
+        super(RemoteLOCAL, self)._save_dir(path_info, checksum)
+        self._update_unpacked_dir(checksum)
 
     def _checkout_dir(
         self, path_info, checksum, force, progress_callback=None
     ):
-        dir_info = super(RemoteLOCAL, self)._checkout_dir(
+        super(RemoteLOCAL, self)._checkout_dir(
             path_info, checksum, force, progress_callback
         )
-        self._update_unpacked_dir(checksum, dir_info)
-        return dir_info
+        self._update_unpacked_dir(checksum)
 
     def extract_used_local_checksums(self, cinfos):
         used = super(RemoteLOCAL, self).extract_used_local_checksums(cinfos)

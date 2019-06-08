@@ -372,7 +372,6 @@ class RemoteBASE(object):
         self.state.save_link(path_info)
         self.state.save(cache_info, checksum)
         self.state.save(path_info, checksum)
-        return dir_info
 
     def is_empty(self, path_info):
         return False
@@ -543,10 +542,11 @@ class RemoteBASE(object):
             return False
 
         for entry in self.get_dir_cache(checksum):
-            checksum = entry[self.PARAM_CHECKSUM]
-            if self.changed_cache_file(checksum):
+            entry_checksum = entry[self.PARAM_CHECKSUM]
+            if self.changed_cache_file(entry_checksum):
                 return True
 
+        self._update_unpacked_dir(checksum)
         return False
 
     def changed_cache(self, checksum):
@@ -639,7 +639,6 @@ class RemoteBASE(object):
 
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
-        return dir_info
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(
@@ -714,3 +713,6 @@ class RemoteBASE(object):
 
     def _changed_unpacked_dir(self, checksum):
         return True
+
+    def _update_unpacked_dir(self, checksum):
+        pass

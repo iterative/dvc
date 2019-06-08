@@ -15,8 +15,8 @@ from tests.utils import trees_equal
 def test_should_create_cache_status_check_dir_on_add(dvc_repo, repo_dir):
 
     stages = dvc_repo.add(repo_dir.DATA_DIR)
-    unpacked_dir = (
-        stages[0].outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
+    unpacked_dir = RemoteLOCAL._append_unpacked_suffix(
+        stages[0].outs[0].cache_path
     )
 
     assert os.path.exists(unpacked_dir)
@@ -42,8 +42,9 @@ def test_should_create_cache_status_check_dir_on_checkout(dvc_repo, repo_dir):
     dvc_repo = Repo(dvc_repo.dvc_dir)
 
     stages = dvc_repo.add(repo_dir.DATA_DIR)
-    unpacked_dir = (
-        stages[0].outs[0].cache_path + RemoteLOCAL.UNPACKED_DIR_SUFFIX
+
+    unpacked_dir = RemoteLOCAL._append_unpacked_suffix(
+        stages[0].outs[0].cache_path
     )
 
     assert dvc_repo.push() == 1
@@ -69,3 +70,19 @@ def test_should_not_fail_add_on_unpacked_dir_creation_exception(
     ):
         ret = main(["add", repo_dir.DATA_DIR])
     assert ret == 0
+
+
+def test_should_create_unpacked_dir_on_status_check(dvc_repo, repo_dir):
+    stages = dvc_repo.add(repo_dir.DATA_DIR)
+    assert len(stages) == 1
+
+    unpacked_dir = RemoteLOCAL._append_unpacked_suffix(
+        stages[0].outs[0].cache_path
+    )
+
+    assert os.path.exists(unpacked_dir)
+    shutil.rmtree(unpacked_dir)
+    assert not os.path.exists(unpacked_dir)
+
+    assert dvc_repo.status("{}.dvc".format(repo_dir.DATA_DIR)) == {}
+    assert os.path.exists(unpacked_dir)
