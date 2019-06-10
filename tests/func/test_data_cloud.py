@@ -39,6 +39,7 @@ from tests.utils import spy
 TEST_REMOTE = "upstream"
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
+    Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
     TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
 }
@@ -870,12 +871,12 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         checksum_bar = file_md5(self.BAR)[0]
         self.message_header = (
             "Some of the cache files do not exist neither locally "
-            "nor on remote. Missing cache files: \n"
+            "nor on remote. Missing cache files: "
         )
-        self.message_bar_part = "\nname: {}, md5: {}\n".format(
+        self.message_bar_part = "name: {}, md5: {}".format(
             self.BAR, checksum_bar
         )
-        self.message_foo_part = "\nname: {}, md5: {}\n".format(
+        self.message_foo_part = "name: {}, md5: {}".format(
             self.FOO, checksum_foo
         )
 

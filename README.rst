@@ -31,8 +31,8 @@
 
 |
 
-**Data Science Version Control** or **DVC** is an **open-source** tool for data science and
-machine learning projects. Key features:
+**Data Version Control** or **DVC** is an **open-source** tool for data science and machine
+learning projects. Key features:
 
 #. simple **command line** Git-like experience. Does not require installing and maintaining
    any databases. Does not depend on any proprietary online services;

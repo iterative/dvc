@@ -25,7 +25,6 @@ class DataCloud(object):
     Args:
         repo (dvc.repo.Repo): repo instance that belongs to the repo that
             we are working on.
-        config (dict): config of the repo.
 
     Raises:
         config.ConfigError: thrown when config has invalid format.
@@ -75,8 +74,7 @@ class DataCloud(object):
         )
 
     def _init_remote(self, remote):
-        config = self.repo.config.get_remote_settings(remote)
-        return Remote(self.repo, config)
+        return Remote(self.repo, name=remote)
 
     def _init_compat(self):
         name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()

@@ -58,7 +58,7 @@ class CmdRepro(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REPRO_HELP = "Check for changes and reproduce DVC file and dependencies."
+    REPRO_HELP = "Check for changes and reproduce DVC-file and dependencies."
     repro_parser = subparsers.add_parser(
         "repro",
         parents=[parent_parser],
@@ -69,7 +69,7 @@ def add_parser(subparsers, parent_parser):
     repro_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC file to reproduce (default - 'Dvcfile').",
+        help="DVC-file to reproduce (default - 'Dvcfile').",
     )
     repro_parser.add_argument(
         "-f",

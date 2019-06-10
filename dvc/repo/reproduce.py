@@ -15,7 +15,7 @@ def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
 
     if stage.locked:
         logger.warning(
-            "DVC file '{path}' is locked. Its dependencies are"
+            "DVC-file '{path}' is locked. Its dependencies are"
             " not going to be reproduced.".format(path=stage.relpath)
         )
 

@@ -3,18 +3,18 @@ from __future__ import unicode_literals
 import argparse
 
 from dvc.command.base import fix_subparsers, append_doc_link
-from dvc.command.remote import CmdRemoteAdd
 from dvc.command.config import CmdConfig
+from dvc.cache import CacheConfig
 
 
 class CmdCacheDir(CmdConfig):
-    def run(self):
-        self.args.name = "cache.dir"
-        self.args.value = CmdRemoteAdd.resolve_path(
-            self.args.value, self.configobj.filename
-        )
+    def __init__(self, args):
+        super(CmdCacheDir, self).__init__(args)
+        self.config = CacheConfig(self.config)
 
-        return super(CmdCacheDir, self).run()
+    def run(self):
+        self.config.set_dir(self.args.value, level=self.args.level)
+        return 0
 
 
 def add_parser(subparsers, parent_parser):

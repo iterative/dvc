@@ -5,6 +5,7 @@ import logging
 
 import dvc.prompt as prompt
 
+from dvc.config import Config
 from dvc.exceptions import (
     DvcException,
     NotDvcRepoError,
@@ -41,7 +42,6 @@ class Repo(object):
     from dvc.repo.brancher import brancher
 
     def __init__(self, root_dir=None):
-        from dvc.config import Config
         from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
@@ -89,15 +89,15 @@ class Repo(object):
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
 
-    @staticmethod
-    def find_root(root=None):
+    @classmethod
+    def find_root(cls, root=None):
         if root is None:
             root = os.getcwd()
         else:
             root = os.path.abspath(os.path.realpath(root))
 
         while True:
-            dvc_dir = os.path.join(root, Repo.DVC_DIR)
+            dvc_dir = os.path.join(root, cls.DVC_DIR)
             if os.path.isdir(dvc_dir):
                 return root
             if os.path.ismount(root):
@@ -105,10 +105,10 @@ class Repo(object):
             root = os.path.dirname(root)
         raise NotDvcRepoError(root)
 
-    @staticmethod
-    def find_dvc_dir(root=None):
-        root_dir = Repo.find_root(root)
-        return os.path.join(root_dir, Repo.DVC_DIR)
+    @classmethod
+    def find_dvc_dir(cls, root=None):
+        root_dir = cls.find_root(root)
+        return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -318,7 +318,7 @@ class Repo(object):
             for stage in stages:
                 if active and not target and stage.locked:
                     logger.warning(
-                        "DVC file '{path}' is locked. Its dependencies are"
+                        "DVC-file '{path}' is locked. Its dependencies are"
                         " not going to be pushed/pulled/fetched.".format(
                             path=stage.relpath
                         )

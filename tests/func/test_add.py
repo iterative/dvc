@@ -114,7 +114,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
 
         with self._caplog.at_level(logging.WARNING, logger="dvc"):
             assert main(["add", "--recursive", "large-dir"]) == 0
-            assert warning in self._caplog.text
+            assert warning in self._caplog.messages
 
 
 class TestAddDirectoryWithForwardSlash(TestDvc):

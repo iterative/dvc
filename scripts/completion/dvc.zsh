@@ -15,28 +15,28 @@ _dvc_commands() {
     "add:Take data files or directories under DVC control."
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
-    "commit:Save changed data to cache and update DVC files."
+    "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
-    "destroy:Remove DVC files, local DVC config and data cache."
+    "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show a diff of a DVC controlled data file or a directory."
     "fetch:Fetch data files from a DVC remote storage."
     "gc:Collect unused data from DVC cache or a remote storage."
     "import:Download or copy files from URL and take under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
-    "lock:Lock DVC file."
+    "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "remote:Manage remote storage configuration."
-    "remove:Remove outputs of DVC file."
-    "repro:Check for changes and reproduce DVC file and dependencies."
+    "remove:Remove outputs of DVC-file."
+    "repro:Check for changes and reproduce DVC-file and dependencies."
     "root:Relative path to project's directory."
     "run:Generate a stage file from a command and execute the command."
     "status:Show changed stages, compare local cache and a remote storage."
-    "unlock:Unlock DVC file."
+    "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
     "version:Show DVC version and system/environment informaion."
   )
@@ -44,21 +44,21 @@ _dvc_commands() {
   _describe 'dvc commands' _commands
 }
 
-_dvc_global_options=(
-  "(-)"{-h,--help}"[Show help message related to the command]"
-  "(-)"{-q,--quiet}"[Be quiet.]"
-  "(-)"{-V,--verbose}"[Be verbose.]"
+_dvc_options=(
+  "(-)"{-h,--help}"[Show help message.]"
+  "(-)"{-V,--version}"[Show program's version]"
 )
 
-_dvc_options=(
-  "(-)"{-h,--help}"[Show this help message and exit]"
-  "(-)"{-v,--version}"[Show program's version]"
+_dvc_global_options=(
+  "(-)"{-h,--help}"[Show help message related to the command.]"
+  "(-)"{-q,--quiet}"[Be quiet.]"
+  "(-)"{-v,--verbose}"[Be verbose.]"
 )
 
 _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
-  {-f,--file}"[Specify name of the stage file.]:File:_files"
   "--no-commit[Don't put files/directories into cache.]"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:File:_files"
 )
 
@@ -67,27 +67,28 @@ _dvc_cache=(
 )
 
 _dvc_checkout=(
-  {-f,--force}"[Do not prompt when removing working directory files.]"
   {-d,--with-deps}"[Checkout all dependencies of the specified target.]"
+  {-f,--force}"[Do not prompt when removing working directory files.]"
+  {-R,--recursive}"[Checkout all subdirectories of the specified directory.]"
   "1:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
 _dvc_commit=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  {-d,--with-deps}"[Commit all dependencies of the specified target.]"
   {-f,--force}"[Commit even if checksums for dependencies/outputs changed.]"
+  {-d,--with-deps}"[Commit all dependencies of the specified target.]"
   {-R,--recursive}"[Commit cache for subdirectories of the specified directory.]"
 )
 
 _dvc_config=(
-  {-u,--unset}"[Unset option.]"
-  "--local[Unset option.]"
-  "--system[Use system config.]"
   "--global[Use global config.]"
+  "--system[Use system config.]"
+  "--local[Use local config.]"
+  {-u,--unset}"[Unset option.]"
 )
 
 _dvc_destroy=(
-  {-f,--force}"[Overwrite '.dvc' if it exists. Will remove all local cache.]"
+  {-f,--force}"[Force destruction.]"
 )
 
 _dvc_diff=(
@@ -95,35 +96,36 @@ _dvc_diff=(
 )
 
 _dvc_fetch=(
+  {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
+  "--show-checksums[Show checksums instead of file names.]"
+  {-r,--remote}"[Remote repository to fetch from.]:Remote repository:"
+  {-a,--all-branches}"[Fetch cache for all branches.]"
+  {-T,--all-tags}"[Fetch cache for all tags.]"
+  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target.]"
+  {-R,--recursive}"[Fetch cache for subdirectories of specified directory.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  "--show-checksums[Show checksums instead of file names]"
-  {-j,--jobs}"[Number of jobs to run simultaneously]:Number of jobs:"
-  {-r,--remote}"[Remote repository to pull from]:Remote repository:"
-  {-a,--all-branches}"[Fetch cache for all branches]"
-  {-T,--all-tags}"[Fetch cache for all tags]"
-  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target]"
-  {-R,--recursive}"[Fetch cache for subdirectories of the specified directory.]"
 )
 
 _dvc_gc=(
-  {-a,--all-branches}"[Collect garbage for all branches]"
-  {-T,--all-tags}"[Collect garbage for all tags]"
-  {-c,--cloud}"[Collect garbage in remote repository]"
-  {-r,--remote}"[Remote repository to collect garbage in]:Remote repository:"
-  {-f,--force}"[Force garbage collection - automatically agree to all prompts.]"
-
-  {-p,--projects}"[Keep data files required by these projects in addition to the current one. Useful if you share a single cache across repos.]:Repos:_files"
+  {-a,--all-branches}"[Keep data files for the tips of all git branches.]"
+  {-T,--all-tags}"[Keep data files for all git tags.]"
+  {-c,--cloud}"[Collect garbage in remote repository.]"
+  {-r,--remote}"[Remote storage to collect garbage in.]:Remote repository:"
+  {-f,--force}"[Force garbage collection - automatically agree to all prompts.]:Repos:_files"
+  {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
+  {-p,--projects}"[Keep data files required by these projects in addition to the current one.]:Repos:_files"
 )
 
 _dvc_import=(
   "--resume[Resume previously started download.]"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"
 )
 
 _dvc_init=(
-  "--no-scm[Initiate dvc in directory that is not tracket by any scm tool]"
-  {-f,--force}"[Overwrite '.dvc' if it exists. Will remove all local cache.]"
+  "--no-scm[Initiate dvc in directory that is not tracked by any scm tool.]"
+  {-f,--force}"[Overwrite existing '.dvc' directory. This operation removes local cache.]"
 )
 
 _dvc_install=()
@@ -146,26 +148,26 @@ _dvc_pipeline=(
 )
 
 _dvc_pull=(
-  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  "--show-checksums[Show checksums instead of file names]"
-  {-j,--jobs}"[Number of jobs to run simultaneously]:Number of jobs:"
-  {-r,--remote}"[Remote repository to pull from]:Remote repository:"
-  {-a,--all-branches}"[Fetch cache for all branches]"
-  {-T,--all-tags}"[Fetch cache for all tags]"
-  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target]"
+  {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
+  "--show-checksums[Show checksums instead of file names.]"
+  {-r,--remote}"[Remote repository to pull from.]:Remote repository:"
+  {-a,--all-branches}"[Fetch cache for all branches.]"
+  {-T,--all-tags}"[Fetch cache for all tags.]"
+  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target.]"
   {-f,--force}"[Do not prompt when removing working directory files.]"
   {-R,--recursive}"[Pull cache for subdirectories of the specified directory.]"
+  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
 _dvc_push=(
+  {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
+  "--show-checksums[Show checksums instead of file names.]"
+  {-r,--remote}"[Remote repository to push to.]:Remote repository:"
+  {-a,--all-branches}"[Push cache for all branches.]"
+  {-T,--all-tags}"[Push cache for all tags.]"
+  {-d,--with-deps}"[Push cache for all dependencies of the specified target.]"
+  {-R,--recursive}"[Push cache from subdirectories of specified directory.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  "--show-checksums[Show checksums instead of file names]"
-  {-j,--jobs}"[Number of jobs to run simultaneously]:Number of jobs:"
-  {-r,--remote}"[Remote repository to pull from]:Remote repository:"
-  {-a,--all-branches}"[Fetch cache for all branches]"
-  {-T,--all-tags}"[Fetch cache for all tags]"
-  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target]"
-  {-R,--recursive}"[Push cache for subdirectories of the specified directory.]"
 )
 
 _dvc_remote=(
@@ -175,53 +177,58 @@ _dvc_remote=(
 _dvc_remove=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
   "--dry[Only print the commands that would be executed without actually executing]"
-  {-o,--outs}"[Only remove DVC file outputs.(default)]"
-  {-p,--purge}"[Remove DVC file and all its outputs]"
+  {-o,--outs}"[Only remove DVC-file outputs. (Default)]"
+  {-p,--purge}"[Remove DVC-file and all its outputs.]"
   {-f,--force}"[Force purge.]"
 )
 
 _dvc_repro=(
-  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  "--dry[Only print the commands that would be executed without actually executing]"
-  "--ignore-build-cache[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
-  "--no-commit[Don't put files/directories into cache.]"
   {-f,--force}"[Reproduce even if dependencies were not changed.]"
   {-s,--single-item}"[Reproduce only single data item without recursive dependencies check.]"
+  {-c,--cwd}"[Directory within your repo to reproduce from.]:CWD:_files -/"
   {-m,--metrics}"[Show metrics after reproduction.]"
+  "--dry[Only print the commands that would be executed without actually executing]"
   {-i,--interactive}"[Ask for confirmation before reproducing each stage.]"
   {-p,--pipeline}"[Reproduce the whole pipeline that the specified stage file belongs to.]"
-  {-P,--all-pipelines}"[Reproduce all pipelines in the project.]"
-  {-d,--downstream}"[Reproduce the pipeline starting from the specified stage.]"
+  {-P,--all-pipelines}"[Reproduce all pipelines in the repo.]"
+  {-R,--recursive}"[Reproduce all stages in the specified directory.]"
+  "--ignore-build-cache[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
+  "--no-commit[Don't put files/directories into cache.]"
+  "--downstream[Reproduce the pipeline starting from the specified stage.]"
+  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
 _dvc_root=()
 
 _dvc_run=(
-  "--no-exec[Only create stage file without actually running it.]"
-  "--overwrite-dvcfile[Overwrite existing dvc file without asking for confirmation.]"
-  "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
-  "--no-commit[Don't put files/directories into cache.]"
-  {-f,--file}"[Specify name of the stage file.]:File:_files"
-  {-c,--cwd}"[Deprecated, use -w and -f instead.]:CWD:_files -/"
-  {-w,--wdir}"[Directory to run your command and place state file in.]:WDIR:_files -/"
   "*"{-d,--deps}"[Declare dependencies for reproducible cmd.]:Dependency:_files"
-  "*"{-o,--outs}"[Declare output data file or data directory.]:Output data:_files"
-  "*"{-O,--outs-no-cache}"[Declare output regular file or directory.]:Output regular:_files"
-  "*"{-M,--metrics-no-cache}"[Declare output metric file or directory (do not put into DVC cache)]:Metrics (no cache):_files"
-  "*"{-m,--metrics}"[Declare output metric file or directory]:Metrics:_files"
-  {-y,--yes}"[Automatic 'yes' answer to all prompts.]"
+  "*"{-o,--outs}"[Declare output file or directory.]:Output data:_files"
+  "*"{-O,--outs-no-cache}"[Declare output file or directory (do not put into DVC cache).]:Output regular:_files"
+  "*"{-m,--metrics}"[Declare output metric file or directory.]:Metrics:_files"
+  "*"{-M,--metrics-no-cache}"[Declare output metric file or directory (do not put into DVC cache).]:Metrics (no cache):_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
+  {-c,--cwd}"[Deprecated, use -w and -f instead.]:CWD:_files -/"
+  {-w,--wdir}"[Directory within your repo to run your command in.]:WDIR:_files -/"
+  "--no-exec[Only create stage file without actually running it.]"
+  {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
+  "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
+  "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
+  "--remove-outs[Deprecated, this is now the default behavior]"
+  "--no-commit[Don't put files/directories into cache.]"
+  "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
+  "--outs-persist-no-cache[Declare output file or directory that will not be removed upon repro (do not put into DVC cache).]:Output persistent regular:_files"
 )
 
 _dvc_status=(
+  {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
+  "--show-checksums[Show checksums instead of file names.]"
+  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipeline is up to date, otherwise 1.]"
+  {-c,--cloud}"[Show status of a local cache compared to a remote repository.]"
+  {-r,--remote}"[Remote repository to compare local cache to.]:Remote repository:"
+  {-a,--all-branches}"[Show status of a local cache compared to a remote repository for all branches.]"
+  {-T,--all-tags}"[Show status of a local cache compared to a remote repository for all tags.]"
+  {-d,--with-deps}"[Show status for all dependencies of the specified target.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
-  "--show-checksums[Show checksums instead of file names]"
-  {-j,--jobs}"[Number of jobs to run simultaneously]:Number of jobs:"
-  {-r,--remote}"[Remote repository to pull from]:Remote repository:"
-  {-a,--all-branches}"[Fetch cache for all branches]"
-  {-T,--all-tags}"[Fetch cache for all tags]"
-  {-d,--with-deps}"[Fetch cache for all dependencies of the specified target]"
-  {-c,--cloud}"[Show status of a local cache compared to a remote repository]"
-  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipeline is up]"
 )
 
 _dvc_unlock=(

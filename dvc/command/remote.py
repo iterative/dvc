@@ -1,130 +1,62 @@
 from __future__ import unicode_literals
 
 import argparse
-import os
-import re
 import logging
 
 from dvc.command.base import append_doc_link, fix_subparsers
 from dvc.command.config import CmdConfig
-from dvc.config import Config
-
+from dvc.remote.config import RemoteConfig
 
 logger = logging.getLogger(__name__)
 
 
-class CmdRemoteAdd(CmdConfig):
-    @staticmethod
-    def resolve_path(path, config_file):
-        """Resolve path relative to config file location.
+class CmdRemoteConfig(CmdConfig):
+    def __init__(self, args):
+        super(CmdRemoteConfig, self).__init__(args)
+        self.config = RemoteConfig(self.config)
 
-        Args:
-            path: Path to be resolved.
-            config_file: Path to config file, which `path` is specified
-                relative to.
 
-        Returns:
-            Path relative to the `config_file` location. If `path` is an
-            absolute path then it will be returned without change.
-
-        """
-        if os.path.isabs(path):
-            return path
-        return os.path.relpath(path, os.path.dirname(config_file))
-
+class CmdRemoteAdd(CmdRemoteConfig):
     def run(self):
-        from dvc.remote import _get, RemoteLOCAL
-
-        remote = _get({Config.SECTION_REMOTE_URL: self.args.url})
-        if remote == RemoteLOCAL and not self.args.url.startswith("remote://"):
-            self.args.url = self.resolve_path(
-                self.args.url, self.configobj.filename
-            )
-
-        section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        if (section in self.configobj.keys()) and not self.args.force:
-            logger.error(
-                "Remote with name {} already exists. "
-                "Use -f (--force) to overwrite remote "
-                "with new value".format(self.args.name)
-            )
-            return 1
-
-        ret = self._set(section, Config.SECTION_REMOTE_URL, self.args.url)
-        if ret != 0:
-            return ret
-
-        if self.args.default:
-            msg = "Setting '{}' as a default remote.".format(self.args.name)
-            logger.info(msg)
-            ret = self._set(
-                Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, self.args.name
-            )
-
-        return ret
-
-
-class CmdRemoteRemove(CmdConfig):
-    def _remove_default(self, config):
-        core = config.get(Config.SECTION_CORE, None)
-        if core is None:
-            return 0
-
-        default = core.get(Config.SECTION_CORE_REMOTE, None)
-        if default is None:
-            return 0
-
-        if default == self.args.name:
-            return self._unset(
-                Config.SECTION_CORE,
-                opt=Config.SECTION_CORE_REMOTE,
-                configobj=config,
-            )
-
-    def run(self):
-        section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        ret = self._unset(section)
-        if ret != 0:
-            return ret
-
-        for configobj in [
-            self.config._local_config,
-            self.config._repo_config,
-            self.config._global_config,
-            self.config._system_config,
-        ]:
-            self._remove_default(configobj)
-            self.config.save(configobj)
-            if configobj == self.configobj:
-                break
-
+        self.config.add(
+            self.args.name,
+            self.args.url,
+            force=self.args.force,
+            default=self.args.default,
+            level=self.args.level,
+        )
         return 0
 
 
-class CmdRemoteModify(CmdConfig):
+class CmdRemoteRemove(CmdRemoteConfig):
     def run(self):
-        section = Config.SECTION_REMOTE_FMT.format(self.args.name)
-        self.args.name = "{}.{}".format(section, self.args.option)
-        return super(CmdRemoteModify, self).run()
+        self.config.remove(self.args.name, level=self.args.level)
+        return 0
 
 
-class CmdRemoteDefault(CmdConfig):
+class CmdRemoteModify(CmdRemoteConfig):
     def run(self):
-        self.args.value = self.args.name
-        self.args.name = "core.remote"
-        return super(CmdRemoteDefault, self).run()
+        self.config.modify(
+            self.args.name,
+            self.args.option,
+            self.args.value,
+            level=self.args.level,
+        )
+        return 0
 
 
-class CmdRemoteList(CmdConfig):
+class CmdRemoteDefault(CmdRemoteConfig):
     def run(self):
-        for section in self.configobj.keys():
-            r = re.match(Config.SECTION_REMOTE_REGEX, section)
-            if r:
-                name = r.group("name")
-                url = self.configobj[section].get(
-                    Config.SECTION_REMOTE_URL, ""
-                )
-                logger.info("{}\t{}".format(name, url))
+        self.config.set_default(
+            self.args.name, unset=self.args.unset, level=self.args.level
+        )
+        return 0
+
+
+class CmdRemoteList(CmdRemoteConfig):
+    def run(self):
+        for name, url in self.config.list(level=self.args.level).items():
+            logger.info("{}\t{}".format(name, url))
         return 0
 
 

@@ -60,6 +60,7 @@ install_requires = [
     "humanize>=0.5.1",
     "dulwich>=0.19.11",
     "ruamel.yaml>=0.15.91",
+    "psutil==5.6.2",
 ]
 
 # Extra dependencies for remote integrations
@@ -76,7 +77,7 @@ tests_requirements = [
     "wheel>=0.31.1",
     "pydot>=1.2.4",
     # Test requirements:
-    "pytest>=4.4.0",
+    "pytest>=4.6.0",
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
     "pytest-xdist>=1.26.1",
