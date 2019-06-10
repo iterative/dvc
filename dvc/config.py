@@ -45,24 +45,6 @@ def supported_cache_type(types):
     return True
 
 
-def supported_loglevel(level):
-    """Checks if log level config option has a valid value.
-
-    Args:
-        level (str): log level name.
-    """
-    return level in ["info", "debug", "warning", "error"]
-
-
-def supported_cloud(cloud):
-    """Checks if obsoleted cloud option has a valid value.
-
-    Args:
-        cloud (str): cloud type name.
-    """
-    return cloud in ["aws", "gcp", "local", ""]
-
-
 def is_bool(val):
     """Checks that value is a boolean.
 
@@ -111,6 +93,23 @@ def is_percent(val):
     return int(val) >= 0 and int(val) <= 100
 
 
+class Choices(object):
+    """Checks that value belongs to the specified set of values
+
+    Args:
+        *choices: pass allowed values as arguments, or pass a list or
+            tuple as a single argument
+    """
+
+    def __init__(self, *choices):
+        if len(choices) == 1 and isinstance(choices[0], (list, tuple)):
+            choices = choices[0]
+        self.choices = choices
+
+    def __call__(self, value):
+        return value in self.choices
+
+
 class Config(object):  # pylint: disable=too-many-instance-attributes
     """Class that manages configuration files for a dvc repo.
 
@@ -145,7 +144,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
     SECTION_CORE = "core"
     SECTION_CORE_LOGLEVEL = "loglevel"
-    SECTION_CORE_LOGLEVEL_SCHEMA = And(Use(str.lower), supported_loglevel)
+    SECTION_CORE_LOGLEVEL_SCHEMA = And(
+        Use(str.lower), Choices("info", "debug", "warning", "error")
+    )
     SECTION_CORE_REMOTE = "remote"
     SECTION_CORE_INTERACTIVE_SCHEMA = BOOL_SCHEMA
     SECTION_CORE_INTERACTIVE = "interactive"
@@ -180,7 +181,11 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
     # backward compatibility
     SECTION_CORE_CLOUD = "cloud"
-    SECTION_CORE_CLOUD_SCHEMA = And(Use(str.lower), supported_cloud)
+    SECTION_CORE_CLOUD_SCHEMA = And(
+        Use(str.lower),
+        # only the clouds which were supported by obsoleted cloud config
+        Choices("aws", "gcp", "local", ""),
+    )
     SECTION_CORE_STORAGEPATH = "storagepath"
 
     SECTION_CORE_SCHEMA = {
