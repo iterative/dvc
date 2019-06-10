@@ -113,7 +113,7 @@ def shared_parent_parser():
         help="Show checksums instead of file names.",
     )
     shared_parent_parser.add_argument(
-        "targets", nargs="*", default=None, help="DVC files."
+        "targets", nargs="*", default=None, help="Limit the scope to these stage files."
     )
 
     return shared_parent_parser
