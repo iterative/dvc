@@ -96,7 +96,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
         warning = (
             "You are adding a large directory 'large-dir' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated stage files and then"
+            "{purple}HINT:{nc} Remove the generated DVC-files and then"
             " run {cyan}dvc add large-dir{nc}".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
@@ -424,7 +424,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
 
         foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
-        # corrupt stage file
+        # corrupt DVC-file
         with open(foo_stage, "a+") as file:
             file.write("this will break yaml file structure")
 
@@ -434,7 +434,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         assert 1 == ret
 
         expected_error = (
-            "unable to read stage file: {} "
+            "unable to read DVC-file: {} "
             "YAML file structure is corrupted".format(foo_stage)
         )
 
@@ -475,7 +475,7 @@ class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
         self.assertEqual(0, ret)
 
         foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
-        # corrupt stage file
+        # corrupt DVC-file
         with open(foo_stage_file, "a+") as file:
             file.write("this will break yaml file structure")
 

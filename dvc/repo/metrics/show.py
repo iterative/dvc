@@ -177,7 +177,7 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
             outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
         except OutputNotFoundError:
             logger.debug(
-                "stage file not for found for '{}' in branch '{}'".format(
+                "DVC-file not for found for '{}' in branch '{}'".format(
                     path, branch
                 )
             )

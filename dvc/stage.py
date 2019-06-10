@@ -35,7 +35,7 @@ class StageCmdFailedError(DvcException):
 
 class StageFileFormatError(DvcException):
     def __init__(self, fname, e):
-        msg = "stage file '{}' format error: {}".format(fname, str(e))
+        msg = "DVC-file '{}' format error: {}".format(fname, str(e))
         super(StageFileFormatError, self).__init__(msg)
 
 
@@ -183,7 +183,7 @@ class Stage(object):
 
     @property
     def is_data_source(self):
-        """Whether the stage file was created with `dvc add` or `dvc import`"""
+        """Whether the DVC-file was created with `dvc add` or `dvc import`"""
         return self.cmd is None
 
     @staticmethod
@@ -206,14 +206,14 @@ class Stage(object):
     @property
     def is_callback(self):
         """
-        A callback stage is always considered as changed,
+        An orphan stage is always considered as changed,
         so it runs on every `dvc repro` call.
         """
         return not self.is_data_source and len(self.deps) == 0
 
     @property
     def is_import(self):
-        """Whether the stage file was created with `dvc import`."""
+        """Whether the DVC-file was created with `dvc import`."""
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
     @property
@@ -229,7 +229,7 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "DVC-file '{fname}' is a 'callback' stage "
+                "DVC-file '{fname}' is an 'orphan' stage "
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )
@@ -453,9 +453,9 @@ class Stage(object):
         if wdir is None and cwd is not None:
             if fname is not None and os.path.basename(fname) != fname:
                 raise StageFileBadNameError(
-                    "stage file name '{fname}' may not contain subdirectories"
+                    "DVC-file name '{fname}' may not contain subdirectories"
                     " if '-c|--cwd' (deprecated) is specified. Use '-w|--wdir'"
-                    " along with '-f' to specify stage file path and working"
+                    " along with '-f' to specify DVC-file path with working"
                     " directory.".format(fname=fname)
                 )
             wdir = cwd
@@ -559,7 +559,7 @@ class Stage(object):
     def _check_dvc_filename(fname):
         if not Stage.is_valid_filename(fname):
             raise StageFileBadNameError(
-                "bad stage filename '{}'. Stage files should be named"
+                "bad DVC-file name '{}'. DVC-files should be named"
                 " 'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
                     relpath(fname), os.path.basename(fname)
                 )
@@ -663,10 +663,10 @@ class Stage(object):
         if self.PARAM_MD5 in d.keys():
             del d[self.PARAM_MD5]
 
-        # Ignore the wdir default value. In this case stage file w/o
+        # Ignore the wdir default value. In this case DVC-file w/o
         # wdir has the same md5 as a file with the default value specified.
         # It's important for backward compatibility with pipelines that
-        # didn't have WDIR in their stage files.
+        # didn't have WDIR in their DVC-files.
         if d.get(self.PARAM_WDIR) == ".":
             del d[self.PARAM_WDIR]
 
