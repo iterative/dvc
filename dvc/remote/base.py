@@ -705,14 +705,18 @@ class RemoteBASE(object):
     def unprotect(path_info):
         pass
 
+    def _get_unpacked_dir_names(self, checksums):
+        return set()
+
     def extract_used_local_checksums(self, cinfos):
         from dvc.remote import RemoteLOCAL
 
         used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
-        return used
+        unpacked = self._get_unpacked_dir_names(used)
+        return used | unpacked
 
     def _changed_unpacked_dir(self, checksum):
         return True
 
-    def _update_unpacked_dir(self, checksum):
+    def _update_unpacked_dir(self, checksum, progress_callback=None):
         pass

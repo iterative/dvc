@@ -422,7 +422,11 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         self.write_args = [w_c[1][0] for w_c in write_calls]
 
         pattern = re.compile(".*\\[.{30}\\].*%.*")
-        progress_bars = [arg for arg in self.write_args if pattern.match(arg)]
+        progress_bars = [
+            arg
+            for arg in self.write_args
+            if pattern.match(arg) and "unpacked" not in arg
+        ]
 
         update_bars = progress_bars[:-1]
         finish_bar = progress_bars[-1]

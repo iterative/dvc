@@ -35,7 +35,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.progress import progress
+from dvc.progress import progress, ProgressCallback
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -144,10 +144,11 @@ class RemoteLOCAL(RemoteBASE):
             return
 
         if not link_type:
-            self._default_link(from_info, to_info)
+            link_types = self.cache_types
         else:
-            link_method = self._get_link_method(link_type)
-            self._link(from_info, to_info, link_method)
+            link_types = [link_type]
+
+        self._try_links(from_info, to_info, link_types)
 
     @classmethod
     def _get_link_method(cls, link_type):
@@ -165,6 +166,7 @@ class RemoteLOCAL(RemoteBASE):
             )
         else:
             link_method(from_info.path, to_info.path)
+
         if self.protected:
             self.protect(to_info)
 
@@ -178,18 +180,18 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(msg)
 
     @slow_link_guard
-    def _default_link(self, from_info, to_info):
-        i = len(self.cache_types)
+    def _try_links(self, from_info, to_info, link_types):
+        i = len(link_types)
         while i > 0:
-            link_method = self._get_link_method(self.cache_types[0])
+            link_method = self._get_link_method(link_types[0])
             try:
                 self._link(from_info, to_info, link_method)
                 return
 
             except DvcException as exc:
                 msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(self.cache_types[0], str(exc)))
-                del self.cache_types[0]
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
                 i -= 1
 
         raise DvcException("no possible cache types left to try out.")
@@ -622,7 +624,7 @@ class RemoteLOCAL(RemoteBASE):
         try:
             dir_info = self.get_dir_cache(checksum)
             self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
-        except Exception:
+        except DvcException:
             logger.warning(
                 "Could not create '{}'".format(unpacked_dir_info.path)
             )
@@ -630,8 +632,9 @@ class RemoteLOCAL(RemoteBASE):
             self.remove(unpacked_dir_info)
 
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
+        progress_callback = ProgressCallback(len(dir_info))
         self.makedirs(unpacked_dir_info)
-        for entry in dir_info:
+        for index, entry in enumerate(dir_info):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
@@ -642,6 +645,8 @@ class RemoteLOCAL(RemoteBASE):
                 unpacked_dir_info.path, relpath
             )
             self.link(entry_cache_info, unpacked_entry_info, "hardlink")
+
+            progress_callback.update("Creating unpacked dir.")
         self.state.save(unpacked_dir_info, checksum)
 
     def _changed_unpacked_dir(self, checksum):
@@ -649,22 +654,9 @@ class RemoteLOCAL(RemoteBASE):
 
         return not self.state.get(status_unpacked_dir_info)
 
-    def _save_dir(self, path_info, checksum):
-        super(RemoteLOCAL, self)._save_dir(path_info, checksum)
-        self._update_unpacked_dir(checksum)
-
-    def _checkout_dir(
-        self, path_info, checksum, force, progress_callback=None
-    ):
-        super(RemoteLOCAL, self)._checkout_dir(
-            path_info, checksum, force, progress_callback
-        )
-        self._update_unpacked_dir(checksum)
-
-    def extract_used_local_checksums(self, cinfos):
-        used = super(RemoteLOCAL, self).extract_used_local_checksums(cinfos)
-        unpacked_dir = set()
-        for checksum in used:
-            if self.is_dir_checksum(checksum):
-                unpacked_dir.add(self._append_unpacked_suffix(checksum))
-        return used | unpacked_dir
+    def _get_unpacked_dir_names(self, checksums):
+        unpacked = set()
+        for c in checksums:
+            if self.is_dir_checksum(c):
+                unpacked.add(self._append_unpacked_suffix(c))
+        return unpacked
