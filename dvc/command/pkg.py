@@ -14,22 +14,50 @@ class CmdPkgInstall(CmdBase):
     def run(self):
         try:
             self.repo.pkg.install(
-                self.args.address,
-                self.args.target_dir,
-                self.args.select,
-                self.args.file,
+                self.args.url, version=self.args.version, name=self.args.name
             )
             return 0
         except DvcException:
             logger.exception(
-                "failed to install package '{}'".format(self.args.address)
+                "failed to install package '{}'".format(self.args.url)
+            )
+            return 1
+
+
+class CmdPkgUninstall(CmdBase):
+    def run(self):
+        ret = 0
+        for target in self.args.targets:
+            try:
+                self.repo.pkg.uninstall(target)
+            except DvcException:
+                logger.exception(
+                    "failed to uninstall package '{}'".format(target)
+                )
+                ret = 1
+        return ret
+
+
+class CmdPkgImport(CmdBase):
+    def run(self):
+        try:
+            self.repo.pkg.imp(
+                self.args.name,
+                self.args.src,
+                out=self.args.out,
+                version=self.args.version,
+            )
+            return 0
+        except DvcException:
+            logger.exception(
+                "failed to import '{}' from package '{}'".format(
+                    self.args.src, self.args.name
+                )
             )
             return 1
 
 
 def add_parser(subparsers, parent_parser):
-    from dvc.command.config import parent_config_parser
-
     PKG_HELP = "Manage DVC packages."
     pkg_parser = subparsers.add_parser(
         "pkg",
@@ -48,42 +76,52 @@ def add_parser(subparsers, parent_parser):
     PKG_INSTALL_HELP = "Install package."
     pkg_install_parser = pkg_subparsers.add_parser(
         "install",
-        parents=[parent_config_parser, parent_parser],
+        parents=[parent_parser],
         description=append_doc_link(PKG_INSTALL_HELP, "pkg-install"),
         help=PKG_INSTALL_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    pkg_install_parser.add_argument("url", help="Package URL.")
     pkg_install_parser.add_argument(
-        "address",
+        "--version", nargs="?", help="Package version."
+    )
+    pkg_install_parser.add_argument(
+        "--name",
         nargs="?",
-        default="",
-        help="Package address: git://<url> or https://github.com/...",
-    )
-    pkg_install_parser.add_argument(
-        "target_dir",
-        metavar="target",
-        nargs="?",
-        default=".",
-        help="Target directory to deploy package outputs. "
-        "Default value is the current dir.",
-    )
-    pkg_install_parser.add_argument(
-        "-s",
-        "--select",
-        metavar="OUT",
-        action="append",
-        default=[],
-        help="Select and persist only specified outputs from a package. "
-        "The parameter can be used multiple times. "
-        "All outputs will be selected by default.",
-    )
-    pkg_install_parser.add_argument(
-        "-f",
-        "--file",
-        help="Specify name of the stage file. It should be "
-        "either 'Dvcfile' or have a '.dvc' suffix (e.g. "
-        "'prepare.dvc', 'clean.dvc', etc). "
-        "By default the file has 'mod_' prefix and imported package name "
-        "followed by .dvc",
+        help=(
+            "Package alias. If not specified, the name will be determined "
+            "from URL."
+        ),
     )
     pkg_install_parser.set_defaults(func=CmdPkgInstall)
+
+    PKG_UNINSTALL_HELP = "Uninstall package(s)."
+    pkg_uninstall_parser = pkg_subparsers.add_parser(
+        "uninstall",
+        parents=[parent_parser],
+        description=append_doc_link(PKG_UNINSTALL_HELP, "pkg-uninstall"),
+        help=PKG_UNINSTALL_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pkg_uninstall_parser.add_argument(
+        "targets", nargs="*", default=[None], help="Package name."
+    )
+    pkg_uninstall_parser.set_defaults(func=CmdPkgUninstall)
+
+    PKG_IMPORT_HELP = "Import data from package."
+    pkg_import_parser = pkg_subparsers.add_parser(
+        "import",
+        parents=[parent_parser],
+        description=append_doc_link(PKG_IMPORT_HELP, "pkg-import"),
+        help=PKG_IMPORT_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pkg_import_parser.add_argument("name", help="Package name or url.")
+    pkg_import_parser.add_argument("src", help="Path to data in the package.")
+    pkg_import_parser.add_argument(
+        "-o", "--out", nargs="?", help="Destination path to put data to."
+    )
+    pkg_import_parser.add_argument(
+        "--version", nargs="?", help="Package version."
+    )
+    pkg_import_parser.set_defaults(func=CmdPkgImport)

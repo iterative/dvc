@@ -285,7 +285,7 @@ class RemoteLOCAL(RemoteBASE):
                 by_md5[md5] = {"name": md5}
                 continue
 
-            name = info[self.PARAM_PATH]
+            name = info["name"]
             branch = info.get("branch")
             if branch:
                 name += "({})".format(branch)

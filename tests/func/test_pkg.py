@@ -1,35 +1,132 @@
 import os
+import git
+import filecmp
 
-from dvc.repo.pkg.install import Package
-from tests.basic_env import TestDvcPkg
+from tests.utils import trees_equal
 
 
-class TestPkgBasic(TestDvcPkg):
-    NEW_PKG_DIR = "new_pkg"
+def test_install_and_uninstall(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
 
-    def setUp(self):
-        super(TestPkgBasic, self).setUp()
+    dvc_repo.pkg.install(pkg.root_dir)
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
 
-        self.to_dir = os.path.join(self._root_dir, self.NEW_PKG_DIR)
-        os.mkdir(self.to_dir)
-        self.dvc.pkg.install(self.pkg_fixture._root_dir, self.to_dir)
+    dvc_repo.pkg.install(pkg.root_dir)
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
 
-    def test_installed_dirs_and_files(self):
-        self.assertTrue(os.path.isdir(self.pkg_dir))
+    git_repo = git.Repo(mypkg_dir)
+    assert git_repo.active_branch.name == "master"
 
-        mod_dir_fullpath = os.path.join(self._root_dir, Package.MODULES_DIR)
-        self.assertTrue(os.path.isdir(mod_dir_fullpath))
+    dvc_repo.pkg.uninstall(name)
+    assert not os.path.exists(mypkg_dir)
 
-        installed_pkg_dir = os.path.join(mod_dir_fullpath, self.GIT_PKG)
-        for file in [self.FOO, self.BAR, self.CODE]:
-            installed_file = os.path.join(installed_pkg_dir, file)
-            self.assertTrue(os.path.isfile(installed_file))
+    dvc_repo.pkg.uninstall(name)
+    assert not os.path.exists(mypkg_dir)
 
-    def test_target_dir_checkout(self):
-        pkg_data_file = os.path.join(self.to_dir, self.DATA)
-        self.assertTrue(os.path.exists(pkg_data_file))
-        self.assertTrue(os.path.isfile(pkg_data_file))
 
-        pkg_data_dir = os.path.join(self.to_dir, self.DATA_SUB_DIR)
-        self.assertTrue(os.path.exists(pkg_data_dir))
-        self.assertTrue(os.path.isdir(pkg_data_dir))
+def test_uninstall_corrupted(repo_dir, dvc_repo):
+    name = os.path.basename("mypkg")
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    os.makedirs(mypkg_dir)
+
+    dvc_repo.pkg.uninstall(name)
+    assert not os.path.exists(mypkg_dir)
+
+
+def test_install_version(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    dvc_repo.pkg.install(pkg.root_dir, version="branch")
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
+
+    git_repo = git.Repo(mypkg_dir)
+    assert git_repo.active_branch.name == "branch"
+
+
+def test_import(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+
+    src = pkg.FOO
+    dst = pkg.FOO + "_imported"
+
+    dvc_repo.pkg.install(pkg.root_dir)
+    dvc_repo.pkg.imp(name, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+
+
+def test_import_dir(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+
+    src = pkg.DATA_DIR
+    dst = pkg.DATA_DIR + "_imported"
+
+    dvc_repo.pkg.install(pkg.root_dir)
+    dvc_repo.pkg.imp(name, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isdir(dst)
+    trees_equal(src, dst)
+
+
+def test_import_url(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    src = pkg.FOO
+    dst = pkg.FOO + "_imported"
+
+    dvc_repo.pkg.imp(pkg.root_dir, src, dst)
+
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
+
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+
+
+def test_import_url_version(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    src = "version"
+    dst = src
+
+    dvc_repo.pkg.imp(pkg.root_dir, src, dst, version="branch")
+
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
+
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    with open(dst, "r+") as fobj:
+        assert fobj.read() == "branch"
