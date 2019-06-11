@@ -6,14 +6,16 @@ import os
 import json
 import logging
 import tempfile
+import itertools
 from operator import itemgetter
 from multiprocessing import cpu_count
+from concurrent.futures import ThreadPoolExecutor
 
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
 from dvc.progress import progress
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks
 from dvc.state import StateBase
 from dvc.path_info import PathInfo, URLInfo
 
@@ -65,6 +67,7 @@ class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
+    SUPPORTS_NO_TRAVERSE = True
     JOBS = 4 * cpu_count()
 
     PARAM_RELPATH = "relpath"
@@ -99,8 +102,8 @@ class RemoteBASE(object):
             raise RemoteMissingDepsError(msg)
 
         self.protected = False
+        self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE)
         self.state = StateBase()
-
         self._dir_info = {}
 
     def __repr__(self):
@@ -508,15 +511,36 @@ class RemoteBASE(object):
         return self.changed_cache_file(checksum)
 
     def cache_exists(self, checksums):
-        # NOTE: The reason for such an odd logic is that most of the remotes
-        # take much shorter time to just retrieve everything they have under
-        # a certain prefix(e.g. s3, gs, ssh, hdfs). Other remotes that can
-        # check if particular file exists much quicker, use their own
-        # implementation of cache_exists(see http, local).
-        #
-        # Result of all() might be way too big, so we should walk through
-        # it in one pass.
-        return list(filter(lambda checksum: checksum in checksums, self.all()))
+        """Check if the given checksums are stored in the remote.
+
+        There are two ways of performing this check:
+
+        - Traverse: Get a list of all the files in the remote
+            (traversing the cache directory) and compare it with
+            the given checksums.
+
+        - No traverse: For each given checksum, run the `exists`
+            method and filter the checksums that aren't on the remote.
+            This is done in parallel threads.
+
+        The reason for such an odd logic is that most of the remotes
+        take much shorter time to just retrieve everything they have under
+        a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
+        check if particular file exists much quicker, use their own
+        implementation of cache_exists (see http, local).
+
+        Returns:
+            A list with checksums that were found in the remote
+        """
+        if self.no_traverse and self.SUPPORTS_NO_TRAVERSE:
+            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                chunks = to_chunks(path_infos, self.JOBS)
+                results = executor.map(self.exists, chunks)
+                in_remote = itertools.chain.from_iterable(results)
+                return list(itertools.compress(checksums, in_remote))
+
+        return list(set(checksums) & set(self.all()))
 
     def already_cached(self, path_info):
         current = self.get_checksum(path_info)
