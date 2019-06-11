@@ -19,9 +19,7 @@ class TestRemoteOSS(TestCase):
             "oss_endpoint": self.endpoint,
         }
         remote = RemoteOSS(None, config)
-        self.assertEqual(remote.url, url)
-        self.assertEqual(remote.prefix, prefix)
-        self.assertEqual(remote.bucket, self.bucket_name)
+        self.assertEqual(remote.path_info, url)
         self.assertEqual(remote.endpoint, self.endpoint)
         self.assertEqual(remote.key_id, self.key_id)
         self.assertEqual(remote.key_secret, self.key_secret)

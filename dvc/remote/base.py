@@ -1,17 +1,11 @@
 from __future__ import unicode_literals
 
-from copy import copy
-
-from dvc.path.local import PathLOCAL
-from dvc.utils.compat import str
+from dvc.utils.compat import str, basestring, urlparse
 
 import os
-import re
 import json
-import ntpath
 import logging
 import tempfile
-import posixpath
 from operator import itemgetter
 from multiprocessing import cpu_count
 
@@ -21,6 +15,7 @@ from dvc.exceptions import DvcException, ConfirmRemoveError
 from dvc.progress import progress
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname
 from dvc.state import StateBase
+from dvc.path_info import PathInfo, URLInfo
 
 
 logger = logging.getLogger(__name__)
@@ -67,8 +62,8 @@ class RemoteMissingDepsError(DvcException):
 
 
 class RemoteBASE(object):
-    scheme = None
-    REGEX = None
+    scheme = "base"
+    path_cls = URLInfo
     REQUIRES = {}
     JOBS = 4 * cpu_count()
 
@@ -109,8 +104,9 @@ class RemoteBASE(object):
         self._dir_info = {}
 
     def __repr__(self):
-        return "{class_name}: '{url}'".format(
-            class_name=type(self).__name__, url=(self.url or "No url")
+        return "{class_name}: '{path_info}'".format(
+            class_name=type(self).__name__,
+            path_info=self.path_info or "No path",
         )
 
     def compat_config(config):
@@ -118,39 +114,14 @@ class RemoteBASE(object):
 
     @classmethod
     def supported(cls, config):
-        url = config[Config.SECTION_REMOTE_URL]
-        return cls.match(url) is not None
+        if isinstance(config, basestring):
+            url = config
+        else:
+            url = config[Config.SECTION_REMOTE_URL]
 
-    @staticmethod
-    def _replace_sep(path, from_sep, to_sep):
-        assert not ntpath.isabs(path)
-        assert not posixpath.isabs(path)
-        return path.replace(from_sep, to_sep)
-
-    @classmethod
-    def to_posixpath(cls, path):
-        return cls._replace_sep(path, "\\", "/")
-
-    @classmethod
-    def to_ntpath(cls, path):
-        return cls._replace_sep(path, "/", "\\")
-
-    def to_ospath(self, path):
-        if self.ospath == ntpath:
-            return self.to_ntpath(path)
-        elif self.ospath == posixpath:
-            return self.to_posixpath(path)
-        assert False
-
-    @classmethod
-    def match(cls, url):
-        return re.match(cls.REGEX, url)
-
-    def group(self, name):
-        m = self.match(self.url)
-        if not m:
-            return None
-        return m.group(name)
+        # NOTE: silently skipping remote, calling code should handle that
+        parsed = urlparse(url)
+        return parsed.scheme == cls.scheme
 
     @property
     def cache(self):
@@ -162,28 +133,31 @@ class RemoteBASE(object):
     def _collect_dir(self, path_info):
         dir_info = []
 
-        p_info = copy(path_info)
-        dpath = p_info.path
         for root, dirs, files in self.walk(path_info):
             if len(files) > LARGE_DIR_SIZE:
                 msg = (
                     "Computing md5 for a large directory {}. "
                     "This is only done once."
                 )
-                relpath = self.ospath.relpath(root)
-                logger.info(msg.format(relpath))
-                files = progress(files, name=relpath)
+                title = str(self.path_cls(root))
+                logger.info(msg.format(title))
+                files = progress(files, name=title)
 
             for fname in files:
-                path = self.ospath.join(root, fname)
-                p_info.path = path
-                relpath = self.to_posixpath(self.ospath.relpath(path, dpath))
-
-                checksum = self.get_file_checksum(p_info)
+                file_info = self.path_cls(root) / fname
+                relpath = file_info.relative_to(path_info)
                 dir_info.append(
                     {
-                        self.PARAM_RELPATH: relpath,
-                        self.PARAM_CHECKSUM: checksum,
+                        # NOTE: this is lossy transformation:
+                        #   "hey\there" -> "hey/there"
+                        #   "hey/there" -> "hey/there"
+                        # The latter is fine filename on Windows,
+                        # which will transform to dir/file on back transform.
+                        #
+                        # Yes, this is a BUG, as long as we permit "/" in
+                        # filenames on Windows and "\" on Unix
+                        self.PARAM_RELPATH: relpath.as_posix(),
+                        self.PARAM_CHECKSUM: self.get_file_checksum(file_info),
                     }
                 )
 
@@ -192,32 +166,27 @@ class RemoteBASE(object):
 
     def get_dir_checksum(self, path_info):
         dir_info = self._collect_dir(path_info)
-        checksum, from_info, to_info = self._get_dir_info_checksum(
-            dir_info, path_info
-        )
+        checksum, tmp_info = self._get_dir_info_checksum(dir_info)
+        new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
-            self.cache.move(from_info, to_info)
+            self.cache.move(tmp_info, new_info)
 
         self.state.save(path_info, checksum)
-        self.state.save(to_info, checksum)
+        self.state.save(new_info, checksum)
 
         return checksum
 
-    def _get_dir_info_checksum(self, dir_info, path_info):
-        to_info = copy(path_info)
-        to_info.path = self.cache.ospath.join(self.cache.prefix, tmp_fname(""))
-
+    def _get_dir_info_checksum(self, dir_info):
         tmp = tempfile.NamedTemporaryFile(delete=False).name
         with open(tmp, "w+") as fobj:
             json.dump(dir_info, fobj, sort_keys=True)
 
-        from_info = PathLOCAL(path=tmp)
+        from_info = PathInfo(tmp)
+        to_info = self.cache.path_info / tmp_fname("")
         self.cache.upload([from_info], [to_info], no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
-        from_info = copy(to_info)
-        to_info.path = self.cache.checksum_to_path(checksum)
-        return checksum, from_info, to_info
+        return checksum, to_info
 
     def get_dir_cache(self, checksum):
         assert checksum
@@ -235,7 +204,7 @@ class RemoteBASE(object):
 
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
-        to_info = PathLOCAL(path=path)
+        to_info = self.path_cls(path)
         self.cache.download([path_info], [to_info], no_progress_bar=True)
 
         try:
@@ -253,7 +222,9 @@ class RemoteBASE(object):
             return []
 
         for info in d:
-            info[self.PARAM_RELPATH] = self.to_ospath(info[self.PARAM_RELPATH])
+            # NOTE: here is a BUG, see comment to .as_posix() below
+            relpath = self.path_cls.from_posix(info[self.PARAM_RELPATH])
+            info[self.PARAM_RELPATH] = relpath.fspath
 
         return d
 
@@ -360,13 +331,9 @@ class RemoteBASE(object):
         cache_info = self.checksum_to_path_info(checksum)
         dir_info = self.get_dir_cache(checksum)
 
-        entry_info = copy(path_info)
         for entry in dir_info:
+            entry_info = path_info / entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
-            entry_info.path = self.ospath.join(
-                path_info.path, entry[self.PARAM_RELPATH]
-            )
-
             self._save_file(entry_info, entry_checksum, save_link=False)
 
         self.state.save_link(path_info)
@@ -451,25 +418,11 @@ class RemoteBASE(object):
 
         return names
 
-    @property
-    def ospath(self):
-        return posixpath
-
-    def checksum_to_path(self, checksum):
-        assert checksum
-        return self.ospath.join(self.prefix, checksum[0:2], checksum[2:])
-
     def path_to_checksum(self, path):
-        relpath = self.ospath.relpath(path, self.prefix)
-        return self.ospath.dirname(relpath) + self.ospath.basename(relpath)
+        return "".join(self.path_cls(path).parts[-2:])
 
     def checksum_to_path_info(self, checksum):
-        path_info = copy(self.path_info)
-        path_info.path = self.checksum_to_path(checksum)
-        return path_info
-
-    def md5s_to_path_infos(self, md5s):
-        return [self.checksum_to_path_info(md5) for md5 in md5s]
+        return self.path_info / checksum[0:2] / checksum[2:]
 
     def list_cache_paths(self):
         raise NotImplementedError
@@ -601,7 +554,7 @@ class RemoteBASE(object):
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
         if progress_callback:
-            progress_callback.update(path_info.url)
+            progress_callback.update(str(path_info))
 
     def makedirs(self, path_info):
         raise NotImplementedError
@@ -618,13 +571,11 @@ class RemoteBASE(object):
 
         logger.debug("Linking directory '{}'.".format(path_info))
 
-        entry_info = copy(path_info)
         for entry in dir_info:
             relpath = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
-            entry_info.url = self.ospath.join(path_info.url, relpath)
-            entry_info.path = self.ospath.join(path_info.path, relpath)
+            entry_info = path_info / relpath
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if self.changed(entry_info, entry_checksum_info):
@@ -633,7 +584,7 @@ class RemoteBASE(object):
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
-                progress_callback.update(entry_info.url)
+                progress_callback.update(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -642,30 +593,22 @@ class RemoteBASE(object):
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(
-            self.ospath.join(root, fname)
+            self.path_cls(root) / fname
             for root, _, files in self.walk(path_info)
             for fname in files
         )
 
-        needed_files = set(
-            self.ospath.join(path_info.path, entry[self.PARAM_RELPATH])
-            for entry in dir_info
-        )
+        needed_files = {
+            path_info / entry[self.PARAM_RELPATH] for entry in dir_info
+        }
 
-        delta = existing_files - needed_files
-
-        d_info = copy(path_info)
-        for path in delta:
-            d_info.path = path
-            self.safe_remove(d_info, force)
+        for path in existing_files - needed_files:
+            self.safe_remove(path, force)
 
     def checkout(
         self, path_info, checksum_info, force=False, progress_callback=None
     ):
-        if (
-            path_info.scheme not in ["local"]
-            and path_info.scheme != self.scheme
-        ):
+        if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)

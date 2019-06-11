@@ -118,7 +118,7 @@ class GitPackage(Package):
         )
 
         for out in stage.outs:
-            parent_repo.scm.ignore(out.path, in_curr_dir=True)
+            parent_repo.scm.ignore(out.fspath, in_curr_dir=True)
 
         stage.dump()
 

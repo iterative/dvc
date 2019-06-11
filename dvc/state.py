@@ -10,6 +10,7 @@ from dvc.config import Config
 from dvc.utils import remove, current_timestamp
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
+from dvc.utils.compat import fspath
 
 
 logger = logging.getLogger(__name__)
@@ -352,7 +353,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert path_info.scheme == "local"
         assert checksum is not None
 
-        path = path_info.path
+        path = fspath(path_info)
         assert os.path.exists(path)
 
         actual_mtime, actual_size = get_mtime_and_size(path)
@@ -381,7 +382,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             doesn't exist in the state database.
         """
         assert path_info.scheme == "local"
-        path = path_info.path
+        path = fspath(path_info)
 
         if not os.path.exists(path):
             return None
@@ -408,7 +409,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path info to add to the list of links.
         """
         assert path_info.scheme == "local"
-        path = path_info.path
+        path = fspath(path_info)
 
         if not os.path.exists(path):
             return

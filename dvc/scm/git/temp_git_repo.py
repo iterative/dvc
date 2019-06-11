@@ -116,7 +116,7 @@ class TempGitRepo(object):
         if not self.is_state_set:
             raise TempRepoException(self, "cannot persist")
 
-        tmp_repo_cache = self.repo.cache.local.url
+        tmp_repo_cache = self.repo.cache.local.path_info.fspath
 
         for prefix in os.listdir(tmp_repo_cache):
             if len(prefix) != 2:
@@ -135,7 +135,9 @@ class TempGitRepo(object):
         obj_name = os.path.join(tmp_repo_cache, prefix)
         for suffix in os.listdir(obj_name):
             src_path = os.path.join(tmp_repo_cache, prefix, suffix)
-            pre = os.path.join(parent_repo.cache.local.url, prefix)
+            pre = os.path.join(
+                parent_repo.cache.local.path_info.fspath, prefix
+            )
             if not os.path.exists(pre):
                 os.mkdir(pre)
             dest = os.path.join(pre, suffix)

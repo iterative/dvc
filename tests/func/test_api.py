@@ -3,6 +3,7 @@ import shutil
 
 from dvc import api
 from dvc.main import main
+from dvc.path_info import URLInfo
 from .test_data_cloud import (
     _should_test_aws,
     get_aws_url,
@@ -75,10 +76,8 @@ def test_get_url(repo_dir, dvc_repo, remote):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     dvc_repo.add(repo_dir.FOO)
 
-    assert api.get_url(repo_dir.FOO) == "%s/%s" % (
-        remote_url,
-        "ac/bd18db4cc2f85cedef654fccc4a4d8",
-    )
+    expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
+    assert api.get_url(repo_dir.FOO) == expected_url
 
 
 def test_open(repo_dir, dvc_repo, remote):

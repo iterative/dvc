@@ -98,9 +98,7 @@ class CircularDependencyError(DvcException):
     """
 
     def __init__(self, dependency):
-        assert isinstance(dependency, str) or isinstance(
-            dependency, builtin_str
-        )
+        assert isinstance(dependency, (str, builtin_str))
 
         msg = (
             "file/directory '{}' is specified as an output and as a "
@@ -118,7 +116,7 @@ class ArgumentDuplicationError(DvcException):
     """
 
     def __init__(self, path):
-        assert isinstance(path, str) or isinstance(path, builtin_str)
+        assert isinstance(path, (str, builtin_str))
         msg = "file '{}' is specified more than once."
         super(ArgumentDuplicationError, self).__init__(msg.format(path))
 

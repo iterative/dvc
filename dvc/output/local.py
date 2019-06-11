@@ -3,8 +3,7 @@ from __future__ import unicode_literals
 import os
 import logging
 
-from dvc.path.local import PathLOCAL
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, fspath_py35, str
 from dvc.istextfile import istextfile
 from dvc.exceptions import DvcException
 from dvc.remote.local import RemoteLOCAL
@@ -16,82 +15,58 @@ logger = logging.getLogger(__name__)
 
 class OutputLOCAL(OutputBase):
     REMOTE = RemoteLOCAL
+    sep = os.sep
 
-    def __init__(
-        self,
-        stage,
-        path,
-        info=None,
-        remote=None,
-        cache=True,
-        metric=False,
-        persist=False,
-        tags=None,
-    ):
-        super(OutputLOCAL, self).__init__(
-            stage,
-            path,
-            info,
-            remote=remote,
-            cache=cache,
-            metric=metric,
-            persist=persist,
-            tags=tags,
-        )
-        if remote:
-            p = os.path.join(
-                remote.prefix, urlparse(self.url).path.lstrip("/")
-            )
+    def _parse_path(self, remote, path):
+        parsed = urlparse(path)
+        if parsed.scheme == "remote":
+            p = remote.path_info / parsed.path.lstrip("/")
         else:
-            p = path
+            # NOTE: we can path either from command line or .dvc file,
+            # so we should expect both posix and windows style paths.
+            # PathInfo accepts both, i.e. / works everywhere, \ only on win.
+            #
+            # FIXME: if we have Windows path containig / or posix one with \
+            # then we have #2059 bug and can't really handle that.
+            p = self.REMOTE.path_cls(path)
+            if not p.is_absolute():
+                p = self.stage.wdir / p
 
-        if not os.path.isabs(p):
-            p = self.remote.to_ospath(p)
-            p = os.path.join(stage.wdir, p)
-        p = os.path.abspath(os.path.normpath(p))
-
-        self.path_info = PathLOCAL(url=self.url, path=p)
+        abs_p = os.path.abspath(os.path.normpath(fspath_py35(p)))
+        return self.REMOTE.path_cls(abs_p)
 
     def __str__(self):
-        return self.rel_path
+        return str(self.path_info)
+
+    @property
+    def fspath(self):
+        return self.path_info.fspath
 
     @property
     def is_in_repo(self):
-        return urlparse(self.url).scheme != "remote" and not os.path.isabs(
-            self.url
-        )
+        def_scheme = urlparse(self.def_path).scheme
+        return def_scheme != "remote" and not os.path.isabs(self.def_path)
 
     def assign_to_stage_file(self, stage):
         from dvc.repo import Repo
 
-        fullpath = os.path.abspath(stage.wdir)
-        self.path_info.path = os.path.join(fullpath, self.stage_path)
+        # Make path info the same but relative to passed stage
+        rel_path = self.path_info.relpath(self.stage.wdir)
+        self.path_info = (
+            self.REMOTE.path_cls(os.path.abspath(stage.wdir)) / rel_path
+        )
 
-        self.repo = Repo(self.path)
+        self.repo = Repo(self.fspath)
 
         self.stage = stage
         return self
 
-    @property
-    def sep(self):
-        return os.sep
-
-    @property
-    def rel_path(self):
-        return os.path.relpath(self.path)
-
-    @property
-    def stage_path(self):
-        return os.path.relpath(self.path, self.stage.wdir)
-
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         if self.is_in_repo:
-            path = self.remote.to_posixpath(
-                os.path.relpath(self.path, self.stage.wdir)
-            )
+            path = self.path_info.relpath(self.stage.wdir).as_posix()
         else:
-            path = self.url
+            path = self.def_path
 
         ret[self.PARAM_PATH] = path
 
@@ -101,13 +76,14 @@ class OutputLOCAL(OutputBase):
         if not self.metric:
             return
 
-        if not os.path.exists(self.path):
+        path = fspath_py35(self.path_info)
+        if not os.path.exists(path):
             return
 
-        if os.path.isdir(self.path):
+        if os.path.isdir(path):
             msg = "directory '{}' cannot be used as metrics."
-            raise DvcException(msg.format(self.rel_path))
+            raise DvcException(msg.format(self.path_info))
 
-        if not istextfile(self.path):
+        if not istextfile(path):
             msg = "binary file '{}' cannot be used as metrics."
-            raise DvcException(msg.format(self.rel_path))
+            raise DvcException(msg.format(self.path_info))

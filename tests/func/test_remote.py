@@ -1,11 +1,11 @@
 import os
 import configobj
-from dvc.path.local import PathLOCAL
-from dvc.remote.base import RemoteBASE
 from mock import patch
 
 from dvc.main import main
 from dvc.config import Config
+from dvc.remote.base import RemoteBASE
+from dvc.path_info import PathInfo
 
 from tests.basic_env import TestDvc
 from tests.func.test_data_cloud import get_local_storagepath
@@ -182,7 +182,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
     with open(file2, "w") as fobj:
         fobj.write("2")
 
-    path_info = PathLOCAL(path=data_dir)
+    path_info = PathInfo(data_dir)
     with dvc_repo.state:
         with patch.object(
             RemoteBASE,

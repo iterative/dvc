@@ -1,10 +1,8 @@
 from __future__ import unicode_literals
 
-import os
 import logging
 
 from dvc.scheme import Schemes
-from dvc.path.gs import PathGS
 
 try:
     from google.cloud import storage
@@ -12,11 +10,12 @@ except ImportError:
     storage = None
 
 from dvc.utils import tmp_fname, move
-from dvc.utils.compat import urlparse, makedirs
+from dvc.utils.compat import makedirs, fspath_py35
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.progress import progress
 from dvc.exceptions import DvcException
+from dvc.path_info import CloudURLInfo
 
 
 logger = logging.getLogger(__name__)
@@ -24,29 +23,24 @@ logger = logging.getLogger(__name__)
 
 class RemoteGS(RemoteBASE):
     scheme = Schemes.GS
-    REGEX = r"^gs://(?P<path>.*)$"
+    path_cls = CloudURLInfo
     REQUIRES = {"google.cloud.storage": storage}
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
         super(RemoteGS, self).__init__(repo, config)
-        storagepath = "gs://"
-        storagepath += config.get(Config.SECTION_AWS_STORAGEPATH, "/")
-        storagepath.lstrip("/")
-        self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+
+        storagepath = "gs://" + config.get(Config.SECTION_GCP_STORAGEPATH, "/")
+        url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        self.path_info = self.path_cls(url)
+
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
         self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
-
-        parsed = urlparse(self.url)
-        self.bucket = parsed.netloc
-        self.prefix = parsed.path.lstrip("/")
-
-        self.path_info = PathGS(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):
         ret = config.copy()
-        url = "gs://" + ret.pop(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
+        url = "gs://" + ret.pop(Config.SECTION_GCP_STORAGEPATH, "").lstrip("/")
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
 
@@ -89,10 +83,7 @@ class RemoteGS(RemoteBASE):
         if path_info.scheme != "gs":
             raise NotImplementedError
 
-        logger.debug(
-            "Removing gs://{}/{}".format(path_info.bucket, path_info.path)
-        )
-
+        logger.debug("Removing gs://{}".format(path_info))
         blob = self.gs.bucket(path_info.bucket).get_blob(path_info.path)
         if not blob:
             return
@@ -104,7 +95,7 @@ class RemoteGS(RemoteBASE):
             yield blob.name
 
     def list_cache_paths(self):
-        return self._list_paths(self.bucket, self.prefix)
+        return self._list_paths(self.path_info.bucket, self.path_info.path)
 
     def exists(self, path_info):
         assert not isinstance(path_info, list)
@@ -125,14 +116,10 @@ class RemoteGS(RemoteBASE):
             if from_info.scheme != "local":
                 raise NotImplementedError
 
-            logger.debug(
-                "Uploading '{}' to '{}/{}'".format(
-                    from_info.path, to_info.bucket, to_info.path
-                )
-            )
+            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(from_info.path)
+                name = from_info.name
 
             if not no_progress_bar:
                 progress.update_target(name, 0, None)
@@ -140,12 +127,10 @@ class RemoteGS(RemoteBASE):
             try:
                 bucket = gs.bucket(to_info.bucket)
                 blob = bucket.blob(to_info.path)
-                blob.upload_from_filename(from_info.path)
+                blob.upload_from_filename(from_info.fspath)
             except Exception:
-                msg = "failed to upload '{}' to '{}/{}'"
-                logger.exception(
-                    msg.format(from_info.path, to_info.bucket, to_info.path)
-                )
+                msg = "failed to upload '{}' to '{}'"
+                logger.exception(msg.format(from_info, to_info))
                 continue
 
             progress.finish_target(name)
@@ -173,34 +158,29 @@ class RemoteGS(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}/{}' to '{}'".format(
-                from_info.bucket, from_info.path, to_info.path
-            )
+            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
             logger.debug(msg)
 
-            tmp_file = tmp_fname(to_info.path)
+            tmp_file = tmp_fname(to_info)
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
             if not no_progress_bar:
                 # percent_cb is not available for download_to_filename, so
                 # lets at least update progress at pathpoints(start, finish)
                 progress.update_target(name, 0, None)
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
             try:
                 bucket = gs.bucket(from_info.bucket)
                 blob = bucket.get_blob(from_info.path)
                 blob.download_to_filename(tmp_file)
             except Exception:
-                msg = "failed to download '{}/{}' to '{}'"
-                logger.exception(
-                    msg.format(from_info.bucket, from_info.path, to_info.path)
-                )
+                msg = "failed to download '{}' to '{}'"
+                logger.exception(msg.format(from_info, to_info))
                 continue
 
-            move(tmp_file, to_info.path)
+            move(tmp_file, fspath_py35(to_info))
 
             if not no_progress_bar:
                 progress.finish_target(name)

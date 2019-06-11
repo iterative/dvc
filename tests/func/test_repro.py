@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str, urljoin, Path
+from dvc.utils.compat import str, urljoin, pathlib
 
 import os
 import re
@@ -1062,8 +1062,10 @@ class TestReproExternalSSH(TestReproExternalBase):
         return "{}@127.0.0.1:{}".format(getpass.getuser(), self._dir)
 
     def cmd(self, i, o):
-        i = i.strip("ssh://")
-        o = o.strip("ssh://")
+        prefix = "ssh://"
+        assert i.startswith(prefix) and o.startswith(prefix)
+        i = i[len(prefix) :]
+        o = o[len(prefix) :]
         return "scp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
@@ -1560,7 +1562,7 @@ def foo_copy(repo_dir, dvc_repo):
 
 
 def test_dvc_formatting_retained(dvc_repo, foo_copy):
-    root = Path(dvc_repo.root_dir)
+    root = pathlib.Path(dvc_repo.root_dir)
     stage_file = root / foo_copy["stage_fname"]
 
     # Add comments and custom formatting to stage file
