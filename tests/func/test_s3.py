@@ -19,7 +19,7 @@ def test_copy_singlepart_preserve_etag():
     s3 = boto3.client("s3")
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    RemoteS3._copy(s3, from_info, to_info)
+    RemoteS3._copy(s3, from_info, to_info, {})
 
 
 def _upload_multipart(s3, Bucket, Key):
@@ -60,4 +60,4 @@ def test_copy_multipart_preserve_etag():
 
     s3 = boto3.client("s3")
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    RemoteS3._copy(s3, from_info, to_info)
+    RemoteS3._copy(s3, from_info, to_info, {})

@@ -112,16 +112,19 @@ class RemoteS3(RemoteBASE):
             )
         return obj
 
-    def _copy_multipart(self, s3, from_info, to_info, size, n_parts):
+    @classmethod
+    def _copy_multipart(
+        cls, s3, from_info, to_info, size, n_parts, extra_args
+    ):
         mpu = s3.create_multipart_upload(
-            Bucket=to_info.bucket, Key=to_info.path, **self.extra_args
+            Bucket=to_info.bucket, Key=to_info.path, **extra_args
         )
         mpu_id = mpu["UploadId"]
 
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = self.get_head_object(
+            obj = cls.get_head_object(
                 s3, from_info.bucket, from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
@@ -153,7 +156,8 @@ class RemoteS3(RemoteBASE):
             MultipartUpload={"Parts": parts},
         )
 
-    def _copy(self, s3, from_info, to_info):
+    @classmethod
+    def _copy(cls, s3, from_info, to_info, extra_args):
         # NOTE: object's etag depends on the way it was uploaded to s3 or the
         # way it was copied within the s3. More specifically, it depends on
         # the chunk size that was used to transfer it, which would affect
@@ -174,27 +178,27 @@ class RemoteS3(RemoteBASE):
         # preserve etag, we need to transfer each part separately, so the
         # object is transfered in the same chunks as it was originally.
 
-        obj = self.get_head_object(s3, from_info.bucket, from_info.path)
+        obj = cls.get_head_object(s3, from_info.bucket, from_info.path)
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
         _, _, parts_suffix = etag.partition("-")
         if parts_suffix:
             n_parts = int(parts_suffix)
-            self._copy_multipart(s3, from_info, to_info, size, n_parts)
+            cls._copy_multipart(
+                s3, from_info, to_info, size, n_parts, extra_args=extra_args
+            )
         else:
             source = {"Bucket": from_info.bucket, "Key": from_info.path}
-            s3.copy(
-                source, to_info.bucket, to_info.path, ExtraArgs=self.extra_args
-            )
+            s3.copy(source, to_info.bucket, to_info.path, ExtraArgs=extra_args)
 
-        cached_etag = self.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
     def copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
-        self._copy(s3, from_info, to_info)
+        self._copy(s3, from_info, to_info, self.extra_args)
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
