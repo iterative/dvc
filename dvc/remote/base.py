@@ -333,7 +333,7 @@ class RemoteBASE(object):
         logger.debug("'{}' hasn't changed.".format(path_info))
         return False
 
-    def link(self, from_info, to_info):
+    def link(self, from_info, to_info, link_type=None):
         self.copy(from_info, to_info)
 
     def _save_file(self, path_info, checksum, save_link=True):
@@ -385,7 +385,8 @@ class RemoteBASE(object):
     def walk(self, path_info):
         raise NotImplementedError
 
-    def protect(self, path_info):
+    @staticmethod
+    def protect(path_info):
         pass
 
     def save(self, path_info, checksum_info):
@@ -483,9 +484,7 @@ class RemoteBASE(object):
         )
 
     def gc(self, cinfos):
-        from dvc.remote.local import RemoteLOCAL
-
-        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+        used = self.extract_used_local_checksums(cinfos)
 
         if self.scheme != "":
             used |= {
@@ -539,11 +538,15 @@ class RemoteBASE(object):
         if self.changed_cache_file(checksum):
             return True
 
+        if not self._changed_unpacked_dir(checksum):
+            return False
+
         for entry in self.get_dir_cache(checksum):
-            checksum = entry[self.PARAM_CHECKSUM]
-            if self.changed_cache_file(checksum):
+            entry_checksum = entry[self.PARAM_CHECKSUM]
+            if self.changed_cache_file(entry_checksum):
                 return True
 
+        self._update_unpacked_dir(checksum)
         return False
 
     def changed_cache(self, checksum):
@@ -700,4 +703,20 @@ class RemoteBASE(object):
 
     @staticmethod
     def unprotect(path_info):
+        pass
+
+    def _get_unpacked_dir_names(self, checksums):
+        return set()
+
+    def extract_used_local_checksums(self, cinfos):
+        from dvc.remote import RemoteLOCAL
+
+        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+        unpacked = self._get_unpacked_dir_names(used)
+        return used | unpacked
+
+    def _changed_unpacked_dir(self, checksum):
+        return True
+
+    def _update_unpacked_dir(self, checksum, progress_callback=None):
         pass

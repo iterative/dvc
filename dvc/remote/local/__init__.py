@@ -35,7 +35,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.progress import progress
+from dvc.progress import progress, ProgressCallback
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -47,6 +47,8 @@ class RemoteLOCAL(RemoteBASE):
     REGEX = r"^(?P<path>.*)$"
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
+
+    UNPACKED_DIR_SUFFIX = ".unpacked"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
@@ -123,47 +125,73 @@ class RemoteLOCAL(RemoteBASE):
         if not self.exists(path_info):
             os.makedirs(path_info.path)
 
-    @slow_link_guard
-    def link(self, cache_info, path_info):
-        cache = cache_info.path
-        path = path_info.path
+    def link(self, from_info, to_info, link_type=None):
+        from_path = from_info.path
+        to_path = to_info.path
 
-        assert os.path.isfile(cache)
+        assert os.path.isfile(from_path)
 
-        dname = os.path.dirname(path)
+        dname = os.path.dirname(to_path)
         if not os.path.exists(dname):
             os.makedirs(dname)
 
         # NOTE: just create an empty file for an empty cache
-        if os.path.getsize(cache) == 0:
-            open(path, "w+").close()
+        if os.path.getsize(from_path) == 0:
+            open(to_path, "w+").close()
 
-            msg = "Created empty file: {} -> {}".format(cache, path)
+            msg = "Created empty file: {} -> {}".format(from_path, to_path)
             logger.debug(msg)
             return
 
-        i = len(self.cache_types)
+        if not link_type:
+            link_types = self.cache_types
+        else:
+            link_types = [link_type]
+
+        self._try_links(from_info, to_info, link_types)
+
+    @classmethod
+    def _get_link_method(cls, link_type):
+        try:
+            return cls.CACHE_TYPE_MAP[link_type]
+        except KeyError:
+            raise DvcException(
+                "Cache type: '{}' not supported!".format(link_type)
+            )
+
+    def _link(self, from_info, to_info, link_method):
+        if os.path.lexists(to_info.path):
+            raise DvcException(
+                "Link '{}' already exists!".format(to_info.path)
+            )
+        else:
+            link_method(from_info.path, to_info.path)
+
+        if self.protected:
+            self.protect(to_info)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_info.path,
+            to_info.path,
+        )
+
+        logger.debug(msg)
+
+    @slow_link_guard
+    def _try_links(self, from_info, to_info, link_types):
+        i = len(link_types)
         while i > 0:
+            link_method = self._get_link_method(link_types[0])
             try:
-                self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
-
-                if self.protected:
-                    self.protect(path_info)
-
-                msg = "Created {}'{}': {} -> {}".format(
-                    "protected " if self.protected else "",
-                    self.cache_types[0],
-                    cache,
-                    path,
-                )
-
-                logger.debug(msg)
+                self._link(from_info, to_info, link_method)
                 return
 
             except DvcException as exc:
                 msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(self.cache_types[0], str(exc)))
-                del self.cache_types[0]
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
                 i -= 1
 
         raise DvcException("no possible cache types left to try out.")
@@ -211,7 +239,8 @@ class RemoteLOCAL(RemoteBASE):
         if path_info.scheme != "local":
             raise NotImplementedError
 
-        remove(path_info.path)
+        if self.exists(path_info):
+            remove(path_info.path)
 
     def move(self, from_info, to_info):
         if from_info.scheme != "local" or to_info.scheme != "local":
@@ -566,3 +595,68 @@ class RemoteLOCAL(RemoteBASE):
     @staticmethod
     def protect(path_info):
         os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+
+    @classmethod
+    def _append_unpacked_suffix(cls, string):
+        return string + cls.UNPACKED_DIR_SUFFIX
+
+    def _get_unpacked_dir_path_info(self, checksum):
+        unpacked_dir_info = self.checksum_to_path_info(checksum)
+        unpacked_dir_info.path = self._append_unpacked_suffix(
+            unpacked_dir_info.path
+        )
+
+        return unpacked_dir_info
+
+    def _path_info_changed(self, path_info):
+        if self.exists(path_info) and self.state.get(path_info):
+            return False
+        return True
+
+    def _update_unpacked_dir(self, checksum):
+        unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
+
+        if not self._path_info_changed(unpacked_dir_info):
+            return
+
+        self.remove(unpacked_dir_info)
+
+        try:
+            dir_info = self.get_dir_cache(checksum)
+            self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
+        except DvcException:
+            logger.warning(
+                "Could not create '{}'".format(unpacked_dir_info.path)
+            )
+
+            self.remove(unpacked_dir_info)
+
+    def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
+        progress_callback = ProgressCallback(len(dir_info))
+        self.makedirs(unpacked_dir_info)
+        for index, entry in enumerate(dir_info):
+            entry_cache_info = self.checksum_to_path_info(
+                entry[self.PARAM_CHECKSUM]
+            )
+            relpath = entry[self.PARAM_RELPATH]
+
+            unpacked_entry_info = copy(entry_cache_info)
+            unpacked_entry_info.path = self.ospath.join(
+                unpacked_dir_info.path, relpath
+            )
+            self.link(entry_cache_info, unpacked_entry_info, "hardlink")
+
+            progress_callback.update("Creating unpacked dir.")
+        self.state.save(unpacked_dir_info, checksum)
+
+    def _changed_unpacked_dir(self, checksum):
+        status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
+
+        return not self.state.get(status_unpacked_dir_info)
+
+    def _get_unpacked_dir_names(self, checksums):
+        unpacked = set()
+        for c in checksums:
+            if self.is_dir_checksum(c):
+                unpacked.add(self._append_unpacked_suffix(c))
+        return unpacked

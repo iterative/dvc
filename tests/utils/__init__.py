@@ -1,4 +1,5 @@
 import os
+from filecmp import dircmp
 
 from dvc.scm import Git
 from mock import MagicMock
@@ -29,3 +30,13 @@ def cd(newdir):
         yield
     finally:
         os.chdir(prevdir)
+
+
+def trees_equal(dir_path_1, dir_path_2):
+
+    comparison = dircmp(dir_path_1, dir_path_2)
+
+    assert set(comparison.left_only) == set(comparison.right_only) == set()
+
+    for d in comparison.common_dirs:
+        trees_equal(os.path.join(dir_path_1, d), os.path.join(dir_path_2, d))
