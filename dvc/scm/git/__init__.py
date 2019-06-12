@@ -104,6 +104,16 @@ class Git(Base):
 
         return entry, gitignore
 
+    @staticmethod
+    def _ignored(entry, gitignore_path):
+        if os.path.exists(gitignore_path):
+            with open(gitignore_path, "r") as fobj:
+                ignore_list = fobj.readlines()
+            return any(
+                filter(lambda x: x.strip() == entry.strip(), ignore_list)
+            )
+        return False
+
     def ignore(self, path, in_curr_dir=False):
         base_dir = (
             os.path.realpath(os.curdir)
@@ -112,31 +122,32 @@ class Git(Base):
         )
         entry, gitignore = self._get_gitignore(path, base_dir)
 
-        ignore_list = []
-        if os.path.exists(gitignore):
-            with open(gitignore, "r") as f:
-                ignore_list = f.readlines()
-            if any(filter(lambda x: x.strip() == entry.strip(), ignore_list)):
-                return
+        if self._ignored(entry, gitignore):
+            return
 
         msg = "Adding '{}' to '{}'.".format(
             os.path.relpath(path), os.path.relpath(gitignore)
         )
         logger.info(msg)
 
-        self._add_entry_to_gitignore(entry, gitignore, ignore_list)
+        self._add_entry_to_gitignore(entry, gitignore)
 
         self.track_file(os.path.relpath(gitignore))
 
         self.ignored_paths.append(path)
 
     @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
-        content = entry
-        if ignore_list:
-            content = "\n" + content
-        with open(gitignore, "a", encoding="utf-8") as fobj:
-            fobj.write(content)
+    def _add_entry_to_gitignore(entry, gitignore):
+        with open(gitignore, "a+", encoding="utf-8") as fobj:
+            fobj.seek(0, os.SEEK_END)
+            if fobj.tell() == 0:
+                # Empty file
+                prefix = ""
+            else:
+                fobj.seek(fobj.tell() - 1, os.SEEK_SET)
+                last = fobj.read(1)
+                prefix = "" if last == "\n" else "\n"
+            fobj.write("{}{}\n".format(prefix, entry))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
