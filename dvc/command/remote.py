@@ -13,12 +13,12 @@ logger = logging.getLogger(__name__)
 class CmdRemoteConfig(CmdConfig):
     def __init__(self, args):
         super(CmdRemoteConfig, self).__init__(args)
-        self.config = RemoteConfig(self.config)
+        self.remote_config = RemoteConfig(self.config)
 
 
 class CmdRemoteAdd(CmdRemoteConfig):
     def run(self):
-        self.config.add(
+        self.remote_config.add(
             self.args.name,
             self.args.url,
             force=self.args.force,
@@ -30,13 +30,13 @@ class CmdRemoteAdd(CmdRemoteConfig):
 
 class CmdRemoteRemove(CmdRemoteConfig):
     def run(self):
-        self.config.remove(self.args.name, level=self.args.level)
+        self.remote_config.remove(self.args.name, level=self.args.level)
         return 0
 
 
 class CmdRemoteModify(CmdRemoteConfig):
     def run(self):
-        self.config.modify(
+        self.remote_config.modify(
             self.args.name,
             self.args.option,
             self.args.value,
@@ -47,7 +47,7 @@ class CmdRemoteModify(CmdRemoteConfig):
 
 class CmdRemoteDefault(CmdRemoteConfig):
     def run(self):
-        self.config.set_default(
+        self.remote_config.set_default(
             self.args.name, unset=self.args.unset, level=self.args.level
         )
         return 0
@@ -55,7 +55,9 @@ class CmdRemoteDefault(CmdRemoteConfig):
 
 class CmdRemoteList(CmdRemoteConfig):
     def run(self):
-        for name, url in self.config.list(level=self.args.level).items():
+        for name, url in self.remote_config.list(
+            level=self.args.level
+        ).items():
             logger.info("{}\t{}".format(name, url))
         return 0
 

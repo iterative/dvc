@@ -10,10 +10,10 @@ from dvc.cache import CacheConfig
 class CmdCacheDir(CmdConfig):
     def __init__(self, args):
         super(CmdCacheDir, self).__init__(args)
-        self.config = CacheConfig(self.config)
+        self.cache_config = CacheConfig(self.config)
 
     def run(self):
-        self.config.set_dir(self.args.value, level=self.args.level)
+        self.cache_config.set_dir(self.args.value, level=self.args.level)
         return 0
 
 
