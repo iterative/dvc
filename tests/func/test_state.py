@@ -6,7 +6,6 @@ from dvc.utils.compat import str
 from dvc.state import State
 from dvc.utils import file_md5
 from dvc.main import main
-from dvc.utils.fs import get_inode
 from dvc.path_info import PathInfo
 
 from tests.basic_env import TestDvc
@@ -58,12 +57,9 @@ class TestStateOverflow(TestDvc):
 
 class TestGetStateRecordForInode(TestDvc):
     @staticmethod
-    def mock_get_inode(special_path, special_value):
+    def mock_get_inode(inode):
         def get_inode_mocked(path):
-            if path == special_path:
-                return special_value
-            else:
-                return get_inode(path)
+            return inode
 
         return get_inode_mocked
 
@@ -75,7 +71,7 @@ class TestGetStateRecordForInode(TestDvc):
 
         path = os.path.join(self.dvc.root_dir, self.FOO)
         md5 = file_md5(path)[0]
-        get_inode_mock.side_effect = self.mock_get_inode(path, inode)
+        get_inode_mock.side_effect = self.mock_get_inode(inode)
 
         with state:
             state.save(PathInfo(path), md5)
