@@ -3,9 +3,9 @@ from __future__ import unicode_literals
 import os
 import threading
 import logging
+import itertools
 
 from dvc.scheme import Schemes
-from dvc.path.s3 import PathS3
 
 try:
     import boto3
@@ -13,11 +13,12 @@ except ImportError:
     boto3 = None
 
 from dvc.utils import tmp_fname, move
-from dvc.utils.compat import urlparse, makedirs
+from dvc.utils.compat import makedirs, fspath_py35
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
+from dvc.path_info import CloudURLInfo
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class Callback(object):
 
 class RemoteS3(RemoteBASE):
     scheme = Schemes.S3
-    REGEX = r"^s3://(?P<path>.*)$"
+    path_cls = CloudURLInfo
     REQUIRES = {"boto3": boto3}
     PARAM_CHECKSUM = "etag"
 
@@ -48,7 +49,8 @@ class RemoteS3(RemoteBASE):
             config.get(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
         )
 
-        self.url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        self.path_info = self.path_cls(url)
 
         self.region = os.environ.get("AWS_DEFAULT_REGION") or config.get(
             Config.SECTION_AWS_REGION
@@ -73,12 +75,6 @@ class RemoteS3(RemoteBASE):
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
-
-        parsed = urlparse(self.url)
-        self.bucket = parsed.netloc
-        self.prefix = parsed.path.lstrip("/")
-
-        self.path_info = PathS3(bucket=self.bucket)
 
     @staticmethod
     def compat_config(config):
@@ -117,16 +113,19 @@ class RemoteS3(RemoteBASE):
             )
         return obj
 
-    def _copy_multipart(self, s3, from_info, to_info, size, n_parts):
+    @classmethod
+    def _copy_multipart(
+        cls, s3, from_info, to_info, size, n_parts, extra_args
+    ):
         mpu = s3.create_multipart_upload(
-            Bucket=to_info.bucket, Key=to_info.path, **self.extra_args
+            Bucket=to_info.bucket, Key=to_info.path, **extra_args
         )
         mpu_id = mpu["UploadId"]
 
         parts = []
         byte_position = 0
         for i in range(1, n_parts + 1):
-            obj = self.get_head_object(
+            obj = cls.get_head_object(
                 s3, from_info.bucket, from_info.path, PartNumber=i
             )
             part_size = obj["ContentLength"]
@@ -158,7 +157,8 @@ class RemoteS3(RemoteBASE):
             MultipartUpload={"Parts": parts},
         )
 
-    def _copy(self, s3, from_info, to_info):
+    @classmethod
+    def _copy(cls, s3, from_info, to_info, extra_args):
         # NOTE: object's etag depends on the way it was uploaded to s3 or the
         # way it was copied within the s3. More specifically, it depends on
         # the chunk size that was used to transfer it, which would affect
@@ -179,41 +179,38 @@ class RemoteS3(RemoteBASE):
         # preserve etag, we need to transfer each part separately, so the
         # object is transfered in the same chunks as it was originally.
 
-        obj = self.get_head_object(s3, from_info.bucket, from_info.path)
+        obj = cls.get_head_object(s3, from_info.bucket, from_info.path)
         etag = obj["ETag"].strip('"')
         size = obj["ContentLength"]
 
         _, _, parts_suffix = etag.partition("-")
         if parts_suffix:
             n_parts = int(parts_suffix)
-            self._copy_multipart(s3, from_info, to_info, size, n_parts)
+            cls._copy_multipart(
+                s3, from_info, to_info, size, n_parts, extra_args=extra_args
+            )
         else:
             source = {"Bucket": from_info.bucket, "Key": from_info.path}
-            s3.copy(
-                source, to_info.bucket, to_info.path, ExtraArgs=self.extra_args
-            )
+            s3.copy(source, to_info.bucket, to_info.path, ExtraArgs=extra_args)
 
-        cached_etag = self.get_etag(s3, to_info.bucket, to_info.path)
+        cached_etag = cls.get_etag(s3, to_info.bucket, to_info.path)
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
     def copy(self, from_info, to_info, s3=None):
         s3 = s3 if s3 else self.s3
-        self._copy(s3, from_info, to_info)
+        self._copy(s3, from_info, to_info, self.extra_args)
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
             raise NotImplementedError
 
-        logger.debug(
-            "Removing s3://{}/{}".format(path_info.bucket, path_info.path)
-        )
-
+        logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_paths(self, bucket, prefix):
+    def _list_paths(self, bucket, prefix, s3=None):
         """ Read config for list object api, paginate through list objects."""
-        s3 = self.s3
+        s3 = s3 or self.s3
         kwargs = {"Bucket": bucket, "Prefix": prefix}
         if self.list_objects:
             list_objects_api = "list_objects"
@@ -228,14 +225,30 @@ class RemoteS3(RemoteBASE):
                 yield item["Key"]
 
     def list_cache_paths(self):
-        return self._list_paths(self.bucket, self.prefix)
+        return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == "s3"
+    def exists(self, path_infos):
+        single_path = False
 
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
+        if not isinstance(path_infos, list):
+            single_path = True
+            path_infos = [path_infos]
+
+        s3 = self.s3
+
+        paths = itertools.chain.from_iterable(
+            self._list_paths(path_info.bucket, path_info.path, s3)
+            for path_info in path_infos
+        )
+
+        paths = set(paths)
+
+        results = [path_info.path in paths for path_info in path_infos]
+
+        if single_path and results:
+            return all(results)
+
+        return results
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -249,28 +262,24 @@ class RemoteS3(RemoteBASE):
             if from_info.scheme != "local":
                 raise NotImplementedError
 
-            logger.debug(
-                "Uploading '{}' to '{}/{}'".format(
-                    from_info.path, to_info.bucket, to_info.path
-                )
-            )
+            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(from_info.path)
+                name = from_info.name
 
-            total = os.path.getsize(from_info.path)
+            total = os.path.getsize(fspath_py35(from_info))
             cb = None if no_progress_bar else Callback(name, total)
 
             try:
                 s3.upload_file(
-                    from_info.path,
+                    from_info.fspath,
                     to_info.bucket,
                     to_info.path,
                     Callback=cb,
                     ExtraArgs=self.extra_args,
                 )
             except Exception:
-                msg = "failed to upload '{}'".format(from_info.path)
+                msg = "failed to upload '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
@@ -299,17 +308,14 @@ class RemoteS3(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}/{}' to '{}'".format(
-                from_info.bucket, from_info.path, to_info.path
-            )
+            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
             logger.debug(msg)
 
-            tmp_file = tmp_fname(to_info.path)
+            tmp_file = tmp_fname(to_info)
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
             try:
                 if no_progress_bar:
                     cb = None
@@ -323,13 +329,11 @@ class RemoteS3(RemoteBASE):
                     from_info.bucket, from_info.path, tmp_file, Callback=cb
                 )
             except Exception:
-                msg = "failed to download '{}/{}'".format(
-                    from_info.bucket, from_info.path
-                )
+                msg = "failed to download '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
-            move(tmp_file, to_info.path)
+            move(tmp_file, fspath_py35(to_info))
 
             if not no_progress_bar:
                 progress.finish_target(name)

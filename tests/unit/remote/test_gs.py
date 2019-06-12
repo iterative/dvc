@@ -18,9 +18,7 @@ class TestRemoteGS(TestCase):
 
     def test_init(self):
         remote = RemoteGS(None, self.CONFIG)
-        self.assertEqual(remote.url, self.URL)
-        self.assertEqual(remote.prefix, self.PREFIX)
-        self.assertEqual(remote.bucket, self.BUCKET)
+        self.assertEqual(remote.path_info, self.URL)
         self.assertEqual(remote.projectname, self.PROJECT)
         self.assertEqual(remote.credentialpath, self.CREDENTIALPATH)
 

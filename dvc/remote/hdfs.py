@@ -9,7 +9,7 @@ from subprocess import Popen, PIPE
 
 from dvc.config import Config
 from dvc.scheme import Schemes
-from dvc.path.hdfs import PathHDFS
+
 from dvc.remote.base import RemoteBASE, RemoteCmdError
 from dvc.utils import fix_env, tmp_fname
 
@@ -20,19 +20,19 @@ logger = logging.getLogger(__name__)
 class RemoteHDFS(RemoteBASE):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
+    SUPPORTS_NO_TRAVERSE = False
     PARAM_CHECKSUM = "checksum"
 
     def __init__(self, repo, config):
         super(RemoteHDFS, self).__init__(repo, config)
-        self.url = config.get(Config.SECTION_REMOTE_URL, "/")
-        self.prefix = self.url
-        self.user = self.group("user")
+        url = config.get(Config.SECTION_REMOTE_URL, "/")
+        self.path_info = self.path_cls(url)
+
+        self.user = self.path_info.user
         if not self.user:
             self.user = config.get(
                 Config.SECTION_REMOTE_USER, getpass.getuser()
             )
-
-        self.path_info = PathHDFS(user=self.user)
 
     def hadoop_fs(self, cmd, user=None):
         cmd = "hadoop fs -" + cmd
@@ -114,19 +114,18 @@ class RemoteHDFS(RemoteBASE):
                 raise NotImplementedError
 
             self.hadoop_fs(
-                "mkdir -p {}".format(posixpath.dirname(to_info.path)),
+                "mkdir -p {}".format(to_info.parent.url), user=to_info.user
+            )
+
+            tmp_file = tmp_fname(to_info.url)
+
+            self.hadoop_fs(
+                "copyFromLocal {} {}".format(from_info.fspath, tmp_file),
                 user=to_info.user,
             )
 
-            tmp_file = tmp_fname(to_info.path)
-
             self.hadoop_fs(
-                "copyFromLocal {} {}".format(from_info.path, tmp_file),
-                user=to_info.user,
-            )
-
-            self.hadoop_fs(
-                "mv {} {}".format(tmp_file, to_info.path), user=to_info.user
+                "mv {} {}".format(tmp_file, to_info.url), user=to_info.user
             )
 
     def download(
@@ -150,26 +149,26 @@ class RemoteHDFS(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            dname = os.path.dirname(to_info.path)
+            dname = to_info.parent.fspath
             if not os.path.exists(dname):
                 os.makedirs(dname)
 
-            tmp_file = tmp_fname(to_info.path)
+            tmp_file = tmp_fname(to_info.fspath)
 
             self.hadoop_fs(
-                "copyToLocal {} {}".format(from_info.path, tmp_file),
+                "copyToLocal {} {}".format(from_info.url, tmp_file),
                 user=from_info.user,
             )
 
-            os.rename(tmp_file, to_info.path)
+            os.rename(tmp_file, to_info.fspath)
 
     def list_cache_paths(self):
         try:
-            self.hadoop_fs("test -e {}".format(self.prefix))
+            self.hadoop_fs("test -e {}".format(self.path_info.url))
         except RemoteCmdError:
             return []
 
-        stdout = self.hadoop_fs("ls -R {}".format(self.prefix))
+        stdout = self.hadoop_fs("ls -R {}".format(self.path_info.url))
         lines = stdout.split("\n")
         flist = []
         for line in lines:

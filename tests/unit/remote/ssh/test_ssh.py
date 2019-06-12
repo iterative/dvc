@@ -22,27 +22,19 @@ class TestRemoteSSH(TestCase):
         config = {"url": url}
 
         remote = RemoteSSH(None, config)
-
-        self.assertEqual(remote.user, user)
-        self.assertEqual(remote.host, host)
-        self.assertEqual(remote.port, port)
-        self.assertEqual(remote.prefix, path)
+        self.assertEqual(remote.path_info, url)
 
         # SCP-like URL ssh://[user@]host.xz:/absolute/path
         url = "ssh://{}@{}:{}".format(user, host, path)
         config = {"url": url}
 
         remote = RemoteSSH(None, config)
-
-        self.assertEqual(remote.user, user)
-        self.assertEqual(remote.host, host)
-        self.assertEqual(remote.port, remote.DEFAULT_PORT)
-        self.assertEqual(remote.prefix, path)
+        self.assertEqual(remote.path_info, url)
 
     def test_no_path(self):
         config = {"url": "ssh://127.0.0.1"}
         remote = RemoteSSH(None, config)
-        self.assertEqual(remote.prefix, "/")
+        self.assertEqual(remote.path_info.path, "")
 
 
 mock_ssh_config = """
@@ -79,7 +71,7 @@ def test_ssh_host_override_from_config(
 
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.host == expected_host
+    assert remote.path_info.host == expected_host
 
 
 @pytest.mark.parametrize(
@@ -107,7 +99,7 @@ def test_ssh_user(mock_file, mock_exists, config, expected_user):
 
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.user == expected_user
+    assert remote.path_info.user == expected_user
 
 
 @pytest.mark.parametrize(
@@ -132,7 +124,7 @@ def test_ssh_port(mock_file, mock_exists, config, expected_port):
 
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
-    assert remote.port == expected_port
+    assert remote.path_info.port == expected_port
 
 
 @pytest.mark.parametrize(

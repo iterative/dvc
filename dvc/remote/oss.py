@@ -5,7 +5,6 @@ import os
 import logging
 
 from dvc.scheme import Schemes
-from dvc.path.oss import PathOSS
 
 try:
     import oss2
@@ -13,11 +12,12 @@ except ImportError:
     oss2 = None
 
 from dvc.utils import tmp_fname, move
-from dvc.utils.compat import urlparse, makedirs
+from dvc.utils.compat import makedirs, fspath_py35
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.remote.azure import Callback
+from dvc.path_info import CloudURLInfo
 
 
 logger = logging.getLogger(__name__)
@@ -43,18 +43,17 @@ class RemoteOSS(RemoteBASE):
     """
 
     scheme = Schemes.OSS
-    REGEX = r"^oss://(?P<path>.*)?$"
+    path_cls = CloudURLInfo
     REQUIRES = {"oss2": oss2}
     PARAM_CHECKSUM = "etag"
+    SUPPORTS_NO_TRAVERSE = False
     COPY_POLL_SECONDS = 5
 
     def __init__(self, repo, config):
         super(RemoteOSS, self).__init__(repo, config)
 
-        self.url = config.get(Config.SECTION_REMOTE_URL)
-        parsed = urlparse(self.url)
-        self.bucket = parsed.netloc
-        self.prefix = parsed.path.lstrip("/")
+        url = config.get(Config.SECTION_REMOTE_URL)
+        self.path_info = self.path_cls(url) if url else None
 
         self.endpoint = config.get(Config.SECTION_OSS_ENDPOINT) or os.getenv(
             "OSS_ENDPOINT"
@@ -73,17 +72,17 @@ class RemoteOSS(RemoteBASE):
         )
 
         self._bucket = None
-        self.path_info = PathOSS(bucket=self.bucket)
 
     @property
     def oss_service(self):
         if self._bucket is None:
-            logger.debug("URL {}".format(self.url))
+            logger.debug("URL {}".format(self.path_info))
             logger.debug("key id {}".format(self.key_id))
             logger.debug("key secret {}".format(self.key_secret))
             auth = oss2.Auth(self.key_id, self.key_secret)
-            logger.debug("bucket name {}".format(self.bucket))
-            self._bucket = oss2.Bucket(auth, self.endpoint, self.bucket)
+            self._bucket = oss2.Bucket(
+                auth, self.endpoint, self.path_info.bucket
+            )
             try:  # verify that bucket exists
                 self._bucket.get_bucket_info()
             except oss2.exceptions.NoSuchBucket:
@@ -99,10 +98,7 @@ class RemoteOSS(RemoteBASE):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
 
-        logger.debug(
-            "Removing oss://{}/{}".format(path_info.bucket, path_info.path)
-        )
-
+        logger.debug("Removing oss://{}".format(path_info))
         self.oss_service.delete_object(path_info.path)
 
     def _list_paths(self, prefix):
@@ -110,7 +106,7 @@ class RemoteOSS(RemoteBASE):
             yield blob.key
 
     def list_cache_paths(self):
-        return self._list_paths(self.prefix)
+        return self._list_paths(self.path_info.path)
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -122,26 +118,19 @@ class RemoteOSS(RemoteBASE):
             if from_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = to_info.bucket
-            path = to_info.path
-
-            logger.debug(
-                "Uploading '{}' to 'oss://{}/{}'".format(
-                    from_info.path, bucket, path
-                )
-            )
+            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(from_info.path)
+                name = from_info.name
 
             cb = None if no_progress_bar else Callback(name)
 
             try:
                 self.oss_service.put_object_from_file(
-                    path, from_info.path, progress_callback=cb
+                    to_info.path, from_info.fspath, progress_callback=cb
                 )
             except Exception:
-                msg = "failed to upload '{}'".format(from_info.path)
+                msg = "failed to upload '{}'".format(from_info)
                 logger.warning(msg)
             else:
                 progress.finish_target(name)
@@ -161,32 +150,23 @@ class RemoteOSS(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            bucket = from_info.bucket
-            path = from_info.path
+            logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
 
-            logger.debug(
-                "Downloading 'oss://{}/{}' to '{}'".format(
-                    bucket, path, to_info.path
-                )
-            )
-
-            tmp_file = tmp_fname(to_info.path)
+            tmp_file = tmp_fname(to_info)
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
             cb = None if no_progress_bar else Callback(name)
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
             try:
                 self.oss_service.get_object_to_file(
-                    path, tmp_file, progress_callback=cb
+                    from_info.path, tmp_file, progress_callback=cb
                 )
             except Exception:
-                msg = "failed to download 'oss://{}/{}'".format(bucket, path)
-                logger.warning(msg)
+                logger.warning("failed to download '{}'".format(from_info))
             else:
-                move(tmp_file, to_info.path)
-
+                move(tmp_file, fspath_py35(to_info))
+            finally:
                 if not no_progress_bar:
                     progress.finish_target(name)

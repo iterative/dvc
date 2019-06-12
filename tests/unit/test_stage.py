@@ -1,5 +1,4 @@
-import os
-
+from dvc.path_info import PathInfo
 from dvc.stage import Stage
 
 import mock
@@ -56,22 +55,18 @@ class TestStageChecksum(TestCase):
 
 class TestPathConversion(TestCase):
     def test(self):
-        import posixpath
-        import ntpath
+        import os
 
         stage = Stage(None, "path")
 
-        stage.wdir = posixpath.join("..", "..")
-        self.assertEqual(stage.dumpd()["wdir"], "../..")
-
-        stage.wdir = ntpath.join("..", "..")
+        stage.wdir = os.path.join("..", "..")
         self.assertEqual(stage.dumpd()["wdir"], "../..")
 
 
 @pytest.mark.parametrize("add", [True, False])
-def test_expand_to_path_on_add_local(add):
+def test_stage_fname(add):
     out = mock.Mock()
     out.is_in_repo = False
-    path = "path"
-    fname = Stage._expand_to_path_on_add_local(add, path, out, os.path)
-    assert fname == path
+    out.path_info = PathInfo("path/to/out.txt")
+    fname = Stage._stage_fname([out], add)
+    assert fname == "out.txt.dvc"

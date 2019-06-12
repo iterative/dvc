@@ -5,10 +5,10 @@ import argparse
 import humanize
 import inflect
 import logging
+from funcy import compact
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
-from dvc.utils.collections import compact
 import dvc.repo.diff as diff
 
 

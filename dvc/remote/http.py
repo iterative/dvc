@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
 from dvc.scheme import Schemes
-from dvc.path import Path
-from dvc.utils.compat import open, makedirs
+
+from dvc.utils.compat import open, makedirs, fspath_py35
 
 import os
 import threading
@@ -34,21 +34,15 @@ class ProgressBarCallback(object):
 
 class RemoteHTTP(RemoteBASE):
     scheme = Schemes.HTTP
-    REGEX = r"^http://.*$"
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
         super(RemoteHTTP, self).__init__(repo, config)
-        self.cache_dir = config.get(Config.SECTION_REMOTE_URL)
-        self.url = self.cache_dir
 
-        self.path_info = Path(self.scheme)
-
-    @property
-    def prefix(self):
-        return self.cache_dir
+        url = config.get(Config.SECTION_REMOTE_URL)
+        self.path_info = self.path_cls(url) if url else None
 
     def download(
         self,
@@ -67,17 +61,15 @@ class RemoteHTTP(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            msg = "Downloading '{}' to '{}'".format(
-                from_info.path, to_info.path
-            )
+            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
             logger.debug(msg)
 
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
 
-            total = self._content_length(from_info.path)
+            total = self._content_length(from_info.url)
 
             if no_progress_bar or not total:
                 cb = None
@@ -86,27 +78,40 @@ class RemoteHTTP(RemoteBASE):
 
             try:
                 self._download_to(
-                    from_info.path, to_info.path, callback=cb, resume=resume
+                    from_info.url, to_info.fspath, callback=cb, resume=resume
                 )
 
             except Exception:
-                msg = "failed to download '{}'".format(from_info.path)
+                msg = "failed to download '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
             if not no_progress_bar:
                 progress.finish_target(name)
 
-    def exists(self, path_info):
-        assert not isinstance(path_info, list)
-        assert path_info.scheme == self.scheme
-        return bool(self._request("HEAD", path_info.path))
+    def exists(self, path_infos):
+        single_path = False
+
+        if not isinstance(path_infos, list):
+            single_path = True
+            path_infos = [path_infos]
+
+        results = [
+            bool(self._request("HEAD", path_info.url))
+            for path_info in path_infos
+        ]
+
+        if single_path and results:
+            return all(results)
+
+        return results
 
     def cache_exists(self, md5s):
         assert isinstance(md5s, list)
 
         def func(md5):
-            return bool(self._request("HEAD", self.checksum_to_path(md5)))
+            url = self.checksum_to_path_info(md5).url
+            return bool(self._request("HEAD", url))
 
         return list(filter(func, md5s))
 
@@ -114,7 +119,7 @@ class RemoteHTTP(RemoteBASE):
         return self._request("HEAD", url).headers.get("Content-Length")
 
     def get_file_checksum(self, path_info):
-        url = path_info.path
+        url = path_info.url
         etag = self._request("HEAD", url).headers.get("ETag") or self._request(
             "HEAD", url
         ).headers.get("Content-MD5")

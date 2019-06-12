@@ -7,7 +7,7 @@ import argparse
 import logging
 import uuid
 
-from dvc.utils.compat import Path
+from dvc.utils.compat import pathlib
 from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
@@ -58,10 +58,10 @@ class CmdVersion(CmdBaseNoRepo):
     @staticmethod
     def get_fs_type(path):
         partition = {
-            Path(part.mountpoint): (part.fstype, part.device)
+            pathlib.Path(part.mountpoint): (part.fstype, part.device)
             for part in psutil.disk_partitions()
         }
-        for parent in list(Path(path).parents):
+        for parent in pathlib.Path(path).parents:
             if parent in partition:
                 return partition[parent]
         return ("unkown", "none")

@@ -3,17 +3,13 @@ from __future__ import unicode_literals
 from copy import copy
 
 from dvc.scheme import Schemes
-from dvc.path.base import PathBASE
-from dvc.path.local import PathLOCAL
 from dvc.remote.local.slow_link_detection import slow_link_guard
-from dvc.utils.compat import str, makedirs
+from dvc.utils.compat import str, makedirs, fspath_py35
 
 import os
 import stat
 import uuid
-import ntpath
 import shutil
-import posixpath
 import logging
 
 from dvc.system import System
@@ -38,15 +34,18 @@ from dvc.exceptions import DvcException
 from dvc.progress import progress
 from concurrent.futures import ThreadPoolExecutor
 
+from dvc.path_info import PathInfo
 
 logger = logging.getLogger(__name__)
 
 
 class RemoteLOCAL(RemoteBASE):
     scheme = Schemes.LOCAL
-    REGEX = r"^(?P<path>.*)$"
+    path_cls = PathInfo
     PARAM_CHECKSUM = "md5"
     PARAM_PATH = "path"
+
+    UNPACKED_DIR_SUFFIX = ".unpacked"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
     CACHE_TYPE_MAP = {
@@ -60,12 +59,6 @@ class RemoteLOCAL(RemoteBASE):
         super(RemoteLOCAL, self).__init__(repo, config)
         self.state = self.repo.state if self.repo else None
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
-        storagepath = config.get(Config.SECTION_AWS_STORAGEPATH, None)
-        self.cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
-
-        if self.cache_dir is not None and not os.path.isabs(self.cache_dir):
-            cwd = config[Config.PRIVATE_CWD]
-            self.cache_dir = os.path.abspath(os.path.join(cwd, self.cache_dir))
 
         types = config.get(Config.SECTION_CACHE_TYPE, None)
         if types:
@@ -75,36 +68,46 @@ class RemoteLOCAL(RemoteBASE):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
-        if self.cache_dir is not None and not os.path.exists(self.cache_dir):
-            os.mkdir(self.cache_dir)
+        # A clunky way to detect cache dir
+        storagepath = config.get(Config.SECTION_LOCAL_STORAGEPATH, None)
+        cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
 
+        if cache_dir is not None and not os.path.isabs(cache_dir):
+            cwd = config[Config.PRIVATE_CWD]
+            cache_dir = os.path.abspath(os.path.join(cwd, cache_dir))
+
+        if cache_dir is not None and not os.path.exists(cache_dir):
+            os.mkdir(cache_dir)
+
+        self.path_info = PathInfo(cache_dir) if cache_dir else None
         self._dir_info = {}
-        self.path_info = PathLOCAL()
+
+    @property
+    def cache_dir(self):
+        return self.path_info.fspath if self.path_info else None
+
+    @classmethod
+    def supported(cls, config):
+        return True
 
     @staticmethod
     def compat_config(config):
         ret = config.copy()
-        url = ret.pop(Config.SECTION_AWS_STORAGEPATH, "")
+        url = ret.pop(Config.SECTION_LOCAL_STORAGEPATH, "")
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
 
-    @property
-    def url(self):
-        return self.cache_dir
-
-    @property
-    def prefix(self):
-        return self.cache_dir
-
     def list_cache_paths(self):
-        clist = []
-        for entry in os.listdir(self.cache_dir):
-            subdir = os.path.join(self.cache_dir, entry)
-            if not os.path.isdir(subdir):
-                continue
+        assert self.path_info is not None
 
-            for cache in os.listdir(subdir):
-                clist.append(os.path.join(subdir, cache))
+        clist = []
+        for entry in os.listdir(fspath_py35(self.path_info)):
+            subdir = self.path_info / entry
+            if not os.path.isdir(fspath_py35(subdir)):
+                continue
+            clist.extend(
+                subdir / cache for cache in os.listdir(fspath_py35(subdir))
+            )
 
         return clist
 
@@ -112,67 +115,83 @@ class RemoteLOCAL(RemoteBASE):
         if not md5:
             return None
 
-        return self.checksum_to_path(md5)
+        return self.checksum_to_path_info(md5).url
 
     def exists(self, path_info):
-        assert isinstance(path_info, PathBASE)
         assert path_info.scheme == "local"
-        return os.path.lexists(path_info.path)
+        return os.path.lexists(fspath_py35(path_info))
 
     def makedirs(self, path_info):
         if not self.exists(path_info):
-            os.makedirs(path_info.path)
+            os.makedirs(fspath_py35(path_info))
 
-    @slow_link_guard
-    def link(self, cache_info, path_info):
-        cache = cache_info.path
-        path = path_info.path
+    def link(self, from_info, to_info, link_type=None):
+        from_path = from_info.fspath
+        to_path = to_info.fspath
 
-        assert os.path.isfile(cache)
+        assert os.path.isfile(from_path)
 
-        dname = os.path.dirname(path)
+        dname = os.path.dirname(to_path)
         if not os.path.exists(dname):
             os.makedirs(dname)
 
         # NOTE: just create an empty file for an empty cache
-        if os.path.getsize(cache) == 0:
-            open(path, "w+").close()
+        if os.path.getsize(from_path) == 0:
+            open(to_path, "w+").close()
 
-            msg = "Created empty file: {} -> {}".format(cache, path)
+            msg = "Created empty file: {} -> {}".format(from_path, to_path)
             logger.debug(msg)
             return
 
-        i = len(self.cache_types)
+        if not link_type:
+            link_types = self.cache_types
+        else:
+            link_types = [link_type]
+
+        self._try_links(from_info, to_info, link_types)
+
+    @classmethod
+    def _get_link_method(cls, link_type):
+        try:
+            return cls.CACHE_TYPE_MAP[link_type]
+        except KeyError:
+            raise DvcException(
+                "Cache type: '{}' not supported!".format(link_type)
+            )
+
+    def _link(self, from_info, to_info, link_method):
+        if self.exists(to_info):
+            raise DvcException("Link '{}' already exists!".format(to_info))
+        else:
+            link_method(from_info.fspath, to_info.fspath)
+
+        if self.protected:
+            self.protect(to_info)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_info,
+            to_info,
+        )
+        logger.debug(msg)
+
+    @slow_link_guard
+    def _try_links(self, from_info, to_info, link_types):
+        i = len(link_types)
         while i > 0:
+            link_method = self._get_link_method(link_types[0])
             try:
-                self.CACHE_TYPE_MAP[self.cache_types[0]](cache, path)
-
-                if self.protected:
-                    self.protect(path_info)
-
-                msg = "Created {}'{}': {} -> {}".format(
-                    "protected " if self.protected else "",
-                    self.cache_types[0],
-                    cache,
-                    path,
-                )
-
-                logger.debug(msg)
+                self._link(from_info, to_info, link_method)
                 return
 
             except DvcException as exc:
                 msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(self.cache_types[0], str(exc)))
-                del self.cache_types[0]
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
                 i -= 1
 
         raise DvcException("no possible cache types left to try out.")
-
-    @property
-    def ospath(self):
-        if os.name == "nt":
-            return ntpath
-        return posixpath
 
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
@@ -185,7 +204,7 @@ class RemoteLOCAL(RemoteBASE):
         return not self.changed_cache(current_md5)
 
     def is_empty(self, path_info):
-        path = path_info.path
+        path = path_info.fspath
 
         if self.isfile(path_info) and os.path.getsize(path) == 0:
             return True
@@ -196,29 +215,30 @@ class RemoteLOCAL(RemoteBASE):
         return False
 
     def isfile(self, path_info):
-        return os.path.isfile(path_info.path)
+        return os.path.isfile(fspath_py35(path_info))
 
     def isdir(self, path_info):
-        return os.path.isdir(path_info.path)
+        return os.path.isdir(fspath_py35(path_info))
 
     def walk(self, path_info):
-        return os.walk(path_info.path)
+        return os.walk(fspath_py35(path_info))
 
     def get_file_checksum(self, path_info):
-        return file_md5(path_info.path)[0]
+        return file_md5(fspath_py35(path_info))[0]
 
     def remove(self, path_info):
         if path_info.scheme != "local":
             raise NotImplementedError
 
-        remove(path_info.path)
+        if self.exists(path_info):
+            remove(path_info.fspath)
 
     def move(self, from_info, to_info):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
-        inp = from_info.path
-        outp = to_info.path
+        inp = from_info.fspath
+        outp = to_info.fspath
 
         # moving in two stages to make the whole operation atomic in
         # case inp and outp are in different filesystems and actual
@@ -228,8 +248,11 @@ class RemoteLOCAL(RemoteBASE):
         move(tmp, outp)
 
     def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-        return list(filter(lambda md5: not self.changed_cache_file(md5), md5s))
+        return [
+            checksum
+            for checksum in md5s
+            if not self.changed_cache_file(checksum)
+        ]
 
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         names = self._verify_path_args(to_infos, from_infos, names)
@@ -241,29 +264,25 @@ class RemoteLOCAL(RemoteBASE):
             if from_info.scheme != "local":
                 raise NotImplementedError
 
-            logger.debug(
-                "Uploading '{}' to '{}'".format(from_info.path, to_info.path)
-            )
+            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(from_info.path)
+                name = from_info.name
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-            tmp_file = tmp_fname(to_info.path)
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
+            tmp_file = tmp_fname(to_info)
 
             try:
                 copyfile(
-                    from_info.path,
+                    fspath_py35(from_info),
                     tmp_file,
                     name=name,
                     no_progress_bar=no_progress_bar,
                 )
-                os.rename(tmp_file, to_info.path)
+                os.rename(tmp_file, fspath_py35(to_info))
             except Exception:
                 logger.exception(
-                    "failed to upload '{}' to '{}'".format(
-                        from_info.path, to_info.path
-                    )
+                    "failed to upload '{}' to '{}'".format(from_info, to_info)
                 )
 
     def download(
@@ -283,28 +302,26 @@ class RemoteLOCAL(RemoteBASE):
             if to_info.scheme != "local":
                 raise NotImplementedError
 
-            logger.debug(
-                "Downloading '{}' to '{}'".format(from_info.path, to_info.path)
-            )
+            logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
 
             if not name:
-                name = os.path.basename(to_info.path)
+                name = to_info.name
 
-            makedirs(os.path.dirname(to_info.path), exist_ok=True)
-            tmp_file = tmp_fname(to_info.path)
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
+            tmp_file = tmp_fname(to_info)
             try:
                 copyfile(
-                    from_info.path,
+                    fspath_py35(from_info),
                     tmp_file,
                     no_progress_bar=no_progress_bar,
                     name=name,
                 )
 
-                move(tmp_file, to_info.path)
+                move(tmp_file, fspath_py35(to_info))
             except Exception:
                 logger.exception(
                     "failed to download '{}' to '{}'".format(
-                        from_info.path, to_info.path
+                        from_info, to_info
                     )
                 )
 
@@ -340,7 +357,9 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        logger.info("Preparing to collect status from {}".format(remote.url))
+        logger.info(
+            "Preparing to collect status from {}".format(remote.path_info)
+        )
         title = "Collecting information"
 
         ret = {}
@@ -351,7 +370,7 @@ class RemoteLOCAL(RemoteBASE):
         progress.update_target(title, 10, 100)
 
         ret = self._group(checksum_infos, show_checksums=show_checksums)
-        md5s = list(ret.keys())
+        md5s = list(ret)
 
         progress.update_target(title, 30, 100)
 
@@ -437,7 +456,7 @@ class RemoteLOCAL(RemoteBASE):
             msg.format(
                 "download" if download else "upload",
                 "from" if download else "to",
-                remote.url,
+                remote.path_info,
             )
         )
 
@@ -552,7 +571,7 @@ class RemoteLOCAL(RemoteBASE):
 
     @staticmethod
     def unprotect(path_info):
-        path = path_info.path
+        path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
                 "can't unprotect non-existing data '{}'".format(path)
@@ -565,4 +584,57 @@ class RemoteLOCAL(RemoteBASE):
 
     @staticmethod
     def protect(path_info):
-        os.chmod(path_info.path, stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH)
+        os.chmod(
+            fspath_py35(path_info), stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
+        )
+
+    def _get_unpacked_dir_path_info(self, checksum):
+        info = self.checksum_to_path_info(checksum)
+        return info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
+
+    def _path_info_changed(self, path_info):
+        if self.exists(path_info) and self.state.get(path_info):
+            return False
+        return True
+
+    def _update_unpacked_dir(self, checksum):
+        unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
+
+        if not self._path_info_changed(unpacked_dir_info):
+            return
+
+        self.remove(unpacked_dir_info)
+
+        try:
+            dir_info = self.get_dir_cache(checksum)
+            self._create_unpacked_dir(checksum, dir_info, unpacked_dir_info)
+        except DvcException:
+            logger.warning("Could not create '{}'".format(unpacked_dir_info))
+
+            self.remove(unpacked_dir_info)
+
+    def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
+        self.makedirs(unpacked_dir_info)
+
+        for entry in progress(dir_info, name="Created unpacked dir"):
+            entry_cache_info = self.checksum_to_path_info(
+                entry[self.PARAM_CHECKSUM]
+            )
+            relpath = entry[self.PARAM_RELPATH]
+            self.link(
+                entry_cache_info, unpacked_dir_info / relpath, "hardlink"
+            )
+
+        self.state.save(unpacked_dir_info, checksum)
+
+    def _changed_unpacked_dir(self, checksum):
+        status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
+
+        return not self.state.get(status_unpacked_dir_info)
+
+    def _get_unpacked_dir_names(self, checksums):
+        unpacked = set()
+        for c in checksums:
+            if self.is_dir_checksum(c):
+                unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
+        return unpacked

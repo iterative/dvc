@@ -8,6 +8,7 @@ import os
 import subprocess
 import logging
 
+from dvc.utils.compat import pathlib
 from dvc.utils.fs import contains_symlink_up_to
 from schema import Schema, SchemaError, Optional, Or, And
 
@@ -322,32 +323,20 @@ class Stage(object):
             raise StageFileFormatError(fname, exc)
 
     @classmethod
-    def _stage_fname(cls, fname, outs, add):
-        if fname:
-            return fname
-
+    def _stage_fname(cls, outs, add):
         if not outs:
             return cls.STAGE_FILE
 
         out = outs[0]
-        path_handler = out.remote.ospath
+        fname = out.path_info.name + cls.STAGE_FILE_SUFFIX
 
-        fname = path_handler.basename(out.path) + cls.STAGE_FILE_SUFFIX
-
-        fname = Stage._expand_to_path_on_add_local(
-            add, fname, out, path_handler
-        )
-
-        return fname
-
-    @staticmethod
-    def _expand_to_path_on_add_local(add, fname, out, path_handler):
         if (
             add
             and out.is_in_repo
-            and not contains_symlink_up_to(out.path, out.repo.root_dir)
+            and not contains_symlink_up_to(out.fspath, out.repo.root_dir)
         ):
-            fname = path_handler.join(path_handler.dirname(out.path), fname)
+            fname = out.path_info.with_name(fname).fspath
+
         return fname
 
     @staticmethod
@@ -475,7 +464,8 @@ class Stage(object):
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
 
-        fname = Stage._stage_fname(fname, stage.outs, add=add)
+        if not fname:
+            fname = Stage._stage_fname(stage.outs, add=add)
         wdir = os.path.abspath(wdir)
 
         if cwd is not None:
@@ -619,16 +609,13 @@ class Stage(object):
         return stage
 
     def dumpd(self):
-        from dvc.remote.base import RemoteBASE
-
+        rel_wdir = os.path.relpath(self.wdir, os.path.dirname(self.path))
         return {
             key: value
             for key, value in {
                 Stage.PARAM_MD5: self.md5,
                 Stage.PARAM_CMD: self.cmd,
-                Stage.PARAM_WDIR: RemoteBASE.to_posixpath(
-                    os.path.relpath(self.wdir, os.path.dirname(self.path))
-                ),
+                Stage.PARAM_WDIR: pathlib.PurePath(rel_wdir).as_posix(),
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
@@ -695,11 +682,11 @@ class Stage(object):
 
     @staticmethod
     def _changed_entries(entries):
-        ret = []
-        for entry in entries:
-            if entry.checksum and entry.changed_checksum():
-                ret.append(entry.rel_path)
-        return ret
+        return [
+            str(entry)
+            for entry in entries
+            if entry.checksum and entry.changed_checksum()
+        ]
 
     def check_can_commit(self, force):
         changed_deps = self._changed_entries(self.deps)
@@ -751,22 +738,22 @@ class Stage(object):
     def _check_circular_dependency(self):
         from dvc.exceptions import CircularDependencyError
 
-        circular_dependencies = set(d.path for d in self.deps) & set(
-            o.path for o in self.outs
+        circular_dependencies = set(d.path_info for d in self.deps) & set(
+            o.path_info for o in self.outs
         )
 
         if circular_dependencies:
-            raise CircularDependencyError(circular_dependencies.pop())
+            raise CircularDependencyError(str(circular_dependencies.pop()))
 
     def _check_duplicated_arguments(self):
         from dvc.exceptions import ArgumentDuplicationError
         from collections import Counter
 
-        path_counts = Counter(edge.path for edge in self.deps + self.outs)
+        path_counts = Counter(edge.path_info for edge in self.deps + self.outs)
 
         for path, occurrence in path_counts.items():
             if occurrence > 1:
-                raise ArgumentDuplicationError(path)
+                raise ArgumentDuplicationError(str(path))
 
     def _run(self):
         self._check_missing_deps()
@@ -801,7 +788,7 @@ class Stage(object):
         elif self.is_import:
             logger.info(
                 "Importing '{dep}' -> '{out}'".format(
-                    dep=self.deps[0].path, out=self.outs[0].path
+                    dep=self.deps[0], out=self.outs[0]
                 )
             )
             if not dry:
@@ -836,12 +823,7 @@ class Stage(object):
                 self.commit()
 
     def check_missing_outputs(self):
-        paths = [
-            out.path if out.scheme != "local" else out.rel_path
-            for out in self.outs
-            if not out.exists
-        ]
-
+        paths = [str(out) for out in self.outs if not out.exists]
         if paths:
             raise MissingDataSource(paths)
 

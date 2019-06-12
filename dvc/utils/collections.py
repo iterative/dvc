@@ -2,11 +2,6 @@ from __future__ import absolute_import, unicode_literals
 from dvc.utils.compat import Mapping
 
 
-# just simple check for Nones and emtpy strings
-def compact(args):
-    return list(filter(bool, args))
-
-
 def apply_diff(src, dest):
     """Recursively apply changes from src to dest.
 
