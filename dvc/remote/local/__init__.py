@@ -28,6 +28,7 @@ from dvc.utils import (
     tmp_fname,
     file_md5,
     walk_files,
+    relpath,
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -464,11 +465,7 @@ class RemoteLOCAL(RemoteBASE):
             # would get only the part of file. So, at first, the file should be
             # copied with the temporary name, and then original file should be
             # replaced by new.
-            copyfile(
-                path,
-                tmp,
-                name="Unprotecting '{}'".format(os.path.relpath(path)),
-            )
+            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
             remove(path)
             os.rename(tmp, path)
 
@@ -536,9 +533,9 @@ class RemoteLOCAL(RemoteBASE):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
-            relpath = entry[self.PARAM_RELPATH]
+            relative_path = entry[self.PARAM_RELPATH]
             self.link(
-                entry_cache_info, unpacked_dir_info / relpath, "hardlink"
+                entry_cache_info, unpacked_dir_info / relative_path, "hardlink"
             )
 
         self.state.save(unpacked_dir_info, checksum)

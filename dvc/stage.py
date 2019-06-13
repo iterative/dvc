@@ -8,6 +8,7 @@ import os
 import subprocess
 import logging
 
+from dvc.utils import relpath
 from dvc.utils.compat import pathlib
 from dvc.utils.fs import contains_symlink_up_to
 from schema import Schema, SchemaError, Optional, Or, And
@@ -176,7 +177,7 @@ class Stage(object):
 
     @property
     def relpath(self):
-        return os.path.relpath(self.path)
+        return relpath(self.path)
 
     @property
     def is_data_source(self):
@@ -553,7 +554,7 @@ class Stage(object):
             raise StageFileBadNameError(
                 "bad stage filename '{}'. Stage files should be named"
                 " 'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
-                    os.path.relpath(fname), os.path.basename(fname)
+                    relpath(fname), os.path.basename(fname)
                 )
             )
 
@@ -593,7 +594,7 @@ class Stage(object):
         # looses keys in deps and outs load
         state = copy.deepcopy(d)
 
-        Stage.validate(d, fname=os.path.relpath(fname))
+        Stage.validate(d, fname=relpath(fname))
         path = os.path.abspath(fname)
 
         stage = Stage(
@@ -617,7 +618,7 @@ class Stage(object):
         return stage
 
     def dumpd(self):
-        rel_wdir = os.path.relpath(self.wdir, os.path.dirname(self.path))
+        rel_wdir = relpath(self.wdir, os.path.dirname(self.path))
         return {
             key: value
             for key, value in {
@@ -638,15 +639,13 @@ class Stage(object):
         self._check_dvc_filename(fname)
 
         logger.info(
-            "Saving information to '{file}'.".format(
-                file=os.path.relpath(fname)
-            )
+            "Saving information to '{file}'.".format(file=relpath(fname))
         )
         d = self.dumpd()
         apply_diff(d, self._state)
         dump_stage_file(fname, self._state)
 
-        self.repo.scm.track_file(os.path.relpath(fname))
+        self.repo.scm.track_file(relpath(fname))
 
     def _compute_md5(self):
         from dvc.output.base import OutputBase

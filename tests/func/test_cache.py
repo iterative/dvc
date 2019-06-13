@@ -4,6 +4,7 @@ import configobj
 
 from dvc.cache import Cache
 from dvc.main import main
+from dvc.utils import relpath
 
 from tests.basic_env import TestDvc, TestDir
 
@@ -152,7 +153,7 @@ class TestCmdCacheDir(TestDvc):
 
     def test_relative_path(self):
         tmpdir = self.mkdtemp()
-        dname = os.path.relpath(tmpdir)
+        dname = relpath(tmpdir)
         ret = main(["cache", "dir", dname])
         self.assertEqual(ret, 0)
 

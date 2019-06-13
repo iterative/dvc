@@ -10,6 +10,7 @@ from dvc.main import main
 from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.stage import Stage
+from dvc.utils import relpath
 from tests.basic_env import TestDvc
 
 
@@ -342,7 +343,7 @@ class TestMetrics(TestMetricsBase):
         self.assertMetricsHaveRelativePaths(metrics)
 
     def assertMetricsHaveRelativePaths(self, metrics):
-        root_relpath = os.path.relpath(self.dvc.root_dir)
+        root_relpath = relpath(self.dvc.root_dir)
         metric_path = os.path.join(root_relpath, "metric")
         metric_json_path = os.path.join(root_relpath, "metric_json")
         metric_tsv_path = os.path.join(root_relpath, "metric_tsv")

@@ -6,7 +6,7 @@ import os
 import logging
 
 from dvc.utils.compat import str, open
-from dvc.utils import fix_env
+from dvc.utils import fix_env, relpath
 from dvc.scm.base import (
     Base,
     SCMError,
@@ -92,7 +92,7 @@ class Git(Base):
                 msg.format(self.GITIGNORE, path, ignore_file_dir)
             )
 
-        entry = os.path.relpath(path, ignore_file_dir).replace(os.sep, "/")
+        entry = relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
@@ -125,14 +125,12 @@ class Git(Base):
         if self._ignored(entry, gitignore):
             return
 
-        msg = "Adding '{}' to '{}'.".format(
-            os.path.relpath(path), os.path.relpath(gitignore)
-        )
+        msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
         logger.info(msg)
 
         self._add_entry_to_gitignore(entry, gitignore)
 
-        self.track_file(os.path.relpath(gitignore))
+        self.track_file(relpath(gitignore))
 
         self.ignored_paths.append(path)
 
@@ -163,7 +161,7 @@ class Git(Base):
         with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 
-        self.track_file(os.path.relpath(gitignore))
+        self.track_file(relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
@@ -202,7 +200,7 @@ class Git(Base):
     def is_tracked(self, path):
         # it is equivalent to `bool(self.git.git.ls_files(path))` by
         # functionality, but ls_files fails on unicode filenames
-        path = os.path.relpath(path, self.root_dir)
+        path = relpath(path, self.root_dir)
         return path in [i[0] for i in self.git.index.entries]
 
     def is_dirty(self):

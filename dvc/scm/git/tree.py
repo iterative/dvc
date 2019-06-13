@@ -2,6 +2,7 @@ import errno
 import os
 
 from dvc.ignore import DvcIgnoreFilter
+from dvc.utils import relpath
 from dvc.utils.compat import StringIO, BytesIO
 from dvc.exceptions import DvcException
 
@@ -32,14 +33,14 @@ class GitTree(BaseTree):
 
     def open(self, path, binary=False):
 
-        relpath = os.path.relpath(path, self.git.working_dir)
+        relative_path = relpath(path, self.git.working_dir)
 
         obj = self.git_object_by_path(path)
         if obj is None:
             msg = "No such file in branch '{}'".format(self.rev)
-            raise IOError(errno.ENOENT, msg, relpath)
+            raise IOError(errno.ENOENT, msg, relative_path)
         if obj.mode == GIT_MODE_DIR:
-            raise IOError(errno.EISDIR, "Is a directory", relpath)
+            raise IOError(errno.EISDIR, "Is a directory", relative_path)
 
         # GitPython's obj.data_stream is a fragile thing, it is better to
         # read it immediately, also it needs to be to decoded if we follow
@@ -98,7 +99,7 @@ class GitTree(BaseTree):
     def git_object_by_path(self, path):
         import git
 
-        path = os.path.relpath(os.path.realpath(path), self.git.working_dir)
+        path = relpath(os.path.realpath(path), self.git.working_dir)
         assert path.split(os.sep, 1)[0] != ".."
 
         self._try_fetch_from_remote()

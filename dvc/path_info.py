@@ -6,12 +6,14 @@ import posixpath
 from funcy import cached_property
 
 from dvc.utils.compat import str, builtin_str, basestring, is_py2
-from dvc.utils.compat import pathlib, fspath_py35, urlparse
+from dvc.utils.compat import pathlib, urlparse
 
 
 # On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,
 # which is lossy, thus we can't use that,
 # see https://github.com/mcmtroffaes/pathlib2/issues/56.
+from dvc.utils import relpath
+
 if is_py2:
     fs_encoding = "utf-8"
 
@@ -31,10 +33,7 @@ class PathInfo(pathlib.PurePath):
 
     def __str__(self):
         path = self.__fspath__()
-        # Windows path on different drive than curdir doesn't have relpath
-        if os.name == "nt" and not os.path.commonprefix([os.getcwd(), path]):
-            return path
-        return os.path.relpath(path)
+        return relpath(path)
 
     def __repr__(self):
         return builtin_str("{}: '{}'").format(type(self).__name__, self)
@@ -51,9 +50,7 @@ class PathInfo(pathlib.PurePath):
     url = fspath
 
     def relpath(self, other):
-        return self.__class__(
-            os.path.relpath(fspath_py35(self), fspath_py35(other))
-        )
+        return self.__class__(relpath(self, other))
 
     def isin(self, other):
         if isinstance(other, basestring):

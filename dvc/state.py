@@ -7,7 +7,7 @@ import sqlite3
 import logging
 
 from dvc.config import Config
-from dvc.utils import remove, current_timestamp
+from dvc.utils import remove, current_timestamp, relpath
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
 from dvc.utils.compat import fspath_py35
@@ -416,12 +416,15 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         mtime, _ = get_mtime_and_size(path)
         inode = get_inode(path)
-        relpath = os.path.relpath(path, self.root_dir)
+        relative_path = relpath(path, self.root_dir)
 
         cmd = (
             "REPLACE INTO {}(path, inode, mtime) "
             'VALUES ("{}", {}, "{}")'.format(
-                self.LINK_STATE_TABLE, relpath, self._to_sqlite(inode), mtime
+                self.LINK_STATE_TABLE,
+                relative_path,
+                self._to_sqlite(inode),
+                mtime,
             )
         )
         self._execute(cmd)

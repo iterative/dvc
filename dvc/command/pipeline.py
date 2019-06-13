@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
+from dvc.utils import relpath
 from dvc.utils.compat import str
 
 import argparse
-import os
 import logging
 
 from dvc.exceptions import DvcException
@@ -21,7 +21,7 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.repo, target)
         G = self.repo.graph()[0]
         stages = networkx.get_node_attributes(G, "stage")
-        node = os.path.relpath(stage.path, self.repo.root_dir)
+        node = relpath(stage.path, self.repo.root_dir)
         nodes = networkx.dfs_postorder_nodes(G, node)
 
         if locked:
@@ -41,7 +41,7 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
 
         stage = Stage.load(self.repo, target)
-        node = os.path.relpath(stage.path, self.repo.root_dir)
+        node = relpath(stage.path, self.repo.root_dir)
 
         pipelines = list(
             filter(lambda g: node in g.nodes(), self.repo.pipelines())

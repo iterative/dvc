@@ -126,7 +126,9 @@ def temporary_windows_drive(repo_dir):
     if set_up_result == 0:
         raise RuntimeError("Failed to mount windows drive!")
 
-    yield new_drive
+    # NOTE: new_drive has form of `A:` and joining it with some relative
+    # path might result in non-existing path (A:path\\to)
+    yield os.path.join(new_drive, os.sep)
 
     tear_down_result = windll.kernel32.DefineDosDeviceW(
         DDD_REMOVE_DEFINITION, new_drive, target_path

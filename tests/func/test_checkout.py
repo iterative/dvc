@@ -11,7 +11,7 @@ from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files
+from dvc.utils import walk_files, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from tests.basic_env import TestDvc
 from tests.func.test_repro import TestRepro
@@ -566,11 +566,11 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         new_data_link = readlink(self.DATA)
 
         self.assertEqual(
-            os.path.relpath(old_foo_link, old_cache_dir),
-            os.path.relpath(new_foo_link, new_cache_dir),
+            relpath(old_foo_link, old_cache_dir),
+            relpath(new_foo_link, new_cache_dir),
         )
 
         self.assertEqual(
-            os.path.relpath(old_data_link, old_cache_dir),
-            os.path.relpath(new_data_link, new_cache_dir),
+            relpath(old_data_link, old_cache_dir),
+            relpath(new_data_link, new_cache_dir),
         )
