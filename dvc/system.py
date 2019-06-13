@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
+from dvc.utils.compat import str, open, fspath
 
 import os
 import errno
@@ -15,6 +15,8 @@ class System(object):
     def hardlink(source, link_name):
         import ctypes
         from dvc.exceptions import DvcException
+
+        source, link_name = fspath(source), fspath(link_name)
 
         if System.is_unix():
             try:
@@ -39,6 +41,8 @@ class System(object):
     def symlink(source, link_name):
         import ctypes
         from dvc.exceptions import DvcException
+
+        source, link_name = fspath(source), fspath(link_name)
 
         if System.is_unix():
             try:
@@ -117,6 +121,8 @@ class System(object):
         import platform
         from dvc.exceptions import DvcException
 
+        source, link_name = fspath(source), fspath(link_name)
+
         system = platform.system()
         try:
             if system == "Windows":
@@ -134,7 +140,7 @@ class System(object):
             raise DvcException("reflink is not supported")
 
     @staticmethod
-    def getdirinfo(path):
+    def _getdirinfo(path):
         import ctypes
         from ctypes import c_void_p, c_wchar_p, Structure, WinError, POINTER
         from ctypes.wintypes import DWORD, HANDLE, BOOL
@@ -206,6 +212,8 @@ class System(object):
 
     @staticmethod
     def inode(path):
+        path = fspath(path)
+
         if System.is_unix():
             import ctypes
 
@@ -216,7 +224,7 @@ class System(object):
             inode = ctypes.c_ulong(inode).value
         else:
             # getdirinfo from ntfsutils works on both files and dirs
-            info = System.getdirinfo(path)
+            info = System._getdirinfo(path)
             inode = abs(
                 hash(
                     (
@@ -267,6 +275,8 @@ class System(object):
 
     @staticmethod
     def is_symlink(path):
+        path = fspath(path)
+
         if System.is_unix():
             return os.path.islink(path)
 
@@ -275,14 +285,16 @@ class System(object):
         from winnt import FILE_ATTRIBUTE_REPARSE_POINT
 
         if os.path.lexists(path):
-            info = System.getdirinfo(path)
+            info = System._getdirinfo(path)
             return info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT
         return False
 
     @staticmethod
     def is_hardlink(path):
+        path = fspath(path)
+
         if System.is_unix():
             return os.stat(path).st_nlink > 1
 
-        info = System.getdirinfo(path)
+        info = System._getdirinfo(path)
         return info.nNumberOfLinks > 1

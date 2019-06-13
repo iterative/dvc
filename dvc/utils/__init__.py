@@ -285,7 +285,7 @@ def dvc_walk(
 
 def walk_files(directory, ignore_file_handler=None):
     for root, _, files in dvc_walk(
-        str(directory), ignore_file_handler=ignore_file_handler
+        directory, ignore_file_handler=ignore_file_handler
     ):
         for f in files:
             yield os.path.join(root, f)

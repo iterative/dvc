@@ -11,6 +11,6 @@ def test_getdirinfo(tmp_path):
     fd = os.open(locked, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
     try:
         # should not raise WinError
-        System.getdirinfo(locked)
+        System._getdirinfo(locked)
     finally:
         os.close(fd)
