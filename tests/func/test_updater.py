@@ -1,43 +1,51 @@
 import os
+import mock
+import pytest
 
-from tests.basic_env import TestDvc
+from dvc.updater import Updater
 
 
-class TestUpdater(TestDvc):
-    def test(self):
-        # NOTE: only test on travis CRON to avoid generating too much logs
-        travis = os.getenv("TRAVIS") == "true"
-        if not travis:
-            return
+@pytest.fixture
+def updater(dvc_repo):
+    return Updater(dvc_repo.dvc_dir)
 
-        cron = os.getenv("TRAVIS_EVENT_TYPE") == "cron"
-        if not cron:
-            return
 
-        env = os.environ.copy()
-        if os.getenv("CI"):
-            del os.environ["CI"]
+def test_updater(updater):
+    # NOTE: only test on travis CRON to avoid generating too much logs
+    travis = os.getenv("TRAVIS") == "true"
+    if not travis:
+        return
 
-        self.dvc.updater.check()
-        self.dvc.updater.check()
-        self.dvc.updater.check()
+    cron = os.getenv("TRAVIS_EVENT_TYPE") == "cron"
+    if not cron:
+        return
 
-        os.environ = env.copy()
+    env = os.environ.copy()
+    if env.get("CI"):
+        del env["CI"]
 
-    def test_check_version_newer(self):
-        self.dvc.updater.latest = "0.20.8"
-        self.dvc.updater.current = "0.21.0"
+    with mock.patch.dict(os.environ, env):
+        updater.check()
+        updater.check()
+        updater.check()
 
-        self.assertFalse(self.dvc.updater._is_outdated())
 
-    def test_check_version_equal(self):
-        self.dvc.updater.latest = "0.20.8"
-        self.dvc.updater.current = "0.20.8"
+def test_check_version_newer(updater):
+    updater.latest = "0.20.8"
+    updater.current = "0.21.0"
 
-        self.assertFalse(self.dvc.updater._is_outdated())
+    assert not updater._is_outdated()
 
-    def test_check_version_outdated(self):
-        self.dvc.updater.latest = "0.21.0"
-        self.dvc.updater.current = "0.20.8"
 
-        self.assertTrue(self.dvc.updater._is_outdated())
+def test_check_version_equal(updater):
+    updater.latest = "0.20.8"
+    updater.current = "0.20.8"
+
+    assert not updater._is_outdated()
+
+
+def test_check_version_outdated(updater):
+    updater.latest = "0.21.0"
+    updater.current = "0.20.8"
+
+    assert updater._is_outdated()

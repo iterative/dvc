@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import os
-from mock import patch, Mock
 
 from dvc.main import main
 
@@ -65,34 +64,28 @@ class TestDiffRepo(TestDiff):
 
 class TestDiffCmdLine(TestDiff):
     def test(self):
-        with patch("dvc.cli.diff.CmdDiff._show", autospec=True):
-            with patch("dvc.repo.Repo", config="testing") as MockRepo:
-                MockRepo.return_value.diff.return_value = "testing"
-                ret = main(["diff", "-t", self.new_file, self.a_ref])
-                self.assertEqual(ret, 0)
+        ret = main(["diff", "-t", self.new_file, self.a_ref])
+        self.assertEqual(ret, 0)
 
 
 class TestDiffCmdMessage(TestDiff):
     maxDiff = None
 
     def test(self):
-        with patch("dvc.repo.Repo", config="testing"):
-            m = Mock()
-            cmd_diff = CmdDiff(m)
-            msg = cmd_diff._show(self.test_dct)
-            test_msg = (
-                "dvc diff from {0} to {1}\n\n"
-                "diff for '{2}'\n"
-                "+{2} with md5 {3}\n\n"
-                "added file with size 13 Bytes"
-            )
-            test_msg = test_msg.format(
-                self.test_dct[diff.DIFF_A_REF],
-                self.test_dct[diff.DIFF_B_REF],
-                self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
-                self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
-            )
-            self.assertEqual(test_msg, msg)
+        msg = CmdDiff._show(self.test_dct)
+        test_msg = (
+            "dvc diff from {0} to {1}\n\n"
+            "diff for '{2}'\n"
+            "+{2} with md5 {3}\n\n"
+            "added file with size 13 Bytes"
+        )
+        test_msg = test_msg.format(
+            self.test_dct[diff.DIFF_A_REF],
+            self.test_dct[diff.DIFF_B_REF],
+            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
+            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
+        )
+        self.assertEqual(test_msg, msg)
 
 
 class TestDiffDir(TestDvc):

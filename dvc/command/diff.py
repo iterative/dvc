@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class CmdDiff(CmdBase):
-    def _print_size(self, size):
+    @staticmethod
+    def _print_size(size):
         if size < 0:
             change = "decreased by {}"
         elif size > 0:
@@ -26,14 +27,16 @@ class CmdDiff(CmdBase):
         natur_size = humanize.naturalsize(abs(size))
         return change.format(natur_size)
 
-    def _get_md5_string(self, sign, file_name, checksum):
+    @staticmethod
+    def _get_md5_string(sign, file_name, checksum):
         sample_msg = ""
         if file_name:
             sample_msg = "{}{} with md5 {}\n"
             sample_msg = sample_msg.format(sign, file_name, checksum)
         return sample_msg
 
-    def _get_dir_changes(self, dct):
+    @classmethod
+    def _get_dir_changes(cls, dct):
         engine = inflect.engine()
         changes_msg = (
             "{} {} not changed, {} {} modified, {} {} added, "
@@ -48,11 +51,12 @@ class CmdDiff(CmdBase):
             engine.plural("file", dct[diff.DIFF_NEW]),
             dct[diff.DIFF_DEL],
             engine.plural("file", dct[diff.DIFF_DEL]),
-            self._print_size(dct[diff.DIFF_SIZE]),
+            cls._print_size(dct[diff.DIFF_SIZE]),
         )
         return changes_msg
 
-    def _get_file_changes(self, dct):
+    @classmethod
+    def _get_file_changes(cls, dct):
         if (
             dct.get(diff.DIFF_OLD_FILE)
             and dct.get(diff.DIFF_NEW_FILE)
@@ -69,19 +73,21 @@ class CmdDiff(CmdBase):
             )
         else:
             msg = "file was modified, file size {}".format(
-                self._print_size(dct[diff.DIFF_SIZE])
+                cls._print_size(dct[diff.DIFF_SIZE])
             )
         return msg
 
-    def _get_royal_changes(self, dct):
+    @classmethod
+    def _get_royal_changes(cls, dct):
         if dct[diff.DIFF_SIZE] != diff.DIFF_SIZE_UNKNOWN:
             if dct.get("is_dir"):
-                return self._get_dir_changes(dct)
+                return cls._get_dir_changes(dct)
             else:
-                return self._get_file_changes(dct)
+                return cls._get_file_changes(dct)
         return "size is ?"
 
-    def _show(self, diff_dct):
+    @classmethod
+    def _show(cls, diff_dct):
         msg = "dvc diff from {} to {}".format(
             diff_dct[diff.DIFF_A_REF], diff_dct[diff.DIFF_B_REF]
         )
@@ -90,18 +96,18 @@ class CmdDiff(CmdBase):
             return
         for dct in diff_dct[diff.DIFF_LIST]:
             msg += "\n\ndiff for '{}'\n".format(dct[diff.DIFF_TARGET])
-            msg += self._get_md5_string(
+            msg += cls._get_md5_string(
                 "-",
                 dct.get(diff.DIFF_OLD_FILE),
                 dct.get(diff.DIFF_OLD_CHECKSUM),
             )
-            msg += self._get_md5_string(
+            msg += cls._get_md5_string(
                 "+",
                 dct.get(diff.DIFF_NEW_FILE),
                 dct.get(diff.DIFF_NEW_CHECKSUM),
             )
             msg += "\n"
-            msg += self._get_royal_changes(dct)
+            msg += cls._get_royal_changes(dct)
         logger.info(msg)
         return msg
 
