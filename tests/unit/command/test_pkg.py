@@ -1,5 +1,6 @@
 from dvc.cli import parse_args
 from dvc.command.pkg import CmdPkgInstall, CmdPkgUninstall, CmdPkgImport
+from dvc.command.pkg import CmdPkgGet
 
 
 def test_pkg_install(mocker, dvc_repo):
@@ -55,4 +56,29 @@ def test_pkg_import(mocker, dvc_repo):
 
     m.assert_called_once_with(
         "pkg_name", "pkg_path", out="out", version="version"
+    )
+
+
+def test_pkg_get(mocker, dvc_repo):
+    cli_args = parse_args(
+        [
+            "pkg",
+            "get",
+            "pkg_url",
+            "pkg_path",
+            "--out",
+            "out",
+            "--version",
+            "version",
+        ]
+    )
+    assert cli_args.func == CmdPkgGet
+
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch("dvc.pkg.PkgManager.get")
+
+    assert cmd.run() == 0
+
+    m.assert_called_once_with(
+        "pkg_url", "pkg_path", out="out", version="version"
     )

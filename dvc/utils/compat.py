@@ -98,6 +98,7 @@ if is_py2:
     from io import open  # noqa: F401
     import pathlib2 as pathlib  # noqa: F401
     from collections import Mapping  # noqa: F401
+    from backports.tempfile import TemporaryDirectory  # noqa: F403
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -144,6 +145,7 @@ elif is_py3:
     )  # noqa: F401
     import configparser as ConfigParser  # noqa: F401
     from collections.abc import Mapping  # noqa: F401
+    from tempfile import TemporaryDirectory  # noqa: F401
 
     builtin_str = str  # noqa: F821
     str = str  # noqa: F821

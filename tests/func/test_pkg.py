@@ -2,6 +2,8 @@ import os
 import git
 import filecmp
 
+from dvc.pkg import PkgManager
+
 from tests.utils import trees_equal
 
 
@@ -130,3 +132,25 @@ def test_import_url_version(repo_dir, dvc_repo, pkg):
     assert os.path.isfile(dst)
     with open(dst, "r+") as fobj:
         assert fobj.read() == "branch"
+
+
+def test_get_file(repo_dir, dvc_repo, pkg):
+    src = pkg.FOO
+    dst = pkg.FOO + "_imported"
+
+    PkgManager.get(pkg.root_dir, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+
+
+def test_get_dir(repo_dir, dvc_repo, pkg):
+    src = pkg.DATA_DIR
+    dst = pkg.DATA_DIR + "_imported"
+
+    PkgManager.get(pkg.root_dir, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isdir(dst)
+    trees_equal(src, dst)

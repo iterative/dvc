@@ -7,8 +7,9 @@ from schema import Optional
 
 from dvc.config import Config
 from dvc.cache import CacheConfig
+from dvc.path_info import PathInfo
 from dvc.exceptions import DvcException
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, TemporaryDirectory
 
 
 logger = logging.getLogger(__name__)
@@ -137,3 +138,36 @@ class PkgManager(object):
             info[Pkg.PARAM_VERSION] = version
 
         self.repo.imp(src, out, pkg=info)
+
+    @classmethod
+    def get(cls, url, src, out=None, version=None):
+        if not out:
+            out = os.path.basename(src)
+
+        # Creating a directory right beside the output to make sure that they
+        # are on the same filesystem, so we could take the advantage of
+        # reflink and/or hardlink.
+        dpath = os.path.dirname(os.path.abspath(out))
+        with TemporaryDirectory(dir=dpath, prefix=".") as tmp_dir:
+            pkg = Pkg(tmp_dir, url=url, version=version)
+            pkg.install()
+            # Try any links possible to avoid data duplication.
+            #
+            # Not using symlink, because we need to remove cache after we are
+            # done, and to make that work we would have to copy data over
+            # anyway before removing the cache, so we might just copy it
+            # right away.
+            #
+            # Also, we can't use theoretical "move" link type here, because
+            # the same cache file might be used a few times in a directory.
+            pkg.repo.config.set(
+                Config.SECTION_CACHE,
+                Config.SECTION_CACHE_TYPE,
+                "reflink,hardlink,copy",
+            )
+            src = os.path.join(pkg.path, urlparse(src).path.lstrip("/"))
+            output, = pkg.repo.find_outs_by_path(src)
+            pkg.repo.fetch(output.stage.path)
+            output.path_info = PathInfo(os.path.abspath(out))
+            with output.repo.state:
+                output.checkout()

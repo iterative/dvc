@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
+from dvc.pkg import PkgManager
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from .base import CmdBase, CmdBaseNoRepo, fix_subparsers, append_doc_link
 
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,25 @@ class CmdPkgImport(CmdBase):
         except DvcException:
             logger.exception(
                 "failed to import '{}' from package '{}'".format(
+                    self.args.src, self.args.name
+                )
+            )
+            return 1
+
+
+class CmdPkgGet(CmdBaseNoRepo):
+    def run(self):
+        try:
+            PkgManager.get(
+                self.args.url,
+                self.args.src,
+                out=self.args.out,
+                version=self.args.version,
+            )
+            return 0
+        except DvcException:
+            logger.exception(
+                "failed to get '{}' from package '{}'".format(
                     self.args.src, self.args.name
                 )
             )
@@ -125,3 +145,21 @@ def add_parser(subparsers, parent_parser):
         "--version", nargs="?", help="Package version."
     )
     pkg_import_parser.set_defaults(func=CmdPkgImport)
+
+    PKG_GET_HELP = "Download data from the package."
+    pkg_get_parser = pkg_subparsers.add_parser(
+        "get",
+        parents=[parent_parser],
+        description=append_doc_link(PKG_GET_HELP, "pkg-get"),
+        help=PKG_GET_HELP,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pkg_get_parser.add_argument("url", help="Package url.")
+    pkg_get_parser.add_argument("src", help="Path to data in the package.")
+    pkg_get_parser.add_argument(
+        "-o", "--out", nargs="?", help="Destination path to put data to."
+    )
+    pkg_get_parser.add_argument(
+        "--version", nargs="?", help="Package version."
+    )
+    pkg_get_parser.set_defaults(func=CmdPkgGet)
