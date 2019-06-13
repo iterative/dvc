@@ -4,21 +4,19 @@ import os
 import threading
 import logging
 import itertools
-
-from dvc.scheme import Schemes
+from contextlib import contextmanager
 
 try:
     import boto3
 except ImportError:
     boto3 = None
 
-from dvc.utils import tmp_fname, move
-from dvc.utils.compat import makedirs, fspath_py35
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
+from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 
@@ -197,9 +195,8 @@ class RemoteS3(RemoteBASE):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def copy(self, from_info, to_info, s3=None):
-        s3 = s3 if s3 else self.s3
-        self._copy(s3, from_info, to_info, self.extra_args)
+    def copy(self, from_info, to_info, ctx=None):
+        self._copy(ctx or self.s3, from_info, to_info, self.extra_args)
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
@@ -250,90 +247,42 @@ class RemoteS3(RemoteBASE):
 
         return results
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
+    @contextmanager
+    def transfer_context(self):
+        yield self.s3
 
-        s3 = self.s3
+    def _upload(
+        self, from_file, to_info, name=None, ctx=None, no_progress_bar=False
+    ):
+        total = os.path.getsize(from_file)
+        cb = None if no_progress_bar else Callback(name, total)
+        ctx.upload_file(
+            from_file,
+            to_info.bucket,
+            to_info.path,
+            Callback=cb,
+            ExtraArgs=self.extra_args,
+        )
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != "s3":
-                raise NotImplementedError
-
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
-
-            if not name:
-                name = from_info.name
-
-            total = os.path.getsize(fspath_py35(from_info))
-            cb = None if no_progress_bar else Callback(name, total)
-
-            try:
-                s3.upload_file(
-                    from_info.fspath,
-                    to_info.bucket,
-                    to_info.path,
-                    Callback=cb,
-                    ExtraArgs=self.extra_args,
-                )
-            except Exception:
-                msg = "failed to upload '{}'".format(from_info)
-                logger.exception(msg)
-                continue
-
-            progress.finish_target(name)
-
-    def download(
+    def _download(
         self,
-        from_infos,
-        to_infos,
+        from_info,
+        to_file,
+        name=None,
+        ctx=None,
         no_progress_bar=False,
-        names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        s3 = ctx
 
-        s3 = self.s3
+        if no_progress_bar:
+            cb = None
+        else:
+            total = s3.head_object(
+                Bucket=from_info.bucket, Key=from_info.path
+            )["ContentLength"]
+            cb = Callback(name, total)
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != "s3":
-                raise NotImplementedError
-
-            if to_info.scheme == "s3":
-                self.copy(from_info, to_info, s3=s3)
-                continue
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
-            logger.debug(msg)
-
-            tmp_file = tmp_fname(to_info)
-            if not name:
-                name = to_info.name
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-            try:
-                if no_progress_bar:
-                    cb = None
-                else:
-                    total = s3.head_object(
-                        Bucket=from_info.bucket, Key=from_info.path
-                    )["ContentLength"]
-                    cb = Callback(name, total)
-
-                s3.download_file(
-                    from_info.bucket, from_info.path, tmp_file, Callback=cb
-                )
-            except Exception:
-                msg = "failed to download '{}'".format(from_info)
-                logger.exception(msg)
-                continue
-
-            move(tmp_file, fspath_py35(to_info))
-
-            if not no_progress_bar:
-                progress.finish_target(name)
+        s3.download_file(
+            from_info.bucket, from_info.path, to_file, Callback=cb
+        )

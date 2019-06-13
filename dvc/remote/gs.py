@@ -2,21 +2,18 @@ from __future__ import unicode_literals
 
 import logging
 import itertools
-
-from dvc.scheme import Schemes
+from contextlib import contextmanager
 
 try:
     from google.cloud import storage
 except ImportError:
     storage = None
 
-from dvc.utils import tmp_fname, move
-from dvc.utils.compat import makedirs, fspath_py35
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
-from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
+from dvc.scheme import Schemes
 
 
 logger = logging.getLogger(__name__)
@@ -67,18 +64,17 @@ class RemoteGS(RemoteBASE):
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
 
-    def copy(self, from_info, to_info, gs=None):
-        gs = gs if gs else self.gs
+    def copy(self, from_info, to_info, ctx=None):
+        gs = ctx or self.gs
 
-        blob = gs.bucket(from_info.bucket).get_blob(from_info.path)
+        from_bucket = gs.bucket(from_info.bucket)
+        blob = from_bucket.get_blob(from_info.path)
         if not blob:
             msg = "'{}' doesn't exist in the cloud".format(from_info.path)
             raise DvcException(msg)
 
-        bucket = self.gs.bucket(to_info.bucket)
-        bucket.copy_blob(
-            blob, self.gs.bucket(to_info.bucket), new_name=to_info.path
-        )
+        to_bucket = gs.bucket(to_info.bucket)
+        from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
     def remove(self, path_info):
         if path_info.scheme != "gs":
@@ -123,83 +119,16 @@ class RemoteGS(RemoteBASE):
 
         return results
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
+    @contextmanager
+    def transfer_context(self):
+        yield self.gs
 
-        gs = self.gs
+    def _upload(self, from_file, to_info, ctx=None, **_kwargs):
+        bucket = ctx.bucket(to_info.bucket)
+        blob = bucket.blob(to_info.path)
+        blob.upload_from_filename(from_file)
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != "gs":
-                raise NotImplementedError
-
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
-
-            if not name:
-                name = from_info.name
-
-            if not no_progress_bar:
-                progress.update_target(name, 0, None)
-
-            try:
-                bucket = gs.bucket(to_info.bucket)
-                blob = bucket.blob(to_info.path)
-                blob.upload_from_filename(from_info.fspath)
-            except Exception:
-                msg = "failed to upload '{}' to '{}'"
-                logger.exception(msg.format(from_info, to_info))
-                continue
-
-            progress.finish_target(name)
-
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        no_progress_bar=False,
-        names=None,
-        resume=False,
-    ):
-        names = self._verify_path_args(from_infos, to_infos, names)
-
-        gs = self.gs
-
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != "gs":
-                raise NotImplementedError
-
-            if to_info.scheme == "gs":
-                self.copy(from_info, to_info, gs=gs)
-                continue
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
-            logger.debug(msg)
-
-            tmp_file = tmp_fname(to_info)
-            if not name:
-                name = to_info.name
-
-            if not no_progress_bar:
-                # percent_cb is not available for download_to_filename, so
-                # lets at least update progress at pathpoints(start, finish)
-                progress.update_target(name, 0, None)
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-            try:
-                bucket = gs.bucket(from_info.bucket)
-                blob = bucket.get_blob(from_info.path)
-                blob.download_to_filename(tmp_file)
-            except Exception:
-                msg = "failed to download '{}' to '{}'"
-                logger.exception(msg.format(from_info, to_info))
-                continue
-
-            move(tmp_file, fspath_py35(to_info))
-
-            if not no_progress_bar:
-                progress.finish_target(name)
+    def _download(self, from_info, to_file, ctx=None, **_kwargs):
+        bucket = ctx.bucket(from_info.bucket)
+        blob = bucket.get_blob(from_info.path)
+        blob.download_to_filename(to_file)

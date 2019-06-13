@@ -72,7 +72,7 @@ class RemoteHDFS(RemoteBASE):
         )
         return self._group(regex, stdout, "checksum")
 
-    def copy(self, from_info, to_info):
+    def copy(self, from_info, to_info, **_kwargs):
         dname = posixpath.dirname(to_info.path)
         self.hadoop_fs("mkdir -p {}".format(dname), user=to_info.user)
         self.hadoop_fs(
@@ -103,64 +103,27 @@ class RemoteHDFS(RemoteBASE):
         except RemoteCmdError:
             return False
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
+    def _upload(self, from_file, to_info, **_kwargs):
+        self.hadoop_fs(
+            "mkdir -p {}".format(to_info.parent.url), user=to_info.user
+        )
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != "hdfs":
-                raise NotImplementedError
+        tmp_file = tmp_fname(to_info.url)
 
-            if from_info.scheme != "local":
-                raise NotImplementedError
+        self.hadoop_fs(
+            "copyFromLocal {} {}".format(from_file, tmp_file),
+            user=to_info.user,
+        )
 
-            self.hadoop_fs(
-                "mkdir -p {}".format(to_info.parent.url), user=to_info.user
-            )
+        self.hadoop_fs(
+            "mv {} {}".format(tmp_file, to_info.url), user=to_info.user
+        )
 
-            tmp_file = tmp_fname(to_info.url)
-
-            self.hadoop_fs(
-                "copyFromLocal {} {}".format(from_info.fspath, tmp_file),
-                user=to_info.user,
-            )
-
-            self.hadoop_fs(
-                "mv {} {}".format(tmp_file, to_info.url), user=to_info.user
-            )
-
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        no_progress_bar=False,
-        names=None,
-        resume=False,
-    ):
-        names = self._verify_path_args(from_infos, to_infos, names)
-
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != "hdfs":
-                raise NotImplementedError
-
-            if to_info.scheme == "hdfs":
-                self.copy(from_info, to_info)
-                continue
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            dname = to_info.parent.fspath
-            if not os.path.exists(dname):
-                os.makedirs(dname)
-
-            tmp_file = tmp_fname(to_info.fspath)
-
-            self.hadoop_fs(
-                "copyToLocal {} {}".format(from_info.url, tmp_file),
-                user=from_info.user,
-            )
-
-            os.rename(tmp_file, to_info.fspath)
+    def _download(self, from_info, to_file, **_kwargs):
+        self.hadoop_fs(
+            "copyToLocal {} {}".format(from_info.url, to_file),
+            user=from_info.user,
+        )
 
     def list_cache_paths(self):
         try:

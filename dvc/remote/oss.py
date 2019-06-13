@@ -11,9 +11,6 @@ try:
 except ImportError:
     oss2 = None
 
-from dvc.utils import tmp_fname, move
-from dvc.utils.compat import makedirs, fspath_py35
-from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.remote.azure import Callback
@@ -108,65 +105,18 @@ class RemoteOSS(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.path)
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
-
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != self.scheme:
-                raise NotImplementedError
-
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
-
-            if not name:
-                name = from_info.name
-
-            cb = None if no_progress_bar else Callback(name)
-
-            try:
-                self.oss_service.put_object_from_file(
-                    to_info.path, from_info.fspath, progress_callback=cb
-                )
-            except Exception:
-                msg = "failed to upload '{}'".format(from_info)
-                logger.warning(msg)
-            else:
-                progress.finish_target(name)
-
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        names=None,
-        no_progress_bar=False,
-        resume=False,
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != self.scheme:
-                raise NotImplementedError
-            if to_info.scheme != "local":
-                raise NotImplementedError
+        cb = None if no_progress_bar else Callback(name)
+        self.oss_service.put_object_from_file(
+            to_info.path, from_file, progress_callback=cb
+        )
 
-            logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
-
-            tmp_file = tmp_fname(to_info)
-            if not name:
-                name = to_info.name
-
-            cb = None if no_progress_bar else Callback(name)
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-            try:
-                self.oss_service.get_object_to_file(
-                    from_info.path, tmp_file, progress_callback=cb
-                )
-            except Exception:
-                logger.warning("failed to download '{}'".format(from_info))
-            else:
-                move(tmp_file, fspath_py35(to_info))
-            finally:
-                if not no_progress_bar:
-                    progress.finish_target(name)
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        cb = None if no_progress_bar else Callback(name)
+        self.oss_service.get_object_to_file(
+            from_info.path, to_file, progress_callback=cb
+        )

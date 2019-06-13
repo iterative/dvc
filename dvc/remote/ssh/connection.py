@@ -10,7 +10,6 @@ except ImportError:
     paramiko = None
 
 from dvc.utils import tmp_fname
-from dvc.utils.compat import makedirs
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
@@ -203,22 +202,14 @@ class SSHConnection:
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         self._sftp_connect()
 
-        makedirs(os.path.dirname(dest), exist_ok=True)
-        tmp_file = tmp_fname(dest)
-
         if no_progress_bar:
-            self._sftp.get(src, tmp_file)
+            self._sftp.get(src, dest)
         else:
             if not progress_title:
-                progress_title = os.path.basename(dest)
+                progress_title = os.path.basename(src)
 
-            self._sftp.get(src, tmp_file, callback=create_cb(progress_title))
+            self._sftp.get(src, dest, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
-
-        if os.path.exists(dest):
-            os.remove(dest)
-
-        os.rename(tmp_file, dest)
 
     def move(self, src, dst):
         self.makedirs(posixpath.dirname(dst))
