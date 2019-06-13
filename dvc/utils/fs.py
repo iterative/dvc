@@ -26,7 +26,7 @@ def get_mtime_and_size(path):
     mtime = stat.st_mtime
 
     if os.path.isdir(path):
-        for root, dirs, files in dvc_walk(str(path)):
+        for root, dirs, files in dvc_walk(path):
             for name in dirs + files:
                 entry = os.path.join(root, name)
                 try:
