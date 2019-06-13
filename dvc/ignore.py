@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 
 from dulwich.ignore import match_pattern, read_ignore_patterns
