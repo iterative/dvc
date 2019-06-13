@@ -47,7 +47,6 @@ class Repo(object):
         from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
-        from dvc.updater import Updater
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
@@ -76,15 +75,12 @@ class Repo(object):
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
-        self.updater = Updater(self.dvc_dir)
 
         self.metrics = Metrics(self)
         self.tag = Tag(self)
         self.pkg = Pkg(self)
 
         self._ignore()
-
-        self.updater.check()
 
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
@@ -121,12 +117,16 @@ class Repo(object):
         return self.cache.local.unprotect(PathInfo(target))
 
     def _ignore(self):
+        from dvc.updater import Updater
+
+        updater = Updater(self.dvc_dir)
+
         flist = [
             self.state.state_file,
             self.lock.lock_file,
             self.config.config_local_file,
-            self.updater.updater_file,
-            self.updater.lock.lock_file,
+            updater.updater_file,
+            updater.lock.lock_file,
         ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
