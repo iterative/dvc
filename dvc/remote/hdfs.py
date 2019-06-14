@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 class RemoteHDFS(RemoteBASE):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
-    SUPPORTS_NO_TRAVERSE = False
     PARAM_CHECKSUM = "checksum"
 
     def __init__(self, repo, config):

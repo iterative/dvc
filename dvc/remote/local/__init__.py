@@ -250,7 +250,7 @@ class RemoteLOCAL(RemoteBASE):
     def cache_exists(self, md5s):
         return [
             checksum
-            for checksum in md5s
+            for checksum in progress(md5s)
             if not self.changed_cache_file(checksum)
         ]
 
@@ -308,23 +308,11 @@ class RemoteLOCAL(RemoteBASE):
         logger.info(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        title = "Collecting information"
-
-        ret = {}
-
-        progress.set_n_total(1)
-        progress.update_target(title, 0, 100)
-
-        progress.update_target(title, 10, 100)
-
-        ret = self._group(checksum_infos, show_checksums=show_checksums)
+        ret = self._group(checksum_infos, show_checksums=show_checksums) or {}
         md5s = list(ret)
 
-        progress.update_target(title, 30, 100)
-
+        logger.info("Collecting information from local cache...")
         local_exists = self.cache_exists(md5s)
-
-        progress.update_target(title, 40, 100)
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
@@ -333,11 +321,8 @@ class RemoteLOCAL(RemoteBASE):
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
         else:
+            logger.info("Collecting information from remote cache...")
             remote_exists = list(remote.cache_exists(md5s))
-
-        progress.update_target(title, 90, 100)
-
-        progress.finish_target(title)
 
         self._fill_statuses(ret, local_exists, remote_exists)
 

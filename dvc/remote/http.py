@@ -93,20 +93,15 @@ class RemoteHTTP(RemoteBASE):
 
         return fails
 
-    def exists(self, path_infos):
-        single_path = False
+    def exists(self, path_info):
+        return bool(self._request("HEAD", path_info.url))
 
-        if not isinstance(path_infos, list):
-            single_path = True
-            path_infos = [path_infos]
+    def batch_exists(self, path_infos, callback):
+        results = []
 
-        results = [
-            bool(self._request("HEAD", path_info.url))
-            for path_info in path_infos
-        ]
-
-        if single_path and results:
-            return all(results)
+        for path_info in path_infos:
+            results.append(bool(self._request("HEAD", path_info.url)))
+            callback.update(str(path_info))
 
         return results
 

@@ -15,7 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
-from dvc.progress import progress
+from dvc.progress import progress, ProgressCallback
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move
 from dvc.state import StateBase
 from dvc.path_info import PathInfo, URLInfo
@@ -68,7 +68,6 @@ class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
-    SUPPORTS_NO_TRAVERSE = True
     JOBS = 4 * cpu_count()
 
     PARAM_RELPATH = "relpath"
@@ -500,7 +499,7 @@ class RemoteBASE(object):
     def copy(self, from_info, to_info, ctx=None):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
-    def exists(self, path_infos):
+    def exists(self, path_info):
         raise NotImplementedError
 
     @classmethod
@@ -618,6 +617,7 @@ class RemoteBASE(object):
         - No traverse: For each given checksum, run the `exists`
             method and filter the checksums that aren't on the remote.
             This is done in parallel threads.
+            It also shows a progress bar when performing the check.
 
         The reason for such an odd logic is that most of the remotes
         take much shorter time to just retrieve everything they have under
@@ -628,13 +628,20 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        if self.no_traverse and self.SUPPORTS_NO_TRAVERSE:
+        progress_callback = ProgressCallback(len(checksums))
+
+        def exists_with_progress(chunks):
+            return self.batch_exists(chunks, callback=progress_callback)
+
+        if self.no_traverse and hasattr(self, "batch_exists"):
             with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
                 chunks = to_chunks(path_infos, self.JOBS)
-                results = executor.map(self.exists, chunks)
+                results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
-                return list(itertools.compress(checksums, in_remote))
+                ret = list(itertools.compress(checksums, in_remote))
+                progress_callback.finish("")
+                return ret
 
         return list(set(checksums) & set(self.all()))
 
