@@ -48,11 +48,12 @@ class RemoteHTTP(RemoteBASE):
         self,
         from_infos,
         to_infos,
-        no_progress_bar=False,
         names=None,
+        no_progress_bar=False,
         resume=False,
     ):
         names = self._verify_path_args(to_infos, from_infos, names)
+        fails = 0
 
         for to_info, from_info, name in zip(to_infos, from_infos, names):
             if from_info.scheme != self.scheme:
@@ -82,12 +83,15 @@ class RemoteHTTP(RemoteBASE):
                 )
 
             except Exception:
+                fails += 1
                 msg = "failed to download '{}'".format(from_info)
                 logger.exception(msg)
                 continue
 
             if not no_progress_bar:
                 progress.finish_target(name)
+
+        return fails
 
     def exists(self, path_infos):
         single_path = False

@@ -4,6 +4,7 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class CmdDataPull(CmdDataBase):
                 force=self.args.force,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to pull data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
@@ -65,7 +66,7 @@ class CmdDataPush(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to push data to the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
@@ -85,7 +86,7 @@ class CmdDataFetch(CmdDataBase):
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to fetch data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)

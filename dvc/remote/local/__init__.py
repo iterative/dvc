@@ -355,26 +355,16 @@ class RemoteLOCAL(RemoteBASE):
             info["status"] = status
 
     def _get_chunks(self, download, remote, status_info, status, jobs):
-        title = "Analysing status."
-
-        progress.set_n_total(1)
-        total = len(status_info)
-        current = 0
-
         cache = []
         path_infos = []
         names = []
-        for md5, info in status_info.items():
+        for md5, info in progress(
+            status_info.items(), name="Analysing status"
+        ):
             if info["status"] == status:
                 cache.append(self.checksum_to_path_info(md5))
                 path_infos.append(remote.checksum_to_path_info(md5))
                 names.append(info["name"])
-            current += 1
-            progress.update_target(title, current, total)
-
-        progress.finish_target(title)
-
-        progress.set_n_total(len(names))
 
         if download:
             to_infos = cache
@@ -383,12 +373,10 @@ class RemoteLOCAL(RemoteBASE):
             to_infos = path_infos
             from_infos = cache
 
-        return list(
-            zip(
-                to_chunks(from_infos, jobs),
-                to_chunks(to_infos, jobs),
-                to_chunks(names, jobs),
-            )
+        return (
+            to_chunks(from_infos, jobs),
+            to_chunks(to_infos, jobs),
+            to_chunks(names, jobs),
         )
 
     def _process(
@@ -399,11 +387,9 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        msg = "Preparing to {} data {} '{}'"
         logger.info(
-            msg.format(
-                "download" if download else "upload",
-                "from" if download else "to",
+            "Preparing to {} '{}'".format(
+                "download data from" if download else "upload data to",
                 remote.path_info,
             )
         )
@@ -428,25 +414,22 @@ class RemoteLOCAL(RemoteBASE):
 
         chunks = self._get_chunks(download, remote, status_info, status, jobs)
 
-        if len(chunks) == 0:
+        if len(chunks[0]) == 0:
             return 0
 
         if jobs > 1:
-            futures = []
             with ThreadPoolExecutor(max_workers=jobs) as executor:
-                for from_infos, to_infos, names in chunks:
-                    res = executor.submit(
-                        func, from_infos, to_infos, names=names
-                    )
-                    futures.append(res)
-
-            for f in futures:
-                f.result()
+                fails = sum(executor.map(func, *chunks))
         else:
-            for from_infos, to_infos, names in chunks:
-                func(from_infos, to_infos, names=names)
+            fails = sum(map(func, *chunks))
 
-        return len(chunks)
+        if fails:
+            msg = "{} file(s) failed to {}"
+            raise DvcException(
+                msg.format(fails, "download" if download else "upload")
+            )
+
+        return len(chunks[0])
 
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         return self._process(
