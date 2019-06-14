@@ -390,6 +390,7 @@ class RemoteBASE(object):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
         names = self._verify_path_args(to_infos, from_infos, names)
+        fails = 0
 
         with self.transfer_context() as ctx:
             for from_info, to_info, name in zip(from_infos, to_infos, names):
@@ -417,6 +418,7 @@ class RemoteBASE(object):
                         no_progress_bar=no_progress_bar,
                     )
                 except Exception:
+                    fails += 1
                     msg = "failed to upload '{}' to '{}'"
                     logger.exception(msg.format(from_info, to_info))
                     continue
@@ -424,18 +426,21 @@ class RemoteBASE(object):
                 if not no_progress_bar:
                     progress.finish_target(name)
 
+        return fails
+
     def download(
         self,
         from_infos,
         to_infos,
-        no_progress_bar=False,
         names=None,
+        no_progress_bar=False,
         resume=False,
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
 
         names = self._verify_path_args(from_infos, to_infos, names)
+        fails = 0
 
         with self.transfer_context() as ctx:
             for to_info, from_info, name in zip(to_infos, from_infos, names):
@@ -473,6 +478,7 @@ class RemoteBASE(object):
                         no_progress_bar=no_progress_bar,
                     )
                 except Exception:
+                    fails += 1
                     msg = "failed to download '{}' to '{}'"
                     logger.exception(msg.format(from_info, to_info))
                     continue
@@ -481,6 +487,8 @@ class RemoteBASE(object):
 
                 if not no_progress_bar:
                     progress.finish_target(name)
+
+        return fails
 
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
