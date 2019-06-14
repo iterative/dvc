@@ -13,8 +13,7 @@ try:
 except ImportError:
     BlockBlobService = None
 
-from dvc.utils import tmp_fname, move
-from dvc.utils.compat import urlparse, makedirs, fspath_py35
+from dvc.utils.compat import urlparse
 from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
@@ -121,74 +120,18 @@ class RemoteAZURE(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
-
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != self.scheme:
-                raise NotImplementedError
-
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
-            if not name:
-                name = from_info.name
-
-            cb = None if no_progress_bar else Callback(name)
-
-            try:
-                self.blob_service.create_blob_from_path(
-                    to_info.bucket,
-                    to_info.path,
-                    from_info.fspath,
-                    progress_callback=cb,
-                )
-            except Exception:
-                msg = "failed to upload '{}'".format(from_info)
-                logger.warning(msg)
-            else:
-                progress.finish_target(name)
-
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        no_progress_bar=False,
-        names=None,
-        resume=False,
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        cb = None if no_progress_bar else Callback(name)
+        self.blob_service.create_blob_from_path(
+            to_info.bucket, to_info.path, from_file, progress_callback=cb
+        )
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != self.scheme:
-                raise NotImplementedError
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
-
-            tmp_file = tmp_fname(to_info)
-            if not name:
-                name = to_info.name
-
-            cb = None if no_progress_bar else Callback(name)
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-
-            try:
-                self.blob_service.get_blob_to_path(
-                    from_info.bucket,
-                    from_info.path,
-                    tmp_file,
-                    progress_callback=cb,
-                )
-            except Exception:
-                msg = "failed to download '{}'".format(from_info)
-                logger.warning(msg)
-            else:
-                move(tmp_file, to_info.fspath)
-
-                if not no_progress_bar:
-                    progress.finish_target(name)
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        cb = None if no_progress_bar else Callback(name)
+        self.blob_service.get_blob_to_path(
+            from_info.bucket, from_info.path, to_file, progress_callback=cb
+        )

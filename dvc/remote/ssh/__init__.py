@@ -4,8 +4,6 @@ import os
 import getpass
 import logging
 
-from dvc.scheme import Schemes
-
 try:
     import paramiko
 except ImportError:
@@ -16,6 +14,7 @@ from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
+from dvc.scheme import Schemes
 
 
 logger = logging.getLogger(__name__)
@@ -155,12 +154,15 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.isdir(path_info.path)
 
-    def copy(self, from_info, to_info):
+    def copy(self, from_info, to_info, ctx=None):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        with self.ssh(from_info) as ssh:
-            ssh.cp(from_info.path, to_info.path)
+        if ctx:
+            ctx.cp(from_info.path, to_info.path)
+        else:
+            with self.ssh(from_info) as ssh:
+                ssh.cp(from_info.path, to_info.path)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -176,75 +178,36 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(from_info) as ssh:
             ssh.move(from_info.path, to_info.path)
 
-    def download(
+    def transfer_context(self):
+        return self.ssh(self.path_info)
+
+    def _download(
         self,
-        from_infos,
-        to_infos,
+        from_info,
+        to_file,
+        name=None,
+        ctx=None,
         no_progress_bar=False,
-        names=None,
         resume=False,
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
-        ssh = self.ssh(from_infos[0])
+        assert from_info.isin(self.path_info)
+        ctx.download(
+            from_info.path,
+            to_file,
+            progress_title=name,
+            no_progress_bar=no_progress_bar,
+        )
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != self.scheme:
-                raise NotImplementedError
-
-            if to_info.scheme == self.scheme:
-                ssh.cp(from_info.path, to_info.path)
-                continue
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug(
-                "Downloading '{src}' to '{dest}'".format(
-                    src=from_info, dest=to_info
-                )
-            )
-
-            try:
-                ssh.download(
-                    from_info.path,
-                    to_info.fspath,
-                    progress_title=name,
-                    no_progress_bar=no_progress_bar,
-                )
-            except Exception:
-                logger.exception(
-                    "failed to download '{src}' to '{dest}'".format(
-                        src=from_info, dest=to_info
-                    )
-                )
-                continue
-
-        ssh.close()
-
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
-
-        with self.ssh(to_infos[0]) as ssh:
-            for from_info, to_info, name in zip(from_infos, to_infos, names):
-                if to_info.scheme != self.scheme:
-                    raise NotImplementedError
-
-                if from_info.scheme != "local":
-                    raise NotImplementedError
-
-                try:
-                    ssh.upload(
-                        from_info.fspath,
-                        to_info.path,
-                        progress_title=name,
-                        no_progress_bar=no_progress_bar,
-                    )
-                except Exception:
-                    logger.exception(
-                        "failed to upload '{}' to '{}'".format(
-                            from_info, to_info
-                        )
-                    )
+    def _upload(
+        self, from_file, to_info, name=None, ctx=None, no_progress_bar=False
+    ):
+        assert to_info.isin(self.path_info)
+        ctx.upload(
+            from_file,
+            to_info.path,
+            progress_title=name,
+            no_progress_bar=no_progress_bar,
+        )
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:

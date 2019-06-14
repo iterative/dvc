@@ -254,78 +254,26 @@ class RemoteLOCAL(RemoteBASE):
             if not self.changed_cache_file(checksum)
         ]
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
-        names = self._verify_path_args(to_infos, from_infos, names)
-
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            if from_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
-
-            if not name:
-                name = from_info.name
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-            tmp_file = tmp_fname(to_info)
-
-            try:
-                copyfile(
-                    fspath_py35(from_info),
-                    tmp_file,
-                    name=name,
-                    no_progress_bar=no_progress_bar,
-                )
-                os.rename(tmp_file, fspath_py35(to_info))
-            except Exception:
-                logger.exception(
-                    "failed to upload '{}' to '{}'".format(from_info, to_info)
-                )
-
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        no_progress_bar=False,
-        names=None,
-        resume=False,
+    def _upload(
+        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        names = self._verify_path_args(from_infos, to_infos, names)
+        makedirs(fspath_py35(to_info.parent), exist_ok=True)
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != "local":
-                raise NotImplementedError
+        tmp_file = tmp_fname(to_info)
+        copyfile(
+            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
+        )
+        os.rename(tmp_file, fspath_py35(to_info))
 
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
-
-            if not name:
-                name = to_info.name
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-            tmp_file = tmp_fname(to_info)
-            try:
-                copyfile(
-                    fspath_py35(from_info),
-                    tmp_file,
-                    no_progress_bar=no_progress_bar,
-                    name=name,
-                )
-
-                move(tmp_file, fspath_py35(to_info))
-            except Exception:
-                logger.exception(
-                    "failed to download '{}' to '{}'".format(
-                        from_info, to_info
-                    )
-                )
-
-                continue
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+    ):
+        copyfile(
+            fspath_py35(from_info),
+            to_file,
+            no_progress_bar=no_progress_bar,
+            name=name,
+        )
 
     def _group(self, checksum_infos, show_checksums=False):
         by_md5 = {}
