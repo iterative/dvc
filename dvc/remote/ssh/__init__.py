@@ -128,18 +128,17 @@ class RemoteSSH(RemoteBASE):
             password=self.password,
         )
 
-    def exists(self, path_infos):
-        single_path = False
+    def exists(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.exists(path_info.path)
 
-        if not isinstance(path_infos, list):
-            single_path = True
-            path_infos = [path_infos]
+    def batch_exists(self, path_infos, callback):
+        results = []
 
         with self.ssh(path_infos[0]) as ssh:
-            results = [ssh.exists(path_info.path) for path_info in path_infos]
-
-        if single_path and results:
-            return all(results)
+            for path_info in path_infos:
+                results.append(ssh.exists(path_info.path))
+                callback.update(str(path_info))
 
         return results
 

@@ -96,28 +96,23 @@ class RemoteGS(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_infos):
-        single_path = False
+    def exists(self, path_info):
+        paths = set(self._list_paths(path_info.bucket, path_info.path))
+        return any(path_info.path == path for path in paths)
 
-        if not isinstance(path_infos, list):
-            single_path = True
-            path_infos = [path_infos]
-
+    def batch_exists(self, path_infos, callback):
+        paths = []
         gs = self.gs
 
-        paths = itertools.chain.from_iterable(
-            self._list_paths(path_info.bucket, path_info.path, gs)
-            for path_info in path_infos
-        )
+        for path_info in path_infos:
+            paths.append(
+                self._list_paths(path_info.bucket, path_info.path, gs)
+            )
+            callback.update(str(path_info))
 
-        paths = set(paths)
+        paths = set(itertools.chain.from_iterable(paths))
 
-        results = [path_info.path in paths for path_info in path_infos]
-
-        if single_path and results:
-            return all(results)
-
-        return results
+        return [path_info.path in paths for path_info in path_infos]
 
     @contextmanager
     def transfer_context(self):
