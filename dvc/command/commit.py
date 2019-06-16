@@ -44,18 +44,18 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     commit_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Commit even if checksums for dependencies/outputs changed.",
-    )
-    commit_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
         default=False,
         help="Commit all dependencies of the specified target.",
+    )
+    commit_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Commit even if checksums for dependencies/outputs changed.",
     )
     commit_parser.add_argument(
         "-R",
