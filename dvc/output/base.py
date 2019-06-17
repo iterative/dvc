@@ -5,6 +5,7 @@ from copy import copy
 
 from schema import Or, Optional
 
+import dvc.prompt as prompt
 from dvc.exceptions import DvcException
 from dvc.utils.compat import str, urlparse
 from dvc.remote.base import RemoteBASE
@@ -271,8 +272,8 @@ class OutputBase(object):
             "verify metric is not supported for {}".format(self.scheme)
         )
 
-    def download(self, to_info, resume=False):
-        self.remote.download([self.path_info], [to_info], resume=resume)
+    def download(self, to, resume=False):
+        self.remote.download([self.path_info], [to.path_info], resume=resume)
 
     def checkout(self, force=False, progress_callback=None, tag=None):
         if not self.use_cache:
@@ -323,3 +324,96 @@ class OutputBase(object):
     def unprotect(self):
         if self.exists:
             self.remote.unprotect(self.path_info)
+
+    def _collect_used_dir_cache(self, remote=None, force=False, jobs=None):
+        """Get a list of `info`s retaled to the given directory.
+
+        - Pull the directory entry from the remote cache if it was changed.
+
+        Example:
+
+            Given the following commands:
+
+            $ echo "foo" > directory/foo
+            $ echo "bar" > directory/bar
+            $ dvc add directory
+
+            It will return something similar to the following list:
+
+            [
+                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
+                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
+            ]
+        """
+
+        ret = []
+
+        if self.cache.changed_cache_file(self.checksum):
+            try:
+                self.repo.cloud.pull(
+                    [
+                        {
+                            self.remote.PARAM_CHECKSUM: self.checksum,
+                            "name": str(self),
+                        }
+                    ],
+                    jobs=jobs,
+                    remote=remote,
+                    show_checksums=False,
+                )
+            except DvcException:
+                logger.debug("failed to pull cache for '{}'".format(self))
+
+        if self.cache.changed_cache_file(self.checksum):
+            msg = (
+                "Missing cache for directory '{}'. "
+                "Cache for files inside will be lost. "
+                "Would you like to continue? Use '-f' to force."
+            )
+            if not force and not prompt.confirm(msg):
+                raise DvcException(
+                    "unable to fully collect used cache"
+                    " without cache for directory '{}'".format(self)
+                )
+            else:
+                return ret
+
+        for entry in self.dir_cache:
+            info = copy(entry)
+            path_info = self.path_info / entry[self.remote.PARAM_RELPATH]
+            info["name"] = str(path_info)
+            ret.append(info)
+
+        return ret
+
+    def get_used_cache(self, **kwargs):
+        """Get a dumpd of the given `out`, with an entry including the branch.
+
+        The `used_cache` of an output is no more than its `info`.
+
+        In case that the given output is a directory, it will also
+        include the `info` of its files.
+        """
+
+        if self.stage.is_pkg_import:
+            return []
+
+        if not self.use_cache:
+            return []
+
+        if not self.info:
+            logger.warning(
+                "Output '{}'({}) is missing version info. Cache for it will "
+                "not be collected. Use dvc repro to get your pipeline up to "
+                "date.".format(self, self.stage)
+            )
+            return []
+
+        ret = [{self.remote.PARAM_CHECKSUM: self.checksum, "name": str(self)}]
+
+        if not self.is_dir_checksum:
+            return ret
+
+        ret.extend(self._collect_used_dir_cache(**kwargs))
+
+        return ret

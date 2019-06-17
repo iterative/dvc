@@ -2,12 +2,12 @@ from dvc.repo.scm_context import scm_context
 
 
 @scm_context
-def imp(self, url, out, resume=False, fname=None):
+def imp(self, url, out, resume=False, fname=None, pkg=None):
     from dvc.stage import Stage
 
     with self.state:
         stage = Stage.create(
-            repo=self, cmd=None, deps=[url], outs=[out], fname=fname
+            repo=self, cmd=None, deps=[url], outs=[out], fname=fname, pkg=pkg
         )
 
     if stage is None:

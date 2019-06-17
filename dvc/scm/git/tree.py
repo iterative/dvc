@@ -3,6 +3,7 @@ import os
 
 from dvc.ignore import DvcIgnoreFilter
 from dvc.utils.compat import StringIO, BytesIO
+from dvc.exceptions import DvcException
 
 from dvc.scm.tree import BaseTree
 
@@ -76,10 +77,42 @@ class GitTree(BaseTree):
                 return True
         return False
 
+    def _try_fetch_from_remote(self):
+        import git
+
+        try:
+            # checking if tag/branch exists locally
+            self.git.git.show_ref(self.rev, verify=True)
+            return
+        except git.exc.GitCommandError:
+            pass
+
+        try:
+            # checking if it exists on the remote
+            self.git.git.ls_remote("origin", self.rev, exit_code=True)
+            # fetching remote tag/branch so we can reference it locally
+            self.git.git.fetch("origin", "{rev}:{rev}".format(rev=self.rev))
+        except git.exc.GitCommandError:
+            pass
+
     def git_object_by_path(self, path):
+        import git
+
         path = os.path.relpath(os.path.realpath(path), self.git.working_dir)
         assert path.split(os.sep, 1)[0] != ".."
-        tree = self.git.tree(self.rev)
+
+        self._try_fetch_from_remote()
+
+        try:
+            tree = self.git.tree(self.rev)
+        except git.exc.BadName as exc:
+            raise DvcException(
+                "revision '{}' not found in git '{}'".format(
+                    self.rev, os.path.relpath(self.git.working_dir)
+                ),
+                cause=exc,
+            )
+
         if not path or path == ".":
             return tree
         for i in path.split(os.sep):

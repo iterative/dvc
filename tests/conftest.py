@@ -5,10 +5,11 @@ import os
 from git import Repo
 from git.exc import GitCommandNotFound
 
+from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture
+from .basic_env import TestDirFixture, TestDvcFixture
 
 
 # Prevent updater and analytics from running their processes
@@ -132,3 +133,39 @@ def temporary_windows_drive(repo_dir):
     )
     if tear_down_result == 0:
         raise RuntimeError("Could not unmount windows drive!")
+
+
+@pytest.fixture
+def pkg(repo_dir):
+    repo = TestDvcFixture()
+    repo.setUp()
+    try:
+        stage_foo = repo.dvc.add(repo.FOO)[0]
+        stage_bar = repo.dvc.add(repo.BAR)[0]
+        stage_data_dir = repo.dvc.add(repo.DATA_DIR)[0]
+        repo.dvc.scm.add([stage_foo.path, stage_bar.path, stage_data_dir.path])
+        repo.dvc.scm.commit("init pkg")
+
+        rconfig = RemoteConfig(repo.dvc.config)
+        rconfig.add("upstream", repo.dvc.cache.local.cache_dir, default=True)
+        repo.dvc.scm.add([repo.dvc.config.config_file])
+        repo.dvc.scm.commit("add remote")
+
+        repo.create("version", "master")
+        repo.dvc.add("version")
+        repo.dvc.scm.add([".gitignore", "version.dvc"])
+        repo.dvc.scm.commit("master")
+
+        repo.dvc.scm.checkout("branch", create_new=True)
+        os.unlink(os.path.join(repo.root_dir, "version"))
+        repo.create("version", "branch")
+        repo.dvc.add("version")
+        repo.dvc.scm.add([".gitignore", "version.dvc"])
+        repo.dvc.scm.commit("branch")
+
+        repo.dvc.scm.checkout("master")
+
+        repo._popd()
+        yield repo
+    finally:
+        repo.tearDown()

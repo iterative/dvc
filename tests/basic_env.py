@@ -251,19 +251,3 @@ class TestDvc(TestDvcFixture, TestCase):
     @pytest.fixture(autouse=True)
     def inject_fixtures(self, caplog):
         self._caplog = caplog
-
-
-class TestDvcPkg(TestDvcFixture, TestCase):
-    GIT_PKG = "git_pkg"
-    CACHE_DIR = "mycache"
-
-    def __init__(self, methodName, root_dir=None):
-        TestDvcFixture.__init__(self, root_dir)
-        TestCase.__init__(self, methodName)
-
-        self.pkg_dir = os.path.join(self._root_dir, self.GIT_PKG)
-        cache_dir = os.path.join(self._root_dir, self.CACHE_DIR)
-        self.pkg_fixture = TestDvcDataFileFixture(
-            root_dir=self.pkg_dir, cache_dir=cache_dir
-        )
-        self.pkg_fixture.setUp()

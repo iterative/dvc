@@ -8,21 +8,9 @@ def test_status_download_optimization(mocker):
     """
     remote = RemoteLOCAL(None, {})
 
-    checksum_infos = [
-        {
-            "path": "foo",
-            "metric": False,
-            "cache": True,
-            "persist": False,
-            "md5": "acbd18db4cc2f85cedef654fccc4a4d8",
-        },
-        {
-            "path": "bar",
-            "metric": False,
-            "cache": True,
-            "persist": False,
-            "md5": "37b51d194a7513e45b56f6524f2d51f2",
-        },
+    infos = [
+        {"name": "foo", "md5": "acbd18db4cc2f85cedef654fccc4a4d8"},
+        {"name": "bar", "md5": "37b51d194a7513e45b56f6524f2d51f2"},
     ]
 
     local_exists = [
@@ -36,6 +24,6 @@ def test_status_download_optimization(mocker):
     other_remote.url = "other_remote"
     other_remote.cache_exists.return_value = []
 
-    remote.status(checksum_infos, other_remote, download=True)
+    remote.status(infos, other_remote, download=True)
 
     assert other_remote.cache_exists.call_count == 0

@@ -213,6 +213,13 @@ class Stage(object):
         """Whether the stage file was created with `dvc import`."""
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
+    @property
+    def is_pkg_import(self):
+        if not self.is_import:
+            return False
+
+        return isinstance(self.deps[0], dependency.DependencyPKG)
+
     def _changed_deps(self):
         if self.locked:
             return False
@@ -419,6 +426,7 @@ class Stage(object):
         validate_state=True,
         outs_persist=None,
         outs_persist_no_cache=None,
+        pkg=None,
     ):
         if outs is None:
             outs = []
@@ -459,7 +467,7 @@ class Stage(object):
             outs_persist,
             outs_persist_no_cache,
         )
-        stage.deps = dependency.loads_from(stage, deps)
+        stage.deps = dependency.loads_from(stage, deps, pkg=pkg)
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
@@ -795,9 +803,7 @@ class Stage(object):
                 if self._already_cached() and not force:
                     self.outs[0].checkout()
                 else:
-                    self.deps[0].download(
-                        self.outs[0].path_info, resume=resume
-                    )
+                    self.deps[0].download(self.outs[0], resume=resume)
 
         elif self.is_data_source:
             msg = "Verifying data sources in '{}'".format(self.relpath)

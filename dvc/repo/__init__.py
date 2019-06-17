@@ -3,11 +3,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
-import dvc.prompt as prompt
-
 from dvc.config import Config
 from dvc.exceptions import (
-    DvcException,
     NotDvcRepoError,
     OutputNotFoundError,
     TargetNotDirectoryError,
@@ -41,7 +38,7 @@ class Repo(object):
     from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
 
-    def __init__(self, root_dir=None):
+    def __init__(self, root_dir=None, version=None):
         from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
@@ -50,7 +47,8 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
-        from dvc.repo.pkg import Pkg
+
+        from dvc.pkg import PkgManager
 
         root_dir = self.find_root(root_dir)
 
@@ -59,9 +57,13 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
-        self.tree = WorkingTree(self.root_dir)
-
         self.scm = SCM(self.root_dir, repo=self)
+
+        if version:
+            self.tree = self.scm.get_tree(version)
+        else:
+            self.tree = WorkingTree(self.root_dir)
+
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
@@ -78,7 +80,7 @@ class Repo(object):
 
         self.metrics = Metrics(self)
         self.tag = Tag(self)
-        self.pkg = Pkg(self)
+        self.pkg = PkgManager(self)
 
         self._ignore()
 
@@ -127,6 +129,7 @@ class Repo(object):
             self.config.config_local_file,
             updater.updater_file,
             updater.lock.lock_file,
+            self.pkg.pkg_dir,
         ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
@@ -172,100 +175,6 @@ class Repo(object):
             ret.append(G.node[n]["stage"])
 
         return ret
-
-    def _collect_dir_cache(
-        self, out, branch=None, remote=None, force=False, jobs=None
-    ):
-        """Get a list of `info`s retaled to the given directory.
-
-        - Pull the directory entry from the remote cache if it was changed.
-
-        Example:
-
-            Given the following commands:
-
-            $ echo "foo" > directory/foo
-            $ echo "bar" > directory/bar
-            $ dvc add directory
-
-            It will return something similar to the following list:
-
-            [
-                { 'path': 'directory',     'md5': '168fd6761b9c.dir', ... },
-                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
-                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
-            ]
-        """
-        info = out.dumpd()
-        ret = [info]
-        r = out.remote
-        md5 = info[r.PARAM_CHECKSUM]
-
-        if self.cache.local.changed_cache_file(md5):
-            try:
-                self.cloud.pull(
-                    ret, jobs=jobs, remote=remote, show_checksums=False
-                )
-            except DvcException as exc:
-                msg = "Failed to pull cache for '{}': {}"
-                logger.debug(msg.format(out, exc))
-
-        if self.cache.local.changed_cache_file(md5):
-            msg = (
-                "Missing cache for directory '{}'. "
-                "Cache for files inside will be lost. "
-                "Would you like to continue? Use '-f' to force. "
-            )
-            if not force and not prompt.confirm(msg):
-                raise DvcException(
-                    "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(out)
-                )
-            else:
-                return ret
-
-        for i in out.dir_cache:
-            i["branch"] = branch
-            i[r.PARAM_PATH] = os.path.join(
-                info[r.PARAM_PATH], i[r.PARAM_RELPATH]
-            )
-            ret.append(i)
-
-        return ret
-
-    def _collect_used_cache(
-        self, out, branch=None, remote=None, force=False, jobs=None
-    ):
-        """Get a dumpd of the given `out`, with an entry including the branch.
-
-        The `used_cache` of an output is no more than its `info`.
-
-        In case that the given output is a directory, it will also
-        include the `info` of its files.
-        """
-        if not out.use_cache or not out.info:
-            if not out.info:
-                logger.warning(
-                    "Output '{}'({}) is missing version "
-                    "info. Cache for it will not be collected. "
-                    "Use dvc repro to get your pipeline up to "
-                    "date.".format(out, out.stage)
-                )
-            return []
-
-        info = out.dumpd()
-        info["branch"] = branch
-        ret = [info]
-
-        if out.scheme != "local":
-            return ret
-
-        if not out.is_dir_checksum:
-            return ret
-
-        return self._collect_dir_cache(
-            out, branch=branch, remote=remote, force=force, jobs=jobs
-        )
 
     def used_cache(
         self,
@@ -325,14 +234,12 @@ class Repo(object):
 
                 for out in stage.outs:
                     scheme = out.path_info.scheme
+                    used_cache = out.get_used_cache(
+                        remote=remote, force=force, jobs=jobs
+                    )
+
                     cache[scheme].extend(
-                        self._collect_used_cache(
-                            out,
-                            branch=branch,
-                            remote=remote,
-                            force=force,
-                            jobs=jobs,
-                        )
+                        dict(entry, branch=branch) for entry in used_cache
                     )
 
         return cache
@@ -547,7 +454,7 @@ class Repo(object):
             raise ValueError("Can't open a dir")
 
         with self.state:
-            cache_info = self._collect_used_cache(out, remote=remote)
+            cache_info = out.get_used_cache(remote=remote)
             self.cloud.pull(cache_info, remote=remote)
 
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)

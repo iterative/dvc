@@ -290,18 +290,21 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        cache = stage.outs[0].cache_path
-        info = stage.outs[0].dumpd()
-        md5 = info["md5"]
+        out = stage.outs[0]
+        cache = out.cache_path
+        name = str(out)
+        md5 = out.checksum
+        info = {"name": name, out.remote.PARAM_CHECKSUM: md5}
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage_dir = stages[0]
         self.assertTrue(stage_dir is not None)
-
-        cache_dir = stage_dir.outs[0].cache_path
-        info_dir = stage_dir.outs[0].dumpd()
-        md5_dir = info_dir["md5"]
+        out_dir = stage_dir.outs[0]
+        cache_dir = out.cache_path
+        name_dir = str(out)
+        md5_dir = out.checksum
+        info_dir = {"name": name_dir, out_dir.remote.PARAM_CHECKSUM: md5_dir}
 
         with self.cloud.repo.state:
             # Check status
