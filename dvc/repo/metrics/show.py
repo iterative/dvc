@@ -269,9 +269,6 @@ def show(
         if metrics:
             res[branch] = metrics
 
-    if all_tags and not all_branches:
-        res.pop(repo.scm.active_branch())
-
     if not res:
         if path:
             raise BadMetricError(path)

@@ -36,9 +36,9 @@ def brancher(  # noqa: E302
     if all_tags:
         tags = scm.list_tags()
 
-    if branches is None:
+    if branches is None and not (all_tags and not all_branches):
         revs.extend([scm.active_branch()])
-    else:
+    elif branches is not None:
         revs.extend(branches)
 
     if tags is not None:
