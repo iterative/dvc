@@ -42,10 +42,10 @@ class Git(Base):
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.git = git.Repo(root_dir)
+            self.git = git.Repo(self.root_dir)
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
-            raise SCMError(msg.format(root_dir))
+            raise SCMError(msg.format(self.root_dir))
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html

@@ -59,7 +59,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     Raises:
         KeyError: Raises an exception.
     """
-    root_dir = os.path.abspath(root_dir)
+    root_dir = os.path.realpath(root_dir)
     dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
     scm = SCM(root_dir)
     if isinstance(scm, NoSCM) and not no_scm:
