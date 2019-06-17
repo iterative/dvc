@@ -47,6 +47,24 @@ def test_uninstall_corrupted(repo_dir, dvc_repo):
     assert not os.path.exists(mypkg_dir)
 
 
+def test_force_install(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    os.makedirs(mypkg_dir)
+
+    dvc_repo.pkg.install(pkg.root_dir)
+    assert not os.listdir(mypkg_dir)
+
+    dvc_repo.pkg.install(pkg.root_dir, force=True)
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
+
+
 def test_install_version(repo_dir, dvc_repo, pkg):
     name = os.path.basename(pkg.root_dir)
     pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")

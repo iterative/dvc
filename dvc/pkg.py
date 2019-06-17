@@ -58,15 +58,17 @@ class Pkg(object):
     def installed(self):
         return os.path.exists(self.path)
 
-    def install(self, cache_dir=None):
+    def install(self, cache_dir=None, force=False):
         import git
 
         if self.installed:
-            logger.info(
-                "Skipping installing '{}'('{}') as it is already "
-                "installed.".format(self.name, self.url)
-            )
-            return
+            if not force:
+                logger.info(
+                    "Skipping installing '{}'('{}') as it is already "
+                    "installed.".format(self.name, self.url)
+                )
+                return
+            self.uninstall()
 
         git.Repo.clone_from(
             self.url, self.path, depth=1, no_single_branch=True
@@ -113,9 +115,9 @@ class PkgManager(object):
         self.pkg_dir = os.path.join(repo.dvc_dir, self.PKG_DIR)
         self.cache_dir = repo.cache.local.cache_dir
 
-    def install(self, url, **kwargs):
+    def install(self, url, force=False, **kwargs):
         pkg = Pkg(self.pkg_dir, url=url, **kwargs)
-        pkg.install(cache_dir=self.cache_dir)
+        pkg.install(cache_dir=self.cache_dir, force=force)
 
     def uninstall(self, name):
         pkg = Pkg(self.pkg_dir, name=name)
