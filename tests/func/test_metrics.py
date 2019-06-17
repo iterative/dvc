@@ -829,3 +829,26 @@ class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
             in caplog.text
         )
         assert 0 == ret
+
+
+def test_should_not_display_current_branch_on_display_tag(
+    git, dvc_repo, repo_dir
+):
+    def write_metric_code(metric_filename, metric_value):
+        return "with open('{}', 'w') as fobj:\n    fobj.write('{}')".format(
+            metric_filename, metric_value
+        )
+
+    metric_filename = "metric"
+    metric_stage = metric_filename + Stage.STAGE_FILE_SUFFIX
+    code = write_metric_code(metric_filename, 0.5)
+    run_command = 'python -c "{}"'
+
+    dvc_repo.run(cmd=run_command.format(code), metrics=[metric_filename])
+    git.index.add([metric_filename, metric_stage])
+    git.index.commit("first")
+    tag = "v1.0"
+    git.git.tag(tag)
+
+    metrics = dvc_repo.metrics.show(all_tags=True)
+    assert set(metrics.keys()) == {tag}
