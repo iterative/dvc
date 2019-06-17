@@ -5,7 +5,16 @@ from dvc.command.pkg import CmdPkgGet
 
 def test_pkg_install(mocker, dvc_repo):
     args = parse_args(
-        ["pkg", "install", "url", "--version", "version", "--name", "name"]
+        [
+            "pkg",
+            "install",
+            "url",
+            "--version",
+            "version",
+            "--name",
+            "name",
+            "--force",
+        ]
     )
     assert args.func == CmdPkgInstall
 
@@ -14,7 +23,9 @@ def test_pkg_install(mocker, dvc_repo):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("url", version="version", name="name")
+    m.assert_called_once_with(
+        "url", version="version", name="name", force=True
+    )
 
 
 def test_pkg_uninstall(mocker, dvc_repo):

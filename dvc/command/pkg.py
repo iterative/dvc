@@ -15,7 +15,10 @@ class CmdPkgInstall(CmdBase):
     def run(self):
         try:
             self.repo.pkg.install(
-                self.args.url, version=self.args.version, name=self.args.name
+                self.args.url,
+                version=self.args.version,
+                name=self.args.name,
+                force=self.args.force,
             )
             return 0
         except DvcException:
@@ -112,6 +115,13 @@ def add_parser(subparsers, parent_parser):
             "Package alias. If not specified, the name will be determined "
             "from URL."
         ),
+    )
+    pkg_install_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Reinstall package if it is already installed.",
     )
     pkg_install_parser.set_defaults(func=CmdPkgInstall)
 
