@@ -95,6 +95,7 @@ tests_requirements = [
     "flake8-docstrings",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
+    "shortuuid>=0.5.0",
 ]
 
 if (sys.version_info) >= (3, 6):
