@@ -767,14 +767,17 @@ class Stage(object):
         executable = os.getenv("SHELL") if os.name != "nt" else None
         self._warn_if_fish(executable)
 
-        p = subprocess.Popen(
-            self.cmd,
-            cwd=self.wdir,
-            shell=True,
-            env=fix_env(os.environ),
-            executable=executable,
-        )
-        p.communicate()
+        try:
+            p = subprocess.Popen(
+                self.cmd,
+                cwd=self.wdir,
+                shell=True,
+                env=fix_env(os.environ),
+                executable=executable,
+            )
+            p.communicate()
+        except KeyboardInterrupt:
+            p.communicate()
 
         if p.returncode != 0:
             raise StageCmdFailedError(self)
