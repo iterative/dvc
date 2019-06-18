@@ -774,7 +774,11 @@ class Stage(object):
             env=fix_env(os.environ),
             executable=executable,
         )
-        p.communicate()
+
+        try:
+            p.communicate()
+        except KeyboardInterrupt:
+            p.communicate()
 
         if p.returncode != 0:
             raise StageCmdFailedError(self)
