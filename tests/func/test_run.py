@@ -5,7 +5,6 @@ import logging
 import mock
 import shutil
 import filecmp
-import subprocess
 
 from dvc.main import main
 from dvc.output import OutputBase
@@ -322,11 +321,6 @@ class TestCmdRun(TestDvc):
         stage = Stage.load(self.dvc, fname="Dvcfile")
         self.assertEqual(ret, 0)
         self.assertEqual(stage.cmd, 'echo "foo bar"')
-
-    @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt(self, _):
-        ret = main(["run", "mycmd"])
-        self.assertEqual(ret, 252)
 
 
 class TestRunRemoveOuts(TestDvc):
