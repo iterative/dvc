@@ -1,4 +1,5 @@
 import os
+import uuid
 import shutil
 import logging
 
@@ -9,16 +10,37 @@ from dvc.config import Config
 from dvc.cache import CacheConfig
 from dvc.path_info import PathInfo
 from dvc.exceptions import DvcException
-from dvc.utils.compat import urlparse, TemporaryDirectory
+from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)
 
 
-class NotInstalledPkgError(DvcException):
+class PkgError(DvcException):
+    pass
+
+
+class NotInstalledError(PkgError):
     def __init__(self, name):
-        super(NotInstalledPkgError, self).__init__(
+        super(NotInstalledError, self).__init__(
             "Package '{}' is not installed".format(name)
+        )
+
+
+class InstallError(PkgError):
+    def __init__(self, url, path, cause):
+        super(InstallError, self).__init__(
+            "Failed to install pkg '{}' to '{}'".format(url, path), cause=cause
+        )
+
+
+class VersionError(PkgError):
+    def __init__(self, url, version, cause):
+        super(VersionError, self).__init__(
+            "Failed to access version '{}' for package '{}'".format(
+                version, url
+            ),
+            cause=cause,
         )
 
 
@@ -50,7 +72,7 @@ class Pkg(object):
         from dvc.repo import Repo
 
         if not self.installed:
-            raise NotInstalledPkgError(self.name)
+            raise NotInstalledError(self.name)
 
         return Repo(self.path, version=self.version)
 
@@ -58,28 +80,55 @@ class Pkg(object):
     def installed(self):
         return os.path.exists(self.path)
 
-    def install(self, cache_dir=None, force=False):
+    def _install_to(self, tmp_dir, cache_dir):
         import git
 
-        if self.installed:
-            if not force:
-                logger.info(
-                    "Skipping installing '{}'('{}') as it is already "
-                    "installed.".format(self.name, self.url)
-                )
-                return
-            self.uninstall()
-
-        git.Repo.clone_from(
-            self.url, self.path, depth=1, no_single_branch=True
-        )
+        try:
+            git.Repo.clone_from(
+                self.url, tmp_dir, depth=1, no_single_branch=True
+            )
+        except git.exc.GitCommandError as exc:
+            raise InstallError(self.url, tmp_dir, exc)
 
         if self.version:
-            self.repo.scm.checkout(self.version)
+            try:
+                repo = git.Repo(tmp_dir)
+                repo.git.checkout(self.version)
+            except git.exc.GitCommandError as exc:
+                raise VersionError(self.url, self.version, exc)
 
         if cache_dir:
-            cache_config = CacheConfig(self.repo.config)
+            from dvc.repo import Repo
+
+            repo = Repo(tmp_dir)
+            cache_config = CacheConfig(repo.config)
             cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
+
+        if self.installed:
+            self.uninstall()
+
+    def install(self, cache_dir=None, force=False):
+        if self.installed and not force:
+            logger.info(
+                "Skipping installing '{}'('{}') as it is already "
+                "installed.".format(self.name, self.url)
+            )
+            return
+
+        # installing package to a temporary directory until we are sure that
+        # it has been installed correctly.
+        #
+        # Note that tempfile.TemporaryDirectory is using symlinks to tmpfs, so
+        # we won't be able to use move properly.
+        tmp_dir = os.path.join(self.pkg_dir, "." + str(uuid.uuid4()))
+        try:
+            self._install_to(tmp_dir, cache_dir)
+        except PkgError:
+            if os.path.exists(tmp_dir):
+                shutil.rmtree(tmp_dir)
+            raise
+
+        shutil.move(tmp_dir, self.path)
 
     def uninstall(self):
         if not self.installed:
@@ -113,6 +162,9 @@ class PkgManager(object):
     def __init__(self, repo):
         self.repo = repo
         self.pkg_dir = os.path.join(repo.dvc_dir, self.PKG_DIR)
+        if not os.path.exists(self.pkg_dir):
+            os.makedirs(self.pkg_dir)
+
         self.cache_dir = repo.cache.local.cache_dir
 
     def install(self, url, force=False, **kwargs):
@@ -148,9 +200,12 @@ class PkgManager(object):
 
         # Creating a directory right beside the output to make sure that they
         # are on the same filesystem, so we could take the advantage of
-        # reflink and/or hardlink.
+        # reflink and/or hardlink. Not using tempfile.TemporaryDirectory
+        # because it will create a symlink to tmpfs, which defeats the purpose
+        # and won't work with reflink/hardlink.
         dpath = os.path.dirname(os.path.abspath(out))
-        with TemporaryDirectory(dir=dpath, prefix=".") as tmp_dir:
+        tmp_dir = os.path.join(dpath, "." + str(uuid.uuid4()))
+        try:
             pkg = Pkg(tmp_dir, url=url, version=version)
             pkg.install()
             # Try any links possible to avoid data duplication.
@@ -173,3 +228,5 @@ class PkgManager(object):
             output.path_info = PathInfo(os.path.abspath(out))
             with output.repo.state:
                 output.checkout()
+        finally:
+            shutil.rmtree(tmp_dir)
