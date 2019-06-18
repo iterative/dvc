@@ -706,6 +706,7 @@ class TestCachedMetrics(TestDvc):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
+                "working tree": {"metrics.json": ["two"]},
             },
         )
 
@@ -719,6 +720,7 @@ class TestCachedMetrics(TestDvc):
                 "master": {"metrics.json": ["master"]},
                 "one": {"metrics.json": ["one"]},
                 "two": {"metrics.json": ["two"]},
+                "working tree": {"metrics.json": ["two"]},
             },
         )
 
