@@ -18,7 +18,7 @@ import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
@@ -142,7 +142,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         os.mkdir(dir2)
 
         nested_dir = os.path.join(dir2, "nested")
-        out_dir = os.path.relpath(nested_dir, dir1)
+        out_dir = relpath(nested_dir, dir1)
 
         nested_stage = self.dvc.run(
             cwd=dir1,  # b

@@ -4,8 +4,9 @@ from __future__ import unicode_literals
 
 from dvc.utils.compat import str, builtin_str
 
-import os
 import traceback
+
+from dvc.utils import relpath
 
 
 class DvcException(Exception):
@@ -62,7 +63,7 @@ class OutputNotFoundError(DvcException):
     def __init__(self, output):
         super(OutputNotFoundError, self).__init__(
             "unable to find stage file with output '{path}'".format(
-                path=os.path.relpath(output)
+                path=relpath(output)
             )
         )
 
@@ -198,7 +199,7 @@ class BadMetricError(DvcException):
     def __init__(self, path):
         super(BadMetricError, self).__init__(
             "'{}' does not exist, not a metric or is malformed".format(
-                os.path.relpath(path)
+                relpath(path)
             )
         )
 
@@ -213,7 +214,7 @@ class NoMetricsError(DvcException):
 
 class StageFileCorruptedError(DvcException):
     def __init__(self, path, cause=None):
-        path = os.path.relpath(path)
+        path = relpath(path)
         super(StageFileCorruptedError, self).__init__(
             "unable to read stage file: {} "
             "YAML file structure is corrupted".format(path),

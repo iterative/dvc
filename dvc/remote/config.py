@@ -2,6 +2,7 @@ import os
 import logging
 import posixpath
 
+from dvc.utils import relpath
 from dvc.utils.compat import urlparse
 from dvc.config import Config, ConfigError
 
@@ -85,7 +86,7 @@ class RemoteConfig(object):
         """
         if os.path.isabs(path):
             return path
-        return os.path.relpath(path, os.path.dirname(config_file))
+        return relpath(path, os.path.dirname(config_file))
 
     def add(self, name, url, default=False, force=False, level=None):
         from dvc.remote import _get, RemoteLOCAL

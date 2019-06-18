@@ -4,6 +4,7 @@ from unittest import TestCase
 import dvc
 import pytest
 from dvc.system import System
+from dvc.utils import relpath
 from dvc.utils.compat import str
 from dvc.utils.fs import (
     get_mtime_and_size,
@@ -135,3 +136,11 @@ def test_get_parent_dirs_up_to(path1, path2, expected_dirs):
     result = get_parent_dirs_up_to(path1, path2)
 
     assert set(result) == set(expected_dirs)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows specific")
+def test_relpath_windows_different_drives():
+    path1 = os.path.join("A:", os.sep, "some", "path")
+    path2 = os.path.join("B:", os.sep, "other", "path")
+
+    assert relpath(path1, path2) == path1

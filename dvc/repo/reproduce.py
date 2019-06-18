@@ -5,7 +5,7 @@ import logging
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def reproduce(
     elif pipeline or all_pipelines:
         if pipeline:
             stage = Stage.load(self, target)
-            node = os.path.relpath(stage.path, self.root_dir)
+            node = relpath(stage.path, self.root_dir)
             pipelines = [self._get_pipeline(node)]
         else:
             pipelines = self.pipelines()
@@ -115,7 +115,7 @@ def _reproduce(
     stage = Stage.load(self, target)
     G = self.graph()[1]
     stages = nx.get_node_attributes(G, "stage")
-    node = os.path.relpath(stage.path, self.root_dir)
+    node = relpath(stage.path, self.root_dir)
 
     if single_item:
         ret = _reproduce_stage(

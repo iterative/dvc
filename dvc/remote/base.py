@@ -16,7 +16,7 @@ import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
 from dvc.progress import progress, ProgressCallback
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
 from dvc.state import StateBase
 from dvc.path_info import PathInfo, URLInfo
 
@@ -148,7 +148,7 @@ class RemoteBASE(object):
 
             for fname in files:
                 file_info = self.path_cls(root) / fname
-                relpath = file_info.relative_to(path_info)
+                relative_path = file_info.relative_to(path_info)
                 dir_info.append(
                     {
                         # NOTE: this is lossy transformation:
@@ -159,7 +159,7 @@ class RemoteBASE(object):
                         #
                         # Yes, this is a BUG, as long as we permit "/" in
                         # filenames on Windows and "\" on Unix
-                        self.PARAM_RELPATH: relpath.as_posix(),
+                        self.PARAM_RELPATH: relative_path.as_posix(),
                         self.PARAM_CHECKSUM: self.get_file_checksum(file_info),
                     }
                 )
@@ -221,13 +221,13 @@ class RemoteBASE(object):
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
-            logger.error(msg.format(os.path.relpath(path)))
+            logger.error(msg.format(relpath(path)))
             return []
 
         for info in d:
             # NOTE: here is a BUG, see comment to .as_posix() below
-            relpath = self.path_cls.from_posix(info[self.PARAM_RELPATH])
-            info[self.PARAM_RELPATH] = relpath.fspath
+            relative_path = self.path_cls.from_posix(info[self.PARAM_RELPATH])
+            info[self.PARAM_RELPATH] = relative_path.fspath
 
         return d
 
@@ -699,10 +699,10 @@ class RemoteBASE(object):
         logger.debug("Linking directory '{}'.".format(path_info))
 
         for entry in dir_info:
-            relpath = entry[self.PARAM_RELPATH]
+            relative_path = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
-            entry_info = path_info / relpath
+            entry_info = path_info / relative_path
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if self.changed(entry_info, entry_checksum_info):

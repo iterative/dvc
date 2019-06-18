@@ -12,6 +12,7 @@ from dvc.exceptions import (
 from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ class Repo(object):
         if not with_deps:
             return [stage]
 
-        node = os.path.relpath(stage.path, self.root_dir)
+        node = relpath(stage.path, self.root_dir)
         G = self._get_pipeline(node)
 
         ret = []
@@ -324,7 +325,7 @@ class Repo(object):
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
         for stage in stages:
-            node = os.path.relpath(stage.path, self.root_dir)
+            node = relpath(stage.path, self.root_dir)
 
             G.add_node(node, stage=stage)
             G_active.add_node(node, stage=stage)
@@ -339,7 +340,7 @@ class Repo(object):
                         continue
 
                     dep_stage = out.stage
-                    dep_node = os.path.relpath(dep_stage.path, self.root_dir)
+                    dep_node = relpath(dep_stage.path, self.root_dir)
                     G.add_node(dep_node, stage=dep_stage)
                     G.add_edge(node, dep_node)
                     if not stage.locked:

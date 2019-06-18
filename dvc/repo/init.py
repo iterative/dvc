@@ -8,7 +8,7 @@ from dvc.scm import SCM, NoSCM
 from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.utils import boxify
-
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -74,7 +74,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
         if not force:
             raise InitError(
                 "'{repo}' exists. Use '-f' to force.".format(
-                    repo=os.path.relpath(dvc_dir)
+                    repo=relpath(dvc_dir)
                 )
             )
 

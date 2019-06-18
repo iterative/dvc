@@ -83,10 +83,12 @@ class TestDirFixture(object):
             )
 
     @staticmethod
-    def mkdtemp():
+    def mkdtemp(base_directory=None):
         prefix = "dvc-test.{}.".format(os.getpid())
         suffix = ".{}".format(uuid.uuid4())
-        return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
+        return tempfile.mkdtemp(
+            prefix=prefix, suffix=suffix, dir=base_directory
+        )
 
     def setUp(self):
         self._pushd(self._root_dir)

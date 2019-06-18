@@ -16,7 +16,7 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5, LARGE_DIR_SIZE
+from dvc.utils import file_md5, LARGE_DIR_SIZE, relpath
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage
@@ -421,7 +421,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         ret = main(["add", self.FOO])
         assert 0 == ret
 
-        foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+        foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
         # corrupt stage file
         with open(foo_stage, "a+") as file:

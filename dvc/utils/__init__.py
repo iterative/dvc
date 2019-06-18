@@ -2,7 +2,14 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
+from dvc.utils.compat import (
+    str,
+    builtin_str,
+    open,
+    cast_bytes_py2,
+    StringIO,
+    fspath_py35,
+)
 from dvc.utils.compat import fspath
 
 import os
@@ -46,8 +53,8 @@ def file_md5(fname):
         if size >= LARGE_FILE_SIZE:
             bar = True
             msg = "Computing md5 for a large file {}. This is only done once."
-            logger.info(msg.format(os.path.relpath(fname)))
-            name = os.path.relpath(fname)
+            logger.info(msg.format(relpath(fname)))
+            name = relpath(fname)
             total = 0
 
         with open(fname, "rb") as fobj:
@@ -170,7 +177,7 @@ def _chmod(func, p, excinfo):
 
 
 def remove(path):
-    logger.debug("Removing '{}'".format(os.path.relpath(path)))
+    logger.debug("Removing '{}'".format(relpath(path)))
 
     try:
         if os.path.isdir(path):
@@ -369,3 +376,15 @@ def _visual_center(line, width):
     right_padding = spaces - left_padding
 
     return (left_padding * " ") + line + (right_padding * " ")
+
+
+def relpath(path, start=os.curdir):
+    path = fspath_py35(path)
+    start = fspath_py35(os.path.abspath(start))
+
+    # Windows path on different drive than curdir doesn't have relpath
+    if os.name == "nt" and not os.path.commonprefix(
+        [start, os.path.abspath(path)]
+    ):
+        return path
+    return os.path.relpath(path, start)
