@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import os
 import shutil
-import uuid
+import shortuuid
 import tempfile
 import logging
 import warnings
@@ -85,7 +85,7 @@ class TestDirFixture(object):
     @staticmethod
     def mkdtemp(base_directory=None):
         prefix = "dvc-test.{}.".format(os.getpid())
-        suffix = ".{}".format(uuid.uuid4())
+        suffix = ".{}".format(shortuuid.uuid())
         return tempfile.mkdtemp(
             prefix=prefix, suffix=suffix, dir=base_directory
         )

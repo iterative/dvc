@@ -1,8 +1,9 @@
 import os
 import git
+import pytest
 import filecmp
 
-from dvc.pkg import PkgManager
+from dvc.pkg import PkgManager, InstallError, VersionError
 
 from tests.utils import trees_equal
 
@@ -34,6 +35,33 @@ def test_install_and_uninstall(repo_dir, dvc_repo, pkg):
 
     dvc_repo.pkg.uninstall(name)
     assert not os.path.exists(mypkg_dir)
+
+
+def test_failed_install(repo_dir, dvc_repo):
+    with pytest.raises(InstallError):
+        dvc_repo.pkg.install("some-non-existing-url")
+
+
+def test_failed_install_version(repo_dir, dvc_repo, pkg):
+    with pytest.raises(VersionError):
+        dvc_repo.pkg.install(pkg.root_dir, version="non-existing-version")
+
+
+def test_install_atomic(repo_dir, dvc_repo, pkg):
+    name = os.path.basename(pkg.root_dir)
+    pkg_dir = os.path.join(repo_dir.root_dir, ".dvc", "pkg")
+    mypkg_dir = os.path.join(pkg_dir, name)
+
+    dvc_repo.pkg.install(pkg.root_dir)
+
+    with pytest.raises(InstallError):
+        dvc_repo.pkg.install("some-non-existing-url", name=name, force=True)
+
+    assert os.path.exists(pkg_dir)
+    assert os.path.isdir(pkg_dir)
+    assert os.path.exists(mypkg_dir)
+    assert os.path.isdir(mypkg_dir)
+    assert os.path.isdir(os.path.join(mypkg_dir, ".git"))
 
 
 def test_uninstall_corrupted(repo_dir, dvc_repo):
