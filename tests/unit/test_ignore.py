@@ -1,25 +1,19 @@
 import os
 
 import pytest
+from pathspec import PathSpec
+from pathspec.patterns import GitWildMatchPattern
+
 from dvc.ignore import DvcIgnoreFromFile, DvcIgnoreDir, DvcIgnoreFile
 from mock import patch, Mock
 
-from dvc.utils.compat import cast_bytes
 
-
-def read_pattern(p):
-    return cast_bytes(p, "utf-8")
-
-
-def mock_dvcignore(dvcignore_path, negate_patterns, patterns):
-    negate_patterns = [read_pattern(p) for p in negate_patterns]
-    patterns = [read_pattern(p) for p in patterns]
-
+def mock_dvcignore(dvcignore_path, patterns):
     mock_ignore_file_handler = Mock()
     with patch.object(
         mock_ignore_file_handler,
         "read_patterns",
-        return_value=(negate_patterns, patterns),
+        return_value=PathSpec.from_lines(GitWildMatchPattern, patterns),
     ):
         ignore_file = DvcIgnoreFromFile(
             dvcignore_path, mock_ignore_file_handler
@@ -32,14 +26,13 @@ def test_ignore_from_file_should_filter_dirs_and_files():
         os.path.sep, "full", "path", "to", "ignore", "file", ".dvcignore"
     )
 
-    negate_patterns = []
     patterns = ["dir_to_ignore", "file_to_ignore"]
 
     root = os.path.dirname(dvcignore_path)
     dirs = ["dir1", "dir2", "dir_to_ignore"]
     files = ["file1", "file2", "file_to_ignore"]
 
-    ignore = mock_dvcignore(dvcignore_path, negate_patterns, patterns)
+    ignore = mock_dvcignore(dvcignore_path, patterns)
     new_dirs, new_files = ignore(root, dirs, files)
 
     assert {"dir1", "dir2"} == set(new_dirs)
@@ -47,13 +40,12 @@ def test_ignore_from_file_should_filter_dirs_and_files():
 
 
 @pytest.mark.parametrize(
-    "file_to_ignore_relpath, negate_patterns,patterns,  expected_match",
+    "file_to_ignore_relpath, patterns,  expected_match",
     [
-        ("to_ignore", [], ["to_ignore"], True),
-        ("to_ignore.txt", [], ["to_ignore*"], True),
+        ("to_ignore", ["to_ignore"], True),
+        ("to_ignore.txt", ["to_ignore*"], True),
         (
             os.path.join("rel", "p", "p2", "to_ignore"),
-            [],
             ["rel/**/to_ignore"],
             True,
         ),
@@ -67,30 +59,27 @@ def test_ignore_from_file_should_filter_dirs_and_files():
                 "file",
                 "to_ignore",
             ),
-            [],
             ["to_ignore"],
             True,
         ),
-        ("to_ignore.txt", [], ["/*.txt"], True),
+        ("to_ignore.txt", ["/*.txt"], True),
         (
             os.path.join("rel", "path", "path2", "to_ignore"),
-            [],
             ["rel/*/to_ignore"],
             False,
         ),
-        (os.path.join("path", "to_ignore.txt"), [], ["/*.txt"], False),
+        (os.path.join("path", "to_ignore.txt"), ["/*.txt"], False),
         (
             os.path.join("rel", "path", "path2", "dont_ignore"),
-            [],
             ["rel/**/to_ignore"],
             False,
         ),
-        ("dont_ignore.txt", [], ["dont_ignore"], False),
-        ("dont_ignore.txt", ["!dont_ignore.txt"], ["dont*"], False),
+        ("dont_ignore.txt", ["dont_ignore"], False),
+        ("dont_ignore.txt", ["dont*", "!dont_ignore.txt"], False),
     ],
 )
 def test_match_ignore_from_file(
-    file_to_ignore_relpath, negate_patterns, patterns, expected_match
+    file_to_ignore_relpath, patterns, expected_match
 ):
 
     dvcignore_path = os.path.join(
@@ -98,7 +87,7 @@ def test_match_ignore_from_file(
     )
     dvcignore_dirname = os.path.dirname(dvcignore_path)
 
-    ignore_file = mock_dvcignore(dvcignore_path, negate_patterns, patterns)
+    ignore_file = mock_dvcignore(dvcignore_path, patterns)
 
     assert (
         ignore_file.matches(dvcignore_dirname, file_to_ignore_relpath)
