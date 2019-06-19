@@ -100,19 +100,10 @@ class RemoteHTTP(RemoteBASE):
         results = []
 
         for path_info in path_infos:
-            results.append(bool(self._request("HEAD", path_info.url)))
+            results.append(self.exists(path_info))
             callback.update(str(path_info))
 
         return results
-
-    def cache_exists(self, md5s):
-        assert isinstance(md5s, list)
-
-        def func(md5):
-            url = self.checksum_to_path_info(md5).url
-            return bool(self._request("HEAD", url))
-
-        return list(filter(func, md5s))
 
     def _content_length(self, url):
         return self._request("HEAD", url).headers.get("Content-Length")
