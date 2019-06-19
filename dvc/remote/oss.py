@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import os
 import logging
+from contextlib import contextmanager
 
 from dvc.scheme import Schemes
 
@@ -97,9 +98,18 @@ class RemoteOSS(RemoteBASE):
         logger.debug("Removing oss://{}".format(path_info))
         self.oss_service.delete_object(path_info.path)
 
-    def _list_paths(self, prefix):
-        for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
+    @contextmanager
+    def transfer_context(self):
+        yield self.oss_service
+
+    def _list_paths(self, prefix, ctx=None):
+        oss_service = ctx or self.oss_service
+        for blob in oss2.ObjectIterator(oss_service, prefix=prefix):
             yield blob.key
+
+    def exists(self, path_info, **kwargs):
+        paths = self._list_paths(path_info.path, **kwargs)
+        return any(path_info.path == path for path in paths)
 
     def list_cache_paths(self):
         return self._list_paths(self.path_info.path)

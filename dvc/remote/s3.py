@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import os
 import threading
 import logging
-import itertools
 from contextlib import contextmanager
 
 try:
@@ -205,9 +204,9 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_paths(self, bucket, prefix, s3=None):
+    def _list_paths(self, bucket, prefix, ctx=None):
         """ Read config for list object api, paginate through list objects."""
-        s3 = s3 or self.s3
+        s3 = ctx or self.s3
         kwargs = {"Bucket": bucket, "Prefix": prefix}
         if self.list_objects:
             list_objects_api = "list_objects"
@@ -224,22 +223,9 @@ class RemoteS3(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_info):
-        paths = self._list_paths(path_info.bucket, path_info.path)
+    def exists(self, path_info, **kwargs):
+        paths = self._list_paths(path_info.bucket, path_info.path, **kwargs)
         return any(path_info.path == path for path in paths)
-
-    def batch_exists(self, path_infos, callback):
-        paths = []
-        s3 = self.s3
-
-        for path_info in path_infos:
-            paths.append(
-                self._list_paths(path_info.bucket, path_info.path, s3)
-            )
-            callback.update(str(path_info))
-
-        paths = set(itertools.chain.from_iterable(paths))
-        return [path_info.path in paths for path_info in path_infos]
 
     @contextmanager
     def transfer_context(self):

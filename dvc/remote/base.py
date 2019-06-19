@@ -6,7 +6,8 @@ import os
 import json
 import logging
 import tempfile
-import itertools
+import threading
+
 from contextlib import contextmanager
 from operator import itemgetter
 from multiprocessing import cpu_count
@@ -15,10 +16,11 @@ from concurrent.futures import ThreadPoolExecutor
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import DvcException, ConfirmRemoveError
-from dvc.progress import progress, ProgressCallback
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
+from dvc.progress import progress
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath
 from dvc.state import StateBase
 from dvc.path_info import PathInfo, URLInfo
+from dvc.utils.compat import ExitStack
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +64,24 @@ class RemoteActionNotImplemented(DvcException):
 
 class RemoteMissingDepsError(DvcException):
     pass
+
+
+class TransferContextPool(object):
+    def __init__(self, func, stack):
+        self.stack = stack
+        self.func = func
+        self.pool = {}
+
+    def get(self):
+        tid = threading.current_thread().ident
+
+        ctx = self.pool.get(tid)
+        if not ctx:
+            ctx = self.func()
+            self.pool[tid] = ctx
+            self.stack.enter_context(ctx)
+
+        return ctx
 
 
 class RemoteBASE(object):
@@ -385,6 +405,11 @@ class RemoteBASE(object):
     def transfer_context(self):
         yield None
 
+    @contextmanager
+    def transfer_pool_context(self):
+        with ExitStack() as stack:
+            yield TransferContextPool(self.transfer_context, stack)
+
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
@@ -628,22 +653,25 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        progress_callback = ProgressCallback(len(checksums))
+        if not self.no_traverse:
+            return list(set(checksums) & set(self.all()))
 
-        def exists_with_progress(chunks):
-            return self.batch_exists(chunks, callback=progress_callback)
+        with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            with self.transfer_pool_context() as ctx_pool:
 
-        if self.no_traverse and hasattr(self, "batch_exists"):
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, self.JOBS)
-                results = executor.map(exists_with_progress, chunks)
-                in_remote = itertools.chain.from_iterable(results)
-                ret = list(itertools.compress(checksums, in_remote))
-                progress_callback.finish("")
-                return ret
+                def _exists(checksum):
+                    ctx = ctx_pool.get()
+                    path_info = self.checksum_to_path_info(checksum)
+                    if self.exists(path_info, ctx=ctx):
+                        return checksum
+                    return None
 
-        return list(set(checksums) & set(self.all()))
+                futures = executor.map(_exists, checksums)
+
+                name = "Collecting '{}'".format(str(self.path_info))
+                futures = progress(futures, name, len(checksums))
+
+                return list(futures)
 
     def already_cached(self, path_info):
         current = self.get_checksum(path_info)

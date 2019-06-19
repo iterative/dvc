@@ -128,19 +128,9 @@ class RemoteSSH(RemoteBASE):
             password=self.password,
         )
 
-    def exists(self, path_info):
-        with self.ssh(path_info) as ssh:
-            return ssh.exists(path_info.path)
-
-    def batch_exists(self, path_infos, callback):
-        results = []
-
-        with self.ssh(path_infos[0]) as ssh:
-            for path_info in path_infos:
-                results.append(ssh.exists(path_info.path))
-                callback.update(str(path_info))
-
-        return results
+    def exists(self, path_info, ctx=None):
+        ssh = ctx or self.ssh(path_info)
+        return ssh.exists(path_info.path)
 
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:

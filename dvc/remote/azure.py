@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import os
 import re
 import logging
+from contextlib import contextmanager
 
 from dvc.scheme import Schemes
 
@@ -100,8 +101,8 @@ class RemoteAZURE(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.blob_service.delete_blob(path_info.bucket, path_info.path)
 
-    def _list_paths(self, bucket, prefix):
-        blob_service = self.blob_service
+    def _list_paths(self, bucket, prefix, ctx=None):
+        blob_service = ctx or self.blob_service
         next_marker = None
         while True:
             blobs = blob_service.list_blobs(
@@ -116,21 +117,29 @@ class RemoteAZURE(RemoteBASE):
 
             next_marker = blobs.next_marker
 
+    def exists(self, path_info, **kwargs):
+        paths = self._list_paths(path_info.bucket, path_info.path, **kwargs)
+        return any(path_info.path == path for path in paths)
+
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
+    @contextmanager
+    def transfer_context(self):
+        yield self.blob_service
+
     def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
+        self, from_file, to_info, name=None, no_progress_bar=False, ctx=None
     ):
         cb = None if no_progress_bar else Callback(name)
-        self.blob_service.create_blob_from_path(
+        ctx.create_blob_from_path(
             to_info.bucket, to_info.path, from_file, progress_callback=cb
         )
 
     def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
+        self, from_info, to_file, name=None, no_progress_bar=False, ctx=None
     ):
         cb = None if no_progress_bar else Callback(name)
-        self.blob_service.get_blob_to_path(
+        ctx.get_blob_to_path(
             from_info.bucket, from_info.path, to_file, progress_callback=cb
         )

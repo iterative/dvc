@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import logging
-import itertools
 from contextlib import contextmanager
 
 try:
@@ -87,8 +86,8 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix, gs=None):
-        gs = gs or self.gs
+    def _list_paths(self, bucket, prefix, ctx=None):
+        gs = ctx or self.gs
 
         for blob in gs.bucket(bucket).list_blobs(prefix=prefix):
             yield blob.name
@@ -96,23 +95,11 @@ class RemoteGS(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def exists(self, path_info):
-        paths = set(self._list_paths(path_info.bucket, path_info.path))
+    def exists(self, path_info, **kwargs):
+        paths = set(
+            self._list_paths(path_info.bucket, path_info.path, **kwargs)
+        )
         return any(path_info.path == path for path in paths)
-
-    def batch_exists(self, path_infos, callback):
-        paths = []
-        gs = self.gs
-
-        for path_info in path_infos:
-            paths.append(
-                self._list_paths(path_info.bucket, path_info.path, gs)
-            )
-            callback.update(str(path_info))
-
-        paths = set(itertools.chain.from_iterable(paths))
-
-        return [path_info.path in paths for path_info in path_infos]
 
     @contextmanager
     def transfer_context(self):

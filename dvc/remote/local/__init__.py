@@ -249,9 +249,10 @@ class RemoteLOCAL(RemoteBASE):
         move(tmp, outp)
 
     def cache_exists(self, md5s):
+        name = "Collecting '{}'".format(str(self.path_info))
         return [
             checksum
-            for checksum in progress(md5s)
+            for checksum in progress(md5s, name)
             if not self.changed_cache_file(checksum)
         ]
 
@@ -312,7 +313,6 @@ class RemoteLOCAL(RemoteBASE):
         ret = self._group(checksum_infos, show_checksums=show_checksums) or {}
         md5s = list(ret)
 
-        logger.info("Collecting information from local cache...")
         local_exists = self.cache_exists(md5s)
 
         # This is a performance optimization. We can safely assume that,
@@ -322,7 +322,6 @@ class RemoteLOCAL(RemoteBASE):
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
         else:
-            logger.info("Collecting information from remote cache...")
             remote_exists = list(remote.cache_exists(md5s))
 
         self._fill_statuses(ret, local_exists, remote_exists)
