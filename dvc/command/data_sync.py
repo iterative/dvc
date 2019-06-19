@@ -157,18 +157,18 @@ def add_parser(subparsers, _parent_parser):
         help="Fetch cache for all tags.",
     )
     pull_parser.add_argument(
-        "-d",
-        "--with-deps",
-        action="store_true",
-        default=False,
-        help="Fetch cache for all dependencies of the specified target.",
-    )
-    pull_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         default=False,
         help="Do not prompt when removing working directory files.",
+    )
+    pull_parser.add_argument(
+        "-d",
+        "--with-deps",
+        action="store_true",
+        default=False,
+        help="Fetch cache for all dependencies of the specified target.",
     )
     pull_parser.add_argument(
         "-R",
