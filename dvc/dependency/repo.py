@@ -4,25 +4,28 @@ import os
 import copy
 
 from dvc.utils.compat import urlparse
+from dvc.external_repo import ExternalRepo
 
 from .local import DependencyLOCAL
 
 
-class DependencyPKG(DependencyLOCAL):
-    PARAM_PKG = "pkg"
+class DependencyREPO(DependencyLOCAL):
+    PARAM_REPO = "repo"
 
-    def __init__(self, pkg, stage, *args, **kwargs):
-        self.pkg = stage.repo.pkg.get_pkg(**pkg)
+    def __init__(self, erepo, stage, *args, **kwargs):
+        self.erepo = ExternalRepo(stage.repo.dvc_dir, **erepo)
         super(DependencyLOCAL, self).__init__(stage, *args, **kwargs)
 
     def _parse_path(self, remote, path):
+        self.erepo.install(self.repo.cache.local.cache_dir)
+
         out_path = os.path.join(
-            self.pkg.repo.root_dir, urlparse(path).path.lstrip("/")
+            self.erepo.repo.root_dir, urlparse(path).path.lstrip("/")
         )
 
-        out, = self.pkg.repo.find_outs_by_path(out_path)
+        out, = self.erepo.repo.find_outs_by_path(out_path)
         self.info = copy.copy(out.info)
-        self._pkg_stage = copy.copy(out.stage.path)
+        self._erepo_stage = copy.copy(out.stage.path)
         return self.REMOTE.path_cls(out.cache_path)
 
     @property
@@ -31,10 +34,10 @@ class DependencyPKG(DependencyLOCAL):
 
     def dumpd(self):
         ret = super(DependencyLOCAL, self).dumpd()
-        ret[self.PARAM_PKG] = self.pkg.dumpd()
+        ret[self.PARAM_REPO] = self.erepo.dumpd()
         return ret
 
     def download(self, to, resume=False):
-        self.pkg.repo.fetch(self._pkg_stage)
+        self.erepo.repo.fetch(self._erepo_stage)
         to.info = copy.copy(self.info)
         to.checkout()

@@ -13,10 +13,10 @@ from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
 from dvc.dependency.https import DependencyHTTPS
-from .pkg import DependencyPKG
+from .repo import DependencyREPO
 
 from dvc.remote import Remote
-from dvc.pkg import Pkg
+from dvc.external_repo import ExternalRepo
 
 
 DEPS = [
@@ -47,7 +47,7 @@ DEP_MAP = {
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
 del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
-SCHEMA[schema.Optional(DependencyPKG.PARAM_PKG)] = Pkg.SCHEMA
+SCHEMA[schema.Optional(DependencyREPO.PARAM_REPO)] = ExternalRepo.SCHEMA
 
 
 def _get(stage, p, info):
@@ -59,9 +59,9 @@ def _get(stage, p, info):
         remote = Remote(stage.repo, name=parsed.netloc)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
 
-    if info and info.get(DependencyPKG.PARAM_PKG):
-        pkg = info.pop(DependencyPKG.PARAM_PKG)
-        return DependencyPKG(pkg, stage, p, info)
+    if info and info.get(DependencyREPO.PARAM_REPO):
+        repo = info.pop(DependencyREPO.PARAM_REPO)
+        return DependencyREPO(repo, stage, p, info)
 
     for d in DEPS:
         if d.supported(p):
@@ -77,9 +77,9 @@ def loadd_from(stage, d_list):
     return ret
 
 
-def loads_from(stage, s_list, pkg=None):
+def loads_from(stage, s_list, erepo=None):
     ret = []
     for s in s_list:
-        info = {DependencyPKG.PARAM_PKG: pkg} if pkg else {}
+        info = {DependencyREPO.PARAM_REPO: erepo} if erepo else {}
         ret.append(_get(stage, s, info))
     return ret

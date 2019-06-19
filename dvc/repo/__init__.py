@@ -28,6 +28,7 @@ class Repo(object):
     from dvc.repo.move import move
     from dvc.repo.run import run
     from dvc.repo.imp import imp
+    from dvc.repo.imp_url import imp_url
     from dvc.repo.reproduce import reproduce
     from dvc.repo.checkout import checkout
     from dvc.repo.push import push
@@ -38,8 +39,10 @@ class Repo(object):
     from dvc.repo.commit import commit
     from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
+    from dvc.repo.get import get
+    from dvc.repo.get_url import get_url
 
-    def __init__(self, root_dir=None, version=None):
+    def __init__(self, root_dir=None, rev=None):
         from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
@@ -48,8 +51,6 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
-
-        from dvc.pkg import PkgManager
 
         root_dir = self.find_root(root_dir)
 
@@ -60,8 +61,8 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir, repo=self)
 
-        if version:
-            self.tree = self.scm.get_tree(version)
+        if rev:
+            self.tree = self.scm.get_tree(rev)
         else:
             self.tree = WorkingTree(self.root_dir)
 
@@ -81,7 +82,6 @@ class Repo(object):
 
         self.metrics = Metrics(self)
         self.tag = Tag(self)
-        self.pkg = PkgManager(self)
 
         self._ignore()
 
@@ -121,6 +121,7 @@ class Repo(object):
 
     def _ignore(self):
         from dvc.updater import Updater
+        from dvc.external_repo import ExternalRepo
 
         updater = Updater(self.dvc_dir)
 
@@ -130,7 +131,7 @@ class Repo(object):
             self.config.config_local_file,
             updater.updater_file,
             updater.lock.lock_file,
-            self.pkg.pkg_dir,
+            os.path.join(self.dvc_dir, ExternalRepo.REPOS_DIR),
         ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):

@@ -216,11 +216,11 @@ class Stage(object):
         return not self.cmd and len(self.deps) == 1 and len(self.outs) == 1
 
     @property
-    def is_pkg_import(self):
+    def is_repo_import(self):
         if not self.is_import:
             return False
 
-        return isinstance(self.deps[0], dependency.DependencyPKG)
+        return isinstance(self.deps[0], dependency.DependencyREPO)
 
     def _changed_deps(self):
         if self.locked:
@@ -428,7 +428,7 @@ class Stage(object):
         validate_state=True,
         outs_persist=None,
         outs_persist_no_cache=None,
-        pkg=None,
+        erepo=None,
     ):
         if outs is None:
             outs = []
@@ -469,7 +469,7 @@ class Stage(object):
             outs_persist,
             outs_persist_no_cache,
         )
-        stage.deps = dependency.loads_from(stage, deps, pkg=pkg)
+        stage.deps = dependency.loads_from(stage, deps, erepo=erepo)
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()

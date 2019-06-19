@@ -1,23 +1,9 @@
-from dvc.repo.scm_context import scm_context
+from dvc.external_repo import ExternalRepo
 
 
-@scm_context
-def imp(self, url, out, resume=False, fname=None, pkg=None):
-    from dvc.stage import Stage
+def imp(self, url, path, out=None, rev=None):
+    erepo = {ExternalRepo.PARAM_URL: url}
+    if rev is not None:
+        erepo[ExternalRepo.PARAM_VERSION] = rev
 
-    with self.state:
-        stage = Stage.create(
-            repo=self, cmd=None, deps=[url], outs=[out], fname=fname, pkg=pkg
-        )
-
-    if stage is None:
-        return None
-
-    self.check_dag(self.stages() + [stage])
-
-    with self.state:
-        stage.run(resume=resume)
-
-    stage.dump()
-
-    return stage
+    return self.imp_url(path, out=out, erepo=erepo)
