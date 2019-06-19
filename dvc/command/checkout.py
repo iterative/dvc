@@ -31,18 +31,18 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
-        "-d",
-        "--with-deps",
-        action="store_true",
-        default=False,
-        help="Checkout all dependencies of the specified target.",
-    )
-    checkout_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         default=False,
         help="Do not prompt when removing working directory files.",
+    )
+    checkout_parser.add_argument(
+        "-d",
+        "--with-deps",
+        action="store_true",
+        default=False,
+        help="Checkout all dependencies of the specified target.",
     )
     checkout_parser.add_argument(
         "-R",
