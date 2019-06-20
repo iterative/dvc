@@ -1,10 +1,10 @@
 from __future__ import unicode_literals
 
 import os
+from pathspec import PathSpec
+from pathspec.patterns import GitWildMatchPattern
 
-from dulwich.ignore import match_pattern, read_ignore_patterns
 from dvc.utils import relpath
-from dvc.utils.compat import cast_bytes
 from dvc.utils.fs import get_parent_dirs_up_to
 
 
@@ -13,22 +13,11 @@ class DvcIgnoreFileHandler(object):
         self.tree = tree
 
     def read_patterns(self, path):
-        with self.tree.open(path, binary=True) as stream:
-            return self._read_patterns(stream)
+        with self.tree.open(path) as fobj:
+            return PathSpec.from_lines(GitWildMatchPattern, fobj)
 
     def get_repo_root(self):
         return self.tree.tree_root
-
-    def _read_patterns(self, binary_stream):
-        negate_patterns = []
-        patterns = []
-        for pattern in read_ignore_patterns(binary_stream):
-            if pattern.lstrip().startswith(b"!"):
-                negate_patterns.append(pattern)
-            else:
-                patterns.append(pattern)
-
-        return negate_patterns, patterns
 
 
 class DvcIgnore(object):
@@ -42,12 +31,8 @@ class DvcIgnoreFromFile(DvcIgnore):
     def __init__(self, ignore_file_path, ignore_handler):
         self.ignore_file_path = ignore_file_path
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
-        self.patterns = []
-        self.negate_patterns = []
 
-        self.negate_patterns, self.patterns = ignore_handler.read_patterns(
-            ignore_file_path
-        )
+        self.ignore_spec = ignore_handler.read_patterns(ignore_file_path)
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -55,26 +40,13 @@ class DvcIgnoreFromFile(DvcIgnore):
 
         return dirs, files
 
-    def get_match(self, abs_path):
+    def matches(self, dirname, basename):
+        abs_path = os.path.join(dirname, basename)
         relative_path = relpath(abs_path, self.dirname)
         if os.name == "nt":
             relative_path = relative_path.replace("\\", "/")
-        relative_path = cast_bytes(relative_path, "utf-8")
 
-        for pattern in self.patterns:
-            if match_pattern(
-                relative_path, pattern
-            ) and self._no_negate_pattern_matches(relative_path):
-                return (abs_path, pattern, self.ignore_file_path)
-        return None
-
-    def matches(self, dirname, basename):
-        if self.get_match(os.path.join(dirname, basename)):
-            return True
-        return False
-
-    def _no_negate_pattern_matches(self, path):
-        return all([not match_pattern(path, p) for p in self.negate_patterns])
+        return self.ignore_spec.match_file(relative_path)
 
     def __hash__(self):
         return hash(self.ignore_file_path)
