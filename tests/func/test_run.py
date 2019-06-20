@@ -6,6 +6,7 @@ import mock
 import shutil
 import filecmp
 import subprocess
+import signal
 
 from dvc.main import main
 from dvc.output import OutputBase
@@ -323,15 +324,47 @@ class TestCmdRun(TestDvc):
         self.assertEqual(ret, 0)
         self.assertEqual(stage.cmd, 'echo "foo bar"')
 
-    @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt_before_communicate(self, _):
-        ret = main(["run", "mycmd"])
-        self.assertEqual(ret, 252)
-
     @mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
-    def test_keyboard_interrupt_during_communicate(self):
-        ret = main(["run", "python", "code.py"])
+    def test_keyboard_interrupt(self):
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
         self.assertEqual(ret, 1)
+
+    @mock.patch.object(signal, "signal", side_effect=[None, KeyboardInterrupt])
+    def test_keyboard_interrupt_after_second_signal_call(self, _):
+        ret = main(
+            [
+                "run",
+                "-d",
+                self.FOO,
+                "-d",
+                self.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                self.CODE,
+                self.FOO,
+                "out",
+            ]
+        )
+        self.assertEqual(ret, 252)
 
 
 class TestRunRemoveOuts(TestDvc):
