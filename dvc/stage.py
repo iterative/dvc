@@ -7,6 +7,7 @@ import re
 import os
 import subprocess
 import logging
+import signal
 
 from dvc.utils import relpath
 from dvc.utils.compat import pathlib
@@ -767,16 +768,22 @@ class Stage(object):
         executable = os.getenv("SHELL") if os.name != "nt" else None
         self._warn_if_fish(executable)
 
-        p = subprocess.Popen(
-            self.cmd,
-            cwd=self.wdir,
-            shell=True,
-            env=fix_env(os.environ),
-            executable=executable,
-        )
-        p.communicate()
+        old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        p = None
 
-        if p.returncode != 0:
+        try:
+            p = subprocess.Popen(
+                self.cmd,
+                cwd=self.wdir,
+                shell=True,
+                env=fix_env(os.environ),
+                executable=executable,
+            )
+            p.communicate()
+        finally:
+            signal.signal(signal.SIGINT, old_handler)
+
+        if (p is None) or (p.returncode != 0):
             raise StageCmdFailedError(self)
 
     def run(self, dry=False, resume=False, no_commit=False, force=False):
