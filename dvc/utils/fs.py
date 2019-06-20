@@ -7,7 +7,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.system import System
-from dvc.utils import dvc_walk
+from dvc.utils import dvc_walk, dict_md5
 from dvc.utils.compat import str
 
 
@@ -20,15 +20,21 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path):
-    stat = os.stat(path)
-    size = stat.st_size
-    mtime = stat.st_mtime
+def get_mtime_signature_and_size(path, ignore_file_handler=None):
+    base_stat = os.stat(path)
+    size = base_stat.st_size
 
     if os.path.isdir(path):
-        for root, dirs, files in dvc_walk(path):
-            for name in dirs + files:
-                entry = os.path.join(root, name)
+        files_mtimes = {}
+        for root, dirs, files in dvc_walk(
+            str(path), ignore_file_handler=ignore_file_handler
+        ):
+            for dir in dirs:
+                entry = os.path.join(root, dir)
+                size += os.path.getsize(entry)
+
+            for file in files:
+                entry = os.path.join(root, file)
                 try:
                     stat = os.stat(entry)
                 except OSError as exc:
@@ -37,13 +43,22 @@ def get_mtime_and_size(path):
                         raise
                     continue
                 size += stat.st_size
-                entry_mtime = stat.st_mtime
-                if entry_mtime > mtime:
-                    mtime = entry_mtime
+                files_mtimes[entry] = stat.st_mtime
+
+        # Why mtime for dir is actually dict_md5 from {file_path:mtime} pairs?
+        # In case of updating .dvcignore-d file in dir, mtime for directory
+        # would be updated. We don't want to detect that, yet we have to detect
+        # operations that results in dvc tracked directory mtime update and not
+        # file mtime updates (e.g. moving tracked file), hence we need to
+        # combine update mtimes with file_paths
+        mtime_signature = dict_md5(files_mtimes)
+    else:
+        mtime_signature = base_stat.st_mtime
+        mtime_signature = int(nanotime.timestamp(mtime_signature))
 
     # State of files handled by dvc is stored in db as TEXT.
     # We cast results to string for later comparisons with stored values.
-    return str(int(nanotime.timestamp(mtime))), str(size)
+    return str(mtime_signature), str(size)
 
 
 class BasePathNotInCheckedPathException(DvcException):

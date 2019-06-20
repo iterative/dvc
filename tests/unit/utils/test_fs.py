@@ -8,7 +8,7 @@ from dvc.path_info import PathInfo
 from dvc.utils import relpath
 from dvc.utils.compat import str
 from dvc.utils.fs import (
-    get_mtime_and_size,
+    get_mtime_signature_and_size,
     contains_symlink_up_to,
     BasePathNotInCheckedPathException,
     get_parent_dirs_up_to,
@@ -20,8 +20,8 @@ from tests.utils import spy
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        file_time, file_size = get_mtime_and_size(self.DATA)
-        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR)
+        file_time, file_size = get_mtime_signature_and_size(self.DATA)
+        dir_time, dir_size = get_mtime_signature_and_size(self.DATA_DIR)
 
         actual_file_size = os.path.getsize(self.DATA)
         actual_dir_size = (
