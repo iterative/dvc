@@ -7,6 +7,7 @@ import re
 import os
 import subprocess
 import logging
+import signal
 
 from dvc.utils import relpath
 from dvc.utils.compat import pathlib
@@ -775,10 +776,9 @@ class Stage(object):
             executable=executable,
         )
 
-        try:
-            p.communicate()
-        except KeyboardInterrupt:
-            p.communicate()
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+        p.communicate()
+        signal.signal(signal.SIGINT, signal.default_int_handler)
 
         if p.returncode != 0:
             raise StageCmdFailedError(self)

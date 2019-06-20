@@ -324,9 +324,14 @@ class TestCmdRun(TestDvc):
         self.assertEqual(stage.cmd, 'echo "foo bar"')
 
     @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt(self, _):
+    def test_keyboard_interrupt_before_communicate(self, _):
         ret = main(["run", "mycmd"])
         self.assertEqual(ret, 252)
+
+    @mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
+    def test_keyboard_interrupt_during_communicate(self):
+        ret = main(["run", "python", "code.py"])
+        self.assertEqual(ret, 1)
 
 
 class TestRunRemoveOuts(TestDvc):
