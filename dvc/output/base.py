@@ -82,7 +82,7 @@ class OutputBase(object):
         # By resolved path, which contains actual location,
         # should be absolute and don't contain remote:// refs.
         self.stage = stage
-        self.repo = stage.repo
+        self.repo = stage.repo if stage else None
         self.def_path = path
         self.info = info
         self.remote = remote or self.REMOTE(self.repo, {})
@@ -395,7 +395,7 @@ class OutputBase(object):
         include the `info` of its files.
         """
 
-        if self.stage.is_pkg_import:
+        if self.stage.is_repo_import:
             return []
 
         if not self.use_cache:

@@ -893,14 +893,14 @@ class TestReproExternalBase(TestDvc):
 
         self.write(self.bucket, foo_key, self.FOO_CONTENTS)
 
-        import_stage = self.dvc.imp(out_foo_path, "import")
+        import_stage = self.dvc.imp_url(out_foo_path, "import")
 
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.FOO, shallow=False))
         self.assertEqual(self.dvc.status(import_stage.path), {})
         self.check_already_cached(import_stage)
 
-        import_remote_stage = self.dvc.imp(
+        import_remote_stage = self.dvc.imp_url(
             out_foo_path, out_foo_path + "_imported"
         )
         self.assertEqual(self.dvc.status(import_remote_stage.path), {})
@@ -1173,7 +1173,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
         with StaticFileServer():
             import_url = urljoin(self.remote, self.FOO)
             import_output = "imported_file"
-            import_stage = self.dvc.imp(import_url, import_output)
+            import_stage = self.dvc.imp_url(import_url, import_output)
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
@@ -1183,7 +1183,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
         with StaticFileServer(handler="Content-MD5"):
             import_url = urljoin(self.remote, self.FOO)
             import_output = "imported_file"
-            import_stage = self.dvc.imp(import_url, import_output)
+            import_stage = self.dvc.imp_url(import_url, import_output)
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
@@ -1318,7 +1318,7 @@ class TestReproAlreadyCached(TestRepro):
         self.assertNotEqual(run_out.checksum, repro_out.checksum)
 
     def test_force_import(self):
-        ret = main(["import", self.FOO, self.BAR])
+        ret = main(["import-url", self.FOO, self.BAR])
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(

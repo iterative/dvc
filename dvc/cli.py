@@ -9,7 +9,8 @@ import logging
 
 from dvc.command.base import fix_subparsers
 import dvc.command.init as init
-import dvc.command.pkg as pkg
+import dvc.command.get as get
+import dvc.command.get_url as get_url
 import dvc.command.destroy as destroy
 import dvc.command.remove as remove
 import dvc.command.move as move
@@ -20,6 +21,7 @@ import dvc.command.data_sync as data_sync
 import dvc.command.gc as gc
 import dvc.command.add as add
 import dvc.command.imp as imp
+import dvc.command.imp_url as imp_url
 import dvc.command.config as config
 import dvc.command.checkout as checkout
 import dvc.command.remote as remote
@@ -41,7 +43,8 @@ logger = logging.getLogger(__name__)
 
 COMMANDS = [
     init,
-    pkg,
+    get,
+    get_url,
     destroy,
     add,
     remove,
@@ -52,6 +55,7 @@ COMMANDS = [
     data_sync,
     gc,
     imp,
+    imp_url,
     config,
     checkout,
     remote,

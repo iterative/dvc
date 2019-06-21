@@ -62,6 +62,7 @@ install_requires = [
     "psutil==5.6.2",
     "funcy>=1.12",
     "pathspec>=0.5.9",
+    "shortuuid>=0.5.0",
 ]
 
 # Extra dependencies for remote integrations
@@ -95,7 +96,6 @@ tests_requirements = [
     "flake8-docstrings",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
-    "shortuuid>=0.5.0",
 ]
 
 if (sys.version_info) >= (3, 6):

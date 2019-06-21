@@ -138,7 +138,7 @@ def temporary_windows_drive(repo_dir):
 
 
 @pytest.fixture
-def pkg(repo_dir):
+def erepo(repo_dir):
     repo = TestDvcFixture()
     repo.setUp()
     try:
@@ -146,7 +146,7 @@ def pkg(repo_dir):
         stage_bar = repo.dvc.add(repo.BAR)[0]
         stage_data_dir = repo.dvc.add(repo.DATA_DIR)[0]
         repo.dvc.scm.add([stage_foo.path, stage_bar.path, stage_data_dir.path])
-        repo.dvc.scm.commit("init pkg")
+        repo.dvc.scm.commit("init repo")
 
         rconfig = RemoteConfig(repo.dvc.config)
         rconfig.add("upstream", repo.dvc.cache.local.cache_dir, default=True)

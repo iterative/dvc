@@ -154,7 +154,7 @@ class TestExternalRemoteResolution(TestDvc):
 
         assert main(["remote", "add", "tmp", tmp_path]) == 0
         assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
-        assert main(["import", "remote://storage/file", "movie.txt"]) == 0
+        assert main(["import-url", "remote://storage/file", "movie.txt"]) == 0
 
         assert os.path.exists("movie.txt")
 
