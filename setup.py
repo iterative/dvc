@@ -63,6 +63,7 @@ install_requires = [
     "funcy>=1.12",
     "pathspec>=0.5.9",
     "shortuuid>=0.5.0",
+    "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
 
 # Extra dependencies for remote integrations
