@@ -21,26 +21,39 @@ environment:
 
   matrix:
 
-    - PYTHON: "C:\\Python36"
-      PYTHON_VERSION: "3.6.x"
+    - PYTHON: "C:\\Python27"
+      PYTHON_VERSION: "2.7.x"
       PYTHON_ARCH: "32"
       RUBY: C:\Ruby25\bin
 
+    - PYTHON: "C:\\Python37"
+      PYTHON_VERSION: "3.7.x"
+      PYTHON_ARCH: "32"
+      RUBY: C:\Ruby25\bin
+
+matrix:
+    allow_failures:
+        - PYTHON: "C:\\Python37"
+
 install:
+  - cinst wget
+  - cinst awscli
+  - cinst gcloudsdk
+  - cinst gsutil
+  - cinst openssl.light --version 1.1.1
+  - refreshenv
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%RUBY%;%PATH%"
   - git clone -q https://github.com/iterative/oss-emulator.git
   - gem install thor builder
   - ps: cd oss-emulator
   - ps: $OSSProcess = Start-Process -FilePath ruby -ArgumentList "bin\emulator -r store -p 50004" -PassThru -NoNewWindow
   - ps: cd ..
-  - npm install -g azurite
+  # NOTE: azurite 3 on py3 suffers from bug [1], so we are using an older
+  # tried-and-true version instead.
+  #
+  # [1] https://github.com/Azure/Azurite/issues/215
+  - npm install -g azurite@2.7.0 # NOTE azurite 3 is affecte
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
-  - cinst wget
-  - cinst awscli
-  - cinst gcloudsdk
-  - refreshenv
-  - cinst gsutil
-  - cinst openssl.light --version 1.1.1
-  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%RUBY%;%PATH%"
   - python -m pip install -U pip setuptools wheel
   - pip install -e .[all]
   - python setup.py install
@@ -77,3 +90,5 @@ deploy:
     secure: 25c1pNoXWbtTwUkKLcThwcl2A2xG8oXHsPuD73HVbQ7SRy9X6HzkCc2sXzhpfRtF
   on:
     APPVEYOR_REPO_TAG: true
+    PYTHON_VERSION: "3.7.x"
+    PYTHON_ARCH: "32"

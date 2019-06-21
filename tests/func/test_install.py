@@ -15,7 +15,7 @@ class TestInstall(object):
     def _hook(self, name):
         return os.path.join(".git", "hooks", name)
 
-    def test_should_create_hooks(self, dvc_repo):
+    def test_should_create_hooks(self, git, dvc_repo):
         assert main(["install"]) == 0
 
         hooks_with_commands = [
@@ -30,7 +30,7 @@ class TestInstall(object):
             with open(self._hook(fname), "r") as fobj:
                 assert command in fobj.read()
 
-    def test_should_append_hooks_if_file_already_exists(self, dvc_repo):
+    def test_should_append_hooks_if_file_already_exists(self, git, dvc_repo):
         with open(self._hook("post-checkout"), "w") as fobj:
             fobj.write("#!/bin/sh\n" "echo hello\n")
 
@@ -41,7 +41,7 @@ class TestInstall(object):
         with open(self._hook("post-checkout"), "r") as fobj:
             assert fobj.read() == expected_script
 
-    def test_should_be_idempotent(self, dvc_repo):
+    def test_should_be_idempotent(self, git, dvc_repo):
         assert main(["install"]) == 0
         assert main(["install"]) == 0
 
@@ -50,7 +50,7 @@ class TestInstall(object):
         with open(self._hook("post-checkout"), "r") as fobj:
             assert fobj.read() == expected_script
 
-    def test_should_post_checkout_hook_checkout(self, repo_dir, dvc_repo):
+    def test_should_post_checkout_hook_checkout(self, repo_dir, git, dvc_repo):
         assert main(["install"]) == 0
 
         stage_file = repo_dir.FOO + Stage.STAGE_FILE_SUFFIX
@@ -64,7 +64,7 @@ class TestInstall(object):
 
         assert os.path.isfile(repo_dir.FOO)
 
-    def test_should_pre_push_hook_push(self, repo_dir, dvc_repo):
+    def test_should_pre_push_hook_push(self, repo_dir, git, dvc_repo):
         assert main(["install"]) == 0
 
         temp = repo_dir.mkdtemp()

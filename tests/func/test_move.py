@@ -5,7 +5,7 @@ from dvc.exceptions import DvcException, MoveNotDataSourceError
 from dvc.stage import Stage
 from dvc.utils.stage import load_stage_file
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from tests.utils import cd
 
@@ -122,19 +122,17 @@ class TestMoveFileToDirectoryWithoutSpecifiedTargetName(TestDvc):
         self.assertEqual(self.FOO, new_stage["outs"][0]["path"])
 
 
-class TestMoveDirectoryShouldNotOverwriteExisting(TestDvc):
+class TestMoveDirectoryShouldNotOverwriteExisting(TestDvcGit):
     def test(self):
         dir_name = "dir"
         orig_listdir = set(os.listdir(self.DATA_DIR))
 
-        ret = main(["add", self.DATA_DIR])
-        self.assertEqual(ret, 0)
+        self.dvc.add(self.DATA_DIR)
 
         os.mkdir(dir_name)
         new_dir_name = os.path.join(dir_name, self.DATA_DIR)
 
-        ret = main(["move", self.DATA_DIR, dir_name])
-        self.assertEqual(ret, 0)
+        self.dvc.move(self.DATA_DIR, dir_name)
 
         data_dir_stage = self.DATA_DIR + Stage.STAGE_FILE_SUFFIX
         self.assertFalse(os.path.exists(self.DATA_DIR))

@@ -11,10 +11,10 @@ from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.stage import Stage
 from dvc.utils import relpath
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 
 
-class TestMetricsBase(TestDvc):
+class TestMetricsBase(TestDvcGit):
     def setUp(self):
         super(TestMetricsBase, self).setUp()
         self.dvc.scm.commit("init")
@@ -366,7 +366,7 @@ class TestMetrics(TestMetricsBase):
             )
 
 
-class TestMetricsRecursive(TestDvc):
+class TestMetricsRecursive(TestDvcGit):
     def setUp(self):
         super(TestMetricsRecursive, self).setUp()
         self.dvc.scm.commit("init")
@@ -430,7 +430,7 @@ class TestMetricsRecursive(TestDvc):
         )
 
 
-class TestMetricsReproCLI(TestDvc):
+class TestMetricsReproCLI(TestDvcGit):
     def test(self):
         stage = self.dvc.run(
             metrics_no_cache=["metrics"],
@@ -627,7 +627,7 @@ class TestMetricsCLI(TestMetricsBase):
         assert "\tmetric.unknown: unknown" in self._caplog.text
 
 
-class TestNoMetrics(TestDvc):
+class TestNoMetrics(TestDvcGit):
     def test(self):
         with self.assertRaises(NoMetricsError):
             self.dvc.metrics.show()
@@ -637,7 +637,7 @@ class TestNoMetrics(TestDvc):
         self.assertNotEqual(ret, 0)
 
 
-class TestCachedMetrics(TestDvc):
+class TestCachedMetrics(TestDvcGit):
     def _do_add(self, branch):
         self.dvc.scm.checkout(branch)
         self.dvc.checkout(force=True)
@@ -731,7 +731,7 @@ class TestCachedMetrics(TestDvc):
         self._test_metrics(self._do_run)
 
 
-class TestMetricsType(TestDvc):
+class TestMetricsType(TestDvcGit):
     branches = ["foo", "bar", "baz"]
     files = [
         "metric",
@@ -810,7 +810,7 @@ class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
 
         self._commit_metric(dvc, "master")
 
-    def test(self, dvc_repo, caplog):
+    def test(self, git, dvc_repo, caplog):
         self.setUp(dvc_repo)
 
         dvc_repo.scm.checkout(self.BRANCH_MISSING_METRIC)

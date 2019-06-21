@@ -13,7 +13,8 @@ from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from dvc.utils import walk_files, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
-from tests.basic_env import TestDvc
+from dvc.utils.compat import is_py2
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
@@ -113,7 +114,7 @@ class TestCmdCheckout(TestCheckout):
         self._test_checkout()
 
 
-class CheckoutBase(TestDvc):
+class CheckoutBase(TestDvcGit):
     GIT_IGNORE = ".gitignore"
 
     def commit_data_file(self, fname, content="random text"):
@@ -538,7 +539,7 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        if os.name == "nt":
+        if os.name == "nt" and is_py2:
             from jaraco.windows.filesystem import readlink
         else:
             readlink = os.readlink

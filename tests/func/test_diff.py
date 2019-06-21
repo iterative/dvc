@@ -10,7 +10,7 @@ import dvc.repo.diff as diff
 from dvc.command.diff import CmdDiff
 
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 
 
 def _get_checksum(repo, file_name):
@@ -20,7 +20,7 @@ def _get_checksum(repo, file_name):
             return out.checksum
 
 
-class TestDiff(TestDvc):
+class TestDiff(TestDvcGit):
     def setUp(self):
         super(TestDiff, self).setUp()
 
@@ -88,7 +88,7 @@ class TestDiffCmdMessage(TestDiff):
         self.assertEqual(test_msg, msg)
 
 
-class TestDiffDir(TestDvc):
+class TestDiffDir(TestDvcGit):
     def setUp(self):
         super(TestDiffDir, self).setUp()
 

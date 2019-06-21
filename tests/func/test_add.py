@@ -24,7 +24,7 @@ from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.utils import spy, get_gitignore_content
 
 
@@ -129,7 +129,7 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
-class TestAddTrackedFile(TestDvc):
+class TestAddTrackedFile(TestDvcGit):
     def test(self):
         fname = "tracked_file"
         self.create(fname, "tracked file contents")
@@ -266,7 +266,7 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
-            ret = main(["run", "-d", self.FOO, "cat {}".format(self.FOO)])
+            ret = main(["run", "-d", self.FOO, "echo foo"])
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
@@ -297,7 +297,7 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
             self.assertEqual(file_md5_counter.mock.call_count, 3)
 
             ret = main(
-                ["run", "-d", self.DATA_DIR, "ls {}".format(self.DATA_DIR)]
+                ["run", "-d", self.DATA_DIR, "dir {}".format(self.DATA_DIR)]
             )
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
@@ -468,7 +468,7 @@ class TestAddFilename(TestDvc):
         self.assertFalse(os.path.exists("foo.dvc"))
 
 
-class TestShouldCleanUpAfterFailedAdd(TestDvc):
+class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
     def test(self):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)

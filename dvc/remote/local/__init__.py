@@ -8,7 +8,7 @@ from dvc.utils.compat import str, makedirs, fspath_py35
 
 import os
 import stat
-import uuid
+from shortuuid import uuid
 import shutil
 import logging
 
@@ -244,7 +244,7 @@ class RemoteLOCAL(RemoteBASE):
         # moving in two stages to make the whole operation atomic in
         # case inp and outp are in different filesystems and actual
         # physical copying of data is happening
-        tmp = "{}.{}".format(outp, str(uuid.uuid4()))
+        tmp = "{}.{}".format(outp, str(uuid()))
         move(inp, tmp)
         move(tmp, outp)
 
@@ -458,7 +458,7 @@ class RemoteLOCAL(RemoteBASE):
     def _unprotect_file(path):
         if System.is_symlink(path) or System.is_hardlink(path):
             logger.debug("Unprotecting '{}'".format(path))
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid.uuid4()))
+            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
 
             # The operations order is important here - if some application
             # would access the file during the process of copyfile then it

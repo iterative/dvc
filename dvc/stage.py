@@ -8,6 +8,7 @@ import os
 import subprocess
 import logging
 import signal
+import threading
 
 from dvc.utils import relpath
 from dvc.utils.compat import pathlib
@@ -771,7 +772,12 @@ class Stage(object):
         executable = os.getenv("SHELL") if os.name != "nt" else None
         self._warn_if_fish(executable)
 
-        old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        main_thread = isinstance(
+            threading.current_thread(), threading._MainThread
+        )
+        if main_thread:
+            old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
         p = None
 
         try:
@@ -781,10 +787,12 @@ class Stage(object):
                 shell=True,
                 env=fix_env(os.environ),
                 executable=executable,
+                close_fds=True,
             )
             p.communicate()
         finally:
-            signal.signal(signal.SIGINT, old_handler)
+            if main_thread:
+                signal.signal(signal.SIGINT, old_handler)
 
         if (p is None) or (p.returncode != 0):
             raise StageCmdFailedError(self)

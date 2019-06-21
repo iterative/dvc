@@ -1,12 +1,12 @@
 from dvc.main import main
 from dvc.stage import Stage
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
 
 
-class TestCollect(TestDvc):
+class TestCollect(TestDvcGit):
     def setUp(self):
         super(TestCollect, self).setUp()
         self.dvc.add(self.FOO)
@@ -46,7 +46,7 @@ class TestCollect(TestDvc):
         self.assertEqual([str(i) for i in result[0].deps], ["bar"])
 
 
-class TestIgnore(TestDvc):
+class TestIgnore(TestDvcGit):
     def _stage_name(self, file):
         return file + Stage.STAGE_FILE_SUFFIX
 

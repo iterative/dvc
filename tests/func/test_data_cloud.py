@@ -183,7 +183,7 @@ def get_ssh_url_mocked(user, port):
         #
         # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
         drive, path = os.path.splitdrive(path)
-        assert drive == "c:"
+        assert drive.lower() == "c:"
         path = path.replace("\\", "/")
     url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
     return url

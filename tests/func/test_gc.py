@@ -6,11 +6,11 @@ from git import Repo
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 from tests.basic_env import TestDir
 
 
-class TestGC(TestDvc):
+class TestGC(TestDvcGit):
     def setUp(self):
         super(TestGC, self).setUp()
 
@@ -44,7 +44,7 @@ class TestGC(TestDvc):
             self.assertTrue(os.path.exists(c))
 
 
-class TestGCBranchesTags(TestDvc):
+class TestGCBranchesTags(TestDvcGit):
     def _check_cache(self, num):
         total = 0
         for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
@@ -104,7 +104,7 @@ class TestGCBranchesTags(TestDvc):
         self._check_cache(1)
 
 
-class TestGCMultipleDvcRepos(TestDvc):
+class TestGCMultipleDvcRepos(TestDvcGit):
     def _check_cache(self, num):
         total = 0
         for root, dirs, files in os.walk(os.path.join(".dvc", "cache")):
