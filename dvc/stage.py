@@ -296,8 +296,11 @@ class Stage(object):
         for out in self.outs:
             out.unprotect()
 
-    def remove(self, force=False):
-        self.remove_outs(ignore_remove=True, force=force)
+    def remove(self, force=False, remove_outs=True):
+        if remove_outs:
+            self.remove_outs(ignore_remove=True, force=force)
+        else:
+            self.unprotect_outs()
         os.unlink(self.path)
 
     def reproduce(
