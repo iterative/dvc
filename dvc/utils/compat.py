@@ -4,6 +4,7 @@ from __future__ import absolute_import
 import sys
 import os
 import errno
+from contextlib import contextmanager
 
 # Syntax sugar.
 _ver = sys.version_info
@@ -87,6 +88,15 @@ def _makedirs(name, mode=0o777, exist_ok=False):
         os.mkdir(name, mode)
     except OSError:
         if not exist_ok or not os.path.isdir(name):
+            raise
+
+
+@contextmanager
+def ignore_file_not_found():
+    try:
+        yield
+    except IOError as exc:
+        if exc.errno != errno.ENOENT:
             raise
 
 

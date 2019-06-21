@@ -3,6 +3,9 @@ from __future__ import unicode_literals
 import os
 import getpass
 import logging
+import itertools
+import errno
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     import paramiko
@@ -12,6 +15,7 @@ except ImportError:
 import dvc.prompt as prompt
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
+from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
@@ -24,7 +28,7 @@ class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": paramiko}
 
-    JOBS = 4
+    JOBS = 8
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800
@@ -133,14 +137,32 @@ class RemoteSSH(RemoteBASE):
             return ssh.exists(path_info.path)
 
     def batch_exists(self, path_infos, callback):
-        results = []
+        def _exists(chunk_and_channel):
+            chunk, channel = chunk_and_channel
+            ret = []
+            for path in chunk:
+                try:
+                    channel.stat(path)
+                    ret.append(True)
+                except IOError as exc:
+                    if exc.errno != errno.ENOENT:
+                        raise
+                    ret.append(False)
+                callback.update(path)
+            return ret
 
         with self.ssh(path_infos[0]) as ssh:
-            for path_info in path_infos:
-                results.append(ssh.exists(path_info.path))
-                callback.update(str(path_info))
+            with ssh.open_max_sftp_channels() as channels:
+                max_workers = len(channels)
 
-        return results
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    paths = [path_info.path for path_info in path_infos]
+                    chunks = to_chunks(paths, max_workers)
+                    chunks_and_channels = zip(chunks, channels)
+                    outcome = executor.map(_exists, chunks_and_channels)
+                    results = list(itertools.chain.from_iterable(outcome))
+
+            return results
 
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:

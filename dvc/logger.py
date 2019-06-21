@@ -176,7 +176,11 @@ def setup(level=logging.INFO):
                 "dvc": {
                     "level": level,
                     "handlers": ["console", "console_errors"],
-                }
+                },
+                "paramiko": {
+                    "level": logging.CRITICAL,
+                    "handlers": ["console", "console_errors"],
+                },
             },
         }
     )

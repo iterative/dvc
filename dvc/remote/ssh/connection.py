@@ -1,8 +1,8 @@
-import errno
 import os
 import posixpath
 import logging
-from stat import S_ISDIR
+import stat
+from contextlib import contextmanager
 
 try:
     import paramiko
@@ -10,6 +10,7 @@ except ImportError:
     paramiko = None
 
 from dvc.utils import tmp_fname
+from dvc.utils.compat import ignore_file_not_found
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
@@ -72,40 +73,25 @@ class SSHConnection:
 
         self._ssh.close()
 
-    def exists(self, path):
+    def st_mode(self, path):
         self._sftp_connect()
-        try:
-            return self._sftp.stat(path)
-        except IOError:
-            return False
-        pass
+
+        with ignore_file_not_found():
+            return self._sftp.stat(path).st_mode
+
+        return 0
+
+    def exists(self, path, sftp=None):
+        return bool(self.st_mode(path))
 
     def isdir(self, path):
-        from stat import S_ISDIR
-
-        self._sftp_connect()
-        try:
-            return S_ISDIR(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISDIR(self.st_mode(path))
 
     def isfile(self, path):
-        from stat import S_ISREG
-
-        self._sftp_connect()
-        try:
-            return S_ISREG(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISREG(self.st_mode(path))
 
     def islink(self, path):
-        from stat import S_ISLNK
-
-        self._sftp_connect()
-        try:
-            return S_ISLNK(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISLNK(self.st_mode(path))
 
     def makedirs(self, path):
         self._sftp_connect()
@@ -148,7 +134,7 @@ class SSHConnection:
         nondirs = []
         for entry in dir_entries:
             name = entry.filename
-            if S_ISDIR(entry.st_mode):
+            if stat.S_ISDIR(entry.st_mode):
                 dirs.append(name)
             else:
                 nondirs.append(name)
@@ -170,11 +156,8 @@ class SSHConnection:
                 yield posixpath.join(root, fname)
 
     def _remove_file(self, path):
-        try:
+        with ignore_file_not_found():
             self._sftp.remove(path)
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
 
     def _remove_dir(self, path):
         for root, dirs, files in self.walk(path, topdown=False):
@@ -185,11 +168,9 @@ class SSHConnection:
             for dname in dirs:
                 path = posixpath.join(root, dname)
                 self._sftp.rmdir(dname)
-        try:
+
+        with ignore_file_not_found():
             self._sftp.rmdir(path)
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
 
     def remove(self, path):
         self._sftp_connect()
@@ -311,3 +292,19 @@ class SSHConnection:
     def cp(self, src, dest):
         self.makedirs(posixpath.dirname(dest))
         self.execute("cp {} {}".format(src, dest))
+
+    @contextmanager
+    def open_max_sftp_channels(self):
+        try:
+            channels = []
+            while True:
+                try:
+                    channels.append(self._ssh.open_sftp())
+                except paramiko.ssh_exception.ChannelException:
+                    if not channels:
+                        raise
+                    break
+            yield channels
+        finally:
+            for channel in channels:
+                channel.close()
