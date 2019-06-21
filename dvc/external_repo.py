@@ -11,7 +11,7 @@ from schema import Optional
 from dvc.config import Config
 from dvc.cache import CacheConfig
 from dvc.exceptions import DvcException
-from dvc.utils.compat import makedirs
+from dvc.utils.compat import makedirs, str
 
 
 logger = logging.getLogger(__name__)
