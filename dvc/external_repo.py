@@ -1,8 +1,9 @@
+from __future__ import unicode_literals
+
 import os
-import uuid
-import errno
 import shutil
 import logging
+import shortuuid
 
 from funcy import cached_property
 from schema import Optional
@@ -10,6 +11,7 @@ from schema import Optional
 from dvc.config import Config
 from dvc.cache import CacheConfig
 from dvc.exceptions import DvcException
+from dvc.utils.compat import makedirs
 
 
 logger = logging.getLogger(__name__)
@@ -98,9 +100,6 @@ class ExternalRepo(object):
             cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
             repo.scm.git.close()
 
-        if self.installed:
-            self.uninstall()
-
     def install(self, cache_dir=None, force=False):
         if self.installed and not force:
             logger.info(
@@ -109,24 +108,23 @@ class ExternalRepo(object):
             )
             return
 
-        try:
-            os.makedirs(self.repos_dir)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
+        makedirs(self.repos_dir, exist_ok=True)
 
         # installing package to a temporary directory until we are sure that
         # it has been installed correctly.
         #
-        # Note that tempfile.TemporaryDirectory is using symlinks to tmpfs, so
-        # we won't be able to use move properly.
-        tmp_dir = os.path.join(self.repos_dir, "." + str(uuid.uuid4()))
+        # Note that we can't use tempfile.TemporaryDirectory is using symlinks
+        # to tmpfs, so we won't be able to use move properly.
+        tmp_dir = os.path.join(self.repos_dir, "." + str(shortuuid.uuid()))
         try:
             self._install_to(tmp_dir, cache_dir)
         except ExternalRepoError:
             if os.path.exists(tmp_dir):
                 shutil.rmtree(tmp_dir)
             raise
+
+        if self.installed:
+            self.uninstall()
 
         shutil.move(tmp_dir, self.path)
 
