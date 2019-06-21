@@ -31,7 +31,9 @@ class CmdImportUrl(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    IMPORT_HELP = "Download or copy files from URL and take under DVC control."
+    IMPORT_HELP = (
+        "Download or copy file from URL and take it under DVC control."
+    )
 
     import_parser = subparsers.add_parser(
         "import-url",

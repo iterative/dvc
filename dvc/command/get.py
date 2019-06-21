@@ -31,7 +31,7 @@ class CmdGet(CmdBaseNoRepo):
 
 
 def add_parser(subparsers, parent_parser):
-    GET_HELP = "Download or copy files from URL."
+    GET_HELP = "Download data from DVC repository."
     get_parser = subparsers.add_parser(
         "get",
         parents=[parent_parser],
