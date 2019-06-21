@@ -1,21 +1,28 @@
 import os
 
-from dvc.main import main
-
-from tests.func.test_repro import TestRepro
+from dvc.system import System
 
 
-class TestDestroyNoConfirmation(TestRepro):
-    def test(self):
-        ret = main(["destroy"])
-        self.assertNotEqual(ret, 0)
+def test_destroy(repo_dir, dvc_repo):
+    # NOTE: using symlink to ensure that data was unprotected after `destroy`
+    dvc_repo.config.set("cache", "type", "symlink")
 
+    foo_stage, = dvc_repo.add(repo_dir.FOO)
+    data_dir_stage, = dvc_repo.add(repo_dir.DATA_DIR)
 
-class TestDestroyForce(TestRepro):
-    def test(self):
-        ret = main(["destroy", "-f"])
-        self.assertEqual(ret, 0)
+    dvc_repo.destroy()
 
-        self.assertFalse(os.path.exists(self.dvc.dvc_dir))
-        self.assertFalse(os.path.exists(self.file1_stage))
-        self.assertFalse(os.path.exists(self.file1))
+    assert not os.path.exists(dvc_repo.dvc_dir)
+    assert not os.path.exists(foo_stage.path)
+    assert not os.path.exists(data_dir_stage.path)
+
+    assert os.path.isfile(repo_dir.FOO)
+    assert os.path.isdir(repo_dir.DATA_DIR)
+    assert os.path.isfile(repo_dir.DATA)
+    assert os.path.isdir(repo_dir.DATA_SUB_DIR)
+    assert os.path.isfile(repo_dir.DATA_SUB)
+
+    assert not System.is_symlink(repo_dir.FOO)
+    assert not System.is_symlink(repo_dir.DATA_DIR)
+    assert not System.is_symlink(repo_dir.DATA)
+    assert not System.is_symlink(repo_dir.DATA_SUB)
