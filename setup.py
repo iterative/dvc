@@ -71,7 +71,7 @@ gs = ["google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.0.1"]
 oss = ["oss2==2.6.1"]
-ssh = ["paramiko>=2.4.1"]
+ssh = ["paramiko>=2.5.0"]
 all_remotes = gs + s3 + azure + ssh + oss
 
 # Extra dependecies to run tests
