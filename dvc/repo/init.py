@@ -1,5 +1,4 @@
 import os
-import shutil
 import colorama
 import logging
 
@@ -7,8 +6,7 @@ from dvc.repo import Repo
 from dvc.scm import SCM, NoSCM
 from dvc.config import Config
 from dvc.exceptions import InitError
-from dvc.utils import boxify
-from dvc.utils import relpath
+from dvc.utils import boxify, relpath, remove
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +76,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
                 )
             )
 
-        shutil.rmtree(dvc_dir)
+        remove(dvc_dir)
 
     os.mkdir(dvc_dir)
 
