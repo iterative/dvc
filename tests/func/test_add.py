@@ -296,8 +296,9 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
 
+            ls = "dir" if os.name == "nt" else "ls"
             ret = main(
-                ["run", "-d", self.DATA_DIR, "dir {}".format(self.DATA_DIR)]
+                ["run", "-d", self.DATA_DIR, "{} {}".format(ls, self.DATA_DIR)]
             )
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)

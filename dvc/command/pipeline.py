@@ -29,6 +29,8 @@ class CmdPipelineShow(CmdBase):
 
         for n in nodes:
             if commands:
+                if stages[n].cmd is None:
+                    continue
                 logger.info(stages[n].cmd)
             elif outs:
                 for out in stages[n].outs:

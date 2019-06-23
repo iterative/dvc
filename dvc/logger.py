@@ -10,6 +10,12 @@ import logging.config
 import colorama
 
 
+class LoggingException(Exception):
+    def __init__(self, record):
+        msg = "failed to log {}".format(str(record))
+        super(LoggingException, self).__init__(msg)
+
+
 class ExcludeErrorsFilter(logging.Filter):
     def filter(self, record):
         return record.levelno < logging.ERROR
@@ -149,6 +155,12 @@ class ColorFormatter(logging.Formatter):
         progress.clearln()
 
 
+class LoggerHandler(logging.StreamHandler):
+    def handleError(self, record):
+        super(LoggerHandler, self).handleError(record)
+        raise LoggingException(record)
+
+
 def setup(level=logging.INFO):
     colorama.init()
 
@@ -159,14 +171,14 @@ def setup(level=logging.INFO):
             "formatters": {"color": {"()": ColorFormatter}},
             "handlers": {
                 "console": {
-                    "class": "logging.StreamHandler",
+                    "class": "dvc.logger.LoggerHandler",
                     "level": "DEBUG",
                     "formatter": "color",
                     "stream": "ext://sys.stdout",
                     "filters": ["exclude_errors"],
                 },
                 "console_errors": {
-                    "class": "logging.StreamHandler",
+                    "class": "dvc.logger.LoggerHandler",
                     "level": "ERROR",
                     "formatter": "color",
                     "stream": "ext://sys.stderr",
