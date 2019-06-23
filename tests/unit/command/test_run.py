@@ -1,63 +1,112 @@
-import mock
-
-from unittest import TestCase
-
-from dvc.main import main
+from dvc.cli import parse_args
+from dvc.command.run import CmdRun
 
 
-class TestCli(TestCase):
-    @mock.patch("dvc.main.Analytics", autospec=True)
-    @mock.patch("dvc.cli.run.CmdRun", autospec=True)
-    def test_file_name(self, cmd_mock, _):
-        cmd_mock.return_value.run_cmd.return_value = 0
-        ret = main(["run", "-f", "test/out.dvc", "echo"])
-        self.assertEqual(ret, 0)
-        cmd_mock.assert_called_once()
-        args, kwargs = cmd_mock.call_args_list[0]
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertEqual(args[0].file, "test/out.dvc")
-        self.assertSequenceEqual(args[0].command, ["echo"])
-        cmd_mock.return_value.run_cmd.assert_called_once()
+def test_run(mocker, dvc_repo):
+    cli_args = parse_args(
+        [
+            "run",
+            "--deps",
+            "deps",
+            "--outs",
+            "outs",
+            "--outs-no-cache",
+            "outs-no-cache",
+            "--metrics",
+            "metrics",
+            "--metrics-no-cache",
+            "metrics-no-cache",
+            "--file",
+            "file",
+            "--cwd",
+            "cwd",
+            "--wdir",
+            "wdir",
+            "--no-exec",
+            "--yes",
+            "--overwrite-dvcfile",
+            "--ignore-build-cache",
+            "--remove-outs",
+            "--no-commit",
+            "--outs-persist",
+            "outs-persist",
+            "--outs-persist-no-cache",
+            "outs-persist-no-cache",
+            "command",
+        ]
+    )
+    assert cli_args.func == CmdRun
 
-    @mock.patch("dvc.main.Analytics", autospec=True)
-    @mock.patch("dvc.cli.run.CmdRun", autospec=True)
-    def test_file_name_default(self, cmd_mock, _):
-        cmd_mock.return_value.run_cmd.return_value = 0
-        ret = main(["run", "-d", "foo", "echo"])
-        self.assertEqual(ret, 0)
-        cmd_mock.assert_called_once()
-        args, kwargs = cmd_mock.call_args_list[0]
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertIsNone(args[0].file)
-        self.assertSequenceEqual(args[0].command, ["echo"])
-        cmd_mock.return_value.run_cmd.assert_called_once()
+    cmd = cli_args.func(cli_args)
+    m = mocker.patch.object(cmd.repo, "run", autospec=True)
 
-    @mock.patch("dvc.main.Analytics", autospec=True)
-    @mock.patch("dvc.cli.run.CmdRun", autospec=True)
-    def test_wdir(self, cmd_mock, _):
-        cmd_mock.return_value.run_cmd.return_value = 0
-        ret = main(["run", "--wdir", "test/", "echo"])
-        self.assertEqual(ret, 0)
-        cmd_mock.assert_called_once()
-        args, kwargs = cmd_mock.call_args_list[0]
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertEqual(args[0].wdir, "test/")
-        self.assertSequenceEqual(args[0].command, ["echo"])
-        cmd_mock.return_value.run_cmd.assert_called_once()
+    assert cmd.run() == 0
 
-    @mock.patch("dvc.main.Analytics", autospec=True)
-    @mock.patch("dvc.cli.run.CmdRun", autospec=True)
-    def test_wdir_default(self, cmd_mock, _):
-        cmd_mock.return_value.run_cmd.return_value = 0
-        ret = main(["run", "echo"])
-        self.assertEqual(ret, 0)
-        cmd_mock.assert_called_once()
-        args, kwargs = cmd_mock.call_args_list[0]
-        self.assertEqual(len(args), 1)
-        self.assertEqual(len(kwargs), 0)
-        self.assertEqual(args[0].wdir, None)
-        self.assertSequenceEqual(args[0].command, ["echo"])
-        cmd_mock.return_value.run_cmd.assert_called_once()
+    m.assert_called_once_with(
+        deps=["deps"],
+        outs=["outs"],
+        outs_no_cache=["outs-no-cache"],
+        metrics=["metrics"],
+        metrics_no_cache=["metrics-no-cache"],
+        outs_persist=["outs-persist"],
+        outs_persist_no_cache=["outs-persist-no-cache"],
+        fname="file",
+        cwd="cwd",
+        wdir="wdir",
+        no_exec=True,
+        overwrite=True,
+        ignore_build_cache=True,
+        remove_outs=True,
+        no_commit=True,
+        cmd="command",
+    )
+
+
+def test_run_args_from_cli(mocker, dvc_repo):
+    args = parse_args(["run", "echo", "foo"])
+    cmd = args.func(args)
+    m = mocker.patch.object(cmd.repo, "run", autospec=True)
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        deps=[],
+        outs=[],
+        outs_no_cache=[],
+        metrics=[],
+        metrics_no_cache=[],
+        outs_persist=[],
+        outs_persist_no_cache=[],
+        fname=None,
+        cwd=None,
+        wdir=None,
+        no_exec=False,
+        overwrite=False,
+        ignore_build_cache=False,
+        remove_outs=False,
+        no_commit=False,
+        cmd="echo foo",
+    )
+
+
+def test_run_args_with_spaces(mocker, dvc_repo):
+    args = parse_args(["run", "echo", "foo bar"])
+    cmd = args.func(args)
+    m = mocker.patch.object(cmd.repo, "run", autospec=True)
+    assert cmd.run() == 0
+    m.assert_called_once_with(
+        deps=[],
+        outs=[],
+        outs_no_cache=[],
+        metrics=[],
+        metrics_no_cache=[],
+        outs_persist=[],
+        outs_persist_no_cache=[],
+        fname=None,
+        cwd=None,
+        wdir=None,
+        no_exec=False,
+        overwrite=False,
+        ignore_build_cache=False,
+        remove_outs=False,
+        no_commit=False,
+        cmd='echo "foo bar"',
+    )

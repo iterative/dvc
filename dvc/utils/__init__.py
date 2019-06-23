@@ -164,12 +164,13 @@ def move(src, dst):
 
 
 def _chmod(func, p, excinfo):
+    perm = os.lstat(p).st_mode
+    perm |= stat.S_IWRITE
+
     try:
-        perm = os.stat(p).st_mode
-        perm |= stat.S_IWRITE
         os.chmod(p, perm)
     except OSError as exc:
-        # NOTE: broken symlink case.
+        # broken symlink
         if exc.errno != errno.ENOENT:
             raise
 
@@ -240,9 +241,9 @@ def convert_to_unicode(data):
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    from uuid import uuid4
+    from shortuuid import uuid
 
-    return fspath(fname) + "." + str(uuid4()) + ".tmp"
+    return fspath(fname) + "." + str(uuid()) + ".tmp"
 
 
 def current_timestamp():

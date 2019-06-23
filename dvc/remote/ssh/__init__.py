@@ -28,7 +28,7 @@ class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": paramiko}
 
-    JOBS = 8
+    JOBS = 4
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800

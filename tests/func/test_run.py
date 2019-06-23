@@ -7,6 +7,8 @@ import shutil
 import filecmp
 import subprocess
 import signal
+import threading
+import pytest
 
 from dvc.main import main
 from dvc.output import OutputBase
@@ -280,91 +282,64 @@ class TestRunBadName(TestDvc):
             )
 
 
-class TestCmdRun(TestDvc):
-    def test_run(self):
-        ret = main(
+@pytest.mark.skipif(
+    not isinstance(threading.current_thread(), threading._MainThread),
+    reason="Not running in the main thread.",
+)
+@mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
+def test_keyboard_interrupt(repo_dir, dvc_repo):
+    assert (
+        main(
             [
                 "run",
                 "-d",
-                self.FOO,
+                repo_dir.FOO,
                 "-d",
-                self.CODE,
+                repo_dir.CODE,
                 "-o",
                 "out",
                 "-f",
                 "out.dvc",
                 "python",
-                self.CODE,
-                self.FOO,
+                repo_dir.CODE,
+                repo_dir.FOO,
                 "out",
             ]
         )
+        == 1
+    )
 
-        stage = Stage.load(self.dvc, fname="out.dvc")
 
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile("out"))
-        self.assertTrue(os.path.isfile("out.dvc"))
-        self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
-        self.assertEqual(stage.cmd, "python code.py foo out")
-
-    def test_run_args_from_cli(self):
-        ret = main(["run", "echo", "foo"])
-        stage = Stage.load(self.dvc, fname="Dvcfile")
-        self.assertEqual(ret, 0)
-        self.assertEqual(stage.cmd, "echo foo")
-
-    def test_run_bad_command(self):
-        ret = main(["run", "non-existing-command"])
-        self.assertNotEqual(ret, 0)
-
-    def test_run_args_with_spaces(self):
-        ret = main(["run", "echo", "foo bar"])
-        stage = Stage.load(self.dvc, fname="Dvcfile")
-        self.assertEqual(ret, 0)
-        self.assertEqual(stage.cmd, 'echo "foo bar"')
-
-    @mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
-    def test_keyboard_interrupt(self):
-        ret = main(
+@pytest.mark.skipif(
+    not isinstance(threading.current_thread(), threading._MainThread),
+    reason="Not running in the main thread.",
+)
+def test_keyboard_interrupt_after_second_signal_call(
+    mocker, repo_dir, dvc_repo
+):
+    mocker.patch.object(
+        signal, "signal", side_effect=[None, KeyboardInterrupt]
+    )
+    assert (
+        main(
             [
                 "run",
                 "-d",
-                self.FOO,
+                repo_dir.FOO,
                 "-d",
-                self.CODE,
+                repo_dir.CODE,
                 "-o",
                 "out",
                 "-f",
                 "out.dvc",
                 "python",
-                self.CODE,
-                self.FOO,
+                repo_dir.CODE,
+                repo_dir.FOO,
                 "out",
             ]
         )
-        self.assertEqual(ret, 1)
-
-    @mock.patch.object(signal, "signal", side_effect=[None, KeyboardInterrupt])
-    def test_keyboard_interrupt_after_second_signal_call(self, _):
-        ret = main(
-            [
-                "run",
-                "-d",
-                self.FOO,
-                "-d",
-                self.CODE,
-                "-o",
-                "out",
-                "-f",
-                "out.dvc",
-                "python",
-                self.CODE,
-                self.FOO,
-                "out",
-            ]
-        )
-        self.assertEqual(ret, 252)
+        == 252
+    )
 
 
 class TestRunRemoveOuts(TestDvc):
@@ -977,7 +952,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         self.dvc = DvcRepo(".")
 
     def test(self):
-        cmd = "cp {} {}".format(self.FOO, self.BAR)
+        cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
         stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
 
         with open(self.BAR, "w") as fd:

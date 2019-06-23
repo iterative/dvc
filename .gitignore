@@ -34,3 +34,5 @@ env.sh
 tests/remotes_env
 scripts/ci/gcp-creds.json
 .gcp-creds.json
+
+*~

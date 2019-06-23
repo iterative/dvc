@@ -1,9 +1,9 @@
 import os
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 
 
-class TestGit(TestDvc):
+class TestGit(TestDvcGit):
     def test_belongs_to_scm_true_on_gitignore(self):
         path = os.path.join("path", "to", ".gitignore")
         self.assertTrue(self.dvc.scm.belongs_to_scm(path))

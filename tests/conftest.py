@@ -9,7 +9,7 @@ from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture, TestDvcFixture
+from .basic_env import TestDirFixture, TestDvcGitFixture
 
 
 # Prevent updater and analytics from running their processes
@@ -51,13 +51,14 @@ def git(repo_dir):
     #    GitCommandNotFound: Cmd('git') not found due to:
     #        OSError('[Errno 35] Resource temporarily unavailable')
     retries = 5
-    while retries:
+    while True:
         try:
             git = Repo.init()
+            break
         except GitCommandNotFound:
             retries -= 1
-            continue
-        break
+            if not retries:
+                raise
 
     try:
         git.index.add([repo_dir.CODE])
@@ -68,15 +69,8 @@ def git(repo_dir):
 
 
 @pytest.fixture
-def dvc_repo(repo_dir, git):
-    dvc = None
-    try:
-        dvc = DvcRepo.init(repo_dir._root_dir)
-        dvc.scm.commit("init dvc")
-        yield dvc
-    finally:
-        if dvc:
-            dvc.scm.git.close()
+def dvc_repo(repo_dir):
+    yield DvcRepo.init(repo_dir._root_dir, no_scm=True)
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -139,7 +133,7 @@ def temporary_windows_drive(repo_dir):
 
 @pytest.fixture
 def erepo(repo_dir):
-    repo = TestDvcFixture()
+    repo = TestDvcGitFixture()
     repo.setUp()
     try:
         stage_foo = repo.dvc.add(repo.FOO)[0]
@@ -167,7 +161,10 @@ def erepo(repo_dir):
 
         repo.dvc.scm.checkout("master")
 
-        repo._popd()
+        repo.dvc.scm.git.close()
+        repo.git.close()
+
+        os.chdir(repo._saved_dir)
         yield repo
     finally:
         repo.tearDown()
