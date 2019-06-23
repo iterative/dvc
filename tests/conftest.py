@@ -56,8 +56,10 @@ def git(repo_dir):
             git = Repo.init()
         except GitCommandNotFound:
             retries -= 1
-            continue
-        break
+            if retries <= 0:
+                raise
+        else:
+            break
 
     try:
         git.index.add([repo_dir.CODE])

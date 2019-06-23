@@ -136,8 +136,10 @@ class TestGitFixture(TestDirFixture):
                 self.git = Repo.init()
             except GitCommandNotFound:
                 retries -= 1
-                continue
-            break
+                if retries <= 0:
+                    raise
+            else:
+                break
 
         self.git.index.add([self.CODE])
         self.git.index.commit("add code")
