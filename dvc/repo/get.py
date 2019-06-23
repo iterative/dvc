@@ -1,11 +1,11 @@
 import os
-import shutil
 import shortuuid
 
 from dvc.config import Config
 from dvc.path_info import PathInfo
 from dvc.external_repo import ExternalRepo
 from dvc.utils.compat import urlparse
+from dvc.utils import remove
 
 
 @staticmethod
@@ -45,4 +45,4 @@ def get(url, path, out=None, rev=None):
         erepo.repo.scm.git.close()
     finally:
         if os.path.exists(tmp_dir):
-            shutil.rmtree(tmp_dir)
+            remove(tmp_dir)

@@ -12,6 +12,7 @@ from dvc.config import Config
 from dvc.cache import CacheConfig
 from dvc.exceptions import DvcException
 from dvc.utils.compat import makedirs, str
+from dvc.utils import remove
 
 
 logger = logging.getLogger(__name__)
@@ -120,7 +121,7 @@ class ExternalRepo(object):
             self._install_to(tmp_dir, cache_dir)
         except ExternalRepoError:
             if os.path.exists(tmp_dir):
-                shutil.rmtree(tmp_dir)
+                remove(tmp_dir)
             raise
 
         if self.installed:
@@ -137,7 +138,7 @@ class ExternalRepo(object):
             )
             return
 
-        shutil.rmtree(self.path)
+        remove(self.path)
 
     def update(self):
         self.repo.scm.fetch(self.rev)
