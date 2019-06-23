@@ -144,7 +144,7 @@ _dvc_move=(
 )
 
 _dvc_pipeline=(
-  "1:Sub command:(show,list)"
+  "1:Sub command:(show list)"
 )
 
 _dvc_pull=(
