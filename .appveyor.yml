@@ -37,7 +37,6 @@ matrix:
 
 install:
   - cinst wget
-  - cinst awscli
   - cinst gcloudsdk
   - cinst gsutil
   - cinst openssl.light --version 1.1.1
@@ -52,7 +51,7 @@ install:
   # tried-and-true version instead.
   #
   # [1] https://github.com/Azure/Azurite/issues/215
-  - npm install -g azurite@2.7.0 # NOTE azurite 3 is affecte
+  - npm install -g azurite@2.7.0
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
   - python -m pip install -U pip setuptools wheel
   - pip install -e .[all]
