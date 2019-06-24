@@ -12,10 +12,15 @@ logger = logging.getLogger(__name__)
 
 class CmdImport(CmdBase):
     def run(self):
+        logger.warn(
+            "This is a beta feature! Do not use in the production! Old "
+            "`dvc import` is now called `dvc import-url`, please use "
+            "it instead."
+        )
         try:
             self.repo.imp(
                 self.args.url,
-                path=self.args.path,
+                self.args.path,
                 out=self.args.out,
                 rev=self.args.rev,
             )
@@ -31,7 +36,8 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "Download data from DVC repository and take it under DVC control."
+        "BETA: Download data from DVC repository and take it under DVC "
+        "control."
     )
 
     import_parser = subparsers.add_parser(
@@ -43,7 +49,7 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument("url", help="DVC repository URL.")
     import_parser.add_argument(
-        "path", nargs="?", help="Path to data within DVC repository."
+        "path", help="Path to data within DVC repository."
     )
     import_parser.add_argument(
         "-o", "--out", nargs="?", help="Destination path to put data to."
