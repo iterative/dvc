@@ -36,6 +36,7 @@ matrix:
         - PYTHON: "C:\\Python37"
 
 install:
+  - cuninst awscli
   - cinst wget
   - cinst gcloudsdk
   - cinst gsutil
