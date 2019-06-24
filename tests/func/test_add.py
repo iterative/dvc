@@ -532,3 +532,15 @@ def test_windows_should_add_when_cache_on_different_drive(
 
     ret = main(["add", repo_dir.DATA])
     assert ret == 0
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows specific")
+def test_debug(dvc_repo, repo_dir, temporary_windows_drive):
+    ret = main(["remote", "add", "-d", "ololo", temporary_windows_drive])
+    assert ret == 0
+
+    ret = main(["add", repo_dir.DATA])
+    assert ret == 0
+
+    ret = main(["push"])
+    assert ret == 0
