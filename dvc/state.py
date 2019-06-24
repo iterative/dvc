@@ -117,9 +117,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     def __exit__(self, typ, value, tbck):
         self.dump()
 
-    def _execute(self, cmd):
+    def _execute(self, cmd, parameters=()):
         logger.debug(cmd)
-        return self.cursor.execute(cmd)
+        return self.cursor.execute(cmd, parameters)
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
@@ -230,8 +230,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         """Saves state database."""
         assert self.database is not None
 
-        cmd = "SELECT count from {} WHERE rowid={}"
-        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_ROW))
+        cmd = "SELECT count from {} WHERE rowid=?".format(
+            self.STATE_INFO_TABLE
+        )
+        self._execute(cmd, (self.STATE_INFO_ROW,))
         ret = self._fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
@@ -261,14 +263,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             assert len(ret[0]) == 1
             count = ret[0][0]
 
-        cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
-        self._execute(
-            cmd.format(
-                self.STATE_INFO_TABLE,
-                self._to_sqlite(count),
-                self.STATE_INFO_ROW,
-            )
+        cmd = "UPDATE {} SET count = ? WHERE rowid = ?".format(
+            self.STATE_INFO_TABLE
         )
+        self._execute(cmd, (self._to_sqlite(count), self.STATE_INFO_ROW))
 
         self.database.commit()
         self.cursor.close()
@@ -282,13 +280,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         return actual_mtime != mtime or actual_size != size
 
     def _update_state_record_timestamp_for_inode(self, actual_inode):
-        cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
+        cmd = "UPDATE {} SET timestamp = ? WHERE inode = ?".format(
+            self.STATE_TABLE
+        )
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
-                current_timestamp(),
-                self._to_sqlite(actual_inode),
-            )
+            cmd, (current_timestamp(), self._to_sqlite(actual_inode))
         )
 
     def _update_state_for_path_changed(
@@ -296,19 +292,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     ):
         cmd = (
             "UPDATE {} SET "
-            'mtime = "{}", size = "{}", '
-            'md5 = "{}", timestamp = "{}" '
-            "WHERE inode = {}"
-        )
+            "mtime = ?, size = ?, "
+            "md5 = ?, timestamp = ? "
+            "WHERE inode = ?"
+        ).format(self.STATE_TABLE)
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
+            cmd,
+            (
                 actual_mtime,
                 actual_size,
                 checksum,
                 current_timestamp(),
                 self._to_sqlite(actual_inode),
-            )
+            ),
         )
 
     def _insert_new_state_record(
@@ -318,24 +314,26 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         cmd = (
             "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
-            'VALUES ({}, "{}", "{}", "{}", "{}")'
-        )
+            "VALUES (?, ?, ?, ?, ?)"
+        ).format(self.STATE_TABLE)
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
+            cmd,
+            (
                 self._to_sqlite(actual_inode),
                 actual_mtime,
                 actual_size,
                 checksum,
                 current_timestamp(),
-            )
+            ),
         )
         self.inserts += 1
 
     def get_state_record_for_inode(self, inode):
-        cmd = "SELECT mtime, size, md5, timestamp from {} " "WHERE inode={}"
-        cmd = cmd.format(self.STATE_TABLE, self._to_sqlite(inode))
-        self._execute(cmd)
+        cmd = (
+            "SELECT mtime, size, md5, timestamp from {} WHERE "
+            "inode=?".format(self.STATE_TABLE)
+        )
+        self._execute(cmd, (self._to_sqlite(inode),))
         results = self._fetchall()
         if results:
             # uniquness constrain on inode
@@ -418,16 +416,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         inode = get_inode(path)
         relative_path = relpath(path, self.root_dir)
 
-        cmd = (
-            "REPLACE INTO {}(path, inode, mtime) "
-            'VALUES ("{}", {}, "{}")'.format(
-                self.LINK_STATE_TABLE,
-                relative_path,
-                self._to_sqlite(inode),
-                mtime,
-            )
+        cmd = "REPLACE INTO {}(path, inode, mtime) " "VALUES (?, ?, ?)".format(
+            self.LINK_STATE_TABLE
         )
-        self._execute(cmd)
+        self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
     def remove_unused_links(self, used):
         """Removes all saved links except the ones that are used.
@@ -458,5 +450,5 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 unused.append(relpath)
 
         for relpath in unused:
-            cmd = 'DELETE FROM {} WHERE path = "{}"'
-            self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
+            cmd = "DELETE FROM {} WHERE path = ?".format(self.LINK_STATE_TABLE)
+            self._execute(cmd, (relpath,))
