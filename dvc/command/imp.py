@@ -20,7 +20,7 @@ class CmdImport(CmdBase):
         try:
             self.repo.imp(
                 self.args.url,
-                path=self.args.path,
+                self.args.path,
                 out=self.args.out,
                 rev=self.args.rev,
             )
@@ -49,7 +49,7 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument("url", help="DVC repository URL.")
     import_parser.add_argument(
-        "path", nargs="?", help="Path to data within DVC repository."
+        "path", help="Path to data within DVC repository."
     )
     import_parser.add_argument(
         "-o", "--out", nargs="?", help="Destination path to put data to."
