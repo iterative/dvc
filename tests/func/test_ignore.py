@@ -3,7 +3,7 @@ import shutil
 
 from dvc.ignore import DvcIgnore, DvcIgnoreFileHandler
 from dvc.utils.compat import cast_bytes
-from dvc.utils.fs import get_mtime_signature_and_size
+from dvc.utils.fs import get_mtime_and_size
 from tests.basic_env import TestDvc
 
 
@@ -62,45 +62,60 @@ class TestDvcIgnore(TestDvc):
 
 def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
     new_data_path = repo_dir.DATA_SUB + "_new"
-    with open(
-        os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE), "w"
-    ) as fobj:
-        fobj.write(repo_dir.DATA_SUB + "\n")
-        fobj.write(new_data_path + "\n")
+
+    ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
+
+    repo_dir.create(ignore_file, "\n".join([repo_dir.DATA_SUB, new_data_path]))
 
     ignore_handler = DvcIgnoreFileHandler(dvc_repo.tree)
 
-    mtime_sig, size = get_mtime_signature_and_size(
-        repo_dir.DATA_DIR, ignore_handler
-    )
+    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, ignore_handler)
 
     shutil.move(repo_dir.DATA_SUB, new_data_path)
 
-    new_mtime_sig, new_size = get_mtime_signature_and_size(
+    new_mtime_sig, new_size = get_mtime_and_size(
         repo_dir.DATA_DIR, ignore_handler
     )
 
     assert new_mtime_sig == mtime_sig
+    assert new_size == size
+
+
+def test_mtime_changed_when_moving_non_ignored_file(dvc_repo, repo_dir):
+    new_data_path = repo_dir.DATA_SUB + "_new"
+    ignore_handler = DvcIgnoreFileHandler(dvc_repo.tree)
+    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, ignore_handler)
+
+    shutil.move(repo_dir.DATA_SUB, new_data_path)
+    new_mtime, new_size = get_mtime_and_size(repo_dir.DATA_DIR, ignore_handler)
+
+    assert new_mtime != mtime
     assert new_size == size
 
 
 def test_metadata_unchanged_on_ignored_file_deletion(dvc_repo, repo_dir):
-    with open(
-        os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE), "w"
-    ) as fobj:
-        fobj.write(repo_dir.DATA_SUB + "\n")
-
+    ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
+    repo_dir.create(ignore_file, repo_dir.DATA_SUB)
     ignore_handler = DvcIgnoreFileHandler(dvc_repo.tree)
-
-    mtime_sig, size = get_mtime_signature_and_size(
-        repo_dir.DATA_DIR, ignore_handler
-    )
+    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, ignore_handler)
 
     os.remove(repo_dir.DATA_SUB)
-
-    new_mtime_sig, new_size = get_mtime_signature_and_size(
+    new_mtime_sig, new_size = get_mtime_and_size(
         repo_dir.DATA_DIR, ignore_handler
     )
 
     assert new_mtime_sig == mtime_sig
     assert new_size == size
+
+
+def test_metadata_changed_on_non_ignored_file_deletion(dvc_repo, repo_dir):
+    ignore_handler = DvcIgnoreFileHandler(dvc_repo.tree)
+    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, ignore_handler)
+
+    os.remove(repo_dir.DATA_SUB)
+    new_mtime_sig, new_size = get_mtime_and_size(
+        repo_dir.DATA_DIR, ignore_handler
+    )
+
+    assert new_mtime_sig != mtime_sig
+    assert new_size != size

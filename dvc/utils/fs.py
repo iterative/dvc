@@ -20,18 +20,15 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_signature_and_size(path, ignore_file_handler=None):
+def get_mtime_and_size(path, ignore_file_handler=None):
     base_stat = os.stat(path)
-    size = base_stat.st_size
+    size = 0
 
     if os.path.isdir(path):
         files_mtimes = {}
         for root, dirs, files in dvc_walk(
-            str(path), ignore_file_handler=ignore_file_handler
+            path, ignore_file_handler=ignore_file_handler
         ):
-            for dir in dirs:
-                entry = os.path.join(root, dir)
-                size += os.path.getsize(entry)
 
             for file in files:
                 entry = os.path.join(root, file)
@@ -45,20 +42,17 @@ def get_mtime_signature_and_size(path, ignore_file_handler=None):
                 size += stat.st_size
                 files_mtimes[entry] = stat.st_mtime
 
-        # Why mtime for dir is actually dict_md5 from {file_path:mtime} pairs?
-        # In case of updating .dvcignore-d file in dir, mtime for directory
-        # would be updated. We don't want to detect that, yet we have to detect
-        # operations that results in dvc tracked directory mtime update and not
-        # file mtime updates (e.g. moving tracked file), hence we need to
-        # combine update mtimes with file_paths
-        mtime_signature = dict_md5(files_mtimes)
+        # We track file changes and moves, which cannot be detected with simply
+        # max(mtime(f) for f in non_ignored_files)
+        mtime = dict_md5(files_mtimes)
     else:
-        mtime_signature = base_stat.st_mtime
-        mtime_signature = int(nanotime.timestamp(mtime_signature))
+        size += base_stat.st_size
+        mtime = base_stat.st_mtime
+        mtime = int(nanotime.timestamp(mtime))
 
     # State of files handled by dvc is stored in db as TEXT.
     # We cast results to string for later comparisons with stored values.
-    return str(mtime_signature), str(size)
+    return str(mtime), str(size)
 
 
 class BasePathNotInCheckedPathException(DvcException):
