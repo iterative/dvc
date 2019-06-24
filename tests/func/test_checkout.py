@@ -136,7 +136,7 @@ class CheckoutBase(TestDvcGit):
         paths = [
             path
             for output in stage["outs"]
-            for path in walk_files(output["path"])
+            for path in walk_files(output["path"], self.dvc.tree)
         ]
 
         return [

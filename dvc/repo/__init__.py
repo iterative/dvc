@@ -12,7 +12,8 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
-from dvc.ignore import DvcIgnoreFileHandler
+
+# from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
@@ -376,10 +377,7 @@ class Repo(object):
         stages = []
         outs = []
 
-        ignore_file_handler = DvcIgnoreFileHandler(self.tree)
-        for root, dirs, files in self.tree.walk(
-            from_directory, ignore_file_handler=ignore_file_handler
-        ):
+        for root, dirs, files in self.tree.walk(from_directory):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):

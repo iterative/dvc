@@ -20,15 +20,13 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, ignore_file_handler=None):
+def get_mtime_and_size(path, tree):
     base_stat = os.stat(path)
     size = 0
 
     if os.path.isdir(path):
         files_mtimes = {}
-        for root, dirs, files in dvc_walk(
-            path, ignore_file_handler=ignore_file_handler
-        ):
+        for root, dirs, files in dvc_walk(path, tree=tree):
 
             for file in files:
                 entry = os.path.join(root, file)

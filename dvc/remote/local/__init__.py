@@ -477,13 +477,11 @@ class RemoteLOCAL(RemoteBASE):
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
-    @staticmethod
-    def _unprotect_dir(path):
-        for path in walk_files(path):
+    def _unprotect_dir(self, path):
+        for path in walk_files(path, self.repo.tree):
             RemoteLOCAL._unprotect_file(path)
 
-    @staticmethod
-    def unprotect(path_info):
+    def unprotect(self, path_info):
         path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
@@ -491,9 +489,9 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         if os.path.isdir(path):
-            RemoteLOCAL._unprotect_dir(path)
+            self._unprotect_dir(path)
         else:
-            RemoteLOCAL._unprotect_file(path)
+            self._unprotect_file(path)
 
     @staticmethod
     def protect(path_info):
