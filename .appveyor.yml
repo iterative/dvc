@@ -32,7 +32,7 @@ environment:
       RUBY: C:\Ruby25\bin
 
 install:
-  - cuninst awscli
+  - cinst awscli
   - cinst wget
   - cinst gcloudsdk
   - cinst gsutil
@@ -58,6 +58,7 @@ build: false
 
 before_test:
   - pip install -e .[tests]
+  - pip uninstall awscli
   - aws configure set aws_access_key_id "%aws_access_key_id%"
   - aws configure set aws_secret_access_key "%aws_secret_access_key%"
   - aws configure set region us-east-2
