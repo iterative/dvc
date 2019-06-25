@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class CmdImport(CmdBase):
     def run(self):
-        logger.warn(
+        logger.warning(
             "This is a beta feature! Do not use in the production! Old "
             "`dvc import` is now called `dvc import-url`, please use "
             "it instead."
