@@ -5,19 +5,15 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.ignore import DvcIgnoreFromFile, DvcIgnoreDir, DvcIgnoreFile
-from mock import patch, Mock
+from mock import MagicMock
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-    mock_ignore_file_handler = Mock()
-    with patch.object(
-        mock_ignore_file_handler,
-        "read_patterns",
-        return_value=PathSpec.from_lines(GitWildMatchPattern, patterns),
-    ):
-        ignore_file = DvcIgnoreFromFile(
-            dvcignore_path, mock_ignore_file_handler
-        )
+    tree_mock = MagicMock()
+    ignore_file = DvcIgnoreFromFile(dvcignore_path, tree_mock)
+    ignore_file.ignore_spec = PathSpec.from_lines(
+        GitWildMatchPattern, patterns
+    )
     return ignore_file
 
 

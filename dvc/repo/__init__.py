@@ -12,8 +12,6 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
-
-# from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath

@@ -113,7 +113,7 @@ class GitTree(BaseTree):
 
         if topdown:
             if not dvc_ignore_filter:
-                dvc_ignore_filter = DvcIgnoreFilter(tree.abspath, self)
+                dvc_ignore_filter = DvcIgnoreFilter(tree.abspath)
             dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
