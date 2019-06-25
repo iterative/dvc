@@ -957,7 +957,7 @@ class TestReproExternalS3(TestReproExternalBase):
         return TEST_AWS_REPO_BUCKET
 
     def cmd(self, i, o):
-        return "where aws && aws help && aws s3 cp {} {}".format(i, o)
+        return "aws s3 cp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
         s3 = boto3.resource("s3")
