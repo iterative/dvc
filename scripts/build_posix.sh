@@ -15,7 +15,7 @@ fi
 
 BUILD_DIR=build
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
-DESC='Data Version Control - datasets, models, and experiments versioning for ML or data science projects'
+DESC='"Data Version Control - datasets, models, and experiments versioning for ML or data science projects"'
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
 
 print_error()
