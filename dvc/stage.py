@@ -480,6 +480,8 @@ class Stage(object):
 
         if not fname:
             fname = Stage._stage_fname(stage.outs, add=add)
+        stage._check_dvc_filename(fname)
+
         wdir = os.path.abspath(wdir)
 
         if cwd is not None:
