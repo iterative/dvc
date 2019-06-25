@@ -31,10 +31,6 @@ environment:
       PYTHON_ARCH: "32"
       RUBY: C:\Ruby25\bin
 
-matrix:
-    allow_failures:
-        - PYTHON: "C:\\Python37"
-
 install:
   - cuninst awscli
   - cinst wget
