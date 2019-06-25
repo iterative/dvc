@@ -103,16 +103,6 @@ class TestRunBadStageFilename(TestDvc):
                 deps=[],
                 outs=[],
                 outs_no_cache=[],
-                fname="empty",
-                cwd=os.curdir,
-            )
-
-        with self.assertRaises(StageFileBadNameError):
-            self.dvc.run(
-                cmd="",
-                deps=[],
-                outs=[],
-                outs_no_cache=[],
                 fname=os.path.join(self.DATA_DIR, "empty.dvc"),
                 cwd=os.curdir,
             )
@@ -1000,3 +990,17 @@ class TestPersistentOutput(TestDvc):
         # it should run the command again, as it is "ignoring build cache"
         with open("greetings", "r") as fobj:
             assert "hello\nhello\n" == fobj.read()
+
+
+def test_bad_stage_fname(repo_dir, dvc_repo):
+    dvc_repo.add(repo_dir.FOO)
+    with pytest.raises(StageFileBadNameError):
+        dvc_repo.run(
+            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
+            deps=[repo_dir.FOO, repo_dir.CODE],
+            outs=["out"],
+            fname="out_stage",  # Bad name, should end with .dvc
+        )
+
+    # Check that command hasn't been run
+    assert not os.path.exists("out")
