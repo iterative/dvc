@@ -4,6 +4,7 @@ from unittest import TestCase
 import dvc
 import pytest
 from dvc.system import System
+from dvc.path_info import PathInfo
 from dvc.utils import relpath
 from dvc.utils.compat import str
 from dvc.utils.fs import (
@@ -142,5 +143,9 @@ def test_get_parent_dirs_up_to(path1, path2, expected_dirs):
 def test_relpath_windows_different_drives():
     path1 = os.path.join("A:", os.sep, "some", "path")
     path2 = os.path.join("B:", os.sep, "other", "path")
-
     assert relpath(path1, path2) == path1
+
+    info1, info2 = PathInfo(path1), PathInfo(path2)
+    rel_info = relpath(info1, info2)
+    assert isinstance(rel_info, str)
+    assert rel_info == path1

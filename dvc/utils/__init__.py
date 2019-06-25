@@ -2,14 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import (
-    str,
-    builtin_str,
-    open,
-    cast_bytes_py2,
-    StringIO,
-    fspath_py35,
-)
+from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
 from dvc.utils.compat import fspath
 
 import os
@@ -380,8 +373,8 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = fspath_py35(path)
-    start = fspath_py35(os.path.abspath(start))
+    path = fspath(path)
+    start = os.path.abspath(fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt" and not os.path.commonprefix(
