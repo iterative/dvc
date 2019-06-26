@@ -383,6 +383,58 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_inode, actual_mtime, actual_size, checksum
         )
 
+    def get_state_records_for_inodes(self, inodes):
+        in_db = {}
+        for batch_inodes in to_chunks(
+            list(inodes), chunk_size=SQLITE_MAX_VARIABLES_NUMBER
+        ):
+            sqlite_inodes =  {self._to_sqlite(inode): inode for inode in
+            batch_inodes}
+
+            cmd = (
+                "SELECT inode, mtime, size, md5, timestamp from {} WHERE inode"
+                " in ({})".format(
+                    self.STATE_TABLE, ",".join(["?"] * len(batch_inodes))
+                )
+            )
+
+            self._execute(cmd, (*sqlite_inodes.keys(),))
+            for row in self._fetchall():
+                # NOTE we need to preserve original inode value
+                in_db[sqlite_inodes[int(row[0])]] = row[1:]
+
+        not_in_db = [
+            i for i in inodes if i not in in_db.keys()
+        ]
+        return in_db, not_in_db
+
+    def get_multiple(self, path_infos):
+        for p in path_infos:
+            assert p.scheme == "local"
+
+        paths = list(map(fspath_py35, path_infos))
+        result = {p: None for p in paths}
+
+        to_check = []
+        for p in paths:
+            if os.path.exists(p):
+                to_check.append(p)
+
+        inodes_to_path = {get_inode(p): p for p in to_check}
+
+        in_db, not_in_db = self.get_state_records_for_inodes(
+            inodes_to_path.keys()
+        )
+        for inode, [db_mtime, db_size, db_checksum, _] in in_db.items():
+            path = inodes_to_path[inode]
+            mtime, size = get_mtime_and_size(path, self.repo.dvcignore)
+
+            if not self._file_metadata_changed(mtime, db_mtime, size, db_size):
+                result[path] = db_checksum
+                self._update_state_record_timestamp_for_inode(inode)
+
+        return result
+
     def get(self, path_info):
         """Gets the checksum for the specified path info. Checksum will be
         retrieved from the state database if available.

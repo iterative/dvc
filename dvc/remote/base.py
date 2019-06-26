@@ -171,7 +171,7 @@ class RemoteBASE(object):
 
             file_infos.update(path_info / root / fname for fname in files)
 
-        checksums = {fi: self.state.get(fi) for fi in file_infos}
+        checksums = self.state.get_multiple(file_infos)
         not_in_state = {
             fi for fi, checksum in checksums.items() if checksum is None
         }
@@ -378,6 +378,7 @@ class RemoteBASE(object):
         cache_info = self.checksum_to_path_info(checksum)
         dir_info = self.get_dir_cache(checksum)
 
+        # TODO save optimization here
         for entry in dir_info:
             entry_info = path_info / entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
@@ -711,6 +712,7 @@ class RemoteBASE(object):
 
         logger.debug("Linking directory '{}'.".format(path_info))
 
+        # TODO update save here
         for entry in dir_info:
             relative_path = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
