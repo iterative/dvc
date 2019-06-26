@@ -52,6 +52,8 @@ install:
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
   - python -m pip install -U pip setuptools wheel
   - pip install .[all,tests]
+  - where dvc
+  - dvc --version
 
 build: false
 
