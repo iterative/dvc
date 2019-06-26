@@ -449,6 +449,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 remove(path)
                 unused.append(relpath)
 
-        for relpath in unused:
-            cmd = "DELETE FROM {} WHERE path = ?".format(self.LINK_STATE_TABLE)
-            self._execute(cmd, (relpath,))
+        cmd = "DELETE FROM {} WHERE path IN ({})".format(
+            self.LINK_STATE_TABLE, ",".join(["?"] * len(unused))
+        )
+        self._execute(cmd, tuple(unused))

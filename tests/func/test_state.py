@@ -77,3 +77,21 @@ class TestGetStateRecordForInode(TestDvc):
             state.save(PathInfo(path), md5)
             ret = state.get_state_record_for_inode(inode)
             self.assertIsNotNone(ret)
+
+
+def test_remove_unused_links(repo_dir, dvc_repo):
+    stages = dvc_repo.add(repo_dir.FOO)
+    assert len(stages) == 1
+
+    stages = dvc_repo.add(repo_dir.BAR)
+    assert len(stages) == 1
+
+    cmd_count_links = "SELECT count(*) FROM {}".format(State.LINK_STATE_TABLE)
+    with dvc_repo.state:
+        result = dvc_repo.state._execute(cmd_count_links).fetchone()[0]
+        assert result == 2
+
+        dvc_repo.state.remove_unused_links([])
+
+        result = dvc_repo.state._execute(cmd_count_links).fetchone()[0]
+        assert result == 0
