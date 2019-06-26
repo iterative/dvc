@@ -7,7 +7,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.system import System
-from dvc.utils import dvc_walk, dict_md5
+from dvc.utils import dict_md5, walk_files
 from dvc.utils.compat import str
 
 
@@ -21,30 +21,26 @@ def get_inode(path):
 
 
 def get_mtime_and_size(path):
-    base_stat = os.stat(path)
-    size = 0
-
     if os.path.isdir(path):
+        size = 0
         files_mtimes = {}
-        for root, dirs, files in dvc_walk(path):
-
-            for file in files:
-                entry = os.path.join(root, file)
-                try:
-                    stat = os.stat(entry)
-                except OSError as exc:
-                    # NOTE: broken symlink case.
-                    if exc.errno != errno.ENOENT:
-                        raise
-                    continue
-                size += stat.st_size
-                files_mtimes[entry] = stat.st_mtime
+        for file_path in walk_files(path):
+            try:
+                stat = os.stat(file_path)
+            except OSError as exc:
+                # NOTE: broken symlink case.
+                if exc.errno != errno.ENOENT:
+                    raise
+                continue
+            size += stat.st_size
+            files_mtimes[file_path] = stat.st_mtime
 
         # We track file changes and moves, which cannot be detected with simply
         # max(mtime(f) for f in non_ignored_files)
         mtime = dict_md5(files_mtimes)
     else:
-        size += base_stat.st_size
+        base_stat = os.stat(path)
+        size = base_stat.st_size
         mtime = base_stat.st_mtime
         mtime = int(nanotime.timestamp(mtime))
 

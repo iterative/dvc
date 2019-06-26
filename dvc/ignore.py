@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import logging
 import os
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
@@ -8,6 +9,8 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_parent_dirs_up_to
+
+logger = logging.getLogger(__name__)
 
 
 class DvcIgnore(object):
@@ -71,27 +74,28 @@ class DvcIgnoreFilter(object):
         from dvc.repo import Repo
 
         try:
-            self.tree = WorkingTree(Repo.find_root())
+            self.tree = WorkingTree(Repo.find_root(wdir))
         except NotDvcRepoError:
-            self.tree = None
+            logger.warning(
+                "Traversing directory outside of DvcRepo. "
+                "ignore files will be read from '{}' "
+                "downward.".format(wdir)
+            )
+            self.tree = WorkingTree(os.path.abspath(wdir))
         self._process_ignores_in_parent_dirs(wdir)
 
     def _process_ignores_in_parent_dirs(self, wdir):
-        if self.tree:
-            wdir = os.path.normpath(os.path.abspath(wdir))
-            ignore_search_end_dir = self.tree.tree_root
-            parent_dirs = get_parent_dirs_up_to(wdir, ignore_search_end_dir)
-            for d in parent_dirs:
-                self.update(d)
+        wdir = os.path.normpath(os.path.abspath(wdir))
+        ignore_search_end_dir = self.tree.tree_root
+        parent_dirs = get_parent_dirs_up_to(wdir, ignore_search_end_dir)
+        for d in parent_dirs:
+            self.update(d)
 
     def update(self, wdir):
-        if self.tree:
-            ignore_file_path = os.path.join(wdir, DvcIgnore.DVCIGNORE_FILE)
-            if self.tree.exists(ignore_file_path):
-                file_ignore = DvcIgnoreFromFile(
-                    ignore_file_path, tree=self.tree
-                )
-                self.ignores.append(file_ignore)
+        ignore_file_path = os.path.join(wdir, DvcIgnore.DVCIGNORE_FILE)
+        if self.tree.exists(ignore_file_path):
+            file_ignore = DvcIgnoreFromFile(ignore_file_path, tree=self.tree)
+            self.ignores.append(file_ignore)
 
     def __call__(self, root, dirs, files):
         self.update(root)

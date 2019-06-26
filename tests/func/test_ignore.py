@@ -109,3 +109,22 @@ def test_metadata_changed_on_non_ignored_file_deletion(dvc_repo, repo_dir):
 
     assert new_mtime_sig != mtime_sig
     assert new_size != size
+
+
+def test_ignore_should_work_for_external_dependency(dvc_repo, repo_dir):
+    external_data_dir = repo_dir.mkdtemp()
+    data = os.path.join(external_data_dir, "data")
+    ignored_file = "data_ignored"
+    data_ignored = os.path.join(external_data_dir, ignored_file)
+    ignore_file = os.path.join(external_data_dir, DvcIgnore.DVCIGNORE_FILE)
+    repo_dir.create(data, "data")
+    repo_dir.create(data_ignored, "ignore this")
+    repo_dir.create(ignore_file, ignored_file)
+
+    dvc_repo.add(external_data_dir)
+
+    assert dvc_repo.status() == {}
+
+    os.remove(data_ignored)
+
+    assert dvc_repo.status() == {}
