@@ -206,7 +206,7 @@ class Stage(object):
     @property
     def is_callback(self):
         """
-        An orphan stage is always considered as changed,
+        A callback stage is always considered as changed,
         so it runs on every `dvc repro` call.
         """
         return not self.is_data_source and len(self.deps) == 0
@@ -229,7 +229,7 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "DVC-file '{fname}' is an 'orphan' stage "
+                "DVC-file '{fname}' is an 'callback' stage "
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )

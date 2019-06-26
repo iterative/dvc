@@ -424,7 +424,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
 
         foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
-        # corrupt DVC-file
+        # corrupt stage file
         with open(foo_stage, "a+") as file:
             file.write("this will break yaml file structure")
 
@@ -475,7 +475,8 @@ class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
         self.assertEqual(0, ret)
 
         foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
-        # corrupt DVC-file
+
+        # corrupt stage file
         with open(foo_stage_file, "a+") as file:
             file.write("this will break yaml file structure")
 
