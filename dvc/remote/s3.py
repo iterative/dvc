@@ -50,13 +50,9 @@ class RemoteS3(RemoteBASE):
         url = config.get(Config.SECTION_REMOTE_URL, storagepath)
         self.path_info = self.path_cls(url)
 
-        self.region = os.environ.get("AWS_DEFAULT_REGION") or config.get(
-            Config.SECTION_AWS_REGION
-        )
+        self.region = config.get(Config.SECTION_AWS_REGION)
 
-        self.profile = os.environ.get("AWS_PROFILE") or config.get(
-            Config.SECTION_AWS_PROFILE
-        )
+        self.profile = config.get(Config.SECTION_AWS_PROFILE)
 
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
