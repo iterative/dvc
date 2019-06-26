@@ -7,11 +7,12 @@ import sqlite3
 import logging
 
 from dvc.config import Config
-from dvc.utils import remove, current_timestamp, relpath
+from dvc.utils import remove, current_timestamp, relpath, chunk
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
 from dvc.utils.compat import fspath_py35
 
+SQLITE_MAX_VARIABLES_NUMBER = 999
 
 logger = logging.getLogger(__name__)
 
@@ -449,7 +450,8 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 remove(path)
                 unused.append(relpath)
 
-        cmd = "DELETE FROM {} WHERE path IN ({})".format(
-            self.LINK_STATE_TABLE, ",".join(["?"] * len(unused))
-        )
-        self._execute(cmd, tuple(unused))
+        for chunk_unused in chunk(unused, SQLITE_MAX_VARIABLES_NUMBER):
+            cmd = "DELETE FROM {} WHERE path IN ({})".format(
+                self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
+            )
+            self._execute(cmd, tuple(chunk_unused))

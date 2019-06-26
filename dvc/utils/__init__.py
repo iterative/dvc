@@ -382,3 +382,8 @@ def relpath(path, start=os.curdir):
     ):
         return path
     return os.path.relpath(path, start)
+
+
+def chunk(iterable, chunk_size):
+    for i in range(0, len(iterable), chunk_size):
+        yield iterable[i : i + chunk_size]
