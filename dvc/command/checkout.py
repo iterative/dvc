@@ -54,7 +54,7 @@ def add_parser(subparsers, parent_parser):
     checkout_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-files to checkout. Optional."
+        help="DVC-files to checkout. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
     )
     checkout_parser.set_defaults(func=CmdCheckout)

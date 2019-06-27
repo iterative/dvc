@@ -248,7 +248,7 @@ def add_parser(subparsers, parent_parser):
     pipeline_show_parser.add_argument(
         "targets",
         nargs="*",
-        help="DVC-files to show pipeline for. Optional."
+        help="DVC-files to show pipeline for. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
