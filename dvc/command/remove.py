@@ -75,7 +75,7 @@ def add_parser(subparsers, parent_parser):
     )
     remove_parser.add_argument(
         "targets",
-        nargs="*",
+        nargs="+",
         help="DVC-files to remove. Optional."
         "(Finds all DVC-files in the workspace by default.)",
     )
