@@ -45,9 +45,7 @@ def add_parser(subparsers, parent_parser):
         help=LOCK_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    lock_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to lock. Optional."
-    )
+    lock_parser.add_argument("targets", nargs="+", help="DVC-files to lock.")
     lock_parser.set_defaults(func=CmdLock)
 
     UNLOCK_HELP = "Unlock DVC-files."
@@ -59,6 +57,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unlock_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to unlock. Optional."
+        "targets", nargs="+", help="DVC-files to unlock."
     )
     unlock_parser.set_defaults(func=CmdUnlock)
