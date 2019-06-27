@@ -263,3 +263,10 @@ class ETagMismatchError(DvcException):
             "ETag mismatch detected when copying file to cache! "
             "(expected: '{}', actual: '{}')".format(etag, cached_etag)
         )
+
+
+class OutputFileMissingError(DvcException):
+    def __init__(self, path):
+        super(OutputFileMissingError, self).__init__(
+            "Can't find {} neither locally nor on remote".format(path)
+        )

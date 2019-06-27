@@ -8,10 +8,11 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
     TargetNotDirectoryError,
+    OutputFileMissingError,
 )
 from dvc.ignore import DvcIgnoreFileHandler
 from dvc.path_info import PathInfo
-from dvc.utils.compat import open as _open
+from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -455,9 +456,15 @@ class Repo(object):
         if out.isdir():
             raise ValueError("Can't open a dir")
 
+        cache_file = self.cache.local.checksum_to_path_info(out.checksum)
+        cache_file = fspath_py35(cache_file)
+
         with self.state:
             cache_info = out.get_used_cache(remote=remote)
             self.cloud.pull(cache_info, remote=remote)
 
-        cache_file = self.cache.local.checksum_to_path_info(out.checksum)
-        return _open(cache_file.fspath, mode=mode, encoding=encoding)
+        # Since pull may just skip with a warning, we need to check it here
+        if not os.path.exists(cache_file):
+            raise OutputFileMissingError(relpath(path, self.root_dir))
+
+        return _open(cache_file, mode=mode, encoding=encoding)
