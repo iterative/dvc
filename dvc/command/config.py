@@ -74,7 +74,5 @@ def add_parser(subparsers, parent_parser):
         help="Unset option.",
     )
     config_parser.add_argument("name", help="Option name.")
-    config_parser.add_argument(
-        "value", nargs="?", default=None, help="Option value."
-    )
+    config_parser.add_argument("value", nargs="?", help="Option value.")
     config_parser.set_defaults(func=CmdConfig)

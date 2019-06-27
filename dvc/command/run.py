@@ -130,12 +130,11 @@ def add_parser(subparsers, parent_parser):
         "-f", "--file", help="Specify name of the DVC-file it generates."
     )
     run_parser.add_argument(
-        "-c", "--cwd", default=None, help="Deprecated, use -w and -f instead."
+        "-c", "--cwd", help="Deprecated, use -w and -f instead."
     )
     run_parser.add_argument(
         "-w",
         "--wdir",
-        default=None,
         help="Directory within your repo to run your command in.",
     )
     run_parser.add_argument(
