@@ -116,7 +116,6 @@ def shared_parent_parser():
     shared_parent_parser.add_argument(
         "targets",
         nargs="*",
-        default=None,
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
     )
