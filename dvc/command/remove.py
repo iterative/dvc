@@ -43,7 +43,7 @@ class CmdRemove(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    REMOVE_HELP = "Remove outputs of DVC-file."
+    REMOVE_HELP = "Remove DVC-file outputs."
     remove_parser = subparsers.add_parser(
         "remove",
         parents=[parent_parser],
@@ -73,5 +73,10 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Force purge.",
     )
-    remove_parser.add_argument("targets", nargs="+", help="DVC-files.")
+    remove_parser.add_argument(
+        "targets",
+        nargs="*",
+        help="DVC-files to remove. Optional."
+        "(Finds all DVC-files in the workspace by default.)",
+    )
     remove_parser.set_defaults(func=CmdRemove)
