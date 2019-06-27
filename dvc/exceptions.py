@@ -62,7 +62,7 @@ class OutputNotFoundError(DvcException):
 
     def __init__(self, output):
         super(OutputNotFoundError, self).__init__(
-            "unable to find stage file with output '{path}'".format(
+            "unable to find DVC-file with output '{path}'".format(
                 path=relpath(output)
             )
         )
@@ -74,7 +74,7 @@ class StagePathAsOutputError(DvcException):
 
     Args:
         cwd (str): path to the directory.
-        fname (str): path to the stage file that has cwd specified as an
+        fname (str): path to the DVC-file that has cwd specified as an
             output.
     """
 
@@ -216,7 +216,7 @@ class StageFileCorruptedError(DvcException):
     def __init__(self, path, cause=None):
         path = relpath(path)
         super(StageFileCorruptedError, self).__init__(
-            "unable to read stage file: {} "
+            "unable to read DVC-file: {} "
             "YAML file structure is corrupted".format(path),
             cause=cause,
         )

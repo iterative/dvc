@@ -197,7 +197,7 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(pipeline_subparsers)
 
-    PIPELINE_SHOW_HELP = "Show pipeline."
+    PIPELINE_SHOW_HELP = "Show pipelines."
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
@@ -246,7 +246,10 @@ def add_parser(subparsers, parent_parser):
         help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
-        "targets", nargs="*", help="DVC-files. 'Dvcfile' by default."
+        "targets",
+        nargs="*",
+        help="DVC-files to show pipeline for. Optional. "
+        "(Finds all DVC-files in the workspace by default.)",
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 

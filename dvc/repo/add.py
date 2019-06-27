@@ -22,7 +22,7 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
         logger.warning(
             "You are adding a large directory '{target}' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated stage files and then"
+            "{purple}HINT:{nc} Remove the generated DVC-file and then"
             " run {cyan}dvc add {target}{nc}".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
