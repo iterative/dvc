@@ -8,12 +8,10 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #----------------------------------------------------------
 
-_dvc_commands='init destroy add import checkout run pull push fetch \
-              status repro remove move unprotect gc config remote metrics \
-              install root lock unlock pipeline commit cache cache_dir diff \
-              config metrics_add metrics_modify metrics_remove move \
-              metrics_show pipeline_list pipeline_show remote_add version \
-              remote_list remote_default'
+_dvc_commands='add base cache checkout commit config daemon data_sync diff \
+              destroy gc get get_url imp imp_url __init__ init install lock \
+              metrics move pipeline remote remove repro root run status tag \
+              unprotect version'
 
 _dvc_options="-h --help -v --version"
 _dvc_global_options="-h --help -q --quiet -v --verbose"
