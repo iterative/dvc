@@ -13,7 +13,7 @@ _dvc_commands='init get get_url destroy add remove move unprotect run \
               checkout remote cache metrics install root lock unlock \
               pipeline daemon commit diff version'
 
-_dvc_options="-h --help -v --version"
+_dvc_options="-h --help -V --version"
 _dvc_global_options="-h --help -q --quiet -v --verbose"
 
 _dvc_add="-R --recursive -f --file --no-commit $(compgen -G '*')"
