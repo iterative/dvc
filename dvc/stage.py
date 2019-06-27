@@ -229,7 +229,7 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "DVC-file '{fname}' is an 'callback' stage "
+                "DVC-file '{fname}' is a 'callback' stage "
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )
