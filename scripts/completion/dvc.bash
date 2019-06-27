@@ -8,9 +8,9 @@
 #   - https://opensource.com/article/18/3/creating-bash-completion-script
 #----------------------------------------------------------
 
-_dvc_commands='init destroy add import checkout run pull push fetch \
-              status repro remove move unprotect gc config remote metrics \
-              install root lock unlock pipeline commit'
+_dvc_commands='add checkout commit config destroy fetch get-url gc \
+              import-url init install lock metrics move pipeline pull push \
+              remote remove repro root run status unlock unprotect'
 
 _dvc_options="-h --help -v --version"
 _dvc_global_options="-h --help -q --quiet -V --verbose"
@@ -21,7 +21,7 @@ _dvc_config="-u --unset --local --system --global"
 _dvc_destroy="-f --force"
 _dvc_fetch="--show-checksums -j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive"
 _dvc_gc="-a --all-branches -T --all-tags -c --cloud -r --remote -f --force -p --project"
-_dvc_import="--resume"
+_dvc_import-url="--resume-f --file"
 _dvc_init="--no-scm -f --force"
 _dvc_install=""
 _dvc_lock="$(compgen -G '*.dvc')"
