@@ -13,21 +13,22 @@ from dvc.repo import Repo
 from dvc.external_repo import ExternalRepo
 
 
-def get_url(path, repo=None, remote=None):
+def get_url(path, repo=None, rev=None, remote=None):
     """Returns an url of a resource specified by path in repo"""
-    with _make_repo(repo) as _repo:
+    with _make_repo(repo, rev=rev) as _repo:
         abspath = os.path.join(_repo.root_dir, path)
         out, = _repo.find_outs_by_path(abspath)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.checksum_to_path_info(out.checksum))
 
 
-def open(path, repo=None, remote=None, mode="r", encoding=None):
+def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """Opens a specified resource as a file descriptor"""
     args = (path,)
     kwargs = {
         "repo": repo,
         "remote": remote,
+        "rev": rev,
         "mode": mode,
         "encoding": encoding,
     }
@@ -45,8 +46,8 @@ class _OpenContextManager(GCM):
         )
 
 
-def _open(path, repo=None, remote=None, mode="r", encoding=None):
-    with _make_repo(repo) as _repo:
+def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
+    with _make_repo(repo, rev=rev) as _repo:
         abspath = os.path.join(_repo.root_dir, path)
         with _repo.open(
             abspath, remote=remote, mode=mode, encoding=encoding
@@ -54,21 +55,25 @@ def _open(path, repo=None, remote=None, mode="r", encoding=None):
             yield fd
 
 
-def read(path, repo=None, remote=None, mode="r", encoding=None):
+def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """Read a specified resource into string"""
-    with open(path, repo, remote=remote, mode=mode, encoding=encoding) as fd:
+    with open(
+        path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
+    ) as fd:
         return fd.read()
 
 
 @contextmanager
-def _make_repo(repo_url):
+def _make_repo(repo_url, rev=None):
     if not repo_url or urlparse(repo_url).scheme == "":
+        assert rev is None, "Custom revision is not supported for local repo"
         yield Repo(repo_url)
     else:
         tmp_dir = tempfile.mkdtemp("dvc-repo")
         try:
-            ext_repo = ExternalRepo(tmp_dir, url=repo_url)
+            ext_repo = ExternalRepo(tmp_dir, url=repo_url, rev=rev)
             ext_repo.install()
             yield ext_repo.repo
         finally:
+            ext_repo.repo.scm.git.close()
             remove(tmp_dir)
