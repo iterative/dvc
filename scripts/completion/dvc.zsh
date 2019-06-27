@@ -21,8 +21,10 @@ _dvc_commands() {
     "diff:Show a diff of a DVC controlled data file or a directory."
     "fetch:Fetch data files from a DVC remote storage."
     "get-url:Download or copy files from URL."
+    "get:Download data from DVC repository."
     "gc:Collect unused data from DVC cache or a remote storage."
     "import-url:Download or copy file from URL and take it under DVC control."
+    "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
     "lock:Lock DVC-file."
@@ -112,6 +114,13 @@ _dvc_geturl=(
   "2:Output:"
 )
 
+_dvc_get=(
+  {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
+  "--rev[DVC repository git revision.]:Commit hash:"
+  "1:URL:"
+  "2:Path:"
+)
+
 _dvc_gc=(
   {-a,--all-branches}"[Keep data files for the tips of all git branches.]"
   {-T,--all-tags}"[Keep data files for all git tags.]"
@@ -127,6 +136,13 @@ _dvc_importurl=(
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"
+)
+
+_dvc_import=(
+  {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
+  "--rev[DVC repository git revision.]:Commit hash:"
+  "1:URL:"
+  "2:Path:"
 )
 
 _dvc_init=(
@@ -263,8 +279,10 @@ case $words[1] in
   diff)       _arguments $_dvc_global_options   $_dvc_diff      ;;
   fetch)      _arguments $_dvc_global_options   $_dvc_fetch     ;;
   get-url)    _arguments $_dvc_global_options   $_dvc_geturl    ;;
+  get)        _arguments $_dvc_global_options   $_dvc_get       ;;
   gc)         _arguments $_dvc_global_options   $_dvc_gc        ;;
   import-url) _arguments $_dvc_global_options   $_dvc_importurl ;;
+  import)     _arguments $_dvc_global_options   $_dvc_import    ;;
   init)       _arguments $_dvc_global_options   $_dvc_init      ;;
   install)    _arguments $_dvc_global_options   $_dvc_install   ;;
   lock)       _arguments $_dvc_global_options   $_dvc_lock      ;;
