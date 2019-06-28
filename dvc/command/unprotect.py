@@ -23,7 +23,7 @@ class CmdUnprotect(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    UNPROTECT_HELP = "Unprotect a data file/directory."
+    UNPROTECT_HELP = "Unprotect data files or directories."
     unprotect_parser = subparsers.add_parser(
         "unprotect",
         parents=[parent_parser],
@@ -32,6 +32,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unprotect_parser.add_argument(
-        "targets", nargs="+", help="Data files/directory."
+        "targets", nargs="+", help="Data files/directories to unprotect."
     )
     unprotect_parser.set_defaults(func=CmdUnprotect)

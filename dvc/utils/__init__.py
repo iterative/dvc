@@ -2,14 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import (
-    str,
-    builtin_str,
-    open,
-    cast_bytes_py2,
-    StringIO,
-    fspath_py35,
-)
+from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
 from dvc.utils.compat import fspath
 
 import os
@@ -190,16 +183,33 @@ def remove(path):
             raise
 
 
-def to_chunks(l, jobs):
-    n = int(math.ceil(len(l) / jobs))
+def _split(list_to_split, chunk_size):
+    return [
+        list_to_split[i : i + chunk_size]
+        for i in range(0, len(list_to_split), chunk_size)
+    ]
 
-    if len(l) == 1:
-        return [l]
 
-    if n == 0:
-        n = 1
+def _to_chunks_by_chunks_number(list_to_split, num_chunks):
+    chunk_size = int(math.ceil(float(len(list_to_split)) / num_chunks))
 
-    return [l[x : x + n] for x in range(0, len(l), n)]
+    if len(list_to_split) == 1:
+        return [list_to_split]
+
+    if chunk_size == 0:
+        chunk_size = 1
+
+    return _split(list_to_split, chunk_size)
+
+
+def to_chunks(list_to_split, num_chunks=None, chunk_size=None):
+    if (num_chunks and chunk_size) or (not num_chunks and not chunk_size):
+        raise ValueError(
+            "One and only one of 'num_chunks', 'chunk_size' must be defined"
+        )
+    if chunk_size:
+        return _split(list_to_split, chunk_size)
+    return _to_chunks_by_chunks_number(list_to_split, num_chunks)
 
 
 # NOTE: Check if we are in a bundle
@@ -380,8 +390,8 @@ def _visual_center(line, width):
 
 
 def relpath(path, start=os.curdir):
-    path = fspath_py35(path)
-    start = fspath_py35(os.path.abspath(start))
+    path = fspath(path)
+    start = os.path.abspath(fspath(start))
 
     # Windows path on different drive than curdir doesn't have relpath
     if os.name == "nt" and not os.path.commonprefix(

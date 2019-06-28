@@ -144,7 +144,6 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "-t",
         "--target",
-        default=None,
         help=(
             "Source path to a data file or directory. Default None. "
             "If not specified, compares all files and directories "
@@ -157,10 +156,9 @@ def add_parser(subparsers, parent_parser):
     diff_parser.add_argument(
         "b_ref",
         help=(
-            "Git reference untill which diff calculates, if omitted "
+            "Git reference until which diff calculates, if omitted "
             "diff shows the difference between current HEAD and a_ref"
         ),
         nargs="?",
-        default=None,
     )
     diff_parser.set_defaults(func=CmdDiff)

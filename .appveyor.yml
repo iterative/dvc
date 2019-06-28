@@ -51,13 +51,13 @@ install:
   - npm install -g azurite@2.7.0
   - ps: $AzuriteProcess = Start-Process azurite-blob -PassThru
   - python -m pip install -U pip setuptools wheel
-  - pip install -e .[all]
-  - python setup.py install
+  - pip install .[all,tests]
+  - where dvc
+  - dvc --version
 
 build: false
 
 before_test:
-  - pip install -e .[tests]
   - pip uninstall -y awscli # Using awscli from chocolatey
   - aws configure set aws_access_key_id "%aws_access_key_id%"
   - aws configure set aws_secret_access_key "%aws_secret_access_key%"

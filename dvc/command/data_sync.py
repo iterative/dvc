@@ -101,11 +101,7 @@ def shared_parent_parser():
         add_help=False, parents=[get_parent_parser()]
     )
     shared_parent_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        default=None,
-        help="Number of jobs to run simultaneously.",
+        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
     )
     shared_parent_parser.add_argument(
         "--show-checksums",
@@ -116,11 +112,8 @@ def shared_parent_parser():
     shared_parent_parser.add_argument(
         "targets",
         nargs="*",
-        default=None,
-        help=(
-            "Limit the scope to these DVC-files."
-            " With -R a directory to search DVC-files in can be specified."
-        ),
+        help="Limit command scope to these DVC-files. "
+        "Using -R, directories to search DVC-files in can also be given.",
     )
 
     return shared_parent_parser

@@ -57,7 +57,6 @@ def add_parser(subparsers, parent_parser):
     )
     cache_dir_parser.add_argument(
         "value",
-        default=None,
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
         "config file location.",
