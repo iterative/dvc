@@ -9,7 +9,7 @@
 #----------------------------------------------------------
 
 _dvc_commands='init get get_url destroy add remove move unprotect run \
-              repro pull push fetch status gc import import-url config \
+              repro pull push fetch status gc import import_url config \
               checkout remote cache metrics install root lock unlock \
               pipeline commit diff version'
 
@@ -26,9 +26,9 @@ _dvc_diff="-t --target"
 _dvc_fetch="--show-checksums -j --jobs -r --remote -a --all-branches -T --all-tags -d --with-deps -R --recursive $(compgen -G '*.dvc')"
 _dvc_gc="-a --all-branches -T --all-tags -c --cloud -r --remote -f --force -p --projects -j --jobs"
 _dvc_get="-o --out --rev"
-_dvc_get_url=""
+_dvc_get-url=""
 _dvc_import="-o --out --rev"
-_dvc_import_url="--resume -f --file"
+_dvc_import-url="--resume -f --file"
 _dvc_init="--no-scm -f --force"
 _dvc_install=""
 _dvc_lock="$(compgen -G '*.dvc')"
