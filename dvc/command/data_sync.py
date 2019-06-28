@@ -101,11 +101,7 @@ def shared_parent_parser():
         add_help=False, parents=[get_parent_parser()]
     )
     shared_parent_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        default=None,
-        help="Number of jobs to run simultaneously.",
+        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
     )
     shared_parent_parser.add_argument(
         "--show-checksums",
