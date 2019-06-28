@@ -360,9 +360,9 @@ class RemoteLOCAL(RemoteBASE):
             from_infos = cache
 
         return (
-            to_chunks(from_infos, jobs),
-            to_chunks(to_infos, jobs),
-            to_chunks(names, jobs),
+            to_chunks(from_infos, num_chunks=jobs),
+            to_chunks(to_infos, num_chunks=jobs),
+            to_chunks(names, num_chunks=jobs),
         )
 
     def _process(

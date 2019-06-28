@@ -157,7 +157,7 @@ class RemoteSSH(RemoteBASE):
 
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     paths = [path_info.path for path_info in path_infos]
-                    chunks = to_chunks(paths, max_workers)
+                    chunks = to_chunks(paths, num_chunks=max_workers)
                     chunks_and_channels = zip(chunks, channels)
                     outcome = executor.map(_exists, chunks_and_channels)
                     results = list(itertools.chain.from_iterable(outcome))

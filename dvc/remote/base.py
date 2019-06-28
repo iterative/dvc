@@ -636,7 +636,7 @@ class RemoteBASE(object):
         if self.no_traverse and hasattr(self, "batch_exists"):
             with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, self.JOBS)
+                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
