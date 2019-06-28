@@ -1,6 +1,7 @@
 import os
 import posixpath
 import logging
+import errno
 import stat
 from contextlib import contextmanager
 
@@ -110,7 +111,13 @@ class SSHConnection:
             self.makedirs(head)
 
         if tail:
-            self._sftp.mkdir(path)
+            try:
+                self._sftp.mkdir(path)
+            except IOError as e:
+                # Since paramiko errors are very vague we need to recheck
+                # whether it's because path already exists or something else
+                if e.errno == errno.EACCES or not self.exists(path):
+                    raise
 
     def walk(self, directory, topdown=True):
         # NOTE: original os.walk() implementation [1] with default options was
