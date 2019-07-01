@@ -5,7 +5,7 @@ import os
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
-from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import NotDvcRepoError, DvcIgnoreError
 from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.utils.fs import get_parent_dirs_up_to
@@ -63,7 +63,7 @@ class DvcIgnoreFile(DvcIgnoreConstant):
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self, wdir):
+    def __init__(self, wdir, raise_on_dvcignore_below_top=False):
         self.ignores = [
             DvcIgnoreDir(".git"),
             DvcIgnoreDir(".hg"),
@@ -76,29 +76,44 @@ class DvcIgnoreFilter(object):
         try:
             self.tree = WorkingTree(Repo.find_root(wdir))
         except NotDvcRepoError:
-            logger.warning(
+            logger.error(
                 "Traversing directory outside of DvcRepo. "
                 "ignore files will be read from '{}' "
                 "downward.".format(wdir)
             )
+            # TODO is it feasible now that we want to raise on external dir?
             self.tree = WorkingTree(os.path.abspath(wdir))
+
+        self.raise_on_dvcignore_below_top = raise_on_dvcignore_below_top
+
         self._process_ignores_in_parent_dirs(wdir)
 
     def _process_ignores_in_parent_dirs(self, wdir):
         wdir = os.path.normpath(os.path.abspath(wdir))
         ignore_search_end_dir = self.tree.tree_root
         parent_dirs = get_parent_dirs_up_to(wdir, ignore_search_end_dir)
-        for d in parent_dirs:
-            self.update(d)
 
-    def update(self, wdir):
+        if not self.raise_on_dvcignore_below_top:
+            parent_dirs.append(wdir)
+
+        for d in parent_dirs:
+            self.update(d, False)
+
+    def update(self, wdir, raise_on_dvcignore):
         ignore_file_path = os.path.join(wdir, DvcIgnore.DVCIGNORE_FILE)
         if self.tree.exists(ignore_file_path):
+
+            if raise_on_dvcignore:
+                raise DvcIgnoreError(
+                    "Found dvcignore file in directory where it "
+                    "should not be: '{}'".format(wdir)
+                )
+
             file_ignore = DvcIgnoreFromFile(ignore_file_path, tree=self.tree)
             self.ignores.append(file_ignore)
 
     def __call__(self, root, dirs, files):
-        self.update(root)
+        self.update(root, self.raise_on_dvcignore_below_top)
 
         for ignore in self.ignores:
             dirs, files = ignore(root, dirs, files)

@@ -156,10 +156,14 @@ class OutputBase(object):
     def exists(self):
         return self.remote.exists(self.path_info)
 
+    @property
+    def dvcignore_raises(self):
+        return True
+
     def changed_checksum(self):
         return (
             self.checksum
-            != self.remote.save_info(self.path_info)[
+            != self.remote.save_info(self.path_info, self.dvcignore_raises)[
                 self.remote.PARAM_CHECKSUM
             ]
         )
@@ -211,7 +215,9 @@ class OutputBase(object):
             logger.warning("'{}' is empty.".format(self))
 
         if not self.use_cache:
-            self.info = self.remote.save_info(self.path_info)
+            self.info = self.remote.save_info(
+                self.path_info, self.dvcignore_raises
+            )
             if self.metric:
                 self.verify_metric()
             if not self.IS_DEPENDENCY:
@@ -237,7 +243,9 @@ class OutputBase(object):
             if self.use_cache:
                 self.repo.scm.ignore(self.fspath)
 
-        self.info = self.remote.save_info(self.path_info)
+        self.info = self.remote.save_info(
+            self.path_info, self.dvcignore_raises
+        )
 
     def commit(self):
         if self.use_cache:

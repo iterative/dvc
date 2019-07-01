@@ -270,3 +270,8 @@ class OutputFileMissingError(DvcException):
         super(OutputFileMissingError, self).__init__(
             "Can't find {} neither locally nor on remote".format(path)
         )
+
+
+class DvcIgnoreError(DvcException):
+    def __init__(self, msg):
+        super(DvcIgnoreError, self).__init__(msg)

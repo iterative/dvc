@@ -401,6 +401,7 @@ class Stage(object):
 
         # NOTE: need to save checksums for deps in order to compare them
         # with what is written in the old stage.
+        # TODO this should use dvcignore
         for dep in self.deps:
             dep.save()
 
@@ -706,6 +707,7 @@ class Stage(object):
         return m
 
     def save(self):
+        # TODO should we use dvcignore here?
         for dep in self.deps:
             dep.save()
 

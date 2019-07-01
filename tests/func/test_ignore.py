@@ -1,6 +1,9 @@
 import os
 import shutil
 
+import pytest
+
+from dvc.exceptions import DvcIgnoreError
 from dvc.ignore import DvcIgnore
 from dvc.utils.compat import cast_bytes
 from dvc.utils.fs import get_mtime_and_size
@@ -111,7 +114,7 @@ def test_metadata_changed_on_non_ignored_file_deletion(dvc_repo, repo_dir):
     assert new_size != size
 
 
-def test_ignore_should_work_for_external_dependency(dvc_repo, repo_dir):
+def test_ignore_should_raise_for_external_dependency(dvc_repo, repo_dir):
     external_data_dir = repo_dir.mkdtemp()
     data = os.path.join(external_data_dir, "data")
     ignored_file = "data_ignored"
@@ -121,10 +124,27 @@ def test_ignore_should_work_for_external_dependency(dvc_repo, repo_dir):
     repo_dir.create(data_ignored, "ignore this")
     repo_dir.create(ignore_file, ignored_file)
 
-    dvc_repo.add(external_data_dir)
+    with pytest.raises(DvcIgnoreError):
+        dvc_repo.add(external_data_dir)
 
-    assert dvc_repo.status() == {}
 
-    os.remove(data_ignored)
+def test_ignore_should_raise_on_ignore_file_below_output_dir(
+    dvc_repo, repo_dir
+):
+    ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
+    ignore_file_content = os.path.basename(repo_dir.DATA)
+    repo_dir.create(ignore_file, ignore_file_content)
 
-    assert dvc_repo.status() == {}
+    with pytest.raises(DvcIgnoreError):
+        dvc_repo.add(repo_dir.DATA_DIR)
+
+
+def test_ignore_should_not_raise_on_ignore_in_dependency_dir(
+    dvc_repo, repo_dir
+):
+    ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
+    ignore_file_content = os.path.basename(repo_dir.DATA)
+    repo_dir.create(ignore_file, ignore_file_content)
+
+    stage_file = "stage.dvc"
+    dvc_repo.run(fname=stage_file, deps=[repo_dir.DATA_DIR])

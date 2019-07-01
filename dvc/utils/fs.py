@@ -20,11 +20,13 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path):
+def get_mtime_and_size(path, dvcignore_raises=True):
     if os.path.isdir(path):
         size = 0
         files_mtimes = {}
-        for file_path in walk_files(path):
+        for file_path in walk_files(
+            path, raise_on_dvcignore_below_top=dvcignore_raises
+        ):
             try:
                 stat = os.stat(file_path)
             except OSError as exc:
@@ -81,7 +83,6 @@ def get_parent_dirs_up_to(wdir, root_dir):
         return []
 
     dirs = []
-    dirs.append(wdir)
     while wdir != root_dir:
         wdir = os.path.dirname(wdir)
         dirs.append(wdir)
