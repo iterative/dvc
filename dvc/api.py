@@ -7,7 +7,6 @@ try:
 except ImportError:
     from contextlib import GeneratorContextManager as GCM
 
-from dvc.utils import remove
 from dvc.utils.compat import urlparse
 from dvc.repo import Repo
 from dvc.external_repo import ExternalRepo
@@ -70,10 +69,9 @@ def _make_repo(repo_url, rev=None):
         yield Repo(repo_url)
     else:
         tmp_dir = tempfile.mkdtemp("dvc-repo")
+        ext_repo = ExternalRepo(tmp_dir, url=repo_url, rev=rev)
         try:
-            ext_repo = ExternalRepo(tmp_dir, url=repo_url, rev=rev)
             ext_repo.install()
             yield ext_repo.repo
         finally:
-            ext_repo.repo.scm.git.close()
-            remove(tmp_dir)
+            ext_repo.uninstall()

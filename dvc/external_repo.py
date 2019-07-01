@@ -5,7 +5,7 @@ import shutil
 import logging
 import shortuuid
 
-from funcy import cached_property
+from funcy import cached_property, retry
 from schema import Optional
 
 from dvc.config import Config
@@ -138,7 +138,16 @@ class ExternalRepo(object):
             )
             return
 
-        remove(self.path)
+        # If repo has been initialized then we need to close its git repo
+        if "repo" in self.__dict__:
+            self.repo.scm.git.close()
+
+        if os.name == "nt":
+            # git.exe may hang for a while not permitting to remove temp dir
+            os_retry = retry(5, errors=OSError, timeout=0.1)
+            os_retry(remove)(self.path)
+        else:
+            remove(self.path)
 
     def update(self):
         self.repo.scm.fetch(self.rev)
