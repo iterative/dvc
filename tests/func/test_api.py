@@ -2,6 +2,7 @@ import pytest
 import shutil
 
 from dvc import api
+from dvc.exceptions import OutputFileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
@@ -101,16 +102,31 @@ def test_open(repo_dir, dvc_repo, remote_url):
 
 
 def test_open_external(repo_dir, dvc_repo, erepo, remote_url):
+    erepo.dvc.scm.checkout("branch")
     _set_remote_url_and_commit(erepo.dvc, remote_url)
-    erepo.dvc.push()
+    erepo.dvc.scm.checkout("master")
+    _set_remote_url_and_commit(erepo.dvc, remote_url)
+
+    erepo.dvc.push(all_branches=True)
 
     # Remove cache to force download
     shutil.rmtree(erepo.dvc.cache.local.cache_dir)
 
     # Using file url to force clone to tmp repo
     repo_url = "file://" + erepo.dvc.root_dir
-    with api.open(repo_dir.FOO, repo=repo_url) as fd:
-        assert fd.read() == repo_dir.FOO_CONTENTS
+    with api.open("version", repo=repo_url) as fd:
+        assert fd.read() == "master"
+
+    assert api.read("version", repo=repo_url, rev="branch") == "branch"
+
+
+def test_open_missing(erepo):
+    # Remove cache to make foo missing
+    shutil.rmtree(erepo.dvc.cache.local.cache_dir)
+
+    repo_url = "file://" + erepo.dvc.root_dir
+    with pytest.raises(OutputFileMissingError):
+        api.read(erepo.FOO, repo=repo_url)
 
 
 def _set_remote_url_and_commit(repo, remote_url):

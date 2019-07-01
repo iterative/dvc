@@ -5,7 +5,6 @@ from dvc.config import Config
 from dvc.path_info import PathInfo
 from dvc.external_repo import ExternalRepo
 from dvc.utils.compat import urlparse
-from dvc.utils import remove
 
 
 @staticmethod
@@ -19,8 +18,8 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
+    erepo = ExternalRepo(tmp_dir, url=url, rev=rev)
     try:
-        erepo = ExternalRepo(tmp_dir, url=url, rev=rev)
         erepo.install()
         # Try any links possible to avoid data duplication.
         #
@@ -42,7 +41,5 @@ def get(url, path, out=None, rev=None):
         o.path_info = PathInfo(os.path.abspath(out))
         with o.repo.state:
             o.checkout()
-        erepo.repo.scm.git.close()
     finally:
-        if os.path.exists(tmp_dir):
-            remove(tmp_dir)
+        erepo.uninstall()
