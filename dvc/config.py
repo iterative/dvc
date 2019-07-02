@@ -152,6 +152,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
     SECTION_CORE_ANALYTICS_SCHEMA = BOOL_SCHEMA
+    SECTION_CORE_CHECKSUM_JOBS = "checksum_jobs"
+    SECTION_CORE_CHECKSUM_JOBS_SCHEMA = And(Use(int), lambda x: x > 0)
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -199,6 +201,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(
             SECTION_CORE_ANALYTICS, default=True
         ): SECTION_CORE_ANALYTICS_SCHEMA,
+        Optional(
+            SECTION_CORE_CHECKSUM_JOBS, default=None
+        ): SECTION_CORE_CHECKSUM_JOBS_SCHEMA,
         # backward compatibility
         Optional(SECTION_CORE_CLOUD, default=""): SECTION_CORE_CLOUD_SCHEMA,
         Optional(SECTION_CORE_STORAGEPATH, default=""): str,
