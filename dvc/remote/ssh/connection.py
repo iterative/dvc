@@ -173,11 +173,13 @@ class SSHConnection:
         for root, dirs, files in self.walk(path, topdown=False):
             for fname in files:
                 path = posixpath.join(root, fname)
-                self._remove_file(path)
+                with ignore_file_not_found():
+                    self._remove_file(path)
 
             for dname in dirs:
                 path = posixpath.join(root, dname)
-                self._sftp.rmdir(dname)
+                with ignore_file_not_found():
+                    self._sftp.rmdir(dname)
 
         with ignore_file_not_found():
             self._sftp.rmdir(path)

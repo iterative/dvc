@@ -137,17 +137,19 @@ class RemoteBASE(object):
         dir_info = []
 
         for root, dirs, files in self.walk(path_info):
+            root_info = path_info / root
+
             if len(files) > LARGE_DIR_SIZE:
                 msg = (
                     "Computing md5 for a large directory {}. "
                     "This is only done once."
                 )
-                title = str(self.path_cls(root))
+                title = str(root_info)
                 logger.info(msg.format(title))
                 files = progress(files, name=title)
 
             for fname in files:
-                file_info = self.path_cls(root) / fname
+                file_info = root_info / fname
                 relative_path = file_info.relative_to(path_info)
                 dir_info.append(
                     {
@@ -207,7 +209,7 @@ class RemoteBASE(object):
 
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
-        to_info = self.path_cls(path)
+        to_info = PathInfo(path)
         self.cache.download([path_info], [to_info], no_progress_bar=True)
 
         try:
@@ -226,7 +228,7 @@ class RemoteBASE(object):
 
         for info in d:
             # NOTE: here is a BUG, see comment to .as_posix() below
-            relative_path = self.path_cls.from_posix(info[self.PARAM_RELPATH])
+            relative_path = PathInfo.from_posix(info[self.PARAM_RELPATH])
             info[self.PARAM_RELPATH] = relative_path.fspath
 
         return d
@@ -720,7 +722,7 @@ class RemoteBASE(object):
 
     def _remove_redundant_files(self, path_info, dir_info, force):
         existing_files = set(
-            self.path_cls(root) / fname
+            path_info / root / fname
             for root, _, files in self.walk(path_info)
             for fname in files
         )
