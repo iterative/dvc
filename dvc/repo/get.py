@@ -3,7 +3,8 @@ import shortuuid
 
 from dvc.config import Config
 from dvc.path_info import PathInfo
-from dvc.external_repo import ExternalRepo
+from dvc.external_repo import external_repo
+from dvc.utils import remove
 from dvc.utils.compat import urlparse
 
 
@@ -18,28 +19,26 @@ def get(url, path, out=None, rev=None):
     # and won't work with reflink/hardlink.
     dpath = os.path.dirname(os.path.abspath(out))
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
-    erepo = ExternalRepo(tmp_dir, url=url, rev=rev)
     try:
-        erepo.install()
-        # Try any links possible to avoid data duplication.
-        #
-        # Not using symlink, because we need to remove cache after we are
-        # done, and to make that work we would have to copy data over
-        # anyway before removing the cache, so we might just copy it
-        # right away.
-        #
-        # Also, we can't use theoretical "move" link type here, because
-        # the same cache file might be used a few times in a directory.
-        erepo.repo.config.set(
-            Config.SECTION_CACHE,
-            Config.SECTION_CACHE_TYPE,
-            "reflink,hardlink,copy",
-        )
-        src = os.path.join(erepo.path, urlparse(path).path.lstrip("/"))
-        o, = erepo.repo.find_outs_by_path(src)
-        erepo.repo.fetch(o.stage.path)
-        o.path_info = PathInfo(os.path.abspath(out))
-        with o.repo.state:
-            o.checkout()
+        with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
+            # Try any links possible to avoid data duplication.
+            #
+            # Not using symlink, because we need to remove cache after we are
+            # done, and to make that work we would have to copy data over
+            # anyway before removing the cache, so we might just copy it
+            # right away.
+            #
+            # Also, we can't use theoretical "move" link type here, because
+            # the same cache file might be used a few times in a directory.
+            repo.config.set(
+                Config.SECTION_CACHE,
+                Config.SECTION_CACHE_TYPE,
+                "reflink,hardlink,copy",
+            )
+            o = repo.find_out_by_relpath(path)
+            repo.fetch(o.stage.path)
+            o.path_info = PathInfo(os.path.abspath(out))
+            with o.repo.state:
+                o.checkout()
     finally:
-        erepo.uninstall()
+        remove(tmp_dir)

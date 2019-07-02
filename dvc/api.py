@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 import os
-import tempfile
 
 try:
     from contextlib import _GeneratorContextManager as GCM
@@ -9,7 +8,7 @@ except ImportError:
 
 from dvc.utils.compat import urlparse
 from dvc.repo import Repo
-from dvc.external_repo import ExternalRepo
+from dvc.external_repo import external_repo
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -68,10 +67,5 @@ def _make_repo(repo_url, rev=None):
         assert rev is None, "Custom revision is not supported for local repo"
         yield Repo(repo_url)
     else:
-        tmp_dir = tempfile.mkdtemp("dvc-repo")
-        ext_repo = ExternalRepo(tmp_dir, url=repo_url, rev=rev)
-        try:
-            ext_repo.install()
-            yield ext_repo.repo
-        finally:
-            ext_repo.uninstall()
+        with external_repo(url=repo_url, rev=rev) as repo:
+            yield repo

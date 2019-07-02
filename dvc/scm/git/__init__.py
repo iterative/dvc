@@ -319,3 +319,6 @@ class Git(Base):
         diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
         diff_dct[DIFF_B_TREE] = trees[DIFF_B_TREE]
         return diff_dct
+
+    def get_rev(self):
+        return self.git.git.rev_parse("HEAD")

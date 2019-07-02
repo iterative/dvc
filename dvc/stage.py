@@ -326,6 +326,17 @@ class Stage(object):
 
         return self
 
+    def update(self):
+        for dep in self.deps:
+            dep.update()
+
+        locked = self.locked
+        self.locked = False
+        try:
+            self.reproduce()
+        finally:
+            self.locked = locked
+
     @staticmethod
     def validate(d, fname=None):
         from dvc.utils import convert_to_unicode

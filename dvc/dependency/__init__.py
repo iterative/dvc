@@ -16,7 +16,6 @@ from dvc.dependency.https import DependencyHTTPS
 from .repo import DependencyREPO
 
 from dvc.remote import Remote
-from dvc.external_repo import ExternalRepo
 
 
 DEPS = [
@@ -47,7 +46,7 @@ DEP_MAP = {
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
 del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
-SCHEMA[schema.Optional(DependencyREPO.PARAM_REPO)] = ExternalRepo.SCHEMA
+SCHEMA[schema.Optional(DependencyREPO.PARAM_REPO)] = DependencyREPO.REPO_SCHEMA
 
 
 def _get(stage, p, info):

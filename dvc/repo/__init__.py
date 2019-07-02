@@ -44,8 +44,9 @@ class Repo(object):
     from dvc.repo.brancher import brancher
     from dvc.repo.get import get
     from dvc.repo.get_url import get_url
+    from dvc.repo.update import update
 
-    def __init__(self, root_dir=None, rev=None):
+    def __init__(self, root_dir=None):
         from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
@@ -64,10 +65,7 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir, repo=self)
 
-        if rev:
-            self.tree = self.scm.get_tree(rev)
-        else:
-            self.tree = WorkingTree(self.root_dir)
+        self.tree = WorkingTree(self.root_dir)
 
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
@@ -124,7 +122,6 @@ class Repo(object):
 
     def _ignore(self):
         from dvc.updater import Updater
-        from dvc.external_repo import ExternalRepo
 
         updater = Updater(self.dvc_dir)
 
@@ -134,7 +131,6 @@ class Repo(object):
             self.config.config_local_file,
             updater.updater_file,
             updater.lock.lock_file,
-            os.path.join(self.dvc_dir, ExternalRepo.REPOS_DIR),
         ] + self.state.temp_files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
@@ -330,6 +326,9 @@ class Repo(object):
             G_active.add_node(node, stage=stage)
 
             for dep in stage.deps:
+                if dep.path_info is None:
+                    continue
+
                 for out in outs:
                     if (
                         out == dep.path_info
@@ -440,6 +439,11 @@ class Repo(object):
             raise OutputNotFoundError(path)
 
         return matched
+
+    def find_out_by_relpath(self, relpath):
+        path = os.path.join(self.root_dir, relpath)
+        out, = self.find_outs_by_path(path)
+        return out
 
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)

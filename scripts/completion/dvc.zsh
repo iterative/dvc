@@ -42,6 +42,7 @@ _dvc_commands() {
     "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
     "version:Show DVC version and system/environment informaion."
+    "update:Update dependencies and reproduce specified DVC-files."
   )
 
   _describe 'dvc commands' _commands
@@ -261,6 +262,10 @@ _dvc_unprotect=(
   "*:Data files:_files"
 )
 
+_dvc_update=(
+  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
+)
+
 typeset -A opt_args
 local context state line curcontext="$curcontext"
 
@@ -299,4 +304,5 @@ case $words[1] in
   status)     _arguments $_dvc_global_options   $_dvc_status    ;;
   unlock)     _arguments $_dvc_global_options   $_dvc_unlock    ;;
   unprotect)  _arguments $_dvc_global_options   $_dvc_unprotect ;;
+  update)     _arguments $_dvc_global_options   $_dvc_update    ;;
 esac
