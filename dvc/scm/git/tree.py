@@ -102,7 +102,7 @@ class GitTree(BaseTree):
             tree = tree[i]
         return tree
 
-    def _walk(self, tree, topdown=True, dvc_ignore_filter=None):
+    def _walk(self, tree, topdown=True):
         # TODO how to handle dvcignore here?
         dirs, nondirs = [], []
         for i in tree:
@@ -112,23 +112,17 @@ class GitTree(BaseTree):
                 nondirs.append(i.name)
 
         if topdown:
-            if not dvc_ignore_filter:
-                # dvc_ignore_filter = DvcIgnoreFilter(tree.abspath)
-                pass
-            if dvc_ignore_filter:
-                dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
-            for x in self._walk(
-                tree[i], topdown=True, dvc_ignore_filter=dvc_ignore_filter
-            ):
+            for x in self._walk(tree[i], topdown=True):
                 yield x
 
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
     def walk(self, top, topdown=True, dvcignore=None):
+        # TODO should we ignore dvcignore for GitTree?
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:

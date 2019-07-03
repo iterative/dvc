@@ -71,7 +71,8 @@ class WorkingTree(BaseTree):
         if not dvcignore:
             from dvc.ignore import DvcIgnoreFilter
 
-            dvcignore = DvcIgnoreFilter(self)
+            # TODO should it be here?
+            dvcignore = DvcIgnoreFilter()
 
         def onerror(e):
             raise e

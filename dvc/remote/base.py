@@ -149,6 +149,7 @@ class RemoteBASE(object):
             root_info = path_info / root
 
 
+
                 for fname in files:
                     file_info = root_info / fname
                     relative_path = file_info.relative_to(path_info)

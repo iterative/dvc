@@ -12,7 +12,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
-from dvc.ignore import DvcIgnoreFilter
+from dvc.ignore import DvcIgnoreFilter, DvcIgnore
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
@@ -369,31 +369,43 @@ class Repo(object):
 
         return filter_dirs
 
+    def update_dvcignore(self, dvcignore, dir_path):
+        ignore_file_path = os.path.join(dir_path, DvcIgnore.DVCIGNORE_FILE)
+        if os.path.exists(ignore_file_path):
+            with self.tree.open(ignore_file_path) as fobj:
+                ignore_patterns = fobj.readlines()
+            dvcignore.update(ignore_file_path, ignore_patterns)
+
     def load_dvcignores(self):
         from dvc.stage import Stage
 
         outs = []
         # TODO maybe dvcignore should be a part of WorkingTree?
-        dvcignore = DvcIgnoreFilter(self.tree)
+        dvcignore = DvcIgnoreFilter()
         for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
                     continue
-                try:
-                    stage = Stage.load(self, path)
-
-                    for out in stage.outs:
-                        if out.scheme == "local":
-                            outs.append(out.fspath + out.sep)
+                _, outs = self.load_stage_with_outs_paths(path)
+                outs.extend(outs)
                 # TODO
-                except Exception:
-                    pass
             out_dir_filter = self.make_out_dir_filter(outs, root)
             dirs[:] = list(filter(out_dir_filter, dirs))
-            dvcignore.update(root)
+            self.update_dvcignore(dvcignore, root)
 
         return dvcignore
+
+    # TODO I don't like it
+    def load_stage_with_outs_paths(self, stage_path):
+        from dvc.stage import Stage
+
+        outs = []
+        stage = Stage.load(self, stage_path)
+        for out in stage.outs:
+            if out.scheme == "local":
+                outs.append(out.fspath + out.sep)
+        return stage, outs
 
     def stages(self, from_directory=None, check_dag=True):
         """
@@ -413,7 +425,7 @@ class Repo(object):
             raise TargetNotDirectoryError(from_directory)
 
         stages = []
-        outs = []
+        all_outs = []
 
         for root, dirs, files in self.tree.walk(
             from_directory, dvcignore=self.dvcignore
@@ -422,13 +434,11 @@ class Repo(object):
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
                     continue
-                stage = Stage.load(self, path)
-                for out in stage.outs:
-                    if out.scheme == "local":
-                        outs.append(out.fspath + out.sep)
+                stage, outs = self.load_stage_with_outs_paths(path)
                 stages.append(stage)
+                all_outs.extend(outs)
 
-            out_dir_filter = self.make_out_dir_filter(outs, root)
+            out_dir_filter = self.make_out_dir_filter(all_outs, root)
             dirs[:] = list(filter(out_dir_filter, dirs))
 
         if check_dag:

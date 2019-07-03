@@ -79,12 +79,14 @@ def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
     )
     dvc_repo = Repo(dvc_repo.root_dir)
 
-    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
+    mtime_sig, size = get_mtime_and_size(
+        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
+    )
 
     shutil.move(repo_dir.DATA_SUB, new_data_path)
 
     new_mtime_sig, new_size = get_mtime_and_size(
-        repo_dir.DATA_DIR, dvc_repo.dvcignore
+        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
     )
 
     assert new_mtime_sig == mtime_sig
@@ -106,11 +108,14 @@ def test_metadata_unchanged_on_ignored_file_deletion(dvc_repo, repo_dir):
     ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
     repo_dir.create(ignore_file, to_posixpath(repo_dir.DATA_SUB))
     dvc_repo = Repo(dvc_repo.root_dir)
-    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
+    mtime, size = get_mtime_and_size(
+        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
+    )
 
     os.remove(repo_dir.DATA_SUB)
+    # TODO abspath
     new_mtime, new_size = get_mtime_and_size(
-        repo_dir.DATA_DIR, dvc_repo.dvcignore
+        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
     )
 
     assert new_mtime == mtime
@@ -135,7 +140,7 @@ def test_should_ignore_for_external_dependency(dvc_repo, repo_dir):
     ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
     repo_dir.create(data, "external_data_content")
     repo_dir.create(ignored_full_path, "ignored_file_content")
-    repo_dir.create(ignore_file, ignored_full_path)
+    repo_dir.create(ignore_file, "/" + ignored_full_path)
     dvc_repo = Repo(dvc_repo.root_dir)
 
     stages = dvc_repo.add(external_data_dir)
