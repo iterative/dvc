@@ -13,10 +13,6 @@
   :target: https://travis-ci.com/iterative/dvc
   :alt: Travis
 
-.. image:: https://ci.appveyor.com/api/projects/status/github/iterative/dvc?branch=master&svg=true
-  :target: https://ci.appveyor.com/project/iterative/dvc/branch/master
-  :alt: Windows Build
-
 .. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
   :target: https://codeclimate.com/github/iterative/dvc
   :alt: Code Climate

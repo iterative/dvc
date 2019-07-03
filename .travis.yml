@@ -19,6 +19,16 @@ env:
 # version, that causes fpm to crash.
 matrix:
   include:
+  - name: "Python 2.7 on Windows"
+    os: windows           # Windows 10.0.17134 N/A Build 17134
+    language: shell       # 'language: python' is an error on Travis CI Windows
+    before_install: choco install python2
+    env: PATH=/c/Python27:/c/Python27/Scripts:$PATH
+  - name: "Python 3.7 on Windows"
+    os: windows           # Windows 10.0.17134 N/A Build 17134
+    language: shell       # 'language: python' is an error on Travis CI Windows
+    before_install: choco install python
+    env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
   - name: "2.7"
     env:
     - PYTHON_VER=2.7.13
