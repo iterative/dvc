@@ -5,6 +5,4 @@ from dvc.output.local import OutputLOCAL
 
 
 class DependencyLOCAL(DependencyBase, OutputLOCAL):
-    @property
-    def dvcignore_raises(self):
-        return False
+    pass

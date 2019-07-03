@@ -23,7 +23,7 @@ class BaseTree(object):
     def isfile(self, path):
         """Test whether a path is a regular file"""
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, dvcignore=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -60,7 +60,7 @@ class WorkingTree(BaseTree):
         """Test whether a path is a regular file"""
         return os.path.isfile(path)
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, dvcignore=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -68,10 +68,18 @@ class WorkingTree(BaseTree):
         - it could raise exceptions, there is no onerror argument
         """
 
+        if not dvcignore:
+            from dvc.ignore import DvcIgnoreFilter
+
+            dvcignore = DvcIgnoreFilter(self)
+
         def onerror(e):
             raise e
 
         for root, dirs, files in dvc_walk(
-            os.path.abspath(top), topdown=topdown, onerror=onerror
+            os.path.abspath(top),
+            topdown=topdown,
+            onerror=onerror,
+            dvcignore=dvcignore,
         ):
             yield os.path.normpath(root), dirs, files

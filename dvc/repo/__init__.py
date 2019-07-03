@@ -12,6 +12,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
+from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
@@ -84,6 +85,7 @@ class Repo(object):
         self.tag = Tag(self)
 
         self._ignore()
+        self.dvcignore = self.load_dvcignores()
 
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
@@ -355,6 +357,44 @@ class Repo(object):
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
 
+    def make_out_dir_filter(self, outs, root_dir):
+        def filter_dirs(dname):
+            path = os.path.join(root_dir, dname)
+            if path in (self.dvc_dir, self.scm.dir):
+                return False
+            for out in outs:
+                if path == os.path.normpath(out) or path.startswith(out):
+                    return False
+            return True
+
+        return filter_dirs
+
+    def load_dvcignores(self):
+        from dvc.stage import Stage
+
+        outs = []
+        # TODO maybe dvcignore should be a part of WorkingTree?
+        dvcignore = DvcIgnoreFilter(self.tree)
+        for root, dirs, files in self.tree.walk(self.root_dir):
+            for fname in files:
+                path = os.path.join(root, fname)
+                if not Stage.is_valid_filename(path):
+                    continue
+                try:
+                    stage = Stage.load(self, path)
+
+                    for out in stage.outs:
+                        if out.scheme == "local":
+                            outs.append(out.fspath + out.sep)
+                # TODO
+                except Exception:
+                    pass
+            out_dir_filter = self.make_out_dir_filter(outs, root)
+            dirs[:] = list(filter(out_dir_filter, dirs))
+            dvcignore.update(root)
+
+        return dvcignore
+
     def stages(self, from_directory=None, check_dag=True):
         """
         Walks down the root directory looking for Dvcfiles,
@@ -375,7 +415,9 @@ class Repo(object):
         stages = []
         outs = []
 
-        for root, dirs, files in self.tree.walk(from_directory):
+        for root, dirs, files in self.tree.walk(
+            from_directory, dvcignore=self.dvcignore
+        ):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
@@ -386,16 +428,8 @@ class Repo(object):
                         outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            def filter_dirs(dname, root=root):
-                path = os.path.join(root, dname)
-                if path in (self.dvc_dir, self.scm.dir):
-                    return False
-                for out in outs:
-                    if path == os.path.normpath(out) or path.startswith(out):
-                        return False
-                return True
-
-            dirs[:] = list(filter(filter_dirs, dirs))
+            out_dir_filter = self.make_out_dir_filter(outs, root)
+            dirs[:] = list(filter(out_dir_filter, dirs))
 
         if check_dag:
             self.check_dag(stages)

@@ -32,10 +32,10 @@ class StateVersionTooNewError(DvcException):
 
 
 class StateBase(object):
-    def save(self, path_info, checksum, dvcignore_raises=True):
+    def save(self, path_info, checksum):
         pass
 
-    def get(self, path_info, dvcignore_raises=True):
+    def get(self, path_info):
         return None
 
     def save_link(self, path_info):
@@ -342,7 +342,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
-    def save(self, path_info, checksum, dvcignore_raises=True):
+    def save(self, path_info, checksum):
         """Save checksum for the specified path info.
 
         Args:
@@ -355,7 +355,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         path = fspath_py35(path_info)
         assert os.path.exists(path)
 
-        actual_mtime, actual_size = get_mtime_and_size(path, dvcignore_raises)
+        actual_mtime, actual_size = get_mtime_and_size(
+            path, self.repo.dvcignore
+        )
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -369,7 +371,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             actual_inode, actual_mtime, actual_size, checksum
         )
 
-    def get(self, path_info, dvcignore_raises=True):
+    def get(self, path_info):
         """Gets the checksum for the specified path info. Checksum will be
         retrieved from the state database if available.
 
@@ -386,7 +388,9 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path, dvcignore_raises)
+        actual_mtime, actual_size = get_mtime_and_size(
+            path, self.repo.dvcignore
+        )
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -413,7 +417,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return
 
-        mtime, _ = get_mtime_and_size(path)
+        mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
         inode = get_inode(path)
         relative_path = relpath(path, self.root_dir)
 
@@ -443,7 +447,7 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path)
+            actual_mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
 
             if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))

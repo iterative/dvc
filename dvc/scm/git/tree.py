@@ -1,7 +1,6 @@
 import errno
 import os
 
-from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import relpath
 from dvc.utils.compat import StringIO, BytesIO
 from dvc.exceptions import DvcException
@@ -104,6 +103,7 @@ class GitTree(BaseTree):
         return tree
 
     def _walk(self, tree, topdown=True, dvc_ignore_filter=None):
+        # TODO how to handle dvcignore here?
         dirs, nondirs = [], []
         for i in tree:
             if i.mode == GIT_MODE_DIR:
@@ -113,8 +113,10 @@ class GitTree(BaseTree):
 
         if topdown:
             if not dvc_ignore_filter:
-                dvc_ignore_filter = DvcIgnoreFilter(tree.abspath)
-            dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
+                # dvc_ignore_filter = DvcIgnoreFilter(tree.abspath)
+                pass
+            if dvc_ignore_filter:
+                dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
@@ -126,7 +128,7 @@ class GitTree(BaseTree):
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True):
+    def walk(self, top, topdown=True, dvcignore=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:

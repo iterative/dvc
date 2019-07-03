@@ -20,13 +20,11 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, dvcignore_raises=True):
+def get_mtime_and_size(path, dvcignore=None):
     if os.path.isdir(path):
         size = 0
         files_mtimes = {}
-        for file_path in walk_files(
-            path, raise_on_dvcignore_below_top=dvcignore_raises
-        ):
+        for file_path in walk_files(path, dvcignore):
             try:
                 stat = os.stat(file_path)
             except OSError as exc:

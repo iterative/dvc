@@ -141,11 +141,11 @@ class RemoteBASE(object):
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
-    def _collect_dir(self, path_info, dvcignore_raises):
+    def _collect_dir(self, path_info):
         dir_info = {}
 
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
-            for root, _dirs, files in self.walk(path_info, dvcignore_raises):
+            for root, _dirs, files in self.walk(path_info):
             root_info = path_info / root
 
 
@@ -184,15 +184,15 @@ class RemoteBASE(object):
         # NOTE: sorting the list by path to ensure reproducibility
         return sorted(dir_info.values(), key=itemgetter(self.PARAM_RELPATH))
 
-    def get_dir_checksum(self, path_info, dvcignore_raises=True):
-        dir_info = self._collect_dir(path_info, dvcignore_raises)
+    def get_dir_checksum(self, path_info):
+        dir_info = self._collect_dir(path_info)
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
             self.cache.move(tmp_info, new_info)
 
-        self.state.save(path_info, checksum, dvcignore_raises)
-        self.state.save(new_info, checksum, dvcignore_raises)
+        self.state.save(path_info, checksum)
+        self.state.save(new_info, checksum)
 
         return checksum
 
@@ -252,11 +252,11 @@ class RemoteBASE(object):
     def is_dir_checksum(cls, checksum):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
-    def get_checksum(self, path_info, dvcignore_raises=True):
+    def get_checksum(self, path_info):
         if not self.exists(path_info):
             return None
 
-        checksum = self.state.get(path_info, dvcignore_raises)
+        checksum = self.state.get(path_info)
 
         # If we have dir checksum in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_checksum() call below,
@@ -271,20 +271,18 @@ class RemoteBASE(object):
             return checksum
 
         if self.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info, dvcignore_raises)
+            checksum = self.get_dir_checksum(path_info)
         else:
             checksum = self.get_file_checksum(path_info)
 
         if checksum:
-            self.state.save(path_info, checksum, dvcignore_raises)
+            self.state.save(path_info, checksum)
 
         return checksum
 
-    def save_info(self, path_info, dvcignore_raises=True):
+    def save_info(self, path_info):
         assert path_info.scheme == self.scheme
-        return {
-            self.PARAM_CHECKSUM: self.get_checksum(path_info, dvcignore_raises)
-        }
+        return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
 
     def changed(self, path_info, checksum_info):
         """Checks if data has changed.
@@ -381,7 +379,7 @@ class RemoteBASE(object):
     def isdir(self, path_info):
         return False
 
-    def walk(self, path_info, dvcignore_raises=True):
+    def walk(self, path_info):
         raise NotImplementedError
 
     @staticmethod

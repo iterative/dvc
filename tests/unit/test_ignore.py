@@ -1,8 +1,7 @@
 import os
 
+import mock
 import pytest
-from pathspec import PathSpec
-from pathspec.patterns import GitWildMatchPattern
 
 from dvc.ignore import DvcIgnoreFromFile, DvcIgnoreDir, DvcIgnoreFile
 from mock import MagicMock
@@ -10,10 +9,10 @@ from mock import MagicMock
 
 def mock_dvcignore(dvcignore_path, patterns):
     tree_mock = MagicMock()
-    ignore_file = DvcIgnoreFromFile(dvcignore_path, tree_mock)
-    ignore_file.ignore_spec = PathSpec.from_lines(
-        GitWildMatchPattern, patterns
-    )
+    with mock.patch.object(
+        tree_mock, "open", mock.mock_open(read_data="\n".join(patterns))
+    ):
+        ignore_file = DvcIgnoreFromFile(dvcignore_path, tree_mock)
     return ignore_file
 
 
@@ -58,7 +57,7 @@ def test_ignore_from_file_should_filter_dirs_and_files():
             ["to_ignore"],
             True,
         ),
-        ("to_ignore.txt", ["/*.txt"], True),
+        ("to_ignore.txt", ["*.txt"], True),
         (
             os.path.join("rel", "path", "path2", "to_ignore"),
             ["rel/*/to_ignore"],
