@@ -370,7 +370,7 @@ class OutputBase(object):
                 "Cache for files inside will be lost. "
                 "Would you like to continue? Use '-f' to force."
             )
-            if not force and not prompt.confirm(msg):
+            if not force and not prompt.confirm(msg.format(self.path_info)):
                 raise DvcException(
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
