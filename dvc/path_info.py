@@ -194,11 +194,10 @@ class URLInfo(object):
 
     def relative_to(self, other):
         if isinstance(other, str):
-            other_str = other
             other = URLInfo(other)
         if self.scheme != other.scheme or self.netloc != other.netloc:
             raise ValueError(
-                "'{}' does not start with '{}'".format(self, other_str)
+                "'{}' does not start with '{}'".format(self, other)
             )
         return self._path.relative_to(other._path)
 
