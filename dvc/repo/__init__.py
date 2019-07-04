@@ -300,30 +300,32 @@ class Repo(object):
         G_active = nx.DiGraph()
         stages = stages or self.stages(from_directory, check_dag=False)
         stages = [stage for stage in stages if stage]
-        outs = []
+        outs = dict()
 
         for stage in stages:
             for out in stage.outs:
-                existing = []
-                for o in outs:
-                    if o.path_info == out.path_info:
-                        existing.append(o.stage)
-
-                    in_o_dir = out.path_info.isin(o.path_info)
-                    in_out_dir = o.path_info.isin(out.path_info)
-                    if in_o_dir or in_out_dir:
-                        raise OverlappingOutputPathsError(o, out)
-
-                if existing:
-                    stages = [stage.relpath, existing[0].relpath]
+                if out.path_info in outs:
+                    stages = [
+                        stage.relpath,
+                        outs.get(out.path_info).stage.relpath,
+                    ]
                     raise OutputDuplicationError(str(out), stages)
+                outs[out.path_info] = out
 
-                outs.append(out)
+        for stage in stages:
+            for out in stage.outs:
+                for p in out.path_info.parents:
+                    if p in outs:
+                        raise OverlappingOutputPathsError(
+                            outs.get(p), outs.get(out.path_info)
+                        )
 
         for stage in stages:
             stage_path_info = PathInfo(stage.path)
-            for out in outs:
-                if stage_path_info.isin(out.path_info):
+            if stage_path_info in outs:
+                raise StagePathAsOutputError(stage.wdir, stage.relpath)
+            for p in stage_path_info.parents:
+                if p in outs:
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
         for stage in stages:
@@ -333,21 +335,19 @@ class Repo(object):
             G_active.add_node(node, stage=stage)
 
             for dep in stage.deps:
-                for out in outs:
+                for out in outs.keys():
                     if (
-                        out.path_info != dep.path_info
-                        and not dep.path_info.isin(out.path_info)
-                        and not out.path_info.isin(dep.path_info)
+                        out == dep.path_info
+                        or dep.path_info.isin(out)
+                        or out.isin(dep.path_info)
                     ):
-                        continue
-
-                    dep_stage = out.stage
-                    dep_node = relpath(dep_stage.path, self.root_dir)
-                    G.add_node(dep_node, stage=dep_stage)
-                    G.add_edge(node, dep_node)
-                    if not stage.locked:
-                        G_active.add_node(dep_node, stage=dep_stage)
-                        G_active.add_edge(node, dep_node)
+                        dep_stage = outs.get(out).stage
+                        dep_node = relpath(dep_stage.path, self.root_dir)
+                        G.add_node(dep_node, stage=dep_stage)
+                        G.add_edge(node, dep_node)
+                        if not stage.locked:
+                            G_active.add_node(dep_node, stage=dep_stage)
+                            G_active.add_edge(node, dep_node)
 
         self._check_cyclic_graph(G)
 
