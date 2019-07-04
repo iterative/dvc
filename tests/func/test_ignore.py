@@ -79,14 +79,12 @@ def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
     )
     dvc_repo = Repo(dvc_repo.root_dir)
 
-    mtime_sig, size = get_mtime_and_size(
-        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
-    )
+    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     shutil.move(repo_dir.DATA_SUB, new_data_path)
 
     new_mtime_sig, new_size = get_mtime_and_size(
-        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
     )
 
     assert new_mtime_sig == mtime_sig
@@ -108,14 +106,11 @@ def test_metadata_unchanged_on_ignored_file_deletion(dvc_repo, repo_dir):
     ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
     repo_dir.create(ignore_file, to_posixpath(repo_dir.DATA_SUB))
     dvc_repo = Repo(dvc_repo.root_dir)
-    mtime, size = get_mtime_and_size(
-        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
-    )
+    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     os.remove(repo_dir.DATA_SUB)
-    # TODO abspath
     new_mtime, new_size = get_mtime_and_size(
-        os.path.abspath(repo_dir.DATA_DIR), dvc_repo.dvcignore
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
     )
 
     assert new_mtime == mtime
@@ -155,10 +150,22 @@ def test_should_ignore_for_external_dependency(dvc_repo, repo_dir):
     assert out_dir_cache[0]["relpath"] == "data_external"
 
 
-# TODO ignore tests rely heavily on reloading, maybe we should do something
-# about that
-# TODO problem: what if dvcignore is below out, someone loads repo, then adds
-# dir?
+def test_should_not_consider_dvcignore_after_adding(dvc_repo, repo_dir):
+    ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
+    ignore_file_content = os.path.basename(repo_dir.DATA)
+
+    repo_dir.create(ignore_file, ignore_file_content)
+    dvc_repo = Repo(dvc_repo.root_dir)
+
+    stages = dvc_repo.add(repo_dir.DATA_DIR)
+    assert len(stages) == 1
+    assert len(stages[0].outs) == 1
+
+    dir_cache = stages[0].outs[0].dir_cache
+    relpaths = set(map(lambda x: x["relpath"], dir_cache))
+    assert repo_dir.DATA in relpaths
+
+
 def test_should_not_ignore_on_output_below_out_dir(dvc_repo, repo_dir):
     dvc_repo.add(repo_dir.DATA_DIR)
 
