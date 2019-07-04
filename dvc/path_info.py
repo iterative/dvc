@@ -57,7 +57,11 @@ class PathInfo(pathlib.PurePath):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return any(p == other for p in self.parents)
+        for p in self.parents:
+            if p == other:
+                return True
+            if len(other.parts) >= len(p.parts):
+                return False
 
     # pathlib2 uses bytes internally in Python 2, and we use unicode everywhere
     # for paths in both pythons, thus we need this glue.
