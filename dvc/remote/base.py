@@ -39,6 +39,9 @@ STATUS_MAP = {
 }
 
 
+CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
+
+
 class DataCloudError(DvcException):
     """ Data Cloud exception """
 
@@ -101,6 +104,11 @@ class RemoteBASE(object):
             ).format(url, missing, " ".join(missing), self.scheme)
             raise RemoteMissingDepsError(msg)
 
+        core = config.get(Config.SECTION_CORE, {})
+        self.checksum_jobs = core.get(
+            Config.SECTION_CORE_CHECKSUM_JOBS, CHECKSUM_JOBS
+        )
+
         self.protected = False
         self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE)
         self.state = StateBase()
@@ -136,38 +144,47 @@ class RemoteBASE(object):
     def _collect_dir(self, path_info):
         dir_info = []
 
-        for root, dirs, files in self.walk(path_info):
-            root_info = path_info / root
+        with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
+            for root, _dirs, files in self.walk(path_info):
+                root_info = path_info / root
 
-            if len(files) > LARGE_DIR_SIZE:
-                msg = (
-                    "Computing md5 for a large directory {}. "
-                    "This is only done once."
-                )
-                title = str(root_info)
-                logger.info(msg.format(title))
-                files = progress(files, name=title)
+                if len(files) > LARGE_DIR_SIZE:
+                    msg = (
+                        "Computing md5 for a large directory {}. "
+                        "This is only done once."
+                    )
+                    title = str(root_info)
+                    logger.info(msg.format(title))
+                    files = progress(files, name=title)
 
-            for fname in files:
-                file_info = root_info / fname
-                relative_path = file_info.relative_to(path_info)
-                dir_info.append(
+                dir_info.extend(
                     {
                         # NOTE: this is lossy transformation:
                         #   "hey\there" -> "hey/there"
                         #   "hey/there" -> "hey/there"
-                        # The latter is fine filename on Windows,
-                        # which will transform to dir/file on back transform.
+                        # The latter is fine filename on Windows, which
+                        # will transform to dir/file on back transform.
                         #
                         # Yes, this is a BUG, as long as we permit "/" in
                         # filenames on Windows and "\" on Unix
-                        self.PARAM_RELPATH: relative_path.as_posix(),
-                        self.PARAM_CHECKSUM: self.get_file_checksum(file_info),
+                        self.PARAM_RELPATH: (root_info / fname)
+                        .relative_to(path_info)
+                        .as_posix(),
+                        self.PARAM_CHECKSUM: executor.submit(
+                            self.get_file_checksum, root_info / fname
+                        ),
                     }
+                    for fname in files
                 )
 
         # NOTE: sorting the list by path to ensure reproducibility
-        return sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+
+        # NOTE: resolving futures
+        for entry in dir_info:
+            entry[self.PARAM_CHECKSUM] = entry[self.PARAM_CHECKSUM].result()
+
+        return dir_info
 
     def get_dir_checksum(self, path_info):
         dir_info = self._collect_dir(path_info)
