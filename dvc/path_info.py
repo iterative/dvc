@@ -172,7 +172,7 @@ class URLInfo(object):
 
     @cached_property
     def _path(self):
-        return pathlib.PurePosixPath(self.parsed.path)
+        return PosixPathInfo(self.parsed.path)
 
     @property
     def name(self):
@@ -210,7 +210,7 @@ class URLInfo(object):
         return (
             self.scheme == other.scheme
             and self.netloc == other.netloc
-            and PathInfo(self.path).isin(PathInfo(other.path))
+            and self._path.isin(other._path)
         )
 
 
