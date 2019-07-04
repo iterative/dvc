@@ -242,6 +242,17 @@ class RemoteBASE(object):
             return None
 
         checksum = self.state.get(path_info)
+
+        # If we have dir checksum in state db, but dir cache file is lost,
+        # then we need to recollect the dir via .get_dir_checksum() call below,
+        # see https://github.com/iterative/dvc/issues/2219 for context
+        if (
+            checksum
+            and self.is_dir_checksum(checksum)
+            and not self.exists(self.cache.checksum_to_path_info(checksum))
+        ):
+            checksum = None
+
         if checksum:
             return checksum
 
