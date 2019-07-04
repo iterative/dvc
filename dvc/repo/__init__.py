@@ -300,7 +300,7 @@ class Repo(object):
         G_active = nx.DiGraph()
         stages = stages or self.stages(from_directory, check_dag=False)
         stages = [stage for stage in stages if stage]
-        outs = dict()
+        outs = {}
 
         for stage in stages:
             for out in stage.outs:
@@ -335,7 +335,7 @@ class Repo(object):
             G_active.add_node(node, stage=stage)
 
             for dep in stage.deps:
-                for out in outs.keys():
+                for out in outs:
                     if (
                         out == dep.path_info
                         or dep.path_info.isin(out)
