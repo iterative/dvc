@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from dvc.ignore import DvcIgnorePatterns, DvcIgnoreDirs, DvcIgnoreFile
+from dvc.ignore import DvcIgnorePatterns, DvcIgnoreDirs
 
 
 def mock_dvcignore(dvcignore_path, patterns):
@@ -96,16 +96,3 @@ def test_should_ignore_dir(omit_dir):
     new_dirs, _ = ignore(root, dirs, files)
 
     assert set(new_dirs) == {"dir1", "dir2"}
-
-
-def test_should_ignore_file():
-    dvcignore = ".dvcignore"
-    ignore = DvcIgnoreFile(dvcignore)
-
-    root = os.path.join(os.path.sep, "walk", "dir", "root")
-    dirs = []
-    files = ["file1", "file2", dvcignore]
-
-    _, new_files = ignore(root, dirs, files)
-
-    assert set(new_files) == {"file1", "file2"}

@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from dvc.ignore import DvcIgnore
 from dvc.utils.compat import str, basestring, urlparse, fspath_py35, makedirs
 
 import os
@@ -14,7 +15,11 @@ from concurrent.futures import as_completed, ThreadPoolExecutor
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.exceptions import DvcException, ConfirmRemoveError
+from dvc.exceptions import (
+    DvcException,
+    ConfirmRemoveError,
+    DvcIgnoreInCollectedDirError,
+)
 from dvc.progress import progress, ProgressCallback
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
 from dvc.state import StateBase
@@ -151,9 +156,11 @@ class RemoteBASE(object):
 
 
                 for fname in files:
-                    file_info = root_info / fname
-                    relative_path = file_info.relative_to(path_info)
-                    checksum = executor.submit(
+                    if fname == DvcIgnore.DVCIGNORE_FILE:
+                    raise DvcIgnoreInCollectedDirError(root)
+                file_info = root_info / fname
+                relative_path = file_info.relative_to(path_info)
+                checksum = executor.submit(
                         self.get_file_checksum, file_info
                     )
                     dir_info[checksum] = {

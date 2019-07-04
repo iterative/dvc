@@ -1,7 +1,9 @@
 import os
 import shutil
 
+import pytest
 
+from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore
 from dvc.repo import Repo
 from dvc.utils.compat import cast_bytes
@@ -91,7 +93,7 @@ def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
     assert new_size == size
 
 
-def test_mtime_changed_when_moving_non_ignored_file(dvc_repo, repo_dir):
+def test_mtime_changed_when_moving_non_ignored_file(repo_dir):
     new_data_path = repo_dir.DATA_SUB + "_new"
     mtime, size = get_mtime_and_size(repo_dir.DATA_DIR)
 
@@ -117,7 +119,7 @@ def test_metadata_unchanged_on_ignored_file_deletion(dvc_repo, repo_dir):
     assert new_size == size
 
 
-def test_metadata_changed_on_non_ignored_file_deletion(dvc_repo, repo_dir):
+def test_metadata_changed_on_non_ignored_file_deletion(repo_dir):
     mtime, size = get_mtime_and_size(repo_dir.DATA_DIR)
 
     os.remove(repo_dir.DATA_SUB)
@@ -157,32 +159,5 @@ def test_should_not_consider_dvcignore_after_adding(dvc_repo, repo_dir):
     repo_dir.create(ignore_file, ignore_file_content)
     dvc_repo = Repo(dvc_repo.root_dir)
 
-    stages = dvc_repo.add(repo_dir.DATA_DIR)
-    assert len(stages) == 1
-    assert len(stages[0].outs) == 1
-
-    dir_cache = stages[0].outs[0].dir_cache
-    relpaths = set(map(lambda x: x["relpath"], dir_cache))
-    assert repo_dir.DATA in relpaths
-
-
-def test_should_not_ignore_on_output_below_out_dir(dvc_repo, repo_dir):
-    dvc_repo.add(repo_dir.DATA_DIR)
-
-    ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
-    ignore_file_content = os.path.basename(repo_dir.DATA)
-    repo_dir.create(ignore_file, ignore_file_content)
-    dvc_repo = Repo(dvc_repo.root_dir)
-
-    assert dvc_repo.status() == {}
-
-
-def test_ignore_should_not_raise_on_ignore_in_dependency_dir(
-    dvc_repo, repo_dir
-):
-    ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
-    ignore_file_content = os.path.basename(repo_dir.DATA)
-    repo_dir.create(ignore_file, ignore_file_content)
-
-    stage_file = "stage.dvc"
-    dvc_repo.run(fname=stage_file, deps=[repo_dir.DATA_DIR])
+    with pytest.raises(DvcIgnoreInCollectedDirError):
+        dvc_repo.add(repo_dir.DATA_DIR)

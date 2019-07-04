@@ -88,22 +88,9 @@ class DvcIgnoreDirs(DvcIgnore):
         return dirs, files
 
 
-class DvcIgnoreFile(DvcIgnore):
-    def __init__(self, basename):
-        self.basename = basename
-
-    def __call__(self, root, dirs, files):
-        files = [f for f in files if not f == self.basename]
-
-        return dirs, files
-
-
 class DvcIgnoreFilter(object):
     def __init__(self):
-        self.ignores = [
-            DvcIgnoreDirs([".git", ".hg", ".dvc"]),
-            DvcIgnoreFile(".dvcignore"),
-        ]
+        self.ignores = [DvcIgnoreDirs([".git", ".hg", ".dvc"])]
 
     def update(self, ignore_file_path, patterns):
         self.ignores.append(DvcIgnorePatterns(ignore_file_path, patterns))
