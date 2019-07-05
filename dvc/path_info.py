@@ -213,7 +213,7 @@ class URLInfo(object):
 
     @property
     def parts(self):
-        return (self.scheme, self.parsed.netloc) + self._path.parts
+        return (self.scheme, self.netloc) + self._path.parts
 
     @property
     def bucket(self):

@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import os
 import logging
 
+from itertools import chain
+
 from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
@@ -305,10 +307,7 @@ class Repo(object):
         for stage in stages:
             for out in stage.outs:
                 if out.path_info in outs:
-                    stages = [
-                        stage.relpath,
-                        outs.get(out.path_info).stage.relpath,
-                    ]
+                    stages = [stage.relpath, outs[out.path_info].stage.relpath]
                     raise OutputDuplicationError(str(out), stages)
                 outs[out.path_info] = out
 
@@ -316,15 +315,11 @@ class Repo(object):
             for out in stage.outs:
                 for p in out.path_info.parents:
                     if p in outs:
-                        raise OverlappingOutputPathsError(
-                            outs.get(p), outs.get(out.path_info)
-                        )
+                        raise OverlappingOutputPathsError(outs[p], out)
 
         for stage in stages:
             stage_path_info = PathInfo(stage.path)
-            if stage_path_info in outs:
-                raise StagePathAsOutputError(stage.wdir, stage.relpath)
-            for p in stage_path_info.parents:
+            for p in chain([stage_path_info], stage_path_info.parents):
                 if p in outs:
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
@@ -341,7 +336,7 @@ class Repo(object):
                         or dep.path_info.isin(out)
                         or out.isin(dep.path_info)
                     ):
-                        dep_stage = outs.get(out).stage
+                        dep_stage = outs[out].stage
                         dep_node = relpath(dep_stage.path, self.root_dir)
                         G.add_node(dep_node, stage=dep_stage)
                         G.add_edge(node, dep_node)
