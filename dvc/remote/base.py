@@ -151,16 +151,15 @@ class RemoteBASE(object):
 
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             for root, _dirs, files in self.walk(path_info):
-            root_info = path_info / root
-
-
-
+                root_info = path_info / root
                 for fname in files:
+
                     if fname == DvcIgnore.DVCIGNORE_FILE:
-                    raise DvcIgnoreInCollectedDirError(root)
-                file_info = root_info / fname
-                relative_path = file_info.relative_to(path_info)
-                checksum = executor.submit(
+                        raise DvcIgnoreInCollectedDirError(root)
+
+                    file_info = root_info / fname
+                    relative_path = file_info.relative_to(path_info)
+                    checksum = executor.submit(
                         self.get_file_checksum, file_info
                     )
                     dir_info[checksum] = {

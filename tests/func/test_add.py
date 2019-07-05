@@ -431,7 +431,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         self._caplog.clear()
 
         ret = main(["add", self.BAR])
-        assert 255 == ret
+        assert 1 == ret
 
         expected_error = (
             "unable to read DVC-file: {} "
@@ -481,7 +481,7 @@ class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
             file.write("this will break yaml file structure")
 
         ret = main(["add", self.BAR])
-        self.assertEqual(255, ret)
+        self.assertEqual(1, ret)
 
         bar_stage_file = self.BAR + Stage.STAGE_FILE_SUFFIX
         self.assertFalse(os.path.exists(bar_stage_file))

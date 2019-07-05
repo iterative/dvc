@@ -12,7 +12,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
-from dvc.ignore import DvcIgnoreFilter, DvcIgnore
+from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
@@ -66,6 +66,7 @@ class Repo(object):
         self.scm = SCM(self.root_dir, repo=self)
 
         self.tree = WorkingTree(self.root_dir)
+        self.dvcignore = DvcIgnoreFilter(self.root_dir)
 
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
@@ -85,7 +86,6 @@ class Repo(object):
         self.tag = Tag(self)
 
         self._ignore()
-        self.dvcignore = self.load_dvcignores()
 
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
@@ -369,44 +369,6 @@ class Repo(object):
 
         return filter_dirs
 
-    def update_dvcignore(self, dvcignore, dir_path):
-        ignore_file_path = os.path.join(dir_path, DvcIgnore.DVCIGNORE_FILE)
-        if os.path.exists(ignore_file_path):
-            with self.tree.open(ignore_file_path) as fobj:
-                ignore_patterns = fobj.readlines()
-            dvcignore.update(ignore_file_path, ignore_patterns)
-
-    def load_dvcignores(self):
-        from dvc.stage import Stage
-
-        outs = []
-        # TODO maybe dvcignore should be a part of WorkingTree?
-        dvcignore = DvcIgnoreFilter()
-        for root, dirs, files in self.tree.walk(self.root_dir):
-            for fname in files:
-                path = os.path.join(root, fname)
-                if not Stage.is_valid_filename(path):
-                    continue
-                _, outs = self.load_stage_with_outs_paths(path)
-                outs.extend(outs)
-                # TODO
-            out_dir_filter = self.make_out_dir_filter(outs, root)
-            dirs[:] = list(filter(out_dir_filter, dirs))
-            self.update_dvcignore(dvcignore, root)
-
-        return dvcignore
-
-    # TODO I don't like it
-    def load_stage_with_outs_paths(self, stage_path):
-        from dvc.stage import Stage
-
-        outs = []
-        stage = Stage.load(self, stage_path)
-        for out in stage.outs:
-            if out.scheme == "local":
-                outs.append(out.fspath + out.sep)
-        return stage, outs
-
     def stages(self, from_directory=None, check_dag=True):
         """
         Walks down the root directory looking for Dvcfiles,
@@ -425,7 +387,7 @@ class Repo(object):
             raise TargetNotDirectoryError(from_directory)
 
         stages = []
-        all_outs = []
+        outs = []
 
         for root, dirs, files in self.tree.walk(
             from_directory, dvcignore=self.dvcignore
@@ -434,11 +396,13 @@ class Repo(object):
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
                     continue
-                stage, outs = self.load_stage_with_outs_paths(path)
+                stage = Stage.load(self, path)
+                for out in stage.outs:
+                    if out.scheme == "local":
+                        outs.append(out.fspath + out.sep)
                 stages.append(stage)
-                all_outs.extend(outs)
 
-            out_dir_filter = self.make_out_dir_filter(all_outs, root)
+            out_dir_filter = self.make_out_dir_filter(outs, root)
             dirs[:] = list(filter(out_dir_filter, dirs))
 
         if check_dag:

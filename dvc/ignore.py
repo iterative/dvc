@@ -6,6 +6,9 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.utils import relpath
+from dvc.utils.fs import get_parent_dirs_up_to
+
+from dvc.utils.compat import open
 
 logger = logging.getLogger(__name__)
 
@@ -44,21 +47,12 @@ class DvcIgnore(object):
 
 
 class DvcIgnorePatterns(DvcIgnore):
-    def __init__(self, ignore_file_path, patterns):
+    def __init__(self, ignore_file_path):
         self.ignore_file_path = ignore_file_path
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
 
-        abs_patterns = []
-        rel_patterns = []
-        for p in patterns:
-            # NOTE: '/' is translated to ^ for .gitignore style patterns,
-            # it is natural to proceed absolute path with this sign
-            if p[0] == "/" and os.path.isabs(p[1:]):
-                abs_patterns.append(p)
-            else:
-                rel_patterns.append(p)
-        self.abs_spec = PathSpec.from_lines(GitWildMatchPattern, abs_patterns)
-        self.rel_spec = PathSpec.from_lines(GitWildMatchPattern, rel_patterns)
+        with open(ignore_file_path, encoding="utf-8") as fobj:
+            self.rel_spec = PathSpec.from_lines(GitWildMatchPattern, fobj)
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -70,8 +64,8 @@ class DvcIgnorePatterns(DvcIgnore):
         abs_path = os.path.join(dirname, basename)
         rel_path = relpath(abs_path, self.dirname)
 
-        if os.pardir + os.sep in rel_path or os.path.isabs(rel_path):
-            return self.abs_spec.match_file(abs_path)
+        if os.pardir + os.sep in rel_path:
+            return False
         return self.rel_spec.match_file(rel_path)
 
     def __hash__(self):
@@ -89,11 +83,22 @@ class DvcIgnoreDirs(DvcIgnore):
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self):
+    def __init__(self, root=None):
         self.ignores = [DvcIgnoreDirs([".git", ".hg", ".dvc"])]
+        self.root = root
 
-    def update(self, ignore_file_path, patterns):
-        self.ignores.append(DvcIgnorePatterns(ignore_file_path, patterns))
+    def load_upper_levels(self, top):
+        top = os.path.abspath(top)
+        if self.root:
+            parent_dirs = get_parent_dirs_up_to(top, self.root)
+            parent_dirs.append(top)
+            for d in parent_dirs:
+                self.update(d)
+
+    def update(self, dirname):
+        ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
+        if os.path.exists(ignore_file_path):
+            self.ignores.append(DvcIgnorePatterns(ignore_file_path))
 
     def __call__(self, root, dirs, files):
         for ignore in self.ignores:

@@ -1,12 +1,19 @@
 import os
 
+import dvc
 import pytest
+from mock import mock_open, patch
 
 from dvc.ignore import DvcIgnorePatterns, DvcIgnoreDirs
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-    ignore_file = DvcIgnorePatterns(dvcignore_path, patterns)
+
+    with patch.object(
+        dvc.ignore, "open", mock_open(read_data="\n".join(patterns))
+    ):
+        ignore_file = DvcIgnorePatterns(dvcignore_path)
+
     return ignore_file
 
 
