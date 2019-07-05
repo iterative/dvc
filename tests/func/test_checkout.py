@@ -575,3 +575,9 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
             relpath(old_data_link, old_cache_dir),
             relpath(new_data_link, new_cache_dir),
         )
+
+
+def test_checkout_no_checksum(repo_dir, dvc_repo):
+    stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
+    dvc_repo.checkout(stage.path, force=True)
+    assert not os.path.exists(repo_dir.FOO)
