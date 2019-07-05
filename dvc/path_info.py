@@ -3,6 +3,7 @@ from __future__ import unicode_literals, absolute_import
 import sys
 import os
 import posixpath
+
 from funcy import cached_property
 
 from dvc.utils.compat import str, builtin_str, basestring, is_py2
@@ -100,6 +101,27 @@ class PosixPathInfo(PathInfo, pathlib.PurePosixPath):
     pass
 
 
+class _URLPathParents(object):
+    def __init__(self, pathcls, scheme, netloc, path):
+        self._scheme = scheme
+        self._netloc = netloc
+        self._parents = path.parents
+        self._pathcls = pathcls
+
+    def __len__(self):
+        return len(self._parents)
+
+    def __getitem__(self, idx):
+        return self._pathcls.from_parts(
+            scheme=self._scheme,
+            netloc=self._netloc,
+            path=self._parents[idx].fspath,
+        )
+
+    def __repr__(self):
+        return "<{}.parents>".format(self._pathcls.__name__)
+
+
 class URLInfo(object):
     DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22}
 
@@ -124,12 +146,7 @@ class URLInfo(object):
     @cached_property
     def url(self):
         p = self.parsed
-        netloc = p.hostname
-        if p.username:
-            netloc = p.username + "@" + netloc
-        if p.port and int(p.port) != self.DEFAULT_PORTS.get(p.scheme):
-            netloc += ":" + str(p.port)
-        return "{}://{}{}".format(p.scheme, netloc, p.path)
+        return "{}://{}{}".format(p.scheme, self.netloc, p.path)
 
     def __str__(self):
         return self.url
@@ -140,7 +157,12 @@ class URLInfo(object):
     def __eq__(self, other):
         if isinstance(other, basestring):
             other = self.__class__(other)
-        return str(self) == str(other)
+        return (
+            self.__class__ == other.__class__
+            and self.scheme == other.scheme
+            and self.netloc == other.netloc
+            and self._path == other._path
+        )
 
     def __hash__(self):
         return hash(self.url)
@@ -157,6 +179,16 @@ class URLInfo(object):
 
     def __getattr__(self, name):
         return getattr(self.parsed, name)
+
+    @cached_property
+    def netloc(self):
+        p = self.parsed
+        netloc = p.hostname
+        if p.username:
+            netloc = p.username + "@" + netloc
+        if p.port and int(p.port) != self.DEFAULT_PORTS.get(p.scheme):
+            netloc += ":" + str(p.port)
+        return netloc
 
     @property
     def port(self):
@@ -184,12 +216,20 @@ class URLInfo(object):
 
     @property
     def bucket(self):
-        return self.netloc
+        return self.parsed.netloc
 
     @property
     def parent(self):
         return self.from_parts(
-            scheme=self.scheme, netloc=self.netloc, path=self._path.parent
+            scheme=self.scheme,
+            netloc=self.parsed.netloc,
+            path=self._path.parent.fspath,
+        )
+
+    @property
+    def parents(self):
+        return _URLPathParents(
+            type(self), self.scheme, self.parsed.netloc, self._path
         )
 
     def relative_to(self, other):
