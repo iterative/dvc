@@ -20,6 +20,10 @@ if is_py2:
 
 
 class PathInfo(pathlib.PurePath):
+    # Use __slots__ in PathInfo objects following PurePath implementation.
+    # This makes objects smaller and speeds up attribute access.
+    # We don't add any fields so it's empty.
+    __slots__ = ()
     scheme = "local"
 
     def __new__(cls, *args):
@@ -58,7 +62,9 @@ class PathInfo(pathlib.PurePath):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return any(p == other for p in self.parents)
+        # Use cached casefolded parts to compare paths
+        n = len(other._cparts)
+        return len(self._cparts) > n and self._cparts[:n] == other._cparts
 
     # pathlib2 uses bytes internally in Python 2, and we use unicode everywhere
     # for paths in both pythons, thus we need this glue.
