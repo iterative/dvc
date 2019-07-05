@@ -3,7 +3,6 @@ from __future__ import unicode_literals, absolute_import
 import sys
 import os
 import posixpath
-from collections import Sequence
 
 from funcy import cached_property
 
@@ -102,7 +101,7 @@ class PosixPathInfo(PathInfo, pathlib.PurePosixPath):
     pass
 
 
-class _URLPathParents(Sequence):
+class _URLPathParents(object):
     def __init__(self, pathcls, scheme, netloc, path):
         self._scheme = scheme
         self._netloc = netloc
