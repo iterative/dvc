@@ -1,9 +1,6 @@
-from dvc.external_repo import ExternalRepo
-
-
 def imp(self, url, path, out=None, rev=None):
-    erepo = {ExternalRepo.PARAM_URL: url}
+    erepo = {"url": url}
     if rev is not None:
-        erepo[ExternalRepo.PARAM_VERSION] = rev
+        erepo["rev"] = rev
 
-    return self.imp_url(path, out=out, erepo=erepo)
+    return self.imp_url(path, out=out, erepo=erepo, locked=True)

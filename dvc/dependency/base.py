@@ -20,3 +20,6 @@ class DependencyBase(object):
 
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
+
+    def update(self):
+        raise NotImplementedError

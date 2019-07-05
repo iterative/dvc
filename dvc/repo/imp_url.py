@@ -5,7 +5,9 @@ from dvc.repo.scm_context import scm_context
 
 
 @scm_context
-def imp_url(self, url, out=None, resume=False, fname=None, erepo=None):
+def imp_url(
+    self, url, out=None, resume=False, fname=None, erepo=None, locked=False
+):
     from dvc.stage import Stage
 
     default_out = os.path.basename(urlparse(url).path)
@@ -28,6 +30,8 @@ def imp_url(self, url, out=None, resume=False, fname=None, erepo=None):
 
     with self.state:
         stage.run(resume=resume)
+
+    stage.locked = locked
 
     stage.dump()
 

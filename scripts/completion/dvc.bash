@@ -10,7 +10,7 @@
 
 _dvc_commands='add cache checkout commit config destroy diff fetch get-url get gc \
               import-url import init install lock metrics move pipeline pull push \
-              remote remove repro root run status unlock unprotect version'
+              remote remove repro root run status unlock unprotect version update'
 
 _dvc_options='-h --help -V --version'
 _dvc_global_options='-h --help -q --quiet -v --verbose'
@@ -45,6 +45,7 @@ _dvc_status='--show-checksums -j --jobs -r --remote -a --all-branches -T --all-t
 _dvc_unlock='$(compgen -G *.dvc)'
 _dvc_unprotect='$(compgen -G *)'
 _dvc_version=''
+_dvc_update='$(compgen -G *.dvc)'
 
 # Notes:
 #

@@ -36,6 +36,7 @@ import dvc.command.commit as commit
 import dvc.command.tag as tag
 import dvc.command.diff as diff
 import dvc.command.version as version
+import dvc.command.update as update
 from dvc.exceptions import DvcParserError
 
 
@@ -70,6 +71,7 @@ COMMANDS = [
     tag,
     diff,
     version,
+    update,
 ]
 
 

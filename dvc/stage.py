@@ -94,6 +94,14 @@ class StageCommitError(DvcException):
     pass
 
 
+class StageUpdateError(DvcException):
+    def __init__(self, path):
+        super(StageUpdateError, self).__init__(
+            "update is not supported for '{}' that is not an "
+            "import.".format(path)
+        )
+
+
 class MissingDep(DvcException):
     def __init__(self, deps):
         assert len(deps) > 0
@@ -325,6 +333,18 @@ class Stage(object):
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
         return self
+
+    def update(self):
+        if not self.is_repo_import:
+            raise StageUpdateError(self.relpath)
+
+        self.deps[0].update()
+        locked = self.locked
+        self.locked = False
+        try:
+            self.reproduce()
+        finally:
+            self.locked = locked
 
     @staticmethod
     def validate(d, fname=None):
