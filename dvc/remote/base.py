@@ -10,7 +10,7 @@ import itertools
 from contextlib import contextmanager
 from operator import itemgetter
 from multiprocessing import cpu_count
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import as_completed, ThreadPoolExecutor
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -142,23 +142,19 @@ class RemoteBASE(object):
         raise NotImplementedError
 
     def _collect_dir(self, path_info):
-        dir_info = []
+        dir_info = {}
 
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             for root, _dirs, files in self.walk(path_info):
                 root_info = path_info / root
 
-                if len(files) > LARGE_DIR_SIZE:
-                    msg = (
-                        "Computing md5 for a large directory {}. "
-                        "This is only done once."
+                for fname in files:
+                    file_info = root_info / fname
+                    relative_path = file_info.relative_to(path_info)
+                    checksum = executor.submit(
+                        self.get_file_checksum, file_info
                     )
-                    title = str(root_info)
-                    logger.info(msg.format(title))
-                    files = progress(files, name=title)
-
-                dir_info.extend(
-                    {
+                    dir_info[checksum] = {
                         # NOTE: this is lossy transformation:
                         #   "hey\there" -> "hey/there"
                         #   "hey/there" -> "hey/there"
@@ -167,24 +163,25 @@ class RemoteBASE(object):
                         #
                         # Yes, this is a BUG, as long as we permit "/" in
                         # filenames on Windows and "\" on Unix
-                        self.PARAM_RELPATH: (root_info / fname)
-                        .relative_to(path_info)
-                        .as_posix(),
-                        self.PARAM_CHECKSUM: executor.submit(
-                            self.get_file_checksum, root_info / fname
-                        ),
+                        self.PARAM_RELPATH: relative_path.as_posix()
                     }
-                    for fname in files
-                )
 
-        # NOTE: sorting the list by path to ensure reproducibility
-        dir_info = sorted(dir_info, key=itemgetter(self.PARAM_RELPATH))
+        checksums = as_completed(dir_info)
+        if len(dir_info) > LARGE_DIR_SIZE:
+            msg = (
+                "Computing md5 for a large number of files. "
+                "This is only done once."
+            )
+            logger.info(msg)
+            checksums = progress(checksums, total=len(dir_info))
 
         # NOTE: resolving futures
-        for entry in dir_info:
-            entry[self.PARAM_CHECKSUM] = entry[self.PARAM_CHECKSUM].result()
+        for checksum in checksums:
+            entry = dir_info[checksum]
+            entry[self.PARAM_CHECKSUM] = checksum.result()
 
-        return dir_info
+        # NOTE: sorting the list by path to ensure reproducibility
+        return sorted(dir_info.values(), key=itemgetter(self.PARAM_RELPATH))
 
     def get_dir_checksum(self, path_info):
         dir_info = self._collect_dir(path_info)
