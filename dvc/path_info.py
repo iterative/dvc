@@ -59,11 +59,7 @@ class PathInfo(pathlib.PurePath):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        for p in self.parents:
-            if p == other:
-                return True
-            if len(other.parts) >= len(p.parts):
-                return False
+        return any(p == other for p in self.parents)
 
     # pathlib2 uses bytes internally in Python 2, and we use unicode everywhere
     # for paths in both pythons, thus we need this glue.
@@ -151,7 +147,7 @@ class URLInfo(object):
     @cached_property
     def url(self):
         p = self.parsed
-        return "{}://{}{}".format(p.scheme, self.normalized_netloc, p.path)
+        return "{}://{}{}".format(p.scheme, self.netloc, p.path)
 
     def __str__(self):
         return self.url
@@ -165,7 +161,7 @@ class URLInfo(object):
         return (
             self.__class__ == other.__class__
             and self.scheme == other.scheme
-            and self.normalized_netloc == other.normalized_netloc
+            and self.netloc == other.netloc
             and self._path == other._path
         )
 
@@ -186,7 +182,7 @@ class URLInfo(object):
         return getattr(self.parsed, name)
 
     @cached_property
-    def normalized_netloc(self):
+    def netloc(self):
         p = self.parsed
         netloc = p.hostname
         if p.username:
@@ -217,33 +213,30 @@ class URLInfo(object):
 
     @property
     def parts(self):
-        return (self.scheme, self.netloc) + self._path.parts
+        return (self.scheme, self.parsed.netloc) + self._path.parts
 
     @property
     def bucket(self):
-        return self.netloc
+        return self.parsed.netloc
 
     @property
     def parent(self):
         return self.from_parts(
             scheme=self.scheme,
-            netloc=self.netloc,
+            netloc=self.parsed.netloc,
             path=self._path.parent.fspath,
         )
 
     @property
     def parents(self):
         return _URLPathParents(
-            type(self), self.scheme, self.netloc, self._path
+            type(self), self.scheme, self.parsed.netloc, self._path
         )
 
     def relative_to(self, other):
         if isinstance(other, str):
             other = URLInfo(other)
-        if (
-            self.scheme != other.scheme
-            or self.normalized_netloc != other.normalized_netloc
-        ):
+        if self.scheme != other.scheme or self.netloc != other.netloc:
             raise ValueError(
                 "'{}' does not start with '{}'".format(self, other)
             )
@@ -256,7 +249,7 @@ class URLInfo(object):
             return False
         return (
             self.scheme == other.scheme
-            and self.normalized_netloc == other.normalized_netloc
+            and self.netloc == other.netloc
             and self._path.isin(other._path)
         )
 
