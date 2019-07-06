@@ -95,6 +95,7 @@ tests_requirements = [
     "collective.checkdocs",
     "flake8",
     "flake8-docstrings",
+    "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
 ]
