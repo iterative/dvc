@@ -1,7 +1,7 @@
 language: python
 cache:
-  - pip
-  - directories:
+  directories:
+    - $HOME/.cache/pip
     - /opt/python
     - $HOME/.pyenv
 sudo: true
