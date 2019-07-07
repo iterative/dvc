@@ -4,6 +4,8 @@ cache:
     - $HOME/.cache/pip
     - /opt/python
     - $HOME/.pyenv
+    - c/ProgramData/chocolatey/bin
+    - c/ProgramData/chocolatey/lib
 sudo: true
 dist: xenial
 python: "3.7"
@@ -19,16 +21,16 @@ env:
 # version, that causes fpm to crash.
 matrix:
   include:
-  - name: "Python 2.7 on Windows"
+  - name: "2.7 on Windows"
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
-    before_install: choco install python2
-    env: PATH=/c/Python27:/c/Python27/Scripts:$PATH
-  - name: "Python 3.7 on Windows"
+    env:
+    - PYTHON_VER=2.7
+  - name: "3.7 on Windows"
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
-    before_install: choco install python
-    env: PATH=/c/Python37:/c/Python37/Scripts:$PATH
+    env:
+    - PYTHON_VER=3.7
   - name: "2.7"
     env:
     - PYTHON_VER=2.7.13
@@ -89,7 +91,7 @@ matrix:
 before_install:
   - bash ./scripts/ci/before_install.sh
   - source env.sh
-  - python --version
+  - bash ./scripts/ci/check_python.sh
 install:
   - bash ./scripts/ci/install.sh
 script:
@@ -107,6 +109,7 @@ deploy:
       - dvc*.rpm
       - dvc*.deb
       - dvc*.pkg
+      - dvc*.exe
     skip_cleanup: true
     on:
       tags: true
