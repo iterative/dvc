@@ -944,10 +944,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(self.dvc.status(cmd_stage.path), {})
 
 
-@pytest.mark.skipif(
-    os.name == "nt",
-    reason="temporarily disabled on windows",
-)
+@pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
 class TestReproExternalS3(TestReproExternalBase):
     def should_test(self):
         return _should_test_aws()
