@@ -19,7 +19,7 @@ retry pip install .[all,tests]
 
 if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
     pip uninstall -y awscli # Using awscli from chocolatey
-    choco install aws
+    choco install awscli
 fi
 
 git config --global user.email "dvctester@example.com"
