@@ -81,6 +81,7 @@ def get_parent_dirs_up_to(wdir, root_dir):
         return []
 
     dirs = []
+    dirs.append(wdir)
     while wdir != root_dir:
         wdir = os.path.dirname(wdir)
         dirs.append(wdir)

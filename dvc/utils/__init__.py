@@ -279,8 +279,6 @@ def dvc_walk(
     Proxy for `os.walk` directory tree generator.
     Utilizes DvcIgnoreFilter functionality.
     """
-    if dvcignore:
-        dvcignore.load_upper_levels(top)
     for root, dirs, files in os.walk(
         top, topdown=topdown, onerror=onerror, followlinks=followlinks
     ):

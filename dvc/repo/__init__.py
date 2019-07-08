@@ -360,8 +360,6 @@ class Repo(object):
     def make_out_dir_filter(self, outs, root_dir):
         def filter_dirs(dname):
             path = os.path.join(root_dir, dname)
-            if path in (self.dvc_dir, self.scm.dir):
-                return False
             for out in outs:
                 if path == os.path.normpath(out) or path.startswith(out):
                     return False
@@ -388,6 +386,8 @@ class Repo(object):
 
         stages = []
         outs = []
+
+        self.dvcignore.load_upper_levels(from_directory)
 
         for root, dirs, files in self.tree.walk(
             from_directory, dvcignore=self.dvcignore

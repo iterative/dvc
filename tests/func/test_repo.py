@@ -1,5 +1,4 @@
 from dvc.main import main
-from dvc.repo import Repo
 from dvc.stage import Stage
 from tests.basic_env import TestDvcGit
 
@@ -60,8 +59,6 @@ class TestIgnore(TestDvcGit):
 
         with open(".dvcignore", "w") as fobj:
             fobj.write("data_dir")
-
-        self.dvc = Repo(self.dvc.root_dir)
 
         stages = self.dvc.stages()
         self.assertEqual(2, len(stages))

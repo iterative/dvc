@@ -125,6 +125,7 @@ def test_get_parent_dirs_up_to_should_raise_on_no_absolute(path1, path2):
             [
                 os.path.join(os.sep, "some"),
                 os.path.join(os.sep, "some", "long"),
+                os.path.join(os.sep, "some", "long", "path"),
             ],
         ),
     ],

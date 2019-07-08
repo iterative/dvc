@@ -72,7 +72,6 @@ class WorkingTree(BaseTree):
             from dvc.ignore import DvcIgnoreFilter
 
             dvcignore = DvcIgnoreFilter()
-        dvcignore.load_upper_levels(top)
 
         def onerror(e):
             raise e

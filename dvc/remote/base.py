@@ -274,6 +274,7 @@ class RemoteBASE(object):
             and not self.exists(self.cache.checksum_to_path_info(checksum))
         ):
             checksum = None
+
         if checksum:
             return checksum
 
