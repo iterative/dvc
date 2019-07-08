@@ -78,31 +78,11 @@ class GitTree(BaseTree):
                 return True
         return False
 
-    def _try_fetch_from_remote(self):
-        import git
-
-        try:
-            # checking if tag/branch exists locally
-            self.git.git.show_ref(self.rev, verify=True)
-            return
-        except git.exc.GitCommandError:
-            pass
-
-        try:
-            # checking if it exists on the remote
-            self.git.git.ls_remote("origin", self.rev, exit_code=True)
-            # fetching remote tag/branch so we can reference it locally
-            self.git.git.fetch("origin", "{rev}:{rev}".format(rev=self.rev))
-        except git.exc.GitCommandError:
-            pass
-
     def git_object_by_path(self, path):
         import git
 
         path = relpath(os.path.realpath(path), self.git.working_dir)
         assert path.split(os.sep, 1)[0] != ".."
-
-        self._try_fetch_from_remote()
 
         try:
             tree = self.git.tree(self.rev)
