@@ -3,11 +3,6 @@
 set -x
 set -e
 
-if [[ -z "$TRAVIS_TAG" && "$TRAVIS_EVENT_TYPE" != "cron" ]]; then
-    echo "Skipping building package."
-    exit 0
-fi
-
 ./scripts/build_package.sh
 
 if [[ -n "$TRAVIS_TAG" ]]; then
