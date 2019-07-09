@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 from os.path import join
 
+from dvc.ignore import DvcIgnoreFilter
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
@@ -97,9 +98,10 @@ class AssertWalkEqualMixin(object):
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
+        dvcignore = DvcIgnoreFilter(self.root_dir)
         tree = WorkingTree(self._root_dir)
         self.assertWalkEqual(
-            tree.walk(self._root_dir),
+            tree.walk(self._root_dir, dvcignore=dvcignore),
             [
                 (
                     self._root_dir,
@@ -116,9 +118,10 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
+        dvcignore = DvcIgnoreFilter(self.root_dir)
         tree = WorkingTree(self._root_dir)
         self.assertWalkEqual(
-            tree.walk(join("data_dir", "data_sub_dir")),
+            tree.walk(join("data_dir", "data_sub_dir"), dvcignore=dvcignore),
             [
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
@@ -132,8 +135,9 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
         tree = WorkingTree(self._root_dir)
+        dvcignore = DvcIgnoreFilter(self._root_dir)
         self.assertWalkEqual(
-            tree.walk("."),
+            tree.walk(".", dvcignore=dvcignore),
             [
                 (
                     self._root_dir,
@@ -149,7 +153,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
             ],
         )
         self.assertWalkEqual(
-            tree.walk(join("data_dir", "data_sub_dir")),
+            tree.walk(join("data_dir", "data_sub_dir"), dvcignore=dvcignore),
             [
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),

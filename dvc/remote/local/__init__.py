@@ -223,7 +223,7 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.isdir(fspath_py35(path_info))
 
     def walk(self, path_info):
-        return dvc_walk(fspath_py35(path_info), dvcignore=self.repo.dvcignore)
+        return dvc_walk(path_info, self.repo.dvcignore)
 
     def get_file_checksum(self, path_info):
         return file_md5(fspath_py35(path_info))[0]

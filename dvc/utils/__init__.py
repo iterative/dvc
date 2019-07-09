@@ -2,7 +2,14 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
+from dvc.utils.compat import (
+    str,
+    builtin_str,
+    open,
+    cast_bytes_py2,
+    StringIO,
+    fspath_py35,
+)
 from dvc.utils.compat import fspath
 
 import os
@@ -272,26 +279,25 @@ def to_yaml_string(data):
     return stream.getvalue()
 
 
-def dvc_walk(
-    top, topdown=True, onerror=None, followlinks=False, dvcignore=None
-):
+def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
     """
     Proxy for `os.walk` directory tree generator.
     Utilizes DvcIgnoreFilter functionality.
     """
+    top = fspath_py35(top)
+
     for root, dirs, files in os.walk(
         top, topdown=topdown, onerror=onerror, followlinks=followlinks
     ):
 
         if dvcignore:
-            dvcignore.update(root)
             dirs[:], files[:] = dvcignore(root, dirs, files)
 
         yield root, dirs, files
 
 
-def walk_files(directory, dvcignore=None):
-    for root, _, files in dvc_walk(directory, dvcignore=dvcignore):
+def walk_files(directory, dvcignore):
+    for root, _, files in dvc_walk(directory, dvcignore):
         for f in files:
             yield os.path.join(root, f)
 

@@ -4,8 +4,7 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore, DvcIgnoreFilter
-from dvc.utils import walk_files
+from dvc.ignore import DvcIgnore
 from dvc.utils.compat import cast_bytes
 from dvc.utils.fs import get_mtime_and_size
 from tests.basic_env import TestDvc
@@ -65,7 +64,6 @@ class TestDvcIgnore(TestDvc):
 
 def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
     new_data_path = repo_dir.DATA_SUB + "_new"
-    dvcignore = DvcIgnoreFilter(root=dvc_repo.root_dir)
 
     ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
     repo_dir.create(
@@ -74,24 +72,27 @@ def test_metadata_unchanged_when_moving_ignored_file(dvc_repo, repo_dir):
             [to_posixpath(repo_dir.DATA_SUB), to_posixpath(new_data_path)]
         ),
     )
-    dvcignore.load_upper_levels(repo_dir.DATA_DIR)
 
-    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, dvcignore)
+    mtime_sig, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     shutil.move(repo_dir.DATA_SUB, new_data_path)
 
-    new_mtime_sig, new_size = get_mtime_and_size(repo_dir.DATA_DIR, dvcignore)
+    new_mtime_sig, new_size = get_mtime_and_size(
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
+    )
 
     assert new_mtime_sig == mtime_sig
     assert new_size == size
 
 
-def test_mtime_changed_when_moving_non_ignored_file(repo_dir):
+def test_mtime_changed_when_moving_non_ignored_file(dvc_repo, repo_dir):
     new_data_path = repo_dir.DATA_SUB + "_new"
-    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR)
+    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     shutil.move(repo_dir.DATA_SUB, new_data_path)
-    new_mtime, new_size = get_mtime_and_size(repo_dir.DATA_DIR)
+    new_mtime, new_size = get_mtime_and_size(
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
+    )
 
     assert new_mtime != mtime
     assert new_size == size
@@ -100,23 +101,25 @@ def test_mtime_changed_when_moving_non_ignored_file(repo_dir):
 def test_metadata_unchanged_on_ignored_file_deletion(dvc_repo, repo_dir):
     ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
     repo_dir.create(ignore_file, to_posixpath(repo_dir.DATA_SUB))
-    dvcignore = DvcIgnoreFilter(root=dvc_repo.root_dir)
-    dvcignore.load_upper_levels(repo_dir.DATA_DIR)
 
-    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvcignore)
+    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     os.remove(repo_dir.DATA_SUB)
-    new_mtime, new_size = get_mtime_and_size(repo_dir.DATA_DIR, dvcignore)
+    new_mtime, new_size = get_mtime_and_size(
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
+    )
 
     assert new_mtime == mtime
     assert new_size == size
 
 
-def test_metadata_changed_on_non_ignored_file_deletion(repo_dir):
-    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR)
+def test_metadata_changed_on_non_ignored_file_deletion(dvc_repo, repo_dir):
+    mtime, size = get_mtime_and_size(repo_dir.DATA_DIR, dvc_repo.dvcignore)
 
     os.remove(repo_dir.DATA_SUB)
-    new_mtime_sig, new_size = get_mtime_and_size(repo_dir.DATA_DIR)
+    new_mtime_sig, new_size = get_mtime_and_size(
+        repo_dir.DATA_DIR, dvc_repo.dvcignore
+    )
 
     assert new_mtime_sig != mtime
     assert new_size != size
@@ -124,29 +127,7 @@ def test_metadata_changed_on_non_ignored_file_deletion(repo_dir):
 
 def test_should_raise_on_dvcignore_in_out_dir(dvc_repo, repo_dir):
     ignore_file = os.path.join(repo_dir.DATA_DIR, DvcIgnore.DVCIGNORE_FILE)
-    ignore_file_content = os.path.basename(repo_dir.DATA)
-
-    repo_dir.create(ignore_file, ignore_file_content)
+    repo_dir.create(ignore_file, "")
 
     with pytest.raises(DvcIgnoreInCollectedDirError):
         dvc_repo.add(repo_dir.DATA_DIR)
-
-
-def test_should_update_ignore_with_new_ignores(dvc_repo, repo_dir):
-    ignore_file = os.path.join(dvc_repo.root_dir, DvcIgnore.DVCIGNORE_FILE)
-    dvcignore = DvcIgnoreFilter()
-
-    files = set(walk_files(repo_dir.DATA_DIR, dvcignore))
-    assert files == {repo_dir.DATA, repo_dir.DATA_SUB}
-
-    repo_dir.create(ignore_file, to_posixpath(repo_dir.DATA_SUB) + os.linesep)
-    dvcignore.update(os.path.dirname(ignore_file))
-
-    files = set(walk_files(repo_dir.DATA_DIR, dvcignore))
-    assert files == {repo_dir.DATA}
-
-    repo_dir.create(ignore_file, to_posixpath(repo_dir.DATA))
-    dvcignore.update(os.path.dirname(ignore_file))
-
-    files = set(walk_files(repo_dir.DATA_DIR, dvcignore))
-    assert files == set()

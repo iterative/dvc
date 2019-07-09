@@ -5,6 +5,8 @@ import logging
 
 from itertools import chain
 
+from funcy import cached_property
+
 from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
@@ -66,7 +68,6 @@ class Repo(object):
         self.scm = SCM(self.root_dir, repo=self)
 
         self.tree = WorkingTree(self.root_dir)
-        self.dvcignore = DvcIgnoreFilter(self.root_dir)
 
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
@@ -357,15 +358,16 @@ class Repo(object):
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
 
-    def _make_out_dir_filter(self, outs, root_dir):
+    @staticmethod
+    def _filter_out_dirs(dirs, outs, root_dir):
         def filter_dirs(dname):
             path = os.path.join(root_dir, dname)
             for out in outs:
-                if path == os.path.normpath(out) or path.startswith(out):
+                if path == os.path.normpath(out):
                     return False
             return True
 
-        return filter_dirs
+        return list(filter(filter_dirs, dirs))
 
     def stages(self, from_directory=None, check_dag=True):
         """
@@ -387,8 +389,6 @@ class Repo(object):
         stages = []
         outs = []
 
-        self.dvcignore.load_upper_levels(from_directory)
-
         for root, dirs, files in self.tree.walk(
             from_directory, dvcignore=self.dvcignore
         ):
@@ -402,8 +402,7 @@ class Repo(object):
                         outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            out_dir_filter = self.make_out_dir_filter(outs, root)
-            dirs[:] = list(filter(out_dir_filter, dirs))
+            dirs[:] = self._filter_out_dirs(dirs, outs, root)
 
         if check_dag:
             self.check_dag(stages)
@@ -471,3 +470,7 @@ class Repo(object):
             raise OutputFileMissingError(relpath(path, self.root_dir))
 
         return _open(cache_file, mode=mode, encoding=encoding)
+
+    @cached_property
+    def dvcignore(self):
+        return DvcIgnoreFilter(self.root_dir)

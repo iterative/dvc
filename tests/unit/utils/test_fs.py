@@ -3,6 +3,8 @@ from unittest import TestCase
 
 import dvc
 import pytest
+
+from dvc.ignore import DvcIgnoreFilter
 from dvc.system import System
 from dvc.path_info import PathInfo
 from dvc.utils import relpath
@@ -20,8 +22,9 @@ from tests.utils import spy
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        file_time, file_size = get_mtime_and_size(self.DATA)
-        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR)
+        dvcignore = DvcIgnoreFilter(self.root_dir)
+        file_time, file_size = get_mtime_and_size(self.DATA, dvcignore)
+        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, dvcignore)
 
         actual_file_size = os.path.getsize(self.DATA)
         actual_dir_size = os.path.getsize(self.DATA) + os.path.getsize(

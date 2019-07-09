@@ -20,7 +20,7 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, dvcignore=None):
+def get_mtime_and_size(path, dvcignore):
     if os.path.isdir(path):
         size = 0
         files_mtimes = {}

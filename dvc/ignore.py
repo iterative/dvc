@@ -6,7 +6,6 @@ from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.utils import relpath
-from dvc.utils.fs import get_parent_dirs_up_to
 
 from dvc.utils.compat import open
 
@@ -22,6 +21,8 @@ class DvcIgnore(object):
 
 class DvcIgnorePatterns(DvcIgnore):
     def __init__(self, ignore_file_path):
+        assert os.path.isabs(ignore_file_path)
+
         self.ignore_file_path = ignore_file_path
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
 
@@ -60,24 +61,17 @@ class DvcIgnoreDirs(DvcIgnore):
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self, root=None):
+    def __init__(self, root_dir):
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
-        self.root = root
+        self._update(root_dir)
+        for root, dirs, _ in os.walk(root_dir):
+            for d in dirs:
+                self._update(os.path.join(root, d))
 
-    def load_upper_levels(self, top):
-        top = os.path.abspath(top)
-        if self.root:
-            parent_dirs = get_parent_dirs_up_to(top, self.root)
-            for d in parent_dirs:
-                self.update(d)
-
-    def update(self, dirname):
+    def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if os.path.exists(ignore_file_path):
-            local_ignore = DvcIgnorePatterns(ignore_file_path)
-            if local_ignore in self.ignores:
-                self.ignores.remove(local_ignore)
-            self.ignores.add(local_ignore)
+            self.ignores.add(DvcIgnorePatterns(ignore_file_path))
 
     def __call__(self, root, dirs, files):
         for ignore in self.ignores:

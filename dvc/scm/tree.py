@@ -68,18 +68,12 @@ class WorkingTree(BaseTree):
         - it could raise exceptions, there is no onerror argument
         """
 
-        if not dvcignore:
-            from dvc.ignore import DvcIgnoreFilter
-
-            dvcignore = DvcIgnoreFilter()
+        assert dvcignore
 
         def onerror(e):
             raise e
 
         for root, dirs, files in dvc_walk(
-            os.path.abspath(top),
-            topdown=topdown,
-            onerror=onerror,
-            dvcignore=dvcignore,
+            os.path.abspath(top), dvcignore, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files

@@ -152,6 +152,7 @@ class RemoteBASE(object):
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             for root, _dirs, files in self.walk(path_info):
                 root_info = path_info / root
+
                 for fname in files:
 
                     if fname == DvcIgnore.DVCIGNORE_FILE:

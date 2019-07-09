@@ -12,9 +12,9 @@ def mock_dvcignore(dvcignore_path, patterns):
     with patch.object(
         dvc.ignore, "open", mock_open(read_data="\n".join(patterns))
     ):
-        ignore_file = DvcIgnorePatterns(dvcignore_path)
+        ignore_patterns = DvcIgnorePatterns(dvcignore_path)
 
-    return ignore_file
+    return ignore_patterns
 
 
 def test_ignore_from_file_should_filter_dirs_and_files():

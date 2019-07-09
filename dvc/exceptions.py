@@ -273,8 +273,8 @@ class OutputFileMissingError(DvcException):
 
 
 class DvcIgnoreInCollectedDirError(DvcException):
-    def __init(self, ignore_dirname):
+    def __init__(self, ignore_dirname):
         super(DvcIgnoreInCollectedDirError, self).__init__(
-            ".dvcignore file should not be in collected dir path: '{"
-            "}'".format(ignore_dirname)
+            ".dvcignore file should not be in collected dir path: "
+            "'{}'".format(ignore_dirname)
         )
