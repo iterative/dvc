@@ -357,7 +357,7 @@ class Repo(object):
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
 
-    def make_out_dir_filter(self, outs, root_dir):
+    def _make_out_dir_filter(self, outs, root_dir):
         def filter_dirs(dname):
             path = os.path.join(root_dir, dname)
             for out in outs:
