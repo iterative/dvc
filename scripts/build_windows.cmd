@@ -12,6 +12,11 @@ del /Q /S "dvc-*.exe"
 where pip
 if %errorlevel% neq 0 (echo Error: pip not found && goto :error)
 
+where choco
+if %errorlevel% neq 0 (echo Error: choco not found && goto :error)
+
+choco install InnoSetup
+
 if not exist "C:\Program Files (x86)\Inno Setup 5\ISCC.exe" (echo Error: Couldn't find Inno Setup compiler. Please go to jrsoftware.org/isinfo.php and install Inno Setup 5 && goto :error)
 
 echo ====== Installing requirements... ======
