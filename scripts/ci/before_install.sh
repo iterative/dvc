@@ -49,8 +49,6 @@ fi
 
 scriptdir="$(dirname $0)"
 echo > env.sh
-echo 'set -e' >> env.sh
-echo 'set -x' >> env.sh
 
 if [ "$TRAVIS_OS_NAME" == "linux" ] && [ "$TRAVIS_PULL_REQUEST" == "false" ]
 then
