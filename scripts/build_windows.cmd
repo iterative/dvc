@@ -16,7 +16,7 @@ where choco
 if %errorlevel% neq 0 (echo Error: choco not found && goto :error)
 
 choco install InnoSetup
-refreshenv
+call refreshenv
 where iscc
 if %errorlevel% neq 0 (echo Error: Couldn't find Inno Setup compiler. && goto :error)
 
