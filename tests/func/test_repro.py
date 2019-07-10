@@ -20,6 +20,7 @@ from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.utils import file_md5, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
+from dvc.path_info import URLInfo
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
@@ -34,6 +35,7 @@ from tests.basic_env import TestDvc
 from tests.func.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.func.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.func.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.func.test_data_cloud import get_ssh_url
 from tests.utils.httpd import StaticFileServer
 from mock import patch
 
@@ -1623,3 +1625,32 @@ class TestReproDownstream(TestDvc):
         assert evaluation[0].relpath == "B.dvc"
         assert evaluation[1].relpath == "D.dvc"
         assert evaluation[2].relpath == "E.dvc"
+
+
+def test_ssh_dir_out(dvc_repo):
+    if not _should_test_ssh():
+        pytest.skip()
+
+    # Set up remote and cache
+    remote_url = get_ssh_url()
+    assert main(["remote", "add", "upstream", remote_url]) == 0
+
+    cache_url = get_ssh_url()
+    assert main(["remote", "add", "sshcache", cache_url]) == 0
+    assert main(["config", "cache.ssh", "sshcache"]) == 0
+
+    # Recreating to reread configs
+    repo = DvcRepo(dvc_repo.root_dir)
+
+    url_info = URLInfo(remote_url)
+    mkdir_cmd = "mkdir dir-out;cd dir-out;echo 1 > 1.txt; echo 2 > 2.txt"
+    repo.run(
+        cmd="ssh {netloc} 'cd {path};{cmd}'".format(
+            netloc=url_info.netloc, path=url_info.path, cmd=mkdir_cmd
+        ),
+        outs=[(url_info / "dir-out").url],
+        deps=["foo"],  # add a fake dep to not consider this a callback
+    )
+
+    repo.reproduce("dir-out.dvc")
+    repo.reproduce("dir-out.dvc", force=True)
