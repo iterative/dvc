@@ -33,7 +33,7 @@ copy scripts\innosetup\addSymLinkPermissions.ps1 dist\ || goto :error
 echo ====== Building dvc installer... ======
 set PYTHONPATH=%cd%
 call python scripts\innosetup\config_gen.py || goto :error
-call "C:\Program Files (x86)\Inno Setup 5\iscc" scripts\innosetup\setup.iss || goto :error
+call iscc scripts\innosetup\setup.iss || goto :error
 
 echo ====== DONE ======
 goto :EOF
