@@ -76,7 +76,7 @@ jobs:
     - PYTHON_VER=3.7.3
     - PYTHON_CONFIGURE_OPTS="--enable-framework"
   # build jobs
-  - name: "Build Mac pkg"
+  - name: "Mac pkg"
     stage: build
     os: osx
     osx_image: xcode7.3
@@ -86,27 +86,27 @@ jobs:
     - PYTHON_VER=3.7.3
     - PYTHON_CONFIGURE_OPTS="--enable-framework"
     script: ./scripts/build_posix.sh
-  - name: "Build Windows pkg"
+  - name: "Windows pkg"
     stage: build
     os: windows
     language: shell
     env:
     - PYTHON_VER=3.7
     script: ./scripts/build_windows.cmd
-  - name: "Build Linux pkg"
+  - name: "Linux pkgs"
     stage: build
     env:
     # NOTE: using default python
     - PYTHON_VER=
     script: ./scripts/build_posix.sh
-  - name: "Build pypi pkg"
+  - name: "Pypi pkgs"
     stage: build
     env:
     # NOTE: using default python
     - PYTHON_VER=
     script: ./scripts/build_package.sh
   # deploy jobs
-  - name: "Deploy pkgs"
+  - name: "Pypi pkgs"
     stage: deploy
     script: ./scripts/build_package.sh
     deploy:
