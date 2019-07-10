@@ -315,7 +315,7 @@ class Stage(object):
     def reproduce(
         self, force=False, dry=False, interactive=False, no_commit=False
     ):
-        if not self.changed() and not force:
+        if not force and not self.changed():
             return None
 
         msg = (
@@ -839,7 +839,7 @@ class Stage(object):
                 )
             )
             if not dry:
-                if self._already_cached() and not force:
+                if not force and self._already_cached():
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(self.outs[0], resume=resume)
