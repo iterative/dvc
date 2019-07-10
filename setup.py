@@ -43,7 +43,6 @@ install_requires = [
     "future>=0.16.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
-    "networkx>=2.1",
     "gitpython>=2.1.8",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
@@ -65,6 +64,11 @@ install_requires = [
     "shortuuid>=0.5.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
+
+if sys.version_info[0] == 2:
+    install_requires.append("networkx>=2.1,<2.3")
+else:
+    install_requires.append("networkx>=2.1")
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
