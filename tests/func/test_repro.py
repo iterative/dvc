@@ -127,9 +127,6 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             self.dvc.reproduce(faulty_stage_path)
 
     def test_nested(self):
-        from dvc.stage import Stage
-
-        #
         #       .
         #       |-- a
         #       |  |__ nested
