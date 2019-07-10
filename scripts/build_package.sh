@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 if [ ! -d "dvc" ]; then
     echo "Please run this script from repository root"
@@ -13,7 +14,7 @@ python setup.py bdist_wheel --universal
 # Make sure we have a correct version
 if [[ -n "$TRAVIS_TAG" ]]; then
     pip uninstall -y dvc
-    if ! [ -x "$(command -v dvc)" ]; then
+    if [[ -n "$(command -v dvc)" ]]; then
         echo "ERROR: dvc command still exists! Unable to verify dvc version."
 	exit 1
     fi
