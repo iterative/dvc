@@ -534,7 +534,11 @@ class Stage(object):
 
         if validate_state:
             if os.path.exists(path):
-                if not ignore_build_cache and stage.is_cached:
+                if (
+                    not ignore_build_cache
+                    and stage.is_cached
+                    and not stage.is_callback
+                ):
                     logger.info("Stage is cached, skipping.")
                     return None
 
