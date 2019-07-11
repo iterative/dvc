@@ -18,9 +18,31 @@ from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.path_info import CloudURLInfo
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
+
+
+def _read_connection_string_from_config(config):
+    connection_string_from_config = config.get(
+        Config.SECTION_AZURE_CONNECTION_STRING
+    )
+    if (
+        connection_string_from_config is not None
+    ) and connection_string_from_config.startswith("$"):
+        # read custom environment variable discarding the '$' character
+        env_var_name = connection_string_from_config[1:]
+        try:
+            connection_string_from_config = os.environ[env_var_name]
+        except KeyError as exc:
+            raise DvcException(
+                (
+                    "Variable '${}' is not set " "in your current environment."
+                ).format(env_var_name),
+                exc,
+            )
+    return connection_string_from_config
 
 
 class Callback(object):
@@ -58,7 +80,7 @@ class RemoteAZURE(RemoteBASE):
         )
 
         self.connection_string = (
-            config.get(Config.SECTION_AZURE_CONNECTION_STRING)
+            _read_connection_string_from_config(config)
             or match.group("connection_string")  # backward compatibility
             or os.getenv("AZURE_STORAGE_CONNECTION_STRING")
         )
