@@ -40,3 +40,7 @@ def trees_equal(dir_path_1, dir_path_2):
 
     for d in comparison.common_dirs:
         trees_equal(os.path.join(dir_path_1, d), os.path.join(dir_path_2, d))
+
+
+def to_posixpath(path):
+    return path.replace("\\", "/")

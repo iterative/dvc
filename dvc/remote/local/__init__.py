@@ -29,6 +29,7 @@ from dvc.utils import (
     file_md5,
     walk_files,
     relpath,
+    dvc_walk,
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -222,7 +223,7 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.isdir(fspath_py35(path_info))
 
     def walk(self, path_info):
-        return os.walk(fspath_py35(path_info))
+        return dvc_walk(path_info, self.repo.dvcignore)
 
     def get_file_checksum(self, path_info):
         return file_md5(fspath_py35(path_info))[0]
@@ -477,13 +478,11 @@ class RemoteLOCAL(RemoteBASE):
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
-    @staticmethod
-    def _unprotect_dir(path):
-        for path in walk_files(path):
+    def _unprotect_dir(self, path):
+        for path in walk_files(path, self.repo.dvcignore):
             RemoteLOCAL._unprotect_file(path)
 
-    @staticmethod
-    def unprotect(path_info):
+    def unprotect(self, path_info):
         path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
@@ -491,7 +490,7 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         if os.path.isdir(path):
-            RemoteLOCAL._unprotect_dir(path)
+            self._unprotect_dir(path)
         else:
             RemoteLOCAL._unprotect_file(path)
 

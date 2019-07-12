@@ -1,24 +1,20 @@
 import os
 
+import dvc
 import pytest
-from pathspec import PathSpec
-from pathspec.patterns import GitWildMatchPattern
+from mock import mock_open, patch
 
-from dvc.ignore import DvcIgnoreFromFile, DvcIgnoreDir, DvcIgnoreFile
-from mock import patch, Mock
+from dvc.ignore import DvcIgnorePatterns, DvcIgnoreDirs
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-    mock_ignore_file_handler = Mock()
+
     with patch.object(
-        mock_ignore_file_handler,
-        "read_patterns",
-        return_value=PathSpec.from_lines(GitWildMatchPattern, patterns),
+        dvc.ignore, "open", mock_open(read_data="\n".join(patterns))
     ):
-        ignore_file = DvcIgnoreFromFile(
-            dvcignore_path, mock_ignore_file_handler
-        )
-    return ignore_file
+        ignore_patterns = DvcIgnorePatterns(dvcignore_path)
+
+    return ignore_patterns
 
 
 def test_ignore_from_file_should_filter_dirs_and_files():
@@ -76,6 +72,7 @@ def test_ignore_from_file_should_filter_dirs_and_files():
         ),
         ("dont_ignore.txt", ["dont_ignore"], False),
         ("dont_ignore.txt", ["dont*", "!dont_ignore.txt"], False),
+        ("../../../something.txt", ["**/something.txt"], False),
     ],
 )
 def test_match_ignore_from_file(
@@ -97,7 +94,7 @@ def test_match_ignore_from_file(
 
 @pytest.mark.parametrize("omit_dir", [".git", ".hg", ".dvc"])
 def test_should_ignore_dir(omit_dir):
-    ignore = DvcIgnoreDir(omit_dir)
+    ignore = DvcIgnoreDirs([".git", ".hg", ".dvc"])
 
     root = os.path.join(os.path.sep, "walk", "dir", "root")
     dirs = [omit_dir, "dir1", "dir2"]
@@ -106,16 +103,3 @@ def test_should_ignore_dir(omit_dir):
     new_dirs, _ = ignore(root, dirs, files)
 
     assert set(new_dirs) == {"dir1", "dir2"}
-
-
-def test_should_ignore_file():
-    dvcignore = ".dvcignore"
-    ignore = DvcIgnoreFile(dvcignore)
-
-    root = os.path.join(os.path.sep, "walk", "dir", "root")
-    dirs = []
-    files = ["file1", "file2", dvcignore]
-
-    _, new_files = ignore(root, dirs, files)
-
-    assert set(new_files) == {"file1", "file2"}

@@ -5,6 +5,8 @@ import logging
 
 from itertools import chain
 
+from funcy import cached_property
+
 from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
@@ -12,7 +14,7 @@ from dvc.exceptions import (
     TargetNotDirectoryError,
     OutputFileMissingError,
 )
-from dvc.ignore import DvcIgnoreFileHandler
+from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
@@ -356,6 +358,17 @@ class Repo(object):
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
 
+    @staticmethod
+    def _filter_out_dirs(dirs, outs, root_dir):
+        def filter_dirs(dname):
+            path = os.path.join(root_dir, dname)
+            for out in outs:
+                if path == os.path.normpath(out):
+                    return False
+            return True
+
+        return list(filter(filter_dirs, dirs))
+
     def stages(self, from_directory=None, check_dag=True):
         """
         Walks down the root directory looking for Dvcfiles,
@@ -376,9 +389,8 @@ class Repo(object):
         stages = []
         outs = []
 
-        ignore_file_handler = DvcIgnoreFileHandler(self.tree)
         for root, dirs, files in self.tree.walk(
-            from_directory, ignore_file_handler=ignore_file_handler
+            from_directory, dvcignore=self.dvcignore
         ):
             for fname in files:
                 path = os.path.join(root, fname)
@@ -390,16 +402,7 @@ class Repo(object):
                         outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            def filter_dirs(dname, root=root):
-                path = os.path.join(root, dname)
-                if path in (self.dvc_dir, self.scm.dir):
-                    return False
-                for out in outs:
-                    if path == os.path.normpath(out) or path.startswith(out):
-                        return False
-                return True
-
-            dirs[:] = list(filter(filter_dirs, dirs))
+            dirs[:] = self._filter_out_dirs(dirs, outs, root)
 
         if check_dag:
             self.check_dag(stages)
@@ -467,3 +470,7 @@ class Repo(object):
             raise OutputFileMissingError(relpath(path, self.root_dir))
 
         return _open(cache_file, mode=mode, encoding=encoding)
+
+    @cached_property
+    def dvcignore(self):
+        return DvcIgnoreFilter(self.root_dir)
