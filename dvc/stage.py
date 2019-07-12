@@ -433,41 +433,11 @@ class Stage(object):
         return True
 
     @staticmethod
-    def create(
-        repo=None,
-        cmd=None,
-        deps=None,
-        outs=None,
-        outs_no_cache=None,
-        metrics=None,
-        metrics_no_cache=None,
-        fname=None,
-        cwd=None,
-        wdir=None,
-        locked=False,
-        add=False,
-        overwrite=True,
-        ignore_build_cache=False,
-        remove_outs=False,
-        validate_state=True,
-        outs_persist=None,
-        outs_persist_no_cache=None,
-        erepo=None,
-    ):
-        if outs is None:
-            outs = []
-        if deps is None:
-            deps = []
-        if outs_no_cache is None:
-            outs_no_cache = []
-        if metrics is None:
-            metrics = []
-        if metrics_no_cache is None:
-            metrics_no_cache = []
-        if outs_persist is None:
-            outs_persist = []
-        if outs_persist_no_cache is None:
-            outs_persist_no_cache = []
+    def create(repo, **kwargs):
+
+        wdir = kwargs.get("wdir", None)
+        cwd = kwargs.get("cwd", None)
+        fname = kwargs.get("fname", None)
 
         # Backward compatibility for `cwd` option
         if wdir is None and cwd is not None:
@@ -482,24 +452,25 @@ class Stage(object):
         else:
             wdir = os.curdir if wdir is None else wdir
 
-        stage = Stage(repo=repo, wdir=wdir, cmd=cmd, locked=locked)
-
-        Stage._fill_stage_outputs(
-            stage,
-            outs,
-            outs_no_cache,
-            metrics,
-            metrics_no_cache,
-            outs_persist,
-            outs_persist_no_cache,
+        stage = Stage(
+            repo=repo,
+            wdir=wdir,
+            cmd=kwargs.get("cmd", None),
+            locked=kwargs.get("locked", False),
         )
-        stage.deps = dependency.loads_from(stage, deps, erepo=erepo)
+
+        Stage._fill_stage_outputs(stage, **kwargs)
+        stage.deps = dependency.loads_from(
+            stage, kwargs.get("deps", []), erepo=kwargs.get("erepo", None)
+        )
 
         stage._check_circular_dependency()
         stage._check_duplicated_arguments()
 
         if not fname:
-            fname = Stage._stage_fname(stage.outs, add=add)
+            fname = Stage._stage_fname(
+                stage.outs, add=kwargs.get("add", False)
+            )
         stage._check_dvc_filename(fname)
 
         wdir = os.path.abspath(wdir)
@@ -515,8 +486,10 @@ class Stage(object):
         stage.wdir = wdir
         stage.path = path
 
+        ignore_build_cache = kwargs.get("ignore_build_cache", False)
+
         # NOTE: remove outs before we check build cache
-        if remove_outs:
+        if kwargs.get("remove_outs", False):
             logger.warning(
                 "--remove-outs is deprecated."
                 " It is now the default behavior,"
@@ -532,51 +505,52 @@ class Stage(object):
             logger.warning("Build cache is ignored when persisting outputs.")
             ignore_build_cache = True
 
-        if validate_state:
-            if os.path.exists(path):
-                if (
-                    not ignore_build_cache
-                    and stage.is_cached
-                    and not stage.is_callback
-                ):
-                    logger.info("Stage is cached, skipping.")
-                    return None
+        if os.path.exists(path):
+            if (
+                not ignore_build_cache
+                and stage.is_cached
+                and not stage.is_callback
+            ):
+                logger.info("Stage is cached, skipping.")
+                return None
 
-                msg = (
-                    "'{}' already exists. Do you wish to run the command and "
-                    "overwrite it?".format(stage.relpath)
-                )
+            msg = (
+                "'{}' already exists. Do you wish to run the command and "
+                "overwrite it?".format(stage.relpath)
+            )
 
-                if not overwrite and not prompt.confirm(msg):
-                    raise StageFileAlreadyExistsError(stage.relpath)
+            if not kwargs.get("overwrite", True) and not prompt.confirm(msg):
+                raise StageFileAlreadyExistsError(stage.relpath)
 
-                os.unlink(path)
+            os.unlink(path)
 
         return stage
 
     @staticmethod
-    def _fill_stage_outputs(
-        stage,
-        outs,
-        outs_no_cache,
-        metrics,
-        metrics_no_cache,
-        outs_persist,
-        outs_persist_no_cache,
-    ):
-        stage.outs = output.loads_from(stage, outs, use_cache=True)
-        stage.outs += output.loads_from(
-            stage, metrics, use_cache=True, metric=True
+    def _fill_stage_outputs(stage, **kwargs):
+        stage.outs = output.loads_from(
+            stage, kwargs.get("outs", []), use_cache=True
         )
         stage.outs += output.loads_from(
-            stage, outs_persist, use_cache=True, persist=True
-        )
-        stage.outs += output.loads_from(stage, outs_no_cache, use_cache=False)
-        stage.outs += output.loads_from(
-            stage, metrics_no_cache, use_cache=False, metric=True
+            stage, kwargs.get("metrics", []), use_cache=True, metric=True
         )
         stage.outs += output.loads_from(
-            stage, outs_persist_no_cache, use_cache=False, persist=True
+            stage, kwargs.get("outs_persist", []), use_cache=True, persist=True
+        )
+        stage.outs += output.loads_from(
+            stage, kwargs.get("outs_no_cache", []), use_cache=False
+        )
+        stage.outs += output.loads_from(
+            stage,
+            kwargs.get("metrics_no_cache", []),
+            use_cache=False,
+            metric=True,
+        )
+        stage.outs += output.loads_from(
+            stage,
+            kwargs.get("outs_persist_no_cache", []),
+            use_cache=False,
+            persist=True,
         )
 
     @staticmethod

@@ -12,12 +12,7 @@ def imp_url(
 
     with self.state:
         stage = Stage.create(
-            repo=self,
-            cmd=None,
-            deps=[url],
-            outs=[out],
-            fname=fname,
-            erepo=erepo,
+            self, cmd=None, deps=[url], outs=[out], fname=fname, erepo=erepo
         )
 
     if stage is None:
