@@ -83,11 +83,11 @@ _dvc () {
   elif [ "${COMP_CWORD}" -eq 2 ]; then
     local options_list="_dvc_${COMP_WORDS[1]}"
 
-    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word")) ;;
+    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
   elif [ "${COMP_CWORD}" -eq 3 ]; then
     local options_list="_dvc_${COMP_WORDS[1]}_${COMP_WORDS[2]}"
 
-    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list} $(ls ./)" --"$word")) ;;
+    COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" --"$word"))
   fi
 
   return 0
