@@ -58,7 +58,7 @@ def _create_stages(repo, targets, fname, no_commit):
 
     with repo.state:
         for out in targets:
-            stage = Stage.create(repo=repo, outs=[out], add=True, fname=fname)
+            stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
             if not stage:
                 continue
