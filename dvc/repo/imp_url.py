@@ -1,6 +1,4 @@
-import os
-
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import pathlib
 from dvc.repo.scm_context import scm_context
 
 
@@ -10,8 +8,7 @@ def imp_url(
 ):
     from dvc.stage import Stage
 
-    default_out = os.path.basename(urlparse(url).path)
-    out = out or default_out
+    out = out or pathlib.PurePath(url).name
 
     with self.state:
         stage = Stage.create(

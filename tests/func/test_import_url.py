@@ -46,14 +46,9 @@ class TestDefaultOutput(TestDvc):
 
 
 class TestFailedImportMessage(TestDvc):
-    @patch("dvc.repo.imp_url.urlparse")
-    def test(self, imp_urlparse_patch):
+    @patch("dvc.repo.imp_url.imp_url", side_effect=DvcException("message"))
+    def test(self, _):
         page_address = "http://somesite.com/file_name"
-
-        def dvc_exception(*args, **kwargs):
-            raise DvcException("message")
-
-        imp_urlparse_patch.side_effect = dvc_exception
 
         self._caplog.clear()
 
