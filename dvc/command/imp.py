@@ -12,11 +12,6 @@ logger = logging.getLogger(__name__)
 
 class CmdImport(CmdBase):
     def run(self):
-        logger.warning(
-            "This is a beta feature! Do not use in the production! Old "
-            "`dvc import` is now called `dvc import-url`, please use "
-            "it instead."
-        )
         try:
             self.repo.imp(
                 self.args.url,
@@ -36,8 +31,7 @@ class CmdImport(CmdBase):
 
 def add_parser(subparsers, parent_parser):
     IMPORT_HELP = (
-        "BETA: Download data from DVC repository and take it under DVC "
-        "control."
+        "Download data from DVC repository and take it under DVC control."
     )
 
     import_parser = subparsers.add_parser(
