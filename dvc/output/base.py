@@ -124,6 +124,13 @@ class OutputBase(object):
         return False
 
     @property
+    def use_scm_ignore(self):
+        if not self.is_in_repo:
+            return False
+
+        return self.use_cache or self.stage.is_repo_import
+
+    @property
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
@@ -210,6 +217,12 @@ class OutputBase(object):
         if self.is_empty:
             logger.warning("'{}' is empty.".format(self))
 
+        if self.use_scm_ignore:
+            if self.repo.scm.is_tracked(self.fspath):
+                raise OutputAlreadyTrackedError(self)
+
+            self.repo.scm.ignore(self.fspath)
+
         if not self.use_cache:
             self.info = self.remote.save_info(self.path_info)
             if self.metric:
@@ -229,13 +242,6 @@ class OutputBase(object):
                 "Output '{}' didn't change. Skipping saving.".format(self)
             )
             return
-
-        if self.is_in_repo:
-            if self.repo.scm.is_tracked(self.fspath):
-                raise OutputAlreadyTrackedError(self)
-
-            if self.use_cache:
-                self.repo.scm.ignore(self.fspath)
 
         self.info = self.remote.save_info(self.path_info)
 
@@ -296,11 +302,11 @@ class OutputBase(object):
         if self.scheme != "local":
             return
 
-        if ignore_remove and self.use_cache and self.is_in_repo:
+        if ignore_remove and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
     def move(self, out):
-        if self.scheme == "local" and self.use_cache and self.is_in_repo:
+        if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore_remove(self.fspath)
 
         self.remote.move(self.path_info, out.path_info)
@@ -309,7 +315,7 @@ class OutputBase(object):
         self.save()
         self.commit()
 
-        if self.scheme == "local" and self.use_cache and self.is_in_repo:
+        if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self):
