@@ -236,7 +236,7 @@ class Analytics(object):
             return False
 
         config = (
-            self._get_current_config()
+            Analytics._get_current_config()
             if cmd is None or not hasattr(cmd, "config")
             else cmd.config
         )
