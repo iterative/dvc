@@ -213,6 +213,15 @@ class Analytics(object):
         return core.get(Config.SECTION_CORE_ANALYTICS, True)
 
     @staticmethod
+    def _get_current_config():
+        try:
+            dvc_dir = Repo.find_dvc_dir()
+            config = Config(dvc_dir)
+        except NotDvcRepoError:
+            config = Config(validate=False)
+        return config
+
+    @staticmethod
     def is_enabled(cmd=None):
         from dvc.config import Config
         from dvc.repo import Repo
@@ -225,17 +234,13 @@ class Analytics(object):
         if isinstance(cmd, CmdDaemonBase):
             return False
 
-        if cmd is None or not hasattr(cmd, "config"):
-            try:
-                dvc_dir = Repo.find_dvc_dir()
-                config = Config(dvc_dir)
-                assert config is not None
-            except NotDvcRepoError:
-                config = Config(validate=False)
-                assert config is not None
-        else:
-            config = cmd.config
-            assert config is not None
+        config = (
+            self._get_current_config()
+            if cmd is None or not hasattr(cmd, "config")
+            else cmd.config
+        )
+
+        assert config is not None
 
         enabled = Analytics._is_enabled_config(config)
         logger.debug(
