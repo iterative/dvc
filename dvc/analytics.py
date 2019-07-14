@@ -213,7 +213,7 @@ class Analytics(object):
         return core.get(Config.SECTION_CORE_ANALYTICS, True)
 
     @staticmethod
-    def _is_enabled(cmd=None):
+    def is_enabled(cmd=None):
         from dvc.config import Config
         from dvc.repo import Repo
         from dvc.exceptions import NotDvcRepoError
@@ -253,7 +253,7 @@ class Analytics(object):
         """
         from dvc.daemon import daemon
 
-        if not Analytics._is_enabled(cmd):
+        if not Analytics.is_enabled(cmd):
             return
 
         analytics = Analytics()
@@ -264,7 +264,7 @@ class Analytics(object):
         """Collect and send analytics."""
         import requests
 
-        if not self._is_enabled():
+        if not self.is_enabled():
             return
 
         self.collect()

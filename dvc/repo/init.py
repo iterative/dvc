@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
-    if Analytics._is_enabled():
+    if Analytics.is_enabled():
         logger.info(
             boxify(
                 "DVC has enabled anonymous aggregate usage analytics.\n"
