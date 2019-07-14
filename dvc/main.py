@@ -34,7 +34,6 @@ def main(argv=None):
 
         elif args.verbose:
             logger.setLevel(logging.DEBUG)
-            logging.getLogger("paramiko").setLevel(logging.DEBUG)
 
         cmd = args.func(args)
         ret = cmd.run_cmd()

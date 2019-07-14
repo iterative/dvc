@@ -45,22 +45,23 @@ def create_cb(name):
 
 
 class SSHConnection:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, host, *args, **kwargs):
+        logger.debug(
+            "Establishing ssh connection with '{host}' "
+            "through port '{port}' as user '{username}'".format(
+                host=host, **kwargs
+            )
+        )
         self.timeout = kwargs.get("timeout", 1800)
 
         self._ssh = paramiko.SSHClient()
         self._ssh.load_system_host_keys()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        self._ssh.connect(*args, **kwargs)
+        self._ssh.connect(host, *args, **kwargs)
+        self._ssh.get_transport().set_keepalive(10)
         self._sftp = None
         self._sftp_alive = False
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.close()
 
     def _sftp_connect(self):
         if not self._sftp or not self._sftp_alive:

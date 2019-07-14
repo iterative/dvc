@@ -13,12 +13,12 @@ except ImportError:
     paramiko = None
 
 import dvc.prompt as prompt
-from dvc.remote.ssh.connection import SSHConnection
 from dvc.config import Config
 from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
+from .pool import ssh_connection
 
 
 logger = logging.getLogger(__name__)
@@ -108,13 +108,7 @@ class RemoteSSH(RemoteBASE):
     def ssh(self, path_info):
         host, user, port = path_info.host, path_info.user, path_info.port
 
-        logger.debug(
-            "Establishing ssh connection with '{host}' "
-            "through port '{port}' as user '{user}'".format(
-                host=host, user=user, port=port
-            )
-        )
-
+        # NOTE: we use the same password regardless of the server :(
         if self.ask_password and not self.password:
             self.password = prompt.password(
                 "Enter a private key passphrase or a password for "
@@ -123,7 +117,7 @@ class RemoteSSH(RemoteBASE):
                 )
             )
 
-        return SSHConnection(
+        return ssh_connection(
             host,
             username=user,
             port=port,
