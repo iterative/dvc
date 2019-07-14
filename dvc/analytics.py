@@ -214,6 +214,10 @@ class Analytics(object):
 
     @staticmethod
     def _get_current_config():
+        from dvc.config import Config
+        from dvc.repo import Repo
+        from dvc.exceptions import NotDvcRepoError
+
         try:
             dvc_dir = Repo.find_dvc_dir()
             config = Config(dvc_dir)
@@ -223,9 +227,6 @@ class Analytics(object):
 
     @staticmethod
     def is_enabled(cmd=None):
-        from dvc.config import Config
-        from dvc.repo import Repo
-        from dvc.exceptions import NotDvcRepoError
         from dvc.command.daemon import CmdDaemonBase
 
         if os.getenv("DVC_TEST"):
