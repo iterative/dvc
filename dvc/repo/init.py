@@ -7,21 +7,23 @@ from dvc.scm import SCM, NoSCM
 from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.utils import boxify, relpath, remove
+from dvc.analytics import Analytics
 
 logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
-    logger.info(
-        boxify(
-            "DVC has enabled anonymous aggregate usage analytics.\n"
-            "Read the analytics documentation (and how to opt-out) here:\n"
-            "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
-                blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
-            ),
-            border_color="red",
+    if Analytics.is_enabled():
+        logger.info(
+            boxify(
+                "DVC has enabled anonymous aggregate usage analytics.\n"
+                "Read the analytics documentation (and how to opt-out) here:\n"
+                "{blue}https://dvc.org/doc/user-guide/analytics{nc}".format(
+                    blue=colorama.Fore.BLUE, nc=colorama.Fore.RESET
+                ),
+                border_color="red",
+            )
         )
-    )
 
     msg = (
         "{yellow}What's next?{nc}\n"
