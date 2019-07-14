@@ -3,11 +3,9 @@ import dvc
 from dvc.utils.compat import str
 
 import os
-import logging
 from uuid import uuid4
 
 from dvc.utils.compat import urljoin
-from dvc.exceptions import DvcException
 from dvc.main import main
 from mock import patch, mock_open, call
 from tests.basic_env import TestDvc
@@ -43,25 +41,6 @@ class TestDefaultOutput(TestDvc):
         self.assertTrue(os.path.exists(filename))
         with open(filename) as fd:
             self.assertEqual(fd.read(), "content")
-
-
-class TestFailedImportMessage(TestDvc):
-    @patch("dvc.repo.imp_url.imp_url", side_effect=DvcException("message"))
-    def test(self, _):
-        page_address = "http://somesite.com/file_name"
-
-        self._caplog.clear()
-
-        with self._caplog.at_level(logging.ERROR, logger="dvc"):
-            main(["import-url", page_address])
-
-            expected_error = (
-                "failed to import http://somesite.com/file_name."
-                " You could also try downloading it manually and"
-                " adding it with `dvc add` command."
-            )
-
-            assert expected_error in self._caplog.text
 
 
 class TestInterruptedDownload(TestDvc):
