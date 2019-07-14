@@ -38,7 +38,7 @@ def _read_connection_string_from_config(config):
         except KeyError as exc:
             raise DvcException(
                 (
-                    "Variable '${}' is not set " "in your current environment."
+                    "Variable '${}' is not set in your current environment."
                 ).format(env_var_name),
                 exc,
             )
