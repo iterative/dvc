@@ -175,21 +175,21 @@ class RemoteBASE(object):
                         self.PARAM_RELPATH: relative_path.as_posix()
                     }
 
-        checksums = as_completed(dir_info)
-        if len(dir_info) > LARGE_DIR_SIZE:
-            msg = (
-                "Computing md5 for a large number of files. "
-                "This is only done once."
-            )
-            logger.info(msg)
-            checksums = progress(checksums, total=len(dir_info))
+            checksums = as_completed(dir_info)
+            if len(dir_info) > LARGE_DIR_SIZE:
+                msg = (
+                    "Computing md5 for a large number of files. "
+                    "This is only done once."
+                )
+                logger.info(msg)
+                checksums = progress(checksums, total=len(dir_info))
 
-        # NOTE: resolving futures
-        for checksum in checksums:
-            entry = dir_info[checksum]
-            entry[self.PARAM_CHECKSUM] = checksum.result()
+            # Resolving futures
+            for checksum in checksums:
+                entry = dir_info[checksum]
+                entry[self.PARAM_CHECKSUM] = checksum.result()
 
-        # NOTE: sorting the list by path to ensure reproducibility
+        # Sorting the list by path to ensure reproducibility
         return sorted(dir_info.values(), key=itemgetter(self.PARAM_RELPATH))
 
     def get_dir_checksum(self, path_info):
