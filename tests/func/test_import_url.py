@@ -44,12 +44,8 @@ class TestDefaultOutput(TestDvc):
 
 
 class TestInterruptedDownload(TestDvc):
-    @property
-    def remote(self):
-        return "http://localhost:8000/"
-
-    def _prepare_interrupted_download(self):
-        import_url = urljoin(self.remote, self.FOO)
+    def _prepare_interrupted_download(self, port):
+        import_url = urljoin("http://localhost:{}/".format(port), self.FOO)
         import_output = "imported_file"
         tmp_file_name = import_output + ".part"
         tmp_file_path = os.path.realpath(
@@ -79,18 +75,16 @@ class TestInterruptedDownload(TestDvc):
 class TestShouldResumeDownload(TestInterruptedDownload):
     @patch("dvc.remote.http.RemoteHTTP.CHUNK_SIZE", 1)
     def test(self):
-        with StaticFileServer():
-            import_output, import_url, tmp_file_path = (
-                self._prepare_interrupted_download()
+        with StaticFileServer() as httpd:
+            output, url, file_path = self._prepare_interrupted_download(
+                httpd.server_port
             )
 
             m = mock_open()
             with patch("dvc.remote.http.open", m):
-                result = main(
-                    ["import-url", "--resume", import_url, import_output]
-                )
+                result = main(["import-url", "--resume", url, output])
                 self.assertEqual(result, 0)
-        m.assert_called_once_with(tmp_file_path, "ab")
+        m.assert_called_once_with(file_path, "ab")
         m_handle = m()
         expected_calls = [call(b"o"), call(b"o")]
         m_handle.write.assert_has_calls(expected_calls, any_order=False)
@@ -99,16 +93,16 @@ class TestShouldResumeDownload(TestInterruptedDownload):
 class TestShouldNotResumeDownload(TestInterruptedDownload):
     @patch("dvc.remote.http.RemoteHTTP.CHUNK_SIZE", 1)
     def test(self):
-        with StaticFileServer():
-            import_output, import_url, tmp_file_path = (
-                self._prepare_interrupted_download()
+        with StaticFileServer() as httpd:
+            output, url, file_path = self._prepare_interrupted_download(
+                httpd.server_port
             )
 
             m = mock_open()
             with patch("dvc.remote.http.open", m):
-                result = main(["import-url", import_url, import_output])
+                result = main(["import-url", url, output])
                 self.assertEqual(result, 0)
-        m.assert_called_once_with(tmp_file_path, "wb")
+        m.assert_called_once_with(file_path, "wb")
         m_handle = m()
         expected_calls = [call(b"f"), call(b"o"), call(b"o")]
         m_handle.write.assert_has_calls(expected_calls, any_order=False)

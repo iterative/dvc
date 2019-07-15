@@ -1142,36 +1142,18 @@ class TestReproExternalLOCAL(TestReproExternalBase):
 class TestReproExternalHTTP(TestReproExternalBase):
     _external_cache_id = None
 
-    @property
-    def remote(self):
-        return "http://localhost:8000/"
+    @staticmethod
+    def get_remote(port):
+        return "http://localhost:{}/".format(port)
 
     @property
     def local_cache(self):
         return os.path.join(self.dvc.dvc_dir, "cache")
 
-    @property
-    def external_cache_id(self):
-        if not self._external_cache_id:
-            self._external_cache_id = str(uuid.uuid4())
-
-        return self._external_cache_id
-
-    @property
-    def external_cache(self):
-        return urljoin(self.remote, self.external_cache_id)
-
     def test(self):
-        ret1 = main(["remote", "add", "mycache", self.external_cache])
-        ret2 = main(["remote", "add", "myremote", self.remote])
-        self.assertEqual(ret1, 0)
-        self.assertEqual(ret2, 0)
-
-        self.dvc = DvcRepo(".")
-
         # Import
-        with StaticFileServer():
-            import_url = urljoin(self.remote, self.FOO)
+        with StaticFileServer() as httpd:
+            import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
             import_stage = self.dvc.imp_url(import_url, import_output)
 
@@ -1180,8 +1162,8 @@ class TestReproExternalHTTP(TestReproExternalBase):
 
         self.dvc.remove("imported_file.dvc")
 
-        with StaticFileServer(handler="Content-MD5"):
-            import_url = urljoin(self.remote, self.FOO)
+        with StaticFileServer(handler="Content-MD5") as httpd:
+            import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
             import_stage = self.dvc.imp_url(import_url, import_output)
 
@@ -1189,8 +1171,20 @@ class TestReproExternalHTTP(TestReproExternalBase):
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
         # Run --deps
-        with StaticFileServer():
-            run_dependency = urljoin(self.remote, self.BAR)
+        with StaticFileServer() as httpd:
+            remote = self.get_remote(httpd.server_port)
+
+            cache_id = str(uuid.uuid4())
+            cache = urljoin(remote, cache_id)
+
+            ret1 = main(["remote", "add", "mycache", cache])
+            ret2 = main(["remote", "add", "myremote", remote])
+            self.assertEqual(ret1, 0)
+            self.assertEqual(ret2, 0)
+
+            self.dvc = DvcRepo(".")
+
+            run_dependency = urljoin(remote, self.BAR)
             run_output = "remote_file"
             cmd = 'open("{}", "w+")'.format(run_output)
 
@@ -1204,19 +1198,18 @@ class TestReproExternalHTTP(TestReproExternalBase):
             )
             self.assertTrue(run_stage is not None)
 
-        self.assertTrue(os.path.exists(run_output))
+            self.assertTrue(os.path.exists(run_output))
 
-        # Pull
-        self.dvc.remove(import_stage.path, outs_only=True)
-        self.assertFalse(os.path.exists(import_output))
+            # Pull
+            self.dvc.remove(import_stage.path, outs_only=True)
+            self.assertFalse(os.path.exists(import_output))
 
-        shutil.move(self.local_cache, self.external_cache_id)
-        self.assertFalse(os.path.exists(self.local_cache))
+            shutil.move(self.local_cache, cache_id)
+            self.assertFalse(os.path.exists(self.local_cache))
 
-        with StaticFileServer():
             self.dvc.pull(import_stage.path, remote="mycache")
 
-        self.assertTrue(os.path.exists(import_output))
+            self.assertTrue(os.path.exists(import_output))
 
 
 class TestReproShell(TestDvc):
