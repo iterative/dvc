@@ -4,6 +4,7 @@ import logging
 import errno
 import stat
 from contextlib import contextmanager
+from funcy import cached_property
 
 try:
     import paramiko
@@ -276,6 +277,10 @@ class SSHConnection:
 
         return b"".join(stdout_chunks).decode("utf-8")
 
+    @cached_property
+    def uname(self):
+        return self.execute("uname").strip()
+
     def md5(self, path):
         """
         Use different md5 commands depending on the OS:
@@ -286,19 +291,15 @@ class SSHConnection:
          Example:
               MD5 (foo.txt) = f3d220a856b52aabbf294351e8a24300
         """
-        uname = self.execute("uname").strip()
-
-        command = {
-            "Darwin": "md5 {}".format(path),
-            "Linux": "md5sum --tag {}".format(path),
-        }.get(uname)
-
-        if not command:
+        if self.uname == "Linux":
+            md5 = self.execute("md5sum " + path).split()[0]
+        elif self.uname == "Darwin":
+            md5 = self.execute("md5 " + path).split()[-1]
+        else:
             raise DvcException(
-                "'{uname}' is not supported as a remote".format(uname=uname)
+                "'{}' is not supported as a SSH remote".format(self.uname)
             )
 
-        md5 = self.execute(command).split()[-1]
         assert len(md5) == 32
         return md5
 
