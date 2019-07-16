@@ -216,7 +216,7 @@ _dvc_repro=(
   {-R,--recursive}"[Reproduce all stages in the specified directory.]"
   "--ignore-build-cache[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
   "--no-commit[Don't put files/directories into cache.]"
-  "--downstream[Reproduce the pipeline starting from the specified stage.]"
+  "--downstream[Reproduce pipeline(s) starting from the specified stage.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -244,7 +244,7 @@ _dvc_run=(
 _dvc_status=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
   "--show-checksums[Show checksums instead of file names.]"
-  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipeline is up to date, otherwise 1.]"
+  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipeline(s) is (are) up to date, otherwise 1.]"
   {-c,--cloud}"[Show status of a local cache compared to a remote repository.]"
   {-r,--remote}"[Remote repository to compare local cache to.]:Remote repository:"
   {-a,--all-branches}"[Show status of a local cache compared to a remote repository for all branches.]"

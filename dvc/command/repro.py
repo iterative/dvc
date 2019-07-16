@@ -152,6 +152,6 @@ def add_parser(subparsers, parent_parser):
         "--downstream",
         action="store_true",
         default=False,
-        help="Reproduce the pipeline starting from the specified stage.",
+        help="Reproduce pipeline(s) starting from the specified stage.",
     )
     repro_parser.set_defaults(func=CmdRepro)

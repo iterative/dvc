@@ -278,7 +278,7 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help=(
             "Suppresses all output."
-            " Exit with 0 if pipeline is up to date, otherwise 1."
+            " Exit with 0 if pipeline(s) is (are) up to date, otherwise 1."
         ),
     )
     status_parser.add_argument(
