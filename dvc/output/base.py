@@ -279,7 +279,7 @@ class OutputBase(object):
         )
 
     def download(self, to):
-        self.remote.download([self.path_info], [to.path_info])
+        self.remote.download(self.path_info, to.path_info)
 
     def checkout(self, force=False, progress_callback=None, tag=None):
         if not self.use_cache:

@@ -210,7 +210,7 @@ class RemoteBASE(object):
 
         from_info = PathInfo(tmp)
         to_info = self.cache.path_info / tmp_fname("")
-        self.cache.upload([from_info], [to_info], no_progress_bar=True)
+        self.cache.upload(from_info, to_info, no_progress_bar=True)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
         return checksum, to_info
@@ -232,7 +232,7 @@ class RemoteBASE(object):
         fobj = tempfile.NamedTemporaryFile(delete=False)
         path = fobj.name
         to_info = PathInfo(path)
-        self.cache.download([path_info], [to_info], no_progress_bar=True)
+        self.cache.download(path_info, to_info, no_progress_bar=True)
 
         try:
             with open(path, "r") as fobj:
@@ -416,99 +416,81 @@ class RemoteBASE(object):
             return
         self._save_file(path_info, checksum)
 
-    def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
+    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
-        names = self._verify_path_args(to_infos, from_infos, names)
-        fails = 0
 
-        for from_info, to_info, name in zip(from_infos, to_infos, names):
-            if to_info.scheme != self.scheme:
-                raise NotImplementedError
+        if to_info.scheme != self.scheme:
+            raise NotImplementedError
 
-            if from_info.scheme != "local":
-                raise NotImplementedError
+        if from_info.scheme != "local":
+            raise NotImplementedError
 
-            msg = "Uploading '{}' to '{}'"
-            logger.debug(msg.format(from_info, to_info))
+        logger.debug("Uploading '{}' to '{}'".format(from_info, to_info))
 
-            if not name:
-                name = from_info.name
+        name = name or from_info.name
 
-            if not no_progress_bar:
-                progress.update_target(name, 0, None)
+        if not no_progress_bar:
+            progress.update_target(name, 0, None)
 
-            try:
-                self._upload(
-                    from_info.fspath,
-                    to_info,
-                    name=name,
-                    no_progress_bar=no_progress_bar,
-                )
-            except Exception:
-                fails += 1
-                msg = "failed to upload '{}' to '{}'"
-                logger.exception(msg.format(from_info, to_info))
-                continue
+        try:
+            self._upload(
+                from_info.fspath,
+                to_info,
+                name=name,
+                no_progress_bar=no_progress_bar,
+            )
+        except Exception:
+            msg = "failed to upload '{}' to '{}'"
+            logger.exception(msg.format(from_info, to_info))
+            return 1  # 1 fail
 
-            if not no_progress_bar:
-                progress.finish_target(name)
+        if not no_progress_bar:
+            progress.finish_target(name)
 
-        return fails
+        return 0
 
-    def download(
-        self, from_infos, to_infos, names=None, no_progress_bar=False
-    ):
+    def download(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
 
-        names = self._verify_path_args(from_infos, to_infos, names)
-        fails = 0
+        if from_info.scheme != self.scheme:
+            raise NotImplementedError
 
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != self.scheme:
-                raise NotImplementedError
+        if to_info.scheme == self.scheme != "local":
+            self.copy(from_info, to_info)
+            return 0
 
-            if to_info.scheme == self.scheme != "local":
-                self.copy(from_info, to_info)
-                continue
+        if to_info.scheme != "local":
+            raise NotImplementedError
 
-            if to_info.scheme != "local":
-                raise NotImplementedError
+        logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
 
-            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
-            logger.debug(msg)
+        name = name or to_info.name
 
-            tmp_file = tmp_fname(to_info)
-            if not name:
-                name = to_info.name
+        if not no_progress_bar:
+            # real progress is not always available,
+            # lets at least show start and finish
+            progress.update_target(name, 0, None)
 
-            if not no_progress_bar:
-                # real progress is not always available,
-                # lets at least show start and finish
-                progress.update_target(name, 0, None)
+        makedirs(fspath_py35(to_info.parent), exist_ok=True)
+        tmp_file = tmp_fname(to_info)
 
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
+        try:
+            self._download(
+                from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
+            )
+        except Exception:
+            msg = "failed to download '{}' to '{}'"
+            logger.exception(msg.format(from_info, to_info))
+            return 1  # 1 fail
 
-            try:
-                self._download(
-                    from_info,
-                    tmp_file,
-                    name=name,
-                    no_progress_bar=no_progress_bar,
-                )
-            except Exception:
-                fails += 1
-                msg = "failed to download '{}' to '{}'"
-                logger.exception(msg.format(from_info, to_info))
-                continue
+        move(tmp_file, fspath_py35(to_info))
 
-            move(tmp_file, fspath_py35(to_info))
+        if not no_progress_bar:
+            progress.finish_target(name)
 
-            if not no_progress_bar:
-                progress.finish_target(name)
-
-        return fails
+        return 0
 
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
@@ -522,20 +504,6 @@ class RemoteBASE(object):
 
     def exists(self, path_info):
         raise NotImplementedError
-
-    @classmethod
-    def _verify_path_args(cls, from_infos, to_infos, names=None):
-        assert isinstance(from_infos, list)
-        assert isinstance(to_infos, list)
-        assert len(from_infos) == len(to_infos)
-
-        if not names:
-            names = len(to_infos) * [None]
-        else:
-            assert isinstance(names, list)
-            assert len(names) == len(to_infos)
-
-        return names
 
     def path_to_checksum(self, path):
         return "".join(self.path_cls(path).parts[-2:])

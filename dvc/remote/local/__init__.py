@@ -24,7 +24,6 @@ from dvc.utils import (
     remove,
     move,
     copyfile,
-    to_chunks,
     tmp_fname,
     file_md5,
     walk_files,
@@ -341,7 +340,7 @@ class RemoteLOCAL(RemoteBASE):
             status = STATUS_MAP[(md5 in local, md5 in remote)]
             info["status"] = status
 
-    def _get_chunks(self, download, remote, status_info, status, jobs):
+    def _get_plans(self, download, remote, status_info, status):
         cache = []
         path_infos = []
         names = []
@@ -360,11 +359,7 @@ class RemoteLOCAL(RemoteBASE):
             to_infos = path_infos
             from_infos = cache
 
-        return (
-            to_chunks(from_infos, num_chunks=jobs),
-            to_chunks(to_infos, num_chunks=jobs),
-            to_chunks(names, num_chunks=jobs),
-        )
+        return from_infos, to_infos, names
 
     def _process(
         self,
@@ -399,16 +394,16 @@ class RemoteLOCAL(RemoteBASE):
             download=download,
         )
 
-        chunks = self._get_chunks(download, remote, status_info, status, jobs)
+        plans = self._get_plans(download, remote, status_info, status)
 
-        if len(chunks[0]) == 0:
+        if len(plans[0]) == 0:
             return 0
 
         if jobs > 1:
             with ThreadPoolExecutor(max_workers=jobs) as executor:
-                fails = sum(executor.map(func, *chunks))
+                fails = sum(executor.map(func, *plans))
         else:
-            fails = sum(map(func, *chunks))
+            fails = sum(map(func, *plans))
 
         if fails:
             msg = "{} file(s) failed to {}"
@@ -416,7 +411,7 @@ class RemoteLOCAL(RemoteBASE):
                 msg.format(fails, "download" if download else "upload")
             )
 
-        return len(chunks[0])
+        return len(plans[0])
 
     def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
         return self._process(
