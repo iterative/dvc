@@ -32,6 +32,10 @@ class RemoteSSH(RemoteBASE):
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800
+    # At any given time some of the connections will go over network and
+    # paramiko stuff, so we would ideally have it double of server processors.
+    # We use conservative setting of 4 instead to not exhaust max sessions.
+    CHECKSUM_JOBS = 4
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)

@@ -43,9 +43,6 @@ STATUS_MAP = {
 }
 
 
-CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
-
-
 class DataCloudError(DvcException):
     """ Data Cloud exception """
 
@@ -79,6 +76,7 @@ class RemoteBASE(object):
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
+    CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
 
     def __init__(self, repo, config):
         self.repo = repo
@@ -110,7 +108,7 @@ class RemoteBASE(object):
 
         core = config.get(Config.SECTION_CORE, {})
         self.checksum_jobs = core.get(
-            Config.SECTION_CORE_CHECKSUM_JOBS, CHECKSUM_JOBS
+            Config.SECTION_CORE_CHECKSUM_JOBS, self.CHECKSUM_JOBS
         )
 
         self.protected = False
