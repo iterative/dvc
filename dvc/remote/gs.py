@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 import itertools
-from contextlib import contextmanager
+from funcy import cached_property
 
 try:
     from google.cloud import storage
@@ -42,7 +42,7 @@ class RemoteGS(RemoteBASE):
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
 
-    @property
+    @cached_property
     def gs(self):
         return (
             storage.Client.from_service_account_json(self.credentialpath)
@@ -64,16 +64,14 @@ class RemoteGS(RemoteBASE):
         md5 = base64.b64decode(b64_md5)
         return codecs.getencoder("hex")(md5)[0].decode("utf-8")
 
-    def copy(self, from_info, to_info, ctx=None):
-        gs = ctx or self.gs
-
-        from_bucket = gs.bucket(from_info.bucket)
+    def copy(self, from_info, to_info):
+        from_bucket = self.gs.bucket(from_info.bucket)
         blob = from_bucket.get_blob(from_info.path)
         if not blob:
             msg = "'{}' doesn't exist in the cloud".format(from_info.path)
             raise DvcException(msg)
 
-        to_bucket = gs.bucket(to_info.bucket)
+        to_bucket = self.gs.bucket(to_info.bucket)
         from_bucket.copy_blob(blob, to_bucket, new_name=to_info.path)
 
     def remove(self, path_info):
@@ -87,10 +85,8 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix, gs=None):
-        gs = gs or self.gs
-
-        for blob in gs.bucket(bucket).list_blobs(prefix=prefix):
+    def _list_paths(self, bucket, prefix):
+        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
             yield blob.name
 
     def list_cache_paths(self):
@@ -102,28 +98,21 @@ class RemoteGS(RemoteBASE):
 
     def batch_exists(self, path_infos, callback):
         paths = []
-        gs = self.gs
 
         for path_info in path_infos:
-            paths.append(
-                self._list_paths(path_info.bucket, path_info.path, gs)
-            )
+            paths.append(self._list_paths(path_info.bucket, path_info.path))
             callback.update(str(path_info))
 
         paths = set(itertools.chain.from_iterable(paths))
 
         return [path_info.path in paths for path_info in path_infos]
 
-    @contextmanager
-    def transfer_context(self):
-        yield self.gs
-
-    def _upload(self, from_file, to_info, ctx=None, **_kwargs):
-        bucket = ctx.bucket(to_info.bucket)
+    def _upload(self, from_file, to_info, **_kwargs):
+        bucket = self.gs.bucket(to_info.bucket)
         blob = bucket.blob(to_info.path)
         blob.upload_from_filename(from_file)
 
-    def _download(self, from_info, to_file, ctx=None, **_kwargs):
-        bucket = ctx.bucket(from_info.bucket)
+    def _download(self, from_info, to_file, **_kwargs):
+        bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
         blob.download_to_filename(to_file)

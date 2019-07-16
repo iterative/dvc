@@ -42,9 +42,7 @@ class RemoteHTTP(RemoteBASE):
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, ctx=None
-    ):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         callback = None
         if not no_progress_bar:
             total = self._content_length(from_info.url)

@@ -8,7 +8,6 @@ import json
 import logging
 import tempfile
 import itertools
-from contextlib import contextmanager
 from operator import itemgetter
 from multiprocessing import cpu_count
 from concurrent.futures import as_completed, ThreadPoolExecutor
@@ -417,49 +416,43 @@ class RemoteBASE(object):
             return
         self._save_file(path_info, checksum)
 
-    @contextmanager
-    def transfer_context(self):
-        yield None
-
     def upload(self, from_infos, to_infos, names=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
         names = self._verify_path_args(to_infos, from_infos, names)
         fails = 0
 
-        with self.transfer_context() as ctx:
-            for from_info, to_info, name in zip(from_infos, to_infos, names):
-                if to_info.scheme != self.scheme:
-                    raise NotImplementedError
+        for from_info, to_info, name in zip(from_infos, to_infos, names):
+            if to_info.scheme != self.scheme:
+                raise NotImplementedError
 
-                if from_info.scheme != "local":
-                    raise NotImplementedError
+            if from_info.scheme != "local":
+                raise NotImplementedError
 
-                msg = "Uploading '{}' to '{}'"
-                logger.debug(msg.format(from_info, to_info))
+            msg = "Uploading '{}' to '{}'"
+            logger.debug(msg.format(from_info, to_info))
 
-                if not name:
-                    name = from_info.name
+            if not name:
+                name = from_info.name
 
-                if not no_progress_bar:
-                    progress.update_target(name, 0, None)
+            if not no_progress_bar:
+                progress.update_target(name, 0, None)
 
-                try:
-                    self._upload(
-                        from_info.fspath,
-                        to_info,
-                        name=name,
-                        ctx=ctx,
-                        no_progress_bar=no_progress_bar,
-                    )
-                except Exception:
-                    fails += 1
-                    msg = "failed to upload '{}' to '{}'"
-                    logger.exception(msg.format(from_info, to_info))
-                    continue
+            try:
+                self._upload(
+                    from_info.fspath,
+                    to_info,
+                    name=name,
+                    no_progress_bar=no_progress_bar,
+                )
+            except Exception:
+                fails += 1
+                msg = "failed to upload '{}' to '{}'"
+                logger.exception(msg.format(from_info, to_info))
+                continue
 
-                if not no_progress_bar:
-                    progress.finish_target(name)
+            if not no_progress_bar:
+                progress.finish_target(name)
 
         return fails
 
@@ -472,50 +465,48 @@ class RemoteBASE(object):
         names = self._verify_path_args(from_infos, to_infos, names)
         fails = 0
 
-        with self.transfer_context() as ctx:
-            for to_info, from_info, name in zip(to_infos, from_infos, names):
-                if from_info.scheme != self.scheme:
-                    raise NotImplementedError
+        for to_info, from_info, name in zip(to_infos, from_infos, names):
+            if from_info.scheme != self.scheme:
+                raise NotImplementedError
 
-                if to_info.scheme == self.scheme != "local":
-                    self.copy(from_info, to_info, ctx=ctx)
-                    continue
+            if to_info.scheme == self.scheme != "local":
+                self.copy(from_info, to_info)
+                continue
 
-                if to_info.scheme != "local":
-                    raise NotImplementedError
+            if to_info.scheme != "local":
+                raise NotImplementedError
 
-                msg = "Downloading '{}' to '{}'".format(from_info, to_info)
-                logger.debug(msg)
+            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
+            logger.debug(msg)
 
-                tmp_file = tmp_fname(to_info)
-                if not name:
-                    name = to_info.name
+            tmp_file = tmp_fname(to_info)
+            if not name:
+                name = to_info.name
 
-                if not no_progress_bar:
-                    # real progress is not always available,
-                    # lets at least show start and finish
-                    progress.update_target(name, 0, None)
+            if not no_progress_bar:
+                # real progress is not always available,
+                # lets at least show start and finish
+                progress.update_target(name, 0, None)
 
-                makedirs(fspath_py35(to_info.parent), exist_ok=True)
+            makedirs(fspath_py35(to_info.parent), exist_ok=True)
 
-                try:
-                    self._download(
-                        from_info,
-                        tmp_file,
-                        name=name,
-                        ctx=ctx,
-                        no_progress_bar=no_progress_bar,
-                    )
-                except Exception:
-                    fails += 1
-                    msg = "failed to download '{}' to '{}'"
-                    logger.exception(msg.format(from_info, to_info))
-                    continue
+            try:
+                self._download(
+                    from_info,
+                    tmp_file,
+                    name=name,
+                    no_progress_bar=no_progress_bar,
+                )
+            except Exception:
+                fails += 1
+                msg = "failed to download '{}' to '{}'"
+                logger.exception(msg.format(from_info, to_info))
+                continue
 
-                move(tmp_file, fspath_py35(to_info))
+            move(tmp_file, fspath_py35(to_info))
 
-                if not no_progress_bar:
-                    progress.finish_target(name)
+            if not no_progress_bar:
+                progress.finish_target(name)
 
         return fails
 
@@ -526,7 +517,7 @@ class RemoteBASE(object):
         self.copy(from_info, to_info)
         self.remove(from_info)
 
-    def copy(self, from_info, to_info, ctx=None):
+    def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
 
     def exists(self, path_info):
