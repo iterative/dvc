@@ -288,17 +288,15 @@ class SSHConnection:
         """
         uname = self.execute("uname").strip()
 
-        command = {
-            "Darwin": "md5 {}".format(path),
-            "Linux": "md5sum --tag {}".format(path),
-        }.get(uname)
-
-        if not command:
+        if uname == "Linux":
+            md5 = self.execute("md5sum " + path).split()[0]
+        elif uname == "Darwin":
+            md5 = self.execute("md5 " + path).split()[-1]
+        else:
             raise DvcException(
                 "'{uname}' is not supported as a remote".format(uname=uname)
             )
 
-        md5 = self.execute(command).split()[-1]
         assert len(md5) == 32
         return md5
 
