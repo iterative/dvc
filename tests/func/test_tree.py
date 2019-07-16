@@ -9,7 +9,7 @@ from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
 
-from tests.basic_env import TestDir, TestGit
+from tests.basic_env import TestDir, TestGit, TestGitSubmodule
 
 
 class TestWorkingTree(TestDir):
@@ -39,12 +39,7 @@ class TestWorkingTree(TestDir):
         self.assertFalse(self.tree.isfile("not-existing-file"))
 
 
-class TestGitTree(TestGit):
-    def setUp(self):
-        super(TestGitTree, self).setUp()
-        self.scm = SCM(self._root_dir)
-        self.tree = GitTree(self.git, "master")
-
+class GitTreeTests(object):
     def test_open(self):
         self.scm.add([self.FOO, self.UNICODE, self.DATA_DIR])
         self.scm.commit("add")
@@ -81,6 +76,21 @@ class TestGitTree(TestGit):
         self.assertTrue(self.tree.isfile(self.FOO))
         self.assertFalse(self.tree.isfile(self.DATA_DIR))
         self.assertFalse(self.tree.isfile("not-existing-file"))
+
+
+class TestGitTree(TestGit, GitTreeTests):
+    def setUp(self):
+        super(TestGitTree, self).setUp()
+        self.scm = SCM(self._root_dir)
+        self.tree = GitTree(self.git, "master")
+
+
+class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
+    def setUp(self):
+        super(TestGitSubmoduleTree, self).setUp()
+        self.scm = SCM(self._root_dir)
+        self.tree = GitTree(self.git, "master")
+        self._pushd(self._root_dir)
 
 
 class AssertWalkEqualMixin(object):
