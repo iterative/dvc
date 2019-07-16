@@ -312,10 +312,9 @@ class Stage(object):
             self.unprotect_outs()
         os.unlink(self.path)
 
-    def reproduce(
-        self, force=False, dry=False, interactive=False, no_commit=False
-    ):
-        if not force and not self.changed():
+    def reproduce(self, interactive=False, **kwargs):
+
+        if not kwargs.get("force", False) and not self.changed():
             return None
 
         msg = (
@@ -328,7 +327,7 @@ class Stage(object):
 
         logger.info("Reproducing '{stage}'".format(stage=self.relpath))
 
-        self.run(dry=dry, no_commit=no_commit, force=force)
+        self.run(**kwargs)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
 
