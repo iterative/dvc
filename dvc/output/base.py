@@ -278,8 +278,8 @@ class OutputBase(object):
             "verify metric is not supported for {}".format(self.scheme)
         )
 
-    def download(self, to, resume=False):
-        self.remote.download([self.path_info], [to.path_info], resume=resume)
+    def download(self, to):
+        self.remote.download(self.path_info, to.path_info)
 
     def checkout(self, force=False, progress_callback=None, tag=None):
         if not self.use_cache:

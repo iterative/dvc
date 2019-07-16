@@ -4,7 +4,7 @@ import os
 import threading
 import logging
 import itertools
-from contextlib import contextmanager
+from funcy import cached_property
 
 try:
     import boto3
@@ -77,7 +77,7 @@ class RemoteS3(RemoteBASE):
         ret[Config.SECTION_REMOTE_URL] = url
         return ret
 
-    @property
+    @cached_property
     def s3(self):
         session = boto3.session.Session(
             profile_name=self.profile, region_name=self.region
@@ -191,8 +191,8 @@ class RemoteS3(RemoteBASE):
         if etag != cached_etag:
             raise ETagMismatchError(etag, cached_etag)
 
-    def copy(self, from_info, to_info, ctx=None):
-        self._copy(ctx or self.s3, from_info, to_info, self.extra_args)
+    def copy(self, from_info, to_info):
+        self._copy(self.s3, from_info, to_info, self.extra_args)
 
     def remove(self, path_info):
         if path_info.scheme != "s3":
@@ -201,15 +201,14 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_paths(self, bucket, prefix, s3=None):
+    def _list_paths(self, bucket, prefix):
         """ Read config for list object api, paginate through list objects."""
-        s3 = s3 or self.s3
         kwargs = {"Bucket": bucket, "Prefix": prefix}
         if self.list_objects:
             list_objects_api = "list_objects"
         else:
             list_objects_api = "list_objects_v2"
-        paginator = s3.get_paginator(list_objects_api)
+        paginator = self.s3.get_paginator(list_objects_api)
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", None)
             if not contents:
@@ -226,27 +225,18 @@ class RemoteS3(RemoteBASE):
 
     def batch_exists(self, path_infos, callback):
         paths = []
-        s3 = self.s3
 
         for path_info in path_infos:
-            paths.append(
-                self._list_paths(path_info.bucket, path_info.path, s3)
-            )
+            paths.append(self._list_paths(path_info.bucket, path_info.path))
             callback.update(str(path_info))
 
         paths = set(itertools.chain.from_iterable(paths))
         return [path_info.path in paths for path_info in path_infos]
 
-    @contextmanager
-    def transfer_context(self):
-        yield self.s3
-
-    def _upload(
-        self, from_file, to_info, name=None, ctx=None, no_progress_bar=False
-    ):
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
         cb = None if no_progress_bar else Callback(name, total)
-        ctx.upload_file(
+        self.s3.upload_file(
             from_file,
             to_info.bucket,
             to_info.path,
@@ -254,25 +244,15 @@ class RemoteS3(RemoteBASE):
             ExtraArgs=self.extra_args,
         )
 
-    def _download(
-        self,
-        from_info,
-        to_file,
-        name=None,
-        ctx=None,
-        no_progress_bar=False,
-        resume=False,
-    ):
-        s3 = ctx
-
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         if no_progress_bar:
             cb = None
         else:
-            total = s3.head_object(
+            total = self.s3.head_object(
                 Bucket=from_info.bucket, Key=from_info.path
             )["ContentLength"]
             cb = Callback(name, total)
 
-        s3.download_file(
+        self.s3.download_file(
             from_info.bucket, from_info.path, to_file, Callback=cb
         )

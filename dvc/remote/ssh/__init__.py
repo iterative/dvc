@@ -169,15 +169,12 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.isdir(path_info.path)
 
-    def copy(self, from_info, to_info, ctx=None):
+    def copy(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
-        if ctx:
-            ctx.cp(from_info.path, to_info.path)
-        else:
-            with self.ssh(from_info) as ssh:
-                ssh.cp(from_info.path, to_info.path)
+        with self.ssh(from_info) as ssh:
+            ssh.cp(from_info.path, to_info.path)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -193,36 +190,25 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(from_info) as ssh:
             ssh.move(from_info.path, to_info.path)
 
-    def transfer_context(self):
-        return self.ssh(self.path_info)
-
-    def _download(
-        self,
-        from_info,
-        to_file,
-        name=None,
-        ctx=None,
-        no_progress_bar=False,
-        resume=False,
-    ):
+    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         assert from_info.isin(self.path_info)
-        ctx.download(
-            from_info.path,
-            to_file,
-            progress_title=name,
-            no_progress_bar=no_progress_bar,
-        )
+        with self.ssh(self.path_info) as ssh:
+            ssh.download(
+                from_info.path,
+                to_file,
+                progress_title=name,
+                no_progress_bar=no_progress_bar,
+            )
 
-    def _upload(
-        self, from_file, to_info, name=None, ctx=None, no_progress_bar=False
-    ):
+    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         assert to_info.isin(self.path_info)
-        ctx.upload(
-            from_file,
-            to_info.path,
-            progress_title=name,
-            no_progress_bar=no_progress_bar,
-        )
+        with self.ssh(self.path_info) as ssh:
+            ssh.upload(
+                from_file,
+                to_info.path,
+                progress_title=name,
+                no_progress_bar=no_progress_bar,
+            )
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
