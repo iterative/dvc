@@ -255,13 +255,7 @@ class RemoteS3(RemoteBASE):
         )
 
     def _download(
-        self,
-        from_info,
-        to_file,
-        name=None,
-        ctx=None,
-        no_progress_bar=False,
-        resume=False,
+        self, from_info, to_file, name=None, ctx=None, no_progress_bar=False
     ):
         s3 = ctx
 

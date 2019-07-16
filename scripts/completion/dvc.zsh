@@ -133,7 +133,6 @@ _dvc_gc=(
 )
 
 _dvc_importurl=(
-  "--resume[Resume previously started download.]"
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"

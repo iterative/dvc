@@ -797,7 +797,7 @@ class Stage(object):
         if (p is None) or (p.returncode != 0):
             raise StageCmdFailedError(self)
 
-    def run(self, dry=False, resume=False, no_commit=False, force=False):
+    def run(self, dry=False, no_commit=False, force=False):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
 
@@ -820,7 +820,7 @@ class Stage(object):
                 if not force and self._already_cached():
                     self.outs[0].checkout()
                 else:
-                    self.deps[0].download(self.outs[0], resume=resume)
+                    self.deps[0].download(self.outs[0])
 
         elif self.is_data_source:
             msg = "Verifying data sources in '{}'".format(self.relpath)

@@ -197,13 +197,7 @@ class RemoteSSH(RemoteBASE):
         return self.ssh(self.path_info)
 
     def _download(
-        self,
-        from_info,
-        to_file,
-        name=None,
-        ctx=None,
-        no_progress_bar=False,
-        resume=False,
+        self, from_info, to_file, name=None, ctx=None, no_progress_bar=False
     ):
         assert from_info.isin(self.path_info)
         ctx.download(

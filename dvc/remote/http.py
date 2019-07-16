@@ -2,9 +2,8 @@ from __future__ import unicode_literals
 
 from dvc.scheme import Schemes
 
-from dvc.utils.compat import open, makedirs, fspath_py35
+from dvc.utils.compat import open
 
-import os
 import threading
 import requests
 import logging
@@ -13,7 +12,6 @@ from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
-from dvc.utils import move
 
 
 logger = logging.getLogger(__name__)
@@ -44,54 +42,27 @@ class RemoteHTTP(RemoteBASE):
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
 
-    def download(
-        self,
-        from_infos,
-        to_infos,
-        names=None,
-        no_progress_bar=False,
-        resume=False,
+    def _download(
+        self, from_info, to_file, name=None, no_progress_bar=False, ctx=None
     ):
-        names = self._verify_path_args(to_infos, from_infos, names)
-        fails = 0
-
-        for to_info, from_info, name in zip(to_infos, from_infos, names):
-            if from_info.scheme != self.scheme:
-                raise NotImplementedError
-
-            if to_info.scheme != "local":
-                raise NotImplementedError
-
-            msg = "Downloading '{}' to '{}'".format(from_info, to_info)
-            logger.debug(msg)
-
-            if not name:
-                name = to_info.name
-
-            makedirs(fspath_py35(to_info.parent), exist_ok=True)
-
+        callback = None
+        if not no_progress_bar:
             total = self._content_length(from_info.url)
+            if total:
+                callback = ProgressBarCallback(name, total)
 
-            if no_progress_bar or not total:
-                cb = None
-            else:
-                cb = ProgressBarCallback(name, total)
+        request = self._request("GET", from_info.url, stream=True)
 
-            try:
-                self._download_to(
-                    from_info.url, to_info.fspath, callback=cb, resume=resume
-                )
+        with open(to_file, "wb") as fd:
+            transferred_bytes = 0
 
-            except Exception:
-                fails += 1
-                msg = "failed to download '{}'".format(from_info)
-                logger.exception(msg)
-                continue
+            for chunk in request.iter_content(chunk_size=self.CHUNK_SIZE):
+                fd.write(chunk)
+                fd.flush()
+                transferred_bytes += len(chunk)
 
-            if not no_progress_bar:
-                progress.finish_target(name)
-
-        return fails
+                if callback:
+                    callback(transferred_bytes)
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
@@ -127,55 +98,6 @@ class RemoteHTTP(RemoteBASE):
             )
 
         return etag
-
-    def _download_to(self, url, target_file, callback=None, resume=False):
-        request = self._request("GET", url, stream=True)
-        partial_file = target_file + ".part"
-
-        mode, transferred_bytes = self._determine_mode_get_transferred_bytes(
-            partial_file, resume
-        )
-
-        self._validate_existing_file_size(transferred_bytes, partial_file)
-
-        self._write_request_content(
-            mode, partial_file, request, transferred_bytes, callback
-        )
-
-        move(partial_file, target_file)
-
-    def _write_request_content(
-        self, mode, partial_file, request, transferred_bytes, callback=None
-    ):
-        with open(partial_file, mode) as fd:
-
-            for index, chunk in enumerate(
-                request.iter_content(chunk_size=self.CHUNK_SIZE)
-            ):
-                chunk_number = index + 1
-                if chunk_number * self.CHUNK_SIZE > transferred_bytes:
-                    fd.write(chunk)
-                    fd.flush()
-                    transferred_bytes += len(chunk)
-
-                if callback:
-                    callback(transferred_bytes)
-
-    def _validate_existing_file_size(self, bytes_transferred, partial_file):
-        if bytes_transferred % self.CHUNK_SIZE != 0:
-            raise DvcException(
-                "File {}, might be corrupted, please remove "
-                "it and retry importing".format(partial_file)
-            )
-
-    def _determine_mode_get_transferred_bytes(self, partial_file, resume):
-        if os.path.exists(partial_file) and resume:
-            mode = "ab"
-            bytes_transfered = os.path.getsize(partial_file)
-        else:
-            mode = "wb"
-            bytes_transfered = 0
-        return mode, bytes_transfered
 
     def _request(self, method, url, **kwargs):
         kwargs.setdefault("allow_redirects", True)

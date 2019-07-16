@@ -464,12 +464,7 @@ class RemoteBASE(object):
         return fails
 
     def download(
-        self,
-        from_infos,
-        to_infos,
-        names=None,
-        no_progress_bar=False,
-        resume=False,
+        self, from_infos, to_infos, names=None, no_progress_bar=False
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
@@ -509,7 +504,6 @@ class RemoteBASE(object):
                         tmp_file,
                         name=name,
                         ctx=ctx,
-                        resume=resume,
                         no_progress_bar=no_progress_bar,
                     )
                 except Exception:
