@@ -83,17 +83,18 @@ key_path = os.path.join(here, "{0}.key".format(user))
 def ssh_server():
     users = {user: key_path}
     with mockssh.Server(users) as s:
+        s.test_creds = {
+            "host": s.host,
+            "port": s.port,
+            "username": user,
+            "key_filename": key_path,
+        }
         yield s
 
 
 @pytest.fixture
 def ssh(ssh_server):
-    yield SSHConnection(
-        ssh_server.host,
-        username=user,
-        port=ssh_server.port,
-        key_filename=key_path,
-    )
+    yield SSHConnection(**ssh_server.test_creds)
 
 
 @pytest.fixture

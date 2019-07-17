@@ -13,6 +13,7 @@ def ssh_connection(*conn_args, **conn_kwargs):
         yield conn
     except BaseException:
         conn.close()
+        raise
     else:
         pool.release(conn)
 
