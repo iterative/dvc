@@ -8,6 +8,7 @@ from dvc.utils.compat import str, makedirs, fspath_py35
 
 import os
 import stat
+import errno
 from shortuuid import uuid
 import shutil
 import logging
@@ -487,9 +488,18 @@ class RemoteLOCAL(RemoteBASE):
 
     @staticmethod
     def protect(path_info):
-        os.chmod(
-            fspath_py35(path_info), stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
-        )
+        path = fspath_py35(path_info)
+        mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
+
+        try:
+            os.chmod(path, mode)
+        except OSError as exc:
+            if exc.errno not in [errno.EPERM, errno.EACCES]:
+                raise
+
+            actual = os.stat(path).st_mode
+            if actual & mode != mode:
+                raise
 
     def _get_unpacked_dir_path_info(self, checksum):
         info = self.checksum_to_path_info(checksum)
