@@ -31,8 +31,6 @@ from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
-from tests.conftest import user
-from tests.conftest import key_path
 from tests.utils import spy
 
 
@@ -460,10 +458,11 @@ class TestRemoteSSHMocked(TestDataCloudBase):
         self.method_name = request.function.__name__
 
     def _get_url(self):
+        user = self.ssh_server.test_creds["username"]
         return get_ssh_url_mocked(user, self.ssh_server.port)
 
     def _get_keyfile(self):
-        return key_path
+        return self.ssh_server.test_creds["key_filename"]
 
     def _should_test(self):
         return True

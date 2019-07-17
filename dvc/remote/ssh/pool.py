@@ -13,6 +13,7 @@ def ssh_connection(*conn_args, **conn_kwargs):
         yield conn
     except BaseException:
         conn.close()
+        raise
     else:
         pool.release(conn)
 
@@ -20,6 +21,12 @@ def ssh_connection(*conn_args, **conn_kwargs):
 @memoize
 def get_ssh_pool(*conn_args, **conn_kwargs):
     return SSHPool(conn_args, conn_kwargs)
+
+
+def close_ssh_pools():
+    for pool in get_ssh_pool.memory.values():
+        pool.close()
+    get_ssh_pool.memory.clear()
 
 
 class SSHPool(object):
