@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from dvc.ignore import DvcIgnore
-from dvc.utils.compat import str, basestring, urlparse, fspath_py35, makedirs
+from dvc.utils.compat import str, basestring, urlparse
 
 import os
 import json
@@ -20,7 +20,14 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import progress, ProgressCallback
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
+from dvc.utils import (
+    LARGE_DIR_SIZE,
+    tmp_fname,
+    to_chunks,
+    move,
+    relpath,
+    makedirs,
+)
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 
@@ -202,6 +209,7 @@ class RemoteBASE(object):
         checksum, tmp_info = self._get_dir_info_checksum(dir_info)
         new_info = self.cache.checksum_to_path_info(checksum)
         if self.cache.changed_cache_file(checksum):
+            self.cache.makedirs(new_info.parent)
             self.cache.move(tmp_info, new_info)
 
         self.state.save(path_info, checksum)
@@ -348,7 +356,7 @@ class RemoteBASE(object):
         logger.debug("'{}' hasn't changed.".format(path_info))
         return False
 
-    def link(self, from_info, to_info, link_type=None):
+    def link(self, from_info, to_info, link_types=None):
         self.copy(from_info, to_info)
 
     def _save_file(self, path_info, checksum, save_link=True):
@@ -356,6 +364,7 @@ class RemoteBASE(object):
 
         cache_info = self.checksum_to_path_info(checksum)
         if self.changed_cache(checksum):
+            self.makedirs(cache_info.parent)
             self.move(path_info, cache_info)
         else:
             self.remove(path_info)
@@ -456,7 +465,15 @@ class RemoteBASE(object):
 
         return 0
 
-    def download(self, from_info, to_info, name=None, no_progress_bar=False):
+    def download(
+        self,
+        from_info,
+        to_info,
+        name=None,
+        no_progress_bar=False,
+        file_mode=None,
+        dir_mode=None,
+    ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
 
@@ -479,7 +496,7 @@ class RemoteBASE(object):
             # lets at least show start and finish
             progress.update_target(name, 0, None)
 
-        makedirs(fspath_py35(to_info.parent), exist_ok=True)
+        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
         tmp_file = tmp_fname(to_info)
 
         try:
@@ -491,7 +508,7 @@ class RemoteBASE(object):
             logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
 
-        move(tmp_file, fspath_py35(to_info))
+        move(tmp_file, to_info, mode=file_mode)
 
         if not no_progress_bar:
             progress.finish_target(name)

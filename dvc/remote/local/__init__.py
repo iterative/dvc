@@ -4,7 +4,7 @@ from copy import copy
 
 from dvc.scheme import Schemes
 from dvc.remote.local.slow_link_detection import slow_link_guard
-from dvc.utils.compat import str, makedirs, fspath_py35
+from dvc.utils.compat import str, fspath_py35
 
 import os
 import stat
@@ -12,6 +12,7 @@ import errno
 from shortuuid import uuid
 import shutil
 import logging
+from functools import partial
 
 from dvc.system import System
 from dvc.remote.base import (
@@ -30,6 +31,7 @@ from dvc.utils import (
     walk_files,
     relpath,
     dvc_walk,
+    makedirs,
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -57,9 +59,18 @@ class RemoteLOCAL(RemoteBASE):
         "reflink": System.reflink,
     }
 
+    SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
+
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
+
+        shared = config.get(Config.SECTION_CACHE_SHARED)
+        self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
+
+        if self.protected:
+            # cache files are set to be read-only for everyone
+            self._file_mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
 
         types = config.get(Config.SECTION_CACHE_TYPE, None)
         if types:
@@ -120,10 +131,9 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.lexists(fspath_py35(path_info))
 
     def makedirs(self, path_info):
-        if not self.exists(path_info):
-            os.makedirs(fspath_py35(path_info))
+        makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
-    def link(self, from_info, to_info, link_type=None):
+    def link(self, from_info, to_info, link_types=None):
         from_path = from_info.fspath
         to_path = to_info.fspath
 
@@ -141,10 +151,8 @@ class RemoteLOCAL(RemoteBASE):
             logger.debug(msg)
             return
 
-        if not link_type:
+        if not link_types:
             link_types = self.cache_types
-        else:
-            link_types = [link_type]
 
         self._try_links(from_info, to_info, link_types)
 
@@ -235,15 +243,12 @@ class RemoteLOCAL(RemoteBASE):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
-        inp = from_info.fspath
-        outp = to_info.fspath
+        if self.isfile(from_info):
+            mode = self._file_mode
+        else:
+            mode = self._dir_mode
 
-        # moving in two stages to make the whole operation atomic in
-        # case inp and outp are in different filesystems and actual
-        # physical copying of data is happening
-        tmp = "{}.{}".format(outp, str(uuid()))
-        move(inp, tmp)
-        move(tmp, outp)
+        move(from_info, to_info, mode=mode)
 
     def cache_exists(self, md5s, jobs=None):
         return [
@@ -374,7 +379,11 @@ class RemoteLOCAL(RemoteBASE):
         )
 
         if download:
-            func = remote.download
+            func = partial(
+                remote.download,
+                dir_mode=self._dir_mode,
+                file_mode=self._file_mode,
+            )
             status = STATUS_DELETED
         else:
             func = remote.upload
@@ -494,6 +503,8 @@ class RemoteLOCAL(RemoteBASE):
         try:
             os.chmod(path, mode)
         except OSError as exc:
+            # In share cache scenario, we might not own the cache file, so we
+            # need to check if cache file is already protected.
             if exc.errno not in [errno.EPERM, errno.EACCES]:
                 raise
 
@@ -534,8 +545,13 @@ class RemoteLOCAL(RemoteBASE):
                 entry[self.PARAM_CHECKSUM]
             )
             relative_path = entry[self.PARAM_RELPATH]
+            # In shared cache mode some cache files might not be owned by the
+            # user, so we need to use symlinks because, unless
+            # /proc/sys/fs/protected_hardlinks is disabled, the user is not
+            # allowed to create hardlinks to files that he doesn't own.
+            link_types = ["hardlink", "symlink"]
             self.link(
-                entry_cache_info, unpacked_dir_info / relative_path, "hardlink"
+                entry_cache_info, unpacked_dir_info / relative_path, link_types
             )
 
         self.state.save(unpacked_dir_info, checksum)
