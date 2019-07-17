@@ -241,7 +241,7 @@ class RemoteLOCAL(RemoteBASE):
         move(inp, tmp)
         move(tmp, outp)
 
-    def cache_exists(self, md5s):
+    def cache_exists(self, md5s, jobs=None):
         return [
             checksum
             for checksum in progress(md5s)
@@ -306,7 +306,7 @@ class RemoteLOCAL(RemoteBASE):
         md5s = list(ret)
 
         logger.info("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s)
+        local_exists = self.cache_exists(md5s, jobs=jobs)
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
@@ -316,7 +316,7 @@ class RemoteLOCAL(RemoteBASE):
             remote_exists = local_exists
         else:
             logger.info("Collecting information from remote cache...")
-            remote_exists = list(remote.cache_exists(md5s))
+            remote_exists = list(remote.cache_exists(md5s, jobs=jobs))
 
         self._fill_statuses(ret, local_exists, remote_exists)
 

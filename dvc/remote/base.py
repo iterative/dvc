@@ -589,7 +589,7 @@ class RemoteBASE(object):
             return self._changed_dir_cache(checksum)
         return self.changed_cache_file(checksum)
 
-    def cache_exists(self, checksums):
+    def cache_exists(self, checksums, jobs=None):
         """Check if the given checksums are stored in the remote.
 
         There are two ways of performing this check:
@@ -618,7 +618,7 @@ class RemoteBASE(object):
             return self.batch_exists(chunks, callback=progress_callback)
 
         if self.no_traverse and hasattr(self, "batch_exists"):
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
                 chunks = to_chunks(path_infos, num_chunks=self.JOBS)
                 results = executor.map(exists_with_progress, chunks)
