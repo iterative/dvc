@@ -91,13 +91,6 @@ class RemoteLOCAL(RemoteBASE):
     def supported(cls, config):
         return True
 
-    @staticmethod
-    def compat_config(config):
-        ret = config.copy()
-        url = ret.pop(Config.SECTION_LOCAL_STORAGEPATH, "")
-        ret[Config.SECTION_REMOTE_URL] = url
-        return ret
-
     def list_cache_paths(self):
         assert self.path_info is not None
 

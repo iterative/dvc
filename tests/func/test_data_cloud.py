@@ -568,15 +568,6 @@ class TestDataCloudCLIBase(TestDvc):
         self._test()
 
 
-class TestCompatRemoteLOCALCLI(TestDataCloudCLIBase):
-    def _test(self):
-        storagepath = get_local_storagepath()
-        self.main(["config", "core.cloud", "local"])
-        self.main(["config", "local.storagepath", storagepath])
-
-        self._test_cloud()
-
-
 class TestRemoteLOCALCLI(TestDataCloudCLIBase):
     def _test(self):
         url = get_local_url()
@@ -610,18 +601,6 @@ class TestRemoteHDFSCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestCompatRemoteS3CLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return _should_test_aws()
-
-    def _test(self):
-        storagepath = get_aws_storagepath()
-        self.main(["config", "core.cloud", "aws"])
-        self.main(["config", "aws.storagepath", storagepath])
-
-        self._test_cloud()
-
-
 class TestRemoteS3CLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_aws()
@@ -632,18 +611,6 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
-
-
-class TestCompatRemoteGSCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return _should_test_gcp()
-
-    def _test(self):
-        storagepath = get_gcp_storagepath()
-        self.main(["config", "core.cloud", "gcp"])
-        self.main(["config", "gcp.storagepath", storagepath])
-
-        self._test_cloud()
 
 
 class TestRemoteGSCLI(TestDataCloudCLIBase):

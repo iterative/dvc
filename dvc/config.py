@@ -181,15 +181,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): BOOL_SCHEMA,
     }
 
-    # backward compatibility
-    SECTION_CORE_CLOUD = "cloud"
-    SECTION_CORE_CLOUD_SCHEMA = And(
-        Use(str.lower),
-        # only the clouds which were supported by obsoleted cloud config
-        Choices("aws", "gcp", "local", ""),
-    )
-    SECTION_CORE_STORAGEPATH = "storagepath"
-
     SECTION_CORE_SCHEMA = {
         Optional(SECTION_CORE_LOGLEVEL): And(
             str, Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA
@@ -204,9 +195,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(
             SECTION_CORE_CHECKSUM_JOBS, default=None
         ): SECTION_CORE_CHECKSUM_JOBS_SCHEMA,
-        # backward compatibility
-        Optional(SECTION_CORE_CLOUD, default=""): SECTION_CORE_CLOUD_SCHEMA,
-        Optional(SECTION_CORE_STORAGEPATH, default=""): str,
     }
 
     # backward compatibility

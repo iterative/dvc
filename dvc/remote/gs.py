@@ -35,13 +35,6 @@ class RemoteGS(RemoteBASE):
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
         self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
 
-    @staticmethod
-    def compat_config(config):
-        ret = config.copy()
-        url = "gs://" + ret.pop(Config.SECTION_GCP_STORAGEPATH, "").lstrip("/")
-        ret[Config.SECTION_REMOTE_URL] = url
-        return ret
-
     @cached_property
     def gs(self):
         return (
