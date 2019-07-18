@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 class StageCmdFailedError(DvcException):
     def __init__(self, stage):
-        msg = "stage '{}' cmd {} failed".format(stage.relpath, stage.cmd)
+        msg = "stage '{}' cmd '{}' failed".format(stage.relpath, stage.cmd)
         super(StageCmdFailedError, self).__init__(msg)
 
 
