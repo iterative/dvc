@@ -70,13 +70,6 @@ class RemoteS3(RemoteBASE):
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
-    @staticmethod
-    def compat_config(config):
-        ret = config.copy()
-        url = "s3://" + ret.pop(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
-        ret[Config.SECTION_REMOTE_URL] = url
-        return ret
-
     @cached_property
     def s3(self):
         session = boto3.session.Session(

@@ -124,9 +124,6 @@ class RemoteBASE(object):
             path_info=self.path_info or "No path",
         )
 
-    def compat_config(config):
-        return config.copy()
-
     @classmethod
     def supported(cls, config):
         if isinstance(config, basestring):
