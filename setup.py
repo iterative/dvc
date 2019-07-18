@@ -102,6 +102,7 @@ tests_requirements = [
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
+    "moto",
 ]
 
 if (sys.version_info) >= (3, 6):
