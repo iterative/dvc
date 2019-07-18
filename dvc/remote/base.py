@@ -20,7 +20,14 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import progress, ProgressCallback
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
+from dvc.utils import (
+    LARGE_DIR_SIZE,
+    tmp_fname,
+    to_chunks,
+    move,
+    relpath,
+    as_future,
+)
 from dvc.state import StateBase
 from dvc.path_info import PathInfo, URLInfo
 
@@ -140,12 +147,19 @@ class RemoteBASE(object):
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
-    def _collect_dir(self, path_info):
-        dir_info = {}
+    def _get_file_checksum_future(self, file_info, executor):
+        checksum = self.state.get(file_info)
+        if checksum:
+            checksum = as_future(checksum)
+        else:
+            checksum = executor.submit(self.get_file_checksum, file_info)
+        return checksum
 
+    def _get_dir_info(self, dir_path_info):
+        dir_info = {}
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
-            for root, _dirs, files in self.walk(path_info):
-                root_info = path_info / root
+            for root, _dirs, files in self.walk(dir_path_info):
+                root_info = dir_path_info / root
 
                 for fname in files:
 
@@ -153,10 +167,12 @@ class RemoteBASE(object):
                         raise DvcIgnoreInCollectedDirError(root)
 
                     file_info = root_info / fname
-                    relative_path = file_info.relative_to(path_info)
-                    checksum = executor.submit(
-                        self.get_file_checksum, file_info
+
+                    checksum = self._get_file_checksum_future(
+                        file_info, executor
                     )
+
+                    relative_path = file_info.relative_to(dir_path_info)
                     dir_info[checksum] = {
                         # NOTE: this is lossy transformation:
                         #   "hey\there" -> "hey/there"
@@ -182,6 +198,10 @@ class RemoteBASE(object):
             for checksum in checksums:
                 entry = dir_info[checksum]
                 entry[self.PARAM_CHECKSUM] = checksum.result()
+        return dir_info
+
+    def _collect_dir(self, path_info):
+        dir_info = self._get_dir_info(path_info)
 
         # Sorting the list by path to ensure reproducibility
         return sorted(dir_info.values(), key=itemgetter(self.PARAM_RELPATH))

@@ -2,6 +2,8 @@
 
 from __future__ import unicode_literals
 
+from concurrent.futures import Future
+
 from dvc.utils.compat import (
     str,
     builtin_str,
@@ -392,3 +394,9 @@ def relpath(path, start=os.curdir):
     ):
         return path
     return os.path.relpath(path, start)
+
+
+def as_future(anything):
+    future = Future()
+    future.set_result(anything)
+    return future
