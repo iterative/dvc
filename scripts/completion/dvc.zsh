@@ -41,8 +41,8 @@ _dvc_commands() {
     "status:Show changed stages, compare local cache and a remote storage."
     "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
-    "version:Show DVC version and system/environment informaion."
     "update:Update dependencies and reproduce specified DVC-files."
+    "version:Show DVC version and system/environment informaion."
   )
 
   _describe 'dvc commands' _commands
