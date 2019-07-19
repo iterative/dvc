@@ -1,3 +1,6 @@
+import os
+import sys
+
 import pytest
 
 from dvc.stage import Stage
@@ -8,7 +11,14 @@ TESTS = [
     ("s3://bucket/path", "s3"),
     ("gs://bucket/path", "gs"),
     ("ssh://example.com:/dir/path", "ssh"),
-    ("hdfs://example.com/dir/path", "hdfs"),
+    pytest.param(
+        "hdfs://example.com/dir/path",
+        "hdfs",
+        marks=pytest.mark.skipif(
+            sys.version_info[0] == 2 and os.name == "nt",
+            reason="Not supported for python 2 on Windows.",
+        ),
+    ),
     ("path/to/file", "local"),
     ("path\\to\\file", "local"),
     ("file", "local"),
