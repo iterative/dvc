@@ -18,7 +18,9 @@ from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
-from .pool import ssh_connection
+from dvc.remote.pool import get_connection
+
+from .connection import SSHConnection
 
 
 logger = logging.getLogger(__name__)
@@ -121,7 +123,8 @@ class RemoteSSH(RemoteBASE):
                 )
             )
 
-        return ssh_connection(
+        return get_connection(
+            SSHConnection,
             host,
             username=user,
             port=port,

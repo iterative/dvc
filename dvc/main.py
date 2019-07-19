@@ -8,7 +8,7 @@ from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
-from dvc.remote.ssh.pool import close_ssh_pools
+from dvc.remote.pool import close_pools
 
 
 logger = logging.getLogger("dvc")
@@ -56,7 +56,7 @@ def main(argv=None):
         logger.setLevel(outerLogLevel)
         # Python 2 fails to close these clean occasionally and users see
         # weird error messages, so we do it manually
-        close_ssh_pools()
+        close_pools()
 
     Analytics().send_cmd(cmd, args, ret)
 

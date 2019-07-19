@@ -76,7 +76,12 @@ s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.0.1"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
+hdfs = ["pyarrow>=0.14.0"]
 all_remotes = gs + s3 + azure + ssh + oss
+
+if os.name != "nt" or sys.version_info[0] != 2:
+    # NOTE: there are no pyarrow wheels for python2 on windows
+    all_remotes += hdfs
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -125,6 +130,7 @@ setup(
         "azure": azure,
         "oss": oss,
         "ssh": ssh,
+        "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ":python_version=='2.7'": ["futures", "pathlib2"],
         "tests": tests_requirements,

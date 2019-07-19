@@ -2,12 +2,10 @@ from collections import deque
 from contextlib import contextmanager
 from funcy import memoize
 
-from .connection import SSHConnection
-
 
 @contextmanager
-def ssh_connection(*conn_args, **conn_kwargs):
-    pool = get_ssh_pool(*conn_args, **conn_kwargs)
+def get_connection(*args, **kwargs):
+    pool = get_pool(*args, **kwargs)
     conn = pool.get_connection()
     try:
         yield conn
@@ -19,18 +17,19 @@ def ssh_connection(*conn_args, **conn_kwargs):
 
 
 @memoize
-def get_ssh_pool(*conn_args, **conn_kwargs):
-    return SSHPool(conn_args, conn_kwargs)
+def get_pool(*args, **kwargs):
+    return Pool(*args, **kwargs)
 
 
-def close_ssh_pools():
-    for pool in get_ssh_pool.memory.values():
+def close_pools():
+    for pool in get_pool.memory.values():
         pool.close()
-    get_ssh_pool.memory.clear()
+    get_pool.memory.clear()
 
 
-class SSHPool(object):
-    def __init__(self, conn_args, conn_kwargs):
+class Pool(object):
+    def __init__(self, conn_func, *conn_args, **conn_kwargs):
+        self._conn_func = conn_func
         self._conn_args = conn_args
         self._conn_kwargs = conn_kwargs
         self._conns = deque()
@@ -48,7 +47,7 @@ class SSHPool(object):
         try:
             return self._conns.popleft()
         except IndexError:
-            return SSHConnection(*self._conn_args, **self._conn_kwargs)
+            return self._conn_func(*self._conn_args, **self._conn_kwargs)
 
     def release(self, conn):
         if self._closed:

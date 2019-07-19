@@ -129,7 +129,7 @@ class _URLPathParents(object):
 
 
 class URLInfo(object):
-    DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22}
+    DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
 
     def __init__(self, url):
         self.parsed = urlparse(url)
