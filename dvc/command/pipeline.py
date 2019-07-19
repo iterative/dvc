@@ -175,7 +175,7 @@ class CmdPipelineList(CmdBase):
                 logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
-        logger.info("{} pipeline(s) total".format(len(pipelines)))
+        logger.info("{} pipelines total".format(len(pipelines)))
 
         return 0
 

@@ -229,7 +229,7 @@ def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
 
     with patch.object(RemoteLOCAL, "_upload", unreliable_upload):
         assert main(["push"]) == 1
-        assert str(get_last_exc(caplog)) == "1 file(s) failed to upload"
+        assert str(get_last_exc(caplog)) == "1 files failed to upload"
 
         assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
         assert remote.exists(remote.checksum_to_path_info(bar.checksum))
@@ -240,7 +240,7 @@ def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
 
     with patch.object(RemoteLOCAL, "_download", side_effect=Exception):
         assert main(["pull"]) == 1
-        assert str(get_last_exc(caplog)) == "2 file(s) failed to download"
+        assert str(get_last_exc(caplog)) == "2 files failed to download"
 
 
 def get_last_exc(caplog):

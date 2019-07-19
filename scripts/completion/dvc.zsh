@@ -96,7 +96,7 @@ _dvc_destroy=(
 )
 
 _dvc_diff=(
-  {-t,--target}"[Source path to a data file or directory.]:Target file(s):"
+  {-t,--target}"[Source path to a data file or directory.]:Target files:"
 )
 
 _dvc_fetch=(
