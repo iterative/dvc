@@ -17,10 +17,6 @@ function retry {
 retry pip install --upgrade pip setuptools wheel
 retry pip install .[all,tests]
 
-# NOTE: waiting for https://github.com/spulec/moto/issues/2172
-pip uninstall -y moto
-retry pip install git+https://github.com/efiop/moto.git@move-env-mocking
-
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"
 
