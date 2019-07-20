@@ -61,6 +61,7 @@ install_requires = [
     "funcy>=1.12",
     "pathspec>=0.5.9",
     "shortuuid>=0.5.0",
+    "tqdm>=4.32.1",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
 
