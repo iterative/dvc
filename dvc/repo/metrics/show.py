@@ -190,7 +190,7 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
 
         if not typ and isinstance(o.metric, dict):
             t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
-            x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
+            x = xpath or o.metric.get(o.PARAM_METRIC_XPATH)
         else:
             t = typ
             x = xpath

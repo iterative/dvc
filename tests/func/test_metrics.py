@@ -831,3 +831,16 @@ class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
             in caplog.text
         )
         assert 0 == ret
+
+
+def test_show_xpath_should_override_stage_xpath(dvc_repo):
+    metric_file = "metric"
+    metric = {"m1": 0.1, "m2": 0.2}
+    with open(metric_file, "w") as fobj:
+        json.dump(metric, fobj)
+
+    dvc_repo.run(cmd="", overwrite=True, metrics=[metric_file])
+    dvc_repo.metrics.modify(metric_file, typ="json", xpath="m2")
+
+    result = dvc_repo.metrics.show(xpath="m1")
+    assert result == {"": {metric_file: [0.1]}}
