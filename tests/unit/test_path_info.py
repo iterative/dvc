@@ -1,4 +1,5 @@
 import pytest
+import copy
 
 from dvc.path_info import URLInfo, CloudURLInfo
 
@@ -34,3 +35,10 @@ def test_url_info_parents(cls):
         cls("ssh://user@test.com/test1"),
         cls("ssh://user@test.com/"),
     ]
+
+
+@pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo])
+def test_url_info_deepcopy(cls):
+    u1 = cls("ssh://user@test.com:/test1/test2/test3")
+    u2 = copy.deepcopy(u1)
+    assert u1 == u2
