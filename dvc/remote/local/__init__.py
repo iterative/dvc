@@ -399,7 +399,7 @@ class RemoteLOCAL(RemoteBASE):
             fails = sum(map(func, *plans))
 
         if fails:
-            msg = "{} file(s) failed to {}"
+            msg = "{} files failed to {}"
             raise DvcException(
                 msg.format(fails, "download" if download else "upload")
             )

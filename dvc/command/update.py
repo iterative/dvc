@@ -23,7 +23,7 @@ class CmdUpdate(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    UPDATE_HELP = "Update dependencies and reproduce specified DVC-files."
+    UPDATE_HELP = "Update data artifacts imported from other DVC repositories."
     update_parser = subparsers.add_parser(
         "update",
         parents=[parent_parser],

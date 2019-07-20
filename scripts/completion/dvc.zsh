@@ -41,8 +41,8 @@ _dvc_commands() {
     "status:Show changed stages, compare local cache and a remote storage."
     "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
+    "update:Update data artifacts imported from other DVC repositories."
     "version:Show DVC version and system/environment informaion."
-    "update:Update dependencies and reproduce specified DVC-files."
   )
 
   _describe 'dvc commands' _commands
@@ -96,7 +96,7 @@ _dvc_destroy=(
 )
 
 _dvc_diff=(
-  {-t,--target}"[Source path to a data file or directory.]:Target file(s):"
+  {-t,--target}"[Source path to a data file or directory.]:Target files:"
 )
 
 _dvc_fetch=(
