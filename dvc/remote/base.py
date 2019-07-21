@@ -19,7 +19,7 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
 )
-from dvc.progress import progress, ProgressCallback
+from dvc.progress import Tqdm
 from dvc.utils import (
     LARGE_DIR_SIZE,
     tmp_fname,
@@ -159,7 +159,7 @@ class RemoteBASE(object):
                     "This is only done once."
                 )
                 logger.info(msg)
-                tasks = progress(tasks, total=len(file_infos))
+                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
 
         checksums = {
             file_infos[index]: task for index, task in enumerate(tasks)
@@ -444,9 +444,6 @@ class RemoteBASE(object):
 
         name = name or from_info.name
 
-        if not no_progress_bar:
-            progress.update_target(name, 0, None)
-
         try:
             self._upload(
                 from_info.fspath,
@@ -458,9 +455,6 @@ class RemoteBASE(object):
             msg = "failed to upload '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
-
-        if not no_progress_bar:
-            progress.finish_target(name)
 
         return 0
 
@@ -490,11 +484,6 @@ class RemoteBASE(object):
 
         name = name or to_info.name
 
-        if not no_progress_bar:
-            # real progress is not always available,
-            # lets at least show start and finish
-            progress.update_target(name, 0, None)
-
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
         tmp_file = tmp_fname(to_info)
 
@@ -508,9 +497,6 @@ class RemoteBASE(object):
             return 1  # 1 fail
 
         move(tmp_file, to_info, mode=file_mode)
-
-        if not no_progress_bar:
-            progress.finish_target(name)
 
         return 0
 
@@ -642,10 +628,10 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        progress_callback = ProgressCallback(len(checksums))
+        pbar = Tqdm(total=len(checksums))
 
         def exists_with_progress(chunks):
-            return self.batch_exists(chunks, callback=progress_callback)
+            return self.batch_exists(chunks, callback=pbar.update_desc)
 
         if self.no_traverse and hasattr(self, "batch_exists"):
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
@@ -654,7 +640,7 @@ class RemoteBASE(object):
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
-                progress_callback.finish("")
+                pbar.close()
                 return ret
 
         return list(set(checksums) & set(self.all()))

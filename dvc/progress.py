@@ -1,25 +1,50 @@
 """Manages progress bars for dvc repo."""
-
 from __future__ import print_function
-from __future__ import unicode_literals
 import logging
 from tqdm import tqdm
+from threading import Lock
 
-from dvc.utils.compat import str
 
-import sys
-import threading
+class Tqdm(tqdm):
+    """
+    maximum-compatibility tqdm-based progressbars
+    """
+    def __init__(
+            self,
+            iterable=None,
+            disable=logging.getLogger(
+                __name__).getEffectiveLevel() >= logging.CRITICAL,
+            ascii=None,  # TODO: True?
+            **kwargs):
+        """
+        kwargs  : anything accepted by `tqdm.tqdm()`
+        """
+        super(Tqdm, self).__init__(
+            iterable=iterable,
+            disable=disable,
+            ascii=ascii,
+            **kwargs)
+        # self.set_lock(Lock())
+
+    def update_desc(self, desc, n=1):
+        """
+        Calls `set_description(desc)` and `update(n)`
+        """
+        self.set_description(desc, refresh=False)
+        self.update(n)
 
 
 class Progress(tqdm):
     """
     Simple multi-target progress bar.
+    TODO: remove this class.
     """
     def __init__(self):
         super(Progress, self).__init__(
             total=0,
-            disable=logging.getLogger(__name__).getEffectiveLevel() >= logging.CRITICAL)
-        self.set_lock(threading.Lock())
+            disable=logging.getLogger(
+                __name__).getEffectiveLevel() >= logging.CRITICAL)
+        self.set_lock(Lock())
         self._targets = {}
         self.clearln()
 
@@ -77,7 +102,7 @@ class Progress(tqdm):
 
 
 class ProgressCallback(object):
-    # TODO: is this meant to be a thin wrapper for multi-progress, or just one bar?
+    # TODO: remove this thin wrapper
     def __init__(self, total):
         self.total = total
         self.current = 0
