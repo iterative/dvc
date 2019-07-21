@@ -4,8 +4,8 @@ from funcy import memoize
 
 
 @contextmanager
-def get_connection(*args, **kwargs):
-    pool = get_pool(*args, **kwargs)
+def get_connection(conn_func, *args, **kwargs):
+    pool = get_pool(conn_func, *args, **kwargs)
     conn = pool.get_connection()
     try:
         yield conn
@@ -17,8 +17,8 @@ def get_connection(*args, **kwargs):
 
 
 @memoize
-def get_pool(*args, **kwargs):
-    return Pool(*args, **kwargs)
+def get_pool(conn_func, *args, **kwargs):
+    return Pool(conn_func, *args, **kwargs)
 
 
 def close_pools():
