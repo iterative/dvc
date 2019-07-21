@@ -153,15 +153,15 @@ class RemoteSSH(RemoteBASE):
             return ret
 
         with self.ssh(path_infos[0]) as ssh:
-            with ssh.open_max_sftp_channels() as channels:
-                max_workers = len(channels)
+            channels = ssh.open_max_sftp_channels()
+            max_workers = len(channels)
 
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    paths = [path_info.path for path_info in path_infos]
-                    chunks = to_chunks(paths, num_chunks=max_workers)
-                    chunks_and_channels = zip(chunks, channels)
-                    outcome = executor.map(_exists, chunks_and_channels)
-                    results = list(itertools.chain.from_iterable(outcome))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                paths = [path_info.path for path_info in path_infos]
+                chunks = to_chunks(paths, num_chunks=max_workers)
+                chunks_and_channels = zip(chunks, channels)
+                outcome = executor.map(_exists, chunks_and_channels)
+                results = list(itertools.chain.from_iterable(outcome))
 
             return results
 
