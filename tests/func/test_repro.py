@@ -837,7 +837,9 @@ class TestReproExternalBase(TestDvc):
             with patch_download as mock_download:
                 with patch_checkout as mock_checkout:
                     with patch_run as mock_run:
+                        stage.locked = False
                         stage.run()
+                        stage.locked = True
 
                         mock_run.assert_not_called()
                         mock_download.assert_not_called()
@@ -918,14 +920,12 @@ class TestReproExternalBase(TestDvc):
 
         self.assertNotEqual(self.dvc.status(), {})
 
-        stages = self.dvc.reproduce(import_stage.path)
-        self.assertEqual(len(stages), 1)
+        self.dvc.update(import_stage.path)
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.BAR, shallow=False))
         self.assertEqual(self.dvc.status(import_stage.path), {})
 
-        stages = self.dvc.reproduce(import_remote_stage.path)
-        self.assertEqual(len(stages), 1)
+        self.dvc.update(import_remote_stage.path)
         self.assertEqual(self.dvc.status(import_remote_stage.path), {})
 
         stages = self.dvc.reproduce(cmd_stage.path)
@@ -1323,6 +1323,7 @@ class TestReproAlreadyCached(TestRepro):
 
         with patch_download as mock_download:
             with patch_checkout as mock_checkout:
+                assert main(["unlock", "bar.dvc"]) == 0
                 ret = main(["repro", "--force", "bar.dvc"])
                 self.assertEqual(ret, 0)
                 self.assertEqual(mock_download.call_count, 1)

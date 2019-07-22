@@ -334,7 +334,7 @@ class Stage(object):
         return self
 
     def update(self):
-        if not self.is_repo_import:
+        if not self.is_repo_import and not self.is_import:
             raise StageUpdateError(self.relpath)
 
         self.deps[0].update()
