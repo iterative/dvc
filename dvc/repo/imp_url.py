@@ -3,7 +3,7 @@ from dvc.repo.scm_context import scm_context
 
 
 @scm_context
-def imp_url(self, url, out=None, fname=None, erepo=None, locked=False):
+def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     from dvc.stage import Stage
 
     out = out or pathlib.PurePath(url).name

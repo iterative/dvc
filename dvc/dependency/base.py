@@ -22,4 +22,4 @@ class DependencyBase(object):
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
 
     def update(self):
-        raise NotImplementedError
+        pass
