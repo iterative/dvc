@@ -36,7 +36,8 @@ def get(url, path, out=None, rev=None):
                 "reflink,hardlink,copy",
             )
             o = repo.find_out_by_relpath(path)
-            repo.fetch(o.stage.path)
+            with repo.state:
+                repo.cloud.pull(o.get_used_cache())
             o.path_info = PathInfo(os.path.abspath(out))
             with o.repo.state:
                 o.checkout()

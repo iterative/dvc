@@ -68,7 +68,8 @@ class DependencyREPO(DependencyLOCAL):
             self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
 
             out = repo.find_out_by_relpath(self.def_path)
-            repo.fetch(out.stage.path)
+            with repo.state:
+                repo.cloud.pull(out.get_used_cache())
             to.info = copy.copy(out.info)
             to.checkout()
 
