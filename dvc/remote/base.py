@@ -643,8 +643,11 @@ class RemoteBASE(object):
 
         if not force and not self.already_cached(path_info):
             msg = (
-                "file '{}' is going to be removed."
-                " Are you sure you want to proceed?".format(str(path_info))
+                "{term} '{path}' is going to be removed."
+                " Are you sure you want to proceed?".format(
+                    term="directory" if os.path.isdir(path_info) else "file",
+                    path=str(path_info),
+                )
             )
 
             if not prompt.confirm(msg):
