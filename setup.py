@@ -76,7 +76,7 @@ s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.0.1"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
-hdfs = ["pyarrow>=0.14.0"]
+hdfs = ["pyarrow==0.14.0"]
 all_remotes = gs + s3 + azure + ssh + oss
 
 if os.name != "nt" or sys.version_info[0] != 2:
