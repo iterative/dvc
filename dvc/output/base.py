@@ -298,7 +298,7 @@ class OutputBase(object):
         )
 
     def remove(self, ignore_remove=False, force=True):
-        self.cache.safe_remove(self.path_info, force=force)
+        self.remote.safe_remove(self.path_info, force=force)
 
         if self.scheme != "local":
             return

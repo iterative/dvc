@@ -195,7 +195,7 @@ class RemoteLOCAL(RemoteBASE):
         if not current_md5:
             return False
 
-        return not self.changed_cache(current_md5)
+        return not self.cache.changed_cache(current_md5)
 
     def is_empty(self, path_info):
         path = path_info.fspath

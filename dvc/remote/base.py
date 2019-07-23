@@ -630,6 +630,9 @@ class RemoteBASE(object):
         return list(set(checksums) & set(self.all()))
 
     def already_cached(self, path_info):
+        if not self.cache:
+            return False
+
         current = self.get_checksum(path_info)
 
         if not current:
@@ -645,7 +648,7 @@ class RemoteBASE(object):
             msg = (
                 "{term} '{path}' is going to be removed."
                 " Are you sure you want to proceed?".format(
-                    term="directory" if os.path.isdir(path_info) else "file",
+                    term="directory" if self.isdir(path_info) else "file",
                     path=str(path_info),
                 )
             )
