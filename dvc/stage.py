@@ -277,8 +277,9 @@ class Stage(object):
         return False
 
     def changed(self):
-        ret = any(
-            [self._changed_deps(), self._changed_outs(), self._changed_md5()]
+        # Short-circuit order: stage md5 is fast, deps are expected to change
+        ret = (
+            self._changed_md5() or self._changed_deps() or self._changed_outs()
         )
 
         if ret:
@@ -656,9 +657,9 @@ class Stage(object):
 
         d = self.dumpd()
 
-        # NOTE: removing md5 manually in order to not affect md5s in deps/outs
-        if self.PARAM_MD5 in d.keys():
-            del d[self.PARAM_MD5]
+        # Remove md5 and meta, these should not affect stage md5
+        d.pop(self.PARAM_MD5, None)
+        d.pop(self.PARAM_META, None)
 
         # Ignore the wdir default value. In this case DVC-file w/o
         # wdir has the same md5 as a file with the default value specified.
