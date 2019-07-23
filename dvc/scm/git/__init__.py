@@ -245,6 +245,9 @@ class Git(Base):
     def reset_ignores(self):
         self.ignored_paths = []
 
+    def reset_tracked_files(self):
+        self.files_to_track = []
+
     def remind_to_track(self):
         if not self.files_to_track:
             return
