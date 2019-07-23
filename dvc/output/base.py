@@ -298,10 +298,7 @@ class OutputBase(object):
         )
 
     def remove(self, ignore_remove=False, force=True):
-        if self.cache:
-            self.cache.safe_remove(self.path_info, force=force)
-        else:
-            self.remote.remove(self.path_info)
+        self.cache.safe_remove(self.path_info, force=force)
 
         if self.scheme != "local":
             return
