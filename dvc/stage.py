@@ -277,8 +277,9 @@ class Stage(object):
         return False
 
     def changed(self):
-        ret = any(
-            [self._changed_deps(), self._changed_outs(), self._changed_md5()]
+        # Short-circuit order: stage md5 is fast, deps are expected to change
+        ret = (
+            self._changed_md5() or self._changed_deps() or self._changed_outs()
         )
 
         if ret:
