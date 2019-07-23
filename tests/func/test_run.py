@@ -20,6 +20,7 @@ from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
 from dvc.stage import StageFileBadNameError, MissingDep
 from dvc.stage import StagePathOutsideError, StageFileAlreadyExistsError
 from dvc.exceptions import (
+    ConfirmRemoveError,
     OutputDuplicationError,
     CircularDependencyError,
     CyclicGraphError,
@@ -156,7 +157,10 @@ class TestRunCircularDependency(TestDvc):
 
         with self.assertRaises(CyclicGraphError):
             self.dvc.run(
-                deps=["baz.txt"], outs=[self.FOO], cmd="echo baz > foo"
+                deps=["baz.txt"],
+                outs=[self.FOO],
+                cmd="echo baz > foo",
+                remove_outs=True,
             )
 
 
@@ -373,6 +377,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         ret = main(
             [
                 "run",
+                "--remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -425,6 +430,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         ret = main(
             [
                 "run",
+                "--remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -479,6 +485,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         ret = main(
             [
                 "run",
+                "--remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -625,13 +632,18 @@ class TestCmdRunCliMetrics(TestDvc):
 class TestCmdRunWorkingDirectory(TestDvc):
     def test_default_wdir_is_written(self):
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
+            cmd="echo test > {}".format(self.FOO),
+            outs=[self.FOO],
+            wdir=".",
+            remove_outs=True,
         )
         d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
 
         stage = self.dvc.run(
-            cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
+            cmd="echo test > {}".format(self.BAR),
+            outs=[self.BAR],
+            remove_outs=True,
         )
         d = load_stage_file(stage.relpath)
         self.assertEqual(d[Stage.PARAM_WDIR], ".")
@@ -884,6 +896,7 @@ class TestRerunWithSameOutputs(TestDvc):
         ret = main(
             [
                 "run",
+                "--remove-outs",
                 "--outs",
                 self.FOO,
                 "echo {} > {}".format(self.FOO_CONTENTS, self.FOO),
@@ -900,6 +913,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 self._outs_command,
                 self.FOO,
                 "--overwrite-dvcfile",
+                "--remove-outs",
                 "echo {} >> {}".format(self.BAR_CONTENTS, self.FOO),
             ]
         )
@@ -943,7 +957,9 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
 
     def test(self):
         cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
-        stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
+        stage = self.dvc.run(
+            deps=[self.FOO], outs=[self.BAR], cmd=cmd, remove_outs=True
+        )
 
         with open(self.BAR, "w") as fd:
             fd.write("corrupting the output cache")
@@ -1004,3 +1020,14 @@ def test_bad_stage_fname(repo_dir, dvc_repo):
 
     # Check that command hasn't been run
     assert not os.path.exists("out")
+
+
+def test_prompt_when_removing_non_cached_existing_outputs(repo_dir, dvc_repo):
+    assert os.path.exists("foo")
+
+    with pytest.raises(ConfirmRemoveError):
+        dvc_repo.run(outs=["foo"], cmd="echo foo > foo")
+        assert not os.path.exists("foo.dvc")
+
+    dvc_repo.run(outs=["foo"], cmd="echo foo > foo", remove_outs=True)
+    assert os.path.exists("foo.dvc")

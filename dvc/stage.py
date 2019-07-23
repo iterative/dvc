@@ -212,6 +212,14 @@ class Stage(object):
         return self.md5 != self._compute_md5()
 
     @property
+    def exists(self):
+        return os.path.exists(self.path)
+
+    @property
+    def has_persistent_outputs(self):
+        return any(out.persist for out in self.outs)
+
+    @property
     def is_callback(self):
         """
         A callback stage is always considered as changed,
@@ -288,7 +296,7 @@ class Stage(object):
 
         return ret
 
-    def remove_outs(self, ignore_remove=False, force=False):
+    def remove_outs(self, ignore_remove=False, force=False, ask=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
             if out.persist and not force:
@@ -299,7 +307,11 @@ class Stage(object):
                         out=out, stage=self.relpath
                     )
                 )
-                out.remove(ignore_remove=ignore_remove)
+
+                if force:
+                    ask = False
+
+                out.remove(ignore_remove=ignore_remove, force=not ask)
 
     def unprotect_outs(self):
         for out in self.outs:
@@ -394,6 +406,16 @@ class Stage(object):
         from dvc.remote.local import RemoteLOCAL
         from dvc.remote.s3 import RemoteS3
 
+        if not os.path.exists(self.path):
+            return False
+
+        if self.is_callback:
+            return False
+
+        if self.has_persistent_outputs:
+            logger.warning("Build cache is ignored when persisting outputs.")
+            return False
+
         old = Stage.load(self.repo, self.path)
         if old._changed_outs():
             return False
@@ -487,41 +509,19 @@ class Stage(object):
 
         ignore_build_cache = kwargs.get("ignore_build_cache", False)
 
-        # NOTE: remove outs before we check build cache
-        if kwargs.get("remove_outs", False):
-            logger.warning(
-                "--remove-outs is deprecated."
-                " It is now the default behavior,"
-                " so there's no need to use this option anymore."
-            )
-            stage.remove_outs(ignore_remove=False)
-            logger.warning("Build cache is ignored when using --remove-outs.")
-            ignore_build_cache = True
-        else:
-            stage.unprotect_outs()
+        if not ignore_build_cache and stage.is_cached:
+            logger.info("Stage is cached, skipping.")
+            return None
 
-        if os.path.exists(path) and any(out.persist for out in stage.outs):
-            logger.warning("Build cache is ignored when persisting outputs.")
-            ignore_build_cache = True
+        # Removing outputs for reproducibility sake,
+        # it is expected that the `cmd` will create them.
+        if stage.cmd:
+            confirm = kwargs.get("remove_outs", False)
+            stage.remove_outs(ask=not confirm)
 
-        if os.path.exists(path):
-            if (
-                not ignore_build_cache
-                and stage.is_cached
-                and not stage.is_callback
-            ):
-                logger.info("Stage is cached, skipping.")
-                return None
-
-            msg = (
-                "'{}' already exists. Do you wish to run the command and "
-                "overwrite it?".format(stage.relpath)
-            )
-
-            if not kwargs.get("overwrite", True) and not prompt.confirm(msg):
-                raise StageFileAlreadyExistsError(stage.relpath)
-
-            os.unlink(path)
+        if stage.exists:
+            stage._confirm_overwrite(force=kwargs.get("overwrite", True))
+            os.unlink(stage.path)
 
         return stage
 
@@ -898,3 +898,14 @@ class Stage(object):
 
     def get_all_files_number(self):
         return sum(out.get_files_number() for out in self.outs)
+
+    def _confirm_overwrite(self, force=False):
+        msg = (
+            "'{path}' already exists."
+            " Do you wish to run the command and overwrite it?".format(
+                path=self.relpath
+            )
+        )
+
+        if not force and not prompt.confirm(msg):
+            raise StageFileAlreadyExistsError(self.relpath)

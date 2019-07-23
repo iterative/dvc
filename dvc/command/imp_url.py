@@ -14,7 +14,10 @@ class CmdImportUrl(CmdBase):
     def run(self):
         try:
             self.repo.imp_url(
-                self.args.url, out=self.args.out, fname=self.args.file
+                self.args.url,
+                out=self.args.out,
+                fname=self.args.file,
+                remove_outs=self.args.remove_outs,
             )
         except DvcException:
             logger.exception(
@@ -56,5 +59,11 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "-f", "--file", help="Specify name of the DVC-file it generates."
+    )
+    import_parser.add_argument(
+        "--remove-outs",
+        action="store_true",
+        default=False,
+        help="Confirm removal of existing files used as outputs",
     )
     import_parser.set_defaults(func=CmdImportUrl)

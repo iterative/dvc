@@ -680,7 +680,9 @@ class TestWarnOnOutdatedStage(TestDvc):
         url = get_local_url()
         self.main(["remote", "add", "-d", TEST_REMOTE, url])
 
-        stage = self.dvc.run(outs=["bar"], cmd="echo bar > bar")
+        stage = self.dvc.run(
+            outs=["bar"], cmd="echo bar > bar", remove_outs=True
+        )
         self.main(["push"])
 
         stage_file_path = stage.relpath

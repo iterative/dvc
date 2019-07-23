@@ -99,6 +99,7 @@ class TestDefaultWorkingDirectory(TestDvc):
             cmd="echo test > {}".format(self.FOO),
             deps=[self.BAR],
             outs=[self.FOO],
+            remove_outs=True,
         )
 
         d = stage.dumpd()

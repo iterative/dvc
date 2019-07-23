@@ -14,7 +14,9 @@ def test_import_url(mocker, dvc_repo):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("src", out="out", fname="file")
+    m.assert_called_once_with(
+        "src", out="out", fname="file", remove_outs=False
+    )
 
 
 def test_failed_import_url(mocker, caplog, dvc_repo):

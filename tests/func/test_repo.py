@@ -16,6 +16,7 @@ class TestCollect(TestDvcGit):
             deps=[self.FOO],
             outs=[self.BAR],
             cmd="python code.py {} {}".format(self.FOO, self.BAR),
+            remove_outs=True,
         )
         self.dvc.scm.add([".gitignore", self.FOO + ".dvc", self.BAR + ".dvc"])
         self.dvc.scm.commit("foo.dvc and bar.dvc")
@@ -24,6 +25,7 @@ class TestCollect(TestDvcGit):
             deps=[self.BAR],
             outs=["buzz"],
             cmd="python code.py {} {}".format(self.BAR, "buzz"),
+            remove_outs=True,
         )
         self.dvc.scm.add([".gitignore", "buzz.dvc"])
         self.dvc.scm.commit("add buzz")

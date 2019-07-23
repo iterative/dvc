@@ -178,8 +178,9 @@ class CyclicGraphError(DvcException):
 class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super(ConfirmRemoveError, self).__init__(
-            "unable to remove '{}' without a confirmation from the user. Use "
-            "'-f' to force.".format(path)
+            "unable to remove '{}' without a confirmation from the user."
+            " Use '--force' (repro) or '--remove-outs' (run) to confirm"
+            " the removal without prompting".format(path)
         )
 
 

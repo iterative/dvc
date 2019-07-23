@@ -167,7 +167,7 @@ def add_parser(subparsers, parent_parser):
         "--remove-outs",
         action="store_true",
         default=False,
-        help="Deprecated, this is now the default behavior",
+        help="Confirm removal of existing files used as outputs",
     )
     run_parser.add_argument(
         "--no-commit",

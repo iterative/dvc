@@ -297,8 +297,12 @@ class OutputBase(object):
             progress_callback=progress_callback,
         )
 
-    def remove(self, ignore_remove=False):
-        self.remote.remove(self.path_info)
+    def remove(self, ignore_remove=False, force=True):
+        if self.cache:
+            self.cache.safe_remove(self.path_info, force=force)
+        else:
+            self.remote.remove(self.path_info)
+
         if self.scheme != "local":
             return
 

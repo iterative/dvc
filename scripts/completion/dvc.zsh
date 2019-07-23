@@ -235,7 +235,7 @@ _dvc_run=(
   {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
   "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
   "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
-  "--remove-outs[Deprecated, this is now the default behavior]"
+  "--remove-outs[Confirm removal of existing files used as outputs]"
   "--no-commit[Don't put files/directories into cache.]"
   "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
   "--outs-persist-no-cache[Declare output file or directory that will not be removed upon repro (do not put into DVC cache).]:Output persistent regular:_files"
