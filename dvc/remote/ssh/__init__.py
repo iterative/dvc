@@ -6,6 +6,7 @@ import logging
 import itertools
 import errno
 from concurrent.futures import ThreadPoolExecutor
+import threading
 
 try:
     import paramiko
@@ -24,6 +25,10 @@ from .connection import SSHConnection
 
 
 logger = logging.getLogger(__name__)
+
+
+saved_passwords = {}
+saved_passwords_lock = threading.Lock()
 
 
 class RemoteSSH(RemoteBASE):
@@ -115,13 +120,19 @@ class RemoteSSH(RemoteBASE):
         host, user, port = path_info.host, path_info.user, path_info.port
 
         # NOTE: we use the same password regardless of the server :(
-        if self.ask_password and not self.password:
-            self.password = prompt.password(
-                "Enter a private key passphrase or a password for "
-                "host '{host}' port '{port}' user '{user}'".format(
-                    host=host, port=port, user=user
-                )
-            )
+        if self.ask_password and self.password is None:
+            with saved_passwords_lock:
+                server_key = (host, user, port)
+                password = saved_passwords.get(server_key)
+
+                if password is None:
+                    saved_passwords[server_key] = password = prompt.password(
+                        "Enter a private key passphrase or a password for "
+                        "host '{host}' port '{port}' user '{user}'".format(
+                            host=host, port=port, user=user
+                        )
+                    )
+                self.password = password
 
         return get_connection(
             SSHConnection,
