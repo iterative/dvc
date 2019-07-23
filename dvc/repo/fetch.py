@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 def fetch(
     self,
     target=None,
-    jobs=1,
+    jobs=None,
     remote=None,
     all_branches=False,
     show_checksums=False,

@@ -28,7 +28,7 @@ def _local_status(self, target=None, with_deps=False):
 def _cloud_status(
     self,
     target=None,
-    jobs=1,
+    jobs=None,
     remote=None,
     show_checksums=False,
     all_branches=False,
@@ -93,7 +93,7 @@ def _cloud_status(
 def status(
     self,
     target=None,
-    jobs=1,
+    jobs=None,
     cloud=False,
     remote=None,
     show_checksums=False,
