@@ -10,7 +10,7 @@ import tempfile
 import itertools
 from operator import itemgetter
 from multiprocessing import cpu_count
-from concurrent.futures import as_completed, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -140,51 +140,61 @@ class RemoteBASE(object):
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
-    def _collect_dir(self, path_info):
-        dir_info = {}
-
+    def _calculate_checksums(self, file_infos):
+        file_infos = list(file_infos)
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
-            for root, _dirs, files in self.walk(path_info):
-                root_info = path_info / root
+            tasks = executor.map(self.get_file_checksum, file_infos)
 
-                for fname in files:
-
-                    if fname == DvcIgnore.DVCIGNORE_FILE:
-                        raise DvcIgnoreInCollectedDirError(root)
-
-                    file_info = root_info / fname
-                    relative_path = file_info.relative_to(path_info)
-                    checksum = executor.submit(
-                        self.get_file_checksum, file_info
-                    )
-                    dir_info[checksum] = {
-                        # NOTE: this is lossy transformation:
-                        #   "hey\there" -> "hey/there"
-                        #   "hey/there" -> "hey/there"
-                        # The latter is fine filename on Windows, which
-                        # will transform to dir/file on back transform.
-                        #
-                        # Yes, this is a BUG, as long as we permit "/" in
-                        # filenames on Windows and "\" on Unix
-                        self.PARAM_RELPATH: relative_path.as_posix()
-                    }
-
-            checksums = as_completed(dir_info)
-            if len(dir_info) > LARGE_DIR_SIZE:
+            if len(file_infos) > LARGE_DIR_SIZE:
                 msg = (
                     "Computing md5 for a large number of files. "
                     "This is only done once."
                 )
                 logger.info(msg)
-                checksums = progress(checksums, total=len(dir_info))
+                tasks = progress(tasks, total=len(file_infos))
 
-            # Resolving futures
-            for checksum in checksums:
-                entry = dir_info[checksum]
-                entry[self.PARAM_CHECKSUM] = checksum.result()
+        checksums = {
+            file_infos[index]: task for index, task in enumerate(tasks)
+        }
+        return checksums
+
+    def _collect_dir(self, path_info):
+
+        file_infos = set()
+        for root, _dirs, files in self.walk(path_info):
+
+            if DvcIgnore.DVCIGNORE_FILE in files:
+                raise DvcIgnoreInCollectedDirError(root)
+
+            file_infos.update(path_info / root / fname for fname in files)
+
+        checksums = {fi: self.state.get(fi) for fi in file_infos}
+        not_in_state = {
+            fi for fi, checksum in checksums.items() if checksum is None
+        }
+
+        new_checksums = self._calculate_checksums(not_in_state)
+
+        checksums.update(new_checksums)
+
+        result = [
+            {
+                self.PARAM_CHECKSUM: checksums[fi],
+                # NOTE: this is lossy transformation:
+                #   "hey\there" -> "hey/there"
+                #   "hey/there" -> "hey/there"
+                # The latter is fine filename on Windows, which
+                # will transform to dir/file on back transform.
+                #
+                # Yes, this is a BUG, as long as we permit "/" in
+                # filenames on Windows and "\" on Unix
+                self.PARAM_RELPATH: fi.relative_to(path_info).as_posix(),
+            }
+            for fi in file_infos
+        ]
 
         # Sorting the list by path to ensure reproducibility
-        return sorted(dir_info.values(), key=itemgetter(self.PARAM_RELPATH))
+        return sorted(result, key=itemgetter(self.PARAM_RELPATH))
 
     def get_dir_checksum(self, path_info):
         dir_info = self._collect_dir(path_info)
