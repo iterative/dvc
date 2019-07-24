@@ -22,6 +22,7 @@ if %errorlevel% neq 0 (echo Error: Couldn't find Inno Setup compiler. && goto :e
 
 echo ====== Installing requirements... ======
 call pip install .[all] || goto :error
+call pip install psutil || goto :error
 call dvc pull || goto :error
 call pip install pyinstaller || goto :error
 
