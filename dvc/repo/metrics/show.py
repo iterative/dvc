@@ -188,10 +188,16 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
         if not o.metric:
             continue
 
+        # NOTE this case assumes that metric has been modified with
+        # `dvc metric modify -t {} -x {}`, so stage file should contain
+        # info what type metric is and what is its xpath
         if not typ and isinstance(o.metric, dict):
             t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
+            # NOTE user might want to check different xpath, hence xpath first
             x = xpath or o.metric.get(o.PARAM_METRIC_XPATH)
         else:
+            # NOTE if metric has not been modified, user needs to provide
+            # both metric type and xpath
             t = typ
             x = xpath
 
