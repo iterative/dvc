@@ -16,6 +16,7 @@ function retry {
 # work or not.
 retry pip install --upgrade pip setuptools wheel
 retry pip install .[all,tests]
+retry pip install psutil
 
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"

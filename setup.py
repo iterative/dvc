@@ -58,7 +58,6 @@ install_requires = [
     "inflect>=2.1.0",
     "humanize>=0.5.1",
     "ruamel.yaml>=0.15.91",
-    "psutil==5.6.2",
     "funcy>=1.12",
     "pathspec>=0.5.9",
     "shortuuid>=0.5.0",

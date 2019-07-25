@@ -1,11 +1,15 @@
 from __future__ import unicode_literals
 
 import os
-import psutil
 import platform
 import argparse
 import logging
 import uuid
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 from dvc.utils import is_binary
 from dvc.utils.compat import pathlib
@@ -38,24 +42,26 @@ class CmdVersion(CmdBaseNoRepo):
             binary=binary,
         )
 
-        try:
-            repo = Repo()
-            root_directory = repo.root_dir
+        if psutil:
+            try:
+                repo = Repo()
+                root_directory = repo.root_dir
 
-            info += (
-                "Cache: {cache}\n"
-                "Filesystem type (cache directory): {fs_cache}\n"
-            ).format(
-                cache=self.get_linktype_support_info(repo),
-                fs_cache=self.get_fs_type(repo.cache.local.cache_dir),
+                info += (
+                    "Cache: {cache}\n"
+                    "Filesystem type (cache directory): {fs_cache}\n"
+                ).format(
+                    cache=self.get_linktype_support_info(repo),
+                    fs_cache=self.get_fs_type(repo.cache.local.cache_dir),
+                )
+
+            except NotDvcRepoError:
+                root_directory = os.getcwd()
+
+            info += ("Filesystem type (workspace): {fs_root}").format(
+                fs_root=self.get_fs_type(os.path.abspath(root_directory))
             )
 
-        except NotDvcRepoError:
-            root_directory = os.getcwd()
-
-        info += ("Filesystem type (workspace): {fs_root}").format(
-            fs_root=self.get_fs_type(os.path.abspath(root_directory))
-        )
         logger.info(info)
         return 0
 
