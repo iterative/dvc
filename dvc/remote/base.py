@@ -21,7 +21,7 @@ from dvc.exceptions import (
 )
 from dvc.progress import progress, ProgressCallback
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, to_chunks, move, relpath
-from dvc.state import StateBase
+from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 
 
@@ -78,6 +78,8 @@ class RemoteBASE(object):
     CHECKSUM_DIR_SUFFIX = ".dir"
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
 
+    state = StateNoop()
+
     def __init__(self, repo, config):
         self.repo = repo
         deps_ok = all(self.REQUIRES.values())
@@ -113,7 +115,6 @@ class RemoteBASE(object):
 
         self.protected = False
         self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE)
-        self.state = StateBase()
         self._dir_info = {}
 
     def __repr__(self):

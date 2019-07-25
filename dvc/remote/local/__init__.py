@@ -58,7 +58,6 @@ class RemoteLOCAL(RemoteBASE):
 
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
-        self.state = self.repo.state if self.repo else None
         self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
 
         types = config.get(Config.SECTION_CACHE_TYPE, None)
@@ -82,6 +81,10 @@ class RemoteLOCAL(RemoteBASE):
 
         self.path_info = PathInfo(cache_dir) if cache_dir else None
         self._dir_info = {}
+
+    @property
+    def state(self):
+        return self.repo.state
 
     @property
     def cache_dir(self):

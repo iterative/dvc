@@ -128,12 +128,11 @@ class Repo(object):
         updater = Updater(self.dvc_dir)
 
         flist = [
-            self.state.state_file,
             self.lock.lock_file,
             self.config.config_local_file,
             updater.updater_file,
             updater.lock.lock_file,
-        ] + self.state.temp_files
+        ] + self.state.files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
             flist += [self.cache.local.cache_dir]
