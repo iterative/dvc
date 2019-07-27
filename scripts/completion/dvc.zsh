@@ -101,7 +101,6 @@ _dvc_diff=(
 
 _dvc_fetch=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to fetch from.]:Remote repository:"
   {-a,--all-branches}"[Fetch cache for all branches.]"
   {-T,--all-tags}"[Fetch cache for all tags.]"
@@ -171,7 +170,6 @@ _dvc_pipeline=(
 
 _dvc_pull=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to pull from.]:Remote repository:"
   {-a,--all-branches}"[Fetch cache for all branches.]"
   {-T,--all-tags}"[Fetch cache for all tags.]"
@@ -183,7 +181,6 @@ _dvc_pull=(
 
 _dvc_push=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to push to.]:Remote repository:"
   {-a,--all-branches}"[Push cache for all branches.]"
   {-T,--all-tags}"[Push cache for all tags.]"
