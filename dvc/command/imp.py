@@ -18,6 +18,7 @@ class CmdImport(CmdBase):
                 self.args.path,
                 out=self.args.out,
                 rev=self.args.rev,
+                remove_outs=self.args.force_remove_outs,
             )
         except DvcException:
             logger.exception(
@@ -47,6 +48,13 @@ def add_parser(subparsers, parent_parser):
     )
     import_parser.add_argument(
         "-o", "--out", nargs="?", help="Destination path to put data to."
+    )
+    import_parser.add_argument(
+        "--force-remove-outs",
+        action="store_true",
+        default=False,
+        help="Remove existing outputs w/o asking for a confirmation "
+        "(data is not in cache and can be lost)",
     )
     import_parser.add_argument(
         "--rev", nargs="?", help="DVC repository git revision."

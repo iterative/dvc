@@ -26,7 +26,7 @@ def test_run(mocker, dvc_repo):
             "--yes",
             "--overwrite-dvcfile",
             "--ignore-build-cache",
-            "--remove-outs",
+            "--force-remove-outs",
             "--no-commit",
             "--outs-persist",
             "outs-persist",

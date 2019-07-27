@@ -13,4 +13,6 @@ def test_import(mocker, dvc_repo):
 
     assert cmd.run() == 0
 
-    m.assert_called_once_with("repo_url", path="src", out="out", rev="version")
+    m.assert_called_once_with(
+        "repo_url", path="src", out="out", rev="version", remove_outs=False
+    )

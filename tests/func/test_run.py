@@ -348,7 +348,7 @@ class TestRunRemoveOuts(TestDvc):
         ret = main(
             [
                 "run",
-                "--remove-outs",
+                "--force-remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -377,7 +377,7 @@ class TestRunUnprotectOutsCopy(TestDvc):
         ret = main(
             [
                 "run",
-                "--remove-outs",
+                "--force-remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -430,7 +430,7 @@ class TestRunUnprotectOutsSymlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--remove-outs",
+                "--force-remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -485,7 +485,7 @@ class TestRunUnprotectOutsHardlink(TestDvc):
         ret = main(
             [
                 "run",
-                "--remove-outs",
+                "--force-remove-outs",
                 "-d",
                 self.CODE,
                 "-o",
@@ -896,7 +896,7 @@ class TestRerunWithSameOutputs(TestDvc):
         ret = main(
             [
                 "run",
-                "--remove-outs",
+                "--force-remove-outs",
                 "--outs",
                 self.FOO,
                 "echo {} > {}".format(self.FOO_CONTENTS, self.FOO),
@@ -913,7 +913,7 @@ class TestRerunWithSameOutputs(TestDvc):
                 self._outs_command,
                 self.FOO,
                 "--overwrite-dvcfile",
-                "--remove-outs",
+                "--force-remove-outs",
                 "echo {} >> {}".format(self.BAR_CONTENTS, self.FOO),
             ]
         )

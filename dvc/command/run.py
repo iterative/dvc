@@ -47,7 +47,7 @@ class CmdRun(CmdBase):
                 no_exec=self.args.no_exec,
                 overwrite=overwrite,
                 ignore_build_cache=self.args.ignore_build_cache,
-                remove_outs=self.args.remove_outs,
+                remove_outs=self.args.force_remove_outs,
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
@@ -164,10 +164,11 @@ def add_parser(subparsers, parent_parser):
         "command/dependencies/outputs/etc before.",
     )
     run_parser.add_argument(
-        "--remove-outs",
+        "--force-remove-outs",
         action="store_true",
         default=False,
-        help="Confirm removal of existing files used as outputs",
+        help="Remove existing outputs w/o asking for a confirmation "
+        "(data is not in cache and can be lost)",
     )
     run_parser.add_argument(
         "--no-commit",

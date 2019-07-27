@@ -134,6 +134,7 @@ _dvc_gc=(
 
 _dvc_importurl=(
   {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
+  "--force-remove-outs[Remove existing outputs w/o asking for a confirmation (data is not in cache and can be lost)]"
   "1:URL:"
   "2:Output:"
 )
@@ -141,6 +142,7 @@ _dvc_importurl=(
 _dvc_import=(
   {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
   "--rev[DVC repository git revision.]:Commit hash:"
+  "--force-remove-outs[Remove existing outputs w/o asking for a confirmation (data is not in cache and can be lost)]"
   "1:URL:"
   "2:Path:"
 )
@@ -235,7 +237,7 @@ _dvc_run=(
   {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
   "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
   "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
-  "--remove-outs[Confirm removal of existing files used as outputs]"
+  "--force-remove-outs[Remove existing outputs w/o asking for a confirmation (data is not in cache and can be lost)]"
   "--no-commit[Don't put files/directories into cache.]"
   "--outs-persist[Declare output file or directory that will not be removed upon repro.]:Output persistent:_files"
   "--outs-persist-no-cache[Declare output file or directory that will not be removed upon repro (do not put into DVC cache).]:Output persistent regular:_files"

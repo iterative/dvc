@@ -17,7 +17,7 @@ class CmdImportUrl(CmdBase):
                 self.args.url,
                 out=self.args.out,
                 fname=self.args.file,
-                remove_outs=self.args.remove_outs,
+                remove_outs=self.args.force_remove_outs,
             )
         except DvcException:
             logger.exception(
@@ -61,9 +61,10 @@ def add_parser(subparsers, parent_parser):
         "-f", "--file", help="Specify name of the DVC-file it generates."
     )
     import_parser.add_argument(
-        "--remove-outs",
+        "--force-remove-outs",
         action="store_true",
         default=False,
-        help="Confirm removal of existing files used as outputs",
+        help="Remove existing outputs w/o asking for a confirmation "
+        "(data is not in cache and can be lost)",
     )
     import_parser.set_defaults(func=CmdImportUrl)
