@@ -40,10 +40,7 @@ class Progress(tqdm):
     TODO: remove this class.
     """
     def __init__(self):
-        super(Progress, self).__init__(
-            total=0,
-            disable=logging.getLogger(
-                __name__).getEffectiveLevel() >= logging.CRITICAL)
+        super(Progress, self).__init__(total=0, disable=True)
         self.set_lock(Lock())
         self._targets = {}
         self.clearln()
@@ -58,39 +55,26 @@ class Progress(tqdm):
         return self.total == self.n
 
     def clearln(self):
-        self.display("")
+        pass
 
     def update_target(self, name, current, total, auto_finish=False):
         """Updates progress bar for a specified target."""
-        if name in self._targets:
-            t = self._targets[name]
-        else:
-            with self.get_lock():
-                # TODO: up to 10 nested bars
-                position = 1 + self._get_free_pos(self) % 10
-            t = tqdm(
-                total=total,
-                desc=name,
-                leave=False,
-                position=position)
-            self._targets[name] = t
-            self.total += 1
-
-        t.update(current - t.n)
-        if auto_finish and t.n == t.total:
+        if total and self.total != total:
+            self.set_n_total(total)
+        self.set_postfix_str(name, refresh=False)
+        self.update(current - self.n)
+        if auto_finish and self.is_finished:
             self.finish_target(name)
 
     def finish_target(self, name):
         """Finishes progress bar for a specified target."""
-        t = self._targets.pop(name)
-        t.close()
         # TODO: We have to write a msg about finished target
-        if self.total < 100:
-            # only if less that 100 items
-            print(t)
-        self.update()
+        self.set_postfix_str(name, refresh=False)
+        self.clearln()
 
     def __call__(self, seq, name="", total=None):
+        logger = logging.getLogger(__name__)
+        logger.warning("DeprecationWarning: create Tqdm() instance instead")
         if total is None:
             total = len(seq)
 

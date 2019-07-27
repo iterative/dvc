@@ -53,9 +53,6 @@ class ColorFormatter(logging.Formatter):
     )
 
     def format(self, record):
-        if self._is_visible(record):
-            self._progress_aware()
-
         if record.levelname == "INFO":
             return record.msg
 
@@ -145,14 +142,6 @@ class ColorFormatter(logging.Formatter):
             stack_trace = ""
 
         return (exception, stack_trace)
-
-    def _progress_aware(self):
-        """Add a new line if progress bar hasn't finished"""
-        from dvc.progress import progress
-
-        if not progress.is_finished:
-            progress._print()
-        progress.clearln()
 
 
 class LoggerHandler(logging.StreamHandler):

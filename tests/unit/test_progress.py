@@ -5,7 +5,7 @@ from dvc.progress import progress, ProgressCallback
 
 def test_quiet(caplog, capsys):
     with caplog.at_level(logging.CRITICAL, logger="dvc"):
-        progress._print("something")
+        progress.clearln()
         assert capsys.readouterr().out == ""
 
 
