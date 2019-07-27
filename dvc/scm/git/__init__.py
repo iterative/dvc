@@ -260,7 +260,7 @@ class Git(Base):
         )
 
     def track_file(self, path):
-        self.files_to_track.update(set(path))
+        self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
         basename = os.path.basename(path)
