@@ -47,7 +47,6 @@ class CmdDataStatus(CmdDataBase):
                 target=target,
                 jobs=self.args.jobs,
                 cloud=self.args.cloud,
-                show_checksums=self.args.show_checksums,
                 remote=self.args.remote,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
