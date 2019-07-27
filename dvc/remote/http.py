@@ -70,7 +70,7 @@ class RemoteHTTP(RemoteBASE):
 
         for path_info in path_infos:
             results.append(self.exists(path_info))
-            callback.update(str(path_info))
+            callback(str(path_info))
 
         return results
 

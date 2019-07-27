@@ -41,6 +41,8 @@ class Progress(tqdm):
     """
     def __init__(self):
         super(Progress, self).__init__(total=0, disable=True)
+        from time import time
+        self._time = time
         self.set_lock(Lock())
         self._targets = {}
         self.clearln()
