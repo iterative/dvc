@@ -54,7 +54,7 @@ class Git(Base):
         self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
 
         self.ignored_paths = []
-        self.files_to_track = []
+        self.files_to_track = set()
 
     @staticmethod
     def is_repo(root_dir):
@@ -245,6 +245,9 @@ class Git(Base):
     def reset_ignores(self):
         self.ignored_paths = []
 
+    def reset_tracked_files(self):
+        self.files_to_track = set()
+
     def remind_to_track(self):
         if not self.files_to_track:
             return
@@ -257,7 +260,7 @@ class Git(Base):
         )
 
     def track_file(self, path):
-        self.files_to_track.append(path)
+        self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
         basename = os.path.basename(path)
