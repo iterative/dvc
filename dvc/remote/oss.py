@@ -13,7 +13,7 @@ except ImportError:
 
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
-from dvc.remote.azure import Callback
+from dvc.progress import Tqdm
 from dvc.path_info import CloudURLInfo
 
 
@@ -107,15 +107,15 @@ class RemoteOSS(RemoteBASE):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        cb = None if no_progress_bar else Callback(name)
-        self.oss_service.put_object_from_file(
-            to_info.path, from_file, progress_callback=cb
-        )
+        with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
+            self.oss_service.put_object_from_file(
+                to_info.path, from_file, progress_callback=pbar.update_to
+            )
 
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        cb = None if no_progress_bar else Callback(name)
-        self.oss_service.get_object_to_file(
-            from_info.path, to_file, progress_callback=cb
-        )
+        with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
+            self.oss_service.get_object_to_file(
+                from_info.path, to_file, progress_callback=pbar.update_to
+            )
