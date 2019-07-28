@@ -255,7 +255,7 @@ class RemoteLOCAL(RemoteBASE):
     def cache_exists(self, checksums, jobs=None):
         return [
             checksum
-            for checksum in Tqdm(checksums, unit='md5')
+            for checksum in Tqdm(checksums, unit="md5")
             if not self.changed_cache_file(checksum)
         ]
 

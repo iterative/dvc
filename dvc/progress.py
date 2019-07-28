@@ -8,14 +8,16 @@ class Tqdm(tqdm):
     """
     maximum-compatibility tqdm-based progressbars
     """
+
     def __init__(
-            self,
-            iterable=None,
-            disable=logging.getLogger(
-                __name__).getEffectiveLevel() >= logging.CRITICAL,
-            bytes=False,  # pylint: disable=W0622
-            desc_truncate=None,
-            **kwargs):
+        self,
+        iterable=None,
+        disable=logging.getLogger(__name__).getEffectiveLevel()
+        >= logging.CRITICAL,
+        bytes=False,  # pylint: disable=W0622
+        desc_truncate=None,
+        **kwargs
+    ):
         """
         bytes   : shortcut for
             `unit='B', unit_scale=True, unit_divisor=1024, miniters=1`
@@ -24,15 +26,15 @@ class Tqdm(tqdm):
         """
         # kwargs = deepcopy(kwargs)
         if bytes:
-            for k, v in dict(unit='B', unit_scale=True, unit_divisor=1024,
-                             miniters=1):
+            for k, v in dict(
+                unit="B", unit_scale=True, unit_divisor=1024, miniters=1
+            ):
                 kwargs.setdefault(k, v)
         if desc_truncate is not None:
-            kwargs.setdefault('desc', self.truncate(desc_truncate))
+            kwargs.setdefault("desc", self.truncate(desc_truncate))
         super(Tqdm, self).__init__(
-            iterable=iterable,
-            disable=disable,
-            **kwargs)
+            iterable=iterable, disable=disable, **kwargs
+        )
         # self.set_lock(Lock())
 
     def update_desc(self, desc, n=1, truncate=True):
@@ -46,7 +48,7 @@ class Tqdm(tqdm):
 
     def update_to(self, current, total=None):
         if total:
-            self.total = total  # pylint: disable=W0613
+            self.total = total  # pylint: disable=W0613,W0201
         self.update(current - self.n)
 
     @classmethod

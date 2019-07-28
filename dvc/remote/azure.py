@@ -118,8 +118,10 @@ class RemoteAZURE(RemoteBASE):
     ):
         with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
             self.blob_service.create_blob_from_path(
-                to_info.bucket, to_info.path, from_file,
-                progress_callback=pbar.update_to
+                to_info.bucket,
+                to_info.path,
+                from_file,
+                progress_callback=pbar.update_to,
             )
 
     def _download(
@@ -127,8 +129,10 @@ class RemoteAZURE(RemoteBASE):
     ):
         with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
             self.blob_service.get_blob_to_path(
-                from_info.bucket, from_info.path, to_file,
-                progress_callback=pbar.update_to
+                from_info.bucket,
+                from_info.path,
+                to_file,
+                progress_callback=pbar.update_to,
             )
 
     def open(self, path_info, mode="r", encoding=None):
