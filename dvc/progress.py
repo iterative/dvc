@@ -40,6 +40,19 @@ class Tqdm(tqdm):
         self.set_description(desc, refresh=False)
         self.update(n)
 
+    @classmethod
+    def truncate(cls, s, max_len=10, end=True, fill="..."):
+        """
+        Guarantee len(output) < max_lenself.
+        >>> truncate("hello", 4)
+        '...o'
+        """
+        if len(s) <= max_len:
+            return s
+        if len(fill) > max_len:
+            return fill[-max_len:] if end else fill[:max_len]
+        i = max_len - len(fill)
+        return (fill + s[-i:]) if end else (s[:i] + fill)
 
 class Progress(tqdm):
     """
