@@ -7,7 +7,6 @@ def pull(
     jobs=None,
     remote=None,
     all_branches=False,
-    show_checksums=False,
     with_deps=False,
     all_tags=False,
     force=False,
@@ -19,7 +18,6 @@ def pull(
         remote=remote,
         all_branches=all_branches,
         all_tags=all_tags,
-        show_checksums=show_checksums,
         with_deps=with_deps,
         recursive=recursive,
     )

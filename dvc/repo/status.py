@@ -74,7 +74,7 @@ def _cloud_status(
 
     ret = {}
     status_info = self.cloud.status(used, jobs, remote=remote)
-    for md5, info in status_info.items():
+    for _, info in status_info.items():
         name = info["name"]
         status = info["status"]
         if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:

@@ -101,12 +101,6 @@ def shared_parent_parser():
         "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
     )
     shared_parent_parser.add_argument(
-        "--show-checksums",
-        action="store_true",
-        default=False,
-        help="Show checksums instead of file names.",
-    )
-    shared_parent_parser.add_argument(
         "targets",
         nargs="*",
         help="Limit command scope to these DVC-files. "
