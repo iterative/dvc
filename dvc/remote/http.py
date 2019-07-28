@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from dvc.scheme import Schemes
 from dvc.utils.compat import open
 
-import threading
 import requests
 import logging
 
@@ -31,9 +30,9 @@ class RemoteHTTP(RemoteBASE):
         request = self._request("GET", from_info.url, stream=True)
         total = self._content_length(from_info.url)
         leave = False
-        #TODO: persistent progress only for "large" files?
-        #if total:
-        #    leave = total > self.CHUNK_SIZE * 100
+        # TODO: persistent progress only for "large" files?
+        # if total:
+        #     leave = total > self.CHUNK_SIZE * 100
 
         with Tqdm(total=total, leave=leave, bytes=True,
                   desc=Tqdm.truncate(to_file, 10),

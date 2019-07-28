@@ -22,7 +22,7 @@ class Tqdm(tqdm):
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         if bytes:
-            #kwargs = deepcopy(kwargs)
+            # kwargs = deepcopy(kwargs)
             for k, v in dict(unit='B', unit_scale=True, unit_divisor=1024,
                              miniters=1):
                 kwargs.setdefault(k, v)
@@ -53,6 +53,7 @@ class Tqdm(tqdm):
             return fill[-max_len:] if end else fill[:max_len]
         i = max_len - len(fill)
         return (fill + s[-i:]) if end else (s[:i] + fill)
+
 
 class Progress(tqdm):
     """
