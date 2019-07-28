@@ -35,7 +35,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.progress import progress
+from dvc.progress import Tqdm
 from concurrent.futures import ThreadPoolExecutor
 
 from dvc.path_info import PathInfo
@@ -255,7 +255,7 @@ class RemoteLOCAL(RemoteBASE):
     def cache_exists(self, checksums, jobs=None):
         return [
             checksum
-            for checksum in progress(checksums)
+            for checksum in Tqdm(checksums, unit='md5')
             if not self.changed_cache_file(checksum)
         ]
 
@@ -348,8 +348,8 @@ class RemoteLOCAL(RemoteBASE):
         cache = []
         path_infos = []
         names = []
-        for md5, info in progress(
-            status_info.items(), name="Analysing status"
+        for md5, info in Tqdm(
+            status_info.items(), desc="Analysing status"
         ):
             if info["status"] == status:
                 cache.append(self.checksum_to_path_info(md5))
@@ -542,7 +542,7 @@ class RemoteLOCAL(RemoteBASE):
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
         self.makedirs(unpacked_dir_info)
 
-        for entry in progress(dir_info, name="Created unpacked dir"):
+        for entry in Tqdm(dir_info, desc="Created unpacked dir"):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
