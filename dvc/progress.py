@@ -38,11 +38,13 @@ class Tqdm(tqdm):
             **kwargs)
         # self.set_lock(Lock())
 
-    def update_desc(self, desc, n=1):
+    def update_desc(self, desc, n=1, truncate=True):
         """
-        Calls `set_description(desc)` and `update(n)`
+        Calls `set_description(truncate(desc))` and `update(n)`
         """
-        self.set_description(desc, refresh=False)
+        self.set_description(
+            self.truncate(desc) if truncate else desc, refresh=False
+        )
         self.update(n)
 
     def update_to(self, current, total=None):
