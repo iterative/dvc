@@ -15,10 +15,17 @@ class Tqdm(tqdm):
             disable=logging.getLogger(
                 __name__).getEffectiveLevel() >= logging.CRITICAL,
             ascii=None,  # TODO: True?
+            bytes=False,
             **kwargs):
         """
+        bytes   : adds unit='B', unit_scale=True, unit_divisor=1024, miniters=1
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
+        if bytes:
+            #kwargs = deepcopy(kwargs)
+            for k, v in dict(unit='B', unit_scale=True, unit_divisor=1024,
+                             miniters=1):
+                kwargs.setdefault(k, v)
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
