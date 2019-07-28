@@ -16,16 +16,21 @@ class Tqdm(tqdm):
                 __name__).getEffectiveLevel() >= logging.CRITICAL,
             ascii=None,  # TODO: True?
             bytes=False,
+            desc_truncate=None,
             **kwargs):
         """
-        bytes   : adds unit='B', unit_scale=True, unit_divisor=1024, miniters=1
+        bytes   : shortcut for
+            `unit='B', unit_scale=True, unit_divisor=1024, miniters=1`
+        desc_truncate  : like `desc` but will truncate to 10 chars
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
+        # kwargs = deepcopy(kwargs)
         if bytes:
-            # kwargs = deepcopy(kwargs)
             for k, v in dict(unit='B', unit_scale=True, unit_divisor=1024,
                              miniters=1):
                 kwargs.setdefault(k, v)
+        if desc_truncate is not None:
+            kwargs.setdefault('desc', self.truncate(desc_truncate))
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,

@@ -116,8 +116,7 @@ class RemoteAZURE(RemoteBASE):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        desc = Tqdm.truncate(name, 10) if name else None
-        with Tqdm(desc=desc, disable=no_progress_bar) as pbar:
+        with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
             self.blob_service.create_blob_from_path(
                 to_info.bucket, to_info.path, from_file,
                 progress_callback=pbar.update_to
@@ -126,8 +125,7 @@ class RemoteAZURE(RemoteBASE):
     def _download(
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
-        desc = Tqdm.truncate(name, 10) if name else None
-        with Tqdm(desc=desc, disable=no_progress_bar) as pbar:
+        with Tqdm(desc_truncate=name, disable=no_progress_bar) as pbar:
             self.blob_service.get_blob_to_path(
                 from_info.bucket, from_info.path, to_file,
                 progress_callback=pbar.update_to
