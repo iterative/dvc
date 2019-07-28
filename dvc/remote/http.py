@@ -35,7 +35,7 @@ class RemoteHTTP(RemoteBASE):
         #     leave = total > self.CHUNK_SIZE * 100
 
         with Tqdm(total=total, leave=leave, bytes=True,
-                  desc=Tqdm.truncate(to_file, 10),
+                  desc=Tqdm.truncate(to_file),
                   disable=no_progress_bar) as pbar:
             with open(to_file, "wb") as fd:
                 for chunk in request.iter_content(chunk_size=self.CHUNK_SIZE):

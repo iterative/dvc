@@ -40,6 +40,11 @@ class Tqdm(tqdm):
         self.set_description(desc, refresh=False)
         self.update(n)
 
+    def update_to(self, current, total=None):
+        if total:
+            self.total = total
+        self.update(current - self.n)
+
     @classmethod
     def truncate(cls, s, max_len=10, end=True, fill="..."):
         """
