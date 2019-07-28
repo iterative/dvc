@@ -29,13 +29,15 @@ class RemoteHTTP(RemoteBASE):
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         request = self._request("GET", from_info.url, stream=True)
         total = self._content_length(from_info.url)
+        if name is None:
+            name = from_info.url
         leave = False
         # TODO: persistent progress only for "large" files?
         # if total:
         #     leave = total > self.CHUNK_SIZE * 100
 
         with Tqdm(total=total, leave=leave, bytes=True,
-                  desc_truncate=to_file,
+                  desc_truncate=name,
                   disable=no_progress_bar) as pbar:
             with open(to_file, "wb") as fd:
                 for chunk in request.iter_content(chunk_size=self.CHUNK_SIZE):

@@ -2,7 +2,6 @@
 from __future__ import print_function
 import logging
 from tqdm import tqdm
-from threading import Lock
 
 
 class Tqdm(tqdm):
@@ -14,8 +13,7 @@ class Tqdm(tqdm):
             iterable=None,
             disable=logging.getLogger(
                 __name__).getEffectiveLevel() >= logging.CRITICAL,
-            ascii=None,  # TODO: True?
-            bytes=False,
+            bytes=False,  # pylint: disable=W0622
             desc_truncate=None,
             **kwargs):
         """
@@ -34,7 +32,6 @@ class Tqdm(tqdm):
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
-            ascii=ascii,
             **kwargs)
         # self.set_lock(Lock())
 
@@ -49,7 +46,7 @@ class Tqdm(tqdm):
 
     def update_to(self, current, total=None):
         if total:
-            self.total = total
+            self.total = total  # pylint: disable=W0613
         self.update(current - self.n)
 
     @classmethod
