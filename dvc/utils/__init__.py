@@ -33,8 +33,8 @@ from ruamel.yaml import YAML
 
 logger = logging.getLogger(__name__)
 
-LOCAL_CHUNK_SIZE = 1024 * 1024
-LARGE_FILE_SIZE = 1024 * 1024 * 1024
+LOCAL_CHUNK_SIZE = 2 ** 20  # 1 MB
+LARGE_FILE_SIZE = 2 ** 30  # 1 GB
 LARGE_DIR_SIZE = 100
 
 
@@ -44,7 +44,7 @@ def dos2unix(data):
 
 def file_md5(fname):
     """ get the (md5 hexdigest, md5 digest) of a file """
-    from dvc.progress import progress
+    from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
     if os.path.exists(fname):
@@ -56,28 +56,25 @@ def file_md5(fname):
             bar = True
             msg = "Computing md5 for a large file {}. This is only done once."
             logger.info(msg.format(relpath(fname)))
-            name = relpath(fname)
-            total = 0
+        name = relpath(fname)
 
-        with open(fname, "rb") as fobj:
-            while True:
-                data = fobj.read(LOCAL_CHUNK_SIZE)
-                if not data:
-                    break
+        with Tqdm(
+            desc_truncate=name, disable=not bar, total=size, bytes=True,
+            leave=False
+        ) as pbar:
+            with open(fname, "rb") as fobj:
+                while True:
+                    data = fobj.read(LOCAL_CHUNK_SIZE)
+                    if not data:
+                        break
 
-                if bar:
-                    total += len(data)
-                    progress.update_target(name, total, size)
+                    if binary:
+                        chunk = data
+                    else:
+                        chunk = dos2unix(data)
 
-                if binary:
-                    chunk = data
-                else:
-                    chunk = dos2unix(data)
-
-                hash_md5.update(chunk)
-
-        if bar:
-            progress.finish_target(name)
+                    hash_md5.update(chunk)
+                    pbar.update(len(data))
 
         return (hash_md5.hexdigest(), hash_md5.digest())
 
@@ -119,10 +116,9 @@ def dict_md5(d, exclude=()):
 def copyfile(src, dest, no_progress_bar=False, name=None):
     """Copy file with progress bar"""
     from dvc.exceptions import DvcException
-    from dvc.progress import progress
+    from dvc.progress import Tqdm
     from dvc.system import System
 
-    copied = 0
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
@@ -132,18 +128,17 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     try:
         System.reflink(src, dest)
     except DvcException:
-        with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
-            while True:
-                buf = fsrc.read(LOCAL_CHUNK_SIZE)
-                if not buf:
-                    break
-                fdest.write(buf)
-                copied += len(buf)
-                if not no_progress_bar:
-                    progress.update_target(name, copied, total)
-
-    if not no_progress_bar:
-        progress.finish_target(name)
+        with Tqdm(
+            desc_truncate=name, disable=no_progress_bar, total=total,
+            bytes=True,
+        ) as pbar:
+            with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
+                while True:
+                    buf = fsrc.read(LOCAL_CHUNK_SIZE)
+                    if not buf:
+                        break
+                    fdest.write(buf)
+                    pbar.update(len(buf))
 
 
 def makedirs(path, exist_ok=False, mode=None):
