@@ -12,7 +12,7 @@ except ImportError:
 
 from dvc.utils import tmp_fname
 from dvc.utils.compat import ignore_file_not_found
-from dvc.progress import progress
+from dvc.progress import Tqdm
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
 
@@ -27,21 +27,6 @@ def sizeof_fmt(num, suffix="B"):
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
     return "%.1f%s%s" % (num, "Y", suffix)
-
-
-def percent_cb(name, complete, total):
-    """ Callback for updating target progress """
-    logger.debug(
-        "{}: {} transferred out of {}".format(
-            name, sizeof_fmt(complete), sizeof_fmt(total)
-        )
-    )
-    progress.update_target(name, complete, total)
-
-
-def create_cb(name):
-    """ Create callback function for multipart object """
-    return lambda cur, tot: percent_cb(name, cur, tot)
 
 
 class SSHConnection:
@@ -183,14 +168,14 @@ class SSHConnection:
             self._remove_file(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
-        if no_progress_bar:
-            self.sftp.get(src, dest)
-        else:
-            if not progress_title:
-                progress_title = os.path.basename(src)
+        if not progress_title:
+            progress_title = os.path.basename(src)
 
-            self.sftp.get(src, dest, callback=create_cb(progress_title))
-            progress.finish_target(progress_title)
+        with Tqdm(
+            desc_truncate=progress_title,
+            disable=no_progress_bar
+        ) as pbar:
+            self.sftp.get(src, dest, callback=pbar.update_to)
 
     def move(self, src, dst):
         self.makedirs(posixpath.dirname(dst))
@@ -199,15 +184,14 @@ class SSHConnection:
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self.makedirs(posixpath.dirname(dest))
         tmp_file = tmp_fname(dest)
+        if not progress_title:
+            progress_title = posixpath.basename(dest)
 
-        if no_progress_bar:
-            self.sftp.put(src, tmp_file)
-        else:
-            if not progress_title:
-                progress_title = posixpath.basename(dest)
-
-            self.sftp.put(src, tmp_file, callback=create_cb(progress_title))
-            progress.finish_target(progress_title)
+        with Tqdm(
+            desc_truncate=progress_title,
+            disable=no_progress_bar
+        ) as pbar:
+            self.sftp.put(src, tmp_file, callback=pbar.update_to)
 
         self.sftp.rename(tmp_file, dest)
 
