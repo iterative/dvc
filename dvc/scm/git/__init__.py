@@ -217,17 +217,28 @@ class Git(Base):
 
     def _install_hook(self, name, cmd):
         command = "dvc {}".format(cmd)
+        dvc_present_check = """
+LS_FILES=`git ls-files .dvc`
+[ "$LS_FILES" = "" ] ||
+        """.strip()
 
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
 
         if os.path.isfile(hook):
             with open(hook, "r+") as fobj:
                 if command not in fobj.read():
-                    fobj.write("exec {command}\n".format(command=command))
+                    fobj.write(
+                        "{check} exec {command}\n".format(
+                            check=dvc_present_check, command=command
+                        )
+                    )
         else:
             with open(hook, "w+") as fobj:
                 fobj.write(
-                    "#!/bin/sh\n" "exec {command}\n".format(command=command)
+                    "#!/bin/sh\n"
+                    "{check} exec {command}\n".format(
+                        check=dvc_present_check, command=command
+                    )
                 )
 
         os.chmod(hook, 0o777)
