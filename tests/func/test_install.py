@@ -39,8 +39,7 @@ class TestInstall(object):
         expected_script = (
             "#!/bin/sh\n"
             "echo hello\n"
-            "LS_FILES=`git ls-files .dvc`\n"
-            '[ "$LS_FILES" = "" ] || exec dvc checkout\n'
+            '[ -z "$(git ls-files .dvc)" ] || exec dvc checkout\n'
         )
 
         with open(self._hook("post-checkout"), "r") as fobj:
@@ -52,8 +51,7 @@ class TestInstall(object):
 
         expected_script = (
             "#!/bin/sh\n"
-            "LS_FILES=`git ls-files .dvc`\n"
-            '[ "$LS_FILES" = "" ] || exec dvc checkout\n'
+            '[ -z "$(git ls-files .dvc)" ] || exec dvc checkout\n'
         )
 
         with open(self._hook("post-checkout"), "r") as fobj:
