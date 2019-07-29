@@ -42,22 +42,22 @@ class CmdVersion(CmdBaseNoRepo):
             binary=binary,
         )
 
-        if psutil:
-            try:
-                repo = Repo()
-                root_directory = repo.root_dir
+        try:
+            repo = Repo()
+            root_directory = repo.root_dir
 
+            info += "Cache: {cache}\n".format(
+                cache=self.get_linktype_support_info(repo)
+            )
+
+            if psutil:
                 info += (
-                    "Cache: {cache}\n"
                     "Filesystem type (cache directory): {fs_cache}\n"
-                ).format(
-                    cache=self.get_linktype_support_info(repo),
-                    fs_cache=self.get_fs_type(repo.cache.local.cache_dir),
-                )
+                ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
+        except NotDvcRepoError:
+            root_directory = os.getcwd()
 
-            except NotDvcRepoError:
-                root_directory = os.getcwd()
-
+        if psutil:
             info += ("Filesystem type (workspace): {fs_root}").format(
                 fs_root=self.get_fs_type(os.path.abspath(root_directory))
             )
