@@ -36,7 +36,11 @@ class TestInstall(object):
 
         assert main(["install"]) == 0
 
-        expected_script = "#!/bin/sh\n" "echo hello\n" "exec dvc checkout\n"
+        expected_script = (
+            "#!/bin/sh\n"
+            "echo hello\n"
+            '[ -z "$(git ls-files .dvc)" ] || exec dvc checkout\n'
+        )
 
         with open(self._hook("post-checkout"), "r") as fobj:
             assert fobj.read() == expected_script
@@ -45,7 +49,10 @@ class TestInstall(object):
         assert main(["install"]) == 0
         assert main(["install"]) == 0
 
-        expected_script = "#!/bin/sh\n" "exec dvc checkout\n"
+        expected_script = (
+            "#!/bin/sh\n"
+            '[ -z "$(git ls-files .dvc)" ] || exec dvc checkout\n'
+        )
 
         with open(self._hook("post-checkout"), "r") as fobj:
             assert fobj.read() == expected_script
