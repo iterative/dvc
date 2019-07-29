@@ -31,7 +31,9 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-class StateBase(object):
+class StateNoop(object):
+    files = []
+
     def save(self, path_info, checksum):
         pass
 
@@ -41,8 +43,14 @@ class StateBase(object):
     def save_link(self, path_info):
         pass
 
+    def __enter__(self):
+        pass
 
-class State(StateBase):  # pylint: disable=too-many-instance-attributes
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class State(object):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -111,6 +119,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.database = None
         self.cursor = None
         self.inserts = 0
+
+    @property
+    def files(self):
+        return self.temp_files + [self.state_file]
 
     def __enter__(self):
         self.load()

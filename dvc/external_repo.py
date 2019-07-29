@@ -35,17 +35,29 @@ class RevError(ExternalRepoError):
         )
 
 
-def _clone(url=None, rev=None, rev_lock=None, cache_dir=None):
-    import git
+def _clone(cache_dir=None, **kwargs):
     from dvc.repo import Repo
 
     _path = tempfile.mkdtemp("dvc-repo")
 
-    try:
-        repo = git.Repo.clone_from(url, _path, no_single_branch=True)
-    except git.exc.GitCommandError as exc:
-        raise CloneError(url, _path, exc)
+    _clone_git_repo(_path, **kwargs)
 
+    if cache_dir:
+        repo = Repo(_path)
+        cache_config = CacheConfig(repo.config)
+        cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
+        repo.scm.git.close()
+
+    return Repo(_path)
+
+
+def _clone_git_repo(to_path, url=None, rev=None, rev_lock=None):
+    import git
+
+    try:
+        repo = git.Repo.clone_from(url, to_path, no_single_branch=True)
+    except git.exc.GitCommandError as exc:
+        raise CloneError(url, to_path, exc)
     try:
         revision = rev_lock or rev
         if revision:
@@ -55,14 +67,6 @@ def _clone(url=None, rev=None, rev_lock=None, cache_dir=None):
                 raise RevError(url, revision, exc)
     finally:
         repo.close()
-
-    if cache_dir:
-        repo = Repo(_path)
-        cache_config = CacheConfig(repo.config)
-        cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
-        repo.scm.git.close()
-
-    return Repo(_path)
 
 
 def _remove(repo):
