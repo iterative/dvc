@@ -11,7 +11,7 @@ from dvc.remote.gdrive.client import GDriveClient
 
 
 if os.getenv("DVC_TEST_GDRIVE") != "true":
-    pytest.skip("Skipping long GDrive tests")
+    pytest.skip("Skipping long GDrive tests", allow_module_level=True)
 
 
 client = GDriveClient(
