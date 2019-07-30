@@ -37,7 +37,7 @@ def test_commit_force(dvc_repo, repo_dir):
 
     dvc_repo.commit(stage.path, force=True)
 
-    assert dvc_repo.status(stage.path) == {}
+    assert dvc_repo.status([stage.path]) == {}
 
 
 def test_commit_with_deps(dvc_repo, repo_dir):

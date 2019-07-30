@@ -40,11 +40,11 @@ class CmdDataStatus(CmdDataBase):
                 logger.info("{}{}:".format(ind, key))
                 self._show(value, indent + 1)
 
-    def do_run(self, target=None):
+    def run(self):
         indent = 1 if self.args.cloud else 0
         try:
             st = self.repo.status(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 cloud=self.args.cloud,
                 show_checksums=self.args.show_checksums,

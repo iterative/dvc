@@ -11,32 +11,17 @@ logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
-    UP_TO_DATE_MSG = "Everything is up to date."
-
-    def do_run(self, target):
-        pass
-
-    def run(self):
-        if not self.args.targets:
-            return self.do_run()
-
-        ret = 0
-        for target in self.args.targets:
-            if self.do_run(target):
-                ret = 1
-        return ret
-
     @classmethod
     def check_up_to_date(cls, processed_files_count):
         if processed_files_count == 0:
-            logger.info(cls.UP_TO_DATE_MSG)
+            logger.info("Everything is up to date.")
 
 
 class CmdDataPull(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.pull(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
                 show_checksums=self.args.show_checksums,
@@ -54,10 +39,10 @@ class CmdDataPull(CmdDataBase):
 
 
 class CmdDataPush(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.push(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
                 show_checksums=self.args.show_checksums,
@@ -74,10 +59,10 @@ class CmdDataPush(CmdDataBase):
 
 
 class CmdDataFetch(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.fetch(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
                 show_checksums=self.args.show_checksums,
