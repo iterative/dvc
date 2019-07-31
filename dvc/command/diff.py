@@ -39,7 +39,7 @@ class CmdDiff(CmdBase):
     def _get_dir_changes(cls, dct):
         engine = inflect.engine()
         changes_msg = (
-            "{} {} not changed, {} {} modified, {} {} added, "
+            "{} {} changed, {} {} modified, {} {} added, "
             "{} {} deleted, size was {}"
         )
         changes_msg = changes_msg.format(
