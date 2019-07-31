@@ -105,7 +105,7 @@ Installation
 ============
 
 Read this `instruction <https://dvc.org/doc/get-started/install>`_ to get more details. There are four
-options to install DVC: ``pip``, Homebrew, Anaconda or an OS-specific package:
+options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package:
 
 pip (PyPI)
 ----------
@@ -138,8 +138,8 @@ or:
 
    brew cask install iterative/homebrew-dvc/dvc
    
-Anaconda
------
+Conda (Anaconda)
+----------------
 
 .. code-block:: bash
 
