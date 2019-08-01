@@ -192,3 +192,39 @@ class TestDiffFileNotFound(TestDiffDir):
     def test(self):
         with self.assertRaises(FileNotInCommitError):
             self.dvc.diff(self.a_ref, target=self.unknown_file)
+
+
+class TestDiffModifiedFile(TestDiff):
+    maxDiff = None
+
+    def setUp(self):
+        super(TestDiffModifiedFile, self).setUp()
+
+        self.new_file_content = "new_test_file_bigger_content_123456789"
+        self.diff_len = len(self.new_file) + len(self.new_file_content)
+        self.create(self.new_file, self.new_file_content)
+        self.dvc.add(self.new_file)
+        self.git.index.add([self.new_file + ".dvc"])
+        self.git.index.commit("change new_file content to be bigger")
+        self.new_checksum = _get_checksum(self.dvc, self.new_file)
+        self.b_ref = self.git.git.rev_parse(
+            self.git.head.commit, short=True
+        )
+
+    def test(self):
+        result = self.dvc.diff(
+            self.a_ref, b_ref=self.b_ref, target=self.new_file
+        )
+        test_dct = {
+            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
+            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
+            diff.DIFF_LIST: [
+                {
+                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
+                    diff.DIFF_NEW_FILE: self.new_file,
+                    diff.DIFF_TARGET: self.new_file,
+                    diff.DIFF_SIZE: self.diff_len,
+                }
+            ],
+        }
+        self.assertEqual(test_dct, result)
