@@ -60,7 +60,7 @@ fi
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     brew install openssl
-    brew cask install google-cloud-sdk
+    $scriptdir/retry.sh brew cask install google-cloud-sdk
 fi
 
 if [[ -n "$PYTHON_VER" ]]; then
