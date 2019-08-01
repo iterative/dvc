@@ -196,10 +196,11 @@ class ReproductionError(DvcException):
 
 
 class BadMetricError(DvcException):
-    def __init__(self, path):
+    def __init__(self, paths):
         super(BadMetricError, self).__init__(
-            "'{}' does not exist, not a metric or is malformed".format(
-                relpath(path)
+            "the following outputs do not exist, are not a metric file "
+            "or are malformed: {paths}".format(
+                paths=", ".join(relpath(path) for path in paths)
             )
         )
 

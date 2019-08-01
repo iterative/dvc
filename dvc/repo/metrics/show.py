@@ -152,15 +152,16 @@ def _read_metric(fd, typ=None, xpath=None, fname=None, branch=None):
         return None
 
 
-def _collect_metrics(repo, path, recursive, typ, xpath, branch):
+def _collect_metrics(repo, targets, recursive, typ, xpath, branch):
     """Gather all the metric outputs.
 
     Args:
-        path (str): Path to a metric file or a directory.
+        targets (list): List of paths to metric files or directories.
+            If there's no target, collect all metrics.
         recursive (bool): If path is a directory, do a recursive search for
             metrics on the given path.
-        typ (str): The type of metric to search for, could be one of the
-            following (raw|json|tsv|htsv|csv|hcsv).
+        typ (str): The type that will be used to interpret the metric file,
+            one of the followings - (raw|json|tsv|htsv|csv|hcsv).
         xpath (str): Path to search for.
         branch (str): Branch to look up for metrics.
 
@@ -171,20 +172,21 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
             - xpath:
     """
     outs = [out for stage in repo.stages() for out in stage.outs]
+    found = []
 
-    if path:
-        try:
-            outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
-        except OutputNotFoundError:
-            logger.debug(
-                "DVC-file not for found for '{}' in branch '{}'".format(
-                    path, branch
+    if targets:
+        for target in targets:
+            try:
+                found += repo.find_outs_by_path(
+                    target, outs=outs, recursive=recursive
                 )
-            )
-            return []
+            except OutputNotFoundError:
+                pass
+    else:
+        found = outs
 
     res = []
-    for o in outs:
+    for o in found:
         if not o.metric:
             continue
 
@@ -259,7 +261,7 @@ def _read_metrics(repo, metrics, branch):
 
 def show(
     repo,
-    path=None,
+    targets=None,
     typ=None,
     xpath=None,
     all_branches=False,
@@ -269,14 +271,16 @@ def show(
     res = {}
 
     for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
-        entries = _collect_metrics(repo, path, recursive, typ, xpath, branch)
+        entries = _collect_metrics(
+            repo, targets, recursive, typ, xpath, branch
+        )
         metrics = _read_metrics(repo, entries, branch)
         if metrics:
             res[branch] = metrics
 
     if not res:
-        if path:
-            raise BadMetricError(path)
+        if targets:
+            raise BadMetricError(targets)
         raise NoMetricsError()
 
     return res
