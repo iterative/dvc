@@ -207,9 +207,7 @@ class TestDiffModifiedFile(TestDiff):
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("change new_file content to be bigger")
         self.new_checksum = _get_checksum(self.dvc, self.new_file)
-        self.b_ref = self.git.git.rev_parse(
-            self.git.head.commit, short=True
-        )
+        self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
 
     def test(self):
         result = self.dvc.diff(
