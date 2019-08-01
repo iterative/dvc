@@ -898,13 +898,13 @@ class TestReproExternalBase(TestDvc):
 
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.FOO, shallow=False))
-        self.assertEqual(self.dvc.status(import_stage.path), {})
+        self.assertEqual(self.dvc.status([import_stage.path]), {})
         self.check_already_cached(import_stage)
 
         import_remote_stage = self.dvc.imp_url(
             out_foo_path, out_foo_path + "_imported"
         )
-        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
+        self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
         cmd_stage = self.dvc.run(
             outs=[out_bar_path],
@@ -912,7 +912,7 @@ class TestReproExternalBase(TestDvc):
             cmd=self.cmd(foo_path, bar_path),
         )
 
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
         self.assertEqual(self.dvc.status(), {})
         self.check_already_cached(cmd_stage)
 
@@ -923,24 +923,24 @@ class TestReproExternalBase(TestDvc):
         self.dvc.update(import_stage.path)
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.BAR, shallow=False))
-        self.assertEqual(self.dvc.status(import_stage.path), {})
+        self.assertEqual(self.dvc.status([import_stage.path]), {})
 
         self.dvc.update(import_remote_stage.path)
-        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
+        self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
         stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.assertEqual(self.dvc.status(), {})
         self.dvc.gc()
         self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
-        self.assertNotEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertNotEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.dvc.checkout(cmd_stage.path, force=True)
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
 
 @pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
@@ -1207,7 +1207,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
             shutil.move(self.local_cache, cache_id)
             self.assertFalse(os.path.exists(self.local_cache))
 
-            self.dvc.pull(import_stage.path, remote="mycache")
+            self.dvc.pull([import_stage.path], remote="mycache")
 
             self.assertTrue(os.path.exists(import_output))
 

@@ -34,9 +34,9 @@ def test_update_import(dvc_repo, erepo):
 
     os.chdir(saved_dir)
 
-    assert dvc_repo.status(stage.path) == {}
+    assert dvc_repo.status([stage.path]) == {}
     dvc_repo.update(stage.path)
-    assert dvc_repo.status(stage.path) == {}
+    assert dvc_repo.status([stage.path]) == {}
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
@@ -60,9 +60,9 @@ def test_update_import_url(repo_dir, dvc_repo):
     os.unlink(src)
     shutil.copyfile(repo_dir.BAR, src)
 
-    assert dvc_repo.status(stage.path) == {}
+    assert dvc_repo.status([stage.path]) == {}
     dvc_repo.update(stage.path)
-    assert dvc_repo.status(stage.path) == {}
+    assert dvc_repo.status([stage.path]) == {}
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)

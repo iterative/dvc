@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 def pull(
     self,
-    target=None,
+    targets=None,
     jobs=None,
     remote=None,
     all_branches=False,
@@ -14,7 +14,7 @@ def pull(
     recursive=False,
 ):
     processed_files_count = self.fetch(
-        target,
+        targets,
         jobs,
         remote=remote,
         all_branches=all_branches,
@@ -23,7 +23,11 @@ def pull(
         with_deps=with_deps,
         recursive=recursive,
     )
-    self.checkout(
-        target=target, with_deps=with_deps, force=force, recursive=recursive
-    )
+    for target in targets or [None]:
+        self.checkout(
+            target=target,
+            with_deps=with_deps,
+            force=force,
+            recursive=recursive,
+        )
     return processed_files_count

@@ -1,15 +1,19 @@
 from __future__ import unicode_literals
 
 import logging
+from funcy.py3 import cat
 
 
 logger = logging.getLogger(__name__)
 
 
-def _local_status(self, target=None, with_deps=False):
+def _local_status(self, targets=None, with_deps=False):
     status = {}
 
-    stages = self.collect(target, with_deps=with_deps)
+    if targets:
+        stages = cat(self.collect(t, with_deps=with_deps) for t in targets)
+    else:
+        stages = self.collect(None, with_deps=with_deps)
 
     for stage in stages:
         if stage.locked:
@@ -27,7 +31,7 @@ def _local_status(self, target=None, with_deps=False):
 
 def _cloud_status(
     self,
-    target=None,
+    targets=None,
     jobs=None,
     remote=None,
     show_checksums=False,
@@ -64,7 +68,7 @@ def _cloud_status(
     import dvc.remote.base as cloud
 
     used = self.used_cache(
-        target,
+        targets,
         all_branches=all_branches,
         all_tags=all_tags,
         with_deps=with_deps,
@@ -92,7 +96,7 @@ def _cloud_status(
 
 def status(
     self,
-    target=None,
+    targets=None,
     jobs=None,
     cloud=False,
     remote=None,
@@ -105,7 +109,7 @@ def status(
         if cloud or remote:
             return _cloud_status(
                 self,
-                target,
+                targets,
                 jobs,
                 remote=remote,
                 show_checksums=show_checksums,
@@ -113,4 +117,4 @@ def status(
                 with_deps=with_deps,
                 all_tags=all_tags,
             )
-        return _local_status(self, target, with_deps=with_deps)
+        return _local_status(self, targets, with_deps=with_deps)

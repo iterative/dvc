@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 def push(
     self,
-    target=None,
+    targets=None,
     jobs=None,
     remote=None,
     all_branches=False,
@@ -14,7 +14,7 @@ def push(
 ):
     with self.state:
         used = self.used_cache(
-            target,
+            targets,
             all_branches=all_branches,
             all_tags=all_tags,
             with_deps=with_deps,

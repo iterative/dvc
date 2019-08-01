@@ -180,7 +180,7 @@ class Repo(object):
 
     def used_cache(
         self,
-        target=None,
+        targets=None,
         all_branches=False,
         active=True,
         with_deps=False,
@@ -215,18 +215,22 @@ class Repo(object):
         for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
         ):
-            if target:
-                if recursive and os.path.isdir(target):
-                    stages = self.stages(target)
-                else:
-                    stages = self.collect(target, with_deps=with_deps)
+            if targets:
+                stages = []
+                for target in targets:
+                    if recursive and os.path.isdir(target):
+                        stages.extend(self.stages(target))
+                    else:
+                        stages.extend(
+                            self.collect(target, with_deps=with_deps)
+                        )
             elif active:
                 stages = self.active_stages()
             else:
                 stages = self.stages()
 
             for stage in stages:
-                if active and not target and stage.locked:
+                if active and not targets and stage.locked:
                     logger.warning(
                         "DVC-file '{path}' is locked. Its dependencies are"
                         " not going to be pushed/pulled/fetched.".format(
