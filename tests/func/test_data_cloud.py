@@ -507,18 +507,13 @@ class TestDataCloudCLIBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache_path
 
         # FIXME check status output
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         self.main(["push"] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(["status", "-c", "--show-checksums"] + args)
-
         shutil.rmtree(self.dvc.cache.local.cache_dir)
-
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         self.main(["fetch"] + args)
         self.assertTrue(os.path.exists(cache))
@@ -535,8 +530,6 @@ class TestDataCloudCLIBase(TestDvc):
         with open(cache, "r") as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
-
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         # NOTE: check if remote gc works correctly on directories
         self.main(["gc", "-c", "-f"] + args)

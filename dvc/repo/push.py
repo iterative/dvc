@@ -7,7 +7,6 @@ def push(
     jobs=None,
     remote=None,
     all_branches=False,
-    show_checksums=False,
     with_deps=False,
     all_tags=False,
     recursive=False,
@@ -23,6 +22,4 @@ def push(
             jobs=jobs,
             recursive=recursive,
         )["local"]
-        return self.cloud.push(
-            used, jobs, remote=remote, show_checksums=show_checksums
-        )
+        return self.cloud.push(used, jobs, remote=remote)

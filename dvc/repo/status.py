@@ -34,7 +34,6 @@ def _cloud_status(
     targets=None,
     jobs=None,
     remote=None,
-    show_checksums=False,
     all_branches=False,
     with_deps=False,
     all_tags=False,
@@ -78,10 +77,8 @@ def _cloud_status(
     )["local"]
 
     ret = {}
-    status_info = self.cloud.status(
-        used, jobs, remote=remote, show_checksums=show_checksums
-    )
-    for md5, info in status_info.items():
+    status_info = self.cloud.status(used, jobs, remote=remote)
+    for info in status_info.values():
         name = info["name"]
         status = info["status"]
         if status in [cloud.STATUS_OK, cloud.STATUS_MISSING]:
@@ -100,7 +97,6 @@ def status(
     jobs=None,
     cloud=False,
     remote=None,
-    show_checksums=False,
     all_branches=False,
     with_deps=False,
     all_tags=False,
@@ -111,10 +107,9 @@ def status(
                 self,
                 targets,
                 jobs,
-                remote=remote,
-                show_checksums=show_checksums,
                 all_branches=all_branches,
                 with_deps=with_deps,
+                remote=remote,
                 all_tags=all_tags,
             )
         return _local_status(self, targets, with_deps=with_deps)

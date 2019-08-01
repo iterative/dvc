@@ -24,7 +24,6 @@ class CmdDataPull(CmdDataBase):
                 targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
@@ -45,7 +44,6 @@ class CmdDataPush(CmdDataBase):
                 targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
@@ -65,7 +63,6 @@ class CmdDataFetch(CmdDataBase):
                 targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
@@ -87,12 +84,6 @@ def shared_parent_parser():
     )
     shared_parent_parser.add_argument(
         "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
-    )
-    shared_parent_parser.add_argument(
-        "--show-checksums",
-        action="store_true",
-        default=False,
-        help="Show checksums instead of file names.",
     )
     shared_parent_parser.add_argument(
         "targets",
