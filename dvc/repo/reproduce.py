@@ -83,7 +83,7 @@ def reproduce(
     return ret
 
 
-def _reproduce(self, target, single_item=False, **kwargs):
+def _reproduce(self, target, **kwargs):
     import networkx as nx
     from dvc.stage import Stage
 
@@ -92,16 +92,17 @@ def _reproduce(self, target, single_item=False, **kwargs):
     stages = nx.get_node_attributes(G, "stage")
     node = relpath(stage.path, self.root_dir)
 
-    if single_item:
-        ret = _reproduce_stage(stages, node, **kwargs)
-    else:
-        ret = _reproduce_stages(G, stages, node, **kwargs)
-
-    return ret
+    return _reproduce_stages(G, stages, node, **kwargs)
 
 
 def _reproduce_stages(
-    G, stages, node, downstream=False, ignore_build_cache=False, **kwargs
+    G,
+    stages,
+    node,
+    downstream=False,
+    ignore_build_cache=False,
+    single_item=False,
+    **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -140,7 +141,9 @@ def _reproduce_stages(
 
     import networkx as nx
 
-    if downstream:
+    if single_item:
+        pipeline = [node]
+    elif downstream:
         # NOTE (py3 only):
         # Python's `deepcopy` defaults to pickle/unpickle the object.
         # Stages are complex objects (with references to `repo`, `outs`,
