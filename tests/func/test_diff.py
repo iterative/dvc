@@ -226,3 +226,20 @@ class TestDiffModifiedFile(TestDiff):
             ],
         }
         self.assertEqual(test_dct, result)
+
+
+class TestDiffModifiedFileMessage(TestDiffModifiedFile):
+    def test(self):
+        test_dct = {
+            diff.DIFF_IDENT: 0,
+            diff.DIFF_CHANGE: 1,
+            diff.DIFF_NEW: 0,
+            diff.DIFF_DEL: 0,
+            diff.DIFF_SIZE: self.diff_len,
+        }
+
+        msg = CmdDiff._get_dir_changes(test_dct)
+        test_msg = "0 files untouched, 1 file modified, 0 files added, "
+        test_msg += "0 files deleted, size was increased by {} Bytes"
+        test_msg = test_msg.format(self.diff_len)
+        self.assertEqual(test_msg, msg)
