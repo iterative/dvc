@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 20
     STATUS_INDENT = "\t"
-    UP_TO_DATE_MSG = "Pipelines are up to date. Nothing to reproduce."
+    UP_TO_DATE_MSG = "Data and pipelines are up to date."
 
     def _normalize(self, s):
         s += ":"
