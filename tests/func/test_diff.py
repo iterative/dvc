@@ -3,14 +3,13 @@ from __future__ import unicode_literals
 import os
 
 from dvc.main import main
-
-
 from dvc.scm.base import FileNotInCommitError
 import dvc.repo.diff as diff
 from dvc.command.diff import CmdDiff
-
-
 from tests.basic_env import TestDvcGit
+
+# from subprocess import check_output, Popen
+from subprocess import check_output
 
 
 def _get_checksum(repo, file_name):
@@ -200,6 +199,7 @@ class TestDiffModifiedFile(TestDiff):
     def setUp(self):
         super(TestDiffModifiedFile, self).setUp()
 
+        self.old_checksum = _get_checksum(self.dvc, self.new_file)
         self.new_file_content = "new_test_file_bigger_content_123456789"
         self.diff_len = len(self.new_file) + len(self.new_file_content)
         self.create(self.new_file, self.new_file_content)
@@ -209,7 +209,7 @@ class TestDiffModifiedFile(TestDiff):
         self.new_checksum = _get_checksum(self.dvc, self.new_file)
         self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
 
-    def test_checksum(self):
+    def test(self):
         result = self.dvc.diff(
             self.a_ref, b_ref=self.b_ref, target=self.new_file
         )
@@ -227,17 +227,46 @@ class TestDiffModifiedFile(TestDiff):
         }
         self.assertEqual(test_dct, result)
 
-    def test_cli_output(self):
-        test_dct = {
-            diff.DIFF_IDENT: 0,
-            diff.DIFF_CHANGE: 1,
-            diff.DIFF_NEW: 0,
-            diff.DIFF_DEL: 0,
-            diff.DIFF_SIZE: self.diff_len,
-        }
 
-        msg = CmdDiff._get_dir_changes(test_dct)
-        test_msg = "0 files untouched, 1 file modified, 0 files added, "
-        test_msg += "0 files deleted, size was increased by {} Bytes"
-        test_msg = test_msg.format(self.diff_len)
-        self.assertEqual(test_msg, msg)
+class TestDiffDirWithFile(TestDiffDir):
+    maxDiff = None
+
+    def setUp(self):
+        super(TestDiffDirWithFile, self).setUp()
+
+        self.a_ref = self.git.git.rev_parse(
+            self.git.head.commit, short=True
+        )
+        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.new_file_content = "new_test_file_bigger_content_123456789"
+        self.diff_len = len(self.new_file_content)
+        self.create(self.new_file, self.new_file_content)
+        self.dvc.add(self.DATA_DIR)
+        self.git.index.add([self.DATA_DIR + ".dvc"])
+        self.git.index.commit(message="modify file in the data dir")
+        self.new_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
+
+    def test(self):
+        result = self.dvc.diff(self.a_ref, target=self.DATA_DIR)
+        test_dct = {
+            diff.DIFF_A_REF: self.git.git.rev_parse(self.a_ref, short=True),
+            diff.DIFF_B_REF: self.git.git.rev_parse(self.b_ref, short=True),
+            diff.DIFF_LIST: [
+                {
+                    diff.DIFF_IDENT: 2,
+                    diff.DIFF_CHANGE: 1,
+                    diff.DIFF_DEL: 0,
+                    diff.DIFF_MOVE: 0,
+                    diff.DIFF_NEW: 0,
+                    diff.DIFF_IS_DIR: True,
+                    diff.DIFF_TARGET: self.DATA_DIR,
+                    diff.DIFF_NEW_FILE: self.DATA_DIR,
+                    diff.DIFF_NEW_CHECKSUM: self.new_checksum,
+                    diff.DIFF_OLD_FILE: self.DATA_DIR,
+                    diff.DIFF_OLD_CHECKSUM: self.old_checksum,
+                    diff.DIFF_SIZE: self.diff_len,
+                }
+            ],
+        }
+        self.assertEqual(test_dct, result)
