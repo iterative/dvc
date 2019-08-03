@@ -8,9 +8,6 @@ import dvc.repo.diff as diff
 from dvc.command.diff import CmdDiff
 from tests.basic_env import TestDvcGit
 
-# from subprocess import check_output, Popen
-from subprocess import check_output
-
 
 def _get_checksum(repo, file_name):
     outs = [out for s in repo.stages() for out in s.outs]
