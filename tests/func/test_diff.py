@@ -209,7 +209,7 @@ class TestDiffModifiedFile(TestDiff):
         self.new_checksum = _get_checksum(self.dvc, self.new_file)
         self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
 
-    def test(self):
+    def test_checksum(self):
         result = self.dvc.diff(
             self.a_ref, b_ref=self.b_ref, target=self.new_file
         )
@@ -227,9 +227,7 @@ class TestDiffModifiedFile(TestDiff):
         }
         self.assertEqual(test_dct, result)
 
-
-class TestDiffModifiedFileMessage(TestDiffModifiedFile):
-    def test(self):
+    def test_cli_output(self):
         test_dct = {
             diff.DIFF_IDENT: 0,
             diff.DIFF_CHANGE: 1,
