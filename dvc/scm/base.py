@@ -144,3 +144,6 @@ class Base(object):
 
     def belongs_to_scm(self, path):
         """Return boolean whether file belongs to scm"""
+
+    def close(self):
+        """ Method to close the files """

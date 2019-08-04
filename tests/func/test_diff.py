@@ -96,7 +96,7 @@ class TestDiffDir(TestDvcGit):
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
         self.a_ref = self.git.git.rev_parse(
-            self.dvc.scm.git.head.commit, short=True
+            self.dvc.scm.repo.head.commit, short=True
         )
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
@@ -154,7 +154,7 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
 
         self.b_ref = self.a_ref
         self.new_checksum = self.old_checksum
-        self.a_ref = str(self.dvc.scm.git.head.commit)
+        self.a_ref = str(self.dvc.scm.repo.head.commit)
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
 
     def test(self):

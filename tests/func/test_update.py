@@ -30,7 +30,7 @@ def test_update_import(dvc_repo, erepo):
     repo.scm.commit("updated")
     repo.scm.checkout("master")
 
-    repo.scm.git.close()
+    repo.scm.close()
 
     os.chdir(saved_dir)
 

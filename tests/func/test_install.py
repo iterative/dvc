@@ -88,12 +88,12 @@ class TestInstall(object):
         assert ret == 0
 
         stage_file = repo_dir.FOO + Stage.STAGE_FILE_SUFFIX
-        dvc_repo.scm.git.index.add([stage_file, ".gitignore"])
-        dvc_repo.scm.git.index.commit("commit message")
+        dvc_repo.scm.repo.index.add([stage_file, ".gitignore"])
+        dvc_repo.scm.repo.index.commit("commit message")
 
-        dvc_repo.scm.git.clone(git_remote)
-        dvc_repo.scm.git.create_remote("origin", git_remote)
+        dvc_repo.scm.repo.clone(git_remote)
+        dvc_repo.scm.repo.create_remote("origin", git_remote)
 
-        dvc_repo.scm.git.git.push("origin", "master")
+        dvc_repo.scm.repo.git.push("origin", "master")
 
         assert os.path.isfile(expected_cache_path)
