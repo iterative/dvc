@@ -40,7 +40,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
-        "url", help="DVC repository URL to download data from."
+        "url", help="URL of Git repository with DVC project to download from."
     )
     get_parser.add_argument("path", help="Path to data within DVC repository.")
     get_parser.add_argument(
