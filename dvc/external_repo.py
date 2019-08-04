@@ -46,7 +46,7 @@ def _clone(cache_dir=None, **kwargs):
         repo = Repo(_path)
         cache_config = CacheConfig(repo.config)
         cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
-        repo.scm.git.close()
+        repo.scm.close()
 
     return Repo(_path)
 
@@ -70,7 +70,7 @@ def _clone_git_repo(to_path, url=None, rev=None, rev_lock=None):
 
 
 def _remove(repo):
-    repo.scm.git.close()
+    repo.scm.close()
 
     if os.name == "nt":
         # git.exe may hang for a while not permitting to remove temp dir

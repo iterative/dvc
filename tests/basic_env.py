@@ -166,7 +166,7 @@ class TestDvcGitFixture(TestGitFixture):
         self.dvc.scm.commit("init dvc")
 
     def tearDown(self):
-        self.dvc.scm.git.close()
+        self.dvc.scm.close()
         super(TestDvcGitFixture, self).tearDown()
 
 

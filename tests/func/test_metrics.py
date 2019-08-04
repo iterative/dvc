@@ -22,7 +22,7 @@ class TestMetricsBase(TestDvcGit):
         branches = ["foo", "bar", "baz"]
 
         for branch in branches:
-            self.dvc.scm.git.create_head(branch)
+            self.dvc.scm.repo.create_head(branch)
 
         for branch in branches:
             self.dvc.scm.checkout(branch)
@@ -692,7 +692,7 @@ class TestCachedMetrics(TestDvcGit):
 
         # TestDvc currently is based on TestGit, so it is safe to use
         # scm.git for now
-        self.dvc.scm.git.git.clean("-fd")
+        self.dvc.scm.repo.git.clean("-fd")
 
         self.dvc = DvcRepo(".")
 

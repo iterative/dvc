@@ -162,7 +162,7 @@ def erepo(repo_dir):
 
         repo.dvc.scm.checkout("master")
 
-        repo.dvc.scm.git.close()
+        repo.dvc.scm.close()
         repo.git.close()
 
         os.chdir(repo._saved_dir)

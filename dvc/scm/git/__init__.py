@@ -323,3 +323,6 @@ class Git(Base):
 
     def get_rev(self):
         return self.repo.git.rev_parse("HEAD")
+
+    def close(self):
+        self.repo.close()
