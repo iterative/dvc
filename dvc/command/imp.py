@@ -41,7 +41,9 @@ def add_parser(subparsers, parent_parser):
         help=IMPORT_HELP,
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    import_parser.add_argument("url", help="DVC repository URL.")
+    import_parser.add_argument(
+        "url", help="URL of Git repository with DVC project to download from."
+    )
     import_parser.add_argument(
         "path", help="Path to data within DVC repository."
     )
