@@ -684,7 +684,14 @@ class RemoteBASE(object):
     ):
         cache_info = self.checksum_to_path_info(checksum)
 
-        already_exists = False
+        if self._should_link_from_cache(path_info, checksum, force):
+            self.link(cache_info, path_info)
+            self.state.save_link(path_info)
+            self.state.save(path_info, checksum)
+        if progress_callback:
+            progress_callback(str(path_info))
+
+    def _should_link_from_cache(self, path_info, checksum, force):
         if self.exists(path_info):
             if (
                 self.state.get(path_info) == checksum
@@ -693,18 +700,12 @@ class RemoteBASE(object):
                 # identical file to make it protected again
                 and not self.protected
             ):
-                already_exists = True
+                return False
             else:
                 msg = "data '{}' exists. Removing before checkout."
                 logger.warning(msg.format(str(path_info)))
                 self.safe_remove(path_info, force=force)
-
-        if not already_exists:
-            self.link(cache_info, path_info)
-            self.state.save_link(path_info)
-            self.state.save(path_info, checksum)
-            if progress_callback:
-                progress_callback(str(path_info))
+        return True
 
     def makedirs(self, path_info):
         raise NotImplementedError
