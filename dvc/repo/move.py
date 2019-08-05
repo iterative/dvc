@@ -65,5 +65,5 @@ def move(self, from_path, to_path):
 
     with self.state:
         out.move(to_out)
-
+        stage.save()
     stage.dump()
