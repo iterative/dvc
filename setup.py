@@ -72,7 +72,7 @@ else:
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
-azure = ["azure-storage-blob==2.0.1"]
+azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
 hdfs = ["pyarrow==0.14.0"]
