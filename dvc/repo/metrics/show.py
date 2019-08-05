@@ -186,7 +186,6 @@ def _collect_metrics(repo, targets, recursive, typ, xpath, branch):
                         target, branch
                     )
                 )
-                pass
     else:
         found = outs
 
