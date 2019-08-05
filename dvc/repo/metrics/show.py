@@ -181,6 +181,11 @@ def _collect_metrics(repo, targets, recursive, typ, xpath, branch):
                     target, outs=outs, recursive=recursive
                 )
             except OutputNotFoundError:
+                logger.debug(
+                    "DVC-file not for found for '{}' in branch '{}'".format(
+                        target, branch
+                    )
+                )
                 pass
     else:
         found = outs
