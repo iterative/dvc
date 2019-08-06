@@ -16,6 +16,7 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
+from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.compat import open as _open, fspath_py35
 from dvc.utils import relpath
 
@@ -464,15 +465,23 @@ class Repo(object):
         cache_file = self.cache.local.checksum_to_path_info(out.checksum)
         cache_file = fspath_py35(cache_file)
 
-        with self.state:
-            cache_info = out.get_used_cache(remote=remote)
-            self.cloud.pull(cache_info, remote=remote)
+        if os.path.exists(cache_file):
+            return _open(cache_file, mode=mode, encoding=encoding)
 
-        # Since pull may just skip with a warning, we need to check it here
-        if not os.path.exists(cache_file):
-            raise OutputFileMissingError(relpath(path, self.root_dir))
+        try:
+            remote_obj = self.cloud.get_remote(remote)
+            remote_info = remote_obj.checksum_to_path_info(out.checksum)
+            return remote_obj.open(remote_info, mode=mode, encoding=encoding)
+        except RemoteActionNotImplemented:
+            with self.state:
+                cache_info = out.get_used_cache(remote=remote)
+                self.cloud.pull(cache_info, remote=remote)
 
-        return _open(cache_file, mode=mode, encoding=encoding)
+            # Since pull may just skip with a warning, we need to check it here
+            if not os.path.exists(cache_file):
+                raise OutputFileMissingError(relpath(path, self.root_dir))
+
+            return _open(cache_file, mode=mode, encoding=encoding)
 
     @cached_property
     def dvcignore(self):

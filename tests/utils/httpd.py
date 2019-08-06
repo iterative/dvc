@@ -2,31 +2,39 @@ import hashlib
 import os
 import threading
 
-from dvc.utils.compat import HTTPServer, SimpleHTTPRequestHandler
+from RangeHTTPServer import RangeRequestHandler
+
+from dvc.utils.compat import HTTPServer
 
 
-class ETagHandler(SimpleHTTPRequestHandler):
+class TestRequestHandler(RangeRequestHandler):
+    checksum_header = None
+
     def end_headers(self):
-        file = self.translate_path(self.path)
+        # RangeRequestHandler only sends Accept-Ranges header if Range header
+        # is present, see https://github.com/danvk/RangeHTTPServer/issues/23
+        if not self.headers.get("Range"):
+            self.send_header("Accept-Ranges", "bytes")
 
-        if not os.path.isdir(file) and os.path.exists(file):
-            with open(file, "r") as fd:
-                etag = hashlib.md5(fd.read().encode("utf8")).hexdigest()
-                self.send_header("ETag", etag)
+        # Add a checksum header
+        if self.checksum_header:
+            file = self.translate_path(self.path)
 
-        SimpleHTTPRequestHandler.end_headers(self)
+            if not os.path.isdir(file) and os.path.exists(file):
+                with open(file, "r") as fd:
+                    encoded_text = fd.read().encode("utf8")
+                    checksum = hashlib.md5(encoded_text).hexdigest()
+                    self.send_header(self.checksum_header, checksum)
+
+        RangeRequestHandler.end_headers(self)
 
 
-class ContentMD5Handler(SimpleHTTPRequestHandler):
-    def end_headers(self):
-        file = self.translate_path(self.path)
+class ETagHandler(TestRequestHandler):
+    checksum_header = "ETag"
 
-        if not os.path.isdir(file) and os.path.exists(file):
-            with open(file, "r") as fd:
-                md5 = hashlib.md5(fd.read().encode("utf8")).hexdigest()
-                self.send_header("Content-MD5", md5)
 
-        SimpleHTTPRequestHandler.end_headers(self)
+class ContentMD5Handler(TestRequestHandler):
+    checksum_header = "Content-MD5"
 
 
 class StaticFileServer:

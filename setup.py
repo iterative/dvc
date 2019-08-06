@@ -107,6 +107,7 @@ tests_requirements = [
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
     "moto>=1.3.14.dev55",
+    "rangehttpserver==1.2.0",
 ]
 
 if (sys.version_info) >= (3, 6):
