@@ -5,7 +5,6 @@ import os
 from dvc.main import main
 from dvc.scm.base import FileNotInCommitError
 import dvc.repo.diff as diff
-from dvc.command.diff import CmdDiff
 from tests.basic_env import TestDvcGit
 
 
@@ -62,26 +61,6 @@ class TestDiffCmdLine(TestDiff):
     def test(self):
         ret = main(["diff", "-t", self.new_file, self.a_ref])
         self.assertEqual(ret, 0)
-
-
-class TestDiffCmdMessage(TestDiff):
-    maxDiff = None
-
-    def test(self):
-        msg = CmdDiff._show(self.test_dct)
-        test_msg = (
-            "dvc diff from {0} to {1}\n\n"
-            "diff for '{2}'\n"
-            "+{2} with md5 {3}\n\n"
-            "added file with size 13 Bytes"
-        )
-        test_msg = test_msg.format(
-            self.test_dct[diff.DIFF_A_REF],
-            self.test_dct[diff.DIFF_B_REF],
-            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
-            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
-        )
-        self.assertEqual(test_msg, msg)
 
 
 class TestDiffDir(TestDvcGit):
@@ -231,9 +210,7 @@ class TestDiffDirWithFile(TestDiffDir):
     def setUp(self):
         super(TestDiffDirWithFile, self).setUp()
 
-        self.a_ref = self.git.git.rev_parse(
-            self.git.head.commit, short=True
-        )
+        self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
         self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
         self.new_file_content = "new_test_file_bigger_content_123456789"
         self.diff_len = len(self.new_file_content)
@@ -267,3 +244,32 @@ class TestDiffDirWithFile(TestDiffDir):
             ],
         }
         self.assertEqual(test_dct, result)
+
+
+class TestDiffCmdMessage(TestDiff):
+    maxDiff = None
+
+    def test(self):
+        ret = main(
+            [
+                "diff",
+                self.test_dct[diff.DIFF_A_REF],
+                self.test_dct[diff.DIFF_B_REF],
+            ]
+        )
+        self.assertEqual(ret, 0)
+
+        msg1 = "dvc diff from {0} to {1}".format(
+            self.git.git.rev_parse(self.test_dct[diff.DIFF_A_REF], short=True),
+            self.git.git.rev_parse(self.test_dct[diff.DIFF_B_REF], short=True),
+        )
+        msg2 = "diff for '{0}'".format(
+            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET]
+        )
+        msg3 = "+{0} with md5 {1}".format(
+            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_TARGET],
+            self.test_dct[diff.DIFF_LIST][0][diff.DIFF_NEW_CHECKSUM],
+        )
+        msg4 = "added file with size 13 Bytes"
+        for m in [msg1, msg2, msg3, msg4]:
+            assert m in self._caplog.text
