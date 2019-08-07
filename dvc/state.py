@@ -388,8 +388,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         for batch_inodes in to_chunks(
             list(inodes), chunk_size=SQLITE_MAX_VARIABLES_NUMBER
         ):
-            sqlite_inodes =  {self._to_sqlite(inode): inode for inode in
-            batch_inodes}
+            sqlite_inodes = {
+                self._to_sqlite(inode): inode for inode in batch_inodes
+            }
 
             cmd = (
                 "SELECT inode, mtime, size, md5, timestamp from {} WHERE inode"
@@ -398,25 +399,22 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 )
             )
 
-            self._execute(cmd, (*sqlite_inodes.keys(),))
+            self._execute(cmd, tuple(sqlite_inodes.keys()))
             for row in self._fetchall():
                 # NOTE we need to preserve original inode value
                 in_db[sqlite_inodes[int(row[0])]] = row[1:]
 
-        not_in_db = [
-            i for i in inodes if i not in in_db.keys()
-        ]
+        not_in_db = [i for i in inodes if i not in in_db.keys()]
         return in_db, not_in_db
 
     def get_multiple(self, path_infos):
         for p in path_infos:
             assert p.scheme == "local"
 
-        paths = list(map(fspath_py35, path_infos))
-        result = {p: None for p in paths}
+        paths_to_path_infos = {fspath_py35(pi): pi for pi in path_infos}
 
         to_check = []
-        for p in paths:
+        for p in paths_to_path_infos.keys():
             if os.path.exists(p):
                 to_check.append(p)
 
@@ -425,14 +423,19 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         in_db, not_in_db = self.get_state_records_for_inodes(
             inodes_to_path.keys()
         )
+
+        result = {}
         for inode, [db_mtime, db_size, db_checksum, _] in in_db.items():
             path = inodes_to_path[inode]
             mtime, size = get_mtime_and_size(path, self.repo.dvcignore)
 
             if not self._file_metadata_changed(mtime, db_mtime, size, db_size):
-                result[path] = db_checksum
+                result[paths_to_path_infos[path]] = db_checksum
                 self._update_state_record_timestamp_for_inode(inode)
 
+        for pi in path_infos:
+            if pi not in result.keys():
+                result[pi] = None
         return result
 
     def get(self, path_info):
