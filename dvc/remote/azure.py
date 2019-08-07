@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import itertools
 import os
 import re
 import logging
@@ -154,3 +155,13 @@ class RemoteAZURE(RemoteBASE):
             path_info.bucket, path_info.path, sas_token=sas_token
         )
         return download_url
+
+    def batch_exists(self, path_infos, callback):
+        paths = []
+
+        for path_info in path_infos:
+            paths.append(self._list_paths(path_info.bucket, path_info.path))
+            callback.update(str(path_info))
+
+        paths = set(itertools.chain.from_iterable(paths))
+        return [path_info.path in paths for path_info in path_infos]
