@@ -121,5 +121,5 @@ class RemoteOSS(RemoteBASE):
         )
 
     def exists(self, path_info):
-        paths = self._list_paths(path_info.bucket, path_info.path)
+        paths = self._list_paths(path_info.path)
         return any(path_info.path == path for path in paths)
