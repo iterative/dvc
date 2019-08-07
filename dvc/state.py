@@ -37,7 +37,10 @@ class StateNoop(object):
     def save(self, path_info, checksum):
         pass
 
-    def get(self, path_info):
+    def get(self, path_infos):
+        return {pi: None for pi in path_infos}
+
+    def get_single(self, path_info):
         return None
 
     def save_link(self, path_info):
@@ -407,7 +410,17 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         not_in_db = [i for i in inodes if i not in in_db.keys()]
         return in_db, not_in_db
 
-    def get_multiple(self, path_infos):
+    def get(self, path_infos):
+        """Gets checksums for specified path infos. Checksums are going to be
+        retrieved from the state database if available.
+
+        Args:
+            path_infos (list(PathInfo)): path info to get the checksum for.
+
+        Returns:
+            dict {path_info: checksum or None}, None if checksum for given
+            path info was not found in state db
+        """
         for p in path_infos:
             assert p.scheme == "local"
 
@@ -438,38 +451,8 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 result[pi] = None
         return result
 
-    def get(self, path_info):
-        """Gets the checksum for the specified path info. Checksum will be
-        retrieved from the state database if available.
-
-        Args:
-            path_info (dict): path info to get the checksum for.
-
-        Returns:
-            str or None: checksum for the specified path info or None if it
-            doesn't exist in the state database.
-        """
-        assert path_info.scheme == "local"
-        path = fspath_py35(path_info)
-
-        if not os.path.exists(path):
-            return None
-
-        actual_mtime, actual_size = get_mtime_and_size(
-            path, self.repo.dvcignore
-        )
-        actual_inode = get_inode(path)
-
-        existing_record = self.get_state_record_for_inode(actual_inode)
-        if not existing_record:
-            return None
-
-        mtime, size, checksum, _ = existing_record
-        if self._file_metadata_changed(actual_mtime, mtime, actual_size, size):
-            return None
-
-        self._update_state_record_timestamp_for_inode(actual_inode)
-        return checksum
+    def get_single(self, path_info):
+        return next(iter(self.get([path_info]).values()))
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This
