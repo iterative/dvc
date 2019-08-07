@@ -1,11 +1,11 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import itertools
 import os
 import re
 import logging
 from datetime import datetime, timedelta
+
 
 from dvc.scheme import Schemes
 
@@ -137,6 +137,10 @@ class RemoteAZURE(RemoteBASE):
         self.blob_service.get_blob_to_path(
             from_info.bucket, from_info.path, to_file, progress_callback=cb
         )
+
+    def exists(self, path_info):
+        paths = self._list_paths(path_info.bucket, path_info.path)
+        return any(path_info.path == path for path in paths)
 
     def open(self, path_info, mode="r", encoding=None):
         get_url = lambda: self._generate_download_url(path_info)  # noqa: E731

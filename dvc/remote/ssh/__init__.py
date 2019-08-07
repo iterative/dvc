@@ -3,9 +3,6 @@ from __future__ import unicode_literals
 import os
 import getpass
 import logging
-import itertools
-import errno
-from concurrent.futures import ThreadPoolExecutor
 import threading
 
 try:
@@ -15,7 +12,6 @@ except ImportError:
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
@@ -147,34 +143,6 @@ class RemoteSSH(RemoteBASE):
     def exists(self, path_info):
         with self.ssh(path_info) as ssh:
             return ssh.exists(path_info.path)
-
-    def batch_exists(self, path_infos, callback):
-        def _exists(chunk_and_channel):
-            chunk, channel = chunk_and_channel
-            ret = []
-            for path in chunk:
-                try:
-                    channel.stat(path)
-                    ret.append(True)
-                except IOError as exc:
-                    if exc.errno != errno.ENOENT:
-                        raise
-                    ret.append(False)
-                callback.update(path)
-            return ret
-
-        with self.ssh(path_infos[0]) as ssh:
-            channels = ssh.open_max_sftp_channels()
-            max_workers = len(channels)
-
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                paths = [path_info.path for path_info in path_infos]
-                chunks = to_chunks(paths, num_chunks=max_workers)
-                chunks_and_channels = zip(chunks, channels)
-                outcome = executor.map(_exists, chunks_and_channels)
-                results = list(itertools.chain.from_iterable(outcome))
-
-            return results
 
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:

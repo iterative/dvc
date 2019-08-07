@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import os
 import threading
 import logging
-import itertools
 from funcy import cached_property
 
 try:
@@ -215,16 +214,6 @@ class RemoteS3(RemoteBASE):
     def exists(self, path_info):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
-
-    def batch_exists(self, path_infos, callback):
-        paths = []
-
-        for path_info in path_infos:
-            paths.append(self._list_paths(path_info.bucket, path_info.path))
-            callback.update(str(path_info))
-
-        paths = set(itertools.chain.from_iterable(paths))
-        return [path_info.path in paths for path_info in path_infos]
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)

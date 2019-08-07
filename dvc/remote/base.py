@@ -20,6 +20,7 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import progress, ProgressCallback
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath
 from dvc.utils import (
     LARGE_DIR_SIZE,
     tmp_fname,
@@ -644,15 +645,10 @@ class RemoteBASE(object):
         """
         progress_callback = ProgressCallback(len(checksums))
 
-        def exists_with_progress(chunks):
-            return self.batch_exists(chunks, callback=progress_callback)
-
-        if self.no_traverse and hasattr(self, "batch_exists"):
+        if self.no_traverse:
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
-                results = executor.map(exists_with_progress, chunks)
-                in_remote = itertools.chain.from_iterable(results)
+                in_remote = list(executor.map(self.exists, path_infos))
                 ret = list(itertools.compress(checksums, in_remote))
                 progress_callback.finish("")
                 return ret

@@ -119,3 +119,7 @@ class RemoteOSS(RemoteBASE):
         self.oss_service.get_object_to_file(
             from_info.path, to_file, progress_callback=cb
         )
+
+    def exists(self, path_info):
+        paths = self._list_paths(path_info.bucket, path_info.path)
+        return any(path_info.path == path for path in paths)
