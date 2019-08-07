@@ -7,7 +7,7 @@ import logging
 
 from dvc.repo import Repo as DvcRepo
 from dvc.main import main
-from dvc.exceptions import DvcException, BadMetricError, NoMetricsError
+from dvc.exceptions import DvcException, NoMetricsError
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.stage import Stage
 from dvc.utils import relpath
@@ -412,10 +412,10 @@ class TestMetricsRecursive(TestDvcGit):
         self.dvc.scm.checkout("master")
 
     def test(self):
-        with self.assertRaises(BadMetricError):
-            self.dvc.metrics.show(
-                ["nested"], all_branches=True, recursive=False
-            )
+        ret = self.dvc.metrics.show(
+            ["nested"], all_branches=True, recursive=False
+        )
+        self.assertEqual(len(ret), 0)
 
         ret = self.dvc.metrics.show(
             ["nested"], all_branches=True, recursive=True

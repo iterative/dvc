@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
+import itertools
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
@@ -46,6 +47,24 @@ class CmdMetricsShow(CmdBase):
             )
 
             show_metrics(metrics, self.args.all_branches, self.args.all_tags)
+
+            found = set(
+                itertools.chain.from_iterable(
+                    metric.keys() for metric in metrics.values()
+                )
+            )
+
+            missing = set(self.args.targets) - found
+
+            if missing:
+                logger.error(
+                    "the following metrics do not exists, "
+                    "are not metric files or are malformed: {paths}".format(
+                        paths=", ".join("'{}'".format(x) for x in missing)
+                    )
+                )
+                return 1
+
         except DvcException:
             logger.exception("failed to show metrics")
             return 1

@@ -8,7 +8,7 @@ import logging
 
 from jsonpath_ng.ext import parse
 
-from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
+from dvc.exceptions import OutputNotFoundError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
@@ -282,9 +282,7 @@ def show(
         if metrics:
             res[branch] = metrics
 
-    if not res:
-        if targets:
-            raise BadMetricError(targets)
+    if not res and not targets:
         raise NoMetricsError()
 
     return res
