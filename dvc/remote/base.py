@@ -171,7 +171,7 @@ class RemoteBASE(object):
 
             file_infos.update(path_info / root / fname for fname in files)
 
-        checksums = self.state.get(file_infos)
+        checksums = self.state.get_multiple(file_infos)
         not_in_state = {
             fi for fi, checksum in checksums.items() if checksum is None
         }
@@ -272,7 +272,7 @@ class RemoteBASE(object):
         if not self.exists(path_info):
             return None
 
-        checksum = self.state.get_single(path_info)
+        checksum = self.state.get(path_info)
 
         # If we have dir checksum in state db, but dir cache file is lost,
         # then we need to recollect the dir via .get_dir_checksum() call below,

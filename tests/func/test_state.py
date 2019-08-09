@@ -18,20 +18,20 @@ def test_state(dvc_repo, repo_dir):
 
     with state:
         state.save(path_info, md5)
-        entry_md5 = state.get_single(path_info)
+        entry_md5 = state.get(path_info)
         assert entry_md5 == md5
 
         os.unlink(path)
         with open(path, "a") as fd:
             fd.write("1")
 
-        entry_md5 = state.get_single(path_info)
+        entry_md5 = state.get(path_info)
         assert entry_md5 is None
 
         md5 = file_md5(path)[0]
         state.save(path_info, md5)
 
-        entry_md5 = state.get_single(path_info)
+        entry_md5 = state.get(path_info)
         assert entry_md5 == md5
 
 

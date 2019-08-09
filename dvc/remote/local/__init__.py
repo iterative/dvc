@@ -523,7 +523,7 @@ class RemoteLOCAL(RemoteBASE):
         return info.with_name(info.name + self.UNPACKED_DIR_SUFFIX)
 
     def _path_info_changed(self, path_info):
-        if self.exists(path_info) and self.state.get_single(path_info):
+        if self.exists(path_info) and self.state.get(path_info):
             return False
         return True
 
@@ -565,7 +565,7 @@ class RemoteLOCAL(RemoteBASE):
     def _changed_unpacked_dir(self, checksum):
         status_unpacked_dir_info = self._get_unpacked_dir_path_info(checksum)
 
-        return not self.state.get_single(status_unpacked_dir_info)
+        return not self.state.get(status_unpacked_dir_info)
 
     def _get_unpacked_dir_names(self, checksums):
         unpacked = set()

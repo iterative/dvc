@@ -37,11 +37,11 @@ class StateNoop(object):
     def save(self, path_info, checksum):
         pass
 
-    def get(self, path_infos):
-        return {pi: None for pi in path_infos}
-
-    def get_single(self, path_info):
+    def get(self, path_info):
         return None
+
+    def get_multiple(self, path_infos):
+        return {pi: None for pi in path_infos}
 
     def save_link(self, path_info):
         pass
@@ -357,6 +357,38 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             return results[0]
         return None
 
+    def get_state_records(self, path_infos_inodes):
+        as_sqlite = {
+            path_info: self._to_sqlite(inode)
+            for path_info, inode in path_infos_inodes.items()
+        }
+
+        rows = {}
+        for batch_inodes in to_chunks(
+            list(as_sqlite.values()), chunk_size=SQLITE_MAX_VARIABLES_NUMBER
+        ):
+            cmd = (
+                "SELECT inode, mtime, size, md5, timestamp from {} WHERE inode"
+                " in ({})".format(
+                    self.STATE_TABLE, ",".join(["?"] * len(batch_inodes))
+                )
+            )
+
+            self._execute(cmd, tuple(batch_inodes))
+            for row in self._fetchall():
+                inode, mtime, size, checksum, timestamp = row
+                rows[inode] = (mtime, size, checksum, timestamp)
+
+        in_db = set(rows.keys())
+        result = {}
+        for path_info, inode in as_sqlite.items():
+            if inode in in_db:
+                result[path_info] = rows[inode]
+            else:
+                result[path_info] = None
+
+        return result
+
     def save(self, path_info, checksum):
         """Save checksum for the specified path info.
 
@@ -386,73 +418,58 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             actual_inode, actual_mtime, actual_size, checksum
         )
 
-    def get_state_records_for_inodes(self, inodes):
-        in_db = {}
-        for batch_inodes in to_chunks(
-            list(inodes), chunk_size=SQLITE_MAX_VARIABLES_NUMBER
-        ):
-            sqlite_inodes = {
-                self._to_sqlite(inode): inode for inode in batch_inodes
-            }
-
-            cmd = (
-                "SELECT inode, mtime, size, md5, timestamp from {} WHERE inode"
-                " in ({})".format(
-                    self.STATE_TABLE, ",".join(["?"] * len(batch_inodes))
-                )
-            )
-
-            self._execute(cmd, tuple(sqlite_inodes.keys()))
-            for row in self._fetchall():
-                # NOTE we need to preserve original inode value
-                in_db[sqlite_inodes[int(row[0])]] = row[1:]
-
-        not_in_db = [i for i in inodes if i not in in_db.keys()]
-        return in_db, not_in_db
-
-    def get(self, path_infos):
+    def get_multiple(self, path_infos):
         """Gets checksums for specified path infos. Checksums are going to be
         retrieved from the state database if available.
 
         Args:
-            path_infos (list(PathInfo)): path info to get the checksum for.
-
+            path_infos (list(PathInfo) or PathInfo): path info to get the
+            checksum for.
         Returns:
             dict {path_info: checksum or None}, None if checksum for given
             path info was not found in state db
         """
-        for p in path_infos:
-            assert p.scheme == "local"
 
-        paths_to_path_infos = {fspath_py35(pi): pi for pi in path_infos}
+        path_infos = set(path_infos)
+        scheme_set = set(map(lambda pi: pi.scheme, path_infos))
+        assert scheme_set == {"local"} or scheme_set == set()
 
-        to_check = []
-        for p in paths_to_path_infos.keys():
-            if os.path.exists(p):
-                to_check.append(p)
-
-        inodes_to_path = {get_inode(p): p for p in to_check}
-
-        in_db, not_in_db = self.get_state_records_for_inodes(
-            inodes_to_path.keys()
-        )
+        paths = {pi: fspath_py35(pi) for pi in path_infos}
+        exists = {pi: os.path.exists(paths[pi]) for pi in path_infos}
 
         result = {}
-        for inode, [db_mtime, db_size, db_checksum, _] in in_db.items():
-            path = inodes_to_path[inode]
-            mtime, size = get_mtime_and_size(path, self.repo.dvcignore)
+        for pi, exist in exists.items():
+            if not exist:
+                result[pi] = None
+                path_infos.remove(pi)
 
-            if not self._file_metadata_changed(mtime, db_mtime, size, db_size):
-                result[paths_to_path_infos[path]] = db_checksum
-                self._update_state_record_timestamp_for_inode(inode)
+        actual_metadatas = {
+            pi: get_mtime_and_size(paths[pi], self.repo.dvcignore)
+            for pi in path_infos
+        }
+
+        inodes = {pi: get_inode(paths[pi]) for pi in path_infos}
+        existing_records = self.get_state_records(inodes)
+
+        for pi, record in existing_records.items():
+            if not record:
+                result[pi] = None
+                path_infos.remove(pi)
 
         for pi in path_infos:
-            if pi not in result.keys():
+            actual_mtime, actual_size = actual_metadatas[pi]
+            mtime, size, checksum, _ = existing_records[pi]
+            if self._file_metadata_changed(
+                actual_mtime, mtime, actual_size, size
+            ):
                 result[pi] = None
+            else:
+                result[pi] = checksum
+                self._update_state_record_timestamp_for_inode(inodes[pi])
         return result
 
-    def get_single(self, path_info):
-        return next(iter(self.get([path_info]).values()))
+    def get(self, path_info):
+        return next(iter(self.get_multiple([path_info]).values()))
 
     def save_link(self, path_info):
         """Adds the specified path to the list of links created by dvc. This
