@@ -803,5 +803,5 @@ class RemoteBASE(object):
     def _changed_unpacked_dir(self, checksum):
         return True
 
-    def _update_unpacked_dir(self, checksum, progress_callback=None):
+    def _update_unpacked_dir(self, checksum):
         pass
