@@ -515,6 +515,9 @@ class RemoteBASE(object):
 
         return 0
 
+    def open(self, path_info, mode="r", encoding=None):
+        raise RemoteActionNotImplemented("open", self.scheme)
+
     def remove(self, path_info):
         raise RemoteActionNotImplemented("remove", self.scheme)
 

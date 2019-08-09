@@ -4,11 +4,12 @@ from __future__ import unicode_literals
 import os
 import re
 import logging
+from datetime import datetime, timedelta
 
 from dvc.scheme import Schemes
 
 try:
-    from azure.storage.blob import BlockBlobService
+    from azure.storage.blob import BlockBlobService, BlobPermissions
     from azure.common import AzureMissingResourceHttpError
 except ImportError:
     BlockBlobService = None
@@ -18,6 +19,7 @@ from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.path_info import CloudURLInfo
+from dvc.utils.http import open_url
 
 
 logger = logging.getLogger(__name__)
@@ -134,3 +136,21 @@ class RemoteAZURE(RemoteBASE):
         self.blob_service.get_blob_to_path(
             from_info.bucket, from_info.path, to_file, progress_callback=cb
         )
+
+    def open(self, path_info, mode="r", encoding=None):
+        get_url = lambda: self._generate_download_url(path_info)  # noqa: E731
+        return open_url(get_url, mode=mode, encoding=encoding)
+
+    def _generate_download_url(self, path_info, expires=3600):
+        expires_at = datetime.utcnow() + timedelta(seconds=expires)
+
+        sas_token = self.blob_service.generate_blob_shared_access_signature(
+            path_info.bucket,
+            path_info.path,
+            permission=BlobPermissions.READ,
+            expiry=expires_at,
+        )
+        download_url = self.blob_service.make_blob_url(
+            path_info.bucket, path_info.path, sas_token=sas_token
+        )
+        return download_url
