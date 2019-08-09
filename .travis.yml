@@ -87,6 +87,7 @@ jobs:
     stage: build
     os: windows
     language: shell
+    install:
     script: ./scripts/build_windows.cmd
   - name: "Linux pkgs"
     stage: build
