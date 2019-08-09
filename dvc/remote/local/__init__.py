@@ -250,10 +250,10 @@ class RemoteLOCAL(RemoteBASE):
 
         move(from_info, to_info, mode=mode)
 
-    def cache_exists(self, md5s, jobs=None):
+    def cache_exists(self, checksums, jobs=None):
         return [
             checksum
-            for checksum in progress(md5s)
+            for checksum in progress(checksums)
             if not self.changed_cache_file(checksum)
         ]
 
