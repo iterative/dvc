@@ -80,8 +80,8 @@ def file_md5(fname):
             progress.finish_target(name)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
-    else:
-        return (None, None)
+
+    return (None, None)
 
 
 def bytes_md5(byts):
@@ -101,14 +101,13 @@ def dict_filter(d, exclude=()):
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
-    elif isinstance(d, dict):
+    if isinstance(d, dict):
         items = ((fix_key(k), v) for k, v in d.items())
         return {
             k: dict_filter(v, exclude) for k, v in items if k not in exclude
         }
 
-    else:
-        return d
+    return d
 
 
 def dict_md5(d, exclude=()):
@@ -272,12 +271,11 @@ def fix_env(env=None):
 def convert_to_unicode(data):
     if isinstance(data, builtin_str):
         return str(data)
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return dict(map(convert_to_unicode, data.items()))
-    elif isinstance(data, list) or isinstance(data, tuple):
+    if isinstance(data, list) or isinstance(data, tuple):
         return type(data)(map(convert_to_unicode, data))
-    else:
-        return data
+    return data
 
 
 def tmp_fname(fname):
