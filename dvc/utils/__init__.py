@@ -273,7 +273,7 @@ def convert_to_unicode(data):
         return str(data)
     if isinstance(data, dict):
         return dict(map(convert_to_unicode, data.items()))
-    if isinstance(data, list) or isinstance(data, tuple):
+    if isinstance(data, (list, tuple)):
         return type(data)(map(convert_to_unicode, data))
     return data
 
