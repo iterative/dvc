@@ -133,7 +133,10 @@ class RemoteLOCAL(RemoteBASE):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
-    def link(self, from_info, to_info, link_types=None):
+    def link(self, from_info, to_info):
+        self._link(from_info, to_info, self.cache_types)
+
+    def _link(self, from_info, to_info, link_types):
         from_path = from_info.fspath
         to_path = to_info.fspath
 
@@ -151,9 +154,6 @@ class RemoteLOCAL(RemoteBASE):
             logger.debug(msg)
             return
 
-        if not link_types:
-            link_types = self.cache_types
-
         self._try_links(from_info, to_info, link_types)
 
     @classmethod
@@ -165,7 +165,7 @@ class RemoteLOCAL(RemoteBASE):
                 "Cache type: '{}' not supported!".format(link_type)
             )
 
-    def _link(self, from_info, to_info, link_method):
+    def _do_link(self, from_info, to_info, link_method):
         if self.exists(to_info):
             raise DvcException("Link '{}' already exists!".format(to_info))
         else:
@@ -188,7 +188,7 @@ class RemoteLOCAL(RemoteBASE):
         while i > 0:
             link_method = self._get_link_method(link_types[0])
             try:
-                self._link(from_info, to_info, link_method)
+                self._do_link(from_info, to_info, link_method)
                 return
 
             except DvcException as exc:
@@ -550,7 +550,7 @@ class RemoteLOCAL(RemoteBASE):
             # /proc/sys/fs/protected_hardlinks is disabled, the user is not
             # allowed to create hardlinks to files that he doesn't own.
             link_types = ["hardlink", "symlink"]
-            self.link(
+            self._link(
                 entry_cache_info, unpacked_dir_info / relative_path, link_types
             )
 
