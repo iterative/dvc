@@ -160,6 +160,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CACHE_TYPE = "type"
     SECTION_CACHE_TYPE_SCHEMA = supported_cache_type
     SECTION_CACHE_PROTECTED = "protected"
+    SECTION_CACHE_SHARED = "shared"
+    SECTION_CACHE_SHARED_SCHEMA = And(Use(str.lower), Choices("group"))
     SECTION_CACHE_LOCAL = "local"
     SECTION_CACHE_S3 = "s3"
     SECTION_CACHE_GS = "gs"
@@ -177,6 +179,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CACHE_DIR): str,
         Optional(SECTION_CACHE_TYPE, default=None): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
+        Optional(SECTION_CACHE_SHARED): SECTION_CACHE_SHARED_SCHEMA,
         Optional(PRIVATE_CWD): str,
         Optional(SECTION_CACHE_SLOW_LINK_WARNING, default=True): BOOL_SCHEMA,
     }

@@ -9,8 +9,9 @@ from dvc.utils.compat import (
     cast_bytes_py2,
     StringIO,
     fspath_py35,
+    fspath,
+    makedirs as _makedirs,
 )
-from dvc.utils.compat import fspath
 
 import os
 import sys
@@ -26,6 +27,7 @@ import colorama
 import re
 import logging
 
+from shortuuid import uuid
 from ruamel.yaml import YAML
 
 
@@ -78,8 +80,8 @@ def file_md5(fname):
             progress.finish_target(name)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
-    else:
-        return (None, None)
+
+    return (None, None)
 
 
 def bytes_md5(byts):
@@ -99,14 +101,13 @@ def dict_filter(d, exclude=()):
     if isinstance(d, list):
         return [dict_filter(e, exclude) for e in d]
 
-    elif isinstance(d, dict):
+    if isinstance(d, dict):
         items = ((fix_key(k), v) for k, v in d.items())
         return {
             k: dict_filter(v, exclude) for k, v in items if k not in exclude
         }
 
-    else:
-        return d
+    return d
 
 
 def dict_md5(d, exclude=()):
@@ -145,18 +146,44 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
         progress.finish_target(name)
 
 
-def move(src, dst):
-    dst = os.path.abspath(dst)
-    dname = os.path.dirname(dst)
-    if not os.path.exists(dname):
-        os.makedirs(dname)
+def makedirs(path, exist_ok=False, mode=None):
+    path = fspath_py35(path)
 
-    if os.path.islink(src):
-        shutil.copy(os.readlink(src), dst)
-        os.unlink(src)
+    if mode is None:
+        _makedirs(path, exist_ok=exist_ok)
         return
 
-    shutil.move(src, dst)
+    umask = os.umask(0)
+    try:
+        _makedirs(path, exist_ok=exist_ok, mode=mode)
+    finally:
+        os.umask(umask)
+
+
+def move(src, dst, mode=None):
+    """Atomically move src to dst and chmod it with mode.
+
+    Moving is performed in two stages to make the whole operation atomic in
+    case src and dst are on different filesystems and actual physical copying
+    of data is happening.
+    """
+
+    src = fspath_py35(src)
+    dst = fspath_py35(dst)
+
+    dst = os.path.abspath(dst)
+    tmp = "{}.{}".format(dst, str(uuid()))
+
+    if os.path.islink(src):
+        shutil.copy(os.readlink(src), tmp)
+        os.unlink(src)
+    else:
+        shutil.move(src, tmp)
+
+    if mode is not None:
+        os.chmod(tmp, mode)
+
+    shutil.move(tmp, dst)
 
 
 def _chmod(func, p, excinfo):
@@ -244,18 +271,15 @@ def fix_env(env=None):
 def convert_to_unicode(data):
     if isinstance(data, builtin_str):
         return str(data)
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return dict(map(convert_to_unicode, data.items()))
-    elif isinstance(data, list) or isinstance(data, tuple):
+    if isinstance(data, (list, tuple)):
         return type(data)(map(convert_to_unicode, data))
-    else:
-        return data
+    return data
 
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    from shortuuid import uuid
-
     return fspath(fname) + "." + str(uuid()) + ".tmp"
 
 

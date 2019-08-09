@@ -46,6 +46,7 @@ class Cache(object):
             cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
             cache_type = config.get(Config.SECTION_CACHE_TYPE)
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
+            shared = config.get(Config.SECTION_CACHE_SHARED)
 
             settings = {
                 Config.PRIVATE_CWD: config.get(
@@ -54,6 +55,7 @@ class Cache(object):
                 Config.SECTION_REMOTE_URL: cache_dir,
                 Config.SECTION_CACHE_TYPE: cache_type,
                 Config.SECTION_CACHE_PROTECTED: protected,
+                Config.SECTION_CACHE_SHARED: shared,
             }
 
         self.local = Remote(repo, **settings)
