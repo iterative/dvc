@@ -648,7 +648,7 @@ class RemoteBASE(object):
         if self.no_traverse:
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                in_remote = list(executor.map(self.exists, path_infos))
+                in_remote = executor.map(self.exists, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
                 progress_callback.finish("")
                 return ret
