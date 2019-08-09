@@ -773,7 +773,7 @@ class RemoteBASE(object):
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
-        return self._checkout(path_info, checksum, force, progress_callback)
+        self._checkout(path_info, checksum, force, progress_callback)
 
     def _checkout(
         self, path_info, checksum, force=False, progress_callback=None
