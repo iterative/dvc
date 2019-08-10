@@ -243,6 +243,8 @@ class RemoteLOCAL(RemoteBASE):
         if from_info.scheme != "local" or to_info.scheme != "local":
             raise NotImplementedError
 
+        self.makedirs(to_info.parent)
+
         if self.isfile(from_info):
             mode = self._file_mode
         else:
