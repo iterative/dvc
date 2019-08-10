@@ -276,12 +276,14 @@ def show(
     for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
         metrics = {}
 
-        for p in targets:
-            entries = _collect_metrics(repo, p, recursive, typ, xpath, branch)
+        for target in targets:
+            entries = _collect_metrics(
+                repo, target, recursive, typ, xpath, branch
+            )
             metric = _read_metrics(repo, entries, branch)
 
             if metric:
-                found.add(p)
+                found.add(target)
                 metrics.update(metric)
 
         if metrics:
@@ -293,6 +295,6 @@ def show(
     missing = set(targets) - found
 
     if missing:
-        res["_missing"] = missing
+        res[None] = missing
 
     return res

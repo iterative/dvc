@@ -16,9 +16,9 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
         metrics (list): Where each element is either a `list`
             if an xpath was specified, otherwise a `str`
     """
-    # When `metrics` contains a `_missing` key, it means that some files
+    # When `metrics` contains a `None` key, it means that some files
     # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
-    missing = metrics.pop("_missing", None)
+    missing = metrics.pop(None, None)
 
     for branch, val in metrics.items():
         if all_branches or all_tags:
