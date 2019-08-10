@@ -14,4 +14,4 @@ def test_quiet(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        assert '0/10' in out_err.err
+        assert "0/10" in out_err.err

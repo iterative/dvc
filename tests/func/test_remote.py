@@ -162,15 +162,16 @@ class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
 
 def test_large_dir_progress(repo_dir, dvc_repo):
     from dvc.utils import LARGE_DIR_SIZE
-    from dvc.progress import progress
+    from dvc.progress import Tqdm
 
     # Create a "large dir"
     for i in range(LARGE_DIR_SIZE + 1):
         repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
 
-    with patch.object(progress, "update_target") as update_target:
+    with patch.object(Tqdm, "truncate") as truncate:
+        assert not truncate.called
         dvc_repo.add("gen")
-        assert update_target.called
+        assert truncate.called
 
 
 def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
