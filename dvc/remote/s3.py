@@ -229,9 +229,12 @@ class RemoteS3(RemoteBASE):
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        total = self.s3.head_object(
-            Bucket=from_info.bucket, Key=from_info.path
-        )["ContentLength"]
+        if no_progress_bar:
+            total = None
+        else:
+            total = self.s3.head_object(
+                Bucket=from_info.bucket, Key=from_info.path
+            )["ContentLength"]
         with Tqdm(
             disable=no_progress_bar,
             total=total,

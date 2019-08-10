@@ -11,6 +11,7 @@ import itertools
 from operator import itemgetter
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
+import functools
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -628,20 +629,23 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        pbar = Tqdm(total=len(checksums))
-
-        def exists_with_progress(chunks):
-            return self.batch_exists(chunks, callback=pbar.update_desc)
-
         if self.no_traverse and hasattr(self, "batch_exists"):
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
-                results = executor.map(exists_with_progress, chunks)
-                in_remote = itertools.chain.from_iterable(results)
-                ret = list(itertools.compress(checksums, in_remote))
-                pbar.close()
-                return ret
+            with Tqdm(total=len(checksums)) as pbar:
+                exists_with_progress = functools.partial(
+                    self.batch_exists, callback=pbar.update_desc
+                )
+
+                with ThreadPoolExecutor(
+                    max_workers=jobs or self.JOBS
+                ) as executor:
+                    path_infos = [
+                        self.checksum_to_path_info(x) for x in checksums
+                    ]
+                    chunks = to_chunks(path_infos, num_chunks=self.JOBS)
+                    results = executor.map(exists_with_progress, chunks)
+                    in_remote = itertools.chain.from_iterable(results)
+                    ret = list(itertools.compress(checksums, in_remote))
+                    return ret
 
         return list(set(checksums) & set(self.all()))
 

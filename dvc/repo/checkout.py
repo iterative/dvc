@@ -37,14 +37,14 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
 
     with self.state:
         _cleanup_unused_links(self, all_stages)
-        pbar = Tqdm(total=get_all_files_numbers(stages))
+        with Tqdm(total=get_all_files_numbers(stages)) as pbar:
+            for stage in stages:
+                if stage.locked:
+                    logger.warning(
+                        "DVC-file '{path}' is locked. Its dependencies are"
+                        " not going to be checked out.".format(
+                            path=stage.relpath
+                        )
+                    )
 
-        for stage in stages:
-            if stage.locked:
-                logger.warning(
-                    "DVC-file '{path}' is locked. Its dependencies are"
-                    " not going to be checked out.".format(path=stage.relpath)
-                )
-
-            stage.checkout(force=force, progress_callback=pbar.update_desc)
-        pbar.close()
+                stage.checkout(force=force, progress_callback=pbar.update_desc)
