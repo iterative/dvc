@@ -195,6 +195,16 @@ class ReproductionError(DvcException):
         super(ReproductionError, self).__init__(msg, cause=ex)
 
 
+class BadMetricError(DvcException):
+    def __init__(self, paths):
+        super(BadMetricError, self).__init__(
+            "the following metrics do not exists, "
+            "are not metric files or are malformed: {paths}".format(
+                paths=", ".join("'{}'".format(path) for path in paths)
+            )
+        )
+
+
 class NoMetricsError(DvcException):
     def __init__(self):
         super(NoMetricsError, self).__init__(

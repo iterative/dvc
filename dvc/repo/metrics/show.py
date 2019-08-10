@@ -152,12 +152,11 @@ def _read_metric(fd, typ=None, xpath=None, fname=None, branch=None):
         return None
 
 
-def _collect_metrics(repo, targets, recursive, typ, xpath, branch):
+def _collect_metrics(repo, path, recursive, typ, xpath, branch):
     """Gather all the metric outputs.
 
     Args:
-        targets (list): List of paths to metric files or directories.
-            If there's no target, collect all metrics.
+        path (str): Path to a metric file or a directory.
         recursive (bool): If path is a directory, do a recursive search for
             metrics on the given path.
         typ (str): The type that will be used to interpret the metric file,
@@ -172,25 +171,20 @@ def _collect_metrics(repo, targets, recursive, typ, xpath, branch):
             - xpath:
     """
     outs = [out for stage in repo.stages() for out in stage.outs]
-    found = []
 
-    if targets:
-        for target in targets:
-            try:
-                found += repo.find_outs_by_path(
-                    target, outs=outs, recursive=recursive
+    if path:
+        try:
+            outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
+        except OutputNotFoundError:
+            logger.debug(
+                "DVC-file not for found for '{}' in branch '{}'".format(
+                    path, branch
                 )
-            except OutputNotFoundError:
-                logger.debug(
-                    "DVC-file not for found for '{}' in branch '{}'".format(
-                        target, branch
-                    )
-                )
-    else:
-        found = outs
+            )
+            return []
 
     res = []
-    for o in found:
+    for o in outs:
         if not o.metric:
             continue
 
@@ -273,16 +267,32 @@ def show(
     recursive=False,
 ):
     res = {}
+    found = set()
+
+    if not targets:
+        # Iterate once to call `_collect_metrics` on all the stages
+        targets = [None]
 
     for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
-        entries = _collect_metrics(
-            repo, targets, recursive, typ, xpath, branch
-        )
-        metrics = _read_metrics(repo, entries, branch)
+        metrics = {}
+
+        for p in targets:
+            entries = _collect_metrics(repo, p, recursive, typ, xpath, branch)
+            metric = _read_metrics(repo, entries, branch)
+
+            if metric:
+                found.add(p)
+                metrics.update(metric)
+
         if metrics:
             res[branch] = metrics
 
-    if not res and not targets:
+    if not res and not any(targets):
         raise NoMetricsError()
+
+    missing = set(targets) - found
+
+    if missing:
+        res["_missing"] = missing
 
     return res

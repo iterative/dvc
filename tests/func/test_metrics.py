@@ -415,7 +415,7 @@ class TestMetricsRecursive(TestDvcGit):
         ret = self.dvc.metrics.show(
             ["nested"], all_branches=True, recursive=False
         )
-        self.assertEqual(len(ret), 0)
+        self.assertEqual(len(ret), 1)
 
         ret = self.dvc.metrics.show(
             ["nested"], all_branches=True, recursive=True

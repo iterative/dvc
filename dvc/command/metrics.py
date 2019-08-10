@@ -2,9 +2,8 @@ from __future__ import unicode_literals
 
 import argparse
 import logging
-import itertools
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, BadMetricError
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
 
@@ -17,6 +16,10 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
         metrics (list): Where each element is either a `list`
             if an xpath was specified, otherwise a `str`
     """
+    # When `metrics` contains a `_missing` key, it means that some files
+    # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
+    missing = metrics.pop("_missing", None)
+
     for branch, val in metrics.items():
         if all_branches or all_tags:
             logger.info("{branch}:".format(branch=branch))
@@ -33,6 +36,9 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
             else:
                 logger.info("\t{}: {}".format(fname, metric))
 
+    if missing:
+        raise BadMetricError(missing)
+
 
 class CmdMetricsShow(CmdBase):
     def run(self):
@@ -47,24 +53,6 @@ class CmdMetricsShow(CmdBase):
             )
 
             show_metrics(metrics, self.args.all_branches, self.args.all_tags)
-
-            found = set(
-                itertools.chain.from_iterable(
-                    metric.keys() for metric in metrics.values()
-                )
-            )
-
-            missing = set(self.args.targets) - found
-
-            if missing:
-                logger.error(
-                    "the following metrics do not exists, "
-                    "are not metric files or are malformed: {paths}".format(
-                        paths=", ".join("'{}'".format(x) for x in missing)
-                    )
-                )
-                return 1
-
         except DvcException:
             logger.exception("failed to show metrics")
             return 1
