@@ -364,7 +364,6 @@ class RemoteBASE(object):
 
         cache_info = self.checksum_to_path_info(checksum)
         if self.changed_cache(checksum):
-            self.makedirs(cache_info.parent)
             self.move(path_info, cache_info)
         else:
             self.remove(path_info)
