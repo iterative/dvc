@@ -685,7 +685,7 @@ class RemoteBASE(object):
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
         if progress_callback:
-            progress_callback.update(str(path_info))
+            progress_callback(str(path_info))
 
     def makedirs(self, path_info):
         raise NotImplementedError
@@ -715,7 +715,7 @@ class RemoteBASE(object):
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
-                progress_callback.update(str(entry_info))
+                progress_callback(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
