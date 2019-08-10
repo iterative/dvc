@@ -875,7 +875,7 @@ def test_show_multiple_outputs(dvc_repo, caplog):
     with caplog.at_level(logging.INFO, logger="dvc"):
         assert 0 == main(["metrics", "show", "-R", "1.json", "metrics"])
         assert '1.json: {"AUC": 1}' in caplog.text
-        assert 'metrics/3.json: {"AUC": 3}' in caplog.text
+        assert '3.json: {"AUC": 3}' in caplog.text
 
     caplog.clear()
 
