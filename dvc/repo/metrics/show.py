@@ -8,7 +8,7 @@ import logging
 
 from jsonpath_ng.ext import parse
 
-from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
+from dvc.exceptions import OutputNotFoundError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
@@ -159,8 +159,8 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
         path (str): Path to a metric file or a directory.
         recursive (bool): If path is a directory, do a recursive search for
             metrics on the given path.
-        typ (str): The type of metric to search for, could be one of the
-            following (raw|json|tsv|htsv|csv|hcsv).
+        typ (str): The type that will be used to interpret the metric file,
+            one of the followings - (raw|json|tsv|htsv|csv|hcsv).
         xpath (str): Path to search for.
         branch (str): Branch to look up for metrics.
 
@@ -259,7 +259,7 @@ def _read_metrics(repo, metrics, branch):
 
 def show(
     repo,
-    path=None,
+    targets=None,
     typ=None,
     xpath=None,
     all_branches=False,
@@ -267,16 +267,34 @@ def show(
     recursive=False,
 ):
     res = {}
+    found = set()
+
+    if not targets:
+        # Iterate once to call `_collect_metrics` on all the stages
+        targets = [None]
 
     for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
-        entries = _collect_metrics(repo, path, recursive, typ, xpath, branch)
-        metrics = _read_metrics(repo, entries, branch)
+        metrics = {}
+
+        for target in targets:
+            entries = _collect_metrics(
+                repo, target, recursive, typ, xpath, branch
+            )
+            metric = _read_metrics(repo, entries, branch)
+
+            if metric:
+                found.add(target)
+                metrics.update(metric)
+
         if metrics:
             res[branch] = metrics
 
-    if not res:
-        if path:
-            raise BadMetricError(path)
+    if not res and not any(targets):
         raise NoMetricsError()
+
+    missing = set(targets) - found
+
+    if missing:
+        res[None] = missing
 
     return res
