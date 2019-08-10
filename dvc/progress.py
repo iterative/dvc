@@ -12,8 +12,7 @@ class Tqdm(tqdm):
     def __init__(
         self,
         iterable=None,
-        disable=logging.getLogger(__name__).getEffectiveLevel()
-        >= logging.CRITICAL,
+        disable=None,
         bytes=False,  # pylint: disable=W0622
         desc_truncate=None,
         **kwargs
@@ -32,6 +31,11 @@ class Tqdm(tqdm):
                 kwargs.setdefault(k, v)
         if desc_truncate is not None:
             kwargs.setdefault("desc", self.truncate(desc_truncate))
+        if disable is None:
+            disable = (
+                logging.getLogger(__name__).getEffectiveLevel()
+                >= logging.CRITICAL
+            )
         super(Tqdm, self).__init__(
             iterable=iterable, disable=disable, **kwargs
         )

@@ -348,9 +348,7 @@ class RemoteLOCAL(RemoteBASE):
         cache = []
         path_infos = []
         names = []
-        for md5, info in Tqdm(
-            status_info.items(), desc="Analysing status"
-        ):
+        for md5, info in Tqdm(status_info.items(), desc="Analysing status"):
             if info["status"] == status:
                 cache.append(self.checksum_to_path_info(md5))
                 path_infos.append(remote.checksum_to_path_info(md5))
