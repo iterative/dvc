@@ -85,7 +85,7 @@ def add_parser(subparsers, parent_parser):
     remote_add_parser = remote_subparsers.add_parser(
         "add",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_ADD_HELP, "remote-add"),
+        description=append_doc_link(REMOTE_ADD_HELP, "remote/add"),
         help=REMOTE_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -114,7 +114,7 @@ def add_parser(subparsers, parent_parser):
     remote_default_parser = remote_subparsers.add_parser(
         "default",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_DEFAULT_HELP, "remote-default"),
+        description=append_doc_link(REMOTE_DEFAULT_HELP, "remote/default"),
         help=REMOTE_DEFAULT_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -134,7 +134,7 @@ def add_parser(subparsers, parent_parser):
     remote_remove_parser = remote_subparsers.add_parser(
         "remove",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_REMOVE_HELP, "remote-remove"),
+        description=append_doc_link(REMOTE_REMOVE_HELP, "remote/remove"),
         help=REMOTE_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -147,7 +147,7 @@ def add_parser(subparsers, parent_parser):
     remote_modify_parser = remote_subparsers.add_parser(
         "modify",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_MODIFY_HELP, "remote-modify"),
+        description=append_doc_link(REMOTE_MODIFY_HELP, "remote/modify"),
         help=REMOTE_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -171,7 +171,7 @@ def add_parser(subparsers, parent_parser):
     remote_list_parser = remote_subparsers.add_parser(
         "list",
         parents=[parent_config_parser, parent_parser],
-        description=append_doc_link(REMOTE_LIST_HELP, "remote-list"),
+        description=append_doc_link(REMOTE_LIST_HELP, "remote/list"),
         help=REMOTE_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
