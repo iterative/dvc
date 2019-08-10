@@ -27,7 +27,7 @@ class Tqdm(tqdm):
         if bytes:
             for k, v in dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-            ):
+            ).items():
                 kwargs.setdefault(k, v)
         if desc_truncate is not None:
             kwargs.setdefault("desc", self.truncate(desc_truncate))
