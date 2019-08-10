@@ -201,7 +201,7 @@ def add_parser(subparsers, parent_parser):
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline-show"),
+        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline/show"),
         help=PIPELINE_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -257,7 +257,7 @@ def add_parser(subparsers, parent_parser):
     pipeline_list_parser = pipeline_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline-list"),
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
         help=PIPELINE_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

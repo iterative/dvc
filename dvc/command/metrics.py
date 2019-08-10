@@ -116,7 +116,7 @@ def add_parser(subparsers, parent_parser):
     metrics_show_parser = metrics_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(METRICS_SHOW_HELP, "metrics-show"),
+        description=append_doc_link(METRICS_SHOW_HELP, "metrics/show"),
         help=METRICS_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -165,7 +165,7 @@ def add_parser(subparsers, parent_parser):
     metrics_add_parser = metrics_subparsers.add_parser(
         "add",
         parents=[parent_parser],
-        description=append_doc_link(METRICS_ADD_HELP, "metrics-add"),
+        description=append_doc_link(METRICS_ADD_HELP, "metrics/add"),
         help=METRICS_ADD_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -182,7 +182,7 @@ def add_parser(subparsers, parent_parser):
     metrics_modify_parser = metrics_subparsers.add_parser(
         "modify",
         parents=[parent_parser],
-        description=append_doc_link(METRICS_MODIFY_HELP, "metrics-modify"),
+        description=append_doc_link(METRICS_MODIFY_HELP, "metrics/modify"),
         help=METRICS_MODIFY_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -199,7 +199,7 @@ def add_parser(subparsers, parent_parser):
     metrics_remove_parser = metrics_subparsers.add_parser(
         "remove",
         parents=[parent_parser],
-        description=append_doc_link(METRICS_REMOVE_HELP, "metrics-remove"),
+        description=append_doc_link(METRICS_REMOVE_HELP, "metrics/remove"),
         help=METRICS_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
