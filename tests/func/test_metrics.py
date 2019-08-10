@@ -857,10 +857,32 @@ def test_show_multiple_outputs(dvc_repo, caplog):
     with open("2.json", "w") as fobj:
         json.dump({"AUC": 2}, fobj)
 
+    os.mkdir("metrics")
+    with open("metrics/3.json", "w") as fobj:
+        json.dump({"AUC": 3}, fobj)
+
     dvc_repo.run(cmd="", overwrite=True, metrics=["1.json"])
     dvc_repo.run(cmd="", overwrite=True, metrics=["2.json"])
+    dvc_repo.run(cmd="", overwrite=True, metrics=["metrics/3.json"])
 
     with caplog.at_level(logging.INFO, logger="dvc"):
         assert 0 == main(["metrics", "show", "1.json", "2.json"])
         assert '1.json: {"AUC": 1}' in caplog.text
         assert '2.json: {"AUC": 2}' in caplog.text
+
+    caplog.clear()
+
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        assert 0 == main(["metrics", "show", "-R", "1.json", "metrics"])
+        assert '1.json: {"AUC": 1}' in caplog.text
+        assert 'metrics/3.json: {"AUC": 3}' in caplog.text
+
+    caplog.clear()
+
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        assert 1 == main(["metrics", "show", "1.json", "not-found"])
+        assert '1.json: {"AUC": 1}' in caplog.text
+        assert (
+            "the following metrics do not exists, "
+            "are not metric files or are malformed: 'not-found'"
+        ) in caplog.text
