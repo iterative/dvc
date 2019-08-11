@@ -94,7 +94,7 @@ class RemoteGS(RemoteBASE):
 
         for path_info in path_infos:
             paths.append(self._list_paths(path_info.bucket, path_info.path))
-            callback.update(str(path_info))
+            callback(str(path_info))
 
         paths = set(itertools.chain.from_iterable(paths))
 

@@ -160,7 +160,7 @@ class RemoteSSH(RemoteBASE):
                     if exc.errno != errno.ENOENT:
                         raise
                     ret.append(False)
-                callback.update(path)
+                callback(path)
             return ret
 
         with self.ssh(path_infos[0]) as ssh:
