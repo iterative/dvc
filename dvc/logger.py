@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 from dvc.utils.compat import str, StringIO
+from dvc.progress import Tqdm
 
 import logging
 import logging.handlers
@@ -148,6 +149,17 @@ class LoggerHandler(logging.StreamHandler):
     def handleError(self, record):
         super(LoggerHandler, self).handleError(record)
         raise LoggingException(record)
+
+    def emit(self, record):
+        """Write to Tqdm's stream so as to not break progressbars"""
+        try:
+            msg = self.format(record)
+            Tqdm.write(msg)
+            self.flush()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except:  # noqa pylint: disable=bare-except
+            self.handleError(record)
 
 
 def setup(level=logging.INFO):
