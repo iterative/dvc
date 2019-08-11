@@ -1,14 +1,13 @@
 import os
 import sys
 import re
-
 import shutil
 import filecmp
 import collections
 import logging
 
 from dvc.main import main
-from dvc import progress
+from dvc.progress import Tqdm
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from dvc.utils import walk_files, relpath
@@ -410,7 +409,7 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
 
     def test(self):
         with self._caplog.at_level(logging.INFO, logger="dvc"), patch.object(
-            sys, "stdout"
+            sys, "stderr"
         ) as stdout_mock:
             self.stdout_mock = logger.handlers[0].stream = stdout_mock
 
@@ -422,31 +421,29 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         write_calls = self.filter_out_empty_write_calls(write_calls)
         self.write_args = [w_c[1][0] for w_c in write_calls]
 
-        pattern = re.compile(".*\\[.{30}\\].*%.*")
-        progress_bars = [
-            arg
-            for arg in self.write_args
-            if pattern.match(arg) and "unpacked" not in arg
-        ]
-
+        pattern = re.compile(r"%\|\W+\| .*\[.*\]")
+        progress_bars = filter(pattern.search, self.write_args)
+        progress_bars = [arg for arg in progress_bars if "unpacked" not in arg]
         update_bars = progress_bars[:-1]
         finish_bar = progress_bars[-1]
 
-        self.assertEqual(4, len(update_bars))
-        assert re.search(".*\\[#{7} {23}\\] 25%.*", progress_bars[0])
-        assert re.search(".*\\[#{15} {15}\\] 50%.*", progress_bars[1])
-        assert re.search(".*\\[#{22} {8}\\] 75%.*", progress_bars[2])
-        assert re.search(".*\\[#{30}\\] 100%.*", progress_bars[3])
+        # at least the inital (blank) update_bar should be printed;
+        # but maybe no intermediate ones
+        self.assertLessEqual(1, len(update_bars))
+        self.assertLessEqual(len(update_bars), 4)
 
         self.assertCaretReturnFollowsEach(update_bars)
         self.assertNewLineFollows(finish_bar)
 
-        self.assertAnyEndsWith(update_bars, self.FOO)
-        self.assertAnyEndsWith(update_bars, self.BAR)
-        self.assertAnyEndsWith(update_bars, self.DATA)
-        self.assertAnyEndsWith(update_bars, self.DATA_SUB)
+        # self.assertAnyEndsWith(update_bars, self.FOO)
+        # self.assertAnyEndsWith(update_bars, self.BAR)
+        # self.assertAnyEndsWith(update_bars, self.DATA)
+        # self.assertAnyEndsWith(update_bars, self.DATA_SUB)
+        self.assertAnyStartsWith(
+            [finish_bar], "\r" + Tqdm.truncate(self.DATA_SUB)
+        )
 
-        self.assertTrue(finish_bar.endswith("Checkout finished!"))
+        # self.assertTrue(finish_bar.endswith("Checkout finished!"))
 
     def filter_out_empty_write_calls(self, calls):
         def is_not_empty_write(call):
@@ -485,14 +482,22 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
 
     def assertCaretReturnFollowsEach(self, update_bars):
         for update_bar in update_bars:
-
             self.assertIn(update_bar, self.write_args)
 
             for index, arg in enumerate(self.write_args):
                 if arg == update_bar:
-                    self.assertEqual(
-                        progress.CLEARLINE_PATTERN, self.write_args[index + 1]
-                    )
+                    lines = 0
+                    for arg in self.write_args[index + 1:]:
+                        if arg == "\n":
+                            lines += 1
+                        elif arg == "\x1b[A":
+                            lines -= 1
+                        elif arg.startswith('\r') and 'unpacked' in arg:
+                            pass
+                        else:
+                            self.assertEqual(0, lines)
+                            self.assertEqual("\r", arg[0])
+                            break
 
     def assertNewLineFollows(self, finish_bar):
         self.assertIn(finish_bar, self.write_args)
@@ -504,6 +509,8 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
     def assertAnyEndsWith(self, update_bars, name):
         self.assertTrue(any(ub for ub in update_bars if ub.endswith(name)))
 
+    def assertAnyStartsWith(self, update_bars, name):
+        self.assertTrue(any(ub for ub in update_bars if ub.startswith(name)))
 
 class TestCheckoutTargetRecursiveShouldNotRemoveOtherUsedFiles(TestDvc):
     def test(self):
