@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from dvc.scheme import Schemes
+from dvc.utils import LARGE_FILE_SIZE
 from dvc.utils.compat import open
 
 import requests
@@ -31,14 +32,10 @@ class RemoteHTTP(RemoteBASE):
         total = self._content_length(from_info.url)
         if name is None:
             name = from_info.url
-        leave = False
-        # TODO: persistent progress only for "large" files?
-        # if total:
-        #     leave = total > self.CHUNK_SIZE * 100
 
         with Tqdm(
             total=total,
-            leave=leave,
+            leave=False,
             bytes=True,
             desc_truncate=name,
             disable=no_progress_bar,
@@ -48,6 +45,9 @@ class RemoteHTTP(RemoteBASE):
                     fd.write(chunk)
                     fd.flush()
                     pbar.update(len(chunk))
+            # print completed progress bar for large file sizes
+            if pbar.n > LARGE_FILE_SIZE:
+                Tqdm.write(str(pbar))
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
