@@ -487,12 +487,12 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
             for index, arg in enumerate(self.write_args):
                 if arg == update_bar:
                     lines = 0
-                    for arg in self.write_args[index + 1:]:
+                    for arg in self.write_args[index + 1 :]:
                         if arg == "\n":
                             lines += 1
                         elif arg == "\x1b[A":
                             lines -= 1
-                        elif arg.startswith('\r') and 'unpacked' in arg:
+                        elif arg.startswith("\r") and "unpacked" in arg:
                             pass
                         else:
                             self.assertEqual(0, lines)
@@ -511,6 +511,7 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
 
     def assertAnyStartsWith(self, update_bars, name):
         self.assertTrue(any(ub for ub in update_bars if ub.startswith(name)))
+
 
 class TestCheckoutTargetRecursiveShouldNotRemoveOtherUsedFiles(TestDvc):
     def test(self):
