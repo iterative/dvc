@@ -178,4 +178,4 @@ class TestColorFormatter:
                 with caplog.at_level(logging.INFO, logger="dvc"):
                     logger.info("some info")
                     captured = capsys.readouterr()
-                    captured.out == ""
+                    assert captured.out == ""
