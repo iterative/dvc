@@ -5,7 +5,6 @@ import getpass
 import logging
 import itertools
 import errno
-from concurrent.futures import ThreadPoolExecutor
 import threading
 
 try:
@@ -20,6 +19,7 @@ from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
+from dvc.progress import TqdmThreadPoolExecutor
 
 from .connection import SSHConnection
 
@@ -167,7 +167,7 @@ class RemoteSSH(RemoteBASE):
             channels = ssh.open_max_sftp_channels()
             max_workers = len(channels)
 
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            with TqdmThreadPoolExecutor(max_workers=max_workers) as executor:
                 paths = [path_info.path for path_info in path_infos]
                 chunks = to_chunks(paths, num_chunks=max_workers)
                 chunks_and_channels = zip(chunks, channels)

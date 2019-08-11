@@ -2,6 +2,25 @@
 from __future__ import print_function
 import logging
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
+
+
+class TqdmThreadPoolExecutor(ThreadPoolExecutor):
+    """
+    Ensure worker progressbars are cleared away properly.
+    """
+
+    def __enter__(self):
+        """
+        Creates a blank initial dummy progress bar so that workers are forced to
+        create "nested" bars.
+        """
+        self.blank_bar = Tqdm(bar_format="Multi-Threaded:", leave=False)
+        super(TqdmThreadPoolExecutor, self).__enter__(self)
+
+    def __exit__(self, *a, **k):
+        super(TqdmThreadPoolExecutor, self).__exit__(*a, **k)
+        self.blank_bar.close()
 
 
 class Tqdm(tqdm):
