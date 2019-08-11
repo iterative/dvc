@@ -1,8 +1,9 @@
-import errno
 import os
 import posixpath
 import logging
-from stat import S_ISDIR
+import errno
+import stat
+from funcy import cached_property
 
 try:
     import paramiko
@@ -10,7 +11,7 @@ except ImportError:
     paramiko = None
 
 from dvc.utils import tmp_fname
-from dvc.utils.compat import makedirs
+from dvc.utils.compat import ignore_file_not_found
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
@@ -44,77 +45,60 @@ def create_cb(name):
 
 
 class SSHConnection:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, host, *args, **kwargs):
+        logger.debug(
+            "Establishing ssh connection with '{host}' "
+            "through port '{port}' as user '{username}'".format(
+                host=host, **kwargs
+            )
+        )
         self.timeout = kwargs.get("timeout", 1800)
 
         self._ssh = paramiko.SSHClient()
         self._ssh.load_system_host_keys()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-        self._ssh.connect(*args, **kwargs)
-        self._sftp = None
-        self._sftp_alive = False
+        self._ssh.connect(host, *args, **kwargs)
+        self._ssh.get_transport().set_keepalive(10)
+        self._sftp_channels = []
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.close()
-
-    def _sftp_connect(self):
-        if not self._sftp or not self._sftp_alive:
-            self._sftp = self._ssh.open_sftp()
-            self._sftp_alive = True
+    @property
+    def sftp(self):
+        if not self._sftp_channels:
+            self._sftp_channels = [self._ssh.open_sftp()]
+        return self._sftp_channels[0]
 
     def close(self):
-        if self._sftp:
-            self._sftp.close()
-            self._sftp_alive = False
-
+        for sftp in self._sftp_channels:
+            sftp.close()
         self._ssh.close()
 
-    def exists(self, path):
-        self._sftp_connect()
-        try:
-            return self._sftp.stat(path)
-        except IOError:
-            return False
-        pass
+    def st_mode(self, path):
+        with ignore_file_not_found():
+            return self.sftp.stat(path).st_mode
+
+        return 0
+
+    def exists(self, path, sftp=None):
+        return bool(self.st_mode(path))
 
     def isdir(self, path):
-        from stat import S_ISDIR
-
-        self._sftp_connect()
-        try:
-            return S_ISDIR(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISDIR(self.st_mode(path))
 
     def isfile(self, path):
-        from stat import S_ISREG
-
-        self._sftp_connect()
-        try:
-            return S_ISREG(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISREG(self.st_mode(path))
 
     def islink(self, path):
-        from stat import S_ISLNK
-
-        self._sftp_connect()
-        try:
-            return S_ISLNK(self._sftp.stat(path).st_mode)
-        except IOError:
-            return False
+        return stat.S_ISLNK(self.st_mode(path))
 
     def makedirs(self, path):
-        self._sftp_connect()
+        # Single stat call will say whether this is a dir, a file or a link
+        st_mode = self.st_mode(path)
 
-        if self.isdir(path):
+        if stat.S_ISDIR(st_mode):
             return
 
-        if self.isfile(path) or self.islink(path):
+        if stat.S_ISREG(st_mode) or stat.S_ISLNK(st_mode):
             raise DvcException(
                 "a file with the same name '{}' already exists".format(path)
             )
@@ -125,18 +109,21 @@ class SSHConnection:
             self.makedirs(head)
 
         if tail:
-            self._sftp.mkdir(path)
+            try:
+                self.sftp.mkdir(path)
+            except IOError as e:
+                # Since paramiko errors are very vague we need to recheck
+                # whether it's because path already exists or something else
+                if e.errno == errno.EACCES or not self.exists(path):
+                    raise
 
     def walk(self, directory, topdown=True):
         # NOTE: original os.walk() implementation [1] with default options was
         # used as a template.
         #
         # [1] https://github.com/python/cpython/blob/master/Lib/os.py
-
-        self._sftp_connect()
-
         try:
-            dir_entries = self._sftp.listdir_attr(directory)
+            dir_entries = self.sftp.listdir_attr(directory)
         except IOError as exc:
             raise DvcException(
                 "couldn't get the '{}' remote directory files list".format(
@@ -149,7 +136,7 @@ class SSHConnection:
         nondirs = []
         for entry in dir_entries:
             name = entry.filename
-            if S_ISDIR(entry.st_mode):
+            if stat.S_ISDIR(entry.st_mode):
                 dirs.append(name)
             else:
                 nondirs.append(name)
@@ -171,76 +158,58 @@ class SSHConnection:
                 yield posixpath.join(root, fname)
 
     def _remove_file(self, path):
-        try:
-            self._sftp.remove(path)
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
+        with ignore_file_not_found():
+            self.sftp.remove(path)
 
     def _remove_dir(self, path):
         for root, dirs, files in self.walk(path, topdown=False):
             for fname in files:
                 path = posixpath.join(root, fname)
-                self._remove_file(path)
+                with ignore_file_not_found():
+                    self._remove_file(path)
 
             for dname in dirs:
                 path = posixpath.join(root, dname)
-                self._sftp.rmdir(dname)
-        try:
-            self._sftp.rmdir(path)
-        except IOError as exc:
-            if exc.errno != errno.ENOENT:
-                raise
+                with ignore_file_not_found():
+                    self.sftp.rmdir(dname)
+
+        with ignore_file_not_found():
+            self.sftp.rmdir(path)
 
     def remove(self, path):
-        self._sftp_connect()
-
         if self.isdir(path):
             self._remove_dir(path)
         else:
             self._remove_file(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
-        self._sftp_connect()
-
-        makedirs(os.path.dirname(dest), exist_ok=True)
-        tmp_file = tmp_fname(dest)
-
         if no_progress_bar:
-            self._sftp.get(src, tmp_file)
+            self.sftp.get(src, dest)
         else:
             if not progress_title:
-                progress_title = os.path.basename(dest)
+                progress_title = os.path.basename(src)
 
-            self._sftp.get(src, tmp_file, callback=create_cb(progress_title))
+            self.sftp.get(src, dest, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
-
-        if os.path.exists(dest):
-            os.remove(dest)
-
-        os.rename(tmp_file, dest)
 
     def move(self, src, dst):
         self.makedirs(posixpath.dirname(dst))
-        self._sftp_connect()
-        self._sftp.rename(src, dst)
+        self.sftp.rename(src, dst)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
-        self._sftp_connect()
-
         self.makedirs(posixpath.dirname(dest))
         tmp_file = tmp_fname(dest)
 
         if no_progress_bar:
-            self._sftp.put(src, tmp_file)
+            self.sftp.put(src, tmp_file)
         else:
             if not progress_title:
                 progress_title = posixpath.basename(dest)
 
-            self._sftp.put(src, tmp_file, callback=create_cb(progress_title))
+            self.sftp.put(src, tmp_file, callback=create_cb(progress_title))
             progress.finish_target(progress_title)
 
-        self._sftp.rename(tmp_file, dest)
+        self.sftp.rename(tmp_file, dest)
 
     def execute(self, cmd):
         stdin, stdout, stderr = self._ssh.exec_command(cmd)
@@ -291,6 +260,10 @@ class SSHConnection:
 
         return b"".join(stdout_chunks).decode("utf-8")
 
+    @cached_property
+    def uname(self):
+        return self.execute("uname").strip()
+
     def md5(self, path):
         """
         Use different md5 commands depending on the OS:
@@ -301,22 +274,30 @@ class SSHConnection:
          Example:
               MD5 (foo.txt) = f3d220a856b52aabbf294351e8a24300
         """
-        uname = self.execute("uname").strip()
-
-        command = {
-            "Darwin": "md5 {}".format(path),
-            "Linux": "md5sum --tag {}".format(path),
-        }.get(uname)
-
-        if not command:
+        if self.uname == "Linux":
+            md5 = self.execute("md5sum " + path).split()[0]
+        elif self.uname == "Darwin":
+            md5 = self.execute("md5 " + path).split()[-1]
+        else:
             raise DvcException(
-                "'{uname}' is not supported as a remote".format(uname=uname)
+                "'{}' is not supported as a SSH remote".format(self.uname)
             )
 
-        md5 = self.execute(command).split()[-1]
         assert len(md5) == 32
         return md5
 
     def cp(self, src, dest):
         self.makedirs(posixpath.dirname(dest))
         self.execute("cp {} {}".format(src, dest))
+
+    def open_max_sftp_channels(self):
+        # If there are more than 1 it means we've already opened max amount
+        if len(self._sftp_channels) <= 1:
+            while True:
+                try:
+                    self._sftp_channels.append(self._ssh.open_sftp())
+                except paramiko.ssh_exception.ChannelException:
+                    if not self._sftp_channels:
+                        raise
+                    break
+        return self._sftp_channels

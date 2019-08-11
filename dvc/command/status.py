@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 class CmdDataStatus(CmdDataBase):
     STATUS_LEN = 20
     STATUS_INDENT = "\t"
-    UP_TO_DATE_MSG = "Pipeline is up to date. Nothing to reproduce."
+    UP_TO_DATE_MSG = "Data and pipelines are up to date."
 
     def _normalize(self, s):
         s += ":"
@@ -40,14 +40,13 @@ class CmdDataStatus(CmdDataBase):
                 logger.info("{}{}:".format(ind, key))
                 self._show(value, indent + 1)
 
-    def do_run(self, target=None):
+    def run(self):
         indent = 1 if self.args.cloud else 0
         try:
             st = self.repo.status(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 cloud=self.args.cloud,
-                show_checksums=self.args.show_checksums,
                 remote=self.args.remote,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,

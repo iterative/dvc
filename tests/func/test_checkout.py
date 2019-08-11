@@ -11,9 +11,10 @@ from dvc.main import main
 from dvc import progress
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
-from dvc.utils import walk_files
+from dvc.utils import walk_files, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
-from tests.basic_env import TestDvc
+from dvc.utils.compat import is_py2
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
@@ -113,7 +114,7 @@ class TestCmdCheckout(TestCheckout):
         self._test_checkout()
 
 
-class CheckoutBase(TestDvc):
+class CheckoutBase(TestDvcGit):
     GIT_IGNORE = ".gitignore"
 
     def commit_data_file(self, fname, content="random text"):
@@ -135,7 +136,7 @@ class CheckoutBase(TestDvc):
         paths = [
             path
             for output in stage["outs"]
-            for path in walk_files(output["path"])
+            for path in walk_files(output["path"], self.dvc.dvcignore)
         ]
 
         return [
@@ -422,7 +423,11 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         self.write_args = [w_c[1][0] for w_c in write_calls]
 
         pattern = re.compile(".*\\[.{30}\\].*%.*")
-        progress_bars = [arg for arg in self.write_args if pattern.match(arg)]
+        progress_bars = [
+            arg
+            for arg in self.write_args
+            if pattern.match(arg) and "unpacked" not in arg
+        ]
 
         update_bars = progress_bars[:-1]
         finish_bar = progress_bars[-1]
@@ -534,7 +539,7 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        if os.name == "nt":
+        if os.name == "nt" and is_py2:
             from jaraco.windows.filesystem import readlink
         else:
             readlink = os.readlink
@@ -562,11 +567,17 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         new_data_link = readlink(self.DATA)
 
         self.assertEqual(
-            os.path.relpath(old_foo_link, old_cache_dir),
-            os.path.relpath(new_foo_link, new_cache_dir),
+            relpath(old_foo_link, old_cache_dir),
+            relpath(new_foo_link, new_cache_dir),
         )
 
         self.assertEqual(
-            os.path.relpath(old_data_link, old_cache_dir),
-            os.path.relpath(new_data_link, new_cache_dir),
+            relpath(old_data_link, old_cache_dir),
+            relpath(new_data_link, new_cache_dir),
         )
+
+
+def test_checkout_no_checksum(repo_dir, dvc_repo):
+    stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
+    dvc_repo.checkout(stage.path, force=True)
+    assert not os.path.exists(repo_dir.FOO)

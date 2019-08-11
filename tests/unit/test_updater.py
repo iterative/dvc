@@ -1,9 +1,8 @@
 import os
 import json
-import mock
 
 from dvc import __version__
-from tests.basic_env import TestDvc
+from dvc.updater import Updater
 
 
 class MockResponse(object):
@@ -27,13 +26,15 @@ def mocked_requests_get(*args, **kwargs):
     return MockResponse({"version": __version__}, 200)
 
 
-class TestUpdater(TestDvc):
-    @mock.patch("requests.get", side_effect=mocked_requests_get)
-    def test_fetch(self, mock_get):
-        self.assertFalse(os.path.exists(self.dvc.updater.updater_file))
-        self.dvc.updater.fetch(detach=False)
-        mock_get.assert_called_once()
-        self.assertTrue(os.path.isfile(self.dvc.updater.updater_file))
-        with open(self.dvc.updater.updater_file, "r") as fobj:
-            info = json.load(fobj)
-        self.assertEqual(info["version"], __version__)
+def test_fetch(dvc_repo, mocker):
+    updater = Updater(dvc_repo.dvc_dir)
+    assert not os.path.exists(updater.updater_file)
+
+    mock_get = mocker.patch("requests.get", side_effect=mocked_requests_get)
+    updater.fetch(detach=False)
+    mock_get.assert_called_once_with(Updater.URL, timeout=Updater.TIMEOUT_GET)
+
+    assert os.path.isfile(updater.updater_file)
+    with open(updater.updater_file, "r") as fobj:
+        info = json.load(fobj)
+    assert info["version"] == __version__

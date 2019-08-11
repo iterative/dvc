@@ -31,18 +31,18 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
-        "-d",
-        "--with-deps",
-        action="store_true",
-        default=False,
-        help="Checkout all dependencies of the specified target.",
-    )
-    checkout_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         default=False,
         help="Do not prompt when removing working directory files.",
+    )
+    checkout_parser.add_argument(
+        "-d",
+        "--with-deps",
+        action="store_true",
+        default=False,
+        help="Checkout all dependencies of the specified target.",
     )
     checkout_parser.add_argument(
         "-R",
@@ -51,5 +51,10 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Checkout all subdirectories of the specified directory.",
     )
-    checkout_parser.add_argument("targets", nargs="*", help="DVC files.")
+    checkout_parser.add_argument(
+        "targets",
+        nargs="*",
+        help="DVC-files to checkout. Optional. "
+        "(Finds all DVC-files in the workspace by default.)",
+    )
     checkout_parser.set_defaults(func=CmdCheckout)

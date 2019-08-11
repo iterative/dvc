@@ -54,9 +54,9 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     add_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC file it generates."
+        "-f", "--file", help="Specify name of the DVC-file it generates."
     )
     add_parser.add_argument(
-        "targets", nargs="+", help="Input files/directories."
+        "targets", nargs="+", help="Input files/directories to add."
     )
     add_parser.set_defaults(func=CmdAdd)

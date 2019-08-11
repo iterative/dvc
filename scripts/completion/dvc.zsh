@@ -15,29 +15,33 @@ _dvc_commands() {
     "add:Take data files or directories under DVC control."
     "cache:Manage cache settings."
     "checkout:Checkout data files from cache."
-    "commit:Save changed data to cache and update DVC files."
+    "commit:Save changed data to cache and update DVC-files."
     "config:Get or set config settings."
-    "destroy:Remove DVC files, local DVC config and data cache."
+    "destroy:Remove DVC-files, local DVC config and data cache."
     "diff:Show a diff of a DVC controlled data file or a directory."
     "fetch:Fetch data files from a DVC remote storage."
+    "get-url:Download or copy files from URL."
+    "get:Download data from DVC repository."
     "gc:Collect unused data from DVC cache or a remote storage."
-    "import:Download or copy files from URL and take under DVC control."
+    "import-url:Download or copy file from URL and take it under DVC control."
+    "import:Download data from DVC repository and take it under DVC control."
     "init:Initialize DVC in the current directory."
     "install:Install DVC git hooks into the repository."
-    "lock:Lock DVC file."
+    "lock:Lock DVC-file."
     "metrics:Commands to add, manage, collect and display metrics."
     "move:Rename or move a DVC controlled data file or a directory."
     "pipeline:Manage pipelines."
     "pull:Pull data files from a DVC remote storage."
     "push:Push data files to a DVC remote storage."
     "remote:Manage remote storage configuration."
-    "remove:Remove outputs of DVC file."
-    "repro:Check for changes and reproduce DVC file and dependencies."
+    "remove:Remove outputs of DVC-file."
+    "repro:Check for changes and reproduce DVC-file and dependencies."
     "root:Relative path to project's directory."
     "run:Generate a stage file from a command and execute the command."
     "status:Show changed stages, compare local cache and a remote storage."
-    "unlock:Unlock DVC file."
+    "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
+    "update:Update data artifacts imported from other DVC repositories."
     "version:Show DVC version and system/environment informaion."
   )
 
@@ -58,7 +62,7 @@ _dvc_global_options=(
 _dvc_add=(
   {-R,--recursive}"[Recursively add each file under the directory.]"
   "--no-commit[Don't put files/directories into cache.]"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:File:_files"
 )
 
@@ -92,18 +96,29 @@ _dvc_destroy=(
 )
 
 _dvc_diff=(
-  {-t,--target}"[Source path to a data file or directory.]:Target file(s):"
+  {-t,--target}"[Source path to a data file or directory.]:Target files:"
 )
 
 _dvc_fetch=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to fetch from.]:Remote repository:"
   {-a,--all-branches}"[Fetch cache for all branches.]"
   {-T,--all-tags}"[Fetch cache for all tags.]"
   {-d,--with-deps}"[Fetch cache for all dependencies of the specified target.]"
   {-R,--recursive}"[Fetch cache for subdirectories of specified directory.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
+)
+
+_dvc_geturl=(
+  "1:URL:"
+  "2:Output:"
+)
+
+_dvc_get=(
+  {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
+  "--rev[DVC repository git revision.]:Commit hash:"
+  "1:URL:"
+  "2:Path:"
 )
 
 _dvc_gc=(
@@ -116,11 +131,17 @@ _dvc_gc=(
   {-p,--projects}"[Keep data files required by these projects in addition to the current one.]:Repos:_files"
 )
 
-_dvc_import=(
-  "--resume[Resume previously started download.]"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+_dvc_importurl=(
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   "1:URL:"
   "2:Output:"
+)
+
+_dvc_import=(
+  {-o,--out}"[Destination path to put data to.]:OUT:_files -/"
+  "--rev[DVC repository git revision.]:Commit hash:"
+  "1:URL:"
+  "2:Path:"
 )
 
 _dvc_init=(
@@ -144,12 +165,11 @@ _dvc_move=(
 )
 
 _dvc_pipeline=(
-  "1:Sub command:(show,list)"
+  "1:Sub command:(show list)"
 )
 
 _dvc_pull=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to pull from.]:Remote repository:"
   {-a,--all-branches}"[Fetch cache for all branches.]"
   {-T,--all-tags}"[Fetch cache for all tags.]"
@@ -161,7 +181,6 @@ _dvc_pull=(
 
 _dvc_push=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
-  "--show-checksums[Show checksums instead of file names.]"
   {-r,--remote}"[Remote repository to push to.]:Remote repository:"
   {-a,--all-branches}"[Push cache for all branches.]"
   {-T,--all-tags}"[Push cache for all tags.]"
@@ -177,8 +196,8 @@ _dvc_remote=(
 _dvc_remove=(
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
   "--dry[Only print the commands that would be executed without actually executing]"
-  {-o,--outs}"[Only remove DVC file outputs. (Default)]"
-  {-p,--purge}"[Remove DVC file and all its outputs.]"
+  {-o,--outs}"[Only remove DVC-file outputs. (Default)]"
+  {-p,--purge}"[Remove DVC-file and all its outputs.]"
   {-f,--force}"[Force purge.]"
 )
 
@@ -194,7 +213,7 @@ _dvc_repro=(
   {-R,--recursive}"[Reproduce all stages in the specified directory.]"
   "--ignore-build-cache[Reproduce all descendants of a changed stage even if their direct dependencies didn't change.]"
   "--no-commit[Don't put files/directories into cache.]"
-  "--downstream[Reproduce the pipeline starting from the specified stage.]"
+  "--downstream[Start from the specified stages when reproducing pipelines.]"
   "*:Stages:_files -g '(*.dvc|Dvcfile)'"
 )
 
@@ -206,12 +225,12 @@ _dvc_run=(
   "*"{-O,--outs-no-cache}"[Declare output file or directory (do not put into DVC cache).]:Output regular:_files"
   "*"{-m,--metrics}"[Declare output metric file or directory.]:Metrics:_files"
   "*"{-M,--metrics-no-cache}"[Declare output metric file or directory (do not put into DVC cache).]:Metrics (no cache):_files"
-  {-f,--file}"[Specify name of the DVC file it generates.]:File:_files"
+  {-f,--file}"[Specify name of the DVC-file it generates.]:File:_files"
   {-c,--cwd}"[Deprecated, use -w and -f instead.]:CWD:_files -/"
   {-w,--wdir}"[Directory within your repo to run your command in.]:WDIR:_files -/"
   "--no-exec[Only create stage file without actually running it.]"
   {-y,--yes}"[Deprecated, use --overwrite-dvcfile instead]"
-  "--overwrite-dvcfile[Overwrite existing dvc file without asking for confirmation.]"
+  "--overwrite-dvcfile[Overwrite existing DVC-file without asking for confirmation.]"
   "--ignore-build-cache[Run this stage even if it has been already ran with the same command/dependencies/outputs/etc before.]"
   "--remove-outs[Deprecated, this is now the default behavior]"
   "--no-commit[Don't put files/directories into cache.]"
@@ -222,7 +241,7 @@ _dvc_run=(
 _dvc_status=(
   {-j,--jobs}"[Number of jobs to run simultaneously.]:Number of jobs:"
   "--show-checksums[Show checksums instead of file names.]"
-  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipeline is up to date, otherwise 1.]"
+  {-q,--quiet}"[Suppresses all output. Exit with 0 if pipelines are up to date, otherwise 1.]"
   {-c,--cloud}"[Show status of a local cache compared to a remote repository.]"
   {-r,--remote}"[Remote repository to compare local cache to.]:Remote repository:"
   {-a,--all-branches}"[Show status of a local cache compared to a remote repository for all branches.]"
@@ -239,6 +258,10 @@ _dvc_unprotect=(
   "*:Data files:_files"
 )
 
+_dvc_update=(
+  "*:Stages:_files -g '(*.dvc|Dvcfile)'"
+)
+
 typeset -A opt_args
 local context state line curcontext="$curcontext"
 
@@ -248,30 +271,34 @@ _arguments \
   '*::args:->args'
 
 case $words[1] in
-  add)       _arguments $_dvc_global_options   $_dvc_add       ;;
-  cache)     _arguments $_dvc_global_options   $_dvc_cache     ;;
-  checkout)  _arguments $_dvc_global_options   $_dvc_checkout  ;;
-  commit)    _arguments $_dvc_global_options   $_dvc_commit    ;;
-  config)    _arguments $_dvc_global_options   $_dvc_config    ;;
-  destroy)   _arguments $_dvc_global_options   $_dvc_destroy   ;;
-  diff)      _arguments $_dvc_global_options   $_dvc_diff      ;;
-  fetch)     _arguments $_dvc_global_options   $_dvc_fetch     ;;
-  gc)        _arguments $_dvc_global_options   $_dvc_gc        ;;
-  import)    _arguments $_dvc_global_options   $_dvc_import    ;;
-  init)      _arguments $_dvc_global_options   $_dvc_init      ;;
-  install)   _arguments $_dvc_global_options   $_dvc_install   ;;
-  lock)      _arguments $_dvc_global_options   $_dvc_lock      ;;
-  metrics)   _arguments $_dvc_global_options   $_dvc_metrics   ;;
-  move)      _arguments $_dvc_global_options   $_dvc_move      ;;
-  pipeline)  _arguments $_dvc_global_options   $_dvc_pipeline  ;;
-  pull)      _arguments $_dvc_global_options   $_dvc_pull      ;;
-  push)      _arguments $_dvc_global_options   $_dvc_push      ;;
-  remote)    _arguments $_dvc_global_options   $_dvc_remote    ;;
-  remove)    _arguments $_dvc_global_options   $_dvc_remove    ;;
-  repro)     _arguments $_dvc_global_options   $_dvc_repro     ;;
-  root)      _arguments $_dvc_global_options   $_dvc_root      ;;
-  run)       _arguments $_dvc_global_options   $_dvc_run       ;;
-  status)    _arguments $_dvc_global_options   $_dvc_status    ;;
-  unlock)    _arguments $_dvc_global_options   $_dvc_unlock    ;;
-  unprotect) _arguments $_dvc_global_options   $_dvc_unprotect ;;
+  add)        _arguments $_dvc_global_options   $_dvc_add       ;;
+  cache)      _arguments $_dvc_global_options   $_dvc_cache     ;;
+  checkout)   _arguments $_dvc_global_options   $_dvc_checkout  ;;
+  commit)     _arguments $_dvc_global_options   $_dvc_commit    ;;
+  config)     _arguments $_dvc_global_options   $_dvc_config    ;;
+  destroy)    _arguments $_dvc_global_options   $_dvc_destroy   ;;
+  diff)       _arguments $_dvc_global_options   $_dvc_diff      ;;
+  fetch)      _arguments $_dvc_global_options   $_dvc_fetch     ;;
+  get-url)    _arguments $_dvc_global_options   $_dvc_geturl    ;;
+  get)        _arguments $_dvc_global_options   $_dvc_get       ;;
+  gc)         _arguments $_dvc_global_options   $_dvc_gc        ;;
+  import-url) _arguments $_dvc_global_options   $_dvc_importurl ;;
+  import)     _arguments $_dvc_global_options   $_dvc_import    ;;
+  init)       _arguments $_dvc_global_options   $_dvc_init      ;;
+  install)    _arguments $_dvc_global_options   $_dvc_install   ;;
+  lock)       _arguments $_dvc_global_options   $_dvc_lock      ;;
+  metrics)    _arguments $_dvc_global_options   $_dvc_metrics   ;;
+  move)       _arguments $_dvc_global_options   $_dvc_move      ;;
+  pipeline)   _arguments $_dvc_global_options   $_dvc_pipeline  ;;
+  pull)       _arguments $_dvc_global_options   $_dvc_pull      ;;
+  push)       _arguments $_dvc_global_options   $_dvc_push      ;;
+  remote)     _arguments $_dvc_global_options   $_dvc_remote    ;;
+  remove)     _arguments $_dvc_global_options   $_dvc_remove    ;;
+  repro)      _arguments $_dvc_global_options   $_dvc_repro     ;;
+  root)       _arguments $_dvc_global_options   $_dvc_root      ;;
+  run)        _arguments $_dvc_global_options   $_dvc_run       ;;
+  status)     _arguments $_dvc_global_options   $_dvc_status    ;;
+  unlock)     _arguments $_dvc_global_options   $_dvc_unlock    ;;
+  unprotect)  _arguments $_dvc_global_options   $_dvc_unprotect ;;
+  update)     _arguments $_dvc_global_options   $_dvc_update    ;;
 esac

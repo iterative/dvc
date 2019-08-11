@@ -7,7 +7,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.system import System
-from dvc.utils import dvc_walk
+from dvc.utils import dict_md5, walk_files
 from dvc.utils.compat import str
 
 
@@ -20,30 +20,33 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path):
-    stat = os.stat(path)
-    size = stat.st_size
-    mtime = stat.st_mtime
-
+def get_mtime_and_size(path, dvcignore):
     if os.path.isdir(path):
-        for root, dirs, files in dvc_walk(str(path)):
-            for name in dirs + files:
-                entry = os.path.join(root, name)
-                try:
-                    stat = os.stat(entry)
-                except OSError as exc:
-                    # NOTE: broken symlink case.
-                    if exc.errno != errno.ENOENT:
-                        raise
-                    continue
-                size += stat.st_size
-                entry_mtime = stat.st_mtime
-                if entry_mtime > mtime:
-                    mtime = entry_mtime
+        size = 0
+        files_mtimes = {}
+        for file_path in walk_files(path, dvcignore):
+            try:
+                stat = os.stat(file_path)
+            except OSError as exc:
+                # NOTE: broken symlink case.
+                if exc.errno != errno.ENOENT:
+                    raise
+                continue
+            size += stat.st_size
+            files_mtimes[file_path] = stat.st_mtime
+
+        # We track file changes and moves, which cannot be detected with simply
+        # max(mtime(f) for f in non_ignored_files)
+        mtime = dict_md5(files_mtimes)
+    else:
+        base_stat = os.stat(path)
+        size = base_stat.st_size
+        mtime = base_stat.st_mtime
+        mtime = int(nanotime.timestamp(mtime))
 
     # State of files handled by dvc is stored in db as TEXT.
     # We cast results to string for later comparisons with stored values.
-    return str(int(nanotime.timestamp(mtime))), str(size)
+    return str(mtime), str(size)
 
 
 class BasePathNotInCheckedPathException(DvcException):

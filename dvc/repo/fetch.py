@@ -3,8 +3,8 @@ from __future__ import unicode_literals
 
 def fetch(
     self,
-    target=None,
-    jobs=1,
+    targets=None,
+    jobs=None,
     remote=None,
     all_branches=False,
     show_checksums=False,
@@ -14,7 +14,7 @@ def fetch(
 ):
     with self.state:
         used = self.used_cache(
-            target,
+            targets,
             all_branches=all_branches,
             all_tags=all_tags,
             with_deps=with_deps,

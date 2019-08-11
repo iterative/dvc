@@ -1,31 +1,15 @@
+from __future__ import unicode_literals
+
+import logging
 import os
+from pathspec import PathSpec
+from pathspec.patterns import GitWildMatchPattern
 
-from dulwich.ignore import match_pattern, read_ignore_patterns
-from dvc.utils.compat import cast_bytes
-from dvc.utils.fs import get_parent_dirs_up_to
+from dvc.utils import relpath
 
+from dvc.utils.compat import open
 
-class DvcIgnoreFileHandler(object):
-    def __init__(self, tree):
-        self.tree = tree
-
-    def read_patterns(self, path):
-        with self.tree.open(path, binary=True) as stream:
-            return self._read_patterns(stream)
-
-    def get_repo_root(self):
-        return self.tree.tree_root
-
-    def _read_patterns(self, binary_stream):
-        negate_patterns = []
-        patterns = []
-        for pattern in read_ignore_patterns(binary_stream):
-            if pattern.lstrip().startswith(b"!"):
-                negate_patterns.append(pattern)
-            else:
-                patterns.append(pattern)
-
-        return negate_patterns, patterns
+logger = logging.getLogger(__name__)
 
 
 class DvcIgnore(object):
@@ -35,16 +19,15 @@ class DvcIgnore(object):
         raise NotImplementedError
 
 
-class DvcIgnoreFromFile(DvcIgnore):
-    def __init__(self, ignore_file_path, ignore_handler):
+class DvcIgnorePatterns(DvcIgnore):
+    def __init__(self, ignore_file_path):
+        assert os.path.isabs(ignore_file_path)
+
         self.ignore_file_path = ignore_file_path
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
-        self.patterns = []
-        self.negate_patterns = []
 
-        self.negate_patterns, self.patterns = ignore_handler.read_patterns(
-            ignore_file_path
-        )
+        with open(ignore_file_path, encoding="utf-8") as fobj:
+            self.ignore_spec = PathSpec.from_lines(GitWildMatchPattern, fobj)
 
     def __call__(self, root, dirs, files):
         files = [f for f in files if not self.matches(root, f)]
@@ -52,82 +35,45 @@ class DvcIgnoreFromFile(DvcIgnore):
 
         return dirs, files
 
-    def get_match(self, abs_path):
-        rel_path = os.path.relpath(abs_path, self.dirname)
-        if os.name == "nt":
-            rel_path = rel_path.replace("\\", "/")
-        rel_path = cast_bytes(rel_path, "utf-8")
-
-        for pattern in self.patterns:
-            if match_pattern(
-                rel_path, pattern
-            ) and self._no_negate_pattern_matches(rel_path):
-                return (abs_path, pattern, self.ignore_file_path)
-        return None
-
     def matches(self, dirname, basename):
-        if self.get_match(os.path.join(dirname, basename)):
-            return True
-        return False
+        abs_path = os.path.join(dirname, basename)
+        rel_path = relpath(abs_path, self.dirname)
 
-    def _no_negate_pattern_matches(self, path):
-        return all([not match_pattern(path, p) for p in self.negate_patterns])
+        if os.pardir + os.sep in rel_path:
+            return False
+        return self.ignore_spec.match_file(rel_path)
 
     def __hash__(self):
         return hash(self.ignore_file_path)
 
-
-class DvcIgnoreConstant(DvcIgnore):
-    def __init__(self, basename):
-        self.basename = basename
+    def __eq__(self, other):
+        return self.ignore_file_path == other.ignore_file_path
 
 
-class DvcIgnoreDir(DvcIgnoreConstant):
+class DvcIgnoreDirs(DvcIgnore):
+    def __init__(self, basenames):
+        self.basenames = set(basenames)
+
     def __call__(self, root, dirs, files):
-        dirs = [d for d in dirs if not d == self.basename]
-
-        return dirs, files
-
-
-class DvcIgnoreFile(DvcIgnoreConstant):
-    def __call__(self, root, dirs, files):
-        files = [f for f in files if not f == self.basename]
+        dirs = [d for d in dirs if d not in self.basenames]
 
         return dirs, files
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self, wdir, ignore_file_handler=None):
-        self.ignores = [
-            DvcIgnoreDir(".git"),
-            DvcIgnoreDir(".hg"),
-            DvcIgnoreDir(".dvc"),
-            DvcIgnoreFile(".dvcignore"),
-        ]
+    def __init__(self, root_dir):
+        self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
+        self._update(root_dir)
+        for root, dirs, _ in os.walk(root_dir):
+            for d in dirs:
+                self._update(os.path.join(root, d))
 
-        self.ignore_file_handler = ignore_file_handler
-        self._process_ignores_in_parent_dirs(wdir)
-
-    def _process_ignores_in_parent_dirs(self, wdir):
-        if self.ignore_file_handler:
-            wdir = os.path.normpath(os.path.abspath(wdir))
-            ignore_search_end_dir = self.ignore_file_handler.get_repo_root()
-            parent_dirs = get_parent_dirs_up_to(wdir, ignore_search_end_dir)
-            for d in parent_dirs:
-                self.update(d)
-
-    def update(self, wdir):
-        ignore_file_path = os.path.join(wdir, DvcIgnore.DVCIGNORE_FILE)
+    def _update(self, dirname):
+        ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
         if os.path.exists(ignore_file_path):
-            file_ignore = DvcIgnoreFromFile(
-                ignore_file_path, ignore_handler=self.ignore_file_handler
-            )
-            self.ignores.append(file_ignore)
+            self.ignores.add(DvcIgnorePatterns(ignore_file_path))
 
     def __call__(self, root, dirs, files):
-        if self.ignore_file_handler:
-            self.update(root)
-
         for ignore in self.ignores:
             dirs, files = ignore(root, dirs, files)
 

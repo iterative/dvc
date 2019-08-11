@@ -12,10 +12,18 @@ del /Q /S "dvc-*.exe"
 where pip
 if %errorlevel% neq 0 (echo Error: pip not found && goto :error)
 
-if not exist "C:\Program Files (x86)\Inno Setup 5\ISCC.exe" (echo Error: Couldn't find Inno Setup compiler. Please go to jrsoftware.org/isinfo.php and install Inno Setup 5 && goto :error)
+where choco
+if %errorlevel% neq 0 (echo Error: choco not found && goto :error)
+
+choco install InnoSetup
+call refreshenv
+where iscc
+if %errorlevel% neq 0 (echo Error: Couldn't find Inno Setup compiler. && goto :error)
 
 echo ====== Installing requirements... ======
-call pip install -e .[all] || goto :error
+call pip install .[all] || goto :error
+call pip install psutil || goto :error
+call dvc pull || goto :error
 call pip install pyinstaller || goto :error
 
 echo ====== Building dvc binary... ======
@@ -27,7 +35,7 @@ copy scripts\innosetup\addSymLinkPermissions.ps1 dist\ || goto :error
 echo ====== Building dvc installer... ======
 set PYTHONPATH=%cd%
 call python scripts\innosetup\config_gen.py || goto :error
-call "C:\Program Files (x86)\Inno Setup 5\iscc" scripts\innosetup\setup.iss || goto :error
+call iscc scripts\innosetup\setup.iss || goto :error
 
 echo ====== DONE ======
 goto :EOF

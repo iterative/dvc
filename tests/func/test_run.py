@@ -6,6 +6,9 @@ import mock
 import shutil
 import filecmp
 import subprocess
+import signal
+import threading
+import pytest
 
 from dvc.main import main
 from dvc.output import OutputBase
@@ -52,7 +55,7 @@ class TestRun(TestDvc):
         self.assertEqual(stage.cmd, cmd)
         self.assertEqual(len(stage.deps), len(deps))
         self.assertEqual(len(stage.outs), len(outs + outs_no_cache))
-        self.assertEqual(stage.outs[0].path, outs[0])
+        self.assertEqual(stage.outs[0].fspath, outs[0])
         self.assertEqual(stage.outs[0].checksum, file_md5(self.FOO)[0])
         self.assertTrue(stage.path, fname)
 
@@ -94,16 +97,6 @@ class TestRunMissingDep(TestDvc):
 
 class TestRunBadStageFilename(TestDvc):
     def test(self):
-        with self.assertRaises(StageFileBadNameError):
-            self.dvc.run(
-                cmd="",
-                deps=[],
-                outs=[],
-                outs_no_cache=[],
-                fname="empty",
-                cwd=os.curdir,
-            )
-
         with self.assertRaises(StageFileBadNameError):
             self.dvc.run(
                 cmd="",
@@ -279,54 +272,64 @@ class TestRunBadName(TestDvc):
             )
 
 
-class TestCmdRun(TestDvc):
-    def test_run(self):
-        ret = main(
+@pytest.mark.skipif(
+    not isinstance(threading.current_thread(), threading._MainThread),
+    reason="Not running in the main thread.",
+)
+@mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
+def test_keyboard_interrupt(repo_dir, dvc_repo):
+    assert (
+        main(
             [
                 "run",
                 "-d",
-                self.FOO,
+                repo_dir.FOO,
                 "-d",
-                self.CODE,
+                repo_dir.CODE,
                 "-o",
                 "out",
                 "-f",
                 "out.dvc",
                 "python",
-                self.CODE,
-                self.FOO,
+                repo_dir.CODE,
+                repo_dir.FOO,
                 "out",
             ]
         )
+        == 1
+    )
 
-        stage = Stage.load(self.dvc, fname="out.dvc")
 
-        self.assertEqual(ret, 0)
-        self.assertTrue(os.path.isfile("out"))
-        self.assertTrue(os.path.isfile("out.dvc"))
-        self.assertTrue(filecmp.cmp(self.FOO, "out", shallow=False))
-        self.assertEqual(stage.cmd, "python code.py foo out")
-
-    def test_run_args_from_cli(self):
-        ret = main(["run", "echo", "foo"])
-        stage = Stage.load(self.dvc, fname="Dvcfile")
-        self.assertEqual(ret, 0)
-        self.assertEqual(stage.cmd, "echo foo")
-
-    def test_run_bad_command(self):
-        ret = main(["run", "non-existing-command"])
-        self.assertNotEqual(ret, 0)
-
-    def test_run_args_with_spaces(self):
-        ret = main(["run", "echo", "foo bar"])
-        stage = Stage.load(self.dvc, fname="Dvcfile")
-        self.assertEqual(ret, 0)
-        self.assertEqual(stage.cmd, 'echo "foo bar"')
-
-    @mock.patch.object(subprocess, "Popen", side_effect=KeyboardInterrupt)
-    def test_keyboard_interrupt(self, _):
-        ret = main(["run", "mycmd"])
-        self.assertEqual(ret, 252)
+@pytest.mark.skipif(
+    not isinstance(threading.current_thread(), threading._MainThread),
+    reason="Not running in the main thread.",
+)
+def test_keyboard_interrupt_after_second_signal_call(
+    mocker, repo_dir, dvc_repo
+):
+    mocker.patch.object(
+        signal, "signal", side_effect=[None, KeyboardInterrupt]
+    )
+    assert (
+        main(
+            [
+                "run",
+                "-d",
+                repo_dir.FOO,
+                "-d",
+                repo_dir.CODE,
+                "-o",
+                "out",
+                "-f",
+                "out.dvc",
+                "python",
+                repo_dir.CODE,
+                repo_dir.FOO,
+                "out",
+            ]
+        )
+        == 252
+    )
 
 
 class TestRunRemoveOuts(TestDvc):
@@ -668,21 +671,22 @@ class TestCmdRunWorkingDirectory(TestDvc):
         )
 
 
-class TestRunDeterministicBase(TestDvc):
-    def setUp(self):
-        super(TestRunDeterministicBase, self).setUp()
+class DeterministicRunBaseFixture(object):
+    def __init__(self, repo_dir, dvc_repo):
         self.out_file = "out"
         self.stage_file = self.out_file + ".dvc"
-        self.cmd = "python {} {} {}".format(self.CODE, self.FOO, self.out_file)
-        self.deps = [self.FOO, self.CODE]
+        self.cmd = "python {} {} {}".format(
+            repo_dir.CODE, repo_dir.FOO, self.out_file
+        )
+        self.deps = [repo_dir.FOO, repo_dir.CODE]
         self.outs = [self.out_file]
         self.overwrite = False
         self.ignore_build_cache = False
+        self.dvc_repo = dvc_repo
+        self.stage = None
 
-        self._run()
-
-    def _run(self):
-        self.stage = self.dvc.run(
+    def run(self):
+        self.stage = self.dvc_repo.run(
             cmd=self.cmd,
             fname=self.stage_file,
             overwrite=self.overwrite,
@@ -690,70 +694,69 @@ class TestRunDeterministicBase(TestDvc):
             deps=self.deps,
             outs=self.outs,
         )
+        return self.stage
 
 
-class TestRunDeterministic(TestRunDeterministicBase):
-    def test(self):
-        self._run()
+@pytest.fixture
+def deterministic_run(dvc_repo, repo_dir):
+    run_base = DeterministicRunBaseFixture(repo_dir, dvc_repo)
+    run_base.run()
+    yield run_base
 
 
-class TestRunDeterministicOverwrite(TestRunDeterministicBase):
-    def test(self):
-        self.overwrite = True
-        self.ignore_build_cache = True
-        self._run()
+def test_run_deterministic(deterministic_run):
+    deterministic_run.run()
 
 
-class TestRunDeterministicCallback(TestRunDeterministicBase):
-    def test(self):
-        self.stage.remove()
-        self.deps = []
-        self._run()
-        self._run()
+def test_run_deterministic_overwrite(deterministic_run):
+    deterministic_run.overwrite = True
+    deterministic_run.ignore_build_cache = True
+    deterministic_run.run()
 
 
-class TestRunDeterministicChangedDep(TestRunDeterministicBase):
-    def test(self):
-        os.unlink(self.FOO)
-        shutil.copy(self.BAR, self.FOO)
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_callback(deterministic_run):
+    deterministic_run.stage.remove()
+    deterministic_run.deps = []
+    deterministic_run.run()
+    with mock.patch("dvc.prompt.confirm", return_value=True):
+        assert deterministic_run.run()
 
 
-class TestRunDeterministicChangedDepsList(TestRunDeterministicBase):
-    def test(self):
-        self.deps = [self.BAR, self.CODE]
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_changed_dep(deterministic_run, repo_dir):
+    os.unlink(repo_dir.FOO)
+    shutil.copy(repo_dir.BAR, repo_dir.FOO)
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
 
 
-class TestRunDeterministicNewDep(TestRunDeterministicBase):
-    def test(self):
-        self.deps = [self.FOO, self.BAR, self.CODE]
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_changed_deps_list(deterministic_run, repo_dir):
+    deterministic_run.deps = [repo_dir.BAR, repo_dir.CODE]
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
 
 
-class TestRunDeterministicRemoveDep(TestRunDeterministicBase):
-    def test(self):
-        self.deps = [self.CODE]
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_new_dep(deterministic_run, repo_dir):
+    deterministic_run.deps = [repo_dir.FOO, repo_dir.BAR, repo_dir.CODE]
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
 
 
-class TestRunDeterministicChangedOut(TestRunDeterministicBase):
-    def test(self):
-        os.unlink(self.out_file)
-        self.out_file_mtime = None
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_remove_dep(deterministic_run, repo_dir):
+    deterministic_run.deps = [repo_dir.CODE]
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
 
 
-class TestRunDeterministicChangedCmd(TestRunDeterministicBase):
-    def test(self):
-        self.cmd += " arg"
-        with self.assertRaises(StageFileAlreadyExistsError):
-            self._run()
+def test_run_deterministic_changed_out(deterministic_run):
+    os.unlink(deterministic_run.out_file)
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
+
+
+def test_run_deterministic_changed_cmd(deterministic_run):
+    deterministic_run.cmd += " arg"
+    with pytest.raises(StageFileAlreadyExistsError):
+        deterministic_run.run()
 
 
 class TestRunCommit(TestDvc):
@@ -939,7 +942,7 @@ class TestShouldNotCheckoutUponCorruptedLocalHardlinkCache(TestDvc):
         self.dvc = DvcRepo(".")
 
     def test(self):
-        cmd = "cp {} {}".format(self.FOO, self.BAR)
+        cmd = "python {} {} {}".format(self.CODE, self.FOO, self.BAR)
         stage = self.dvc.run(deps=[self.FOO], outs=[self.BAR], cmd=cmd)
 
         with open(self.BAR, "w") as fd:
@@ -987,3 +990,17 @@ class TestPersistentOutput(TestDvc):
         # it should run the command again, as it is "ignoring build cache"
         with open("greetings", "r") as fobj:
             assert "hello\nhello\n" == fobj.read()
+
+
+def test_bad_stage_fname(repo_dir, dvc_repo):
+    dvc_repo.add(repo_dir.FOO)
+    with pytest.raises(StageFileBadNameError):
+        dvc_repo.run(
+            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
+            deps=[repo_dir.FOO, repo_dir.CODE],
+            outs=["out"],
+            fname="out_stage",  # Bad name, should end with .dvc
+        )
+
+    # Check that command hasn't been run
+    assert not os.path.exists("out")

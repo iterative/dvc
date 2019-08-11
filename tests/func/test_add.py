@@ -16,7 +16,7 @@ from dvc.system import System
 from mock import patch
 
 from dvc.main import main
-from dvc.utils import file_md5, LARGE_DIR_SIZE
+from dvc.utils import file_md5, LARGE_DIR_SIZE, relpath
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage
@@ -24,7 +24,7 @@ from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvc, TestDvcGit
 from tests.utils import spy, get_gitignore_content
 
 
@@ -96,7 +96,7 @@ class TestAddCmdDirectoryRecursive(TestDvc):
         warning = (
             "You are adding a large directory 'large-dir' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated stage files and then"
+            "{purple}HINT:{nc} Remove the generated DVC-file and then"
             " run {cyan}dvc add large-dir{nc}".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
@@ -129,7 +129,7 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
-class TestAddTrackedFile(TestDvc):
+class TestAddTrackedFile(TestDvcGit):
     def test(self):
         fname = "tracked_file"
         self.create(fname, "tracked file contents")
@@ -266,7 +266,7 @@ class TestShouldUpdateStateEntryForFileAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
-            ret = main(["run", "-d", self.FOO, "cat {}".format(self.FOO)])
+            ret = main(["run", "-d", self.FOO, "echo foo"])
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 1)
 
@@ -296,8 +296,9 @@ class TestShouldUpdateStateEntryForDirectoryAfterAdd(TestDvc):
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
 
+            ls = "dir" if os.name == "nt" else "ls"
             ret = main(
-                ["run", "-d", self.DATA_DIR, "ls {}".format(self.DATA_DIR)]
+                ["run", "-d", self.DATA_DIR, "{} {}".format(ls, self.DATA_DIR)]
             )
             self.assertEqual(ret, 0)
             self.assertEqual(file_md5_counter.mock.call_count, 3)
@@ -421,7 +422,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         ret = main(["add", self.FOO])
         assert 0 == ret
 
-        foo_stage = os.path.relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
+        foo_stage = relpath(self.FOO + Stage.STAGE_FILE_SUFFIX)
 
         # corrupt stage file
         with open(foo_stage, "a+") as file:
@@ -433,7 +434,7 @@ class TestShouldThrowProperExceptionOnCorruptedStageFile(TestDvc):
         assert 1 == ret
 
         expected_error = (
-            "unable to read stage file: {} "
+            "unable to read DVC-file: {} "
             "YAML file structure is corrupted".format(foo_stage)
         )
 
@@ -468,12 +469,13 @@ class TestAddFilename(TestDvc):
         self.assertFalse(os.path.exists("foo.dvc"))
 
 
-class TestShouldCleanUpAfterFailedAdd(TestDvc):
+class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
     def test(self):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
         foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+
         # corrupt stage file
         with open(foo_stage_file, "a+") as file:
             file.write("this will break yaml file structure")

@@ -8,7 +8,7 @@ import logging
 
 from jsonpath_ng.ext import parse
 
-from dvc.exceptions import OutputNotFoundError, BadMetricError, NoMetricsError
+from dvc.exceptions import OutputNotFoundError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
@@ -134,7 +134,7 @@ def _format_output(content, typ):
     return content
 
 
-def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
+def _read_metric(fd, typ=None, xpath=None, fname=None, branch=None):
     typ = typ.lower().strip() if typ else typ
     try:
         if xpath:
@@ -146,7 +146,7 @@ def _read_metric(fd, typ=None, xpath=None, rel_path=None, branch=None):
     except Exception:
         logger.exception(
             "unable to read metric in '{}' in branch '{}'".format(
-                rel_path, branch
+                fname, branch
             )
         )
         return None
@@ -159,8 +159,8 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
         path (str): Path to a metric file or a directory.
         recursive (bool): If path is a directory, do a recursive search for
             metrics on the given path.
-        typ (str): The type of metric to search for, could be one of the
-            following (raw|json|tsv|htsv|csv|hcsv).
+        typ (str): The type that will be used to interpret the metric file,
+            one of the followings - (raw|json|tsv|htsv|csv|hcsv).
         xpath (str): Path to search for.
         branch (str): Branch to look up for metrics.
 
@@ -177,7 +177,7 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
             outs = repo.find_outs_by_path(path, outs=outs, recursive=recursive)
         except OutputNotFoundError:
             logger.debug(
-                "stage file not for found for '{}' in branch '{}'".format(
+                "DVC-file not for found for '{}' in branch '{}'".format(
                     path, branch
                 )
             )
@@ -188,9 +188,14 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
         if not o.metric:
             continue
 
+        # NOTE this case assumes that typ has not been provided in CLI call
+        # and one of the following cases:
+        # - stage file contains metric type
+        # - typ will be read from file extension later
         if not typ and isinstance(o.metric, dict):
             t = o.metric.get(o.PARAM_METRIC_TYPE, typ)
-            x = o.metric.get(o.PARAM_METRIC_XPATH, xpath)
+            # NOTE user might want to check different xpath, hence xpath first
+            x = xpath or o.metric.get(o.PARAM_METRIC_XPATH)
         else:
             t = typ
             x = xpath
@@ -220,28 +225,24 @@ def _read_metrics(repo, metrics, branch):
     for out, typ, xpath in metrics:
         assert out.scheme == "local"
         if not typ:
-            typ = os.path.splitext(out.path.lower())[1].replace(".", "")
+            typ = os.path.splitext(out.fspath.lower())[1].replace(".", "")
         if out.use_cache:
             open_fun = open
             path = repo.cache.local.get(out.checksum)
         else:
             open_fun = repo.tree.open
-            path = out.path
+            path = out.fspath
         try:
 
             with open_fun(path) as fd:
                 metric = _read_metric(
-                    fd,
-                    typ=typ,
-                    xpath=xpath,
-                    rel_path=out.rel_path,
-                    branch=branch,
+                    fd, typ=typ, xpath=xpath, fname=str(out), branch=branch
                 )
         except IOError as e:
             if e.errno == errno.ENOENT:
                 logger.warning(
                     NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
-                        out.rel_path, branch
+                        out.path_info, branch
                     )
                 )
                 metric = None
@@ -251,14 +252,14 @@ def _read_metrics(repo, metrics, branch):
         if not metric:
             continue
 
-        res[out.rel_path] = metric
+        res[str(out)] = metric
 
     return res
 
 
 def show(
     repo,
-    path=None,
+    targets=None,
     typ=None,
     xpath=None,
     all_branches=False,
@@ -266,16 +267,34 @@ def show(
     recursive=False,
 ):
     res = {}
+    found = set()
+
+    if not targets:
+        # Iterate once to call `_collect_metrics` on all the stages
+        targets = [None]
 
     for branch in repo.brancher(all_branches=all_branches, all_tags=all_tags):
-        entries = _collect_metrics(repo, path, recursive, typ, xpath, branch)
-        metrics = _read_metrics(repo, entries, branch)
+        metrics = {}
+
+        for target in targets:
+            entries = _collect_metrics(
+                repo, target, recursive, typ, xpath, branch
+            )
+            metric = _read_metrics(repo, entries, branch)
+
+            if metric:
+                found.add(target)
+                metrics.update(metric)
+
         if metrics:
             res[branch] = metrics
 
-    if not res:
-        if path:
-            raise BadMetricError(path)
+    if not res and not any(targets):
         raise NoMetricsError()
+
+    missing = set(targets) - found
+
+    if missing:
+        res[None] = missing
 
     return res

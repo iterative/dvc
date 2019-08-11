@@ -5,27 +5,25 @@ import logging
 
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
+def _reproduce_stage(stages, node, **kwargs):
     stage = stages[node]
 
     if stage.locked:
         logger.warning(
-            "DVC file '{path}' is locked. Its dependencies are"
+            "DVC-file '{path}' is locked. Its dependencies are"
             " not going to be reproduced.".format(path=stage.relpath)
         )
 
-    stage = stage.reproduce(
-        force=force, dry=dry, interactive=interactive, no_commit=no_commit
-    )
+    stage = stage.reproduce(**kwargs)
     if not stage:
         return []
 
-    if not dry:
+    if not kwargs.get("dry", False):
         stage.dump()
 
     return [stage]
@@ -35,16 +33,10 @@ def _reproduce_stage(stages, node, force, dry, interactive, no_commit):
 def reproduce(
     self,
     target=None,
-    single_item=False,
-    force=False,
-    dry=False,
-    interactive=False,
+    recursive=False,
     pipeline=False,
     all_pipelines=False,
-    ignore_build_cache=False,
-    no_commit=False,
-    downstream=False,
-    recursive=False,
+    **kwargs
 ):
     import networkx as nx
     from dvc.stage import Stage
@@ -52,10 +44,13 @@ def reproduce(
     if not target and not all_pipelines:
         raise ValueError()
 
+    interactive = kwargs.get("interactive", False)
     if not interactive:
         config = self.config
         core = config.config[config.SECTION_CORE]
-        interactive = core.get(config.SECTION_CORE_INTERACTIVE, False)
+        kwargs["interactive"] = core.get(
+            config.SECTION_CORE_INTERACTIVE, False
+        )
 
     targets = []
     if recursive and os.path.isdir(target):
@@ -67,7 +62,7 @@ def reproduce(
     elif pipeline or all_pipelines:
         if pipeline:
             stage = Stage.load(self, target)
-            node = os.path.relpath(stage.path, self.root_dir)
+            node = relpath(stage.path, self.root_dir)
             pipelines = [self._get_pipeline(node)]
         else:
             pipelines = self.pipelines()
@@ -82,71 +77,32 @@ def reproduce(
     ret = []
     with self.state:
         for target in targets:
-            stages = _reproduce(
-                self,
-                target,
-                single_item=single_item,
-                force=force,
-                dry=dry,
-                interactive=interactive,
-                ignore_build_cache=ignore_build_cache,
-                no_commit=no_commit,
-                downstream=downstream,
-            )
+            stages = _reproduce(self, target, **kwargs)
             ret.extend(stages)
 
     return ret
 
 
-def _reproduce(
-    self,
-    target,
-    single_item=False,
-    force=False,
-    dry=False,
-    interactive=False,
-    ignore_build_cache=False,
-    no_commit=False,
-    downstream=False,
-):
+def _reproduce(self, target, **kwargs):
     import networkx as nx
     from dvc.stage import Stage
 
     stage = Stage.load(self, target)
     G = self.graph()[1]
     stages = nx.get_node_attributes(G, "stage")
-    node = os.path.relpath(stage.path, self.root_dir)
+    node = relpath(stage.path, self.root_dir)
 
-    if single_item:
-        ret = _reproduce_stage(
-            stages, node, force, dry, interactive, no_commit
-        )
-    else:
-        ret = _reproduce_stages(
-            G,
-            stages,
-            node,
-            force,
-            dry,
-            interactive,
-            ignore_build_cache,
-            no_commit,
-            downstream,
-        )
-
-    return ret
+    return _reproduce_stages(G, stages, node, **kwargs)
 
 
 def _reproduce_stages(
     G,
     stages,
     node,
-    force,
-    dry,
-    interactive,
-    ignore_build_cache,
-    no_commit,
-    downstream,
+    downstream=False,
+    ignore_build_cache=False,
+    single_item=False,
+    **kwargs
 ):
     r"""Derive the evaluation of the given node for the given graph.
 
@@ -185,7 +141,9 @@ def _reproduce_stages(
 
     import networkx as nx
 
-    if downstream:
+    if single_item:
+        pipeline = [node]
+    elif downstream:
         # NOTE (py3 only):
         # Python's `deepcopy` defaults to pickle/unpickle the object.
         # Stages are complex objects (with references to `repo`, `outs`,
@@ -200,9 +158,7 @@ def _reproduce_stages(
     result = []
     for n in pipeline:
         try:
-            ret = _reproduce_stage(
-                stages, n, force, dry, interactive, no_commit
-            )
+            ret = _reproduce_stage(stages, n, **kwargs)
 
             if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
@@ -210,7 +166,7 @@ def _reproduce_stages(
                 # which tells us that we should force reproducing all of
                 # the other stages down below, even if their direct
                 # dependencies didn't change.
-                force = True
+                kwargs["force"] = True
 
             result += ret
         except Exception as ex:

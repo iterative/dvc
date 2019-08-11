@@ -31,14 +31,13 @@ from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from tests.basic_env import TestDvc
-from tests.conftest import user
-from tests.conftest import key_path
 from tests.utils import spy
 
 
 TEST_REMOTE = "upstream"
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
+    Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
     TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
 }
@@ -182,7 +181,7 @@ def get_ssh_url_mocked(user, port):
         #
         # [1]https://tools.ietf.org/html/draft-ietf-secsh-filexfer-13#section-6
         drive, path = os.path.splitdrive(path)
-        assert drive == "c:"
+        assert drive.lower() == "c:"
         path = path.replace("\\", "/")
     url = "ssh://{}@127.0.0.1:{}{}".format(user, port, path)
     return url
@@ -208,15 +207,6 @@ def get_gcp_storagepath():
 
 def get_gcp_url():
     return "gs://" + get_gcp_storagepath()
-
-
-def get_azure_url_compat():
-    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME")
-    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-    assert container_name is not None
-    return "azure://ContainerName={};{}".format(
-        container_name, connection_string
-    )
 
 
 def get_azure_url():
@@ -298,18 +288,21 @@ class TestDataCloudBase(TestDvc):
         self.assertEqual(len(stages), 1)
         stage = stages[0]
         self.assertTrue(stage is not None)
-        cache = stage.outs[0].cache_path
-        info = stage.outs[0].dumpd()
-        md5 = info["md5"]
+        out = stage.outs[0]
+        cache = out.cache_path
+        name = str(out)
+        md5 = out.checksum
+        info = {"name": name, out.remote.PARAM_CHECKSUM: md5}
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage_dir = stages[0]
         self.assertTrue(stage_dir is not None)
-
-        cache_dir = stage_dir.outs[0].cache_path
-        info_dir = stage_dir.outs[0].dumpd()
-        md5_dir = info_dir["md5"]
+        out_dir = stage_dir.outs[0]
+        cache_dir = out.cache_path
+        name_dir = str(out)
+        md5_dir = out.checksum
+        info_dir = {"name": name_dir, out_dir.remote.PARAM_CHECKSUM: md5_dir}
 
         with self.cloud.repo.state:
             # Check status
@@ -408,20 +401,15 @@ class TestRemoteGS(TestDataCloudBase):
         return RemoteGS
 
 
-class TestRemoteAZURECompat(TestDataCloudBase):
+class TestRemoteAZURE(TestDataCloudBase):
     def _should_test(self):
         return _should_test_azure()
 
     def _get_url(self):
-        return get_azure_url_compat()
+        return get_azure_url()
 
     def _get_cloud_class(self):
         return RemoteAZURE
-
-
-class TestRemoteAZURE(TestRemoteAZURECompat):
-    def _get_url(self):
-        return get_azure_url()
 
 
 class TestRemoteOSS(TestDataCloudBase):
@@ -470,10 +458,11 @@ class TestRemoteSSHMocked(TestDataCloudBase):
         self.method_name = request.function.__name__
 
     def _get_url(self):
+        user = self.ssh_server.test_creds["username"]
         return get_ssh_url_mocked(user, self.ssh_server.port)
 
     def _get_keyfile(self):
-        return key_path
+        return self.ssh_server.test_creds["key_filename"]
 
     def _should_test(self):
         return True
@@ -518,18 +507,13 @@ class TestDataCloudCLIBase(TestDvc):
         cache_dir = stage_dir.outs[0].cache_path
 
         # FIXME check status output
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         self.main(["push"] + args)
         self.assertTrue(os.path.exists(cache))
         self.assertTrue(os.path.isfile(cache))
         self.assertTrue(os.path.isfile(cache_dir))
 
-        self.main(["status", "-c", "--show-checksums"] + args)
-
         shutil.rmtree(self.dvc.cache.local.cache_dir)
-
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         self.main(["fetch"] + args)
         self.assertTrue(os.path.exists(cache))
@@ -546,8 +530,6 @@ class TestDataCloudCLIBase(TestDvc):
         with open(cache, "r") as fd:
             self.assertEqual(fd.read(), self.FOO_CONTENTS)
         self.assertTrue(os.path.isfile(cache_dir))
-
-        self.main(["status", "-c", "--show-checksums"] + args)
 
         # NOTE: check if remote gc works correctly on directories
         self.main(["gc", "-c", "-f"] + args)
@@ -577,15 +559,6 @@ class TestDataCloudCLIBase(TestDvc):
                 "Test {} is disabled".format(self.__class__.__name__)
             )
         self._test()
-
-
-class TestCompatRemoteLOCALCLI(TestDataCloudCLIBase):
-    def _test(self):
-        storagepath = get_local_storagepath()
-        self.main(["config", "core.cloud", "local"])
-        self.main(["config", "local.storagepath", storagepath])
-
-        self._test_cloud()
 
 
 class TestRemoteLOCALCLI(TestDataCloudCLIBase):
@@ -621,18 +594,6 @@ class TestRemoteHDFSCLI(TestDataCloudCLIBase):
         self._test_cloud(TEST_REMOTE)
 
 
-class TestCompatRemoteS3CLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return _should_test_aws()
-
-    def _test(self):
-        storagepath = get_aws_storagepath()
-        self.main(["config", "core.cloud", "aws"])
-        self.main(["config", "aws.storagepath", storagepath])
-
-        self._test_cloud()
-
-
 class TestRemoteS3CLI(TestDataCloudCLIBase):
     def _should_test(self):
         return _should_test_aws()
@@ -643,18 +604,6 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
         self.main(["remote", "add", TEST_REMOTE, url])
 
         self._test_cloud(TEST_REMOTE)
-
-
-class TestCompatRemoteGSCLI(TestDataCloudCLIBase):
-    def _should_test(self):
-        return _should_test_gcp()
-
-    def _test(self):
-        storagepath = get_gcp_storagepath()
-        self.main(["config", "core.cloud", "gcp"])
-        self.main(["config", "gcp.storagepath", storagepath])
-
-        self._test_cloud()
 
 
 class TestRemoteGSCLI(TestDataCloudCLIBase):

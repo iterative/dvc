@@ -10,10 +10,12 @@ logger = logging.getLogger(__name__)
 
 
 def _cleanup_unused_links(self, all_stages):
-    used = []
-    for stage in all_stages:
-        for out in stage.outs:
-            used.append(out.path)
+    used = [
+        out.fspath
+        for stage in all_stages
+        for out in stage.outs
+        if out.scheme == "local"
+    ]
     self.state.remove_unused_links(used)
 
 
@@ -47,7 +49,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
         for stage in stages:
             if stage.locked:
                 logger.warning(
-                    "DVC file '{path}' is locked. Its dependencies are"
+                    "DVC-file '{path}' is locked. Its dependencies are"
                     " not going to be checked out.".format(path=stage.relpath)
                 )
 

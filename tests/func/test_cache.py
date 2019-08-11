@@ -1,9 +1,12 @@
 import os
+import stat
+import pytest
 import shutil
 import configobj
 
 from dvc.cache import Cache
 from dvc.main import main
+from dvc.utils import relpath
 
 from tests.basic_env import TestDvc, TestDir
 
@@ -71,13 +74,14 @@ class TestExternalCacheDir(TestDvc):
         self.assertNotEqual(len(os.listdir(cache_dir)), 0)
 
     def test_remote_references(self):
-        assert main(["remote", "add", "storage", "ssh://localhost"]) == 0
+        ssh_url = "ssh://user@localhost:23"
+        assert main(["remote", "add", "storage", ssh_url]) == 0
         assert main(["remote", "add", "cache", "remote://storage/tmp"]) == 0
         assert main(["config", "cache.ssh", "cache"]) == 0
 
         self.dvc.__init__()
 
-        assert self.dvc.cache.ssh.url == "ssh://localhost/tmp"
+        assert self.dvc.cache.ssh.path_info == ssh_url + "/tmp"
 
 
 class TestSharedCacheDir(TestDir):
@@ -151,7 +155,7 @@ class TestCmdCacheDir(TestDvc):
 
     def test_relative_path(self):
         tmpdir = self.mkdtemp()
-        dname = os.path.relpath(tmpdir)
+        dname = relpath(tmpdir)
         ret = main(["cache", "dir", dname])
         self.assertEqual(ret, 0)
 
@@ -173,3 +177,27 @@ class TestCmdCacheDir(TestDvc):
 class TestShouldCacheBeReflinkOrCopyByDefault(TestDvc):
     def test(self):
         self.assertEqual(self.dvc.cache.local.cache_types, ["reflink", "copy"])
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
+@pytest.mark.parametrize(
+    "protected,dir_mode,file_mode",
+    [(False, 0o775, 0o664), (True, 0o775, 0o444)],
+)
+def test_shared_cache(repo_dir, dvc_repo, protected, dir_mode, file_mode):
+    assert main(["config", "cache.shared", "group"]) == 0
+
+    if protected:
+        assert main(["config", "cache.protected", "true"]) == 0
+
+    assert main(["add", repo_dir.FOO]) == 0
+    assert main(["add", repo_dir.DATA_DIR]) == 0
+
+    for root, dnames, fnames in os.walk(dvc_repo.cache.local.cache_dir):
+        for dname in dnames:
+            path = os.path.join(root, dname)
+            assert stat.S_IMODE(os.stat(path).st_mode) == dir_mode
+
+        for fname in fnames:
+            path = os.path.join(root, fname)
+            assert stat.S_IMODE(os.stat(path).st_mode) == file_mode

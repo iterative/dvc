@@ -1,12 +1,14 @@
+from dvc.ignore import DvcIgnore
 from dvc.main import main
+from dvc.repo import Repo
 from dvc.stage import Stage
-from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
 
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
 
 
-class TestCollect(TestDvc):
+class TestCollect(TestDvcGit):
     def setUp(self):
         super(TestCollect, self).setUp()
         self.dvc.add(self.FOO)
@@ -29,13 +31,11 @@ class TestCollect(TestDvc):
 
     def _check(self, branch, target, with_deps, expected):
         if branch:
-            self.dvc.tree = GitTree(self.dvc.scm.git, branch)
+            self.dvc.tree = GitTree(self.dvc.scm.repo, branch)
         else:
             self.dvc.tree = WorkingTree()
         result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
-        self.assertEqual(
-            [[j.rel_path for j in i.outs] for i in result], expected
-        )
+        self.assertEqual([[str(j) for j in i.outs] for i in result], expected)
         return result
 
     def test(self):
@@ -45,23 +45,23 @@ class TestCollect(TestDvc):
             "new_branch", "buzz", True, [[self.FOO], [self.BAR], ["buzz"]]
         )
         result = self._check("new_branch", "buzz", False, [["buzz"]])
-        self.assertEqual([i.rel_path for i in result[0].deps], ["bar"])
+        self.assertEqual([str(i) for i in result[0].deps], ["bar"])
 
 
-class TestIgnore(TestDvc):
+class TestIgnore(TestDvcGit):
     def _stage_name(self, file):
         return file + Stage.STAGE_FILE_SUFFIX
 
-    def test_should_not_gather_stage_files_from_ignored_d(self):
+    def test_should_not_gather_stage_files_from_ignored_dir(self):
         ret = main(["add", self.FOO, self.BAR, self.DATA, self.DATA_SUB])
         self.assertEqual(0, ret)
 
         stages = self.dvc.stages()
         self.assertEqual(4, len(stages))
 
-        with open(".dvcignore", "w") as fobj:
-            fobj.write("data_dir")
+        self.create(DvcIgnore.DVCIGNORE_FILE, self.DATA_DIR)
 
+        self.dvc = Repo(self.dvc.root_dir)
         stages = self.dvc.stages()
         self.assertEqual(2, len(stages))
 

@@ -1,23 +1,6 @@
-from dvc.repo.scm_context import scm_context
+def imp(self, url, path, out=None, rev=None):
+    erepo = {"url": url}
+    if rev is not None:
+        erepo["rev"] = rev
 
-
-@scm_context
-def imp(self, url, out, resume=False, fname=None):
-    from dvc.stage import Stage
-
-    with self.state:
-        stage = Stage.create(
-            repo=self, cmd=None, deps=[url], outs=[out], fname=fname
-        )
-
-    if stage is None:
-        return None
-
-    self.check_dag(self.stages() + [stage])
-
-    with self.state:
-        stage.run(resume=resume)
-
-    stage.dump()
-
-    return stage
+    return self.imp_url(path, out=out, erepo=erepo, locked=True)

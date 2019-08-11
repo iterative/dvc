@@ -1,35 +1,48 @@
-import uuid
-import posixpath
-from copy import copy
-
 import boto3
-import pytest
-from dvc.path.s3 import PathS3
+
+from moto import mock_s3
+from functools import wraps
+import moto.s3.models as s3model
 
 from dvc.remote.s3 import RemoteS3
-from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET, _should_test_aws
+from tests.func.test_data_cloud import get_aws_url
+
+
+# from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40
+REDUCED_PART_SIZE = 256
+
+
+def reduced_min_part_size(f):
+    """ speed up tests by temporarily making the multipart minimum part size
+        small
+    """
+    orig_size = s3model.UPLOAD_PART_MIN_SIZE
+
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        try:
+            s3model.UPLOAD_PART_MIN_SIZE = REDUCED_PART_SIZE
+            return f(*args, **kwargs)
+        finally:
+            s3model.UPLOAD_PART_MIN_SIZE = orig_size
+
+    return wrapped
 
 
 def _get_src_dst():
-    prefix = str(uuid.uuid4())
-    from_info = PathS3(
-        bucket=TEST_AWS_REPO_BUCKET, path=posixpath.join(prefix, "from")
-    )
-    to_info = copy(from_info)
-    to_info.path = posixpath.join(prefix, "to")
-    return from_info, to_info
+    base_info = RemoteS3.path_cls(get_aws_url())
+    return base_info / "from", base_info / "to"
 
 
+@mock_s3
 def test_copy_singlepart_preserve_etag():
     from_info, to_info = _get_src_dst()
 
-    if not _should_test_aws():
-        pytest.skip()
-
     s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=from_info.bucket)
     s3.put_object(Bucket=from_info.bucket, Key=from_info.path, Body="data")
 
-    RemoteS3._copy(s3, from_info, to_info)
+    RemoteS3._copy(s3, from_info, to_info, {})
 
 
 def _upload_multipart(s3, Bucket, Key):
@@ -42,8 +55,8 @@ def _upload_multipart(s3, Bucket, Key):
         # NOTE: Generation parts of variable size. Part size should be at
         # least 5MB:
         # https://docs.aws.amazon.com/AmazonS3/latest/API/mpUploadComplete.html
-        part_size = 10 * 1024 * 1024 + 2 ** i
-        body = str(i) * part_size
+        part_size = REDUCED_PART_SIZE + i
+        body = b"1" * part_size
         part = s3.upload_part(
             Bucket=Bucket,
             Key=Key,
@@ -62,12 +75,12 @@ def _upload_multipart(s3, Bucket, Key):
     )
 
 
+@mock_s3
+@reduced_min_part_size
 def test_copy_multipart_preserve_etag():
     from_info, to_info = _get_src_dst()
 
-    if not _should_test_aws():
-        pytest.skip()
-
     s3 = boto3.client("s3")
+    s3.create_bucket(Bucket=from_info.bucket)
     _upload_multipart(s3, from_info.bucket, from_info.path)
-    RemoteS3._copy(s3, from_info, to_info)
+    RemoteS3._copy(s3, from_info, to_info, {})

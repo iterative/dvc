@@ -5,10 +5,11 @@ import os
 from git import Repo
 from git.exc import GitCommandNotFound
 
+from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture
+from .basic_env import TestDirFixture, TestDvcGitFixture
 
 
 # Prevent updater and analytics from running their processes
@@ -50,13 +51,14 @@ def git(repo_dir):
     #    GitCommandNotFound: Cmd('git') not found due to:
     #        OSError('[Errno 35] Resource temporarily unavailable')
     retries = 5
-    while retries:
+    while True:
         try:
             git = Repo.init()
+            break
         except GitCommandNotFound:
             retries -= 1
-            continue
-        break
+            if not retries:
+                raise
 
     try:
         git.index.add([repo_dir.CODE])
@@ -67,13 +69,8 @@ def git(repo_dir):
 
 
 @pytest.fixture
-def dvc_repo(repo_dir, git):
-    try:
-        dvc = DvcRepo.init(repo_dir._root_dir)
-        dvc.scm.commit("init dvc")
-        yield dvc
-    finally:
-        dvc.scm.git.close()
+def dvc_repo(repo_dir):
+    yield DvcRepo.init(repo_dir._root_dir, no_scm=True)
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -86,17 +83,18 @@ key_path = os.path.join(here, "{0}.key".format(user))
 def ssh_server():
     users = {user: key_path}
     with mockssh.Server(users) as s:
+        s.test_creds = {
+            "host": s.host,
+            "port": s.port,
+            "username": user,
+            "key_filename": key_path,
+        }
         yield s
 
 
 @pytest.fixture
 def ssh(ssh_server):
-    yield SSHConnection(
-        ssh_server.host,
-        username=user,
-        port=ssh_server.port,
-        key_filename=key_path,
-    )
+    yield SSHConnection(**ssh_server.test_creds)
 
 
 @pytest.fixture
@@ -123,10 +121,59 @@ def temporary_windows_drive(repo_dir):
     if set_up_result == 0:
         raise RuntimeError("Failed to mount windows drive!")
 
-    yield new_drive
+    # NOTE: new_drive has form of `A:` and joining it with some relative
+    # path might result in non-existing path (A:path\\to)
+    yield os.path.join(new_drive, os.sep)
 
     tear_down_result = windll.kernel32.DefineDosDeviceW(
         DDD_REMOVE_DEFINITION, new_drive, target_path
     )
     if tear_down_result == 0:
         raise RuntimeError("Could not unmount windows drive!")
+
+
+@pytest.fixture
+def erepo(repo_dir):
+    repo = TestDvcGitFixture()
+    repo.setUp()
+    try:
+        stage_foo = repo.dvc.add(repo.FOO)[0]
+        stage_bar = repo.dvc.add(repo.BAR)[0]
+        stage_data_dir = repo.dvc.add(repo.DATA_DIR)[0]
+        repo.dvc.scm.add([stage_foo.path, stage_bar.path, stage_data_dir.path])
+        repo.dvc.scm.commit("init repo")
+
+        rconfig = RemoteConfig(repo.dvc.config)
+        rconfig.add("upstream", repo.dvc.cache.local.cache_dir, default=True)
+        repo.dvc.scm.add([repo.dvc.config.config_file])
+        repo.dvc.scm.commit("add remote")
+
+        repo.create("version", "master")
+        repo.dvc.add("version")
+        repo.dvc.scm.add([".gitignore", "version.dvc"])
+        repo.dvc.scm.commit("master")
+
+        repo.dvc.scm.checkout("branch", create_new=True)
+        os.unlink(os.path.join(repo.root_dir, "version"))
+        repo.create("version", "branch")
+        repo.dvc.add("version")
+        repo.dvc.scm.add([".gitignore", "version.dvc"])
+        repo.dvc.scm.commit("branch")
+
+        repo.dvc.scm.checkout("master")
+
+        repo.dvc.scm.close()
+        repo.git.close()
+
+        os.chdir(repo._saved_dir)
+        yield repo
+    finally:
+        repo.tearDown()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _close_pools():
+    from dvc.remote.pool import close_pools
+
+    yield
+    close_pools()

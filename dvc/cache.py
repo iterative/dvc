@@ -7,6 +7,20 @@ import os
 from dvc.config import Config
 
 
+class CacheConfig(object):
+    def __init__(self, config):
+        self.config = config
+
+    def set_dir(self, dname, level=None):
+        from dvc.remote.config import RemoteConfig
+
+        configobj = self.config.get_configobj(level)
+        path = RemoteConfig.resolve_path(dname, configobj.filename)
+        self.config.set(
+            Config.SECTION_CACHE, Config.SECTION_CACHE_DIR, path, level=level
+        )
+
+
 class Cache(object):
     """Class that manages cache locations of a dvc repo.
 
@@ -32,6 +46,7 @@ class Cache(object):
             cache_dir = config.get(Config.SECTION_CACHE_DIR, default_cache_dir)
             cache_type = config.get(Config.SECTION_CACHE_TYPE)
             protected = config.get(Config.SECTION_CACHE_PROTECTED)
+            shared = config.get(Config.SECTION_CACHE_SHARED)
 
             settings = {
                 Config.PRIVATE_CWD: config.get(
@@ -40,9 +55,10 @@ class Cache(object):
                 Config.SECTION_REMOTE_URL: cache_dir,
                 Config.SECTION_CACHE_TYPE: cache_type,
                 Config.SECTION_CACHE_PROTECTED: protected,
+                Config.SECTION_CACHE_SHARED: shared,
             }
 
-        self.local = Remote(repo, settings)
+        self.local = Remote(repo, **settings)
         self.s3 = self._get_remote(config, Config.SECTION_CACHE_S3)
         self.gs = self._get_remote(config, Config.SECTION_CACHE_GS)
         self.ssh = self._get_remote(config, Config.SECTION_CACHE_SSH)
@@ -87,5 +103,4 @@ class Cache(object):
         if not remote:
             return None
 
-        settings = self.repo.config.get_remote_settings(remote)
-        return Remote(self.repo, settings)
+        return Remote(self.repo, name=remote)

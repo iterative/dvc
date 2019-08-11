@@ -7,10 +7,12 @@ import sqlite3
 import logging
 
 from dvc.config import Config
-from dvc.utils import remove, current_timestamp
+from dvc.utils import remove, current_timestamp, relpath, to_chunks
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
+from dvc.utils.compat import fspath_py35
 
+SQLITE_MAX_VARIABLES_NUMBER = 999
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +31,9 @@ class StateVersionTooNewError(DvcException):
         )
 
 
-class StateBase(object):
+class StateNoop(object):
+    files = []
+
     def save(self, path_info, checksum):
         pass
 
@@ -39,8 +43,14 @@ class StateBase(object):
     def save_link(self, path_info):
         pass
 
+    def __enter__(self):
+        pass
 
-class State(StateBase):  # pylint: disable=too-many-instance-attributes
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
+
+class State(object):  # pylint: disable=too-many-instance-attributes
     """Class for the state database.
 
     Args:
@@ -110,15 +120,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         self.cursor = None
         self.inserts = 0
 
+    @property
+    def files(self):
+        return self.temp_files + [self.state_file]
+
     def __enter__(self):
         self.load()
 
     def __exit__(self, typ, value, tbck):
         self.dump()
 
-    def _execute(self, cmd):
+    def _execute(self, cmd, parameters=()):
         logger.debug(cmd)
-        return self.cursor.execute(cmd)
+        return self.cursor.execute(cmd, parameters)
 
     def _fetchall(self):
         ret = self.cursor.fetchall()
@@ -229,8 +243,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         """Saves state database."""
         assert self.database is not None
 
-        cmd = "SELECT count from {} WHERE rowid={}"
-        self._execute(cmd.format(self.STATE_INFO_TABLE, self.STATE_INFO_ROW))
+        cmd = "SELECT count from {} WHERE rowid=?".format(
+            self.STATE_INFO_TABLE
+        )
+        self._execute(cmd, (self.STATE_INFO_ROW,))
         ret = self._fetchall()
         assert len(ret) == 1
         assert len(ret[0]) == 1
@@ -260,14 +276,10 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             assert len(ret[0]) == 1
             count = ret[0][0]
 
-        cmd = "UPDATE {} SET count = {} WHERE rowid = {}"
-        self._execute(
-            cmd.format(
-                self.STATE_INFO_TABLE,
-                self._to_sqlite(count),
-                self.STATE_INFO_ROW,
-            )
+        cmd = "UPDATE {} SET count = ? WHERE rowid = ?".format(
+            self.STATE_INFO_TABLE
         )
+        self._execute(cmd, (self._to_sqlite(count), self.STATE_INFO_ROW))
 
         self.database.commit()
         self.cursor.close()
@@ -281,13 +293,11 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         return actual_mtime != mtime or actual_size != size
 
     def _update_state_record_timestamp_for_inode(self, actual_inode):
-        cmd = 'UPDATE {} SET timestamp = "{}" WHERE inode = {}'
+        cmd = "UPDATE {} SET timestamp = ? WHERE inode = ?".format(
+            self.STATE_TABLE
+        )
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
-                current_timestamp(),
-                self._to_sqlite(actual_inode),
-            )
+            cmd, (current_timestamp(), self._to_sqlite(actual_inode))
         )
 
     def _update_state_for_path_changed(
@@ -295,19 +305,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
     ):
         cmd = (
             "UPDATE {} SET "
-            'mtime = "{}", size = "{}", '
-            'md5 = "{}", timestamp = "{}" '
-            "WHERE inode = {}"
-        )
+            "mtime = ?, size = ?, "
+            "md5 = ?, timestamp = ? "
+            "WHERE inode = ?"
+        ).format(self.STATE_TABLE)
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
+            cmd,
+            (
                 actual_mtime,
                 actual_size,
                 checksum,
                 current_timestamp(),
                 self._to_sqlite(actual_inode),
-            )
+            ),
         )
 
     def _insert_new_state_record(
@@ -317,24 +327,26 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
 
         cmd = (
             "INSERT INTO {}(inode, mtime, size, md5, timestamp) "
-            'VALUES ({}, "{}", "{}", "{}", "{}")'
-        )
+            "VALUES (?, ?, ?, ?, ?)"
+        ).format(self.STATE_TABLE)
         self._execute(
-            cmd.format(
-                self.STATE_TABLE,
+            cmd,
+            (
                 self._to_sqlite(actual_inode),
                 actual_mtime,
                 actual_size,
                 checksum,
                 current_timestamp(),
-            )
+            ),
         )
         self.inserts += 1
 
     def get_state_record_for_inode(self, inode):
-        cmd = "SELECT mtime, size, md5, timestamp from {} " "WHERE inode={}"
-        cmd = cmd.format(self.STATE_TABLE, self._to_sqlite(inode))
-        self._execute(cmd)
+        cmd = (
+            "SELECT mtime, size, md5, timestamp from {} WHERE "
+            "inode=?".format(self.STATE_TABLE)
+        )
+        self._execute(cmd, (self._to_sqlite(inode),))
         results = self._fetchall()
         if results:
             # uniquness constrain on inode
@@ -352,10 +364,12 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
         assert path_info.scheme == "local"
         assert checksum is not None
 
-        path = path_info.path
+        path = fspath_py35(path_info)
         assert os.path.exists(path)
 
-        actual_mtime, actual_size = get_mtime_and_size(path)
+        actual_mtime, actual_size = get_mtime_and_size(
+            path, self.repo.dvcignore
+        )
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -381,12 +395,14 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             doesn't exist in the state database.
         """
         assert path_info.scheme == "local"
-        path = path_info.path
+        path = fspath_py35(path_info)
 
         if not os.path.exists(path):
             return None
 
-        actual_mtime, actual_size = get_mtime_and_size(path)
+        actual_mtime, actual_size = get_mtime_and_size(
+            path, self.repo.dvcignore
+        )
         actual_inode = get_inode(path)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
@@ -408,22 +424,19 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
             path_info (dict): path info to add to the list of links.
         """
         assert path_info.scheme == "local"
-        path = path_info.path
+        path = fspath_py35(path_info)
 
         if not os.path.exists(path):
             return
 
-        mtime, _ = get_mtime_and_size(path)
+        mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
         inode = get_inode(path)
-        relpath = os.path.relpath(path, self.root_dir)
+        relative_path = relpath(path, self.root_dir)
 
-        cmd = (
-            "REPLACE INTO {}(path, inode, mtime) "
-            'VALUES ("{}", {}, "{}")'.format(
-                self.LINK_STATE_TABLE, relpath, self._to_sqlite(inode), mtime
-            )
+        cmd = "REPLACE INTO {}(path, inode, mtime) " "VALUES (?, ?, ?)".format(
+            self.LINK_STATE_TABLE
         )
-        self._execute(cmd)
+        self._execute(cmd, (relative_path, self._to_sqlite(inode), mtime))
 
     def remove_unused_links(self, used):
         """Removes all saved links except the ones that are used.
@@ -446,13 +459,17 @@ class State(StateBase):  # pylint: disable=too-many-instance-attributes
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path)
+            actual_mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
 
             if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))
                 remove(path)
                 unused.append(relpath)
 
-        for relpath in unused:
-            cmd = 'DELETE FROM {} WHERE path = "{}"'
-            self._execute(cmd.format(self.LINK_STATE_TABLE, relpath))
+        for chunk_unused in to_chunks(
+            unused, chunk_size=SQLITE_MAX_VARIABLES_NUMBER
+        ):
+            cmd = "DELETE FROM {} WHERE path IN ({})".format(
+                self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
+            )
+            self._execute(cmd, tuple(chunk_unused))

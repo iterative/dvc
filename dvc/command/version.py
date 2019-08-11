@@ -1,13 +1,18 @@
 from __future__ import unicode_literals
 
 import os
-import psutil
 import platform
 import argparse
 import logging
 import uuid
 
-from dvc.utils.compat import Path
+try:
+    import psutil
+except ImportError:
+    psutil = None
+
+from dvc.utils import is_binary
+from dvc.utils.compat import pathlib
 from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
@@ -23,45 +28,50 @@ class CmdVersion(CmdBaseNoRepo):
         dvc_version = __version__
         python_version = platform.python_version()
         platform_type = platform.platform()
+        binary = is_binary()
 
         info = (
             "DVC version: {dvc_version}\n"
             "Python version: {python_version}\n"
             "Platform: {platform_type}\n"
+            "Binary: {binary}\n"
         ).format(
             dvc_version=dvc_version,
             python_version=python_version,
             platform_type=platform_type,
+            binary=binary,
         )
 
         try:
             repo = Repo()
             root_directory = repo.root_dir
 
-            info += (
-                "Cache: {cache}\n"
-                "Filesystem type (cache directory): {fs_cache}\n"
-            ).format(
-                cache=self.get_linktype_support_info(repo),
-                fs_cache=self.get_fs_type(repo.cache.local.cache_dir),
+            info += "Cache: {cache}\n".format(
+                cache=self.get_linktype_support_info(repo)
             )
 
+            if psutil:
+                info += (
+                    "Filesystem type (cache directory): {fs_cache}\n"
+                ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
         except NotDvcRepoError:
             root_directory = os.getcwd()
 
-        info += ("Filesystem type (workspace): {fs_root}").format(
-            fs_root=self.get_fs_type(os.path.abspath(root_directory))
-        )
+        if psutil:
+            info += ("Filesystem type (workspace): {fs_root}").format(
+                fs_root=self.get_fs_type(os.path.abspath(root_directory))
+            )
+
         logger.info(info)
         return 0
 
     @staticmethod
     def get_fs_type(path):
         partition = {
-            Path(part.mountpoint): (part.fstype, part.device)
+            pathlib.Path(part.mountpoint): (part.fstype, part.device)
             for part in psutil.disk_partitions()
         }
-        for parent in list(Path(path).parents):
+        for parent in pathlib.Path(path).parents:
             if parent in partition:
                 return partition[parent]
         return ("unkown", "none")

@@ -126,6 +126,11 @@ class Base(object):
         Method to reset in-memory ignore storing mechanism.
         """
 
+    def reset_tracked_files(self):
+        """
+        Method to reset in-memory tracked files storing mechanism.
+        """
+
     def remind_to_track(self):
         """
         Method to remind user to track newly created files handled by scm
@@ -139,3 +144,6 @@ class Base(object):
 
     def belongs_to_scm(self, path):
         """Return boolean whether file belongs to scm"""
+
+    def close(self):
+        """ Method to close the files """

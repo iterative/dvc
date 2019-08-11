@@ -1,15 +1,17 @@
 import os
 import configobj
-from dvc.path.local import PathLOCAL
-from dvc.remote.base import RemoteBASE
+import shutil
 from mock import patch
 
 from dvc.main import main
-from dvc.command.remote import CmdRemoteAdd
 from dvc.config import Config
+from dvc.remote.base import RemoteBASE
+from dvc.remote import RemoteLOCAL
+from dvc.path_info import PathInfo
 
 from tests.basic_env import TestDvc
 from tests.func.test_data_cloud import get_local_storagepath
+from .test_data_cloud import get_local_url
 
 
 class TestRemote(TestDvc):
@@ -33,22 +35,6 @@ class TestRemote(TestDvc):
 
         self.assertEqual(main(["remote", "list"]), 0)
 
-    def test_failed_write(self):
-        class A(object):
-            system = False
-            glob = False
-            local = False
-            name = "myremote"
-            url = "s3://remote"
-            unset = False
-
-        args = A()
-        cmd = CmdRemoteAdd(args)
-
-        cmd.configobj.write = None
-        ret = cmd.run()
-        self.assertNotEqual(ret, 0)
-
     def test_relative_path(self):
         dname = os.path.join("..", "path", "to", "dir")
         ret = main(["remote", "add", "mylocal", dname])
@@ -64,7 +50,7 @@ class TestRemote(TestDvc):
         remote_name = "a"
         remote_url = "s3://bucket/name"
         self.assertEqual(main(["remote", "add", remote_name, remote_url]), 0)
-        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 1)
+        self.assertEqual(main(["remote", "add", remote_name, remote_url]), 251)
         self.assertEqual(
             main(["remote", "add", "-f", remote_name, remote_url]), 0
         )
@@ -199,7 +185,7 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
     with open(file2, "w") as fobj:
         fobj.write("2")
 
-    path_info = PathLOCAL(path=data_dir)
+    path_info = PathInfo(data_dir)
     with dvc_repo.state:
         with patch.object(
             RemoteBASE,
@@ -222,3 +208,41 @@ def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
             checksum2 = dvc_repo.cache.local.get_dir_checksum(path_info)
 
     assert checksum1 == checksum2
+
+
+def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
+    assert main(["remote", "add", "-d", "upstream", get_local_url()]) == 0
+    # Recreate the repo to reread config
+    repo = dvc_repo.__class__(dvc_repo.root_dir)
+    remote = repo.cloud.get_remote("upstream")
+
+    foo = repo.add(repo_dir.FOO)[0].outs[0]
+    bar = repo.add(repo_dir.BAR)[0].outs[0]
+
+    # Faulty upload version, failing on foo
+    original = RemoteLOCAL._upload
+
+    def unreliable_upload(self, from_file, to_info, name=None, **kwargs):
+        if name == "foo":
+            raise Exception("stop foo")
+        return original(self, from_file, to_info, name, **kwargs)
+
+    with patch.object(RemoteLOCAL, "_upload", unreliable_upload):
+        assert main(["push"]) == 1
+        assert str(get_last_exc(caplog)) == "1 files failed to upload"
+
+        assert not remote.exists(remote.checksum_to_path_info(foo.checksum))
+        assert remote.exists(remote.checksum_to_path_info(bar.checksum))
+
+    # Push everything and delete local cache
+    assert main(["push"]) == 0
+    shutil.rmtree(repo.cache.local.cache_dir)
+
+    with patch.object(RemoteLOCAL, "_download", side_effect=Exception):
+        assert main(["pull"]) == 1
+        assert str(get_last_exc(caplog)) == "2 files failed to download"
+
+
+def get_last_exc(caplog):
+    _, exc, _ = caplog.records[-1].exc_info
+    return exc

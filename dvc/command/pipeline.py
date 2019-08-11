@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 
+from dvc.utils import relpath
 from dvc.utils.compat import str
 
 import argparse
-import os
 import logging
 
 from dvc.exceptions import DvcException
@@ -21,7 +21,7 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.repo, target)
         G = self.repo.graph()[0]
         stages = networkx.get_node_attributes(G, "stage")
-        node = os.path.relpath(stage.path, self.repo.root_dir)
+        node = relpath(stage.path, self.repo.root_dir)
         nodes = networkx.dfs_postorder_nodes(G, node)
 
         if locked:
@@ -29,6 +29,8 @@ class CmdPipelineShow(CmdBase):
 
         for n in nodes:
             if commands:
+                if stages[n].cmd is None:
+                    continue
                 logger.info(stages[n].cmd)
             elif outs:
                 for out in stages[n].outs:
@@ -41,7 +43,7 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
 
         stage = Stage.load(self.repo, target)
-        node = os.path.relpath(stage.path, self.repo.root_dir)
+        node = relpath(stage.path, self.repo.root_dir)
 
         pipelines = list(
             filter(lambda g: node in g.nodes(), self.repo.pipelines())
@@ -173,7 +175,7 @@ class CmdPipelineList(CmdBase):
                 logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
-        logger.info("{} pipeline(s) total".format(len(pipelines)))
+        logger.info("{} pipelines total".format(len(pipelines)))
 
         return 0
 
@@ -195,11 +197,11 @@ def add_parser(subparsers, parent_parser):
 
     fix_subparsers(pipeline_subparsers)
 
-    PIPELINE_SHOW_HELP = "Show pipeline."
+    PIPELINE_SHOW_HELP = "Show pipelines."
     pipeline_show_parser = pipeline_subparsers.add_parser(
         "show",
         parents=[parent_parser],
-        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline-show"),
+        description=append_doc_link(PIPELINE_SHOW_HELP, "pipeline/show"),
         help=PIPELINE_SHOW_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -209,14 +211,14 @@ def add_parser(subparsers, parent_parser):
         "--commands",
         action="store_true",
         default=False,
-        help="Print commands instead of paths to DVC files.",
+        help="Print commands instead of paths to DVC-files.",
     )
     pipeline_show_group.add_argument(
         "-o",
         "--outs",
         action="store_true",
         default=False,
-        help="Print output files instead of paths to DVC files.",
+        help="Print output files instead of paths to DVC-files.",
     )
     pipeline_show_parser.add_argument(
         "-l",
@@ -244,7 +246,10 @@ def add_parser(subparsers, parent_parser):
         help="Output DAG as Dependencies Tree.",
     )
     pipeline_show_parser.add_argument(
-        "targets", nargs="*", help="DVC files. 'Dvcfile' by default."
+        "targets",
+        nargs="*",
+        help="DVC-files to show pipeline for. Optional. "
+        "(Finds all DVC-files in the workspace by default.)",
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 
@@ -252,7 +257,7 @@ def add_parser(subparsers, parent_parser):
     pipeline_list_parser = pipeline_subparsers.add_parser(
         "list",
         parents=[parent_parser],
-        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline-list"),
+        description=append_doc_link(PIPELINE_LIST_HELP, "pipeline/list"),
         help=PIPELINE_LIST_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )

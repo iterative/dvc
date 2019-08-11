@@ -25,7 +25,6 @@ class DataCloud(object):
     Args:
         repo (dvc.repo.Repo): repo instance that belongs to the repo that
             we are working on.
-        config (dict): config of the repo.
 
     Raises:
         config.ConfigError: thrown when config has invalid format.
@@ -61,12 +60,6 @@ class DataCloud(object):
         if remote:
             return self._init_remote(remote)
 
-        # Old config format support for backward compatibility
-        if Config.SECTION_CORE_CLOUD in self._core:
-            msg = "using obsoleted config format. Consider updating."
-            logger.warning(msg)
-            return self._init_compat()
-
         raise ConfigError(
             "No remote repository specified. Setup default repository with\n"
             "    dvc config core.remote <name>\n"
@@ -75,38 +68,7 @@ class DataCloud(object):
         )
 
     def _init_remote(self, remote):
-        config = self.repo.config.get_remote_settings(remote)
-        return Remote(self.repo, config)
-
-    def _init_compat(self):
-        name = self._core.get(Config.SECTION_CORE_CLOUD, "").strip().lower()
-        if name == "":
-            return None
-
-        cloud_type = self.CLOUD_MAP.get(name, None)
-        if not cloud_type:
-            msg = "wrong cloud type '{}' specified".format(name)
-            raise ConfigError(msg)
-
-        cloud_config = self._config.get(name, None)
-        if not cloud_config:
-            msg = "can't find cloud section '{}' in config".format(name)
-            raise ConfigError(msg)
-
-        # NOTE: check if the class itself has everything needed for operation.
-        # E.g. all the imported packages.
-        if not cloud_type.supported(cloud_type.compat_config(cloud_config)):
-            raise ConfigError("unsupported cloud '{}'".format(name))
-
-        return self._init_cloud(cloud_config, cloud_type)
-
-    def _init_cloud(self, cloud_config, cloud_type):
-        global_storage_path = self._core.get(Config.SECTION_CORE_STORAGEPATH)
-        if global_storage_path:
-            logger.warning("using obsoleted config format. Consider updating.")
-
-        cloud = cloud_type(self.repo, cloud_config)
-        return cloud
+        return Remote(self.repo, name=remote)
 
     def push(self, targets, jobs=None, remote=None, show_checksums=False):
         """Push data items in a cloud-agnostic way.

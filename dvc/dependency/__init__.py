@@ -13,8 +13,10 @@ from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
 from dvc.dependency.https import DependencyHTTPS
+from .repo import DependencyREPO
 
 from dvc.remote import Remote
+
 
 DEPS = [
     DependencyGS,
@@ -44,6 +46,7 @@ DEP_MAP = {
 SCHEMA = output.SCHEMA.copy()
 del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
 del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
+SCHEMA[schema.Optional(DependencyREPO.PARAM_REPO)] = DependencyREPO.REPO_SCHEMA
 
 
 def _get(stage, p, info):
@@ -52,9 +55,12 @@ def _get(stage, p, info):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        settings = stage.repo.config.get_remote_settings(parsed.netloc)
-        remote = Remote(stage.repo, settings)
+        remote = Remote(stage.repo, name=parsed.netloc)
         return DEP_MAP[remote.scheme](stage, p, info, remote=remote)
+
+    if info and info.get(DependencyREPO.PARAM_REPO):
+        repo = info.pop(DependencyREPO.PARAM_REPO)
+        return DependencyREPO(repo, stage, p, info)
 
     for d in DEPS:
         if d.supported(p):
@@ -70,8 +76,9 @@ def loadd_from(stage, d_list):
     return ret
 
 
-def loads_from(stage, s_list):
+def loads_from(stage, s_list, erepo=None):
     ret = []
     for s in s_list:
-        ret.append(_get(stage, s, {}))
+        info = {DependencyREPO.PARAM_REPO: erepo} if erepo else {}
+        ret.append(_get(stage, s, info))
     return ret

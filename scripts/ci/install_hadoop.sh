@@ -5,8 +5,9 @@
 set -x
 set -e
 
+sudo add-apt-repository -y ppa:openjdk-r/ppa
 sudo apt-get update -y
-sudo apt-get install openjdk-8-jdk
+sudo apt-get install openjdk-7-jdk
 java -version
 
 pushd /usr/local

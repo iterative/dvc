@@ -61,8 +61,7 @@ def _get(stage, p, info, cache, metric, persist=False, tags=None):
     parsed = urlparse(p)
 
     if parsed.scheme == "remote":
-        settings = stage.repo.config.get_remote_settings(parsed.netloc)
-        remote = Remote(stage.repo, settings)
+        remote = Remote(stage.repo, name=parsed.netloc)
         return OUTS_MAP[remote.scheme](
             stage,
             p,

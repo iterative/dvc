@@ -2,7 +2,16 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, builtin_str, open, cast_bytes_py2, StringIO
+from dvc.utils.compat import (
+    str,
+    builtin_str,
+    open,
+    cast_bytes_py2,
+    StringIO,
+    fspath_py35,
+    fspath,
+    makedirs as _makedirs,
+)
 
 import os
 import sys
@@ -18,6 +27,7 @@ import colorama
 import re
 import logging
 
+from shortuuid import uuid
 from ruamel.yaml import YAML
 
 
@@ -45,8 +55,8 @@ def file_md5(fname):
         if size >= LARGE_FILE_SIZE:
             bar = True
             msg = "Computing md5 for a large file {}. This is only done once."
-            logger.info(msg.format(os.path.relpath(fname)))
-            name = os.path.relpath(fname)
+            logger.info(msg.format(relpath(fname)))
+            name = relpath(fname)
             total = 0
 
         with open(fname, "rb") as fobj:
@@ -70,8 +80,8 @@ def file_md5(fname):
             progress.finish_target(name)
 
         return (hash_md5.hexdigest(), hash_md5.digest())
-    else:
-        return (None, None)
+
+    return (None, None)
 
 
 def bytes_md5(byts):
@@ -80,32 +90,27 @@ def bytes_md5(byts):
     return hasher.hexdigest()
 
 
-def dict_filter(d, exclude=[]):
+def dict_filter(d, exclude=()):
     """
     Exclude specified keys from a nested dict
     """
 
-    if isinstance(d, list):
-        ret = []
-        for e in d:
-            ret.append(dict_filter(e, exclude))
-        return ret
-    elif isinstance(d, dict):
-        ret = {}
-        for k, v in d.items():
-            if isinstance(k, builtin_str):
-                k = str(k)
+    def fix_key(k):
+        return str(k) if isinstance(k, builtin_str) else k
 
-            assert isinstance(k, str)
-            if k in exclude:
-                continue
-            ret[k] = dict_filter(v, exclude)
-        return ret
+    if isinstance(d, list):
+        return [dict_filter(e, exclude) for e in d]
+
+    if isinstance(d, dict):
+        items = ((fix_key(k), v) for k, v in d.items())
+        return {
+            k: dict_filter(v, exclude) for k, v in items if k not in exclude
+        }
 
     return d
 
 
-def dict_md5(d, exclude=[]):
+def dict_md5(d, exclude=()):
     filtered = dict_filter(d, exclude)
     byts = json.dumps(filtered, sort_keys=True).encode("utf-8")
     return bytes_md5(byts)
@@ -141,35 +146,62 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
         progress.finish_target(name)
 
 
-def move(src, dst):
-    dst = os.path.abspath(dst)
-    dname = os.path.dirname(dst)
-    if not os.path.exists(dname):
-        os.makedirs(dname)
+def makedirs(path, exist_ok=False, mode=None):
+    path = fspath_py35(path)
 
-    if os.path.islink(src):
-        shutil.copy(os.readlink(src), dst)
-        os.unlink(src)
+    if mode is None:
+        _makedirs(path, exist_ok=exist_ok)
         return
 
-    shutil.move(src, dst)
+    umask = os.umask(0)
+    try:
+        _makedirs(path, exist_ok=exist_ok, mode=mode)
+    finally:
+        os.umask(umask)
+
+
+def move(src, dst, mode=None):
+    """Atomically move src to dst and chmod it with mode.
+
+    Moving is performed in two stages to make the whole operation atomic in
+    case src and dst are on different filesystems and actual physical copying
+    of data is happening.
+    """
+
+    src = fspath_py35(src)
+    dst = fspath_py35(dst)
+
+    dst = os.path.abspath(dst)
+    tmp = "{}.{}".format(dst, str(uuid()))
+
+    if os.path.islink(src):
+        shutil.copy(os.readlink(src), tmp)
+        os.unlink(src)
+    else:
+        shutil.move(src, tmp)
+
+    if mode is not None:
+        os.chmod(tmp, mode)
+
+    shutil.move(tmp, dst)
 
 
 def _chmod(func, p, excinfo):
+    perm = os.lstat(p).st_mode
+    perm |= stat.S_IWRITE
+
     try:
-        perm = os.stat(p).st_mode
-        perm |= stat.S_IWRITE
         os.chmod(p, perm)
     except OSError as exc:
-        # NOTE: broken symlink case.
-        if exc.errno != errno.ENOENT:
+        # broken symlink or file is not owned by us
+        if exc.errno not in [errno.ENOENT, errno.EPERM]:
             raise
 
     func(p)
 
 
 def remove(path):
-    logger.debug("Removing '{}'".format(os.path.relpath(path)))
+    logger.debug("Removing '{}'".format(relpath(path)))
 
     try:
         if os.path.isdir(path):
@@ -181,16 +213,33 @@ def remove(path):
             raise
 
 
-def to_chunks(l, jobs):
-    n = int(math.ceil(len(l) / jobs))
+def _split(list_to_split, chunk_size):
+    return [
+        list_to_split[i : i + chunk_size]
+        for i in range(0, len(list_to_split), chunk_size)
+    ]
 
-    if len(l) == 1:
-        return [l]
 
-    if n == 0:
-        n = 1
+def _to_chunks_by_chunks_number(list_to_split, num_chunks):
+    chunk_size = int(math.ceil(float(len(list_to_split)) / num_chunks))
 
-    return [l[x : x + n] for x in range(0, len(l), n)]
+    if len(list_to_split) == 1:
+        return [list_to_split]
+
+    if chunk_size == 0:
+        chunk_size = 1
+
+    return _split(list_to_split, chunk_size)
+
+
+def to_chunks(list_to_split, num_chunks=None, chunk_size=None):
+    if (num_chunks and chunk_size) or (not num_chunks and not chunk_size):
+        raise ValueError(
+            "One and only one of 'num_chunks', 'chunk_size' must be defined"
+        )
+    if chunk_size:
+        return _split(list_to_split, chunk_size)
+    return _to_chunks_by_chunks_number(list_to_split, num_chunks)
 
 
 # NOTE: Check if we are in a bundle
@@ -222,19 +271,16 @@ def fix_env(env=None):
 def convert_to_unicode(data):
     if isinstance(data, builtin_str):
         return str(data)
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         return dict(map(convert_to_unicode, data.items()))
-    elif isinstance(data, list) or isinstance(data, tuple):
+    if isinstance(data, (list, tuple)):
         return type(data)(map(convert_to_unicode, data))
-    else:
-        return data
+    return data
 
 
 def tmp_fname(fname):
     """ Temporary name for a partial download """
-    from uuid import uuid4
-
-    return fname + "." + str(uuid4()) + ".tmp"
+    return fspath(fname) + "." + str(uuid()) + ".tmp"
 
 
 def current_timestamp():
@@ -253,39 +299,25 @@ def to_yaml_string(data):
     return stream.getvalue()
 
 
-def dvc_walk(
-    top,
-    topdown=True,
-    onerror=None,
-    followlinks=False,
-    ignore_file_handler=None,
-):
+def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
     """
     Proxy for `os.walk` directory tree generator.
     Utilizes DvcIgnoreFilter functionality.
     """
-    ignore_filter = None
-    if topdown:
-        from dvc.ignore import DvcIgnoreFilter
-
-        ignore_filter = DvcIgnoreFilter(
-            top, ignore_file_handler=ignore_file_handler
-        )
+    top = fspath_py35(top)
 
     for root, dirs, files in os.walk(
         top, topdown=topdown, onerror=onerror, followlinks=followlinks
     ):
 
-        if ignore_filter:
-            dirs[:], files[:] = ignore_filter(root, dirs, files)
+        if dvcignore:
+            dirs[:], files[:] = dvcignore(root, dirs, files)
 
         yield root, dirs, files
 
 
-def walk_files(directory, ignore_file_handler=None):
-    for root, _, files in dvc_walk(
-        str(directory), ignore_file_handler=ignore_file_handler
-    ):
+def walk_files(directory, dvcignore):
+    for root, _, files in dvc_walk(directory, dvcignore):
         for f in files:
             yield os.path.join(root, f)
 
@@ -368,3 +400,15 @@ def _visual_center(line, width):
     right_padding = spaces - left_padding
 
     return (left_padding * " ") + line + (right_padding * " ")
+
+
+def relpath(path, start=os.curdir):
+    path = fspath(path)
+    start = os.path.abspath(fspath(start))
+
+    # Windows path on different drive than curdir doesn't have relpath
+    if os.name == "nt" and not os.path.commonprefix(
+        [start, os.path.abspath(path)]
+    ):
+        return path
+    return os.path.relpath(path, start)

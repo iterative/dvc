@@ -3,17 +3,22 @@ from __future__ import unicode_literals
 import os
 import logging
 
-import dvc.prompt as prompt
+from itertools import chain
 
+from funcy import cached_property
+
+from dvc.config import Config
 from dvc.exceptions import (
-    DvcException,
     NotDvcRepoError,
     OutputNotFoundError,
     TargetNotDirectoryError,
+    OutputFileMissingError,
 )
-from dvc.ignore import DvcIgnoreFileHandler
-from dvc.path.local import PathLOCAL
-from dvc.utils.compat import open as _open
+from dvc.ignore import DvcIgnoreFilter
+from dvc.path_info import PathInfo
+from dvc.remote.base import RemoteActionNotImplemented
+from dvc.utils.compat import open as _open, fspath_py35
+from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +34,7 @@ class Repo(object):
     from dvc.repo.move import move
     from dvc.repo.run import run
     from dvc.repo.imp import imp
+    from dvc.repo.imp_url import imp_url
     from dvc.repo.reproduce import reproduce
     from dvc.repo.checkout import checkout
     from dvc.repo.push import push
@@ -39,19 +45,19 @@ class Repo(object):
     from dvc.repo.commit import commit
     from dvc.repo.diff import diff
     from dvc.repo.brancher import brancher
+    from dvc.repo.get import get
+    from dvc.repo.get_url import get_url
+    from dvc.repo.update import update
 
     def __init__(self, root_dir=None):
-        from dvc.config import Config
         from dvc.state import State
         from dvc.lock import Lock
         from dvc.scm import SCM
         from dvc.cache import Cache
         from dvc.data_cloud import DataCloud
-        from dvc.updater import Updater
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
-        from dvc.repo.pkg import Pkg
 
         root_dir = self.find_root(root_dir)
 
@@ -60,9 +66,10 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
+        self.scm = SCM(self.root_dir, repo=self)
+
         self.tree = WorkingTree(self.root_dir)
 
-        self.scm = SCM(self.root_dir, repo=self)
         self.lock = Lock(self.dvc_dir)
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
@@ -76,28 +83,24 @@ class Repo(object):
 
         self.cache = Cache(self)
         self.cloud = DataCloud(self)
-        self.updater = Updater(self.dvc_dir)
 
         self.metrics = Metrics(self)
         self.tag = Tag(self)
-        self.pkg = Pkg(self)
 
         self._ignore()
-
-        self.updater.check()
 
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
 
-    @staticmethod
-    def find_root(root=None):
+    @classmethod
+    def find_root(cls, root=None):
         if root is None:
             root = os.getcwd()
         else:
             root = os.path.abspath(os.path.realpath(root))
 
         while True:
-            dvc_dir = os.path.join(root, Repo.DVC_DIR)
+            dvc_dir = os.path.join(root, cls.DVC_DIR)
             if os.path.isdir(dvc_dir):
                 return root
             if os.path.ismount(root):
@@ -105,10 +108,10 @@ class Repo(object):
             root = os.path.dirname(root)
         raise NotDvcRepoError(root)
 
-    @staticmethod
-    def find_dvc_dir(root=None):
-        root_dir = Repo.find_root(root)
-        return os.path.join(root_dir, Repo.DVC_DIR)
+    @classmethod
+    def find_dvc_dir(cls, root=None):
+        root_dir = cls.find_root(root)
+        return os.path.join(root_dir, cls.DVC_DIR)
 
     @staticmethod
     def init(root_dir=os.curdir, no_scm=False, force=False):
@@ -118,17 +121,19 @@ class Repo(object):
         return Repo(root_dir)
 
     def unprotect(self, target):
-        path_info = PathLOCAL(path=target)
-        return self.cache.local.unprotect(path_info)
+        return self.cache.local.unprotect(PathInfo(target))
 
     def _ignore(self):
+        from dvc.updater import Updater
+
+        updater = Updater(self.dvc_dir)
+
         flist = [
-            self.state.state_file,
             self.lock.lock_file,
             self.config.config_local_file,
-            self.updater.updater_file,
-            self.updater.lock.lock_file,
-        ] + self.state.temp_files
+            updater.updater_file,
+            updater.lock.lock_file,
+        ] + self.state.files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
             flist += [self.cache.local.cache_dir]
@@ -165,7 +170,7 @@ class Repo(object):
         if not with_deps:
             return [stage]
 
-        node = os.path.relpath(stage.path, self.root_dir)
+        node = relpath(stage.path, self.root_dir)
         G = self._get_pipeline(node)
 
         ret = []
@@ -174,103 +179,9 @@ class Repo(object):
 
         return ret
 
-    def _collect_dir_cache(
-        self, out, branch=None, remote=None, force=False, jobs=None
-    ):
-        """Get a list of `info`s retaled to the given directory.
-
-        - Pull the directory entry from the remote cache if it was changed.
-
-        Example:
-
-            Given the following commands:
-
-            $ echo "foo" > directory/foo
-            $ echo "bar" > directory/bar
-            $ dvc add directory
-
-            It will return something similar to the following list:
-
-            [
-                { 'path': 'directory',     'md5': '168fd6761b9c.dir', ... },
-                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
-                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
-            ]
-        """
-        info = out.dumpd()
-        ret = [info]
-        r = out.remote
-        md5 = info[r.PARAM_CHECKSUM]
-
-        if self.cache.local.changed_cache_file(md5):
-            try:
-                self.cloud.pull(
-                    ret, jobs=jobs, remote=remote, show_checksums=False
-                )
-            except DvcException as exc:
-                msg = "Failed to pull cache for '{}': {}"
-                logger.debug(msg.format(out, exc))
-
-        if self.cache.local.changed_cache_file(md5):
-            msg = (
-                "Missing cache for directory '{}'. "
-                "Cache for files inside will be lost. "
-                "Would you like to continue? Use '-f' to force. "
-            )
-            if not force and not prompt.confirm(msg):
-                raise DvcException(
-                    "unable to fully collect used cache"
-                    " without cache for directory '{}'".format(out)
-                )
-            else:
-                return ret
-
-        for i in out.dir_cache:
-            i["branch"] = branch
-            i[r.PARAM_PATH] = os.path.join(
-                info[r.PARAM_PATH], i[r.PARAM_RELPATH]
-            )
-            ret.append(i)
-
-        return ret
-
-    def _collect_used_cache(
-        self, out, branch=None, remote=None, force=False, jobs=None
-    ):
-        """Get a dumpd of the given `out`, with an entry including the branch.
-
-        The `used_cache` of an output is no more than its `info`.
-
-        In case that the given output is a directory, it will also
-        include the `info` of its files.
-        """
-        if not out.use_cache or not out.info:
-            if not out.info:
-                logger.warning(
-                    "Output '{}'({}) is missing version "
-                    "info. Cache for it will not be collected. "
-                    "Use dvc repro to get your pipeline up to "
-                    "date.".format(out, out.stage)
-                )
-            return []
-
-        info = out.dumpd()
-        info["branch"] = branch
-        ret = [info]
-
-        if out.scheme != "local":
-            return ret
-
-        if not out.is_dir_checksum:
-            return ret
-
-        return self._collect_dir_cache(
-            out, branch=branch, remote=remote, force=force, jobs=jobs
-        )
-
     def used_cache(
         self,
-        target=None,
+        targets=None,
         all_branches=False,
         active=True,
         with_deps=False,
@@ -305,20 +216,24 @@ class Repo(object):
         for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
         ):
-            if target:
-                if recursive and os.path.isdir(target):
-                    stages = self.stages(target)
-                else:
-                    stages = self.collect(target, with_deps=with_deps)
+            if targets:
+                stages = []
+                for target in targets:
+                    if recursive and os.path.isdir(target):
+                        stages.extend(self.stages(target))
+                    else:
+                        stages.extend(
+                            self.collect(target, with_deps=with_deps)
+                        )
             elif active:
                 stages = self.active_stages()
             else:
                 stages = self.stages()
 
             for stage in stages:
-                if active and not target and stage.locked:
+                if active and not targets and stage.locked:
                     logger.warning(
-                        "DVC file '{path}' is locked. Its dependencies are"
+                        "DVC-file '{path}' is locked. Its dependencies are"
                         " not going to be pushed/pulled/fetched.".format(
                             path=stage.relpath
                         )
@@ -326,14 +241,12 @@ class Repo(object):
 
                 for out in stage.outs:
                     scheme = out.path_info.scheme
+                    used_cache = out.get_used_cache(
+                        remote=remote, force=force, jobs=jobs
+                    )
+
                     cache[scheme].extend(
-                        self._collect_used_cache(
-                            out,
-                            branch=branch,
-                            remote=remote,
-                            force=force,
-                            jobs=jobs,
-                        )
+                        dict(entry, branch=branch) for entry in used_cache
                     )
 
         return cache
@@ -391,54 +304,50 @@ class Repo(object):
         G_active = nx.DiGraph()
         stages = stages or self.stages(from_directory, check_dag=False)
         stages = [stage for stage in stages if stage]
-        outs = []
+        outs = {}
 
         for stage in stages:
             for out in stage.outs:
-                existing = []
-                for o in outs:
-                    if o.path == out.path:
-                        existing.append(o.stage)
-
-                    in_o_dir = out.path.startswith(o.path + o.sep)
-                    in_out_dir = o.path.startswith(out.path + out.sep)
-                    if in_o_dir or in_out_dir:
-                        raise OverlappingOutputPathsError(o, out)
-
-                if existing:
-                    stages = [stage.relpath, existing[0].relpath]
-                    raise OutputDuplicationError(out.path, stages)
-
-                outs.append(out)
+                if out.path_info in outs:
+                    stages = [stage.relpath, outs[out.path_info].stage.relpath]
+                    raise OutputDuplicationError(str(out), stages)
+                outs[out.path_info] = out
 
         for stage in stages:
-            path_dir = os.path.dirname(stage.path) + os.sep
-            for out in outs:
-                if path_dir.startswith(out.path + os.sep):
+            for out in stage.outs:
+                for p in out.path_info.parents:
+                    if p in outs:
+                        raise OverlappingOutputPathsError(outs[p], out)
+
+        for stage in stages:
+            stage_path_info = PathInfo(stage.path)
+            for p in chain([stage_path_info], stage_path_info.parents):
+                if p in outs:
                     raise StagePathAsOutputError(stage.wdir, stage.relpath)
 
         for stage in stages:
-            node = os.path.relpath(stage.path, self.root_dir)
+            node = relpath(stage.path, self.root_dir)
 
             G.add_node(node, stage=stage)
             G_active.add_node(node, stage=stage)
 
             for dep in stage.deps:
+                if dep.path_info is None:
+                    continue
+
                 for out in outs:
                     if (
-                        out.path != dep.path
-                        and not dep.path.startswith(out.path + out.sep)
-                        and not out.path.startswith(dep.path + dep.sep)
+                        out == dep.path_info
+                        or dep.path_info.isin(out)
+                        or out.isin(dep.path_info)
                     ):
-                        continue
-
-                    dep_stage = out.stage
-                    dep_node = os.path.relpath(dep_stage.path, self.root_dir)
-                    G.add_node(dep_node, stage=dep_stage)
-                    G.add_edge(node, dep_node)
-                    if not stage.locked:
-                        G_active.add_node(dep_node, stage=dep_stage)
-                        G_active.add_edge(node, dep_node)
+                        dep_stage = outs[out].stage
+                        dep_node = relpath(dep_stage.path, self.root_dir)
+                        G.add_node(dep_node, stage=dep_stage)
+                        G.add_edge(node, dep_node)
+                        if not stage.locked:
+                            G_active.add_node(dep_node, stage=dep_stage)
+                            G_active.add_edge(node, dep_node)
 
         self._check_cyclic_graph(G)
 
@@ -452,6 +361,17 @@ class Repo(object):
         return [
             G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
         ]
+
+    @staticmethod
+    def _filter_out_dirs(dirs, outs, root_dir):
+        def filter_dirs(dname):
+            path = os.path.join(root_dir, dname)
+            for out in outs:
+                if path == os.path.normpath(out):
+                    return False
+            return True
+
+        return list(filter(filter_dirs, dirs))
 
     def stages(self, from_directory=None, check_dag=True):
         """
@@ -473,9 +393,8 @@ class Repo(object):
         stages = []
         outs = []
 
-        ignore_file_handler = DvcIgnoreFileHandler(self.tree)
         for root, dirs, files in self.tree.walk(
-            from_directory, ignore_file_handler=ignore_file_handler
+            from_directory, dvcignore=self.dvcignore
         ):
             for fname in files:
                 path = os.path.join(root, fname)
@@ -483,19 +402,11 @@ class Repo(object):
                     continue
                 stage = Stage.load(self, path)
                 for out in stage.outs:
-                    outs.append(out.path + out.sep)
+                    if out.scheme == "local":
+                        outs.append(out.fspath + out.sep)
                 stages.append(stage)
 
-            def filter_dirs(dname, root=root):
-                path = os.path.join(root, dname)
-                if path in (self.dvc_dir, self.scm.dir):
-                    return False
-                for out in outs:
-                    if path == os.path.normpath(out) or path.startswith(out):
-                        return False
-                return True
-
-            dirs[:] = list(filter(filter_dirs, dirs))
+            dirs[:] = self._filter_out_dirs(dirs, outs, root)
 
         if check_dag:
             self.check_dag(stages)
@@ -522,10 +433,10 @@ class Repo(object):
         is_dir = self.tree.isdir(abs_path)
 
         def func(out):
-            if out.path == abs_path:
+            if out.scheme == "local" and out.fspath == abs_path:
                 return True
 
-            if is_dir and recursive and out.path.startswith(abs_path + os.sep):
+            if is_dir and recursive and out.path_info.isin(abs_path):
                 return True
 
             return False
@@ -535,6 +446,11 @@ class Repo(object):
             raise OutputNotFoundError(path)
 
         return matched
+
+    def find_out_by_relpath(self, relpath):
+        path = os.path.join(self.root_dir, relpath)
+        out, = self.find_outs_by_path(path)
+        return out
 
     def is_dvc_internal(self, path):
         path_parts = os.path.normpath(path).split(os.path.sep)
@@ -546,9 +462,27 @@ class Repo(object):
         if out.isdir():
             raise ValueError("Can't open a dir")
 
-        with self.state:
-            cache_info = self._collect_used_cache(out, remote=remote)
-            self.cloud.pull(cache_info, remote=remote)
+        cache_file = self.cache.local.checksum_to_path_info(out.checksum)
+        cache_file = fspath_py35(cache_file)
 
-        cache_filename = self.cache.local.checksum_to_path(out.checksum)
-        return _open(cache_filename, mode=mode, encoding=encoding)
+        if os.path.exists(cache_file):
+            return _open(cache_file, mode=mode, encoding=encoding)
+
+        try:
+            remote_obj = self.cloud.get_remote(remote)
+            remote_info = remote_obj.checksum_to_path_info(out.checksum)
+            return remote_obj.open(remote_info, mode=mode, encoding=encoding)
+        except RemoteActionNotImplemented:
+            with self.state:
+                cache_info = out.get_used_cache(remote=remote)
+                self.cloud.pull(cache_info, remote=remote)
+
+            # Since pull may just skip with a warning, we need to check it here
+            if not os.path.exists(cache_file):
+                raise OutputFileMissingError(relpath(path, self.root_dir))
+
+            return _open(cache_file, mode=mode, encoding=encoding)
+
+    @cached_property
+    def dvcignore(self):
+        return DvcIgnoreFilter(self.root_dir)

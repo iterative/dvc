@@ -21,9 +21,7 @@ class TestRemoteAZURE(TestCase):
         )
         config = {"url": url}
         remote = RemoteAZURE(None, config)
-        self.assertEqual(remote.url, url)
-        self.assertEqual(remote.prefix, "")
-        self.assertEqual(remote.bucket, self.container_name)
+        self.assertEqual(remote.path_info, "azure://" + self.container_name)
         self.assertEqual(remote.connection_string, self.connection_string)
 
     def test_init(self):
@@ -31,7 +29,5 @@ class TestRemoteAZURE(TestCase):
         url = "azure://{}/{}".format(self.container_name, prefix)
         config = {"url": url, "connection_string": self.connection_string}
         remote = RemoteAZURE(None, config)
-        self.assertEqual(remote.url, url)
-        self.assertEqual(remote.prefix, prefix)
-        self.assertEqual(remote.bucket, self.container_name)
+        self.assertEqual(remote.path_info, url)
         self.assertEqual(remote.connection_string, self.connection_string)

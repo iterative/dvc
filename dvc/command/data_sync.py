@@ -4,48 +4,33 @@ import argparse
 import logging
 
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)
 
 
 class CmdDataBase(CmdBase):
-    UP_TO_DATE_MSG = "Everything is up to date."
-
-    def do_run(self, target):
-        pass
-
-    def run(self):
-        if not self.args.targets:
-            return self.do_run()
-
-        ret = 0
-        for target in self.args.targets:
-            if self.do_run(target):
-                ret = 1
-        return ret
-
     @classmethod
     def check_up_to_date(cls, processed_files_count):
         if processed_files_count == 0:
-            logger.info(cls.UP_TO_DATE_MSG)
+            logger.info("Everything is up to date.")
 
 
 class CmdDataPull(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.pull(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
                 force=self.args.force,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to pull data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
@@ -53,19 +38,18 @@ class CmdDataPull(CmdDataBase):
 
 
 class CmdDataPush(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.push(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to push data to the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
@@ -73,19 +57,18 @@ class CmdDataPush(CmdDataBase):
 
 
 class CmdDataFetch(CmdDataBase):
-    def do_run(self, target=None):
+    def run(self):
         try:
             processed_files_count = self.repo.fetch(
-                target=target,
+                targets=self.args.targets,
                 jobs=self.args.jobs,
                 remote=self.args.remote,
-                show_checksums=self.args.show_checksums,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 with_deps=self.args.with_deps,
                 recursive=self.args.recursive,
             )
-        except Exception:
+        except DvcException:
             logger.exception("failed to fetch data from the cloud")
             return 1
         self.check_up_to_date(processed_files_count)
@@ -100,20 +83,13 @@ def shared_parent_parser():
         add_help=False, parents=[get_parent_parser()]
     )
     shared_parent_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        default=None,
-        help="Number of jobs to run simultaneously.",
+        "-j", "--jobs", type=int, help="Number of jobs to run simultaneously."
     )
     shared_parent_parser.add_argument(
-        "--show-checksums",
-        action="store_true",
-        default=False,
-        help="Show checksums instead of file names.",
-    )
-    shared_parent_parser.add_argument(
-        "targets", nargs="*", default=None, help="DVC files."
+        "targets",
+        nargs="*",
+        help="Limit command scope to these DVC-files. "
+        "Using -R, directories to search DVC-files in can also be given.",
     )
 
     return shared_parent_parser
@@ -150,18 +126,18 @@ def add_parser(subparsers, _parent_parser):
         help="Fetch cache for all tags.",
     )
     pull_parser.add_argument(
-        "-d",
-        "--with-deps",
-        action="store_true",
-        default=False,
-        help="Fetch cache for all dependencies of the specified target.",
-    )
-    pull_parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         default=False,
         help="Do not prompt when removing working directory files.",
+    )
+    pull_parser.add_argument(
+        "-d",
+        "--with-deps",
+        action="store_true",
+        default=False,
+        help="Fetch cache for all dependencies of the specified target.",
     )
     pull_parser.add_argument(
         "-R",
@@ -278,7 +254,7 @@ def add_parser(subparsers, _parent_parser):
         default=False,
         help=(
             "Suppresses all output."
-            " Exit with 0 if pipeline is up to date, otherwise 1."
+            " Exit with 0 if pipelines are up to date, otherwise 1."
         ),
     )
     status_parser.add_argument(

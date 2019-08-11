@@ -3,8 +3,7 @@
 from __future__ import unicode_literals
 
 import os
-import shutil
-import uuid
+import shortuuid
 import tempfile
 import logging
 import warnings
@@ -14,9 +13,9 @@ from git.exc import GitCommandNotFound
 from unittest import TestCase
 import pytest
 
-from dvc.command.remote import CmdRemoteAdd
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.compat import open, str
+from dvc.utils import remove
 
 
 logger = logging.getLogger("dvc")
@@ -50,12 +49,13 @@ class TestDirFixture(object):
     UNICODE = "тест"
     UNICODE_CONTENTS = "проверка"
 
-    def __init__(self, root_dir=None):
-        if root_dir:
-            os.mkdir(root_dir)
-        else:
-            root_dir = self.mkdtemp()
+    def __init__(self):
+        root_dir = self.mkdtemp()
         self._root_dir = os.path.realpath(root_dir)
+
+    @property
+    def root_dir(self):
+        return self._root_dir
 
     def _pushd(self, d):
         if not hasattr(self, "_saved_dir"):
@@ -79,10 +79,12 @@ class TestDirFixture(object):
             )
 
     @staticmethod
-    def mkdtemp():
+    def mkdtemp(base_directory=None):
         prefix = "dvc-test.{}.".format(os.getpid())
-        suffix = ".{}".format(uuid.uuid4())
-        return tempfile.mkdtemp(prefix=prefix, suffix=suffix)
+        suffix = ".{}".format(shortuuid.uuid())
+        return tempfile.mkdtemp(
+            prefix=prefix, suffix=suffix, dir=base_directory
+        )
 
     def setUp(self):
         self._pushd(self._root_dir)
@@ -98,7 +100,7 @@ class TestDirFixture(object):
     def tearDown(self):
         self._popd()
         try:
-            shutil.rmtree(self._root_dir)
+            remove(self._root_dir)
         except OSError as exc:
             # We ignore this under Windows with a warning because it happened
             # to be really hard to trace all not properly closed files.
@@ -125,25 +127,24 @@ class TestGitFixture(TestDirFixture):
         #    GitCommandNotFound: Cmd('git') not found due to:
         #        OSError('[Errno 35] Resource temporarily unavailable')
         retries = self.N_RETRIES
-        while retries:
+        while True:
             try:
                 self.git = Repo.init()
+                break
             except GitCommandNotFound:
                 retries -= 1
-                continue
-            break
+                if not retries:
+                    raise
 
         self.git.index.add([self.CODE])
         self.git.index.commit("add code")
 
     def tearDown(self):
         self.git.close()
+        super(TestGitFixture, self).tearDown()
 
 
 class TestGitSubmoduleFixture(TestGitFixture):
-    def __init__(self, root_dir=None):
-        super(TestGitSubmoduleFixture, self).__init__(root_dir)
-
     def setUp(self):
         super(TestGitSubmoduleFixture, self).setUp()
         subrepo = Repo.init()
@@ -152,97 +153,47 @@ class TestGitSubmoduleFixture(TestGitFixture):
         self._pushd(subrepo_path)
 
 
-class TestDvcFixture(TestGitFixture):
-    def __init__(self, root_dir=None):
-        super(TestDvcFixture, self).__init__(root_dir)
-
+class TestDvcFixture(TestDirFixture):
     def setUp(self):
         super(TestDvcFixture, self).setUp()
-        self.dvc = DvcRepo.init(self._root_dir)
+        self.dvc = DvcRepo.init(self.root_dir, no_scm=True)
+
+
+class TestDvcGitFixture(TestGitFixture):
+    def setUp(self):
+        super(TestDvcGitFixture, self).setUp()
+        self.dvc = DvcRepo.init(self.root_dir)
         self.dvc.scm.commit("init dvc")
 
     def tearDown(self):
-        self.dvc.scm.git.close()
-
-
-class TestDvcGitInitializedFixture(TestDvcFixture):
-    def __init__(self, root_dir=None):
-        super(TestDvcGitInitializedFixture, self).__init__(root_dir)
-
-    def setUp(self):
-        super(TestDvcGitInitializedFixture, self).setUp()
-        self.git.init()
-
-
-class TestDvcDataFileFixture(TestDvcGitInitializedFixture):
-    DATA_DVC_FILE = "data.dvc"
-    DATA_DIR_DVC_FILE = "data_sub_dir.dvc"
-    REMOTE = "myremote2"
-
-    def __init__(self, root_dir=None, cache_dir=None):
-        super(TestDvcDataFileFixture, self).__init__(root_dir)
-        self.cache_dir = cache_dir
-
-    def setUp(self):
-        super(TestDvcDataFileFixture, self).setUp()
-
-        self.dvc.add(self.DATA)
-        self.dvc.add(self.DATA_SUB_DIR)
-
-        if self.cache_dir:
-            shutil.copytree(self.dvc.cache.local.cache_dir, self.cache_dir)
-
-            class MockConfig:
-                system = None
-                glob = None
-                local = None
-                default = True
-                name = self.REMOTE
-                url = self.cache_dir
-
-            cmd = CmdRemoteAdd(MockConfig())
-            cmd.run()
-
-        self.git.index.add(
-            [
-                os.path.join(self.DATA_DIR, self.DATA_DVC_FILE),
-                os.path.join(self.DATA_DIR, self.DATA_DIR_DVC_FILE),
-                os.path.join(self.DATA_DIR, ".gitignore"),
-                ".dvc/config",
-                self.FOO,
-                self.BAR,
-            ]
-        )
-        self.git.index.commit("Hello world commit")
-
-        # Return to the dir we started to not confuse parent fixture
-        os.chdir(self._saved_dir)
+        self.dvc.scm.close()
+        super(TestDvcGitFixture, self).tearDown()
 
 
 # NOTE: Inheritance order in the classes below is important.
 
 
 class TestDir(TestDirFixture, TestCase):
-    def __init__(self, methodName, root_dir=None):
-        TestDirFixture.__init__(self, root_dir)
+    def __init__(self, methodName):
+        TestDirFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
 
 class TestGit(TestGitFixture, TestCase):
-    def __init__(self, methodName, root_dir=None):
-        TestGitFixture.__init__(self, root_dir)
+    def __init__(self, methodName):
+        TestGitFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
 
 class TestGitSubmodule(TestGitSubmoduleFixture, TestCase):
-    def __init__(self, methodName, root_dir=None):
-        TestGitSubmoduleFixture.__init__(self, root_dir)
+    def __init__(self, methodName):
+        TestGitSubmoduleFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
 
 class TestDvc(TestDvcFixture, TestCase):
-    def __init__(self, methodName, root_dir=None):
-        TestDvcFixture.__init__(self, root_dir)
+    def __init__(self, methodName):
+        TestDvcFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
     @pytest.fixture(autouse=True)
@@ -250,17 +201,11 @@ class TestDvc(TestDvcFixture, TestCase):
         self._caplog = caplog
 
 
-class TestDvcPkg(TestDvcFixture, TestCase):
-    GIT_PKG = "git_pkg"
-    CACHE_DIR = "mycache"
-
-    def __init__(self, methodName, root_dir=None):
-        TestDvcFixture.__init__(self, root_dir)
+class TestDvcGit(TestDvcGitFixture, TestCase):
+    def __init__(self, methodName):
+        TestDvcGitFixture.__init__(self)
         TestCase.__init__(self, methodName)
 
-        self.pkg_dir = os.path.join(self._root_dir, self.GIT_PKG)
-        cache_dir = os.path.join(self._root_dir, self.CACHE_DIR)
-        self.pkg_fixture = TestDvcDataFileFixture(
-            root_dir=self.pkg_dir, cache_dir=cache_dir
-        )
-        self.pkg_fixture.setUp()
+    @pytest.fixture(autouse=True)
+    def inject_fixtures(self, caplog):
+        self._caplog = caplog

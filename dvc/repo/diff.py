@@ -77,7 +77,7 @@ def _modified_files(self, a_entries, b_entries):
     modified_count = 0
     for key in keys:
         if a_entries[key] != b_entries[key]:
-            modified_count
+            modified_count += 1
             diff_size += os.path.getsize(
                 self.cache.local.get(b_entries[key])
             ) - os.path.getsize(self.cache.local.get(a_entries[key]))

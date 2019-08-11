@@ -47,7 +47,7 @@ fpm_build()
 	fpm -s dir \
 	    -f \
 	    -t $1 \
-            --description $DESC \
+            --description "$DESC" \
 	    $FPM_FLAGS \
 	    -n dvc \
 	    -v $VERSION \
@@ -71,7 +71,6 @@ install_dependencies()
 		sudo apt-get update -y
 		sudo apt-get install ruby-dev build-essential rpm python-pip python-dev
 	elif command_exists brew; then
-		brew update
 		brew install ruby
 	else
 		echo "Unable to install fpm dependencies" && exit 1
@@ -80,7 +79,7 @@ install_dependencies()
 	gem install --no-document fpm
 
 	print_info "Installing requirements..."
-	pip install -e .[all]
+	pip install .[all]
 
 	print_info "Installing pyinstaller..."
 	pip install pyinstaller

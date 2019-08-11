@@ -43,7 +43,6 @@ install_requires = [
     "future>=0.16.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
-    "networkx>=2.1",
     "gitpython>=2.1.8",
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
@@ -58,18 +57,30 @@ install_requires = [
     "treelib>=1.5.5",
     "inflect>=2.1.0",
     "humanize>=0.5.1",
-    "dulwich>=0.19.11",
-    "ruamel.yaml>=0.15.91",
-    "psutil==5.6.2",
+    "ruamel.yaml>=0.16.1",
+    "funcy>=1.12",
+    "pathspec>=0.5.9",
+    "shortuuid>=0.5.0",
+    "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
+
+if sys.version_info[0] == 2:
+    install_requires.append("networkx>=2.1,<2.3")
+else:
+    install_requires.append("networkx>=2.1")
 
 # Extra dependencies for remote integrations
 gs = ["google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
-azure = ["azure-storage-blob==1.3.0"]
+azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
-ssh = ["paramiko>=2.4.1"]
+ssh = ["paramiko>=2.5.0"]
+hdfs = ["pyarrow==0.14.0"]
 all_remotes = gs + s3 + azure + ssh + oss
+
+if os.name != "nt" or sys.version_info[0] != 2:
+    # NOTE: there are no pyarrow wheels for python2 on windows
+    all_remotes += hdfs
 
 # Extra dependecies to run tests
 tests_requirements = [
@@ -92,8 +103,11 @@ tests_requirements = [
     "collective.checkdocs",
     "flake8",
     "flake8-docstrings",
+    "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.5.0",
+    "moto>=1.3.14.dev55",
+    "rangehttpserver==1.2.0",
 ]
 
 if (sys.version_info) >= (3, 6):
@@ -116,6 +130,7 @@ setup(
         "azure": azure,
         "oss": oss,
         "ssh": ssh,
+        "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ":python_version=='2.7'": ["futures", "pathlib2"],
         "tests": tests_requirements,

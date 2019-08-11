@@ -7,7 +7,7 @@ import logging
 import re
 
 from dvc.utils.compat import str, open
-from dvc.utils import fix_env
+from dvc.utils import fix_env, relpath
 from dvc.scm.base import (
     Base,
     SCMError,
@@ -43,19 +43,19 @@ class Git(Base):
         from git.exc import InvalidGitRepositoryError
 
         try:
-            self.git = git.Repo(root_dir)
+            self.repo = git.Repo(self.root_dir)
         except InvalidGitRepositoryError:
             msg = "{} is not a git repository"
-            raise SCMError(msg.format(root_dir))
+            raise SCMError(msg.format(self.root_dir))
 
         # NOTE: fixing LD_LIBRARY_PATH for binary built by PyInstaller.
         # http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
         env = fix_env(None)
         libpath = env.get("LD_LIBRARY_PATH", None)
-        self.git.git.update_environment(LD_LIBRARY_PATH=libpath)
+        self.repo.git.update_environment(LD_LIBRARY_PATH=libpath)
 
         self.ignored_paths = []
-        self.files_to_track = []
+        self.files_to_track = set()
 
     @staticmethod
     def is_repo(root_dir):
@@ -71,7 +71,7 @@ class Git(Base):
 
     @property
     def dir(self):
-        return self.git.git_dir
+        return self.repo.git_dir
 
     @property
     def ignore_file(self):
@@ -93,7 +93,7 @@ class Git(Base):
                 msg.format(self.GITIGNORE, path, ignore_file_dir)
             )
 
-        entry = os.path.relpath(path, ignore_file_dir).replace(os.sep, "/")
+        entry = relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
         if len(entry) > 0 and entry[0] != "/":
             entry = "/" + entry
@@ -105,6 +105,16 @@ class Git(Base):
 
         return entry, gitignore
 
+    @staticmethod
+    def _ignored(entry, gitignore_path):
+        if os.path.exists(gitignore_path):
+            with open(gitignore_path, "r") as fobj:
+                ignore_list = fobj.readlines()
+            return any(
+                filter(lambda x: x.strip() == entry.strip(), ignore_list)
+            )
+        return False
+
     def ignore(self, path, in_curr_dir=False):
         base_dir = (
             os.path.realpath(os.curdir)
@@ -113,33 +123,31 @@ class Git(Base):
         )
         entry, gitignore = self._get_gitignore(path, base_dir)
 
-        ignore_list = []
-        if os.path.exists(gitignore):
-            with open(gitignore, "r") as f:
-                ignore_list = f.readlines()
-            if any(filter(lambda x: x.strip() == entry.strip(), ignore_list)):
-                return
+        if self._ignored(entry, gitignore):
+            return
 
-        msg = "Adding '{}' to '{}'.".format(
-            os.path.relpath(path), os.path.relpath(gitignore)
-        )
+        msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
         logger.info(msg)
 
-        self._add_entry_to_gitignore(entry, gitignore, ignore_list)
+        self._add_entry_to_gitignore(entry, gitignore)
 
-        self.track_file(os.path.relpath(gitignore))
+        self.track_file(relpath(gitignore))
 
         self.ignored_paths.append(path)
 
     @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore, ignore_list):
-
-        content = re.sub(r"(^!|[*?\[\]])", r"\\\1", entry)
-
-        if ignore_list:
-            content = "\n" + content
-        with open(gitignore, "a", encoding="utf-8") as fobj:
-            fobj.write(content)
+    def _add_entry_to_gitignore(entry, gitignore):
+        with open(gitignore, "a+", encoding="utf-8") as fobj:
+            fobj.seek(0, os.SEEK_END)
+            if fobj.tell() == 0:
+                # Empty file
+                prefix = ""
+            else:
+                fobj.seek(fobj.tell() - 1, os.SEEK_SET)
+                last = fobj.read(1)
+                prefix = "" if last == "\n" else "\n"
+                content = re.sub(r"(^!|[*?\[\]])", r"\\\1", entry)
+            fobj.write("{}{}\n".format(prefix, content))
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
@@ -155,13 +163,13 @@ class Git(Base):
         with open(gitignore, "w") as fobj:
             fobj.writelines(filtered)
 
-        self.track_file(os.path.relpath(gitignore))
+        self.track_file(relpath(gitignore))
 
     def add(self, paths):
         # NOTE: GitPython is not currently able to handle index version >= 3.
         # See https://github.com/iterative/dvc/issues/610 for more details.
         try:
-            self.git.index.add(paths)
+            self.repo.index.add(paths)
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files"
@@ -173,56 +181,54 @@ class Git(Base):
             logger.exception(msg)
 
     def commit(self, msg):
-        self.git.index.commit(msg)
+        self.repo.index.commit(msg)
 
     def checkout(self, branch, create_new=False):
         if create_new:
-            self.git.git.checkout("HEAD", b=branch)
+            self.repo.git.checkout("HEAD", b=branch)
         else:
-            self.git.git.checkout(branch)
+            self.repo.git.checkout(branch)
 
     def branch(self, branch):
-        self.git.git.branch(branch)
+        self.repo.git.branch(branch)
 
     def tag(self, tag):
-        self.git.git.tag(tag)
+        self.repo.git.tag(tag)
 
     def untracked_files(self):
-        files = self.git.untracked_files
-        return [os.path.join(self.git.working_dir, fname) for fname in files]
+        files = self.repo.untracked_files
+        return [os.path.join(self.repo.working_dir, fname) for fname in files]
 
     def is_tracked(self, path):
-        # it is equivalent to `bool(self.git.git.ls_files(path))` by
+        # it is equivalent to `bool(self.repo.git.ls_files(path))` by
         # functionality, but ls_files fails on unicode filenames
-        path = os.path.relpath(path, self.root_dir)
-        return path in [i[0] for i in self.git.index.entries]
+        path = relpath(path, self.root_dir)
+        return path in [i[0] for i in self.repo.index.entries]
 
     def is_dirty(self):
-        return self.git.is_dirty()
+        return self.repo.is_dirty()
 
     def active_branch(self):
-        return self.git.active_branch.name
+        return self.repo.active_branch.name
 
     def list_branches(self):
-        return [h.name for h in self.git.heads]
+        return [h.name for h in self.repo.heads]
 
     def list_tags(self):
-        return [t.name for t in self.git.tags]
+        return [t.name for t in self.repo.tags]
 
     def _install_hook(self, name, cmd):
-        command = "dvc {}".format(cmd)
+        command = '[ -z "$(git ls-files .dvc)" ] || exec dvc {}'.format(cmd)
 
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
 
         if os.path.isfile(hook):
             with open(hook, "r+") as fobj:
                 if command not in fobj.read():
-                    fobj.write("exec {command}\n".format(command=command))
+                    fobj.write("{command}\n".format(command=command))
         else:
             with open(hook, "w+") as fobj:
-                fobj.write(
-                    "#!/bin/sh\n" "exec {command}\n".format(command=command)
-                )
+                fobj.write("#!/bin/sh\n" "{command}\n".format(command=command))
 
         os.chmod(hook, 0o777)
 
@@ -239,6 +245,9 @@ class Git(Base):
     def reset_ignores(self):
         self.ignored_paths = []
 
+    def reset_tracked_files(self):
+        self.files_to_track = set()
+
     def remind_to_track(self):
         if not self.files_to_track:
             return
@@ -251,7 +260,7 @@ class Git(Base):
         )
 
     def track_file(self, path):
-        self.files_to_track.append(path)
+        self.files_to_track.add(path)
 
     def belongs_to_scm(self, path):
         basename = os.path.basename(path)
@@ -259,7 +268,7 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        return GitTree(self.git, rev)
+        return GitTree(self.repo, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
         """Private method for getting the trees and commit hashes of 2 git
@@ -277,10 +286,10 @@ class Git(Base):
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
         if b_ref is None:
-            b_ref = self.git.head.commit
+            b_ref = self.repo.head.commit
         try:
-            a_commit = self.git.git.rev_parse(a_ref, short=True)
-            b_commit = self.git.git.rev_parse(b_ref, short=True)
+            a_commit = self.repo.git.rev_parse(a_ref, short=True)
+            b_commit = self.repo.git.rev_parse(b_ref, short=True)
             # See https://gitpython.readthedocs.io
             # /en/2.1.11/reference.html#git.objects.base.Object.__str__
             commits.append(a_commit)
@@ -313,3 +322,9 @@ class Git(Base):
         diff_dct[DIFF_A_TREE] = trees[DIFF_A_TREE]
         diff_dct[DIFF_B_TREE] = trees[DIFF_B_TREE]
         return diff_dct
+
+    def get_rev(self):
+        return self.repo.git.rev_parse("HEAD")
+
+    def close(self):
+        self.repo.close()

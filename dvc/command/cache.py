@@ -3,18 +3,18 @@ from __future__ import unicode_literals
 import argparse
 
 from dvc.command.base import fix_subparsers, append_doc_link
-from dvc.command.remote import CmdRemoteAdd
 from dvc.command.config import CmdConfig
+from dvc.cache import CacheConfig
 
 
 class CmdCacheDir(CmdConfig):
-    def run(self):
-        self.args.name = "cache.dir"
-        self.args.value = CmdRemoteAdd.resolve_path(
-            self.args.value, self.configobj.filename
-        )
+    def __init__(self, args):
+        super(CmdCacheDir, self).__init__(args)
+        self.cache_config = CacheConfig(self.config)
 
-        return super(CmdCacheDir, self).run()
+    def run(self):
+        self.cache_config.set_dir(self.args.value, level=self.args.level)
+        return 0
 
 
 def add_parser(subparsers, parent_parser):
@@ -43,8 +43,8 @@ def add_parser(subparsers, parent_parser):
 
     cache_dir_parser = cache_subparsers.add_parser(
         "dir",
-        parents=[parent_cache_config_parser],
-        description=append_doc_link(CACHE_HELP, "cache-dir"),
+        parents=[parent_parser, parent_cache_config_parser],
+        description=append_doc_link(CACHE_HELP, "cache/dir"),
         help=CACHE_DIR_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -57,7 +57,6 @@ def add_parser(subparsers, parent_parser):
     )
     cache_dir_parser.add_argument(
         "value",
-        default=None,
         help="Path to cache directory. Relative paths are resolved relative "
         "to the current directory and saved to config relative to the "
         "config file location.",

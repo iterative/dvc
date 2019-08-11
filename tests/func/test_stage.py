@@ -154,7 +154,7 @@ class TestExternalRemoteResolution(TestDvc):
 
         assert main(["remote", "add", "tmp", tmp_path]) == 0
         assert main(["remote", "add", "storage", "remote://tmp/storage"]) == 0
-        assert main(["import", "remote://storage/file", "movie.txt"]) == 0
+        assert main(["import-url", "remote://storage/file", "movie.txt"]) == 0
 
         assert os.path.exists("movie.txt")
 
@@ -172,7 +172,7 @@ def test_md5_ignores_comments(repo_dir, dvc_repo):
 def test_meta_is_preserved(dvc_repo):
     stage, = dvc_repo.add("foo")
 
-    # Add meta to stage file
+    # Add meta to DVC-file
     data = load_stage_file(stage.path)
     data["meta"] = {"custom_key": 42}
     dump_stage_file(stage.path, data)

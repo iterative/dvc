@@ -1,8 +1,9 @@
 import errno
 import os
 
-from dvc.ignore import DvcIgnoreFilter
+from dvc.utils import relpath
 from dvc.utils.compat import StringIO, BytesIO
+from dvc.exceptions import DvcException
 
 from dvc.scm.tree import BaseTree
 
@@ -10,6 +11,21 @@ from dvc.scm.tree import BaseTree
 # see git-fast-import(1)
 GIT_MODE_DIR = 0o40000
 GIT_MODE_FILE = 0o644
+
+
+def _iter_tree(tree):
+    # During usual tree iteration with ``for .. in ..`` GitPython returns each
+    # submodule instance without correctly filled ``name`` property. It raises
+    # an exception during accessing such submodule ``name`` later.
+    # The same time repo's submodules property contains correctly initialized
+    # submodules list.
+    # Here we just replace submodule instance from iterator with the
+    # corresponding instance from ``repo.submodules.``
+    submodules = {x.hexsha: x for x in tree.repo.submodules}
+    for node in tree:
+        if node.type == "submodule":
+            node = submodules[node.hexsha]
+        yield node
 
 
 class GitTree(BaseTree):
@@ -31,14 +47,14 @@ class GitTree(BaseTree):
 
     def open(self, path, binary=False):
 
-        relpath = os.path.relpath(path, self.git.working_dir)
+        relative_path = relpath(path, self.git.working_dir)
 
         obj = self.git_object_by_path(path)
         if obj is None:
             msg = "No such file in branch '{}'".format(self.rev)
-            raise IOError(errno.ENOENT, msg, relpath)
+            raise IOError(errno.ENOENT, msg, relative_path)
         if obj.mode == GIT_MODE_DIR:
-            raise IOError(errno.EISDIR, "Is a directory", relpath)
+            raise IOError(errno.EISDIR, "Is a directory", relative_path)
 
         # GitPython's obj.data_stream is a fragile thing, it is better to
         # read it immediately, also it needs to be to decoded if we follow
@@ -71,15 +87,27 @@ class GitTree(BaseTree):
             return False
         # see https://github.com/gitpython-developers/GitPython/issues/851
         # `return (i in tree)` doesn't work so here is a workaround:
-        for i in obj:
+        for i in _iter_tree(obj):
             if i.name == path:
                 return True
         return False
 
     def git_object_by_path(self, path):
-        path = os.path.relpath(os.path.realpath(path), self.git.working_dir)
+        import git
+
+        path = relpath(os.path.realpath(path), self.git.working_dir)
         assert path.split(os.sep, 1)[0] != ".."
-        tree = self.git.tree(self.rev)
+
+        try:
+            tree = self.git.tree(self.rev)
+        except git.exc.BadName as exc:
+            raise DvcException(
+                "revision '{}' not found in git '{}'".format(
+                    self.rev, os.path.relpath(self.git.working_dir)
+                ),
+                cause=exc,
+            )
+
         if not path or path == ".":
             return tree
         for i in path.split(os.sep):
@@ -89,41 +117,25 @@ class GitTree(BaseTree):
             tree = tree[i]
         return tree
 
-    def _walk(
-        self,
-        tree,
-        topdown=True,
-        ignore_file_handler=None,
-        dvc_ignore_filter=None,
-    ):
+    def _walk(self, tree, topdown=True):
         dirs, nondirs = [], []
-        for i in tree:
+        for i in _iter_tree(tree):
             if i.mode == GIT_MODE_DIR:
                 dirs.append(i.name)
             else:
                 nondirs.append(i.name)
 
         if topdown:
-            if not dvc_ignore_filter:
-                dvc_ignore_filter = DvcIgnoreFilter(
-                    tree.abspath, ignore_file_handler=ignore_file_handler
-                )
-            dirs, nondirs = dvc_ignore_filter(tree.path, dirs, nondirs)
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
-            for x in self._walk(
-                tree[i],
-                topdown=True,
-                ignore_file_handler=ignore_file_handler,
-                dvc_ignore_filter=dvc_ignore_filter,
-            ):
+            for x in self._walk(tree[i], topdown=True):
                 yield x
 
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, ignore_file_handler=None):
+    def walk(self, top, topdown=True, dvcignore=None):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:

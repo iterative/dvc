@@ -1,8 +1,8 @@
-import shutil
+from dvc.utils import remove
 
 
 def destroy(self):
     for stage in self.stages():
-        stage.remove()
+        stage.remove(remove_outs=False)
 
-    shutil.rmtree(self.dvc_dir)
+    remove(self.dvc_dir)

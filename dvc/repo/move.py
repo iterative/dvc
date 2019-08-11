@@ -17,7 +17,7 @@ def move(self, from_path, to_path):
     to reflect the change on the pipeline.
 
     If the output has the same name as its stage, it would
-    also rename the corresponding stage file.
+    also rename the corresponding DVC-file.
 
     E.g.
           Having: (hello, hello.dvc)
@@ -33,10 +33,11 @@ def move(self, from_path, to_path):
     from dvc.stage import Stage
 
     from_out = Output.loads_from(Stage(self), [from_path])[0]
+    assert from_out.scheme == "local"
 
     to_path = _expand_target_path(from_path, to_path)
 
-    outs = self.find_outs_by_path(from_out.path)
+    outs = self.find_outs_by_path(from_out.fspath)
     assert len(outs) == 1
     out = outs[0]
     stage = out.stage
@@ -45,7 +46,7 @@ def move(self, from_path, to_path):
         raise MoveNotDataSourceError(stage.relpath)
 
     stage_name = os.path.splitext(os.path.basename(stage.path))[0]
-    from_name = os.path.basename(from_out.path)
+    from_name = os.path.basename(from_out.fspath)
     if stage_name == from_name:
         os.unlink(stage.path)
 

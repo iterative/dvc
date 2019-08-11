@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str, urljoin, Path
+from dvc.utils.compat import str, urljoin, pathlib
 
 import os
 import re
@@ -18,8 +18,9 @@ import pytest
 
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5
+from dvc.utils import file_md5, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
+from dvc.path_info import URLInfo
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage, StageFileDoesNotExistError
 from dvc.system import System
@@ -34,6 +35,7 @@ from tests.basic_env import TestDvc
 from tests.func.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
 from tests.func.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
 from tests.func.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.func.test_data_cloud import get_ssh_url
 from tests.utils.httpd import StaticFileServer
 from mock import patch
 
@@ -125,9 +127,6 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
             self.dvc.reproduce(faulty_stage_path)
 
     def test_nested(self):
-        from dvc.stage import Stage
-
-        #
         #       .
         #       |-- a
         #       |  |__ nested
@@ -142,7 +141,7 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
         os.mkdir(dir2)
 
         nested_dir = os.path.join(dir2, "nested")
-        out_dir = os.path.relpath(nested_dir, dir1)
+        out_dir = relpath(nested_dir, dir1)
 
         nested_stage = self.dvc.run(
             cwd=dir1,  # b
@@ -838,7 +837,9 @@ class TestReproExternalBase(TestDvc):
             with patch_download as mock_download:
                 with patch_checkout as mock_checkout:
                     with patch_run as mock_run:
+                        stage.locked = False
                         stage.run()
+                        stage.locked = True
 
                         mock_run.assert_not_called()
                         mock_download.assert_not_called()
@@ -893,17 +894,17 @@ class TestReproExternalBase(TestDvc):
 
         self.write(self.bucket, foo_key, self.FOO_CONTENTS)
 
-        import_stage = self.dvc.imp(out_foo_path, "import")
+        import_stage = self.dvc.imp_url(out_foo_path, "import")
 
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.FOO, shallow=False))
-        self.assertEqual(self.dvc.status(import_stage.path), {})
+        self.assertEqual(self.dvc.status([import_stage.path]), {})
         self.check_already_cached(import_stage)
 
-        import_remote_stage = self.dvc.imp(
+        import_remote_stage = self.dvc.imp_url(
             out_foo_path, out_foo_path + "_imported"
         )
-        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
+        self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
         cmd_stage = self.dvc.run(
             outs=[out_bar_path],
@@ -911,7 +912,7 @@ class TestReproExternalBase(TestDvc):
             cmd=self.cmd(foo_path, bar_path),
         )
 
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
         self.assertEqual(self.dvc.status(), {})
         self.check_already_cached(cmd_stage)
 
@@ -919,31 +920,30 @@ class TestReproExternalBase(TestDvc):
 
         self.assertNotEqual(self.dvc.status(), {})
 
-        stages = self.dvc.reproduce(import_stage.path)
-        self.assertEqual(len(stages), 1)
+        self.dvc.update(import_stage.path)
         self.assertTrue(os.path.exists("import"))
         self.assertTrue(filecmp.cmp("import", self.BAR, shallow=False))
-        self.assertEqual(self.dvc.status(import_stage.path), {})
+        self.assertEqual(self.dvc.status([import_stage.path]), {})
 
-        stages = self.dvc.reproduce(import_remote_stage.path)
-        self.assertEqual(len(stages), 1)
-        self.assertEqual(self.dvc.status(import_remote_stage.path), {})
+        self.dvc.update(import_remote_stage.path)
+        self.assertEqual(self.dvc.status([import_remote_stage.path]), {})
 
         stages = self.dvc.reproduce(cmd_stage.path)
         self.assertEqual(len(stages), 1)
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.assertEqual(self.dvc.status(), {})
         self.dvc.gc()
         self.assertEqual(self.dvc.status(), {})
 
         self.dvc.remove(cmd_stage.path, outs_only=True)
-        self.assertNotEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertNotEqual(self.dvc.status([cmd_stage.path]), {})
 
         self.dvc.checkout(cmd_stage.path, force=True)
-        self.assertEqual(self.dvc.status(cmd_stage.path), {})
+        self.assertEqual(self.dvc.status([cmd_stage.path]), {})
 
 
+@pytest.mark.skipif(os.name == "nt", reason="temporarily disabled on windows")
 class TestReproExternalS3(TestReproExternalBase):
     def should_test(self):
         return _should_test_aws()
@@ -1062,8 +1062,10 @@ class TestReproExternalSSH(TestReproExternalBase):
         return "{}@127.0.0.1:{}".format(getpass.getuser(), self._dir)
 
     def cmd(self, i, o):
-        i = i.strip("ssh://")
-        o = o.strip("ssh://")
+        prefix = "ssh://"
+        assert i.startswith(prefix) and o.startswith(prefix)
+        i = i[len(prefix) :]
+        o = o[len(prefix) :]
         return "scp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
@@ -1140,55 +1142,49 @@ class TestReproExternalLOCAL(TestReproExternalBase):
 class TestReproExternalHTTP(TestReproExternalBase):
     _external_cache_id = None
 
-    @property
-    def remote(self):
-        return "http://localhost:8000/"
+    @staticmethod
+    def get_remote(port):
+        return "http://localhost:{}/".format(port)
 
     @property
     def local_cache(self):
         return os.path.join(self.dvc.dvc_dir, "cache")
 
-    @property
-    def external_cache_id(self):
-        if not self._external_cache_id:
-            self._external_cache_id = str(uuid.uuid4())
-
-        return self._external_cache_id
-
-    @property
-    def external_cache(self):
-        return urljoin(self.remote, self.external_cache_id)
-
     def test(self):
-        ret1 = main(["remote", "add", "mycache", self.external_cache])
-        ret2 = main(["remote", "add", "myremote", self.remote])
-        self.assertEqual(ret1, 0)
-        self.assertEqual(ret2, 0)
-
-        self.dvc = DvcRepo(".")
-
         # Import
-        with StaticFileServer():
-            import_url = urljoin(self.remote, self.FOO)
+        with StaticFileServer() as httpd:
+            import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
-            import_stage = self.dvc.imp(import_url, import_output)
+            import_stage = self.dvc.imp_url(import_url, import_output)
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
         self.dvc.remove("imported_file.dvc")
 
-        with StaticFileServer(handler="Content-MD5"):
-            import_url = urljoin(self.remote, self.FOO)
+        with StaticFileServer(handler="Content-MD5") as httpd:
+            import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
-            import_stage = self.dvc.imp(import_url, import_output)
+            import_stage = self.dvc.imp_url(import_url, import_output)
 
         self.assertTrue(os.path.exists(import_output))
         self.assertTrue(filecmp.cmp(import_output, self.FOO, shallow=False))
 
         # Run --deps
-        with StaticFileServer():
-            run_dependency = urljoin(self.remote, self.BAR)
+        with StaticFileServer() as httpd:
+            remote = self.get_remote(httpd.server_port)
+
+            cache_id = str(uuid.uuid4())
+            cache = urljoin(remote, cache_id)
+
+            ret1 = main(["remote", "add", "mycache", cache])
+            ret2 = main(["remote", "add", "myremote", remote])
+            self.assertEqual(ret1, 0)
+            self.assertEqual(ret2, 0)
+
+            self.dvc = DvcRepo(".")
+
+            run_dependency = urljoin(remote, self.BAR)
             run_output = "remote_file"
             cmd = 'open("{}", "w+")'.format(run_output)
 
@@ -1202,19 +1198,18 @@ class TestReproExternalHTTP(TestReproExternalBase):
             )
             self.assertTrue(run_stage is not None)
 
-        self.assertTrue(os.path.exists(run_output))
+            self.assertTrue(os.path.exists(run_output))
 
-        # Pull
-        self.dvc.remove(import_stage.path, outs_only=True)
-        self.assertFalse(os.path.exists(import_output))
+            # Pull
+            self.dvc.remove(import_stage.path, outs_only=True)
+            self.assertFalse(os.path.exists(import_output))
 
-        shutil.move(self.local_cache, self.external_cache_id)
-        self.assertFalse(os.path.exists(self.local_cache))
+            shutil.move(self.local_cache, cache_id)
+            self.assertFalse(os.path.exists(self.local_cache))
 
-        with StaticFileServer():
-            self.dvc.pull(import_stage.path, remote="mycache")
+            self.dvc.pull([import_stage.path], remote="mycache")
 
-        self.assertTrue(os.path.exists(import_output))
+            self.assertTrue(os.path.exists(import_output))
 
 
 class TestReproShell(TestDvc):
@@ -1238,13 +1233,6 @@ class TestReproShell(TestDvc):
 
         with open(fname, "r") as fd:
             self.assertEqual(os.getenv("SHELL"), fd.read().strip())
-
-
-class TestReproNoSCM(TestRepro):
-    def test(self):
-        shutil.rmtree(self.dvc.scm.dir)
-        ret = main(["repro", self.file1_stage])
-        self.assertEqual(ret, 0)
 
 
 class TestReproAllPipelines(TestDvc):
@@ -1316,7 +1304,7 @@ class TestReproAlreadyCached(TestRepro):
         self.assertNotEqual(run_out.checksum, repro_out.checksum)
 
     def test_force_import(self):
-        ret = main(["import", self.FOO, self.BAR])
+        ret = main(["import-url", self.FOO, self.BAR])
         self.assertEqual(ret, 0)
 
         patch_download = patch.object(
@@ -1335,6 +1323,7 @@ class TestReproAlreadyCached(TestRepro):
 
         with patch_download as mock_download:
             with patch_checkout as mock_checkout:
+                assert main(["unlock", "bar.dvc"]) == 0
                 ret = main(["repro", "--force", "bar.dvc"])
                 self.assertEqual(ret, 0)
                 self.assertEqual(mock_download.call_count, 1)
@@ -1560,10 +1549,10 @@ def foo_copy(repo_dir, dvc_repo):
 
 
 def test_dvc_formatting_retained(dvc_repo, foo_copy):
-    root = Path(dvc_repo.root_dir)
+    root = pathlib.Path(dvc_repo.root_dir)
     stage_file = root / foo_copy["stage_fname"]
 
-    # Add comments and custom formatting to stage file
+    # Add comments and custom formatting to DVC-file
     lines = list(map(_format_dvc_line, stage_file.read_text().splitlines()))
     lines.insert(0, "# Starting comment")
     stage_text = "".join(l + "\n" for l in lines)
@@ -1627,3 +1616,32 @@ class TestReproDownstream(TestDvc):
         assert evaluation[0].relpath == "B.dvc"
         assert evaluation[1].relpath == "D.dvc"
         assert evaluation[2].relpath == "E.dvc"
+
+
+def test_ssh_dir_out(dvc_repo):
+    if not _should_test_ssh():
+        pytest.skip()
+
+    # Set up remote and cache
+    remote_url = get_ssh_url()
+    assert main(["remote", "add", "upstream", remote_url]) == 0
+
+    cache_url = get_ssh_url()
+    assert main(["remote", "add", "sshcache", cache_url]) == 0
+    assert main(["config", "cache.ssh", "sshcache"]) == 0
+
+    # Recreating to reread configs
+    repo = DvcRepo(dvc_repo.root_dir)
+
+    url_info = URLInfo(remote_url)
+    mkdir_cmd = "mkdir dir-out;cd dir-out;echo 1 > 1.txt; echo 2 > 2.txt"
+    repo.run(
+        cmd="ssh {netloc} 'cd {path};{cmd}'".format(
+            netloc=url_info.netloc, path=url_info.path, cmd=mkdir_cmd
+        ),
+        outs=[(url_info / "dir-out").url],
+        deps=["foo"],  # add a fake dep to not consider this a callback
+    )
+
+    repo.reproduce("dir-out.dvc")
+    repo.reproduce("dir-out.dvc", force=True)

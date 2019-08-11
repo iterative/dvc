@@ -22,7 +22,7 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
         logger.warning(
             "You are adding a large directory '{target}' recursively,"
             " consider tracking it as a whole instead.\n"
-            "{purple}HINT:{nc} Remove the generated stage files and then"
+            "{purple}HINT:{nc} Remove the generated DVC-file and then"
             " run {cyan}dvc add {target}{nc}".format(
                 purple=colorama.Fore.MAGENTA,
                 cyan=colorama.Fore.CYAN,
@@ -44,7 +44,7 @@ def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
             fname
-            for fname in walk_files(target)
+            for fname in walk_files(target, repo.dvcignore)
             if not repo.is_dvc_internal(fname)
             if not Stage.is_stage_file(fname)
             if not repo.scm.belongs_to_scm(fname)
@@ -58,7 +58,7 @@ def _create_stages(repo, targets, fname, no_commit):
 
     with repo.state:
         for out in targets:
-            stage = Stage.create(repo=repo, outs=[out], add=True, fname=fname)
+            stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
             if not stage:
                 continue

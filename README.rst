@@ -4,7 +4,8 @@
 
 `Website <https://dvc.org>`_
 • `Docs <https://dvc.org/doc>`_
-• `Twitter <https://twitter.com/iterativeai>`_
+• `Blog <http://blog.dataversioncontrol.com>`_
+• `Twitter <https://twitter.com/DVCorg>`_
 • `Chat (Community & Support) <https://dvc.org/chat>`_
 • `Tutorial <https://dvc.org/doc/get-started>`_
 • `Mailing List <https://sweedom.us10.list-manage.com/subscribe/post?u=a08bf93caae4063c4e6a351f6&id=24c0ecc49a>`_
@@ -12,10 +13,6 @@
 .. image:: https://travis-ci.com/iterative/dvc.svg?branch=master
   :target: https://travis-ci.com/iterative/dvc
   :alt: Travis
-
-.. image:: https://ci.appveyor.com/api/projects/status/github/iterative/dvc?branch=master&svg=true
-  :target: https://ci.appveyor.com/project/iterative/dvc/branch/master
-  :alt: Windows Build
 
 .. image:: https://codeclimate.com/github/iterative/dvc/badges/gpa.svg
   :target: https://codeclimate.com/github/iterative/dvc
@@ -107,8 +104,8 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full versio
 Installation
 ============
 
-Read this `instruction <https://dvc.org/doc/get-started/install>`_ to get more details. There are three
-options to install DVC: ``pip``, Homebrew, or an OS-specific package:
+Read this `instruction <https://dvc.org/doc/get-started/install>`_ to get more details. There are four
+options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package:
 
 pip (PyPI)
 ----------
@@ -140,6 +137,15 @@ or:
 .. code-block:: bash
 
    brew cask install iterative/homebrew-dvc/dvc
+   
+Conda (Anaconda)
+----------------
+
+.. code-block:: bash
+
+   conda install -c conda-forge dvc
+
+Currently, it supports only python version 2.7, 3.6 and 3.7.
 
 Package
 -------
