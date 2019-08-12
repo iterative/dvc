@@ -6,6 +6,8 @@ import re
 import logging
 from datetime import datetime, timedelta
 
+from funcy import cached_property
+
 from dvc.scheme import Schemes
 
 try:
@@ -71,29 +73,27 @@ class RemoteAZURE(RemoteBASE):
         if not self.connection_string:
             raise ValueError("azure storage connection string missing")
 
-        self.__blob_service = None
         self.path_info = (
             self.path_cls(url)
             if path
             else self.path_cls.from_parts(scheme=self.scheme, netloc=bucket)
         )
 
-    @property
+    @cached_property
     def blob_service(self):
-        if self.__blob_service is None:
-            logger.debug("URL {}".format(self.path_info))
-            logger.debug("Connection string {}".format(self.connection_string))
-            self.__blob_service = BlockBlobService(
-                connection_string=self.connection_string
+        logger.debug("URL {}".format(self.path_info))
+        logger.debug("Connection string {}".format(self.connection_string))
+        blob_service = BlockBlobService(
+            connection_string=self.connection_string
+        )
+        logger.debug("Container name {}".format(self.path_info.bucket))
+        try:  # verify that container exists
+            blob_service.list_blobs(
+                self.path_info.bucket, delimiter="/", num_results=1
             )
-            logger.debug("Container name {}".format(self.path_info.bucket))
-            try:  # verify that container exists
-                self.__blob_service.list_blobs(
-                    self.path_info.bucket, delimiter="/", num_results=1
-                )
-            except AzureMissingResourceHttpError:
-                self.__blob_service.create_container(self.path_info.bucket)
-        return self.__blob_service
+        except AzureMissingResourceHttpError:
+            blob_service.create_container(self.path_info.bucket)
+        return blob_service
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -136,6 +136,10 @@ class RemoteAZURE(RemoteBASE):
         self.blob_service.get_blob_to_path(
             from_info.bucket, from_info.path, to_file, progress_callback=cb
         )
+
+    def exists(self, path_info):
+        paths = self._list_paths(path_info.bucket, path_info.path)
+        return any(path_info.path == path for path in paths)
 
     def open(self, path_info, mode="r", encoding=None):
         get_url = lambda: self._generate_download_url(path_info)  # noqa: E731

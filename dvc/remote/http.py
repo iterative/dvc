@@ -65,15 +65,6 @@ class RemoteHTTP(RemoteBASE):
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
 
-    def batch_exists(self, path_infos, callback):
-        results = []
-
-        for path_info in path_infos:
-            results.append(self.exists(path_info))
-            callback.update(str(path_info))
-
-        return results
-
     def _content_length(self, url):
         return self._request("HEAD", url).headers.get("Content-Length")
 
