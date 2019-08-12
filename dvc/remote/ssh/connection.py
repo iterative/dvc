@@ -289,3 +289,15 @@ class SSHConnection:
     def cp(self, src, dest):
         self.makedirs(posixpath.dirname(dest))
         self.execute("cp {} {}".format(src, dest))
+
+    def open_max_sftp_channels(self):
+        # If there are more than 1 it means we've already opened max amount
+        if len(self._sftp_channels) <= 1:
+            while True:
+                try:
+                    self._sftp_channels.append(self._ssh.open_sftp())
+                except paramiko.ssh_exception.ChannelException:
+                    if not self._sftp_channels:
+                        raise
+                    break
+        return self._sftp_channels

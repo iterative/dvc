@@ -20,15 +20,7 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import progress, ProgressCallback
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath
-from dvc.utils import (
-    LARGE_DIR_SIZE,
-    tmp_fname,
-    to_chunks,
-    move,
-    relpath,
-    makedirs,
-)
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 
