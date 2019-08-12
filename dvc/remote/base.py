@@ -8,6 +8,7 @@ import json
 import logging
 import tempfile
 import itertools
+from functools import partial
 from operator import itemgetter
 from multiprocessing import cpu_count
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,7 @@ from dvc.progress import progress, ProgressCallback
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
+from dvc.utils.http import open_url
 
 
 logger = logging.getLogger(__name__)
@@ -508,6 +510,10 @@ class RemoteBASE(object):
         return 0
 
     def open(self, path_info, mode="r", encoding=None):
+        if hasattr(self, "_generate_download_url"):
+            get_url = partial(self._generate_download_url, path_info)
+            return open_url(get_url, mode=mode, encoding=encoding)
+
         raise RemoteActionNotImplemented("open", self.scheme)
 
     def remove(self, path_info):

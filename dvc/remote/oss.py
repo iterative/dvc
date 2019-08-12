@@ -120,6 +120,11 @@ class RemoteOSS(RemoteBASE):
             from_info.path, to_file, progress_callback=cb
         )
 
+    def _generate_download_url(self, path_info, expires=3600):
+        assert path_info.bucket == self.path_info.bucket
+
+        return self.oss_service.sign_url("GET", path_info.path, expires)
+
     def exists(self, path_info):
         paths = self._list_paths(path_info.path)
         return any(path_info.path == path for path in paths)

@@ -238,3 +238,9 @@ class RemoteS3(RemoteBASE):
         self.s3.download_file(
             from_info.bucket, from_info.path, to_file, Callback=cb
         )
+
+    def _generate_download_url(self, path_info, expires=3600):
+        params = {"Bucket": path_info.bucket, "Key": path_info.path}
+        return self.s3.generate_presigned_url(
+            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
+        )
