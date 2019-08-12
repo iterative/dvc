@@ -635,17 +635,21 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
+        if not self.no_traverse:
+            return list(set(checksums) & set(self.all()))
+
         progress_callback = ProgressCallback(len(checksums))
+        def exists_with_progress(path_info):
+            ret = self.exists(path_info)
+            progress_callback.update(str(path_info))
+            return ret
 
-        if self.no_traverse:
-            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                in_remote = executor.map(self.exists, path_infos)
-                ret = list(itertools.compress(checksums, in_remote))
-                progress_callback.finish("")
-                return ret
-
-        return list(set(checksums) & set(self.all()))
+        with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            path_infos = [self.checksum_to_path_info(x) for x in checksums]
+            in_remote = executor.map(exists_with_progress, path_infos)
+            ret = list(itertools.compress(checksums, in_remote))
+            progress_callback.finish("")
+            return ret
 
     def already_cached(self, path_info):
         current = self.get_checksum(path_info)
