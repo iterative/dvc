@@ -16,7 +16,7 @@ class TqdmThreadPoolExecutor(ThreadPoolExecutor):
         to create "nested" bars.
         """
         self.blank_bar = Tqdm(bar_format="Multi-Threaded:", leave=False)
-        super(TqdmThreadPoolExecutor, self).__enter__(self)
+        return super(TqdmThreadPoolExecutor, self).__enter__()
 
     def __exit__(self, *a, **k):
         super(TqdmThreadPoolExecutor, self).__exit__(*a, **k)
