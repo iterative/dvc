@@ -639,6 +639,7 @@ class RemoteBASE(object):
             return list(set(checksums) & set(self.all()))
 
         progress_callback = ProgressCallback(len(checksums))
+
         def exists_with_progress(path_info):
             ret = self.exists(path_info)
             progress_callback.update(str(path_info))
