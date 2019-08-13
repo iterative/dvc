@@ -11,6 +11,7 @@ import itertools
 from operator import itemgetter
 from multiprocessing import cpu_count
 from functools import partial
+from concurrent.futures import ThreadPoolExecutor
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -155,8 +156,8 @@ class RemoteBASE(object):
                     "This is only done once."
                 )
                 logger.info(msg)
-                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
 
+        tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
         checksums = {
             file_infos[index]: task for index, task in enumerate(tasks)
         }
@@ -632,12 +633,13 @@ class RemoteBASE(object):
             return list(set(checksums) & set(self.all()))
 
         with Tqdm(total=len(checksums)) as pbar:
+
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)
                 pbar.update_desc(str(path_info))
                 return ret
 
-            with TqdmThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
