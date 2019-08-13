@@ -151,16 +151,16 @@ class RemoteBASE(object):
             tasks = executor.map(self.get_file_checksum, file_infos)
 
             if len(file_infos) > LARGE_DIR_SIZE:
-                msg = (
-                    "Computing md5 for a large number of files. "
-                    "This is only done once."
+                logger.info(
+                    (
+                        "Computing md5 for a large number of files. "
+                        "This is only done once."
+                    )
                 )
-                logger.info(msg)
-
-        tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
-        checksums = {
-            file_infos[index]: task for index, task in enumerate(tasks)
-        }
+                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
+            checksums = {
+                file_infos[index]: task for index, task in enumerate(tasks)
+            }
         return checksums
 
     def _collect_dir(self, path_info):

@@ -44,7 +44,8 @@ class RemoteHTTP(RemoteBASE):
                     fd.flush()
                     pbar.update(len(chunk))
             # print completed progress bar for large file sizes
-            if (total or pbar.n) > LARGE_FILE_SIZE:
+            pbar.n = total or pbar.n
+            if pbar.n > LARGE_FILE_SIZE:
                 Tqdm.write(str(pbar))
 
     def exists(self, path_info):
