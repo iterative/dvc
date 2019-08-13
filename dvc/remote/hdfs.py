@@ -2,10 +2,12 @@ from __future__ import unicode_literals
 
 import os
 import re
+import io
 import getpass
 import posixpath
 import logging
 from subprocess import Popen, PIPE
+from contextlib import contextmanager, closing
 
 try:
     import pyarrow
@@ -138,6 +140,18 @@ class RemoteHDFS(RemoteBASE):
         with self.hdfs(from_info) as hdfs:
             with open(to_file, "wb+") as fobj:
                 hdfs.download(from_info.path, fobj)
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        with self.hdfs(path_info) as hdfs, closing(
+            hdfs.open(path_info.path, mode="rb")
+        ) as fd:
+            if mode == "rb":
+                yield fd
+            else:
+                yield io.TextIOWrapper(fd, encoding=encoding)
 
     def list_cache_paths(self):
         if not self.exists(self.path_info):

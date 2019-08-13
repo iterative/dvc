@@ -7,6 +7,7 @@ from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
 from .test_data_cloud import (
+    get_local_url,
     _should_test_aws,
     get_aws_url,
     _should_test_gcp,
@@ -23,6 +24,11 @@ from .test_data_cloud import (
 
 
 # NOTE: staticmethod is only needed in Python 2
+class Local:
+    should_test = staticmethod(lambda: True)
+    get_url = staticmethod(get_local_url)
+
+
 class S3:
     should_test = staticmethod(_should_test_aws)
     get_url = staticmethod(get_aws_url)
@@ -53,7 +59,7 @@ class HDFS:
     get_url = staticmethod(get_hdfs_url)
 
 
-remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
+remote_params = [Local, S3, GCP, Azure, OSS, SSH, HDFS]
 
 
 @pytest.fixture
