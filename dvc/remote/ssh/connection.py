@@ -168,11 +168,9 @@ class SSHConnection:
             self._remove_file(path)
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
-        if not progress_title:
-            progress_title = os.path.basename(src)
-
         with Tqdm(
-            desc_truncate=progress_title, disable=no_progress_bar
+            desc_truncate=progress_title or os.path.basename(src),
+            disable=no_progress_bar,
         ) as pbar:
             self.sftp.get(src, dest, callback=pbar.update_to)
 
