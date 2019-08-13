@@ -29,15 +29,13 @@ class RemoteHTTP(RemoteBASE):
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         request = self._request("GET", from_info.url, stream=True)
-        total = self._content_length(from_info.url)
-        if name is None:
-            name = from_info.url
+        total = self._content_length(request)
 
         with Tqdm(
             total=total,
             leave=False,
             bytes=True,
-            desc_truncate=name,
+            desc_truncate=from_info.url if name is None else name,
             disable=no_progress_bar,
         ) as pbar:
             with open(to_file, "wb") as fd:
@@ -46,7 +44,7 @@ class RemoteHTTP(RemoteBASE):
                     fd.flush()
                     pbar.update(len(chunk))
             # print completed progress bar for large file sizes
-            if pbar.n > LARGE_FILE_SIZE:
+            if (total or pbar.n) > LARGE_FILE_SIZE:
                 Tqdm.write(str(pbar))
 
     def exists(self, path_info):
@@ -61,15 +59,19 @@ class RemoteHTTP(RemoteBASE):
 
         return results
 
-    def _content_length(self, url):
-        res = self._request("HEAD", url).headers.get("Content-Length")
+    def _content_length(self, url_or_request):
+        headers = getattr(
+            url_or_request,
+            "headers",
+            self._request("HEAD", url_or_request).headers,
+        )
+        res = headers.get("Content-Length")
         return int(res) if res else None
 
     def get_file_checksum(self, path_info):
         url = path_info.url
-        etag = self._request("HEAD", url).headers.get("ETag") or self._request(
-            "HEAD", url
-        ).headers.get("Content-MD5")
+        headers = self._request("HEAD", url).headers
+        etag = headers.get("ETag") or headers.get("Content-MD5")
 
         if not etag:
             raise DvcException(
