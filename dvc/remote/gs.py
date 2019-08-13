@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import logging
+from datetime import timedelta
 from funcy import cached_property
 
 try:
@@ -97,3 +98,10 @@ class RemoteGS(RemoteBASE):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
         blob.download_to_filename(to_file)
+
+    def _generate_download_url(self, path_info, expires=3600):
+        expiration = timedelta(seconds=int(expires))
+
+        bucket = self.gs.bucket(path_info.bucket)
+        blob = bucket.get_blob(path_info.path)
+        return blob.generate_signed_url(expiration=expiration)

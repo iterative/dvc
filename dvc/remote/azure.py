@@ -21,7 +21,6 @@ from dvc.progress import progress
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.path_info import CloudURLInfo
-from dvc.utils.http import open_url
 
 
 logger = logging.getLogger(__name__)
@@ -140,10 +139,6 @@ class RemoteAZURE(RemoteBASE):
     def exists(self, path_info):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
-
-    def open(self, path_info, mode="r", encoding=None):
-        get_url = lambda: self._generate_download_url(path_info)  # noqa: E731
-        return open_url(get_url, mode=mode, encoding=encoding)
 
     def _generate_download_url(self, path_info, expires=3600):
         expires_at = datetime.utcnow() + timedelta(seconds=expires)
