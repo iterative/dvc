@@ -29,7 +29,7 @@ class RemoteHTTP(RemoteBASE):
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         request = self._request("GET", from_info.url, stream=True)
-        total = self._content_length(request)
+        total = self._content_length(from_info)
 
         with Tqdm(
             total=total,
