@@ -2,6 +2,7 @@
 from __future__ import print_function
 import logging
 from tqdm import tqdm
+from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -42,7 +43,7 @@ class Tqdm(tqdm):
         desc_truncate  : like `desc` but will truncate to 10 chars
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
-        # kwargs = deepcopy(kwargs)
+        kwargs = deepcopy(kwargs)
         if bytes:
             for k, v in dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
