@@ -10,7 +10,7 @@ import tempfile
 import itertools
 from operator import itemgetter
 from multiprocessing import cpu_count
-import functools
+from functools import partial
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -20,16 +20,10 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import Tqdm, TqdmThreadPoolExecutor
-from dvc.utils import (
-    LARGE_DIR_SIZE,
-    tmp_fname,
-    to_chunks,
-    move,
-    relpath,
-    makedirs,
-)
+from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
+from dvc.utils.http import open_url
 
 
 logger = logging.getLogger(__name__)
@@ -503,6 +497,10 @@ class RemoteBASE(object):
         return 0
 
     def open(self, path_info, mode="r", encoding=None):
+        if hasattr(self, "_generate_download_url"):
+            get_url = partial(self._generate_download_url, path_info)
+            return open_url(get_url, mode=mode, encoding=encoding)
+
         raise RemoteActionNotImplemented("open", self.scheme)
 
     def remove(self, path_info):
@@ -630,25 +628,20 @@ class RemoteBASE(object):
         Returns:
             A list with checksums that were found in the remote
         """
-        if self.no_traverse and hasattr(self, "batch_exists"):
-            with Tqdm(total=len(checksums)) as pbar:
-                exists_with_progress = functools.partial(
-                    self.batch_exists, callback=pbar.update_desc
-                )
+        if not self.no_traverse:
+            return list(set(checksums) & set(self.all()))
 
-                with TqdmThreadPoolExecutor(
-                    max_workers=jobs or self.JOBS
-                ) as executor:
-                    path_infos = [
-                        self.checksum_to_path_info(x) for x in checksums
-                    ]
-                    chunks = to_chunks(path_infos, num_chunks=self.JOBS)
-                    results = executor.map(exists_with_progress, chunks)
-                    in_remote = itertools.chain.from_iterable(results)
-                    ret = list(itertools.compress(checksums, in_remote))
-                    return ret
+        with Tqdm(total=len(checksums)) as pbar:
+            def exists_with_progress(path_info):
+                ret = self.exists(path_info)
+                pbar.update_desc(str(path_info))
+                return ret
 
-        return list(set(checksums) & set(self.all()))
+            with TqdmThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                in_remote = executor.map(exists_with_progress, path_infos)
+                ret = list(itertools.compress(checksums, in_remote))
+                return ret
 
     def already_cached(self, path_info):
         current = self.get_checksum(path_info)

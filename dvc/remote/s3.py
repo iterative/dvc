@@ -1,8 +1,8 @@
 from __future__ import unicode_literals
 
 import os
+import threading
 import logging
-import itertools
 from funcy import cached_property
 
 try:
@@ -202,16 +202,6 @@ class RemoteS3(RemoteBASE):
         paths = self._list_paths(path_info.bucket, path_info.path)
         return any(path_info.path == path for path in paths)
 
-    def batch_exists(self, path_infos, callback):
-        paths = []
-
-        for path_info in path_infos:
-            paths.append(self._list_paths(path_info.bucket, path_info.path))
-            callback(str(path_info))
-
-        paths = set(itertools.chain.from_iterable(paths))
-        return [path_info.path in paths for path_info in path_infos]
-
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
         with Tqdm(
@@ -244,3 +234,9 @@ class RemoteS3(RemoteBASE):
             self.s3.download_file(
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
+
+    def _generate_download_url(self, path_info, expires=3600):
+        params = {"Bucket": path_info.bucket, "Key": path_info.path}
+        return self.s3.generate_presigned_url(
+            ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
+        )

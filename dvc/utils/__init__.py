@@ -193,8 +193,8 @@ def _chmod(func, p, excinfo):
     try:
         os.chmod(p, perm)
     except OSError as exc:
-        # broken symlink
-        if exc.errno != errno.ENOENT:
+        # broken symlink or file is not owned by us
+        if exc.errno not in [errno.ENOENT, errno.EPERM]:
             raise
 
     func(p)

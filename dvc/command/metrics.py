@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, BadMetricError
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
 
@@ -16,6 +16,10 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
         metrics (list): Where each element is either a `list`
             if an xpath was specified, otherwise a `str`
     """
+    # When `metrics` contains a `None` key, it means that some files
+    # specified as `targets` in `repo.metrics.show` didn't contain any metrics.
+    missing = metrics.pop(None, None)
+
     for branch, val in metrics.items():
         if all_branches or all_tags:
             logger.info("{branch}:".format(branch=branch))
@@ -32,16 +36,17 @@ def show_metrics(metrics, all_branches=False, all_tags=False):
             else:
                 logger.info("\t{}: {}".format(fname, metric))
 
+    if missing:
+        raise BadMetricError(missing)
+
 
 class CmdMetricsShow(CmdBase):
     def run(self):
-        typ = self.args.type
-        xpath = self.args.xpath
         try:
             metrics = self.repo.metrics.show(
-                self.args.path,
-                typ=typ,
-                xpath=xpath,
+                self.args.targets,
+                typ=self.args.type,
+                xpath=self.args.xpath,
                 all_branches=self.args.all_branches,
                 all_tags=self.args.all_tags,
                 recursive=self.args.recursive,
@@ -121,7 +126,10 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     metrics_show_parser.add_argument(
-        "path", nargs="?", help="Path to a metric file or a directory."
+        "targets",
+        nargs="*",
+        help="Metric files or directories (see -R) to show "
+        "(leave empty to display all)",
     )
     metrics_show_parser.add_argument(
         "-t",
@@ -155,8 +163,8 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=(
-            "If path is a directory, recursively search and process metric "
-            "files in path."
+            "If any target is a directory, recursively search and process "
+            "metric files."
         ),
     )
     metrics_show_parser.set_defaults(func=CmdMetricsShow)

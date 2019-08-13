@@ -1,11 +1,12 @@
 from __future__ import unicode_literals
 
+import errno
+import itertools
 import os
 import getpass
 import logging
-import itertools
-import errno
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     import paramiko
@@ -19,7 +20,7 @@ from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
-from dvc.progress import TqdmThreadPoolExecutor
+from dvc.progress import Tqdm
 
 from .connection import SSHConnection
 
@@ -148,34 +149,6 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.exists(path_info.path)
 
-    def batch_exists(self, path_infos, callback):
-        def _exists(chunk_and_channel):
-            chunk, channel = chunk_and_channel
-            ret = []
-            for path in chunk:
-                try:
-                    channel.stat(path)
-                    ret.append(True)
-                except IOError as exc:
-                    if exc.errno != errno.ENOENT:
-                        raise
-                    ret.append(False)
-                callback(path)
-            return ret
-
-        with self.ssh(path_infos[0]) as ssh:
-            channels = ssh.open_max_sftp_channels()
-            max_workers = len(channels)
-
-            with TqdmThreadPoolExecutor(max_workers=max_workers) as executor:
-                paths = [path_info.path for path_info in path_infos]
-                chunks = to_chunks(paths, num_chunks=max_workers)
-                chunks_and_channels = zip(chunks, channels)
-                outcome = executor.map(_exists, chunks_and_channels)
-                results = list(itertools.chain.from_iterable(outcome))
-
-            return results
-
     def get_file_checksum(self, path_info):
         if path_info.scheme != self.scheme:
             raise NotImplementedError
@@ -240,3 +213,52 @@ class RemoteSSH(RemoteBASE):
     def makedirs(self, path_info):
         with self.ssh(path_info) as ssh:
             ssh.makedirs(path_info.path)
+
+    def batch_exists(self, path_infos, callback):
+        def _exists(chunk_and_channel):
+            chunk, channel = chunk_and_channel
+            ret = []
+            for path in chunk:
+                try:
+                    channel.stat(path)
+                    ret.append(True)
+                except IOError as exc:
+                    if exc.errno != errno.ENOENT:
+                        raise
+                    ret.append(False)
+                callback(path)
+            return ret
+
+        with self.ssh(path_infos[0]) as ssh:
+            channels = ssh.open_max_sftp_channels()
+            max_workers = len(channels)
+
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                paths = [path_info.path for path_info in path_infos]
+                chunks = to_chunks(paths, num_chunks=max_workers)
+                chunks_and_channels = zip(chunks, channels)
+                outcome = executor.map(_exists, chunks_and_channels)
+                results = list(itertools.chain.from_iterable(outcome))
+
+            return results
+
+    def cache_exists(self, checksums, jobs=None):
+        """This is older implementation used in remote/base.py
+        We are reusing it in RemoteSSH, because SSH's batch_exists proved to be
+        faster than current approach (relying on exists(path_info)) applied in
+        remote/base.
+        """
+        if not self.no_traverse:
+            return list(set(checksums) & set(self.all()))
+
+        with Tqdm(total=len(checksums)) as pbar:
+            def exists_with_progress(chunks):
+                return self.batch_exists(chunks, callback=pbar.update_desc)
+
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
+                results = executor.map(exists_with_progress, chunks)
+                in_remote = itertools.chain.from_iterable(results)
+                ret = list(itertools.compress(checksums, in_remote))
+                return ret
