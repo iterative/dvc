@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import os
-import threading
 import logging
 from funcy import cached_property
 

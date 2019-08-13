@@ -4,7 +4,6 @@ from dvc.scheme import Schemes
 from dvc.utils import LARGE_FILE_SIZE
 from dvc.utils.compat import open
 
-import threading
 import requests
 import logging
 
