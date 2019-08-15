@@ -2,7 +2,6 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.pyenv
-    - c/Users/appveyor/AppData/Local/Temp/chocolatey
 sudo: true
 dist: xenial
 env:
