@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import logging
 from datetime import timedelta
 from funcy import cached_property
+from dvc.utils.compat import FileNotFoundError
 
 try:
     from google.cloud import storage
@@ -14,7 +15,6 @@ from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
-
 
 logger = logging.getLogger(__name__)
 
@@ -104,4 +104,6 @@ class RemoteGS(RemoteBASE):
 
         bucket = self.gs.bucket(path_info.bucket)
         blob = bucket.get_blob(path_info.path)
+        if blob is None:
+            raise FileNotFoundError
         return blob.generate_signed_url(expiration=expiration)

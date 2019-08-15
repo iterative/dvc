@@ -17,7 +17,7 @@ except ImportError:
 from dvc.config import Config
 from dvc.scheme import Schemes
 
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, FileNotFoundError
 from dvc.utils import fix_env, tmp_fname
 
 from .pool import get_connection
@@ -145,13 +145,20 @@ class RemoteHDFS(RemoteBASE):
     def open(self, path_info, mode="r", encoding=None):
         assert mode in {"r", "rt", "rb"}
 
-        with self.hdfs(path_info) as hdfs, closing(
-            hdfs.open(path_info.path, mode="rb")
-        ) as fd:
-            if mode == "rb":
-                yield fd
-            else:
-                yield io.TextIOWrapper(fd, encoding=encoding)
+        try:
+            with self.hdfs(path_info) as hdfs, closing(
+                hdfs.open(path_info.path, mode="rb")
+            ) as fd:
+                if mode == "rb":
+                    yield fd
+                else:
+                    yield io.TextIOWrapper(fd, encoding=encoding)
+        except IOError as e:
+            # Empty .errno and not specific enough error class in pyarrow,
+            # see https://issues.apache.org/jira/browse/ARROW-6248
+            if "file does not exist" in str(e):
+                raise FileNotFoundError(*e.args)
+            raise
 
     def list_cache_paths(self):
         if not self.exists(self.path_info):
