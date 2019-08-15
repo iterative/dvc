@@ -684,27 +684,18 @@ class RemoteBASE(object):
     ):
         cache_info = self.checksum_to_path_info(checksum)
 
-        if self._should_link_from_cache(path_info, checksum, force):
+        if self._needs_checkout(path_info, checksum, force):
+            if self.exists(path_info):
+                msg = "data '{}' exists. Removing before checkout."
+                logger.warning(msg.format(str(path_info)))
+                self.safe_remove(path_info, force=force)
             self.link(cache_info, path_info)
             self.state.save_link(path_info)
             self.state.save(path_info, checksum)
         if progress_callback:
             progress_callback(str(path_info))
 
-    def _should_link_from_cache(self, path_info, checksum, force):
-        if self.exists(path_info):
-            if (
-                self.state.get(path_info) == checksum
-                and not force
-                # NOTE In case of protected repo, we need to overwrite even
-                # identical file to make it protected again
-                and not self.protected
-            ):
-                return False
-            else:
-                msg = "data '{}' exists. Removing before checkout."
-                logger.warning(msg.format(str(path_info)))
-                self.safe_remove(path_info, force=force)
+    def _needs_checkout(self, path_info, checksum, force):
         return True
 
     def makedirs(self, path_info):

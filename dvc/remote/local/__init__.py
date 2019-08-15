@@ -581,3 +581,45 @@ class RemoteLOCAL(RemoteBASE):
             if self.is_dir_checksum(c):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
+
+    def _needs_checkout(self, path_info, checksum, force):
+        if self._can_avoid_copy(path_info, checksum):
+            return False
+        return True
+
+    def _is_cache_type_copy(self):
+        cache_link_type = self._detect_cache_link_type()
+
+        return cache_link_type == "copy"
+
+    def _detect_cache_link_type(self):
+        file1 = self.path_info / uuid()
+        file2 = self.path_info / uuid()
+
+        with open(str(file1), "wb") as fobj:
+            fobj.write(bytes(1))
+
+        self.link(file1, file2)
+
+        self.remove(file2)
+        self.remove(file1)
+
+        return self.cache_types[0]
+
+    def _is_protected(self, path_info):
+        return not os.access(str(path_info), os.W_OK)
+
+    def _has_same_protection_as_cache(self, path_info):
+        is_protected = self._is_protected(path_info)
+
+        return not bool(self.protected) ^ is_protected
+
+    def _can_avoid_copy(self, path_info, checksum):
+        return (
+            self.exists(path_info)
+            and self.state.get(path_info) == checksum
+            and self._has_same_protection_as_cache(path_info)
+            and not System.is_hardlink(path_info)
+            and not System.is_symlink(path_info)
+            and self._is_cache_type_copy()
+        )
