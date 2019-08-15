@@ -3,6 +3,8 @@ import io
 
 import requests
 
+from dvc.utils.compat import FileNotFoundError
+
 
 @contextmanager
 def open_url(url, mode="r", encoding=None):
@@ -30,6 +32,8 @@ def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE):
     def request(headers=None):
         the_url = url() if callable(url) else url
         response = requests.get(the_url, stream=True, headers=headers)
+        if response.status_code == 404:
+            raise FileNotFoundError("Can't open {}".format(the_url))
         response.raise_for_status()
         return response
 

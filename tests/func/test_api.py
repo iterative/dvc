@@ -7,6 +7,7 @@ from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
 from .test_data_cloud import (
+    get_local_url,
     _should_test_aws,
     get_aws_url,
     _should_test_gcp,
@@ -23,6 +24,11 @@ from .test_data_cloud import (
 
 
 # NOTE: staticmethod is only needed in Python 2
+class Local:
+    should_test = staticmethod(lambda: True)
+    get_url = staticmethod(get_local_url)
+
+
 class S3:
     should_test = staticmethod(_should_test_aws)
     get_url = staticmethod(get_aws_url)
@@ -54,6 +60,7 @@ class HDFS:
 
 
 remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
+all_remote_params = [Local] + remote_params
 
 
 @pytest.fixture
@@ -63,15 +70,11 @@ def remote_url(request):
     return request.param.get_url()
 
 
-def pytest_generate_tests(metafunc):
-    if "remote_url" in metafunc.fixturenames:
-        metafunc.parametrize("remote_url", remote_params, indirect=True)
-
-
 def run_dvc(*argv):
     assert main(argv) == 0
 
 
+@pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url(repo_dir, dvc_repo, remote_url):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     dvc_repo.add(repo_dir.FOO)
@@ -80,6 +83,7 @@ def test_get_url(repo_dir, dvc_repo, remote_url):
     assert api.get_url(repo_dir.FOO) == expected_url
 
 
+@pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url_external(repo_dir, dvc_repo, erepo, remote_url):
     _set_remote_url_and_commit(erepo.dvc, remote_url)
 
@@ -89,6 +93,7 @@ def test_get_url_external(repo_dir, dvc_repo, erepo, remote_url):
     assert api.get_url(repo_dir.FOO, repo=repo_url) == expected_url
 
 
+@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open(repo_dir, dvc_repo, remote_url):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     dvc_repo.add(repo_dir.FOO)
@@ -101,6 +106,7 @@ def test_open(repo_dir, dvc_repo, remote_url):
         assert fd.read() == repo_dir.FOO_CONTENTS
 
 
+@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(repo_dir, dvc_repo, erepo, remote_url):
     erepo.dvc.scm.checkout("branch")
     _set_remote_url_and_commit(erepo.dvc, remote_url)
@@ -120,13 +126,16 @@ def test_open_external(repo_dir, dvc_repo, erepo, remote_url):
     assert api.read("version", repo=repo_url, rev="branch") == "branch"
 
 
-def test_open_missing(erepo):
-    # Remove cache to make foo missing
-    shutil.rmtree(erepo.dvc.cache.local.cache_dir)
+@pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
+def test_missing(repo_dir, dvc_repo, remote_url):
+    run_dvc("add", repo_dir.FOO)
+    run_dvc("remote", "add", "-d", "upstream", remote_url)
 
-    repo_url = "file://" + erepo.dvc.root_dir
+    # Remove cache to make foo missing
+    shutil.rmtree(dvc_repo.cache.local.cache_dir)
+
     with pytest.raises(OutputFileMissingError):
-        api.read(erepo.FOO, repo=repo_url)
+        api.read(repo_dir.FOO)
 
 
 def _set_remote_url_and_commit(repo, remote_url):
