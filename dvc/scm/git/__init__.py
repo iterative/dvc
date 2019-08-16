@@ -216,7 +216,11 @@ class Git(Base):
         return [t.name for t in self.repo.tags]
 
     def _install_hook(self, name, cmd):
-        command = '[ -z "$(git ls-files .dvc)" ] || exec dvc {}'.format(cmd)
+        command = (
+            '[ "$3" == "0" ]'
+            ' || [ -z "$(git ls-files .dvc)" ]'
+            " || exec dvc {}".format(cmd)
+        )
 
         hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
 
