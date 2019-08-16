@@ -42,7 +42,7 @@ class RemoteHTTP(RemoteBASE):
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
 
-        if self.no_traverse:
+        if not self.no_traverse:
             raise DvcException(
                 "RemoteHTTP does not support 'no_traverse' option. "
                 "Disable it with `dvc remote modify <name> no_traverse false`"
@@ -104,7 +104,4 @@ class RemoteHTTP(RemoteBASE):
             raise DvcException("could not perform a {} request".format(method))
 
     def gc(self):
-        raise NotImplementedError
-
-    def list_cache_paths(self):
         raise NotImplementedError

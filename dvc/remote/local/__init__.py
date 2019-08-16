@@ -327,9 +327,6 @@ class RemoteLOCAL(RemoteBASE):
         # if the resources that we want to fetch are already cached,
         # there's no need to check the remote storage for the existance of
         # those files.
-        import ipdb
-
-        ipdb.set_trace()
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
         else:
