@@ -407,10 +407,14 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         self._prepare_repo()
 
     def test(self):
+        encoding = sys.stderr.encoding
         with self._caplog.at_level(logging.INFO, logger="dvc"), patch.object(
             sys, "stderr"
         ) as stdout_mock:
             self.stdout_mock = logger.handlers[0].stream = stdout_mock
+
+            if sys.version_info[:1] < (3,):
+                sys.stderr.encoding = encoding
 
             ret = main(["checkout"])
             self.assertEqual(0, ret)
