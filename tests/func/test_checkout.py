@@ -410,8 +410,8 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
         encoding = sys.stderr.encoding
         with self._caplog.at_level(logging.INFO, logger="dvc"), patch.object(
             sys, "stderr"
-        ) as stdout_mock:
-            self.stdout_mock = logger.handlers[0].stream = stdout_mock
+        ) as stderr_mock:
+            self.stderr_mock = logger.handlers[0].stream = stderr_mock
 
             if sys.version_info[:1] < (3,):
                 sys.stderr.encoding = encoding
@@ -419,7 +419,7 @@ class TestCheckoutShouldHaveSelfClearingProgressBar(TestDvc):
             ret = main(["checkout"])
             self.assertEqual(0, ret)
 
-        stdout_calls = self.stdout_mock.method_calls
+        stdout_calls = self.stderr_mock.method_calls
         write_calls = self.filter_out_non_write_calls(stdout_calls)
         write_calls = self.filter_out_empty_write_calls(write_calls)
         self.write_args = [w_c[1][0] for w_c in write_calls]
