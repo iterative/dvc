@@ -168,10 +168,10 @@ def test_large_dir_progress(repo_dir, dvc_repo):
     for i in range(LARGE_DIR_SIZE + 1):
         repo_dir.create(os.path.join("gen", "{}.txt".format(i)), str(i))
 
-    with patch.object(Tqdm, "truncate") as truncate:
-        assert not truncate.called
+    with patch.object(Tqdm, "update") as update:
+        assert not update.called
         dvc_repo.add("gen")
-        assert truncate.called
+        assert update.called
 
 
 def test_dir_checksum_should_be_key_order_agnostic(dvc_repo):
