@@ -1182,6 +1182,8 @@ class TestReproExternalHTTP(TestReproExternalBase):
             self.assertEqual(ret1, 0)
             self.assertEqual(ret2, 0)
 
+            main(["remote", "modify", "mycache", "no_traverse", "false"])
+
             self.dvc = DvcRepo(".")
 
             run_dependency = urljoin(remote, self.BAR)
