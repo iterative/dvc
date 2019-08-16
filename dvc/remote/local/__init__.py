@@ -588,23 +588,26 @@ class RemoteLOCAL(RemoteBASE):
         return True
 
     def _is_cache_type_copy(self):
-        cache_link_type = self._detect_cache_link_type()
+        if not self.path_info:
+            return False
 
-        return cache_link_type == "copy"
+        try:
+            link_test_dir = self.path_info / "tmp_test"
+            self.makedirs(link_test_dir)
 
-    def _detect_cache_link_type(self):
-        file1 = self.path_info / uuid()
-        file2 = self.path_info / uuid()
+            file1 = link_test_dir / uuid()
+            file2 = link_test_dir / uuid()
 
-        with open(str(file1), "wb") as fobj:
-            fobj.write(bytes(1))
+            with open(str(file1), "wb") as fobj:
+                fobj.write(bytes(1))
 
-        self.link(file1, file2)
+            self.link(file1, file2)
 
-        self.remove(file2)
-        self.remove(file1)
+            self.remove(link_test_dir)
 
-        return self.cache_types[0]
+            return self.cache_types[0] == "copy"
+        except Exception:
+            return False
 
     def _is_protected(self, path_info):
         return not os.access(str(path_info), os.W_OK)
