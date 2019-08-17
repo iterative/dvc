@@ -81,7 +81,7 @@ class Tqdm(tqdm):
         self.update(current - self.n)
 
     @classmethod
-    def truncate(cls, s, max_len=10, end=True, fill="..."):
+    def truncate(cls, s, max_len=25, end=True, fill="..."):
         """
         Guarantee len(output) < max_lenself.
         >>> truncate("hello", 4)
