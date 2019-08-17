@@ -154,11 +154,13 @@ class LoggerHandler(logging.StreamHandler):
         """Write to Tqdm's stream so as to not break progressbars"""
         try:
             msg = self.format(record)
-            Tqdm.write(msg, file=self.stream)
+            Tqdm.write(
+                msg, file=self.stream, end=getattr(self, "terminator", "\n")
+            )
             self.flush()
-        except (KeyboardInterrupt, SystemExit):
+        except RecursionError:
             raise
-        except:  # noqa pylint: disable=bare-except
+        except Exception:
             self.handleError(record)
 
 
