@@ -632,7 +632,7 @@ class RemoteBASE(object):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        with Tqdm(total=len(checksums)) as pbar:
+        with Tqdm(total=len(checksums), unit="md5") as pbar:
 
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)

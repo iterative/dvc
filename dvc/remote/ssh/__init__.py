@@ -251,7 +251,7 @@ class RemoteSSH(RemoteBASE):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        with Tqdm(total=len(checksums)) as pbar:
+        with Tqdm(total=len(checksums), unit="md5") as pbar:
 
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_desc)

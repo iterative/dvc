@@ -348,7 +348,9 @@ class RemoteLOCAL(RemoteBASE):
         cache = []
         path_infos = []
         names = []
-        for md5, info in Tqdm(status_info.items(), desc="Analysing status"):
+        for md5, info in Tqdm(
+            status_info.items(), desc="Analysing status", unit="file"
+        ):
             if info["status"] == status:
                 cache.append(self.checksum_to_path_info(md5))
                 path_infos.append(remote.checksum_to_path_info(md5))
@@ -539,7 +541,7 @@ class RemoteLOCAL(RemoteBASE):
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
         self.makedirs(unpacked_dir_info)
 
-        for entry in Tqdm(dir_info, desc="Created unpacked dir"):
+        for entry in Tqdm(dir_info, desc="Creating unpacked dir", unit="dir"):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
