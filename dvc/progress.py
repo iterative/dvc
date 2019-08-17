@@ -63,7 +63,6 @@ class Tqdm(tqdm):
         super(Tqdm, self).__init__(
             iterable=iterable, disable=disable, **kwargs
         )
-        # self.set_lock(Lock())
 
     def update_desc(self, desc, n=1, truncate=True):
         """
