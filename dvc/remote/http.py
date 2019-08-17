@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from dvc.scheme import Schemes
-from dvc.utils import LARGE_FILE_SIZE
 from dvc.utils.compat import open
 
 import requests
