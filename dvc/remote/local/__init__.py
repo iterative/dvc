@@ -334,7 +334,8 @@ class RemoteLOCAL(RemoteBASE):
 
         return ret
 
-    def _fill_statuses(self, checksum_info_dir, local_exists, remote_exists):
+    @staticmethod
+    def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
         # Using sets because they are way faster for lookups
         local = set(local_exists)
         remote = set(remote_exists)
@@ -436,7 +437,8 @@ class RemoteLOCAL(RemoteBASE):
             download=True,
         )
 
-    def _log_missing_caches(self, checksum_info_dict):
+    @staticmethod
+    def _log_missing_caches(checksum_info_dict):
         missing_caches = [
             (md5, info)
             for md5, info in checksum_info_dict.items()
@@ -444,10 +446,8 @@ class RemoteLOCAL(RemoteBASE):
         ]
         if missing_caches:
             missing_desc = "".join(
-                [
-                    "\nname: {}, md5: {}".format(info["name"], md5)
-                    for md5, info in missing_caches
-                ]
+                "\nname: {}, md5: {}".format(info["name"], md5)
+                for md5, info in missing_caches
             )
             msg = (
                 "Some of the cache files do not exist neither locally "
@@ -479,8 +479,8 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        for path in walk_files(path, self.repo.dvcignore):
-            RemoteLOCAL._unprotect_file(path)
+        for fname in walk_files(path, self.repo.dvcignore):
+            RemoteLOCAL._unprotect_file(fname)
 
     def unprotect(self, path_info):
         path = path_info.fspath

@@ -93,7 +93,7 @@ class RemoteSSH(RemoteBASE):
     @staticmethod
     def _load_user_ssh_config(hostname):
         user_config_file = RemoteSSH.ssh_config_filename()
-        user_ssh_config = dict()
+        user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
             ssh_config = paramiko.SSHConfig()
             with open(user_config_file) as f:
