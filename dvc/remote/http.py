@@ -29,10 +29,8 @@ class RemoteHTTP(RemoteBASE):
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         request = self._request("GET", from_info.url, stream=True)
-        total = self._content_length(from_info)
-
         with Tqdm(
-            total=total,
+            total=None if no_progress_bar else self._content_length(from_info),
             leave=False,
             bytes=True,
             desc_truncate=from_info.url if name is None else name,
@@ -43,10 +41,6 @@ class RemoteHTTP(RemoteBASE):
                     fd.write(chunk)
                     fd.flush()
                     pbar.update(len(chunk))
-            # print completed progress bar for large file sizes
-            pbar.n = total or pbar.n
-            if pbar.n > LARGE_FILE_SIZE:
-                Tqdm.write(str(pbar))
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
