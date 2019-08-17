@@ -39,6 +39,7 @@ class Tqdm(tqdm):
         disable=None,
         bytes=False,  # pylint: disable=W0622
         desc_truncate=None,
+        leave=None,
         **kwargs
     ):
         """
@@ -63,6 +64,7 @@ class Tqdm(tqdm):
         super(Tqdm, self).__init__(
             iterable=iterable, disable=disable, **kwargs
         )
+        self.leave = self.pos == 0 if leave is None else leave
 
     def update_desc(self, desc, n=1, truncate=True):
         """
