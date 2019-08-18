@@ -62,9 +62,8 @@ class Tqdm(tqdm):
                 >= logging.CRITICAL
             )
         super(Tqdm, self).__init__(
-            iterable=iterable, disable=disable, **kwargs
+            iterable=iterable, disable=disable, leave=leave, **kwargs
         )
-        self.leave = self.pos == 0 if leave is None else leave
 
     def update_desc(self, desc, n=1, truncate=True):
         """
