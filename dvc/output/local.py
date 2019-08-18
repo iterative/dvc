@@ -47,20 +47,6 @@ class OutputLOCAL(OutputBase):
         def_scheme = urlparse(self.def_path).scheme
         return def_scheme != "remote" and not os.path.isabs(self.def_path)
 
-    def assign_to_stage_file(self, stage):
-        from dvc.repo import Repo
-
-        # Make path info the same but relative to passed stage
-        rel_path = self.path_info.relpath(self.stage.wdir)
-        self.path_info = (
-            self.REMOTE.path_cls(os.path.abspath(stage.wdir)) / rel_path
-        )
-
-        self.repo = Repo(self.fspath)
-
-        self.stage = stage
-        return self
-
     def dumpd(self):
         ret = super(OutputLOCAL, self).dumpd()
         if self.is_in_repo:
