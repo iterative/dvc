@@ -138,11 +138,6 @@ class OutputBase(object):
     def dir_cache(self):
         return self.cache.get_dir_cache(self.checksum)
 
-    def assign_to_stage_file(self, target_repo):
-        raise DvcException(
-            "change repo is not supported for {}".format(self.scheme)
-        )
-
     @classmethod
     def supported(cls, url):
         return cls.REMOTE.supported(url)
