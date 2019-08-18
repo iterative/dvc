@@ -636,7 +636,7 @@ class RemoteBASE(object):
 
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)
-                pbar.update_desc(str(path_info))
+                pbar.update()
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
