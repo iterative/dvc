@@ -104,8 +104,7 @@ class OutputBase(object):
         if remote:
             parsed = urlparse(path)
             return remote.path_info / parsed.path.lstrip("/")
-        else:
-            return self.REMOTE.path_cls(path)
+        return self.REMOTE.path_cls(path)
 
     def __repr__(self):
         return "{class_name}: '{def_path}'".format(
