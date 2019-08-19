@@ -50,8 +50,5 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
                         )
                     )
 
-                done = pbar.n
                 stage.checkout(force=force, progress_callback=pbar.update_desc)
-                if done == pbar.n:
-                    # callback not called
-                    pbar.update(stage.get_all_files_number())
+            pbar.update_desc("Checkout", 0)  # clear path name description

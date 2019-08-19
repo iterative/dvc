@@ -739,23 +739,28 @@ class RemoteBASE(object):
             raise NotImplementedError
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        skip = False
         if not checksum:
             logger.warning(
                 "No checksum info found for '{}'. "
                 "It won't be created.".format(str(path_info))
             )
             self.safe_remove(path_info, force=force)
-            return
+            skip = True
 
         if not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
             logger.debug(msg.format(str(path_info)))
-            return
+            skip = True
 
         if self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
+            skip = True
+
+        if skip:
+            progress_callback(str(path_info), self.get_files_number(checksum))
             return
 
         msg = "Checking out '{}' with cache '{}'."
@@ -773,6 +778,15 @@ class RemoteBASE(object):
         return self._checkout_dir(
             path_info, checksum, force, progress_callback=progress_callback
         )
+
+    def get_files_number(self, checksum):
+        if not checksum:
+            return 0
+
+        if self.is_dir_checksum(checksum):
+            return len(self.get_dir_cache(checksum))
+
+        return 1
 
     @staticmethod
     def unprotect(path_info):
