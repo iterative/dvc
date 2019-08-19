@@ -10,7 +10,5 @@ def test_no_traverse_compatibility(dvc_repo):
         "no_traverse": False,
     }
 
-    remote = RemoteHTTP(dvc_repo, config)
-
     with pytest.raises(RemoteActionNotImplemented):
-        remote.cache_exists(checksums=["12345678"])
+        RemoteHTTP(dvc_repo, config)

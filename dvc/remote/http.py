@@ -42,6 +42,13 @@ class RemoteHTTP(RemoteBASE):
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
 
+        if not self.no_traverse:
+            raise RemoteActionNotImplemented(
+                action="list_cache_paths",
+                scheme=self.scheme,
+                hint="Use: `dvc remote modify <name> no_traverse true`",
+            )
+
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         callback = None
         if not no_progress_bar:
@@ -99,10 +106,3 @@ class RemoteHTTP(RemoteBASE):
 
     def gc(self):
         raise NotImplementedError
-
-    def list_cache_paths(self):
-        raise RemoteActionNotImplemented(
-            action="list_cache_paths",
-            scheme=self.scheme,
-            hint="Use: `dvc remote modify <name> no_traverse true`",
-        )
