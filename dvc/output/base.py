@@ -314,13 +314,10 @@ class OutputBase(object):
             self.repo.scm.ignore(self.fspath)
 
     def get_files_number(self):
-        if not self.use_cache or not self.checksum:
+        if not self.use_cache:
             return 0
 
-        if self.is_dir_checksum:
-            return len(self.dir_cache)
-
-        return 1
+        return self.cache.get_files_number(self.checksum)
 
     def unprotect(self):
         if self.exists:
