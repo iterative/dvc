@@ -39,10 +39,7 @@ TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
     Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
-    TEST_SECTION: {
-        Config.SECTION_REMOTE_URL: "",
-        Config.SECTION_REMOTE_NO_TRAVERSE: False,
-    },
+    TEST_SECTION: { Config.SECTION_REMOTE_URL: "" },
 }
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
@@ -248,9 +245,6 @@ class TestDataCloud(TestDvc):
         for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
-
-            if cl == RemoteHTTP:
-                config[TEST_SECTION][Config.SECTION_REMOTE_NO_TRAVERSE] = True
 
             self._test_cloud(config, cl)
 
@@ -463,6 +457,21 @@ class TestRemoteSSHMocked(TestDataCloudBase):
     def setup_method_fixture(self, request, ssh_server):
         self.ssh_server = ssh_server
         self.method_name = request.function.__name__
+
+    def _setup_cloud(self):
+        self._ensure_should_run()
+
+        repo = self._get_url()
+        keyfile = self._get_keyfile()
+
+        config = copy.deepcopy(TEST_CONFIG)
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
+        config[TEST_SECTION][Config.SECTION_REMOTE_NO_TRAVERSE] = False
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
+
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_url(self):
         user = self.ssh_server.test_creds["username"]
