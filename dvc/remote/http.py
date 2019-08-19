@@ -10,7 +10,7 @@ import logging
 
 from dvc.progress import progress
 from dvc.exceptions import DvcException
-from dvc.config import Config
+from dvc.config import Config, ConfigError
 from dvc.remote.base import RemoteBASE
 
 
@@ -41,6 +41,12 @@ class RemoteHTTP(RemoteBASE):
 
         url = config.get(Config.SECTION_REMOTE_URL)
         self.path_info = self.path_cls(url) if url else None
+
+        if not self.no_traverse:
+            raise ConfigError(
+                "HTTP doesn't support traversing the remote to list existing "
+                "files. Use: `dvc remote modify <name> no_traverse true`"
+            )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         callback = None

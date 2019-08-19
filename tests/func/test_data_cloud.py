@@ -457,6 +457,21 @@ class TestRemoteSSHMocked(TestDataCloudBase):
         self.ssh_server = ssh_server
         self.method_name = request.function.__name__
 
+    def _setup_cloud(self):
+        self._ensure_should_run()
+
+        repo = self._get_url()
+        keyfile = self._get_keyfile()
+
+        config = copy.deepcopy(TEST_CONFIG)
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][Config.SECTION_REMOTE_KEY_FILE] = keyfile
+        config[TEST_SECTION][Config.SECTION_REMOTE_NO_TRAVERSE] = False
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
+
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+
     def _get_url(self):
         user = self.ssh_server.test_creds["username"]
         return get_ssh_url_mocked(user, self.ssh_server.port)
