@@ -70,6 +70,10 @@ class RemoteActionNotImplemented(DvcException):
         super(RemoteActionNotImplemented, self).__init__(m)
 
 
+class RemoteConfigError(DvcException):
+    pass
+
+
 class RemoteMissingDepsError(DvcException):
     pass
 
