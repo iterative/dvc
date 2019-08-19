@@ -210,6 +210,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_PROFILE = "profile"
     SECTION_AWS_USE_SSL = "use_ssl"
     SECTION_AWS_SSE = "sse"
+    SECTION_AWS_ACL = "acl"
     SECTION_AWS_SCHEMA = {
         SECTION_AWS_STORAGEPATH: str,
         Optional(SECTION_AWS_REGION): str,
@@ -219,6 +220,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
         Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
         Optional(SECTION_AWS_SSE): str,
+        Optional(SECTION_AWS_ACL): str,
     }
 
     # backward compatibility
@@ -261,6 +263,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
         Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
         Optional(SECTION_AWS_SSE): str,
+        Optional(SECTION_AWS_ACL): str,
         Optional(SECTION_GCP_PROJECTNAME): str,
         Optional(SECTION_CACHE_TYPE): SECTION_CACHE_TYPE_SCHEMA,
         Optional(SECTION_CACHE_PROTECTED, default=False): BOOL_SCHEMA,
