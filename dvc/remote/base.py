@@ -61,8 +61,12 @@ class RemoteCmdError(DvcException):
 
 
 class RemoteActionNotImplemented(DvcException):
-    def __init__(self, action, scheme):
+    def __init__(self, action, scheme, hint=None):
         m = "{} is not supported by {} remote".format(action, scheme)
+
+        if hint:
+            m += ". {}".format(hint)
+
         super(RemoteActionNotImplemented, self).__init__(m)
 
 

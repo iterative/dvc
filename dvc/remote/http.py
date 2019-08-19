@@ -11,7 +11,7 @@ import logging
 from dvc.progress import progress
 from dvc.exceptions import DvcException
 from dvc.config import Config
-from dvc.remote.base import RemoteBASE
+from dvc.remote.base import RemoteBASE, RemoteActionNotImplemented
 
 
 logger = logging.getLogger(__name__)
@@ -100,8 +100,9 @@ class RemoteHTTP(RemoteBASE):
     def gc(self):
         raise NotImplementedError
 
-    def all(self):
-        raise NotImplementedError(
-            "RemoteHTTP requires `no_traverse`. "
-            "Please set it with `dvc remote modify <name> no_traverse true`"
+    def list_cache_paths(self):
+        raise RemoteActionNotImplemented(
+            action="list_cache_paths",
+            scheme=self.scheme,
+            hint="Use: `dvc remote modify <name> no_traverse true`",
         )
