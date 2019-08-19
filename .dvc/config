@@ -1,4 +1,4 @@
 ['remote "dvc"']
-url = https://dvc.org/s3/dvc
+url = https://remote.dvc.org/dvc
 [core]
 remote = dvc
