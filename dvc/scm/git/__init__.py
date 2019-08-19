@@ -114,12 +114,8 @@ class Git(Base):
             )
         return False
 
-    def ignore(self, path, in_curr_dir=False):
-        base_dir = (
-            os.path.realpath(os.curdir)
-            if in_curr_dir
-            else os.path.dirname(path)
-        )
+    def ignore(self, path):
+        base_dir = os.path.dirname(path)
         entry, gitignore = self._get_gitignore(path, base_dir)
 
         if self._ignored(entry, gitignore):

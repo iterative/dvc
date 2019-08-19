@@ -775,6 +775,7 @@ class Stage(object):
         main_thread = isinstance(
             threading.current_thread(), threading._MainThread
         )
+        old_handler = None
         p = None
 
         try:
@@ -790,7 +791,7 @@ class Stage(object):
                 old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
             p.communicate()
         finally:
-            if main_thread:
+            if old_handler:
                 signal.signal(signal.SIGINT, old_handler)
 
         if (p is None) or (p.returncode != 0):

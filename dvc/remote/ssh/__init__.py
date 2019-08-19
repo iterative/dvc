@@ -2,11 +2,13 @@ from __future__ import unicode_literals
 
 import errno
 import itertools
+import io
 import os
 import getpass
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager, closing
 
 try:
     import paramiko
@@ -200,6 +202,18 @@ class RemoteSSH(RemoteBASE):
                 progress_title=name,
                 no_progress_bar=no_progress_bar,
             )
+
+    @contextmanager
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
+        with self.ssh(path_info) as ssh, closing(
+            ssh.sftp.file(path_info.path, mode="r")
+        ) as fd:
+            if mode == "rb":
+                yield fd
+            else:
+                yield io.TextIOWrapper(fd, encoding=encoding)
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:

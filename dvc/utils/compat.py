@@ -119,6 +119,7 @@ if is_py2:
     cast_bytes_py2 = cast_bytes
     makedirs = _makedirs
     range = xrange  # noqa: F821
+    FileNotFoundError = IOError
 
     import StringIO
     import io
@@ -165,6 +166,7 @@ elif is_py3:
     open = open  # noqa: F821
     cast_bytes_py2 = no_code
     range = range  # noqa: F821
+    FileNotFoundError = FileNotFoundError
 
 
 # Backport os.fspath() from Python 3.6

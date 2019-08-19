@@ -4,7 +4,7 @@ from copy import copy
 
 from dvc.scheme import Schemes
 from dvc.remote.local.slow_link_detection import slow_link_guard
-from dvc.utils.compat import str, fspath_py35
+from dvc.utils.compat import str, fspath_py35, open
 
 import os
 import stat
@@ -278,6 +278,10 @@ class RemoteLOCAL(RemoteBASE):
             no_progress_bar=no_progress_bar,
             name=name,
         )
+
+    def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+        return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
     def _group(self, checksum_infos, show_checksums=False):
         by_md5 = {}
