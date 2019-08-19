@@ -39,7 +39,7 @@ TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
     Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
-    TEST_SECTION: { Config.SECTION_REMOTE_URL: "" },
+    TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
 }
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
