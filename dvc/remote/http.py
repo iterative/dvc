@@ -99,3 +99,9 @@ class RemoteHTTP(RemoteBASE):
 
     def gc(self):
         raise NotImplementedError
+
+    def all(self):
+        raise NotImplementedError(
+            "RemoteHTTP requires `no_traverse`. "
+            "Please set it with `dvc remote modify <name> no_traverse true`"
+        )
