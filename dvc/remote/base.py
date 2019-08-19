@@ -120,7 +120,7 @@ class RemoteBASE(object):
         )
 
         self.protected = False
-        self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE)
+        self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE, True)
         self._dir_info = {}
 
     def __repr__(self):
