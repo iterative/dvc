@@ -62,7 +62,9 @@ class RemoteLOCAL(RemoteBASE):
 
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
-        self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
+        self.protected = bool(
+            config.get(Config.SECTION_CACHE_PROTECTED, False)
+        )
 
         shared = config.get(Config.SECTION_CACHE_SHARED)
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
@@ -583,46 +585,50 @@ class RemoteLOCAL(RemoteBASE):
         return unpacked
 
     def _needs_checkout(self, path_info, checksum, force):
-        if self._can_avoid_copy(path_info, checksum):
+        # Relinking with `symlink/hardlink/reflink` is cheap, but if we need
+        # `copy` links, then to save on copying we should only relink if we
+        # already have `hardlink` or a `symlink`, we don't care
+        # about reflinks, because they are indistinguishable from copy anyway.
+
+        if (
+            not force
+            and not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
+            and not System.is_hardlink(path_info)
+            and not System.is_symlink(path_info)
+            and self._is_cache_copy(path_info)
+        ):
+            if self.protected:
+                self.protect(path_info)
+            else:
+                self._unprotect_file(path_info)
+
+            msg = "File '{}' didn't change"
+            logger.debug(msg.format(str(path_info)))
             return False
         return True
 
-    def _is_cache_type_copy(self):
+    def _is_cache_copy(self, path_info):
+        # NOTE path_info required to make test reliable, when cache is on
+        # different fs than path_info
+
+        if self.cache_types[0] == "copy":
+            return True
+
         if not self.path_info:
             return False
 
-        try:
-            link_test_dir = self.path_info / "tmp_test"
-            self.makedirs(link_test_dir)
+        link_test_dir = self.path_info / "tmp_test"
+        self.makedirs(link_test_dir)
 
-            file1 = link_test_dir / uuid()
-            file2 = link_test_dir / uuid()
+        file1 = link_test_dir / uuid()
+        file2 = path_info.parent / uuid()
 
-            with open(str(file1), "wb") as fobj:
-                fobj.write(bytes(1))
+        with open(fspath_py35(file1), "wb") as fobj:
+            fobj.write(bytes(1))
 
-            self.link(file1, file2)
+        self.link(file1, file2)
 
-            self.remove(link_test_dir)
+        self.remove(link_test_dir)
+        self.remove(file2)
 
-            return self.cache_types[0] == "copy"
-        except Exception:
-            return False
-
-    def _is_protected(self, path_info):
-        return not os.access(str(path_info), os.W_OK)
-
-    def _has_same_protection_as_cache(self, path_info):
-        is_protected = self._is_protected(path_info)
-
-        return not bool(self.protected) ^ is_protected
-
-    def _can_avoid_copy(self, path_info, checksum):
-        return (
-            self.exists(path_info)
-            and self.state.get(path_info) == checksum
-            and self._has_same_protection_as_cache(path_info)
-            and not System.is_hardlink(path_info)
-            and not System.is_symlink(path_info)
-            and self._is_cache_type_copy()
-        )
+        return self.cache_types[0] == "copy"
