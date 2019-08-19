@@ -585,10 +585,12 @@ class RemoteLOCAL(RemoteBASE):
         return unpacked
 
     def _needs_checkout(self, path_info, checksum, force):
-        # Relinking with `symlink/hardlink/reflink` is cheap, but if we need
-        # `copy` links, then to save on copying we should only relink if we
-        # already have `hardlink` or a `symlink`, we don't care
-        # about reflinks, because they are indistinguishable from copy anyway.
+        # NOTE: In case if path_info is already cached, and cache type is
+        # 'copy' we would like to avoid relinking.
+        # `symlink/hardlink/reflink` is cheap, but if we need `copy` links,
+        # then to save on copying we should only relink if we already have
+        # `hardlink` or a `symlink`, we don't care about reflinks, because
+        # they are indistinguishable from copy anyway.
 
         if (
             not force
@@ -600,7 +602,7 @@ class RemoteLOCAL(RemoteBASE):
             if self.protected:
                 self.protect(path_info)
             else:
-                self._unprotect_file(path_info)
+                self.unprotect(path_info)
 
             msg = "File '{}' didn't change"
             logger.debug(msg.format(str(path_info)))
@@ -608,7 +610,7 @@ class RemoteLOCAL(RemoteBASE):
         return True
 
     def _is_cache_copy(self, path_info):
-        # NOTE path_info required to make test reliable, when cache is on
+        # NOTE: path_info required to make test reliable, when cache is on
         # different fs than path_info
 
         if self.cache_types[0] == "copy":
