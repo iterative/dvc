@@ -2,6 +2,10 @@ from dvc.path_info import PathInfo
 from dvc.stage import Stage, StageUpdateError
 from dvc.dependency.repo import DependencyREPO
 
+import signal
+import threading
+import subprocess
+
 import mock
 import pytest
 from unittest import TestCase
@@ -82,3 +86,24 @@ def test_stage_update(mocker):
     is_repo_import.return_value = False
     with pytest.raises(StageUpdateError):
         stage.update()
+
+
+@pytest.mark.skipif(
+    not isinstance(threading.current_thread(), threading._MainThread),
+    reason="Not running in the main thread.",
+)
+def test_stage_run_ignore_sigint(mocker):
+    stage = Stage(None, "path")
+
+    proc = mocker.Mock()
+    communicate = mocker.Mock()
+    proc.configure_mock(returncode=0, communicate=communicate)
+    popen = mocker.patch.object(subprocess, "Popen", return_value=proc)
+    signal_mock = mocker.patch("signal.signal")
+
+    stage._run()
+
+    assert popen.called_once()
+    assert communicate.called_once_with()
+    signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
+    assert signal.getsignal(signal.SIGINT) == signal.default_int_handler

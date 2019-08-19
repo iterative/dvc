@@ -5,9 +5,6 @@ import logging
 import mock
 import shutil
 import filecmp
-import subprocess
-import signal
-import threading
 import pytest
 
 from dvc.main import main
@@ -270,66 +267,6 @@ class TestRunBadName(TestDvc):
                 cmd="",
                 fname=os.path.join(path, self.FOO + Stage.STAGE_FILE_SUFFIX),
             )
-
-
-@pytest.mark.skipif(
-    not isinstance(threading.current_thread(), threading._MainThread),
-    reason="Not running in the main thread.",
-)
-@mock.patch.object(subprocess.Popen, "wait", new=KeyboardInterrupt)
-def test_keyboard_interrupt(repo_dir, dvc_repo):
-    assert (
-        main(
-            [
-                "run",
-                "-d",
-                repo_dir.FOO,
-                "-d",
-                repo_dir.CODE,
-                "-o",
-                "out",
-                "-f",
-                "out.dvc",
-                "python",
-                repo_dir.CODE,
-                repo_dir.FOO,
-                "out",
-            ]
-        )
-        == 1
-    )
-
-
-@pytest.mark.skipif(
-    not isinstance(threading.current_thread(), threading._MainThread),
-    reason="Not running in the main thread.",
-)
-def test_keyboard_interrupt_after_second_signal_call(
-    mocker, repo_dir, dvc_repo
-):
-    mocker.patch.object(
-        signal, "signal", side_effect=[None, KeyboardInterrupt]
-    )
-    assert (
-        main(
-            [
-                "run",
-                "-d",
-                repo_dir.FOO,
-                "-d",
-                repo_dir.CODE,
-                "-o",
-                "out",
-                "-f",
-                "out.dvc",
-                "python",
-                repo_dir.CODE,
-                repo_dir.FOO,
-                "out",
-            ]
-        )
-        == 252
-    )
 
 
 class TestRunRemoveOuts(TestDvc):
