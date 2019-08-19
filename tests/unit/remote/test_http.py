@@ -1,6 +1,6 @@
 import pytest
 from dvc.remote.http import RemoteHTTP
-from dvc.remote.base import RemoteConfigError
+from dvc.config import ConfigError
 
 
 def test_no_traverse_compatibility(dvc_repo):
@@ -10,5 +10,5 @@ def test_no_traverse_compatibility(dvc_repo):
         "no_traverse": False,
     }
 
-    with pytest.raises(RemoteConfigError):
+    with pytest.raises(ConfigError):
         RemoteHTTP(dvc_repo, config)

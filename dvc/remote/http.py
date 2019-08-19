@@ -10,8 +10,8 @@ import logging
 
 from dvc.progress import progress
 from dvc.exceptions import DvcException
-from dvc.config import Config
-from dvc.remote.base import RemoteBASE, RemoteConfigError
+from dvc.config import Config, ConfigError
+from dvc.remote.base import RemoteBASE
 
 
 logger = logging.getLogger(__name__)
@@ -43,7 +43,7 @@ class RemoteHTTP(RemoteBASE):
         self.path_info = self.path_cls(url) if url else None
 
         if not self.no_traverse:
-            raise RemoteConfigError(
+            raise ConfigError(
                 "HTTP doesn't support traversing the remote to list existing "
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
