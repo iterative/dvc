@@ -39,7 +39,10 @@ TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
     Config.SECTION_CACHE: {},
     Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
-    TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
+    TEST_SECTION: {
+        Config.SECTION_REMOTE_URL: "",
+        Config.SECTION_REMOTE_NO_TRAVERSE: False,
+    },
 }
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
@@ -245,6 +248,10 @@ class TestDataCloud(TestDvc):
         for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
+
+            if cl == RemoteHTTP:
+                config[TEST_SECTION][Config.SECTION_REMOTE_NO_TRAVERSE] = True
+
             self._test_cloud(config, cl)
 
 
