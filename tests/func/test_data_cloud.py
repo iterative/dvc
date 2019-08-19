@@ -245,7 +245,6 @@ class TestDataCloud(TestDvc):
         for scheme, cl in clist:
             remote_url = scheme + str(uuid.uuid4())
             config[TEST_SECTION][Config.SECTION_REMOTE_URL] = remote_url
-
             self._test_cloud(config, cl)
 
 
