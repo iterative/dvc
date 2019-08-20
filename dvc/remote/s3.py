@@ -65,6 +65,10 @@ class RemoteS3(RemoteBASE):
         if self.sse:
             self.extra_args["ServerSideEncryption"] = self.sse
 
+        self.acl = config.get(Config.SECTION_AWS_ACL, "")
+        if self.acl:
+            self.extra_args["ACL"] = self.acl
+
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
