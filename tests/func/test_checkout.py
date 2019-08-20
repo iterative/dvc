@@ -4,6 +4,8 @@ import filecmp
 import collections
 import logging
 
+import pytest
+
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
@@ -481,9 +483,7 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
 def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
     repo_dir, dvc_repo, caplog
 ):
-    ret = main(["config", "cache.type", "copy"])
-    assert ret == 0
-    dvc_repo = DvcRepo(dvc_repo.root_dir)
+    dvc_repo.cache.local.cache_types = ["copy"]
 
     dvc_repo.add(repo_dir.FOO)
     dvc_repo.add(repo_dir.BAR)
@@ -499,36 +499,31 @@ def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
     assert get_inode(repo_dir.FOO) == foo_inode
 
 
-class TestCheckoutShouldRelinkOnExistingLink(object):
-    def _test(self, repo_dir, dvc_repo, caplog, link_type, link_type2):
-        dvc_repo.cache.local.cache_types = [link_type]
+@pytest.mark.parametrize(
+    "link,new_link,link_test_func",
+    [
+        ("hardlink", "copy", lambda path: not System.is_hardlink(path)),
+        ("symlink", "copy", lambda path: not System.is_symlink(path)),
+        ("copy", "hardlink", System.is_hardlink),
+        ("copy", "symlink", System.is_symlink),
+    ],
+)
+def test_should_relink_on_checkout(
+    link, new_link, link_test_func, repo_dir, dvc_repo, caplog
+):
+    dvc_repo.cache.local.cache_types = [link]
 
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.BAR)
+
+    os.remove(repo_dir.FOO)
+    RemoteLOCAL.CACHE_TYPE_MAP[link](repo_dir.BAR, repo_dir.FOO)
+
+    dvc_repo.cache.local.cache_types = [new_link]
+
+    caplog.clear()
+    with caplog.at_level(logging.INFO):
         dvc_repo.add(repo_dir.FOO)
-        dvc_repo.add(repo_dir.BAR)
 
-        os.remove(repo_dir.FOO)
-        RemoteLOCAL.CACHE_TYPE_MAP[link_type](repo_dir.BAR, repo_dir.FOO)
-
-        dvc_repo.cache.local.cache_types = [link_type2]
-
-        caplog.clear()
-        with caplog.at_level(logging.INFO):
-            dvc_repo.add(repo_dir.FOO)
-
-        assert "Removing before checkout" in caplog.text
-
-    def test_should_copy_on_hardlink(self, repo_dir, dvc_repo, caplog):
-        self._test(repo_dir, dvc_repo, caplog, "hardlink", "copy")
-        assert not System.is_hardlink(repo_dir.FOO)
-
-    def test_should_copy_on_symlink(self, repo_dir, dvc_repo, caplog):
-        self._test(repo_dir, dvc_repo, caplog, "symlink", "copy")
-        assert not System.is_symlink(repo_dir.FOO)
-
-    def test_should_hardlink_on_copy(self, repo_dir, dvc_repo, caplog):
-        self._test(repo_dir, dvc_repo, caplog, "copy", "hardlink")
-        assert System.is_hardlink(repo_dir.FOO)
-
-    def test_should_symlink_on_copy(self, repo_dir, dvc_repo, caplog):
-        self._test(repo_dir, dvc_repo, caplog, "copy", "symlink")
-        assert System.is_symlink(repo_dir.FOO)
+    assert "Removing before checkout" in caplog.text
+    assert link_test_func(repo_dir.FOO)
