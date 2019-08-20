@@ -103,6 +103,8 @@ jobs:
   # deploy jobs
   - name: "Pypi pkgs"
     stage: deploy
+    language: python
+    python: 3.7
     script: ./scripts/build_package.sh
     deploy:
     - provider: pypi
