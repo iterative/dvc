@@ -62,9 +62,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def __init__(self, repo, config):
         super(RemoteLOCAL, self).__init__(repo, config)
-        self.protected = bool(
-            config.get(Config.SECTION_CACHE_PROTECTED, False)
-        )
+        self.protected = config.get(Config.SECTION_CACHE_PROTECTED, False)
 
         shared = config.get(Config.SECTION_CACHE_SHARED)
         self._file_mode, self._dir_mode = self.SHARED_MODE_MAP[shared]
@@ -602,6 +600,9 @@ class RemoteLOCAL(RemoteBASE):
             if self.protected:
                 self.protect(path_info)
             else:
+                # NOTE: we can unprotect, because `hardlink/symlink` check
+                # has been performed before, so no chance of copying,
+                # only chmod-ing.
                 self.unprotect(path_info)
 
             msg = "File '{}' didn't change"
@@ -616,9 +617,6 @@ class RemoteLOCAL(RemoteBASE):
         if self.cache_types[0] == "copy":
             return True
 
-        if not self.path_info:
-            return False
-
         link_test_dir = self.path_info / "tmp_test"
         self.makedirs(link_test_dir)
 
@@ -628,9 +626,10 @@ class RemoteLOCAL(RemoteBASE):
         with open(fspath_py35(file1), "wb") as fobj:
             fobj.write(bytes(1))
 
-        self.link(file1, file2)
-
-        self.remove(link_test_dir)
-        self.remove(file2)
+        try:
+            self.link(file1, file2)
+        finally:
+            self.remove(link_test_dir)
+            self.remove(file2)
 
         return self.cache_types[0] == "copy"
