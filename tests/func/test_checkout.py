@@ -478,7 +478,7 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     assert not os.path.exists(repo_dir.FOO)
 
 
-def test_checkout_should_avoid_copy_for_existing_cache(
+def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
     repo_dir, dvc_repo, caplog
 ):
     ret = main(["config", "cache.type", "copy"])
@@ -497,3 +497,64 @@ def test_checkout_should_avoid_copy_for_existing_cache(
 
     assert "Removing before checkout" not in caplog.text
     assert get_inode(repo_dir.FOO) == foo_inode
+
+
+class TestCheckoutShouldCopyOnExistingLink(object):
+    def _test(self, repo_dir, dvc_repo, caplog, link_type):
+        ret = main(["config", "cache.type", link_type])
+        assert ret == 0
+        dvc_repo = DvcRepo(dvc_repo.root_dir)
+
+        dvc_repo.add(repo_dir.FOO)
+        dvc_repo.add(repo_dir.BAR)
+
+        os.remove(repo_dir.FOO)
+        RemoteLOCAL.CACHE_TYPE_MAP[link_type](repo_dir.BAR, repo_dir.FOO)
+
+        ret = main(["config", "cache.type", "copy"])
+        assert ret == 0
+        dvc_repo = DvcRepo(dvc_repo.root_dir)
+
+        caplog.clear()
+        with caplog.at_level(logging.INFO):
+            dvc_repo.checkout(repo_dir.FOO + ".dvc")
+
+        assert "Removing before checkout" in caplog.text
+
+    def test_hardlink(self, repo_dir, dvc_repo, caplog):
+        self._test(repo_dir, dvc_repo, caplog, "hardlink")
+        assert not System.is_hardlink(repo_dir.FOO)
+
+    def test_symlink(self, repo_dir, dvc_repo, caplog):
+        self._test(repo_dir, dvc_repo, caplog, "symlink")
+        assert not System.is_symlink(repo_dir.FOO)
+
+
+class TestCheckoutShouldRelinkOnExistingCopy(object):
+    def _test(self, repo_dir, dvc_repo, caplog, link_type):
+        ret = main(["config", "cache.type", "copy"])
+        assert ret == 0
+        dvc_repo = DvcRepo(dvc_repo.root_dir)
+
+        dvc_repo.add(repo_dir.FOO)
+        dvc_repo.add(repo_dir.BAR)
+
+        shutil.copy(repo_dir.BAR, repo_dir.FOO)
+
+        ret = main(["config", "cache.type", link_type])
+        assert ret == 0
+        dvc_repo = DvcRepo(dvc_repo.root_dir)
+
+        caplog.clear()
+        with caplog.at_level(logging.INFO):
+            dvc_repo.checkout(repo_dir.FOO + ".dvc")
+
+        assert "Removing before checkout" in caplog.text
+
+    def test_hardlink(self, repo_dir, dvc_repo, caplog):
+        self._test(repo_dir, dvc_repo, caplog, "hardlink")
+        assert System.is_hardlink(repo_dir.FOO)
+
+    def test_symlink(self, repo_dir, dvc_repo, caplog):
+        self._test(repo_dir, dvc_repo, caplog, "symlink")
+        assert System.is_symlink(repo_dir.FOO)
