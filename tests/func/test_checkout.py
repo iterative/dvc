@@ -501,9 +501,7 @@ def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
 
 class TestCheckoutShouldRelinkOnExistingLink(object):
     def _test(self, repo_dir, dvc_repo, caplog, link_type, link_type2):
-        ret = main(["config", "cache.type", link_type])
-        assert ret == 0
-        dvc_repo = DvcRepo(dvc_repo.root_dir)
+        dvc_repo.cache.local.cache_types = [link_type]
 
         dvc_repo.add(repo_dir.FOO)
         dvc_repo.add(repo_dir.BAR)
@@ -511,9 +509,7 @@ class TestCheckoutShouldRelinkOnExistingLink(object):
         os.remove(repo_dir.FOO)
         RemoteLOCAL.CACHE_TYPE_MAP[link_type](repo_dir.BAR, repo_dir.FOO)
 
-        ret = main(["config", "cache.type", link_type2])
-        assert ret == 0
-        dvc_repo = DvcRepo(dvc_repo.root_dir)
+        dvc_repo.cache.local.cache_types = [link_type2]
 
         caplog.clear()
         with caplog.at_level(logging.INFO):
