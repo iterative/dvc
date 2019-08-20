@@ -158,9 +158,7 @@ class RemoteBASE(object):
                     )
                 )
                 tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
-            checksums = {
-                file_infos[index]: task for index, task in enumerate(tasks)
-            }
+            checksums = dict(zip(file_infos, tasks))
         return checksums
 
     def _collect_dir(self, path_info):

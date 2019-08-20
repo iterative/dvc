@@ -545,7 +545,7 @@ class RemoteLOCAL(RemoteBASE):
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
         self.makedirs(unpacked_dir_info)
 
-        for entry in Tqdm(dir_info, desc="Creating unpacked dir", unit="dir"):
+        for entry in Tqdm(dir_info, desc="Creating unpacked dir", unit="file"):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
