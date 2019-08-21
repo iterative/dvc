@@ -619,7 +619,7 @@ class RemoteLOCAL(RemoteBASE):
             self.remove(test_cache_file)
             return True
 
-        workspace_file = path_info.parent / "." + uuid()
+        workspace_file = path_info.with_name("." + uuid())
 
         if not self.exists(test_cache_file):
             with open(fspath_py35(test_cache_file), "wb") as fobj:
