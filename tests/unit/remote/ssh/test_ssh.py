@@ -160,3 +160,25 @@ def test_ssh_keyfile(mock_file, mock_exists, config, expected_keyfile):
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.keyfile == expected_keyfile
+
+
+@pytest.mark.parametrize(
+    "config,expected_gss_auth",
+    [
+        ({"url": "ssh://example.com", "gss_auth": True}, True),
+        ({"url": "ssh://example.com", "gss_auth": False}, False),
+        ({"url": "ssh://not_in_ssh_config.com"}, False),
+    ],
+)
+@patch("os.path.exists", return_value=True)
+@patch(
+    "{}.open".format(builtin_module_name),
+    new_callable=mock_open,
+    read_data=mock_ssh_config,
+)
+def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
+    remote = RemoteSSH(None, config)
+
+    mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
+    mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
+    assert remote.gss_auth == expected_gss_auth
