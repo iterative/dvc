@@ -87,6 +87,7 @@ class RemoteSSH(RemoteBASE):
         self.ask_password = config.get(
             Config.SECTION_REMOTE_ASK_PASSWORD, False
         )
+        self.gss_auth = config.get(Config.SECTION_REMOTE_GSS_AUTH, False)
 
     @staticmethod
     def ssh_config_filename():
@@ -145,6 +146,7 @@ class RemoteSSH(RemoteBASE):
             key_filename=self.keyfile,
             timeout=self.timeout,
             password=self.password,
+            gss_auth=self.gss_auth,
         )
 
     def exists(self, path_info):
