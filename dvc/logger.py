@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 from dvc.utils.compat import str, StringIO
+from dvc.progress import Tqdm
 
 import logging
 import logging.handlers
@@ -53,9 +54,6 @@ class ColorFormatter(logging.Formatter):
     )
 
     def format(self, record):
-        if self._is_visible(record):
-            self._progress_aware()
-
         if record.levelname == "INFO":
             return record.msg
 
@@ -146,19 +144,24 @@ class ColorFormatter(logging.Formatter):
 
         return (exception, stack_trace)
 
-    def _progress_aware(self):
-        """Add a new line if progress bar hasn't finished"""
-        from dvc.progress import progress
-
-        if not progress.is_finished:
-            progress._print()
-        progress.clearln()
-
 
 class LoggerHandler(logging.StreamHandler):
     def handleError(self, record):
         super(LoggerHandler, self).handleError(record)
         raise LoggingException(record)
+
+    def emit(self, record):
+        """Write to Tqdm's stream so as to not break progressbars"""
+        try:
+            msg = self.format(record)
+            Tqdm.write(
+                msg, file=self.stream, end=getattr(self, "terminator", "\n")
+            )
+            self.flush()
+        except RecursionError:
+            raise
+        except Exception:
+            self.handleError(record)
 
 
 def setup(level=logging.INFO):

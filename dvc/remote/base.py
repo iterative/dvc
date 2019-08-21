@@ -8,9 +8,9 @@ import json
 import logging
 import tempfile
 import itertools
-from functools import partial
 from operator import itemgetter
 from multiprocessing import cpu_count
+from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 
 import dvc.prompt as prompt
@@ -20,7 +20,7 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
 )
-from dvc.progress import progress, ProgressCallback
+from dvc.progress import Tqdm, TqdmThreadPoolExecutor
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
@@ -145,20 +145,20 @@ class RemoteBASE(object):
 
     def _calculate_checksums(self, file_infos):
         file_infos = list(file_infos)
-        with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
+        with TqdmThreadPoolExecutor(
+            max_workers=self.checksum_jobs
+        ) as executor:
             tasks = executor.map(self.get_file_checksum, file_infos)
 
             if len(file_infos) > LARGE_DIR_SIZE:
-                msg = (
-                    "Computing md5 for a large number of files. "
-                    "This is only done once."
+                logger.info(
+                    (
+                        "Computing md5 for a large number of files. "
+                        "This is only done once."
+                    )
                 )
-                logger.info(msg)
-                tasks = progress(tasks, total=len(file_infos))
-
-        checksums = {
-            file_infos[index]: task for index, task in enumerate(tasks)
-        }
+                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
+            checksums = dict(zip(file_infos, tasks))
         return checksums
 
     def _collect_dir(self, path_info):
@@ -439,9 +439,6 @@ class RemoteBASE(object):
 
         name = name or from_info.name
 
-        if not no_progress_bar:
-            progress.update_target(name, 0, None)
-
         try:
             self._upload(
                 from_info.fspath,
@@ -453,9 +450,6 @@ class RemoteBASE(object):
             msg = "failed to upload '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
-
-        if not no_progress_bar:
-            progress.finish_target(name)
 
         return 0
 
@@ -485,11 +479,6 @@ class RemoteBASE(object):
 
         name = name or to_info.name
 
-        if not no_progress_bar:
-            # real progress is not always available,
-            # lets at least show start and finish
-            progress.update_target(name, 0, None)
-
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
         tmp_file = tmp_fname(to_info)
 
@@ -503,9 +492,6 @@ class RemoteBASE(object):
             return 1  # 1 fail
 
         move(tmp_file, to_info, mode=file_mode)
-
-        if not no_progress_bar:
-            progress.finish_target(name)
 
         return 0
 
@@ -644,19 +630,18 @@ class RemoteBASE(object):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        progress_callback = ProgressCallback(len(checksums))
+        with Tqdm(total=len(checksums), unit="md5") as pbar:
 
-        def exists_with_progress(path_info):
-            ret = self.exists(path_info)
-            progress_callback.update(str(path_info))
-            return ret
+            def exists_with_progress(path_info):
+                ret = self.exists(path_info)
+                pbar.update()
+                return ret
 
-        with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-            path_infos = [self.checksum_to_path_info(x) for x in checksums]
-            in_remote = executor.map(exists_with_progress, path_infos)
-            ret = list(itertools.compress(checksums, in_remote))
-            progress_callback.finish("")
-            return ret
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
+                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                in_remote = executor.map(exists_with_progress, path_infos)
+                ret = list(itertools.compress(checksums, in_remote))
+                return ret
 
     def already_cached(self, path_info):
         current = self.get_checksum(path_info)
@@ -694,7 +679,7 @@ class RemoteBASE(object):
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
         if progress_callback:
-            progress_callback.update(str(path_info))
+            progress_callback(str(path_info))
 
     def makedirs(self, path_info):
         raise NotImplementedError
@@ -724,7 +709,7 @@ class RemoteBASE(object):
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
-                progress_callback.update(str(entry_info))
+                progress_callback(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -752,23 +737,28 @@ class RemoteBASE(object):
             raise NotImplementedError
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
+        skip = False
         if not checksum:
             logger.warning(
                 "No checksum info found for '{}'. "
                 "It won't be created.".format(str(path_info))
             )
             self.safe_remove(path_info, force=force)
-            return
+            skip = True
 
-        if not self.changed(path_info, checksum_info):
+        elif not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
             logger.debug(msg.format(str(path_info)))
-            return
+            skip = True
 
-        if self.changed_cache(checksum):
+        elif self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
+            skip = True
+
+        if skip:
+            progress_callback(str(path_info), self.get_files_number(checksum))
             return
 
         msg = "Checking out '{}' with cache '{}'."
@@ -786,6 +776,15 @@ class RemoteBASE(object):
         return self._checkout_dir(
             path_info, checksum, force, progress_callback=progress_callback
         )
+
+    def get_files_number(self, checksum):
+        if not checksum:
+            return 0
+
+        if self.is_dir_checksum(checksum):
+            return len(self.get_dir_cache(checksum))
+
+        return 1
 
     @staticmethod
     def unprotect(path_info):

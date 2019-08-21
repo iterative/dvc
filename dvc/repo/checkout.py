@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 from dvc.exceptions import CheckoutErrorSuggestGit
-from dvc.progress import ProgressCallback
+from dvc.progress import Tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,6 @@ def get_all_files_numbers(stages):
     return sum(stage.get_all_files_number() for stage in stages)
 
 
-def get_progress_callback(stages):
-    total_files_num = get_all_files_numbers(stages)
-    if total_files_num == 0:
-        return None
-    return ProgressCallback(total_files_num)
-
-
 def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
@@ -44,15 +37,18 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
 
     with self.state:
         _cleanup_unused_links(self, all_stages)
-        progress_callback = get_progress_callback(stages)
+        total = get_all_files_numbers(stages)
+        with Tqdm(
+            total=total, unit="file", desc="Checkout", disable=total == 0
+        ) as pbar:
+            for stage in stages:
+                if stage.locked:
+                    logger.warning(
+                        "DVC-file '{path}' is locked. Its dependencies are"
+                        " not going to be checked out.".format(
+                            path=stage.relpath
+                        )
+                    )
 
-        for stage in stages:
-            if stage.locked:
-                logger.warning(
-                    "DVC-file '{path}' is locked. Its dependencies are"
-                    " not going to be checked out.".format(path=stage.relpath)
-                )
-
-            stage.checkout(force=force, progress_callback=progress_callback)
-        if progress_callback:
-            progress_callback.finish("Checkout finished!")
+                stage.checkout(force=force, progress_callback=pbar.update_desc)
+            pbar.update_desc("Checkout", 0)  # clear path name description

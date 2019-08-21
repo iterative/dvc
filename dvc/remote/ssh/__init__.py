@@ -10,9 +10,6 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, closing
 
-from dvc.progress import ProgressCallback
-from dvc.utils import to_chunks
-
 try:
     import paramiko
 except ImportError:
@@ -20,10 +17,12 @@ except ImportError:
 
 import dvc.prompt as prompt
 from dvc.config import Config
+from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
+from dvc.progress import Tqdm
 
 from .connection import SSHConnection
 
@@ -96,7 +95,7 @@ class RemoteSSH(RemoteBASE):
     @staticmethod
     def _load_user_ssh_config(hostname):
         user_config_file = RemoteSSH.ssh_config_filename()
-        user_ssh_config = dict()
+        user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
             ssh_config = paramiko.SSHConfig()
             with open(user_config_file) as f:
@@ -241,7 +240,7 @@ class RemoteSSH(RemoteBASE):
                     if exc.errno != errno.ENOENT:
                         raise
                     ret.append(False)
-                callback.update(path)
+                callback(path)
             return ret
 
         with self.ssh(path_infos[0]) as ssh:
@@ -263,19 +262,20 @@ class RemoteSSH(RemoteBASE):
         faster than current approach (relying on exists(path_info)) applied in
         remote/base.
         """
-        progress_callback = ProgressCallback(len(checksums))
+        if not self.no_traverse:
+            return list(set(checksums) & set(self.all()))
 
-        def exists_with_progress(chunks):
-            return self.batch_exists(chunks, callback=progress_callback)
+        with Tqdm(total=len(checksums), unit="md5") as pbar:
 
-        if self.no_traverse:
+            def exists_with_progress(chunks):
+                return self.batch_exists(chunks, callback=pbar.update_desc)
+
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
                 chunks = to_chunks(path_infos, num_chunks=self.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
-                progress_callback.finish("")
                 return ret
 
-        return list(set(checksums) & set(self.all()))
+            pbar.update_desc("", 0)  # clear path name description

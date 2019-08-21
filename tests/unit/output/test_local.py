@@ -2,6 +2,7 @@ from mock import patch
 
 from dvc.stage import Stage
 from dvc.output import OutputLOCAL
+from dvc.remote.local import RemoteLOCAL
 
 from tests.basic_env import TestDvc
 
@@ -32,8 +33,12 @@ class TestGetFilesNumber(TestDvc):
         self.assertEqual(0, o.get_files_number())
 
     @patch.object(OutputLOCAL, "checksum", "12345678.dir")
-    @patch.object(OutputLOCAL, "dir_cache", [{"md5": "asdf"}, {"md5": "qwe"}])
-    def test_return_mutiple_for_dir(self):
+    @patch.object(
+        RemoteLOCAL,
+        "get_dir_cache",
+        return_value=[{"md5": "asdf"}, {"md5": "qwe"}],
+    )
+    def test_return_mutiple_for_dir(self, mock_get_dir_cache):
         o = self._get_output()
 
         self.assertEqual(2, o.get_files_number())

@@ -23,6 +23,7 @@ innosetup/config.ini
 *.exe
 
 .coverage
+.coverage.*
 
 *.swp
 

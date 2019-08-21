@@ -151,31 +151,31 @@ class TestColorFormatter:
             assert expected == formatter.format(caplog.records[0])
 
     def test_progress_awareness(self, mocker, capsys, caplog):
-        from dvc.progress import progress
+        from dvc.progress import Tqdm
 
         with mocker.patch("sys.stdout.isatty", return_value=True):
-            progress.set_n_total(100)
-            progress.update_target("progress", 1, 10)
+            with Tqdm(total=100, desc="progress") as pbar:
+                pbar.update()
 
-            # logging an invisible message should not break
-            # the progress bar output
-            with caplog.at_level(logging.INFO, logger="dvc"):
-                debug_record = logging.LogRecord(
-                    name="dvc",
-                    level=logging.DEBUG,
-                    pathname=__name__,
-                    lineno=1,
-                    msg="debug",
-                    args=(),
-                    exc_info=None,
-                )
+                # logging an invisible message should not break
+                # the progress bar output
+                with caplog.at_level(logging.INFO, logger="dvc"):
+                    debug_record = logging.LogRecord(
+                        name="dvc",
+                        level=logging.DEBUG,
+                        pathname=__name__,
+                        lineno=1,
+                        msg="debug",
+                        args=(),
+                        exc_info=None,
+                    )
 
-                formatter.format(debug_record)
-                captured = capsys.readouterr()
-                assert "\n" not in captured.out
+                    formatter.format(debug_record)
+                    captured = capsys.readouterr()
+                    assert captured.out == ""
 
-            # just when the message is actually visible
-            with caplog.at_level(logging.INFO, logger="dvc"):
-                logger.info("some info")
-                captured = capsys.readouterr()
-                assert "\n" in captured.out
+                #  when the message is actually visible
+                with caplog.at_level(logging.INFO, logger="dvc"):
+                    logger.info("some info")
+                    captured = capsys.readouterr()
+                    assert captured.out == ""

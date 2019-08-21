@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import os
-import threading
 import logging
 from funcy import cached_property
 
@@ -10,7 +9,7 @@ try:
 except ImportError:
     boto3 = None
 
-from dvc.progress import progress
+from dvc.progress import Tqdm
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
@@ -18,19 +17,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
-
-
-class Callback(object):
-    def __init__(self, name, total):
-        self.name = name
-        self.total = total
-        self.current = 0
-        self.lock = threading.Lock()
-
-    def __call__(self, byts):
-        with self.lock:
-            self.current += byts
-            progress.update_target(self.name, self.current, self.total)
 
 
 class RemoteS3(RemoteBASE):
@@ -221,27 +207,36 @@ class RemoteS3(RemoteBASE):
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
-        cb = None if no_progress_bar else Callback(name, total)
-        self.s3.upload_file(
-            from_file,
-            to_info.bucket,
-            to_info.path,
-            Callback=cb,
-            ExtraArgs=self.extra_args,
-        )
+        with Tqdm(
+            disable=no_progress_bar,
+            total=total,
+            bytes=True,
+            desc_truncate=name,
+        ) as pbar:
+            self.s3.upload_file(
+                from_file,
+                to_info.bucket,
+                to_info.path,
+                Callback=pbar.update,
+                ExtraArgs=self.extra_args,
+            )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         if no_progress_bar:
-            cb = None
+            total = None
         else:
             total = self.s3.head_object(
                 Bucket=from_info.bucket, Key=from_info.path
             )["ContentLength"]
-            cb = Callback(name, total)
-
-        self.s3.download_file(
-            from_info.bucket, from_info.path, to_file, Callback=cb
-        )
+        with Tqdm(
+            disable=no_progress_bar,
+            total=total,
+            bytes=True,
+            desc_truncate=name,
+        ) as pbar:
+            self.s3.download_file(
+                from_info.bucket, from_info.path, to_file, Callback=pbar.update
+            )
 
     def _generate_download_url(self, path_info, expires=3600):
         params = {"Bucket": path_info.bucket, "Key": path_info.path}

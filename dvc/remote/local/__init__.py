@@ -35,8 +35,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.progress import progress
-from concurrent.futures import ThreadPoolExecutor
+from dvc.progress import Tqdm, TqdmThreadPoolExecutor
 
 from dvc.path_info import PathInfo
 
@@ -255,7 +254,7 @@ class RemoteLOCAL(RemoteBASE):
     def cache_exists(self, checksums, jobs=None):
         return [
             checksum
-            for checksum in progress(checksums)
+            for checksum in Tqdm(checksums, unit="md5")
             if not self.changed_cache_file(checksum)
         ]
 
@@ -339,7 +338,8 @@ class RemoteLOCAL(RemoteBASE):
 
         return ret
 
-    def _fill_statuses(self, checksum_info_dir, local_exists, remote_exists):
+    @staticmethod
+    def _fill_statuses(checksum_info_dir, local_exists, remote_exists):
         # Using sets because they are way faster for lookups
         local = set(local_exists)
         remote = set(remote_exists)
@@ -352,8 +352,8 @@ class RemoteLOCAL(RemoteBASE):
         cache = []
         path_infos = []
         names = []
-        for md5, info in progress(
-            status_info.items(), name="Analysing status"
+        for md5, info in Tqdm(
+            status_info.items(), desc="Analysing status", unit="file"
         ):
             if info["status"] == status:
                 cache.append(self.checksum_to_path_info(md5))
@@ -412,7 +412,7 @@ class RemoteLOCAL(RemoteBASE):
             return 0
 
         if jobs > 1:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
+            with TqdmThreadPoolExecutor(max_workers=jobs) as executor:
                 fails = sum(executor.map(func, *plans))
         else:
             fails = sum(map(func, *plans))
@@ -443,7 +443,8 @@ class RemoteLOCAL(RemoteBASE):
             download=True,
         )
 
-    def _log_missing_caches(self, checksum_info_dict):
+    @staticmethod
+    def _log_missing_caches(checksum_info_dict):
         missing_caches = [
             (md5, info)
             for md5, info in checksum_info_dict.items()
@@ -451,10 +452,8 @@ class RemoteLOCAL(RemoteBASE):
         ]
         if missing_caches:
             missing_desc = "".join(
-                [
-                    "\nname: {}, md5: {}".format(info["name"], md5)
-                    for md5, info in missing_caches
-                ]
+                "\nname: {}, md5: {}".format(info["name"], md5)
+                for md5, info in missing_caches
             )
             msg = (
                 "Some of the cache files do not exist neither locally "
@@ -486,8 +485,8 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        for path in walk_files(path, self.repo.dvcignore):
-            RemoteLOCAL._unprotect_file(path)
+        for fname in walk_files(path, self.repo.dvcignore):
+            RemoteLOCAL._unprotect_file(fname)
 
     def unprotect(self, path_info):
         path = path_info.fspath
@@ -546,7 +545,7 @@ class RemoteLOCAL(RemoteBASE):
     def _create_unpacked_dir(self, checksum, dir_info, unpacked_dir_info):
         self.makedirs(unpacked_dir_info)
 
-        for entry in progress(dir_info, name="Created unpacked dir"):
+        for entry in Tqdm(dir_info, desc="Creating unpacked dir", unit="file"):
             entry_cache_info = self.checksum_to_path_info(
                 entry[self.PARAM_CHECKSUM]
             )
