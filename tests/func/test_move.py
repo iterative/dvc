@@ -192,3 +192,11 @@ class TestMoveFileInsideDirectory(TestDvc):
         dvc_fullpath = os.path.join(self.DATA_DIR, "data.txt.dvc")
         self.assertTrue(os.path.exists(data_fullpath))
         self.assertTrue(os.path.exists(dvc_fullpath))
+
+
+def test_move_should_save_stage_info(dvc_repo, repo_dir):
+    dvc_repo.add(repo_dir.DATA_DIR)
+
+    dvc_repo.move(repo_dir.DATA_DIR, "new_name")
+
+    assert dvc_repo.status() == {}
