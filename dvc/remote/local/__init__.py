@@ -582,7 +582,7 @@ class RemoteLOCAL(RemoteBASE):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
 
-    def _needs_checkout(self, path_info, checksum, force):
+    def _needs_checkout(self, path_info, checksum):
         # NOTE: In case if path_info is already cached, and cache type is
         # 'copy' we would like to avoid relinking.
         # `symlink/hardlink/reflink` is cheap, but if we need `copy` links,
@@ -591,11 +591,10 @@ class RemoteLOCAL(RemoteBASE):
         # they are indistinguishable from copy anyway.
 
         if (
-            not force
-            and not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
+            self._is_cache_copy(path_info)
             and not System.is_hardlink(path_info)
             and not System.is_symlink(path_info)
-            and self._is_cache_copy(path_info)
+            and not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
         ):
             if self.protected:
                 self.protect(path_info)
@@ -614,11 +613,13 @@ class RemoteLOCAL(RemoteBASE):
         # NOTE: path_info required to make test reliable, when cache is on
         # different fs than path_info
 
+        test_cache_file = self.path_info / ".cache_type_test_file"
+
         if self.cache_types[0] == "copy":
+            self.remove(test_cache_file)
             return True
 
-        test_cache_file = self.path_info / "cache_type_test_file"
-        workspace_file = path_info.parent / uuid()
+        workspace_file = path_info.parent / "." + uuid()
 
         if not self.exists(test_cache_file):
             with open(fspath_py35(test_cache_file), "wb") as fobj:

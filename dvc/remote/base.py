@@ -684,7 +684,7 @@ class RemoteBASE(object):
     ):
         cache_info = self.checksum_to_path_info(checksum)
 
-        if self._needs_checkout(path_info, checksum, force):
+        if self._needs_checkout(path_info, checksum):
             if self.exists(path_info):
                 msg = "data '{}' exists. Removing before checkout."
                 logger.warning(msg.format(str(path_info)))
@@ -695,7 +695,7 @@ class RemoteBASE(object):
         if progress_callback:
             progress_callback(str(path_info))
 
-    def _needs_checkout(self, path_info, checksum, force):
+    def _needs_checkout(self, path_info, checksum):
         return True
 
     def makedirs(self, path_info):
