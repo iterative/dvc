@@ -276,6 +276,5 @@ class RemoteSSH(RemoteBASE):
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
+                pbar.update_desc("", 0)  # clear path name description
                 return ret
-
-            pbar.update_desc("", 0)  # clear path name description
