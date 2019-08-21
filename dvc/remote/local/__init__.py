@@ -617,19 +617,16 @@ class RemoteLOCAL(RemoteBASE):
         if self.cache_types[0] == "copy":
             return True
 
-        link_test_dir = self.path_info / "tmp_test"
-        self.makedirs(link_test_dir)
+        test_cache_file = self.path_info / "cache_type_test_file"
+        workspace_file = path_info.parent / uuid()
 
-        file1 = link_test_dir / uuid()
-        file2 = path_info.parent / uuid()
-
-        with open(fspath_py35(file1), "wb") as fobj:
-            fobj.write(bytes(1))
+        if not self.exists(test_cache_file):
+            with open(fspath_py35(test_cache_file), "wb") as fobj:
+                fobj.write(bytes(1))
 
         try:
-            self.link(file1, file2)
+            self.link(test_cache_file, workspace_file)
         finally:
-            self.remove(link_test_dir)
-            self.remove(file2)
+            self.remove(workspace_file)
 
         return self.cache_types[0] == "copy"
