@@ -9,6 +9,7 @@ import subprocess
 import logging
 import signal
 import threading
+from itertools import chain
 
 from dvc.utils import relpath
 from dvc.utils.compat import pathlib
@@ -438,6 +439,7 @@ class Stage(object):
         wdir = kwargs.get("wdir", None)
         cwd = kwargs.get("cwd", None)
         fname = kwargs.get("fname", None)
+        add = kwargs.get("add", False)
 
         # Backward compatibility for `cwd` option
         if wdir is None and cwd is not None:
@@ -449,8 +451,8 @@ class Stage(object):
                     " directory.".format(fname=fname)
                 )
             wdir = cwd
-        else:
-            wdir = os.curdir if wdir is None else wdir
+        elif wdir is None:
+            wdir = os.curdir
 
         stage = Stage(
             repo=repo,
@@ -468,10 +470,17 @@ class Stage(object):
         stage._check_duplicated_arguments()
 
         if not fname:
-            fname = Stage._stage_fname(
-                stage.outs, add=kwargs.get("add", False)
-            )
+            fname = Stage._stage_fname(stage.outs, add)
         stage._check_dvc_filename(fname)
+
+        # Autodetecting wdir for add, we need to create outs first to do that,
+        # so we start with wdir = . and remap out paths later.
+        if add and kwargs.get("wdir") is None and cwd is None:
+            wdir = os.path.dirname(fname)
+
+            for out in chain(stage.outs, stage.deps):
+                if out.is_in_repo:
+                    out.def_path = relpath(out.path_info, wdir)
 
         wdir = os.path.abspath(wdir)
 

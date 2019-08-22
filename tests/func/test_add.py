@@ -169,15 +169,17 @@ class TestAddModifiedDir(TestDvc):
         self.assertTrue(stages[0] is not None)
 
 
-class TestAddFileInDir(TestDvc):
-    def test(self):
-        stages = self.dvc.add(self.DATA_SUB)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertNotEqual(stage, None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(stage.relpath, self.DATA_SUB + ".dvc")
+def test_add_file_in_dir(repo_dir, dvc_repo):
+    stage, = dvc_repo.add(repo_dir.DATA_SUB)
+
+    assert stage is not None
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+    assert stage.relpath == repo_dir.DATA_SUB + ".dvc"
+
+    # Current dir should not be taken into account
+    assert stage.wdir == os.path.dirname(stage.path)
+    assert stage.outs[0].def_path == "data_sub"
 
 
 class TestAddExternalLocalFile(TestDvc):
