@@ -164,7 +164,7 @@ class Repo(object):
         from dvc.stage import Stage
 
         if not target or (recursive and os.path.isdir(target)):
-            return self.active_stages(target)
+            return self.stages(target)
 
         stage = Stage.load(self, target)
         if not with_deps:
