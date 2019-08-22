@@ -64,6 +64,12 @@ class SSHConnection:
 
         return 0
 
+    def getsize(self, path):
+        with ignore_file_not_found():
+            return self.sftp.stat(path).st_size
+
+        return 0
+
     def exists(self, path, sftp=None):
         return bool(self.st_mode(path))
 
@@ -282,3 +288,9 @@ class SSHConnection:
                         raise
                     break
         return self._sftp_channels
+
+    def open(self, *args, **kwargs):
+        return self.sftp.open(*args, **kwargs)
+
+    def symlink(self, *args, **kwargs):
+        return self.sftp.symlink(*args, **kwargs)
