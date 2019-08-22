@@ -353,14 +353,24 @@ class Repo(object):
 
         return G, G_active
 
-    def pipelines(self, from_directory=None):
+    @staticmethod
+    def _pipelines(graph):
         import networkx as nx
 
-        G, G_active = self.graph(from_directory=from_directory)
-
         return [
-            G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
+            graph.subgraph(c).copy()
+            for c in nx.weakly_connected_components(graph)
         ]
+
+    def pipelines(self, from_directory=None):
+        G, _ = self.graph(from_directory=from_directory)
+
+        return self._pipelines(G)
+
+    def pipelines_for_active_nodes(self, from_directory=None):
+        _, G_active = self.graph(from_directory=from_directory)
+
+        return self._pipelines(G_active)
 
     @staticmethod
     def _filter_out_dirs(dirs, outs, root_dir):
@@ -417,7 +427,7 @@ class Repo(object):
         import networkx as nx
 
         stages = []
-        for G in self.pipelines(from_directory):
+        for G in self.pipelines_for_active_nodes(from_directory):
             stages.extend(list(nx.get_node_attributes(G, "stage").values()))
         return stages
 
