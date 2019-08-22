@@ -29,6 +29,7 @@
 .. image:: https://anaconda.org/conda-forge/dvc/badges/version.svg
   :target: https://anaconda.org/conda-forge/dvc
   :alt: Conda-forge
+
 |
 
 **Data Version Control** or **DVC** is an **open-source** tool for data science and machine
