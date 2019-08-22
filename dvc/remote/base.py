@@ -696,6 +696,9 @@ class RemoteBASE(object):
             if self.protected:
                 self.protect(path_info)
             else:
+                # NOTE: we can unprotect, because `hardlink/symlink` check
+                # has been performed before, so no chance of copying,
+                # only chmod-ing.
                 self.unprotect(path_info)
 
         if progress_callback:
