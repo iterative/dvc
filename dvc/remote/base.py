@@ -682,16 +682,22 @@ class RemoteBASE(object):
     def _checkout_file(
         self, path_info, checksum, force, progress_callback=None
     ):
-        cache_info = self.checksum_to_path_info(checksum)
-
         if self._needs_checkout(path_info, checksum):
             if self.exists(path_info):
                 msg = "data '{}' exists. Removing before checkout."
                 logger.warning(msg.format(str(path_info)))
                 self.safe_remove(path_info, force=force)
+
+            cache_info = self.checksum_to_path_info(checksum)
             self.link(cache_info, path_info)
             self.state.save_link(path_info)
             self.state.save(path_info, checksum)
+        else:
+            if self.protected:
+                self.protect(path_info)
+            else:
+                self.unprotect(path_info)
+
         if progress_callback:
             progress_callback(str(path_info))
 

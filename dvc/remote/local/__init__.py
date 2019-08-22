@@ -592,18 +592,10 @@ class RemoteLOCAL(RemoteBASE):
 
         if (
             self._is_cache_copy(path_info)
+            and not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
             and not System.is_hardlink(path_info)
             and not System.is_symlink(path_info)
-            and not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
         ):
-            if self.protected:
-                self.protect(path_info)
-            else:
-                # NOTE: we can unprotect, because `hardlink/symlink` check
-                # has been performed before, so no chance of copying,
-                # only chmod-ing.
-                self.unprotect(path_info)
-
             msg = "File '{}' didn't change"
             logger.debug(msg.format(str(path_info)))
             return False
@@ -616,7 +608,6 @@ class RemoteLOCAL(RemoteBASE):
         test_cache_file = self.path_info / ".cache_type_test_file"
 
         if self.cache_types[0] == "copy":
-            self.remove(test_cache_file)
             return True
 
         workspace_file = path_info.with_name("." + uuid())
@@ -629,5 +620,6 @@ class RemoteLOCAL(RemoteBASE):
             self.link(test_cache_file, workspace_file)
         finally:
             self.remove(workspace_file)
+            self.remove(test_cache_file)
 
         return self.cache_types[0] == "copy"

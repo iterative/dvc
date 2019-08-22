@@ -10,7 +10,6 @@ from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from dvc.utils import walk_files, relpath
-from dvc.utils.fs import get_inode
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.utils.compat import is_py2
 from tests.basic_env import TestDvc, TestDvcGit
@@ -480,7 +479,7 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     assert not os.path.exists(repo_dir.FOO)
 
 
-def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
+def test_should_not_checkout_when_adding_cached_file(
     repo_dir, dvc_repo, caplog
 ):
     dvc_repo.cache.local.cache_types = ["copy"]
@@ -489,14 +488,12 @@ def test_checkout_should_avoid_copy_when_adding_for_existing_cache(
     dvc_repo.add(repo_dir.BAR)
 
     shutil.copy(repo_dir.BAR, repo_dir.FOO)
-    foo_inode = get_inode(repo_dir.FOO)
 
     caplog.clear()
     with caplog.at_level(logging.INFO):
         dvc_repo.add(repo_dir.FOO)
 
     assert "Removing before checkout" not in caplog.text
-    assert get_inode(repo_dir.FOO) == foo_inode
 
 
 @pytest.mark.parametrize(
