@@ -684,7 +684,7 @@ class RemoteBASE(object):
     ):
         if self._needs_checkout(path_info, checksum):
             if self.exists(path_info):
-                msg = "data '{}' exists. Removing before checkout."
+                msg = "Data '{}' exists. Removing before checkout."
                 logger.warning(msg.format(str(path_info)))
                 self.safe_remove(path_info, force=force)
 
@@ -770,11 +770,6 @@ class RemoteBASE(object):
                 "It won't be created.".format(str(path_info))
             )
             self.safe_remove(path_info, force=force)
-            skip = True
-
-        elif not self.changed(path_info, checksum_info):
-            msg = "Data '{}' didn't change."
-            logger.debug(msg.format(str(path_info)))
             skip = True
 
         elif self.changed_cache(checksum):

@@ -3,9 +3,11 @@ import shutil
 import filecmp
 import collections
 import logging
+import stat
 
 import pytest
 
+import dvc
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
@@ -25,6 +27,7 @@ from dvc.exceptions import (
 
 from mock import patch
 
+from tests.utils import spy, string_args
 
 logger = logging.getLogger("dvc")
 
@@ -479,9 +482,7 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     assert not os.path.exists(repo_dir.FOO)
 
 
-def test_should_not_checkout_when_adding_cached_file(
-    repo_dir, dvc_repo, caplog
-):
+def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
     dvc_repo.cache.local.cache_types = ["copy"]
 
     dvc_repo.add(repo_dir.FOO)
@@ -489,11 +490,11 @@ def test_should_not_checkout_when_adding_cached_file(
 
     shutil.copy(repo_dir.BAR, repo_dir.FOO)
 
-    caplog.clear()
-    with caplog.at_level(logging.INFO):
+    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
+    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
         dvc_repo.add(repo_dir.FOO)
 
-    assert "Removing before checkout" not in caplog.text
+    assert remove_spy.mock.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -505,8 +506,8 @@ def test_should_not_checkout_when_adding_cached_file(
         ("copy", "symlink", System.is_symlink),
     ],
 )
-def test_should_relink_on_checkout(
-    link, new_link, link_test_func, repo_dir, dvc_repo, caplog
+def test_should_relink_on_repeated_add(
+    link, new_link, link_test_func, repo_dir, dvc_repo
 ):
     dvc_repo.cache.local.cache_types = [link]
 
@@ -518,9 +519,60 @@ def test_should_relink_on_checkout(
 
     dvc_repo.cache.local.cache_types = [new_link]
 
-    caplog.clear()
-    with caplog.at_level(logging.INFO):
+    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
+    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
         dvc_repo.add(repo_dir.FOO)
 
-    assert "Removing before checkout" in caplog.text
+    assert repo_dir.FOO in string_args(remove_spy.mock)
     assert link_test_func(repo_dir.FOO)
+
+
+@pytest.mark.parametrize(
+    "link,new_link,link_test_func",
+    [
+        ("hardlink", "copy", lambda path: not System.is_hardlink(path)),
+        ("symlink", "copy", lambda path: not System.is_symlink(path)),
+        ("copy", "hardlink", System.is_hardlink),
+        ("copy", "symlink", System.is_symlink),
+    ],
+)
+def test_should_relink_on_checkout_existing(
+    link, new_link, link_test_func, dvc_repo, repo_dir
+):
+    dvc_repo.cache.local.cache_types = [link]
+    dvc_repo.add(repo_dir.FOO)
+
+    dvc_repo.cache.local.cache_types = [new_link]
+
+    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
+    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
+        dvc_repo.checkout(repo_dir.FOO + ".dvc")
+
+    assert repo_dir.FOO in string_args(remove_spy.mock)
+    assert link_test_func(repo_dir.FOO)
+
+
+def test_should_not_relink_on_checkout_existing_copy(dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = ["copy"]
+    dvc_repo.add(repo_dir.FOO)
+
+    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
+    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
+        dvc_repo.checkout(repo_dir.FOO + ".dvc")
+
+    assert remove_spy.mock.call_count == 0
+
+
+@pytest.mark.parametrize("link_type", ["copy", "symlink", "hardlink"])
+def test_should_reset_protection_on_checkout_existing(
+    link_type, dvc_repo, repo_dir
+):
+    dvc_repo.cache.local.protected = True
+    dvc_repo.cache.local.cache_types = [link_type]
+
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.unprotect(repo_dir.FOO)
+
+    dvc_repo.checkout(repo_dir.FOO + ".dvc")
+
+    assert stat.S_IMODE(os.stat(repo_dir.FOO).st_mode) == 0o444
