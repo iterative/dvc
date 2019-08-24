@@ -65,14 +65,6 @@ class RemoteLOCAL(RemoteBASE):
             # cache files are set to be read-only for everyone
             self._file_mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
 
-        types = config.get(Config.SECTION_CACHE_TYPE, None)
-        if types:
-            if isinstance(types, str):
-                types = [t.strip() for t in types.split(",")]
-            self.cache_types = types
-        else:
-            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
-
         # A clunky way to detect cache dir
         storagepath = config.get(Config.SECTION_LOCAL_STORAGEPATH, None)
         cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)

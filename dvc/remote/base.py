@@ -79,6 +79,7 @@ class RemoteBASE(object):
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
     CHECKSUM_JOBS = max(1, min(4, cpu_count() // 2))
+    DEFAULT_CACHE_TYPES = ["copy"]
 
     state = StateNoop()
 
@@ -118,6 +119,14 @@ class RemoteBASE(object):
         self.protected = False
         self.no_traverse = config.get(Config.SECTION_REMOTE_NO_TRAVERSE, True)
         self._dir_info = {}
+
+        types = config.get(Config.SECTION_CACHE_TYPE, None)
+        if types:
+            if isinstance(types, str):
+                types = [t.strip() for t in types.split(",")]
+            self.cache_types = types
+        else:
+            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(
@@ -352,7 +361,89 @@ class RemoteBASE(object):
         return False
 
     def link(self, from_info, to_info):
-        self.copy(from_info, to_info)
+        self._link(from_info, to_info, self.cache_types)
+
+    def _link(self, from_info, to_info, link_types):
+        # XXX: This is a fallback until the following methods are
+        # implemented on all remotes:
+        #   * `isfile`
+        #   * `makedirs`
+        #   * `getsize`
+        #
+        # Another thing we can do is to delegate the edge case handling
+        # to hardlink, ommit the `isfile` check, and let the link
+        # implementation to create a directory before copying
+        if link_types == ["copy"]:
+            return self.copy(from_info, to_info)
+
+        assert self.isfile(from_info)
+
+        self.makedirs(to_info.parent)
+
+        # If there are a lot of empty files (which happens a lot in datasets),
+        # and the cache type is `hardlink`, we might reach link limits and
+        # will get something like: `too many links error`
+        #
+        # This is because all those empty files will have the same checksum
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
+        # linked to the same file in the cache.
+        #
+        # From https://en.wikipedia.org/wiki/Hard_link
+        #   * ext4 limits the number of hard links on a file to 65,000
+        #   * Windows with NTFS has a limit of 1024 hard links on a file
+        #
+        # That's why we simply create an empty file rather than a link.
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w+").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}"
+                .format(src=str(from_path), dest=str(to_path))
+            )
+            return
+
+        self._try_links(from_info, to_info, link_types)
+
+    @slow_link_guard
+    def _try_links(self, from_info, to_info, link_types):
+        link_methods = {
+            "copy": self.copy,
+            "symlink": self.symlink,
+            "hardlink": self.hardlink,
+            "reflink": self.reflink,
+        }
+
+        i = len(link_types)
+        while i > 0:
+            link_method = link_methods[link_types[0]]
+            try:
+                self._do_link(from_info, to_info, link_method)
+                return
+
+            except DvcException as exc:
+                msg = "Cache type '{}' is not supported: {}"
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
+                i -= 1
+
+        raise DvcException("no possible cache types left to try out.")
+
+    def _do_link(self, from_info, to_info, link_method):
+        if self.exists(to_info):
+            raise DvcException("Link '{}' already exists!".format(to_info))
+        else:
+            link_method(from_info, to_info)
+
+        if self.protected:
+            self.protect(to_info)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_info,
+            to_info,
+        )
+        logger.debug(msg)
 
     def _save_file(self, path_info, checksum, save_link=True):
         assert checksum
@@ -511,6 +602,15 @@ class RemoteBASE(object):
 
     def copy(self, from_info, to_info):
         raise RemoteActionNotImplemented("copy", self.scheme)
+
+    def symlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("symlink", self.scheme)
+
+    def hardlink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("hardlink", self.scheme)
+
+    def reflink(self, from_info, to_info):
+        raise RemoteActionNotImplemented("reflink", self.scheme)
 
     def exists(self, path_info):
         raise NotImplementedError
