@@ -292,8 +292,9 @@ class SSHConnection:
     def open(self, *args, **kwargs):
         return self.sftp.open(*args, **kwargs)
 
-    def symlink(self, *args, **kwargs):
-        return self.sftp.symlink(*args, **kwargs)
+    def symlink(self, src, dest):
+        self.makedirs(posixpath.dirname(dest))
+        self.sftp.symlink(src, dest)
 
     def reflink(self, src, dest):
         self.makedirs(posixpath.dirname(dest))
