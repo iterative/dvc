@@ -516,7 +516,12 @@ class RemoteBASE(object):
         raise NotImplementedError
 
     def path_to_checksum(self, path):
-        return "".join(self.path_cls(path).parts[-2:])
+        parts = self.path_cls(path).parts[-2:]
+
+        if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
+            raise ValueError("Bad cache file path")
+
+        return "".join(parts)
 
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
@@ -529,9 +534,12 @@ class RemoteBASE(object):
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
-        return (
-            self.path_to_checksum(path) for path in self.list_cache_paths()
-        )
+        for path in self.list_cache_paths():
+            try:
+                yield self.path_to_checksum(path)
+            except ValueError:
+                # We ignore all the non-cache looking files
+                pass
 
     def gc(self, cinfos):
         used = self.extract_used_local_checksums(cinfos)
