@@ -406,16 +406,9 @@ class RemoteBASE(object):
 
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
-        link_methods = {
-            "copy": self.copy,
-            "symlink": self.symlink,
-            "hardlink": self.hardlink,
-            "reflink": self.reflink,
-        }
-
         i = len(link_types)
         while i > 0:
-            link_method = link_methods[link_types[0]]
+            link_method = getattr(self, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
                 return
