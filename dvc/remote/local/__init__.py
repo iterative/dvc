@@ -134,7 +134,19 @@ class RemoteLOCAL(RemoteBASE):
 
         self.makedirs(to_info.parent)
 
-        # NOTE: just create an empty file for an empty cache
+        # If there are a lot of empty files (which happens a lot in datasets),
+        # and the cache type is `hardlink`, we might reach link limits and
+        # will get something like: `too many links error`
+        #
+        # This is because all those empty files will have the same checksum
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
+        # linked to the same file in the cache.
+        #
+        # From https://en.wikipedia.org/wiki/Hard_link
+        #   * ext4 limits the number of hard links on a file to 65,000
+        #   * Windows with NTFS has a limit of 1024 hard links on a file
+        #
+        # That's why we simply create an empty file rather than a link.
         if self.getsize(from_info) == 0:
             self.open(to_info, "w+").close()
 
