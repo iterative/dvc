@@ -22,6 +22,7 @@ from dvc.config import Config
 from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
+from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
@@ -353,6 +354,7 @@ class RemoteSSH(RemoteBASE):
         )
         logger.debug(msg)
 
+    @slow_link_guard
     def _try_links(self, from_info, to_info, link_types, ssh):
         i = len(link_types)
         while i > 0:
