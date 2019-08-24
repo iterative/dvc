@@ -50,9 +50,7 @@ class RemoteSSH(RemoteBASE):
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
 
-    # XXX: Friendly reminder to add "reflink" to the default types
-    # after is implemented
-    DEFAULT_CACHE_TYPES = ["symlink", "copy"]
+    DEFAULT_CACHE_TYPES = ["reflink, copy"]
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
@@ -323,7 +321,12 @@ class RemoteSSH(RemoteBASE):
 
     @classmethod
     def _get_link_method(cls, link_type, ssh):
-        CACHE_TYPE_MAP = {"copy": ssh.cp, "symlink": ssh.symlink}
+        CACHE_TYPE_MAP = {
+            "copy": ssh.cp,
+            "symlink": ssh.symlink,
+            "reflink": ssh.reflink,
+            "hardlink": ssh.hardlink,
+        }
 
         try:
             return CACHE_TYPE_MAP[link_type]

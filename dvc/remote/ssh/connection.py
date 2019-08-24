@@ -294,3 +294,11 @@ class SSHConnection:
 
     def symlink(self, *args, **kwargs):
         return self.sftp.symlink(*args, **kwargs)
+
+    def reflink(self, src, dest):
+        self.makedirs(posixpath.dirname(dest))
+        self.execute("cp --reflink {} {}".format(src, dest))
+
+    def hardlink(self, src, dest):
+        self.makedirs(posixpath.dirname(dest))
+        self.execute("ln {} {}".format(src, dest))
