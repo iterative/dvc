@@ -51,12 +51,6 @@ class RemoteLOCAL(RemoteBASE):
     UNPACKED_DIR_SUFFIX = ".unpacked"
 
     DEFAULT_CACHE_TYPES = ["reflink", "copy"]
-    CACHE_TYPE_MAP = {
-        "copy": shutil.copyfile,
-        "symlink": System.symlink,
-        "hardlink": System.hardlink,
-        "reflink": System.reflink,
-    }
 
     SHARED_MODE_MAP = {None: (0o644, 0o755), "group": (0o664, 0o775)}
 
@@ -136,29 +130,32 @@ class RemoteLOCAL(RemoteBASE):
         self._link(from_info, to_info, self.cache_types)
 
     def _link(self, from_info, to_info, link_types):
-        from_path = from_info.fspath
-        to_path = to_info.fspath
+        assert self.isfile(from_info)
 
-        assert os.path.isfile(from_path)
-
-        dname = os.path.dirname(to_path)
-        if not os.path.exists(dname):
-            os.makedirs(dname)
+        self.makedirs(to_info.parent)
 
         # NOTE: just create an empty file for an empty cache
-        if os.path.getsize(from_path) == 0:
-            open(to_path, "w+").close()
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w+").close()
 
-            msg = "Created empty file: {} -> {}".format(from_path, to_path)
-            logger.debug(msg)
+            logger.debug(
+                "Created empty file: {src} -> {dest}"
+                .format(src=str(from_path), dest=str(to_path))
+            )
             return
 
         self._try_links(from_info, to_info, link_types)
 
-    @classmethod
-    def _get_link_method(cls, link_type):
+    def _get_link_method(self, link_type):
+        CACHE_TYPE_MAP = {
+            "copy": self.copy,
+            "symlink": self.symlink,
+            "hardlink": self.hardlink,
+            "reflink": self.reflink,
+        }
+
         try:
-            return cls.CACHE_TYPE_MAP[link_type]
+            return CACHE_TYPE_MAP[link_type]
         except KeyError:
             raise DvcException(
                 "Cache type: '{}' not supported!".format(link_type)
@@ -168,7 +165,7 @@ class RemoteLOCAL(RemoteBASE):
         if self.exists(to_info):
             raise DvcException("Link '{}' already exists!".format(to_info))
         else:
-            link_method(from_info.fspath, to_info.fspath)
+            link_method(from_info, to_info)
 
         if self.protected:
             self.protect(to_info)
@@ -225,6 +222,9 @@ class RemoteLOCAL(RemoteBASE):
     def isdir(self, path_info):
         return os.path.isdir(fspath_py35(path_info))
 
+    def getsize(self, path_info):
+        return os.path.getsize(fspath_py35(path_info))
+
     def walk(self, path_info):
         return dvc_walk(path_info, self.repo.dvcignore)
 
@@ -250,6 +250,18 @@ class RemoteLOCAL(RemoteBASE):
             mode = self._dir_mode
 
         move(from_info, to_info, mode=mode)
+
+    def copy(self, from_info, to_info):
+        shutil.copyfile(from_info.fspath, to_info.fspath)
+
+    def symlink(self, from_info, to_info):
+        System.symlink(from_info.fspath, to_info.fspath)
+
+    def hardlink(self, from_info, to_info):
+        System.hardlink(from_info.fspath, to_info.fspath)
+
+    def reflink(self, from_info, to_info):
+        System.reflink(from_info.fspath, to_info.fspath)
 
     def cache_exists(self, checksums, jobs=None):
         return [
