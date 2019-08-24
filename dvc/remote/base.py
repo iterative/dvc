@@ -394,7 +394,7 @@ class RemoteBASE(object):
         #
         # That's why we simply create an empty file rather than a link.
         if self.getsize(from_info) == 0:
-            self.open(to_info, "w+").close()
+            self.open(to_info, "w").close()
 
             logger.debug(
                 "Created empty file: {src} -> {dest}"
