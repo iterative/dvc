@@ -176,12 +176,45 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.isdir(path_info.path)
 
+    def isfile(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isfile(path_info.path)
+
+    def getsize(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.getsize(path_info.path)
+
+    def open(self, path_info, mode="r", encoding=None):
+        with self.ssh(path_info) as ssh:
+            return ssh.open(path_info.path, mode=mode, encoding=encoding)
+
     def copy(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
         with self.ssh(from_info) as ssh:
             ssh.cp(from_info.path, to_info.path)
+
+    def symlink(self, from_info, to_info):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.symlink(from_info.path, to_info.path)
+
+    def hardlink(self, from_info, to_info):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.hardlink(from_info.path, to_info.path)
+
+    def reflink(self, from_info, to_info):
+        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.reflink(from_info.path, to_info.path)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
