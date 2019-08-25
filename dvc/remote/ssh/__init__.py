@@ -267,7 +267,9 @@ class RemoteSSH(RemoteBASE):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        with Tqdm(total=len(checksums), unit="md5") as pbar:
+        with Tqdm(
+            desc="Querying remote cache", total=len(checksums), unit="md5"
+        ) as pbar:
 
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_desc)
@@ -278,5 +280,5 @@ class RemoteSSH(RemoteBASE):
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
-                pbar.update_desc("", 0)  # clear path name description
+                pbar.set_description_str("Querying remote cache")
                 return ret

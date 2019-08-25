@@ -40,6 +40,10 @@ class Tqdm(tqdm):
         bytes=False,  # pylint: disable=W0622
         desc_truncate=None,
         leave=None,
+        bar_format=(
+            "{percentage:3.0f}%|{bar:10}|{desc} {bar:-10b}{n}/{total}"
+            " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
+        ),
         **kwargs
     ):
         """
@@ -49,6 +53,7 @@ class Tqdm(tqdm):
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = deepcopy(kwargs)
+        kwargs.setdefault("unit_scale", True)
         if bytes:
             for k, v in dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
@@ -62,14 +67,18 @@ class Tqdm(tqdm):
                 >= logging.CRITICAL
             )
         super(Tqdm, self).__init__(
-            iterable=iterable, disable=disable, leave=leave, **kwargs
+            iterable=iterable,
+            disable=disable,
+            leave=leave,
+            bar_format=bar_format,
+            **kwargs
         )
 
     def update_desc(self, desc, n=1, truncate=True):
         """
-        Calls `set_description(truncate(desc))` and `update(n)`
+        Calls `set_description_str(truncate(desc))` and `update(n)`
         """
-        self.set_description(
+        self.set_description_str(
             self.truncate(desc) if truncate else desc, refresh=False
         )
         self.update(n)
