@@ -772,6 +772,11 @@ class RemoteBASE(object):
             self.safe_remove(path_info, force=force)
             skip = True
 
+        elif not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            logger.debug(msg.format(str(path_info)))
+            skip = True
+
         elif self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
