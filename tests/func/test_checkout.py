@@ -3,7 +3,6 @@ import shutil
 import filecmp
 import collections
 import logging
-import stat
 
 import pytest
 
