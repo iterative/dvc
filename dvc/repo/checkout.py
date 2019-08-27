@@ -38,8 +38,14 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     with self.state:
         _cleanup_unused_links(self, all_stages)
         total = get_all_files_numbers(stages)
+        if total == 0:
+            logger.info("Nothing to do")
         with Tqdm(
-            total=total, unit="file", desc="Checkout", disable=total == 0
+            total=total,
+            unit="file",
+            desc="Checkout",
+            disable=total == 0,
+            level_leave=logging.INFO,
         ) as pbar:
             for stage in stages:
                 if stage.locked:

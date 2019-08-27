@@ -280,5 +280,4 @@ class RemoteSSH(RemoteBASE):
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
-                pbar.set_description_str("Querying remote cache")
                 return ret

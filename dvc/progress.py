@@ -5,6 +5,8 @@ from tqdm import tqdm
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 
+logger = logging.getLogger(__name__)
+
 
 class TqdmThreadPoolExecutor(ThreadPoolExecutor):
     """
@@ -49,12 +51,18 @@ class Tqdm(tqdm):
         desc_truncate=None,
         leave=None,
         bar_format=None,
+        level=logging.ERROR,
+        level_leave=logging.DEBUG,
         **kwargs
     ):
         """
         bytes   : shortcut for
             `unit='B', unit_scale=True, unit_divisor=1024, miniters=1`
         desc_truncate  : like `desc` but will truncate to 10 chars
+        level  : effective logging level for determining `disable`;
+            used only if `disable` is unspecified
+        level_leave  : effective logging level for determining `leave`;
+            used only if `leave` is unspecified
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = deepcopy(kwargs)
@@ -67,10 +75,9 @@ class Tqdm(tqdm):
         if desc_truncate is not None:
             kwargs.setdefault("desc", self.truncate(desc_truncate))
         if disable is None:
-            disable = (
-                logging.getLogger(__name__).getEffectiveLevel()
-                >= logging.CRITICAL
-            )
+            disable = logger.getEffectiveLevel() > level
+        if leave is None:
+            leave = logger.getEffectiveLevel() <= level_leave
         if bar_format is None:
             if kwargs.get("total", hasattr(iterable, "__len__")):
                 bar_format = self.BAR_FMT_DEFAULT

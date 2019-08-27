@@ -315,12 +315,13 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        logger.info(
+        logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
         ret = self._group(checksum_infos, show_checksums=show_checksums) or {}
         md5s = list(ret)
 
+        logger.debug("Collecting information from local cache...")
         local_exists = self.cache_exists(md5s, jobs=jobs)
 
         # This is a performance optimization. We can safely assume that,
@@ -330,6 +331,7 @@ class RemoteLOCAL(RemoteBASE):
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
         else:
+            logger.debug("Collecting information from remote cache...")
             remote_exists = list(remote.cache_exists(md5s, jobs=jobs))
 
         self._fill_statuses(ret, local_exists, remote_exists)
@@ -377,7 +379,7 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        logger.info(
+        logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
                 remote.path_info,
