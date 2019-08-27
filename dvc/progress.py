@@ -81,19 +81,21 @@ class Tqdm(tqdm):
             disable = logger.getEffectiveLevel() > level
         if leave is None:
             leave = logger.getEffectiveLevel() <= level_leave
-        if bar_format is None:
-            if kwargs.get("total", hasattr(iterable, "__len__")):
-                bar_format = self.BAR_FMT_DEFAULT
-            else:
-                bar_format = self.BAR_FMT_NOTOTAL
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
             leave=leave,
             desc=desc,
-            bar_format=bar_format,
+            bar_format="",
             **kwargs
         )
+        if bar_format is None:
+            self.bar_format = (
+                self.BAR_FMT_DEFAULT if len(self) else self.BAR_FMT_NOTOTAL
+            )
+        else:
+            self.bar_format = bar_format
+        self.refresh()
 
     def update_desc(self, desc, n=1, truncate=True):
         """
