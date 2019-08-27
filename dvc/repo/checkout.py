@@ -57,4 +57,3 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
                     )
 
                 stage.checkout(force=force, progress_callback=pbar.update_desc)
-            pbar.set_description_str("Checkout")

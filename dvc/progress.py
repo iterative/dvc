@@ -47,18 +47,20 @@ class Tqdm(tqdm):
         self,
         iterable=None,
         disable=None,
-        bytes=False,  # pylint: disable=W0622
+        level=logging.ERROR,
+        desc=None,
         desc_truncate=None,
         leave=None,
-        bar_format=None,
-        level=logging.ERROR,
         level_leave=logging.DEBUG,
+        bar_format=None,
+        bytes=False,  # pylint: disable=W0622
         **kwargs
     ):
         """
         bytes   : shortcut for
             `unit='B', unit_scale=True, unit_divisor=1024, miniters=1`
-        desc_truncate  : like `desc` but will truncate to 10 chars
+        desc  : persists after `close()`
+        desc_truncate  : like `desc` but will `truncate()` and not persist
         level  : effective logging level for determining `disable`;
             used only if `disable` is unspecified
         level_leave  : effective logging level for determining `leave`;
@@ -72,8 +74,10 @@ class Tqdm(tqdm):
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
             ).items():
                 kwargs.setdefault(k, v)
+        if desc is not None:
+            self.desc_persist = desc
         if desc_truncate is not None:
-            kwargs.setdefault("desc", self.truncate(desc_truncate))
+            desc = self.truncate(desc_truncate)
         if disable is None:
             disable = logger.getEffectiveLevel() > level
         if leave is None:
@@ -87,6 +91,7 @@ class Tqdm(tqdm):
             iterable=iterable,
             disable=disable,
             leave=leave,
+            desc=desc,
             bar_format=bar_format,
             **kwargs
         )
@@ -104,6 +109,11 @@ class Tqdm(tqdm):
         if total:
             self.total = total  # pylint: disable=W0613,W0201
         self.update(current - self.n)
+
+    def close(self):
+        if hasattr(self, "desc_persist"):
+            self.set_description_str(self.desc_persist, refresh=False)
+        super(Tqdm, self).close()
 
     @classmethod
     def truncate(cls, s, max_len=25, end=True, fill="..."):
