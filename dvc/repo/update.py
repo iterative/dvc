@@ -4,6 +4,5 @@ def update(self, target):
     stage = Stage.load(self, target)
     with self.state:
         stage.update()
-        stage.save()
 
     stage.dump()

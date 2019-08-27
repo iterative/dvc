@@ -327,8 +327,6 @@ class Stage(object):
         if interactive and not prompt.confirm(msg):
             raise DvcException("reproduction aborted by the user")
 
-        logger.info("Reproducing '{stage}'".format(stage=self.relpath))
-
         self.run(**kwargs)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
