@@ -2,7 +2,6 @@
 from __future__ import print_function
 import logging
 from tqdm import tqdm
-from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
@@ -67,15 +66,14 @@ class Tqdm(tqdm):
             used only if `leave` is unspecified
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
-        kwargs = deepcopy(kwargs)
+        kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
         if bytes:
             for k, v in dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
             ).items():
                 kwargs.setdefault(k, v)
-        if desc is not None:
-            self.desc_persist = desc
+        self.desc_persist = desc
         if desc_truncate is not None:
             desc = self.truncate(desc_truncate)
         if disable is None:
@@ -111,7 +109,7 @@ class Tqdm(tqdm):
         self.update(current - self.n)
 
     def close(self):
-        if hasattr(self, "desc_persist"):
+        if self.desc_persist:
             self.set_description_str(self.desc_persist, refresh=False)
         super(Tqdm, self).close()
 
