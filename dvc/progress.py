@@ -83,9 +83,10 @@ class Tqdm(tqdm):
             **kwargs
         )
         if bar_format is None:
-            self.bar_format = (
-                self.BAR_FMT_DEFAULT if len(self) else self.BAR_FMT_NOTOTAL
-            )
+            if self.__len__():
+                self.bar_format = self.BAR_FMT_DEFAULT
+            else:
+                self.bar_format = self.BAR_FMT_NOTOTAL
         else:
             self.bar_format = bar_format
         self.refresh()
@@ -111,7 +112,7 @@ class Tqdm(tqdm):
     def format_dict(self):
         """inject `ncols_desc` to fill the display width (`ncols`)"""
         d = super(Tqdm, self).format_dict
-        ncols = d.get("ncols", 80)
+        ncols = d["ncols"] or 80
         ncols_desc = ncols - len(self.format_meter(ncols_desc=1, **d)) + 1
         d["ncols_desc"] = max(ncols_desc, 0)
         return d
