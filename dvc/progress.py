@@ -32,11 +32,14 @@ class Tqdm(tqdm):
     """
     maximum-compatibility tqdm-based progressbars
     """
+
     BAR_FMT_DEFAULT = (
         "{percentage:3.0f}%|{bar:10}|{desc} {bar:-10b}{n}/{total}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
     )
-    BAR_FMT_NOTOTAL = "{desc} {bar:b}{n} [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
+    BAR_FMT_NOTOTAL = (
+        "{desc} {bar:b}{n} [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
+    )
 
     def __init__(
         self,
@@ -69,10 +72,10 @@ class Tqdm(tqdm):
                 >= logging.CRITICAL
             )
         if bar_format is None:
-            if kwargs.get('total', getattr(iterable, '__len__', None)) is None:
-                bar_format = self.BAR_FMT_NOTOTAL
-            else:
+            if kwargs.get("total", hasattr(iterable, "__len__")):
                 bar_format = self.BAR_FMT_DEFAULT
+            else:
+                bar_format = self.BAR_FMT_NOTOTAL
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
