@@ -3,6 +3,7 @@ from __future__ import print_function
 import logging
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from funcy import merge
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +70,10 @@ class Tqdm(tqdm):
         kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
         if bytes:
-            for k, v in dict(
-                unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-            ).items():
-                kwargs.setdefault(k, v)
+            kwargs = merge(
+                dict(unit="B", unit_scale=True, unit_divisor=1024, miniters=1),
+                kwargs,
+            )
         self.desc_persist = desc
         if desc_truncate is not None:
             desc = self.truncate(desc_truncate)
