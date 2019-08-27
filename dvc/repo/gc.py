@@ -35,7 +35,6 @@ def _load_all_used_cache(
             repo_clist = repo.used_cache(
                 targets=None,
                 all_branches=all_branches,
-                active=False,
                 with_deps=with_deps,
                 all_tags=all_tags,
                 remote=remote,

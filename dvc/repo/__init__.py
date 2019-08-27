@@ -183,7 +183,6 @@ class Repo(object):
         self,
         targets=None,
         all_branches=False,
-        active=True,
         with_deps=False,
         all_tags=False,
         remote=None,
@@ -229,14 +228,6 @@ class Repo(object):
                 stages = self.stages()
 
             for stage in stages:
-                if active and not targets and stage.locked:
-                    logger.warning(
-                        "DVC-file '{path}' is locked. Its dependencies are"
-                        " not going to be pushed/pulled/fetched.".format(
-                            path=stage.relpath
-                        )
-                    )
-
                 for out in stage.outs:
                     scheme = out.path_info.scheme
                     used_cache = out.get_used_cache(
