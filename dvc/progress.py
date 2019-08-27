@@ -50,8 +50,7 @@ class Tqdm(tqdm):
         level=logging.ERROR,
         desc=None,
         desc_truncate=None,
-        leave=None,
-        level_leave=logging.DEBUG,
+        leave=False,
         bar_format=None,
         bytes=False,  # pylint: disable=W0622
         **kwargs
@@ -63,8 +62,6 @@ class Tqdm(tqdm):
         desc_truncate  : like `desc` but will `truncate()` and not persist
         level  : effective logging level for determining `disable`;
             used only if `disable` is unspecified
-        level_leave  : effective logging level for determining `leave`;
-            used only if `leave` is unspecified
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -79,8 +76,6 @@ class Tqdm(tqdm):
             desc = self.truncate(desc_truncate)
         if disable is None:
             disable = logger.getEffectiveLevel() > level
-        if leave is None:
-            leave = logger.getEffectiveLevel() <= level_leave
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,

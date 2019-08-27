@@ -45,7 +45,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
             unit="file",
             desc="Checkout",
             disable=total == 0,
-            level_leave=logging.INFO,
+            leave=logger.getEffectiveLevel() < logging.CRITICAL,
         ) as pbar:
             for stage in stages:
                 if stage.locked:
