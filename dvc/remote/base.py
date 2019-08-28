@@ -140,6 +140,14 @@ class RemoteBASE(object):
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
+    @property
+    def cache_dir(self):
+        return (
+            getattr(self.path_info, "fspath", self.path_info.url)
+            if self.path_info
+            else None
+        )
+
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
@@ -612,7 +620,7 @@ class RemoteBASE(object):
             return self._changed_dir_cache(checksum)
         return self.changed_cache_file(checksum)
 
-    def cache_exists(self, checksums, jobs=None):
+    def cache_exists(self, checksums, jobs=None, name=None):
         """Check if the given checksums are stored in the remote.
 
         There are two ways of performing this check:
@@ -630,7 +638,7 @@ class RemoteBASE(object):
         take much shorter time to just retrieve everything they have under
         a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
         check if particular file exists much quicker, use their own
-        implementation of cache_exists (see http, local).
+        implementation of cache_exists (see ssh, local).
 
         Returns:
             A list with checksums that were found in the remote
@@ -639,7 +647,10 @@ class RemoteBASE(object):
             return list(set(checksums) & set(self.all()))
 
         with Tqdm(
-            desc="Querying remote cache", total=len(checksums), unit="md5"
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=len(checksums),
+            unit="md5",
         ) as pbar:
 
             def exists_with_progress(path_info):

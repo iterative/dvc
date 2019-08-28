@@ -97,10 +97,6 @@ class RemoteLOCAL(RemoteBASE):
     def state(self):
         return self.repo.state
 
-    @property
-    def cache_dir(self):
-        return self.path_info.fspath if self.path_info else None
-
     @classmethod
     def supported(cls, config):
         return True
@@ -251,11 +247,14 @@ class RemoteLOCAL(RemoteBASE):
 
         move(from_info, to_info, mode=mode)
 
-    def cache_exists(self, checksums, jobs=None):
+    def cache_exists(self, checksums, jobs=None, name=None):
         return [
             checksum
             for checksum in Tqdm(
-                checksums, unit="md5", desc="Querying local cache"
+                checksums,
+                unit="md5",
+                desc="Querying "
+                + ("cache in " + name if name else "local cache"),
             )
             if not self.changed_cache_file(checksum)
         ]
@@ -322,7 +321,7 @@ class RemoteLOCAL(RemoteBASE):
         md5s = list(ret)
 
         logger.debug("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s, jobs=jobs)
+        local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
@@ -332,7 +331,9 @@ class RemoteLOCAL(RemoteBASE):
             remote_exists = local_exists
         else:
             logger.debug("Collecting information from remote cache...")
-            remote_exists = list(remote.cache_exists(md5s, jobs=jobs))
+            remote_exists = list(
+                remote.cache_exists(md5s, jobs=jobs, name=remote.cache_dir)
+            )
 
         self._fill_statuses(ret, local_exists, remote_exists)
 
