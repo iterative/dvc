@@ -252,7 +252,7 @@ class RemoteLOCAL(RemoteBASE):
             checksum
             for checksum in Tqdm(
                 checksums,
-                unit="md5",
+                unit="file",
                 desc="Querying "
                 + ("cache in " + name if name else "local cache"),
             )

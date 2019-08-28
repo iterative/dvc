@@ -271,7 +271,7 @@ class RemoteSSH(RemoteBASE):
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
             total=len(checksums),
-            unit="md5",
+            unit="file",
         ) as pbar:
 
             def exists_with_progress(chunks):

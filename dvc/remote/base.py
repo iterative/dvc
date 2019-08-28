@@ -650,16 +650,16 @@ class RemoteBASE(object):
             desc="Querying "
             + ("cache in " + name if name else "remote cache"),
             total=len(checksums),
-            unit="md5",
+            unit="file",
         ) as pbar:
 
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)
-                pbar.update()
+                pbar.update_desc(str(path_info))
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                path_infos = map(self.checksum_to_path_info, checksums)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret
