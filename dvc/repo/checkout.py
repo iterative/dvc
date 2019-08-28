@@ -41,11 +41,7 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
         if total == 0:
             logger.info("Nothing to do")
         with Tqdm(
-            total=total,
-            unit="file",
-            desc="Checkout",
-            disable=total == 0,
-            leave=logger.getEffectiveLevel() < logging.CRITICAL,
+            total=total, unit="file", desc="Checkout", disable=total == 0
         ) as pbar:
             for stage in stages:
                 if stage.locked:

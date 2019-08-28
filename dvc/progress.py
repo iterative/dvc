@@ -67,10 +67,10 @@ class Tqdm(tqdm):
         kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
         if bytes:
-            kwargs = merge(
-                dict(unit="B", unit_scale=True, unit_divisor=1024, miniters=1),
-                kwargs,
+            bytes_defaults = dict(
+                unit="B", unit_scale=True, unit_divisor=1024, miniters=1
             )
+            kwargs = merge(bytes_defaults, kwargs)
         self.desc_persist = desc
         if disable is None:
             disable = logger.getEffectiveLevel() > level
