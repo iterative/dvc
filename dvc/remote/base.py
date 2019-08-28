@@ -140,14 +140,6 @@ class RemoteBASE(object):
     def cache(self):
         return getattr(self.repo.cache, self.scheme)
 
-    @property
-    def cache_dir(self):
-        return (
-            getattr(self.path_info, "fspath", self.path_info.url)
-            if self.path_info
-            else None
-        )
-
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 

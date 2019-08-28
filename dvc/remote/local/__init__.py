@@ -97,6 +97,10 @@ class RemoteLOCAL(RemoteBASE):
     def state(self):
         return self.repo.state
 
+    @property
+    def cache_dir(self):
+        return self.path_info.fspath if self.path_info else None
+
     @classmethod
     def supported(cls, config):
         return True
@@ -332,7 +336,9 @@ class RemoteLOCAL(RemoteBASE):
         else:
             logger.debug("Collecting information from remote cache...")
             remote_exists = list(
-                remote.cache_exists(md5s, jobs=jobs, name=remote.cache_dir)
+                remote.cache_exists(
+                    md5s, jobs=jobs, name=str(remote.path_info)
+                )
             )
 
         self._fill_statuses(ret, local_exists, remote_exists)
