@@ -169,7 +169,7 @@ class SSHConnection:
 
     def download(self, src, dest, no_progress_bar=False, progress_title=None):
         with Tqdm(
-            desc_truncate=progress_title or os.path.basename(src),
+            desc=progress_title or os.path.basename(src),
             disable=no_progress_bar,
             bytes=True,
         ) as pbar:
@@ -186,7 +186,7 @@ class SSHConnection:
             progress_title = posixpath.basename(dest)
 
         with Tqdm(
-            desc_truncate=progress_title, disable=no_progress_bar, bytes=True
+            desc=progress_title, disable=no_progress_bar, bytes=True
         ) as pbar:
             self.sftp.put(src, tmp_file, callback=pbar.update_to)
 

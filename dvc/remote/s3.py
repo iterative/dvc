@@ -208,10 +208,7 @@ class RemoteS3(RemoteBASE):
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
         with Tqdm(
-            disable=no_progress_bar,
-            total=total,
-            bytes=True,
-            desc_truncate=name,
+            disable=no_progress_bar, total=total, bytes=True, desc=name
         ) as pbar:
             self.s3.upload_file(
                 from_file,
@@ -229,10 +226,7 @@ class RemoteS3(RemoteBASE):
                 Bucket=from_info.bucket, Key=from_info.path
             )["ContentLength"]
         with Tqdm(
-            disable=no_progress_bar,
-            total=total,
-            bytes=True,
-            desc_truncate=name,
+            disable=no_progress_bar, total=total, bytes=True, desc=name
         ) as pbar:
             self.s3.download_file(
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update

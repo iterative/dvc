@@ -51,16 +51,16 @@ def file_md5(fname):
         hash_md5 = hashlib.md5()
         binary = not istextfile(fname)
         size = os.path.getsize(fname)
-        bar = False
+        no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
-            bar = True
+            no_progress_bar = False
             msg = "Computing md5 for a large file {}. This is only done once."
             logger.info(msg.format(relpath(fname)))
         name = relpath(fname)
 
         with Tqdm(
-            desc_truncate=name,
-            disable=not bar,
+            desc=name,
+            disable=no_progress_bar,
             total=size,
             bytes=True,
             leave=False,
@@ -132,10 +132,7 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
         System.reflink(src, dest)
     except DvcException:
         with Tqdm(
-            desc_truncate=name,
-            disable=no_progress_bar,
-            total=total,
-            bytes=True,
+            desc=name, disable=no_progress_bar, total=total, bytes=True
         ) as pbar:
             with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
                 while True:

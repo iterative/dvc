@@ -258,7 +258,7 @@ class RemoteSSH(RemoteBASE):
 
             return results
 
-    def cache_exists(self, checksums, jobs=None):
+    def cache_exists(self, checksums, jobs=None, name=None):
         """This is older implementation used in remote/base.py
         We are reusing it in RemoteSSH, because SSH's batch_exists proved to be
         faster than current approach (relying on exists(path_info)) applied in
@@ -267,7 +267,12 @@ class RemoteSSH(RemoteBASE):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        with Tqdm(total=len(checksums), unit="md5") as pbar:
+        with Tqdm(
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=len(checksums),
+            unit="file",
+        ) as pbar:
 
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_desc)
@@ -278,5 +283,4 @@ class RemoteSSH(RemoteBASE):
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))
-                pbar.update_desc("", 0)  # clear path name description
                 return ret
