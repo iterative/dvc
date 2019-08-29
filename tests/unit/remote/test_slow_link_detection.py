@@ -3,7 +3,7 @@ import logging
 import colorama
 import pytest
 from dvc.config import Config
-from dvc.remote.local.slow_link_detection import (
+from dvc.remote.slow_link_detection import (
     slow_link_guard,
     SlowLinkDetectorDecorator,
 )
@@ -11,18 +11,15 @@ from mock import Mock, patch
 
 
 @patch(
-    "dvc.remote.local.slow_link_detection.SlowLinkDetectorDecorator",
-    autospec=True,
+    "dvc.remote.slow_link_detection.SlowLinkDetectorDecorator", autospec=True
 )
 class TestSlowLinkGuard(object):
     @pytest.fixture(autouse=True)
     def setUp(self):
         self.method = Mock()
-        self.remote_local_mock = Mock()
+        self.remote_mock = Mock()
         self.config_mock = Mock()
-        self.remote_local_mock.repo.config.config.get.return_value = (
-            self.config_mock
-        )
+        self.remote_mock.repo.config.config.get.return_value = self.config_mock
 
     def _cache_config(self, slow_link_warning, cache_type):
         def config_side_effect(section_name, _):
@@ -38,7 +35,7 @@ class TestSlowLinkGuard(object):
     ):
         self._cache_config(slow_link_warning=True, cache_type=None)
 
-        slow_link_guard(self.method)(self.remote_local_mock)
+        slow_link_guard(self.method)(self.remote_mock)
 
         assert 1 == SlowLinkDetectorDecoratorClassMock.call_count
         assert 0 == self.method.call_count
@@ -54,7 +51,7 @@ class TestSlowLinkGuard(object):
             slow_link_warning=slow_link_warning, cache_type=cache_type
         )
 
-        slow_link_guard(self.method)(self.remote_local_mock)
+        slow_link_guard(self.method)(self.remote_mock)
 
         assert 0 == SlowLinkDetectorDecoratorClassMock.call_count
         assert 1 == self.method.call_count

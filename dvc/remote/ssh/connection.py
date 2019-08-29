@@ -273,8 +273,7 @@ class SSHConnection:
         assert len(md5) == 32
         return md5
 
-    def cp(self, src, dest):
-        self.makedirs(posixpath.dirname(dest))
+    def copy(self, src, dest):
         self.execute("cp {} {}".format(src, dest))
 
     def open_max_sftp_channels(self):
@@ -293,13 +292,10 @@ class SSHConnection:
         return self.sftp.open(*args, **kwargs)
 
     def symlink(self, src, dest):
-        self.makedirs(posixpath.dirname(dest))
         self.sftp.symlink(src, dest)
 
     def reflink(self, src, dest):
-        self.makedirs(posixpath.dirname(dest))
         self.execute("cp --reflink {} {}".format(src, dest))
 
     def hardlink(self, src, dest):
-        self.makedirs(posixpath.dirname(dest))
         self.execute("ln {} {}".format(src, dest))

@@ -46,17 +46,15 @@ class SlowLinkDetectorDecorator(object):
 
 
 def slow_link_guard(method):
-    def call(remote_local, *args, **kwargs):
-        cache_config = remote_local.repo.config.config.get(
-            Config.SECTION_CACHE, {}
-        )
+    def call(remote, *args, **kwargs):
+        cache_config = remote.repo.config.config.get(Config.SECTION_CACHE, {})
         should_warn = cache_config.get(
             Config.SECTION_CACHE_SLOW_LINK_WARNING, True
         ) and not cache_config.get(Config.SECTION_CACHE_TYPE, None)
 
         if should_warn:
             decorated = SlowLinkDetectorDecorator(method)
-            return decorated(remote_local, *args, **kwargs)
-        return method(remote_local, *args, **kwargs)
+            return decorated(remote, *args, **kwargs)
+        return method(remote, *args, **kwargs)
 
     return call

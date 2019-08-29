@@ -12,6 +12,8 @@ from operator import itemgetter
 from multiprocessing import cpu_count
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor
+from copy import copy
+from dvc.remote.slow_link_detection import slow_link_guard
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -364,43 +366,9 @@ class RemoteBASE(object):
         self._link(from_info, to_info, self.cache_types)
 
     def _link(self, from_info, to_info, link_types):
-        # XXX: This is a fallback until the following methods are
-        # implemented on all remotes:
-        #   * `isfile`
-        #   * `makedirs`
-        #   * `getsize`
-        #
-        # Another thing we can do is to delegate the edge case handling
-        # to hardlink, ommit the `isfile` check, and let the link
-        # implementation to create a directory before copying
-        if link_types == ["copy"]:
-            return self.copy(from_info, to_info)
-
         assert self.isfile(from_info)
 
         self.makedirs(to_info.parent)
-
-        # If there are a lot of empty files (which happens a lot in datasets),
-        # and the cache type is `hardlink`, we might reach link limits and
-        # will get something like: `too many links error`
-        #
-        # This is because all those empty files will have the same checksum
-        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
-        # linked to the same file in the cache.
-        #
-        # From https://en.wikipedia.org/wiki/Hard_link
-        #   * ext4 limits the number of hard links on a file to 65,000
-        #   * Windows with NTFS has a limit of 1024 hard links on a file
-        #
-        # That's why we simply create an empty file rather than a link.
-        if self.getsize(from_info) == 0:
-            self.open(to_info, "w").close()
-
-            logger.debug(
-                "Created empty file: {src} -> {dest}"
-                .format(src=str(from_path), dest=str(to_path))
-            )
-            return
 
         self._try_links(from_info, to_info, link_types)
 
@@ -422,6 +390,7 @@ class RemoteBASE(object):
         raise DvcException("no possible cache types left to try out.")
 
     def _do_link(self, from_info, to_info, link_method):
+        # XXX: We are testing if file exists rather than if file is a link
         if self.exists(to_info):
             raise DvcException("Link '{}' already exists!".format(to_info))
         else:
@@ -475,9 +444,15 @@ class RemoteBASE(object):
         return False
 
     def isfile(self, path_info):
-        raise NotImplementedError
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
+        return True
 
     def isdir(self, path_info):
+        """Optional: Overwrite only if the remote has a way to distinguish
+        between a directory and a file.
+        """
         return False
 
     def walk(self, path_info):
@@ -775,7 +750,10 @@ class RemoteBASE(object):
             progress_callback(str(path_info))
 
     def makedirs(self, path_info):
-        raise NotImplementedError
+        """Optional: Implement only if the remote needs to create
+        directories before copying/linking/moving data
+        """
+        pass
 
     def _checkout_dir(
         self, path_info, checksum, force, progress_callback=None
@@ -799,6 +777,7 @@ class RemoteBASE(object):
             if self.changed(entry_info, entry_checksum_info):
                 if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
+                self.makedirs(entry_info.parent)
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:

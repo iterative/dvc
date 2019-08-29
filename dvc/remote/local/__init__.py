@@ -1,9 +1,6 @@
 from __future__ import unicode_literals
 
-from copy import copy
-
 from dvc.scheme import Schemes
-from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.utils.compat import str, fspath_py35, open
 
 import os
@@ -118,87 +115,6 @@ class RemoteLOCAL(RemoteBASE):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
-    def link(self, from_info, to_info):
-        self._link(from_info, to_info, self.cache_types)
-
-    def _link(self, from_info, to_info, link_types):
-        assert self.isfile(from_info)
-
-        self.makedirs(to_info.parent)
-
-        # If there are a lot of empty files (which happens a lot in datasets),
-        # and the cache type is `hardlink`, we might reach link limits and
-        # will get something like: `too many links error`
-        #
-        # This is because all those empty files will have the same checksum
-        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
-        # linked to the same file in the cache.
-        #
-        # From https://en.wikipedia.org/wiki/Hard_link
-        #   * ext4 limits the number of hard links on a file to 65,000
-        #   * Windows with NTFS has a limit of 1024 hard links on a file
-        #
-        # That's why we simply create an empty file rather than a link.
-        if self.getsize(from_info) == 0:
-            self.open(to_info, "w+").close()
-
-            logger.debug(
-                "Created empty file: {src} -> {dest}"
-                .format(src=str(from_path), dest=str(to_path))
-            )
-            return
-
-        self._try_links(from_info, to_info, link_types)
-
-    def _get_link_method(self, link_type):
-        CACHE_TYPE_MAP = {
-            "copy": self.copy,
-            "symlink": self.symlink,
-            "hardlink": self.hardlink,
-            "reflink": self.reflink,
-        }
-
-        try:
-            return CACHE_TYPE_MAP[link_type]
-        except KeyError:
-            raise DvcException(
-                "Cache type: '{}' not supported!".format(link_type)
-            )
-
-    def _do_link(self, from_info, to_info, link_method):
-        if self.exists(to_info):
-            raise DvcException("Link '{}' already exists!".format(to_info))
-        else:
-            link_method(from_info, to_info)
-
-        if self.protected:
-            self.protect(to_info)
-
-        msg = "Created {}'{}': {} -> {}".format(
-            "protected " if self.protected else "",
-            self.cache_types[0],
-            from_info,
-            to_info,
-        )
-        logger.debug(msg)
-
-    @slow_link_guard
-    def _try_links(self, from_info, to_info, link_types):
-        i = len(link_types)
-        while i > 0:
-            link_method = self._get_link_method(link_types[0])
-            try:
-                self._do_link(from_info, to_info, link_method)
-                return
-
-            except DvcException as exc:
-                msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(link_types[0], str(exc)))
-                del link_types[0]
-                i -= 1
-
-        raise DvcException("no possible cache types left to try out.")
-
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
@@ -262,6 +178,29 @@ class RemoteLOCAL(RemoteBASE):
         System.symlink(from_info.fspath, to_info.fspath)
 
     def hardlink(self, from_info, to_info):
+        # If there are a lot of empty files (which happens a lot in datasets),
+        # and the cache type is `hardlink`, we might reach link limits and
+        # will get something like: `too many links error`
+        #
+        # This is because all those empty files will have the same checksum
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
+        # linked to the same file in the cache.
+        #
+        # From https://en.wikipedia.org/wiki/Hard_link
+        #   * ext4 limits the number of hard links on a file to 65,000
+        #   * Windows with NTFS has a limit of 1024 hard links on a file
+        #
+        # That's why we simply create an empty file rather than a link.
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
         System.hardlink(from_info.fspath, to_info.fspath)
 
     def reflink(self, from_info, to_info):
@@ -296,7 +235,6 @@ class RemoteLOCAL(RemoteBASE):
         )
 
     def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb"}
         return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
     def _group(self, checksum_infos, show_checksums=False):

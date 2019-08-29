@@ -4,13 +4,11 @@ import errno
 import itertools
 import io
 import os
-import posixpath
 import getpass
 import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, closing
-from copy import copy
 
 try:
     import paramiko
@@ -22,11 +20,9 @@ from dvc.config import Config
 from dvc.utils import to_chunks
 from dvc.utils.compat import urlparse, StringIO
 from dvc.remote.base import RemoteBASE
-from dvc.remote.local.slow_link_detection import slow_link_guard
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
-from dvc.exceptions import DvcException
 
 from .connection import SSHConnection
 
@@ -51,19 +47,10 @@ class RemoteSSH(RemoteBASE):
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
 
-    DEFAULT_CACHE_TYPES = ["reflink, copy"]
+    DEFAULT_CACHE_TYPES = ["copy"]
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
-
-        types = config.get(Config.SECTION_CACHE_TYPE, None)
-        if types:
-            if isinstance(types, str):
-                types = [t.strip() for t in types.split(",")]
-            self.cache_types = types
-        else:
-            self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
-
         url = config.get(Config.SECTION_REMOTE_URL)
         if url:
             parsed = urlparse(url)
@@ -184,27 +171,34 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.getsize(path_info.path)
 
-    def open(self, path_info, mode="r", encoding=None):
-        with self.ssh(path_info) as ssh:
-            return ssh.open(path_info.path, mode=mode, encoding=encoding)
-
     def copy(self, from_info, to_info):
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+        if not from_info.scheme == to_info.scheme == self.scheme:
             raise NotImplementedError
 
         with self.ssh(from_info) as ssh:
-            ssh.cp(from_info.path, to_info.path)
+            ssh.copy(from_info.path, to_info.path)
 
     def symlink(self, from_info, to_info):
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+        if not from_info.scheme == to_info.scheme == self.scheme:
             raise NotImplementedError
 
         with self.ssh(from_info) as ssh:
             ssh.symlink(from_info.path, to_info.path)
 
     def hardlink(self, from_info, to_info):
-        if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
+        if not from_info.scheme == to_info.scheme == self.scheme:
             raise NotImplementedError
+
+        # See dvc/remote/local/__init__.py - hardlink()
+        if self.getsize(from_info) == 0:
+            self.open(to_info, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
 
         with self.ssh(from_info) as ssh:
             ssh.hardlink(from_info.path, to_info.path)
@@ -252,8 +246,6 @@ class RemoteSSH(RemoteBASE):
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb"}
-
         with self.ssh(path_info) as ssh, closing(
             ssh.sftp.file(path_info.path, mode="r")
         ) as fd:
@@ -325,81 +317,3 @@ class RemoteSSH(RemoteBASE):
                 ret = list(itertools.compress(checksums, in_remote))
                 pbar.update_desc("", 0)  # clear path name description
                 return ret
-
-    def link(self, from_info, to_info):
-        with self.ssh(from_info) as ssh:
-            self._link(from_info, to_info, self.cache_types, ssh)
-
-    def _link(self, from_info, to_info, link_types, ssh):
-        from_path = from_info.path
-        to_path = to_info.path
-
-        assert ssh.isfile(from_path)
-
-        dname = posixpath.dirname(to_path)
-
-        # XXX: We can remove the `exists` call, since `makedirs`
-        # will ignore it
-        if not ssh.exists(dname):
-            ssh.makedirs(dname)
-
-        # NOTE: just create an empty file for an empty cache
-        if ssh.getsize(from_path) == 0:
-            ssh.open(to_path, "w+").close()
-
-            msg = "Created empty file: {} -> {}".format(from_path, to_path)
-            logger.debug(msg)
-            return
-
-        self._try_links(from_info, to_info, link_types, ssh)
-
-    @classmethod
-    def _get_link_method(cls, link_type, ssh):
-        CACHE_TYPE_MAP = {
-            "copy": ssh.cp,
-            "symlink": ssh.symlink,
-            "reflink": ssh.reflink,
-            "hardlink": ssh.hardlink,
-        }
-
-        try:
-            return CACHE_TYPE_MAP[link_type]
-        except KeyError:
-            raise DvcException(
-                "Cache type: '{}' not supported!".format(link_type)
-            )
-
-    def _do_link(self, from_info, to_info, link_method, ssh):
-        # XXX: We are testing if file exists rather than if file is a link
-        if ssh.exists(to_info.path):
-            raise DvcException("Link '{}' already exists!".format(to_info))
-        else:
-            link_method(from_info.path, to_info.path)
-
-        if self.protected:
-            self.protect(to_info)
-
-        msg = "Created {}'{}': {} -> {}".format(
-            "protected " if self.protected else "",
-            self.cache_types[0],
-            from_info,
-            to_info,
-        )
-        logger.debug(msg)
-
-    @slow_link_guard
-    def _try_links(self, from_info, to_info, link_types, ssh):
-        i = len(link_types)
-        while i > 0:
-            link_method = self._get_link_method(link_types[0], ssh)
-            try:
-                self._do_link(from_info, to_info, link_method, ssh)
-                return
-
-            except DvcException as exc:
-                msg = "Cache type '{}' is not supported: {}"
-                logger.debug(msg.format(link_types[0], str(exc)))
-                del link_types[0]
-                i -= 1
-
-        raise DvcException("no possible cache types left to try out.")
