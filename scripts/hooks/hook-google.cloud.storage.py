@@ -7,3 +7,4 @@ datas = copy_metadata("google-cloud-storage")
 #
 # [1] https://github.com/googleapis/google-resumable-media-python/issues/59
 datas += copy_metadata("requests")
+hiddenimports = ["google.resumable_media"]
