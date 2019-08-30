@@ -725,17 +725,19 @@ class RemoteBASE(object):
         for entry in dir_info:
             relative_path = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
-            entry_cache_info = self.checksum_to_path_info(entry_checksum)
+            # entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
+            self._checkout_file(entry_info, entry_checksum, force,
+                                progress_callback)
 
-            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
-            if self.changed(entry_info, entry_checksum_info):
-                if self.exists(entry_info):
-                    self.safe_remove(entry_info, force=force)
-                self.link(entry_cache_info, entry_info)
-                self.state.save(entry_info, entry_checksum)
-            if progress_callback:
-                progress_callback(str(entry_info))
+            # entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
+            # if self.changed(entry_info, entry_checksum_info):
+            #     if self.exists(entry_info):
+            #         self.safe_remove(entry_info, force=force)
+            #     self.link(entry_cache_info, entry_info)
+            #     self.state.save(entry_info, entry_checksum)
+            # if progress_callback:
+            #     progress_callback(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
