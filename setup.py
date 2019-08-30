@@ -71,7 +71,7 @@ else:
     install_requires.append("networkx>=2.1")
 
 # Extra dependencies for remote integrations
-gs = ["google-cloud-storage==1.13.0"]
+gs = ["google-resumable-media==0.3.2", "google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
