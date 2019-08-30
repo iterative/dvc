@@ -692,14 +692,8 @@ class RemoteBASE(object):
             self.link(cache_info, path_info)
             self.state.save_link(path_info)
             self.state.save(path_info, checksum)
-        else:
-            if self.protected:
-                self.protect(path_info)
-            else:
-                # NOTE: we can unprotect, because `hardlink/symlink` check
-                # has been performed before, so no chance of copying,
-                # only chmod-ing.
-                self.unprotect(path_info)
+
+                # self.unprotect(path_info)
 
         if progress_callback:
             progress_callback(str(path_info))
