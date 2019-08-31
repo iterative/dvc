@@ -81,7 +81,9 @@ def test_walk(tmp_path, ssh):
                     reason="Only works on OSX (because of APFS)")
 def test_reflink(chdir_tmp, foo, ssh):
     ssh.reflink("foo", "bar")
-    assert System.is_reflink(bar_path)
+    assert filecmp.cmp("foo", "bar")
+    assert not System.is_symlink("bar")
+    assert not System.is_hardlink("bar")
 
 @pytest.mark.skip(reason="MockSSH doesn't support symlinks")
 def test_symlink(chdir_tmp, foo, ssh):

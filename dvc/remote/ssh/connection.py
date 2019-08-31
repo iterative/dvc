@@ -60,13 +60,13 @@ class SSHConnection:
 
     def st_mode(self, path):
         with ignore_file_not_found():
-            return self.sftp.stat(path).st_mode
+            return self.sftp.lstat(path).st_mode
 
         return 0
 
     def getsize(self, path):
         with ignore_file_not_found():
-            return self.sftp.stat(path).st_size
+            return self.sftp.lstat(path).st_size
 
         return 0
 
