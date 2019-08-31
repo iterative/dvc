@@ -634,11 +634,9 @@ class RemoteLOCAL(RemoteBASE):
 
         return is_copy_or_reflink
 
-
     def _is_cache_copy(self, path_info):
         # NOTE: path_info required to make test reliable, when cache is on
         # different fs than path_info
-
 
         if self.cache_types[0] == "copy":
             return True

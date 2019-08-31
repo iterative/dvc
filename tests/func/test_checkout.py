@@ -524,3 +524,17 @@ def test_should_relink_on_repeated_add(
 
     assert repo_dir.FOO in string_args(remove_spy.mock)
     assert link_test_func(repo_dir.FOO)
+
+
+def test_should_relink_single_file_in_dir(dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = ["symlink"]
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+
+    dvc_repo.unprotect(repo_dir.DATA_SUB)
+
+    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
+    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
+        dvc_repo.add(repo_dir.DATA_DIR)
+
+    assert repo_dir.DATA_SUB in string_args(remove_spy.mock)

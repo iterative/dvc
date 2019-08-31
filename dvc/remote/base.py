@@ -693,7 +693,7 @@ class RemoteBASE(object):
             self.state.save_link(path_info)
             self.state.save(path_info, checksum)
 
-                # self.unprotect(path_info)
+            # self.unprotect(path_info)
 
         if progress_callback:
             progress_callback(str(path_info))
@@ -721,8 +721,9 @@ class RemoteBASE(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             # entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
-            self._checkout_file(entry_info, entry_checksum, force,
-                                progress_callback)
+            self._checkout_file(
+                entry_info, entry_checksum, force, progress_callback
+            )
 
             # entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             # if self.changed(entry_info, entry_checksum_info):
