@@ -61,7 +61,7 @@ install_requires = [
     "funcy>=1.12",
     "pathspec>=0.5.9",
     "shortuuid>=0.5.0",
-    "tqdm>=4.34.0",
+    "tqdm>=4.35.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
 
@@ -71,11 +71,21 @@ else:
     install_requires.append("networkx>=2.1")
 
 # Extra dependencies for remote integrations
-gs = ["google-cloud-storage==1.13.0"]
+
+# Restricting google-resumable-media version is due to the fact that
+# since 0.3.3 our binaries built by pyinstaller started to fail on Linux and
+# macOS. This restriction will be removed after
+# https://github.com/iterative/dvc/issues/2441 is resolved.
+gs = ["google-resumable-media==0.3.2", "google-cloud-storage==1.13.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
+# gssapi should not be included in all_remotes, because it doesn't have wheels
+# for linux and mac, so it will fail to compile if user doesn't have all the
+# requirements, including kerberos itself. Once all the wheels are available,
+# we can start shipping it by default.
+ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
 hdfs = ["pyarrow==0.14.0"]
 all_remotes = gs + s3 + azure + ssh + oss
 
@@ -131,6 +141,7 @@ setup(
         "azure": azure,
         "oss": oss,
         "ssh": ssh,
+        "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
         ":python_version=='2.7'": ["futures", "pathlib2"],

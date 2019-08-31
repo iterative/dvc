@@ -164,7 +164,7 @@ class Repo(object):
         from dvc.stage import Stage
 
         if not target or (recursive and os.path.isdir(target)):
-            return self.active_stages(target)
+            return self.stages(target)
 
         stage = Stage.load(self, target)
         if not with_deps:
@@ -183,7 +183,6 @@ class Repo(object):
         self,
         targets=None,
         all_branches=False,
-        active=True,
         with_deps=False,
         all_tags=False,
         remote=None,
@@ -225,20 +224,10 @@ class Repo(object):
                         stages.extend(
                             self.collect(target, with_deps=with_deps)
                         )
-            elif active:
-                stages = self.active_stages()
             else:
                 stages = self.stages()
 
             for stage in stages:
-                if active and not targets and stage.locked:
-                    logger.warning(
-                        "DVC-file '{path}' is locked. Its dependencies are"
-                        " not going to be pushed/pulled/fetched.".format(
-                            path=stage.relpath
-                        )
-                    )
-
                 for out in stage.outs:
                     scheme = out.path_info.scheme
                     used_cache = out.get_used_cache(
@@ -411,14 +400,6 @@ class Repo(object):
         if check_dag:
             self.check_dag(stages)
 
-        return stages
-
-    def active_stages(self, from_directory=None):
-        import networkx as nx
-
-        stages = []
-        for G in self.pipelines(from_directory):
-            stages.extend(list(nx.get_node_attributes(G, "stage").values()))
         return stages
 
     def find_outs_by_path(self, path, outs=None, recursive=False):

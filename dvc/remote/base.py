@@ -102,10 +102,10 @@ class RemoteBASE(object):
                 "        pip install {}\n"
                 "    2) Install dvc package that includes those missing "
                 "dependencies: \n"
-                "        pip install dvc[{}]\n"
+                "        pip install 'dvc[{}]'\n"
                 "    3) Install dvc package with all possible "
                 "dependencies included: \n"
-                "        pip install dvc[all]\n"
+                "        pip install 'dvc[all]'\n"
                 "\n"
                 "If you have installed dvc from a binary package and you "
                 "are still seeing this message, please report it to us "
@@ -584,7 +584,12 @@ class RemoteBASE(object):
         raise NotImplementedError
 
     def path_to_checksum(self, path):
-        return "".join(self.path_cls(path).parts[-2:])
+        parts = self.path_cls(path).parts[-2:]
+
+        if not (len(parts) == 2 and parts[0] and len(parts[0]) == 2):
+            raise ValueError("Bad cache file path")
+
+        return "".join(parts)
 
     def checksum_to_path_info(self, checksum):
         return self.path_info / checksum[0:2] / checksum[2:]
@@ -597,9 +602,12 @@ class RemoteBASE(object):
         # is 32 bytes, so ~3200Mb list) and we don't really need all of it at
         # the same time, so it makes sense to use a generator to gradually
         # iterate over it, without keeping all of it in memory.
-        return (
-            self.path_to_checksum(path) for path in self.list_cache_paths()
-        )
+        for path in self.list_cache_paths():
+            try:
+                yield self.path_to_checksum(path)
+            except ValueError:
+                # We ignore all the non-cache looking files
+                pass
 
     def gc(self, cinfos):
         used = self.extract_used_local_checksums(cinfos)
@@ -672,7 +680,7 @@ class RemoteBASE(object):
             return self._changed_dir_cache(checksum)
         return self.changed_cache_file(checksum)
 
-    def cache_exists(self, checksums, jobs=None):
+    def cache_exists(self, checksums, jobs=None, name=None):
         """Check if the given checksums are stored in the remote.
 
         There are two ways of performing this check:
@@ -690,7 +698,7 @@ class RemoteBASE(object):
         take much shorter time to just retrieve everything they have under
         a certain prefix (e.g. s3, gs, ssh, hdfs). Other remotes that can
         check if particular file exists much quicker, use their own
-        implementation of cache_exists (see http, local).
+        implementation of cache_exists (see ssh, local).
 
         Returns:
             A list with checksums that were found in the remote
@@ -698,15 +706,20 @@ class RemoteBASE(object):
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
 
-        with Tqdm(total=len(checksums), unit="md5") as pbar:
+        with Tqdm(
+            desc="Querying "
+            + ("cache in " + name if name else "remote cache"),
+            total=len(checksums),
+            unit="file",
+        ) as pbar:
 
             def exists_with_progress(path_info):
                 ret = self.exists(path_info)
-                pbar.update()
+                pbar.update_desc(str(path_info))
                 return ret
 
             with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
-                path_infos = [self.checksum_to_path_info(x) for x in checksums]
+                path_infos = map(self.checksum_to_path_info, checksums)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
                 return ret

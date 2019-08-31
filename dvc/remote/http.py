@@ -38,7 +38,7 @@ class RemoteHTTP(RemoteBASE):
             total=None if no_progress_bar else self._content_length(from_info),
             leave=False,
             bytes=True,
-            desc_truncate=from_info.url if name is None else name,
+            desc=from_info.url if name is None else name,
             disable=no_progress_bar,
         ) as pbar:
             with open(to_file, "wb") as fd:

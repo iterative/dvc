@@ -253,6 +253,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_REMOTE_TIMEOUT = "timeout"
     SECTION_REMOTE_PASSWORD = "password"
     SECTION_REMOTE_ASK_PASSWORD = "ask_password"
+    SECTION_REMOTE_GSS_AUTH = "gss_auth"
     SECTION_REMOTE_NO_TRAVERSE = "no_traverse"
     SECTION_REMOTE_SCHEMA = {
         SECTION_REMOTE_URL: str,
@@ -273,6 +274,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_REMOTE_TIMEOUT): Use(int),
         Optional(SECTION_REMOTE_PASSWORD): str,
         Optional(SECTION_REMOTE_ASK_PASSWORD): BOOL_SCHEMA,
+        Optional(SECTION_REMOTE_GSS_AUTH): BOOL_SCHEMA,
         Optional(SECTION_AZURE_CONNECTION_STRING): str,
         Optional(SECTION_OSS_ACCESS_KEY_ID): str,
         Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
