@@ -177,3 +177,13 @@ def _close_pools():
 
     yield
     close_pools()
+
+
+@pytest.fixture
+def chdir_tmp(tmp_path):
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        yield
+    finally:
+        os.chdir(cwd)

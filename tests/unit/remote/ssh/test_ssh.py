@@ -1,6 +1,7 @@
 import getpass
 import os
 import sys
+import posixpath
 
 from unittest import TestCase
 
@@ -8,6 +9,8 @@ from mock import patch, mock_open
 import pytest
 
 from dvc.remote.ssh import RemoteSSH
+from dvc.path_info import URLInfo
+from dvc.system import System
 
 
 class TestRemoteSSH(TestCase):
@@ -182,3 +185,23 @@ def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.gss_auth == expected_gss_auth
+
+def test_hardlink_optimization(chdir_tmp, ssh_server):
+    config = {
+        "url": "ssh://localhost",
+        "hostname": ssh_server.test_creds["host"],
+        "port": ssh_server.test_creds["port"],
+        "user": ssh_server.test_creds["username"],
+        "keyfile": ssh_server.test_creds["key_filename"],
+    }
+    remote = RemoteSSH(None, config)
+
+    open("empty", "w").close()
+
+    def urlpath(path):
+        netloc = remote.path_info.netloc
+        path = posixpath.abspath(path)
+        return URLInfo("ssh://{}/{}".format(netloc, path))
+
+    remote.hardlink(urlpath("empty"), urlpath("bar"))
+    assert not System.is_hardlink("bar")

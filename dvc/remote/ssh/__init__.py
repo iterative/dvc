@@ -193,7 +193,9 @@ class RemoteSSH(RemoteBASE):
 
         # See dvc/remote/local/__init__.py - hardlink()
         if self.getsize(from_info) == 0:
-            self.open(to_info, "w").close()
+
+            with self.ssh(to_info) as ssh:
+                ssh.sftp.open(to_info.path, "w").close()
 
             logger.debug(
                 "Created empty file: {src} -> {dest}".format(

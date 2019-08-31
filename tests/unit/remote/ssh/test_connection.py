@@ -10,15 +10,6 @@ from dvc.system import System
 
 
 @pytest.fixture
-def chdir_tmp(tmp_path):
-    cwd = os.getcwd()
-    try:
-        os.chdir(tmp_path)
-        yield
-    finally:
-        os.chdir(cwd)
-
-@pytest.fixture
 def foo():
     with open("foo", "w") as fobj:
         fobj.write("foo")
