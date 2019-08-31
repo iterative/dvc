@@ -9,6 +9,7 @@ import platform
 import copy
 import logging
 import pytest
+import posixpath
 
 from mock import patch
 
@@ -27,8 +28,10 @@ from dvc.data_cloud import (
     RemoteHTTP,
 )
 from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
+from dvc.path_info import URLInfo
 from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file, dump_stage_file
+from dvc.system import System
 
 from tests.basic_env import TestDvc
 from tests.utils import spy
@@ -448,6 +451,25 @@ class TestRemoteSSH(TestDataCloudBase):
 
     def _get_cloud_class(self):
         return RemoteSSH
+
+    def test_symlinks(self):
+        self._setup_cloud()
+
+        remote = self.cloud.get_remote()
+
+        os.remove("bar")
+
+        def urlinfo(path):
+            cwd = os.getcwd()
+            path = posixpath.abspath(os.path.join(cwd, path))
+            netloc = remote.path_info.netloc
+            return URLInfo("ssh://{}{}".format(netloc, path))
+
+        from_info = urlinfo("foo")
+        to_info = urlinfo("bar")
+
+        remote.symlink(from_info, to_info)
+        assert System.is_symlink("bar")
 
 
 @pytest.mark.usefixtures("ssh_server")

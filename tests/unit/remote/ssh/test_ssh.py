@@ -186,6 +186,7 @@ def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.gss_auth == expected_gss_auth
 
+
 def test_hardlink_optimization(chdir_tmp, ssh_server):
     config = {
         "url": "ssh://localhost",

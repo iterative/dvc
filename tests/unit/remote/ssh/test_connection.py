@@ -77,22 +77,21 @@ def test_walk(tmp_path, ssh):
 
     assert paths == expected
 
-@pytest.mark.skipif(platform.system() != "Darwin",
-                    reason="Only works on OSX (because of APFS)")
+
+@pytest.mark.skipif(
+    platform.system() != "Darwin", reason="Only works on OSX (because of APFS)"
+)
 def test_reflink(chdir_tmp, foo, ssh):
     ssh.reflink("foo", "bar")
     assert filecmp.cmp("foo", "bar")
     assert not System.is_symlink("bar")
     assert not System.is_hardlink("bar")
 
-@pytest.mark.skip(reason="MockSSH doesn't support symlinks")
-def test_symlink(chdir_tmp, foo, ssh):
-    ssh.symlink("foo", "bar")
-    assert System.is_symlink("bar")
 
 def test_hardlink(chdir_tmp, foo, ssh):
     ssh.hardlink("foo", "bar")
     assert System.is_hardlink("bar")
+
 
 def test_copy(chdir_tmp, foo, ssh):
     ssh.copy("foo", "bar")
