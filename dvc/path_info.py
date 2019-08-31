@@ -7,7 +7,7 @@ import posixpath
 from funcy import cached_property
 
 from dvc.utils.compat import str, builtin_str, basestring, is_py2
-from dvc.utils.compat import pathlib, urlparse, urljoin
+from dvc.utils.compat import pathlib, urlparse
 
 
 # On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,
