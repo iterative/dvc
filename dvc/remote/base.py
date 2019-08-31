@@ -790,7 +790,6 @@ class RemoteBASE(object):
             if self.changed(entry_info, entry_checksum_info):
                 if self.exists(entry_info):
                     self.safe_remove(entry_info, force=force)
-                self.makedirs(entry_info.parent)
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
