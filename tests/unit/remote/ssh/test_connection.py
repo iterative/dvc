@@ -2,6 +2,27 @@ from __future__ import unicode_literals
 
 import os
 import posixpath
+import platform
+import pytest
+import filecmp
+
+from dvc.system import System
+
+
+@pytest.fixture
+def chdir_tmp(tmp_path):
+    cwd = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        yield
+    finally:
+        os.chdir(cwd)
+
+@pytest.fixture
+def foo():
+    with open("foo", "w") as fobj:
+        fobj.write("foo")
+
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -64,3 +85,22 @@ def test_walk(tmp_path, ssh):
             paths.add(posixpath.join(root, entry))
 
     assert paths == expected
+
+@pytest.mark.skipif(platform.system() != "Darwin",
+                    reason="Only works on OSX (because of APFS)")
+def test_reflink(chdir_tmp, foo, ssh):
+    ssh.reflink("foo", "bar")
+    assert System.is_reflink(bar_path)
+
+@pytest.mark.skip(reason="MockSSH doesn't support symlinks")
+def test_symlink(chdir_tmp, foo, ssh):
+    ssh.symlink("foo", "bar")
+    assert System.is_symlink("bar")
+
+def test_hardlink(chdir_tmp, foo, ssh):
+    ssh.hardlink("foo", "bar")
+    assert System.is_hardlink("bar")
+
+def test_copy(chdir_tmp, foo, ssh):
+    ssh.copy("foo", "bar")
+    assert filecmp.cmp("foo", "bar")
