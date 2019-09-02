@@ -680,7 +680,12 @@ class RemoteBASE(object):
         self.remove(path_info)
 
     def _checkout_file(
-        self, path_info, checksum, force, progress_callback=None
+        self,
+        path_info,
+        checksum,
+        force,
+        progress_callback=None,
+        save_link=True,
     ):
         if self._needs_checkout(path_info, checksum):
             if self.exists(path_info):
@@ -690,7 +695,8 @@ class RemoteBASE(object):
 
             cache_info = self.checksum_to_path_info(checksum)
             self.link(cache_info, path_info)
-            self.state.save_link(path_info)
+            if save_link:
+                self.state.save_link(path_info)
             self.state.save(path_info, checksum)
 
         if progress_callback:
@@ -719,7 +725,11 @@ class RemoteBASE(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             entry_info = path_info / relative_path
             self._checkout_file(
-                entry_info, entry_checksum, force, progress_callback
+                entry_info,
+                entry_checksum,
+                force,
+                progress_callback,
+                save_link=False,
             )
 
         self._remove_redundant_files(path_info, dir_info, force)

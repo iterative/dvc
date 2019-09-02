@@ -590,10 +590,9 @@ class RemoteLOCAL(RemoteBASE):
         # `hardlink` or a `symlink`, we don't care about reflinks, because
         # they are indistinguishable from copy anyway.
 
-        if (
-            not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
-            and self._is_same_link_as_cache(path_info)
-        ):
+        if not self.changed(
+            path_info, {self.PARAM_CHECKSUM: checksum}
+        ) and self._is_same_link_as_cache(path_info):
             msg = "File '{}' didn't change"
             logger.debug(msg.format(str(path_info)))
             return False
