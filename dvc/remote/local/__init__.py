@@ -591,11 +591,8 @@ class RemoteLOCAL(RemoteBASE):
         # they are indistinguishable from copy anyway.
 
         if (
-            # self._is_cache_copy(path_info)
             not self.changed(path_info, {self.PARAM_CHECKSUM: checksum})
             and self._is_same_link_as_cache(path_info)
-            # and not System.is_hardlink(path_info)
-            # and not System.is_symlink(path_info)
         ):
             msg = "File '{}' didn't change"
             logger.debug(msg.format(str(path_info)))
@@ -633,24 +630,3 @@ class RemoteLOCAL(RemoteBASE):
             self.unprotect(path_info)
 
         return is_copy_or_reflink
-
-    def _is_cache_copy(self, path_info):
-        # NOTE: path_info required to make test reliable, when cache is on
-        # different fs than path_info
-
-        if self.cache_types[0] == "copy":
-            return True
-
-        workspace_file = path_info.with_name("." + uuid())
-        test_cache_file = self.path_info / ".cache_type_test_file"
-        if not self.exists(test_cache_file):
-            with open(fspath_py35(test_cache_file), "wb") as fobj:
-                fobj.write(bytes(1))
-
-        try:
-            self.link(test_cache_file, workspace_file)
-        finally:
-            self.remove(workspace_file)
-            self.remove(test_cache_file)
-
-        return self.cache_types[0] == "copy"
