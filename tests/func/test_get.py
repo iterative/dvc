@@ -1,6 +1,9 @@
 import os
 import filecmp
 
+import pytest
+
+from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo import Repo
 
 from tests.utils import trees_equal
@@ -38,3 +41,8 @@ def test_get_repo_rev(repo_dir, erepo):
     assert os.path.isfile(dst)
     with open(dst, "r+") as fobj:
         assert fobj.read() == "branch"
+
+
+def test_get_from_non_dvc_repo(git_erepo):
+    with pytest.raises(UrlNotDvcRepoError):
+        Repo.get(git_erepo.root_dir, "some_file.zip")

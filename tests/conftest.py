@@ -9,8 +9,7 @@ from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture, TestDvcGitFixture
-
+from .basic_env import TestDirFixture, TestDvcGitFixture, TestGitFixture
 
 # Prevent updater and analytics from running their processes
 os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")
@@ -177,3 +176,11 @@ def _close_pools():
 
     yield
     close_pools()
+
+
+@pytest.fixture
+def git_erepo():
+    repo = TestGitFixture()
+    repo.setUp()
+    yield repo
+    repo.tearDown()
