@@ -390,11 +390,10 @@ class RemoteBASE(object):
         raise DvcException("no possible cache types left to try out.")
 
     def _do_link(self, from_info, to_info, link_method):
-        # XXX: We are testing if file exists rather than if file is a link
         if self.exists(to_info):
             raise DvcException("Link '{}' already exists!".format(to_info))
-        else:
-            link_method(from_info, to_info)
+
+        link_method(from_info, to_info)
 
         if self.protected:
             self.protect(to_info)
