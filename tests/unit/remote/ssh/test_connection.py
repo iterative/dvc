@@ -88,6 +88,11 @@ def test_reflink(chdir_tmp, foo, ssh):
     assert not System.is_hardlink("bar")
 
 
+def test_symlink(chdir_tmp, foo, ssh):
+    ssh.symlink("foo", "bar")
+    assert System.is_symlink("bar")
+
+
 def test_hardlink(chdir_tmp, foo, ssh):
     ssh.hardlink("foo", "bar")
     assert System.is_hardlink("bar")
