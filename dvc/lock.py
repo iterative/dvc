@@ -3,58 +3,59 @@
 from __future__ import unicode_literals
 
 import os
-import time
-import zc.lockfile
+from datetime import timedelta
+from flufl.lock import Lock as _Lock, TimeOutError
 
 from dvc.exceptions import DvcException
+from dvc.utils import makedirs
 
 
 class LockError(DvcException):
     """Thrown when unable to acquire the lock for dvc repo."""
 
 
-class Lock(object):
+class Lock(_Lock):
     """Class for dvc repo lock.
 
     Args:
-        dvc_dir (str): path to the directory that the lock should be created
+        lockfile (str): the lock filename
             in.
-        name (str): name of the lock file.
+        lifetime (int | timedelta): hold the lock for so long.
+        tmp_dir (str): a directory to store claim files.
     """
 
-    LOCK_FILE = "lock"
     TIMEOUT = 5
 
-    def __init__(self, dvc_dir, name=LOCK_FILE):
-        self.lock_file = os.path.join(dvc_dir, name)
-        self._lock = None
+    def __init__(self, lockfile, lifetime=None, tmp_dir=None):
+        if isinstance(lifetime, int):
+            lifetime = timedelta(seconds=lifetime)
 
-    def _do_lock(self):
+        self._tmp_dir = tmp_dir
+        if self._tmp_dir is not None:
+            makedirs(self._tmp_dir, exist_ok=True)
+
+        super(Lock, self).__init__(lockfile, lifetime=lifetime)
+
+    @property
+    def lockfile(self):
+        return self._lockfile
+
+    @property
+    def tmp_dir(self):
+        return self._tmp_dir
+
+    def lock(self):
         try:
-            self._lock = zc.lockfile.LockFile(self.lock_file)
-        except zc.lockfile.LockError:
+            super(Lock, self).lock(timedelta(seconds=self.TIMEOUT))
+        except TimeOutError:
             raise LockError(
                 "cannot perform the cmd since DVC is busy and "
                 "locked. Please retry the cmd later."
             )
 
-    def lock(self):
-        """Acquire lock for dvc repo."""
-        try:
-            self._do_lock()
-            return
-        except LockError:
-            time.sleep(self.TIMEOUT)
+    def _set_claimfile(self, pid=None):
+        super(Lock, self)._set_claimfile(pid)
 
-        self._do_lock()
-
-    def unlock(self):
-        """Release lock for dvc repo."""
-        self._lock.close()
-        self._lock = None
-
-    def __enter__(self):
-        self.lock()
-
-    def __exit__(self, typ, value, tbck):
-        self.unlock()
+        if self._tmp_dir is not None:
+            filename = self._claimfile.replace(os.sep, "_")
+            self._claimfile = os.path.join(self._tmp_dir, filename)

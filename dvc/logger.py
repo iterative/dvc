@@ -196,6 +196,10 @@ def setup(level=logging.INFO):
                     "level": logging.CRITICAL,
                     "handlers": ["console", "console_errors"],
                 },
+                "flufl.lock": {
+                    "level": logging.CRITICAL,
+                    "handlers": ["console", "console_errors"],
+                },
             },
         }
     )

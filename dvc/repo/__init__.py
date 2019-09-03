@@ -70,7 +70,12 @@ class Repo(object):
 
         self.tree = WorkingTree(self.root_dir)
 
-        self.lock = Lock(self.dvc_dir)
+        self.lock = Lock(
+            os.path.join(self.dvc_dir, "lock"),
+            # This should be longer than operations we are protecting
+            lifetime=60 * 60 * 24 * 30,
+            tmp_dir=os.path.join(self.dvc_dir, "tmp"),
+        )
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self, self.config.config)
@@ -129,10 +134,11 @@ class Repo(object):
         updater = Updater(self.dvc_dir)
 
         flist = [
-            self.lock.lock_file,
+            self.lock.lockfile,
+            self.lock.tmp_dir,
             self.config.config_local_file,
             updater.updater_file,
-            updater.lock.lock_file,
+            updater.lock.lockfile,
         ] + self.state.files
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
