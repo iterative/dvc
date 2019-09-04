@@ -12,6 +12,7 @@ import posixpath
 import logging
 import colorama
 
+from dvc.remote import RemoteLOCAL
 from dvc.system import System
 from mock import patch
 
@@ -535,3 +536,20 @@ def test_windows_should_add_when_cache_on_different_drive(
 
     ret = main(["add", repo_dir.DATA])
     assert ret == 0
+
+
+def test_readding_dir_should_not_unprotect_all(dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = ["symlink"]
+    dvc_repo.cache.local.protected = True
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+    new_file = os.path.join(repo_dir.DATA_DIR, "new_file")
+
+    repo_dir.create(new_file, "new_content")
+
+    unprotect_spy = spy(RemoteLOCAL.unprotect)
+    with patch.object(RemoteLOCAL, "unprotect", unprotect_spy):
+        dvc_repo.add(repo_dir.DATA_DIR)
+
+    assert not unprotect_spy.mock.called
+    assert System.is_symlink(new_file)

@@ -505,8 +505,6 @@ class Stage(object):
             stage.remove_outs(ignore_remove=False)
             logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True
-        else:
-            stage.unprotect_outs()
 
         if os.path.exists(path) and any(out.persist for out in stage.outs):
             logger.warning("Build cache is ignored when persisting outputs.")
