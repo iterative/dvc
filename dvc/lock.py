@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import os
 from datetime import timedelta
+import hashlib
 from flufl.lock import Lock as _Lock, TimeOutError
 
 from dvc.exceptions import DvcException
@@ -57,5 +58,6 @@ class Lock(_Lock):
         super(Lock, self)._set_claimfile(pid)
 
         if self._tmp_dir is not None:
-            filename = self._claimfile.replace(os.sep, "_")
-            self._claimfile = os.path.join(self._tmp_dir, filename)
+            # Under Windows file path length is limited so we hash it
+            filename = hashlib.md5(self._claimfile.encode()).hexdigest()
+            self._claimfile = os.path.join(self._tmp_dir, filename + ".lock")
