@@ -374,8 +374,7 @@ class RemoteBASE(object):
 
     @slow_link_guard
     def _try_links(self, from_info, to_info, link_types):
-        i = len(link_types)
-        while i > 0:
+        while link_types:
             link_method = getattr(self, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
@@ -385,7 +384,6 @@ class RemoteBASE(object):
                 msg = "Cache type '{}' is not supported: {}"
                 logger.debug(msg.format(link_types[0], str(exc)))
                 del link_types[0]
-                i -= 1
 
         raise DvcException("no possible cache types left to try out.")
 
