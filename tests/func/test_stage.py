@@ -102,16 +102,10 @@ class TestDefaultWorkingDirectory(TestDvc):
         )
 
         d = stage.dumpd()
-        self.assertEqual(d[stage.PARAM_WDIR], ".")
+        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         d = load_stage_file(stage.relpath)
-        self.assertEqual(d[stage.PARAM_WDIR], ".")
-
-        del d[stage.PARAM_WDIR]
-        dump_stage_file(stage.relpath, d)
-
-        d = load_stage_file(stage.relpath)
-        self.assertIsNone(d.get(stage.PARAM_WDIR))
+        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         with self.dvc.state:
             stage = Stage.load(self.dvc, stage.relpath)

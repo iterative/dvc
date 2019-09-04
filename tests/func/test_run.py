@@ -560,18 +560,18 @@ class TestCmdRunCliMetrics(TestDvc):
 
 
 class TestCmdRunWorkingDirectory(TestDvc):
-    def test_default_wdir_is_written(self):
+    def test_default_wdir_is_not_written(self):
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.FOO), outs=[self.FOO], wdir="."
         )
         d = load_stage_file(stage.relpath)
-        self.assertEqual(d[Stage.PARAM_WDIR], ".")
+        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
         stage = self.dvc.run(
             cmd="echo test > {}".format(self.BAR), outs=[self.BAR]
         )
         d = load_stage_file(stage.relpath)
-        self.assertEqual(d[Stage.PARAM_WDIR], ".")
+        self.assertNotIn(Stage.PARAM_WDIR, d.keys())
 
     def test_fname_changes_path_and_wdir(self):
         dname = "dir"
