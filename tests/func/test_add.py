@@ -21,11 +21,15 @@ from dvc.utils import file_md5, LARGE_DIR_SIZE, relpath
 from dvc.utils.stage import load_stage_file
 from dvc.utils.compat import range
 from dvc.stage import Stage
-from dvc.exceptions import DvcException, RecursiveAddingWhileUsingFilename
+from dvc.exceptions import (
+    DvcException,
+    RecursiveAddingWhileUsingFilename,
+    StageFileCorruptedError,
+)
 from dvc.output.base import OutputAlreadyTrackedError
 from dvc.repo import Repo as DvcRepo
 
-from tests.basic_env import TestDvc, TestDvcGit
+from tests.basic_env import TestDvc
 from tests.utils import spy, get_gitignore_content
 
 
@@ -130,15 +134,15 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
-class TestAddTrackedFile(TestDvcGit):
-    def test(self):
-        fname = "tracked_file"
-        self.create(fname, "tracked file contents")
-        self.dvc.scm.add([fname])
-        self.dvc.scm.commit("add {}".format(fname))
+def test_add_tracked_file(git, dvc_repo, repo_dir):
+    fname = "tracked_file"
+    repo_dir.create(fname, "tracked file contents")
 
-        with self.assertRaises(OutputAlreadyTrackedError):
-            self.dvc.add(fname)
+    dvc_repo.scm.add([fname])
+    dvc_repo.scm.commit("add {}".format(fname))
+
+    with pytest.raises(OutputAlreadyTrackedError):
+        dvc_repo.add(fname)
 
 
 class TestAddDirWithExistingCache(TestDvc):
@@ -472,25 +476,23 @@ class TestAddFilename(TestDvc):
         self.assertFalse(os.path.exists("foo.dvc"))
 
 
-class TestShouldCleanUpAfterFailedAdd(TestDvcGit):
-    def test(self):
-        ret = main(["add", self.FOO])
-        self.assertEqual(0, ret)
+def test_should_cleanup_after_failed_add(git, dvc_repo, repo_dir):
+    stages = dvc_repo.add(repo_dir.FOO)
+    assert len(stages) == 1
 
-        foo_stage_file = self.FOO + Stage.STAGE_FILE_SUFFIX
+    foo_stage_file = repo_dir.FOO + Stage.STAGE_FILE_SUFFIX
 
-        # corrupt stage file
-        with open(foo_stage_file, "a+") as file:
-            file.write("this will break yaml file structure")
+    # corrupt stage file
+    repo_dir.create(foo_stage_file, "this will break yaml structure")
 
-        ret = main(["add", self.BAR])
-        self.assertEqual(1, ret)
+    with pytest.raises(StageFileCorruptedError):
+        dvc_repo.add(repo_dir.BAR)
 
-        bar_stage_file = self.BAR + Stage.STAGE_FILE_SUFFIX
-        self.assertFalse(os.path.exists(bar_stage_file))
+    bar_stage_file = repo_dir.BAR + Stage.STAGE_FILE_SUFFIX
+    assert not os.path.exists(bar_stage_file)
 
-        gitignore_content = get_gitignore_content()
-        self.assertNotIn("/" + self.BAR, gitignore_content)
+    gitignore_content = get_gitignore_content()
+    assert "/" + repo_dir.BAR not in gitignore_content
 
 
 class TestShouldNotTrackGitInternalFiles(TestDvc):
