@@ -101,7 +101,8 @@ def ignore_file_not_found():
 
 
 if is_py2:
-    from urlparse import urlparse, urljoin, urlsplit, urlunsplit  # noqa: F401
+    from urlparse import urlparse, urlunparse, urljoin  # noqa: F401
+    from urllib import urlencode  # noqa: F401
     from BaseHTTPServer import HTTPServer  # noqa: F401
     from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
@@ -144,9 +145,9 @@ elif is_py3:
     from os import makedirs  # noqa: F401
     from urllib.parse import (  # noqa: F401
         urlparse,  # noqa: F401
+        urlunparse,  # noqa: F401
+        urlencode,  # noqa: F401
         urljoin,  # noqa: F401
-        urlsplit,  # noqa: F401
-        urlunsplit,  # noqa: F401
     )
     from io import StringIO, BytesIO  # noqa: F401
     from http.server import (  # noqa: F401

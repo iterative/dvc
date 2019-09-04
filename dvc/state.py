@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import os
+import re
 import sqlite3
 import logging
 
@@ -10,7 +11,8 @@ from dvc.config import Config
 from dvc.utils import remove, current_timestamp, relpath, to_chunks
 from dvc.exceptions import DvcException
 from dvc.utils.fs import get_mtime_and_size, get_inode
-from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import fspath_py35, urlencode, urlunparse, is_py2
+
 
 SQLITE_MAX_VARIABLES_NUMBER = 999
 
@@ -213,7 +215,11 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             assert self.cursor is None
             assert self.inserts == 0
             empty = not os.path.exists(self.state_file)
-            self.database = sqlite3.connect(self.state_file)
+            # NOTE: we use nolock option because fcntl() lock sqlite uses
+            # doesn't work on some older NFS/CIFS filesystems.
+            # This opens a possibility of data corruption by concurrent writes,
+            # which is prevented by repo lock.
+            self.database = _connect_sqlite(self.state_file, {"nolock": 1})
             self.cursor = self.database.cursor()
 
             # Try loading once to check that the file is indeed a database
@@ -473,3 +479,25 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 self.LINK_STATE_TABLE, ",".join(["?"] * len(chunk_unused))
             )
             self._execute(cmd, tuple(chunk_unused))
+
+
+def _connect_sqlite(filename, options):
+    # Connect by URI was added in Python 3.4 and sqlite 3.7.7,
+    # we ignore options, which should be fine unless repo is on old NFS/CIFS
+    if is_py2 or sqlite3.sqlite_version_info < (3, 7, 7):
+        return sqlite3.connect(filename)
+
+    uri = _build_sqlite_uri(filename, options)
+    return sqlite3.connect(uri, uri=True)
+
+
+def _build_sqlite_uri(filename, options):
+    # Convert filename to uri according to https://www.sqlite.org/uri.html, 3.1
+    uri_path = filename.replace("?", "%3f").replace("#", "%23")
+    if os.name == "nt":
+        uri_path = uri_path.replace("\\", "/")
+        uri_path = re.sub(r"^([a-z]:)", "/\\1", uri_path, flags=re.I)
+    uri_path = re.sub(r"/+", "/", uri_path)
+
+    # Empty netloc, params and fragment
+    return urlunparse(("file", "", uri_path, "", urlencode(options), ""))
