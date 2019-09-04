@@ -251,12 +251,14 @@ class RemoteSSH(RemoteBASE):
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
         with self.ssh(path_info) as ssh, closing(
-            ssh.sftp.file(path_info.path, mode="r")
+            ssh.sftp.open(path_info.path, mode)
         ) as fd:
-            if mode == "rb":
+            if "b" in mode:
                 yield fd
             else:
-                yield io.TextIOWrapper(fd, encoding=encoding)
+                yield io.TextIOWrapper(
+                    fd, encoding=encoding, write_through=True
+                )
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
