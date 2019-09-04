@@ -440,8 +440,6 @@ class Repo(object):
     @contextmanager
     def open(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        assert mode in {"r", "rt", "rb"}
-
         try:
             with self._open(path, remote, mode, encoding) as fd:
                 yield fd

@@ -143,6 +143,8 @@ class RemoteHDFS(RemoteBASE):
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb"}
+
         try:
             with self.hdfs(path_info) as hdfs, closing(
                 hdfs.open(path_info.path, mode="rb")

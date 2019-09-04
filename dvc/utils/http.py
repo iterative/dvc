@@ -13,6 +13,8 @@ def open_url(url, mode="r", encoding=None):
     Resumes on connection error.
     Url could be a string or a callable returning a string.
     """
+    assert mode in {"r", "rt", "rb"}
+
     with iter_url(url) as (response, it):
         bytes_stream = IterStream(it)
 
