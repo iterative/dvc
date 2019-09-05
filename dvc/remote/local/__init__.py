@@ -78,6 +78,7 @@ class RemoteLOCAL(RemoteBASE):
             self.cache_types = types
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
+        self.cache_type_confirmed = False
 
         # A clunky way to detect cache dir
         storagepath = config.get(Config.SECTION_LOCAL_STORAGEPATH, None)
@@ -188,6 +189,7 @@ class RemoteLOCAL(RemoteBASE):
             link_method = self._get_link_method(link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
+                self.cache_type_confirmed = True
                 return
 
             except DvcException as exc:
@@ -601,26 +603,35 @@ class RemoteLOCAL(RemoteBASE):
             return False
         return True
 
+    def _get_cache_type(self, path_info):
+        if self.cache_type_confirmed:
+            return self.cache_types[0]
+
+        workspace_file = path_info.with_name("." + uuid())
+        test_cache_file = self.path_info / ".cache_type_test_file"
+        if not self.exists(test_cache_file):
+            with open(fspath_py35(test_cache_file), "wb") as fobj:
+                fobj.write(bytes(1))
+        try:
+            self.link(test_cache_file, workspace_file)
+        finally:
+            self.remove(workspace_file)
+            self.remove(test_cache_file)
+
+        self.cache_type_confirmed = True
+        return self.cache_types[0]
+
     def _is_same_link_as_cache(self, path_info):
         is_hardlink = System.is_hardlink(path_info)
         is_symlink = System.is_symlink(path_info)
         is_copy_or_reflink = not is_hardlink and not is_symlink
 
-        if self.cache_types[0] == "reflink":
-            workspace_file = path_info.with_name("." + uuid())
-            test_cache_file = self.path_info / ".cache_type_test_file"
-            if not self.exists(test_cache_file):
-                with open(fspath_py35(test_cache_file), "wb") as fobj:
-                    fobj.write(bytes(1))
-            try:
-                self.link(test_cache_file, workspace_file)
-            finally:
-                self.remove(workspace_file)
-                self.remove(test_cache_file)
+        cache_type = self._get_cache_type(path_info)
 
-        if self.cache_types[0] == "symlink":
+        if cache_type == "symlink":
             return is_symlink
-        if self.cache_types[0] == "hardlink":
+
+        if cache_type == "hardlink":
             return is_hardlink
 
         return is_copy_or_reflink
