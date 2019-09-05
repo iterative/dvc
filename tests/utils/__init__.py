@@ -44,11 +44,3 @@ def trees_equal(dir_path_1, dir_path_2):
 
 def to_posixpath(path):
     return path.replace("\\", "/")
-
-
-def string_args(mock_object):
-    return [
-        str(arg)
-        for call in mock_object.call_args_list
-        for arg in list(call.args)
-    ]

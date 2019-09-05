@@ -4,9 +4,6 @@ import filecmp
 import collections
 import logging
 
-import pytest
-
-import dvc
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
@@ -26,7 +23,6 @@ from dvc.exceptions import (
 
 from mock import patch
 
-from tests.utils import spy, string_args
 
 logger = logging.getLogger("dvc")
 
@@ -479,60 +475,3 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
     dvc_repo.checkout(stage.path, force=True)
     assert not os.path.exists(repo_dir.FOO)
-
-
-def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
-    dvc_repo.cache.local.cache_types = ["copy"]
-
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.add(repo_dir.BAR)
-
-    shutil.copy(repo_dir.BAR, repo_dir.FOO)
-
-    copy_spy = spy(shutil.copyfile)
-
-    RemoteLOCAL.CACHE_TYPE_MAP["copy"] = copy_spy
-    dvc_repo.add(repo_dir.FOO)
-
-    assert copy_spy.mock.call_count == 0
-
-
-@pytest.mark.parametrize(
-    "link,new_link,link_test_func",
-    [
-        ("hardlink", "copy", lambda path: not System.is_hardlink(path)),
-        ("symlink", "copy", lambda path: not System.is_symlink(path)),
-        ("copy", "hardlink", System.is_hardlink),
-        ("copy", "symlink", System.is_symlink),
-    ],
-)
-def test_should_relink_on_repeated_add(
-    link, new_link, link_test_func, repo_dir, dvc_repo
-):
-    dvc_repo.cache.local.cache_types = [link]
-
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.add(repo_dir.BAR)
-
-    os.remove(repo_dir.FOO)
-    RemoteLOCAL.CACHE_TYPE_MAP[link](repo_dir.BAR, repo_dir.FOO)
-
-    dvc_repo.cache.local.cache_types = [new_link]
-
-    dvc_repo.add(repo_dir.FOO)
-
-    assert link_test_func(repo_dir.FOO)
-
-
-def test_should_relink_single_file_in_dir(dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = ["symlink"]
-
-    dvc_repo.add(repo_dir.DATA_DIR)
-
-    dvc_repo.unprotect(repo_dir.DATA_SUB)
-
-    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
-    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
-        dvc_repo.add(repo_dir.DATA_DIR)
-
-    assert repo_dir.DATA_SUB in string_args(remove_spy.mock)
