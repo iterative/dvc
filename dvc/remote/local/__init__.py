@@ -510,7 +510,7 @@ class RemoteLOCAL(RemoteBASE):
         if os.path.isdir(path):
             self._unprotect_dir(path, allow_copy)
         else:
-            RemoteLOCAL._unprotect_file(path, allow_copy)
+            self._unprotect_file(path, allow_copy)
 
     @staticmethod
     def protect(path_info):
