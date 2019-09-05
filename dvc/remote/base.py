@@ -688,10 +688,7 @@ class RemoteBASE(object):
         save_link=True,
     ):
         if self._needs_checkout(path_info, checksum):
-            if self.exists(path_info):
-                msg = "Data '{}' exists. Removing before checkout."
-                logger.warning(msg.format(str(path_info)))
-                self.safe_remove(path_info, force=force)
+            self.safe_remove(path_info, force=force)
 
             cache_info = self.checksum_to_path_info(checksum)
             self.link(cache_info, path_info)

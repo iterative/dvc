@@ -489,11 +489,12 @@ def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
 
     shutil.copy(repo_dir.BAR, repo_dir.FOO)
 
-    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
-    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
-        dvc_repo.add(repo_dir.FOO)
+    copy_spy = spy(shutil.copyfile)
 
-    assert remove_spy.mock.call_count == 0
+    RemoteLOCAL.CACHE_TYPE_MAP["copy"] = copy_spy
+    dvc_repo.add(repo_dir.FOO)
+
+    assert copy_spy.mock.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -518,11 +519,8 @@ def test_should_relink_on_repeated_add(
 
     dvc_repo.cache.local.cache_types = [new_link]
 
-    remove_spy = spy(dvc.remote.local.RemoteLOCAL.remove)
-    with patch.object(dvc.remote.local.RemoteLOCAL, "remove", remove_spy):
-        dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.FOO)
 
-    assert repo_dir.FOO in string_args(remove_spy.mock)
     assert link_test_func(repo_dir.FOO)
 
 
