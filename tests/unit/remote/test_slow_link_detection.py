@@ -8,9 +8,7 @@ from dvc.config import Config
 
 @pytest.fixture(autouse=True)
 def timeout_immediately(monkeypatch):
-    monkeypatch.setattr(
-        dvc.remote.slow_link_detection, 'timeout_seconds', 0.0
-    )
+    monkeypatch.setattr(dvc.remote.slow_link_detection, "timeout_seconds", 0.0)
 
 
 @pytest.fixture

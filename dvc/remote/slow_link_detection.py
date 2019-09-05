@@ -18,8 +18,9 @@ this.message = (
     "See {blue}https://dvc.org/doc/commands-reference/config#cache{reset} "
     "for more information.\n"
     "To disable this message, run:\n"
-    "'dvc config cache.slow_link_warning false'"
-    .format(blue=colorama.Fore.BLUE, reset=colorama.Fore.RESET)
+    "'dvc config cache.slow_link_warning false'".format(
+        blue=colorama.Fore.BLUE, reset=colorama.Fore.RESET
+    )
 )
 
 
