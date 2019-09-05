@@ -291,5 +291,5 @@ class UrlNotDvcRepoError(DvcException):
 class GetDVCFileError(DvcException):
     def __init__(self):
         super(GetDVCFileError, self).__init__(
-            "the given path is a DVC-file, you must specify an output"
+            "the given path is a DVC-file, you must specify a data artifact"
         )
