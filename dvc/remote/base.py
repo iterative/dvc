@@ -698,6 +698,14 @@ class RemoteBASE(object):
             if save_link:
                 self.state.save_link(path_info)
             self.state.save(path_info, checksum)
+        else:
+            if self.protected:
+                self.protect(path_info)
+            else:
+                # NOTE: we can unprotect, because `hardlink/symlink` check
+                # has been performed before, so no chance of copying,
+                # only chmod-ing.
+                self.unprotect(path_info)
 
         if progress_callback:
             progress_callback(str(path_info))
@@ -808,7 +816,7 @@ class RemoteBASE(object):
         return 1
 
     @staticmethod
-    def unprotect(path_info):
+    def unprotect(path_info, allow_copy=True):
         pass
 
     def _get_unpacked_dir_names(self, checksums):
