@@ -771,7 +771,10 @@ class RemoteBASE(object):
             skip = True
 
         if skip:
-            progress_callback(str(path_info), self.get_files_number(checksum))
+            if progress_callback:
+                progress_callback(
+                    str(path_info), self.get_files_number(checksum)
+                )
             return
 
         msg = "Checking out '{}' with cache '{}'."
