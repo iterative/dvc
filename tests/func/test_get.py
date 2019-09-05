@@ -3,7 +3,7 @@ import filecmp
 
 import pytest
 
-from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import UrlNotDvcRepoError, GetDVCFileError
 from dvc.repo import Repo
 
 from tests.utils import trees_equal
@@ -46,3 +46,8 @@ def test_get_repo_rev(repo_dir, erepo):
 def test_get_from_non_dvc_repo(git_erepo):
     with pytest.raises(UrlNotDvcRepoError):
         Repo.get(git_erepo.root_dir, "some_file.zip")
+
+
+def test_get_a_dvc_file(repo_dir, erepo):
+    with pytest.raises(GetDVCFileError):
+        Repo.get(erepo.root_dir, "some_file.dvc")

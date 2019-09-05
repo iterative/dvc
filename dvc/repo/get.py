@@ -3,7 +3,7 @@ import os
 import shortuuid
 
 from dvc.config import Config
-from dvc.exceptions import NotDvcRepoError, UrlNotDvcRepoError
+from dvc.exceptions import NotDvcRepoError, UrlNotDvcRepoError, GetDVCFileError
 from dvc.path_info import PathInfo
 from dvc.external_repo import external_repo
 from dvc.state import StateNoop
@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 @staticmethod
 def get(url, path, out=None, rev=None):
     out = out or os.path.basename(urlparse(path).path)
+
+    if os.path.splitext(out)[1] == ".dvc":
+        raise GetDVCFileError()
 
     # Creating a directory right beside the output to make sure that they
     # are on the same filesystem, so we could take the advantage of
