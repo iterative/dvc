@@ -175,7 +175,7 @@ class RemoteLOCAL(RemoteBASE):
         shutil.copyfile(from_info.fspath, to_info.fspath)
 
     def symlink(self, from_info, to_info):
-        System.symlink(from_info.fspath, to_info.fspath)
+        System.symlink(from_info, to_info)
 
     def hardlink(self, from_info, to_info):
         # If there are a lot of empty files (which happens a lot in datasets),
@@ -201,10 +201,10 @@ class RemoteLOCAL(RemoteBASE):
             )
             return
 
-        System.hardlink(from_info.fspath, to_info.fspath)
+        System.hardlink(from_info, to_info)
 
     def reflink(self, from_info, to_info):
-        System.reflink(from_info.fspath, to_info.fspath)
+        System.reflink(from_info, to_info)
 
     def cache_exists(self, checksums, jobs=None, name=None):
         return [
