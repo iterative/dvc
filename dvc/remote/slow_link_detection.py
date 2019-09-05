@@ -1,60 +1,49 @@
 import logging
 import time
+import sys
+from functools import wraps
 
 import colorama
 from dvc.config import Config
 
+
 logger = logging.getLogger(__name__)
+this = sys.modules[__name__]
+
+this.timeout_seconds = 10.0
+this.already_displayed = False
+this.message = (
+    "You can cut execution time considerably by using a different "
+    "`cache.type` configuration.\n"
+    "See {blue}https://dvc.org/doc/commands-reference/config#cache{reset} "
+    "for more information.\n"
+    "To disable this message, run:\n"
+    "'dvc config cache.slow_link_warning false'"
+    .format(blue=colorama.Fore.BLUE, reset=colorama.Fore.RESET)
+)
 
 
-class SlowLinkDetectorDecorator(object):
-    LINKING_TIMEOUT_SECONDS = 10.0
-    was_displayed = False
+def slow_link_guard(f):
+    @wraps(f)
+    def wrapper(remote, *args, **kwargs):
+        if this.already_displayed:
+            return f(remote, *args, **kwargs)
 
-    @classmethod
-    def should_display(cls):
-        if not cls.was_displayed:
-            cls.was_displayed = True
-            return True
-        return False
+        config = remote.repo.config.config.get(Config.SECTION_CACHE, {})
+        cache_type = config.get(Config.SECTION_CACHE_TYPE)
+        should_warn = config.get(Config.SECTION_CACHE_SLOW_LINK_WARNING, True)
 
-    def __init__(self, method):
-        self.method = method
+        if not should_warn or cache_type:
+            return f(remote, *args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
         start = time.time()
-        result = self.method(*args, **kwargs)
-        execution_time_seconds = time.time() - start
+        result = f(remote, *args, **kwargs)
+        delta = time.time() - start
 
-        if (
-            execution_time_seconds >= self.LINKING_TIMEOUT_SECONDS
-            and self.should_display()
-        ):
-            msg = (
-                "You can cut execution time considerably by using a different"
-                " `cache.type` configuration.\nSee "
-                "{blue}https://dvc.org/doc/commands-reference/config#cache{"
-                "reset} for more information.\n"
-                "To disable this message, run:\n"
-                "'dvc config cache.slow_link_warning false'".format(
-                    blue=colorama.Fore.BLUE, reset=colorama.Fore.RESET
-                )
-            )
-            logger.warning(msg)
+        if delta >= this.timeout_seconds:
+            logger.warning(this.message)
+            this.already_displayed = True
 
         return result
 
-
-def slow_link_guard(method):
-    def call(remote, *args, **kwargs):
-        cache_config = remote.repo.config.config.get(Config.SECTION_CACHE, {})
-        should_warn = cache_config.get(
-            Config.SECTION_CACHE_SLOW_LINK_WARNING, True
-        ) and not cache_config.get(Config.SECTION_CACHE_TYPE, None)
-
-        if should_warn:
-            decorated = SlowLinkDetectorDecorator(method)
-            return decorated(remote, *args, **kwargs)
-        return method(remote, *args, **kwargs)
-
-    return call
+    return wrapper
