@@ -327,8 +327,6 @@ class Stage(object):
         if interactive and not prompt.confirm(msg):
             raise DvcException("reproduction aborted by the user")
 
-        logger.info("Reproducing '{stage}'".format(stage=self.relpath))
-
         self.run(**kwargs)
 
         logger.debug("'{stage}' was reproduced".format(stage=self.relpath))
@@ -507,8 +505,6 @@ class Stage(object):
             stage.remove_outs(ignore_remove=False)
             logger.warning("Build cache is ignored when using --remove-outs.")
             ignore_build_cache = True
-        else:
-            stage.unprotect_outs()
 
         if os.path.exists(path) and any(out.persist for out in stage.outs):
             logger.warning("Build cache is ignored when persisting outputs.")

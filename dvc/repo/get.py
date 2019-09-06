@@ -1,17 +1,25 @@
+import logging
 import os
 import shortuuid
 
+from dvc.stage import Stage
 from dvc.config import Config
+from dvc.exceptions import NotDvcRepoError, UrlNotDvcRepoError, GetDVCFileError
 from dvc.path_info import PathInfo
 from dvc.external_repo import external_repo
 from dvc.state import StateNoop
 from dvc.utils import remove
 from dvc.utils.compat import urlparse
 
+logger = logging.getLogger(__name__)
+
 
 @staticmethod
 def get(url, path, out=None, rev=None):
     out = out or os.path.basename(urlparse(path).path)
+
+    if Stage.is_valid_filename(out):
+        raise GetDVCFileError()
 
     # Creating a directory right beside the output to make sure that they
     # are on the same filesystem, so we could take the advantage of
@@ -48,5 +56,8 @@ def get(url, path, out=None, rev=None):
             o.path_info = PathInfo(os.path.abspath(out))
             with o.repo.state:
                 o.checkout()
+
+    except NotDvcRepoError:
+        raise UrlNotDvcRepoError(url)
     finally:
         remove(tmp_dir)

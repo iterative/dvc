@@ -289,3 +289,18 @@ class DvcIgnoreInCollectedDirError(DvcException):
             ".dvcignore file should not be in collected dir path: "
             "'{}'".format(ignore_dirname)
         )
+
+
+class UrlNotDvcRepoError(DvcException):
+    def __init__(self, url):
+        super(UrlNotDvcRepoError, self).__init__(
+            "URL '{}' is not a dvc repository.".format(url)
+        )
+
+
+class GetDVCFileError(DvcException):
+    def __init__(self):
+        super(GetDVCFileError, self).__init__(
+            "the given path is a DVC-file, you must specify a data file "
+            "or a directory"
+        )

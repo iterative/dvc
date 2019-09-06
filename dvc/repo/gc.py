@@ -21,9 +21,7 @@ def _merge_cache_lists(clists):
 
 def _load_all_used_cache(
     repos,
-    target=None,
     all_branches=False,
-    active=True,
     with_deps=False,
     all_tags=False,
     remote=None,
@@ -37,7 +35,6 @@ def _load_all_used_cache(
             repo_clist = repo.used_cache(
                 targets=None,
                 all_branches=all_branches,
-                active=False,
                 with_deps=with_deps,
                 all_tags=all_tags,
                 remote=remote,
@@ -76,9 +73,7 @@ def gc(
 
     all_clists = _load_all_used_cache(
         all_repos,
-        target=None,
         all_branches=all_branches,
-        active=False,
         with_deps=with_deps,
         all_tags=all_tags,
         remote=remote,

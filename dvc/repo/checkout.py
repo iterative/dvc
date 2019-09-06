@@ -38,6 +38,8 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
     with self.state:
         _cleanup_unused_links(self, all_stages)
         total = get_all_files_numbers(stages)
+        if total == 0:
+            logger.info("Nothing to do")
         with Tqdm(
             total=total, unit="file", desc="Checkout", disable=total == 0
         ) as pbar:
@@ -51,4 +53,3 @@ def checkout(self, target=None, with_deps=False, force=False, recursive=False):
                     )
 
                 stage.checkout(force=force, progress_callback=pbar.update_desc)
-            pbar.update_desc("Checkout", 0)  # clear path name description

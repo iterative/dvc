@@ -78,6 +78,7 @@ class RemoteLOCAL(RemoteBASE):
             self.cache_types = types
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
+        self.cache_type_confirmed = False
 
         # A clunky way to detect cache dir
         storagepath = config.get(Config.SECTION_LOCAL_STORAGEPATH, None)
@@ -188,6 +189,7 @@ class RemoteLOCAL(RemoteBASE):
             link_method = self._get_link_method(link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
+                self.cache_type_confirmed = True
                 return
 
             except DvcException as exc:
@@ -251,10 +253,15 @@ class RemoteLOCAL(RemoteBASE):
 
         move(from_info, to_info, mode=mode)
 
-    def cache_exists(self, checksums, jobs=None):
+    def cache_exists(self, checksums, jobs=None, name=None):
         return [
             checksum
-            for checksum in Tqdm(checksums, unit="md5")
+            for checksum in Tqdm(
+                checksums,
+                unit="file",
+                desc="Querying "
+                + ("cache in " + name if name else "local cache"),
+            )
             if not self.changed_cache_file(checksum)
         ]
 
@@ -313,14 +320,14 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        logger.info(
+        logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
         ret = self._group(checksum_infos, show_checksums=show_checksums) or {}
         md5s = list(ret)
 
-        logger.info("Collecting information from local cache...")
-        local_exists = self.cache_exists(md5s, jobs=jobs)
+        logger.debug("Collecting information from local cache...")
+        local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
@@ -329,8 +336,12 @@ class RemoteLOCAL(RemoteBASE):
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
         else:
-            logger.info("Collecting information from remote cache...")
-            remote_exists = list(remote.cache_exists(md5s, jobs=jobs))
+            logger.debug("Collecting information from remote cache...")
+            remote_exists = list(
+                remote.cache_exists(
+                    md5s, jobs=jobs, name=str(remote.path_info)
+                )
+            )
 
         self._fill_statuses(ret, local_exists, remote_exists)
 
@@ -377,7 +388,7 @@ class RemoteLOCAL(RemoteBASE):
         show_checksums=False,
         download=False,
     ):
-        logger.info(
+        logger.debug(
             "Preparing to {} '{}'".format(
                 "download data from" if download else "upload data to",
                 remote.path_info,
@@ -462,19 +473,22 @@ class RemoteLOCAL(RemoteBASE):
             logger.warning(msg)
 
     @staticmethod
-    def _unprotect_file(path):
+    def _unprotect_file(path, allow_copy=True):
         if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug("Unprotecting '{}'".format(path))
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
+            if allow_copy:
+                logger.debug("Unprotecting '{}'".format(path))
+                tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
 
-            # The operations order is important here - if some application
-            # would access the file during the process of copyfile then it
-            # would get only the part of file. So, at first, the file should be
-            # copied with the temporary name, and then original file should be
-            # replaced by new.
-            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
-            remove(path)
-            os.rename(tmp, path)
+                # The operations order is important here - if some application
+                # would access the file during the process of copyfile then it
+                # would get only the part of file. So, at first, the file
+                # should be copied with the temporary name, and then
+                # original file should be replaced by new.
+                copyfile(
+                    path, tmp, name="Unprotecting '{}'".format(relpath(path))
+                )
+                remove(path)
+                os.rename(tmp, path)
 
         else:
             logger.debug(
@@ -484,11 +498,11 @@ class RemoteLOCAL(RemoteBASE):
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
-    def _unprotect_dir(self, path):
+    def _unprotect_dir(self, path, allow_copy=True):
         for fname in walk_files(path, self.repo.dvcignore):
-            RemoteLOCAL._unprotect_file(fname)
+            self._unprotect_file(fname, allow_copy)
 
-    def unprotect(self, path_info):
+    def unprotect(self, path_info, allow_copy=True):
         path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
@@ -496,9 +510,9 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         if os.path.isdir(path):
-            self._unprotect_dir(path)
+            self._unprotect_dir(path, allow_copy)
         else:
-            RemoteLOCAL._unprotect_file(path)
+            self._unprotect_file(path, allow_copy)
 
     @staticmethod
     def protect(path_info):
@@ -572,3 +586,36 @@ class RemoteLOCAL(RemoteBASE):
             if self.is_dir_checksum(c):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
+
+    def _get_cache_type(self, path_info):
+        if self.cache_type_confirmed:
+            return self.cache_types[0]
+
+        workspace_file = path_info.with_name("." + uuid())
+        test_cache_file = self.path_info / ".cache_type_test_file"
+        if not self.exists(test_cache_file):
+            with open(fspath_py35(test_cache_file), "wb") as fobj:
+                fobj.write(bytes(1))
+        try:
+            self.link(test_cache_file, workspace_file)
+        finally:
+            self.remove(workspace_file)
+            self.remove(test_cache_file)
+
+        self.cache_type_confirmed = True
+        return self.cache_types[0]
+
+    def _link_matches(self, path_info):
+        is_hardlink = System.is_hardlink(path_info)
+        is_symlink = System.is_symlink(path_info)
+        is_copy_or_reflink = not is_hardlink and not is_symlink
+
+        cache_type = self._get_cache_type(path_info)
+
+        if cache_type == "symlink":
+            return is_symlink
+
+        if cache_type == "hardlink":
+            return is_hardlink
+
+        return is_copy_or_reflink

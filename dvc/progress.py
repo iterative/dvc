@@ -2,8 +2,10 @@
 from __future__ import print_function
 import logging
 from tqdm import tqdm
-from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
+from funcy import merge
+
+logger = logging.getLogger(__name__)
 
 
 class TqdmThreadPoolExecutor(ThreadPoolExecutor):
@@ -33,45 +35,67 @@ class Tqdm(tqdm):
     maximum-compatibility tqdm-based progressbars
     """
 
+    BAR_FMT_DEFAULT = (
+        "{percentage:3.0f}%|{bar:10}|"
+        "{desc:{ncols_desc}.{ncols_desc}}{n}/{total}"
+        " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
+    )
+    BAR_FMT_NOTOTAL = (
+        "{desc:{ncols_desc}.{ncols_desc}}{n}"
+        " [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
+    )
+
     def __init__(
         self,
         iterable=None,
         disable=None,
+        level=logging.ERROR,
+        desc=None,
+        leave=False,
+        bar_format=None,
         bytes=False,  # pylint: disable=W0622
-        desc_truncate=None,
-        leave=None,
         **kwargs
     ):
         """
         bytes   : shortcut for
             `unit='B', unit_scale=True, unit_divisor=1024, miniters=1`
-        desc_truncate  : like `desc` but will truncate to 10 chars
+        desc  : persists after `close()`
+        level  : effective logging level for determining `disable`;
+            used only if `disable` is unspecified
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
-        kwargs = deepcopy(kwargs)
+        kwargs = kwargs.copy()
+        kwargs.setdefault("unit_scale", True)
         if bytes:
-            for k, v in dict(
+            bytes_defaults = dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-            ).items():
-                kwargs.setdefault(k, v)
-        if desc_truncate is not None:
-            kwargs.setdefault("desc", self.truncate(desc_truncate))
-        if disable is None:
-            disable = (
-                logging.getLogger(__name__).getEffectiveLevel()
-                >= logging.CRITICAL
             )
+            kwargs = merge(bytes_defaults, kwargs)
+        self.desc_persist = desc
+        if disable is None:
+            disable = logger.getEffectiveLevel() > level
         super(Tqdm, self).__init__(
-            iterable=iterable, disable=disable, leave=leave, **kwargs
+            iterable=iterable,
+            disable=disable,
+            leave=leave,
+            desc=desc,
+            bar_format="!",
+            **kwargs
         )
+        if bar_format is None:
+            if self.__len__():
+                self.bar_format = self.BAR_FMT_DEFAULT
+            else:
+                self.bar_format = self.BAR_FMT_NOTOTAL
+        else:
+            self.bar_format = bar_format
+        self.refresh()
 
-    def update_desc(self, desc, n=1, truncate=True):
+    def update_desc(self, desc, n=1):
         """
-        Calls `set_description(truncate(desc))` and `update(n)`
+        Calls `set_description_str(desc)` and `update(n)`
         """
-        self.set_description(
-            self.truncate(desc) if truncate else desc, refresh=False
-        )
+        self.set_description_str(desc, refresh=False)
         self.update(n)
 
     def update_to(self, current, total=None):
@@ -79,16 +103,16 @@ class Tqdm(tqdm):
             self.total = total  # pylint: disable=W0613,W0201
         self.update(current - self.n)
 
-    @classmethod
-    def truncate(cls, s, max_len=25, end=True, fill="..."):
-        """
-        Guarantee len(output) < max_lenself.
-        >>> truncate("hello", 4)
-        '...o'
-        """
-        if len(s) <= max_len:
-            return s
-        if len(fill) > max_len:
-            return fill[-max_len:] if end else fill[:max_len]
-        i = max_len - len(fill)
-        return (fill + s[-i:]) if end else (s[:i] + fill)
+    def close(self):
+        if self.desc_persist is not None:
+            self.set_description_str(self.desc_persist, refresh=False)
+        super(Tqdm, self).close()
+
+    @property
+    def format_dict(self):
+        """inject `ncols_desc` to fill the display width (`ncols`)"""
+        d = super(Tqdm, self).format_dict
+        ncols = d["ncols"] or 80
+        ncols_desc = ncols - len(self.format_meter(ncols_desc=1, **d)) + 1
+        d["ncols_desc"] = max(ncols_desc, 0)
+        return d
