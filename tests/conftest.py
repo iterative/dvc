@@ -182,7 +182,7 @@ def _close_pools():
 def chdir_tmp(tmp_path):
     cwd = os.getcwd()
     try:
-        os.chdir(tmp_path)
+        os.chdir(str(tmp_path))
         yield
     finally:
         os.chdir(cwd)
