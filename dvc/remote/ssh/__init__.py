@@ -250,6 +250,8 @@ class RemoteSSH(RemoteBASE):
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
+        assert mode in {"r", "rt", "rb", "wb"}
+
         with self.ssh(path_info) as ssh, closing(
             ssh.sftp.open(path_info.path, mode)
         ) as fd:
