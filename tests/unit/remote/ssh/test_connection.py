@@ -9,12 +9,6 @@ import filecmp
 from dvc.system import System
 
 
-@pytest.fixture
-def foo():
-    with open("foo", "w") as fobj:
-        fobj.write("foo")
-
-
 here = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -81,23 +75,23 @@ def test_walk(tmp_path, ssh):
 @pytest.mark.skipif(
     platform.system() != "Darwin", reason="Only works on OSX (because of APFS)"
 )
-def test_reflink(chdir_tmp, foo, ssh):
-    ssh.reflink("foo", "bar")
-    assert filecmp.cmp("foo", "bar")
-    assert not System.is_symlink("bar")
-    assert not System.is_hardlink("bar")
+def test_reflink(repo_dir, ssh):
+    ssh.reflink("foo", "link")
+    assert filecmp.cmp("foo", "link")
+    assert not System.is_symlink("link")
+    assert not System.is_hardlink("link")
 
 
-def test_symlink(chdir_tmp, foo, ssh):
-    ssh.symlink("foo", "bar")
-    assert System.is_symlink("bar")
+def test_symlink(repo_dir, ssh):
+    ssh.symlink("foo", "link")
+    assert System.is_symlink("link")
 
 
-def test_hardlink(chdir_tmp, foo, ssh):
-    ssh.hardlink("foo", "bar")
-    assert System.is_hardlink("bar")
+def test_hardlink(repo_dir, ssh):
+    ssh.hardlink("foo", "link")
+    assert System.is_hardlink("link")
 
 
-def test_copy(chdir_tmp, foo, ssh):
-    ssh.copy("foo", "bar")
-    assert filecmp.cmp("foo", "bar")
+def test_copy(repo_dir, ssh):
+    ssh.copy("foo", "link")
+    assert filecmp.cmp("foo", "link")

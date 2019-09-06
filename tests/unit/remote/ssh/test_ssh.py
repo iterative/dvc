@@ -187,7 +187,7 @@ def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
     assert remote.gss_auth == expected_gss_auth
 
 
-def test_hardlink_optimization(chdir_tmp, ssh_server):
+def test_hardlink_optimization(repo_dir, ssh_server):
     config = {
         "url": "ssh://localhost",
         "hostname": ssh_server.test_creds["host"],
@@ -204,5 +204,5 @@ def test_hardlink_optimization(chdir_tmp, ssh_server):
         path = posixpath.abspath(path)
         return URLInfo("ssh://{}/{}".format(netloc, path))
 
-    remote.hardlink(urlpath("empty"), urlpath("bar"))
-    assert not System.is_hardlink("bar")
+    remote.hardlink(urlpath("empty"), urlpath("link"))
+    assert not System.is_hardlink("link")

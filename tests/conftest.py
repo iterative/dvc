@@ -179,16 +179,6 @@ def _close_pools():
 
 
 @pytest.fixture
-def chdir_tmp(tmp_path):
-    cwd = os.getcwd()
-    try:
-        os.chdir(str(tmp_path))
-        yield
-    finally:
-        os.chdir(cwd)
-
-
-@pytest.fixture
 def git_erepo():
     repo = TestGitFixture()
     repo.setUp()
