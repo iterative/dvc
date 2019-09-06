@@ -379,6 +379,7 @@ class RemoteBASE(object):
             link_method = getattr(self, link_types[0])
             try:
                 self._do_link(from_info, to_info, link_method)
+                self.cache_type_confirmed = True
                 return
 
             except DvcException as exc:
