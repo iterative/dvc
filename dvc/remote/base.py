@@ -692,36 +692,32 @@ class RemoteBASE(object):
         # relinking.
         if self.changed(
             path_info, {self.PARAM_CHECKSUM: checksum}
-        ) or not self._is_same_link_as_cache(path_info):
-            self._remove_and_relink(path_info, checksum, force, save_link)
+        ) or not self._link_matches(path_info):
+            self.safe_remove(path_info, force=force)
+
+            cache_info = self.checksum_to_path_info(checksum)
+            self.link(cache_info, path_info)
+
+            if save_link:
+                self.state.save_link(path_info)
+
+            self.state.save(path_info, checksum)
         else:
-            self._restore_protection_state(path_info)
+            # NOTE: performing (un)protection costs us +/- the same as checking
+            # if path_info is protected. Instead of implementing logic,
+            # just (un)protect according to self.protected.
+            if self.protected:
+                self.protect(path_info)
+            else:
+                # NOTE dont allow copy, because we checked before that link
+                # type matches cache, and we don't want data duplication
+                self.unprotect(path_info, allow_copy=False)
 
         if progress_callback:
             progress_callback(str(path_info))
 
-    def _is_same_link_as_cache(self, path_info):
+    def _link_matches(self, path_info):
         return True
-
-    def _remove_and_relink(self, path_info, checksum, force, save_link):
-        self.safe_remove(path_info, force=force)
-
-        cache_info = self.checksum_to_path_info(checksum)
-        self.link(cache_info, path_info)
-
-        if save_link:
-            self.state.save_link(path_info)
-
-        self.state.save(path_info, checksum)
-
-    def _restore_protection_state(self, path_info):
-        # NOTE: performing (un)protection costs us +/- the same as checking if
-        # path_info is protected. Instead of implementing logic,
-        # just (un)protect according self.protected.
-        if self.protected:
-            self.protect(path_info)
-        else:
-            self.unprotect(path_info, allow_copy=False)
 
     def makedirs(self, path_info):
         raise NotImplementedError

@@ -605,7 +605,7 @@ class RemoteLOCAL(RemoteBASE):
         self.cache_type_confirmed = True
         return self.cache_types[0]
 
-    def _is_same_link_as_cache(self, path_info):
+    def _link_matches(self, path_info):
         is_hardlink = System.is_hardlink(path_info)
         is_symlink = System.is_symlink(path_info)
         is_copy_or_reflink = not is_hardlink and not is_symlink
