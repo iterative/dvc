@@ -7,7 +7,6 @@ import os
 import stat
 import errno
 from shortuuid import uuid
-import shutil
 import logging
 from functools import partial
 
@@ -172,7 +171,7 @@ class RemoteLOCAL(RemoteBASE):
         move(from_info, to_info, mode=mode)
 
     def copy(self, from_info, to_info):
-        shutil.copyfile(from_info.fspath, to_info.fspath)
+        System.copy(from_info, to_info)
 
     def symlink(self, from_info, to_info):
         System.symlink(from_info, to_info)

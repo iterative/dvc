@@ -4,12 +4,18 @@ from dvc.utils.compat import str, open, fspath
 
 import os
 import errno
+import shutil
 
 
 class System(object):
     @staticmethod
     def is_unix():
         return os.name != "nt"
+
+    @staticmethod
+    def copy(src, dest):
+        src, dest = fspath(src), fspath(dest)
+        return shutil.copyfile(src, dest)
 
     @staticmethod
     def hardlink(source, link_name):
