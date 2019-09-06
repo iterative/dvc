@@ -687,25 +687,41 @@ class RemoteBASE(object):
         progress_callback=None,
         save_link=True,
     ):
-        if self._needs_checkout(path_info, checksum):
-            self.safe_remove(path_info, force=force)
-
-            cache_info = self.checksum_to_path_info(checksum)
-            self.link(cache_info, path_info)
-            if save_link:
-                self.state.save_link(path_info)
-            self.state.save(path_info, checksum)
+        # NOTE: In case if path_info is already cached and path_info's
+        # link type matches cache link type, we would like to avoid
+        # relinking.
+        if self.changed(
+            path_info, {self.PARAM_CHECKSUM: checksum}
+        ) or not self._is_same_link_as_cache(path_info):
+            self._remove_and_relink(path_info, checksum, force, save_link)
         else:
-            if self.protected:
-                self.protect(path_info)
-            else:
-                self.unprotect(path_info, False)
+            self._restore_protection_state(path_info)
 
         if progress_callback:
             progress_callback(str(path_info))
 
-    def _needs_checkout(self, path_info, checksum):
+    def _is_same_link_as_cache(self, path_info):
         return True
+
+    def _remove_and_relink(self, path_info, checksum, force, save_link):
+        self.safe_remove(path_info, force=force)
+
+        cache_info = self.checksum_to_path_info(checksum)
+        self.link(cache_info, path_info)
+
+        if save_link:
+            self.state.save_link(path_info)
+
+        self.state.save(path_info, checksum)
+
+    def _restore_protection_state(self, path_info):
+        # NOTE: performing (un)protection costs us +/- the same as checking if
+        # path_info is protected. Instead of implementing logic,
+        # just (un)protect according self.protected.
+        if self.protected:
+            self.protect(path_info)
+        else:
+            self.unprotect(path_info, False)
 
     def makedirs(self, path_info):
         raise NotImplementedError

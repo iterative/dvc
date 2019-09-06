@@ -587,21 +587,6 @@ class RemoteLOCAL(RemoteBASE):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
 
-    def _needs_checkout(self, path_info, checksum):
-        # NOTE: In case if path_info is already cached, and cache type is
-        # 'copy' we would like to avoid relinking.
-        # `symlink/hardlink/reflink` is cheap, but if we need `copy` links,
-        # then to save on copying we should only relink if we already have
-        # `hardlink` or a `symlink`, we don't care about reflinks, because
-        # they are indistinguishable from copy anyway.
-
-        if not self.changed(
-            path_info, {self.PARAM_CHECKSUM: checksum}
-        ) and self._is_same_link_as_cache(path_info):
-            msg = "File '{}' didn't change"
-            return False
-        return True
-
     def _get_cache_type(self, path_info):
         if self.cache_type_confirmed:
             return self.cache_types[0]
