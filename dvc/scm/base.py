@@ -11,28 +11,42 @@ class SCMError(DvcException):
     """Base class for source control management errors."""
 
 
-class FileNotInRepoError(DvcException):
+class FileNotInRepoError(SCMError):
     """Thrown when trying to find .gitignore for a file that is not in a scm
     repository.
     """
 
 
-class FileNotInCommitError(DvcException):
+class FileNotInCommitError(SCMError):
     """Thrown when trying to find a file/directory that is not
     in the specified commit in the repository.
     """
 
 
-class FileNotInTargetSubdirError(DvcException):
+class FileNotInTargetSubdirError(SCMError):
     """Thrown when trying to place .gitignore for a file that not in
     the file subdirectory."""
+
+
+class CloneError(SCMError):
+    def __init__(self, url, path, cause):
+        super(CloneError, self).__init__(
+            "Failed to clone repo '{}' to '{}'".format(url, path), cause=cause
+        )
+
+
+class RevError(SCMError):
+    def __init__(self, url, rev, cause):
+        super(RevError, self).__init__(
+            "Failed to access revision '{}' for repo '{}'".format(rev, url),
+            cause=cause,
+        )
 
 
 class Base(object):
     """Base class for source control management driver implementations."""
 
-    def __init__(self, root_dir=os.curdir, repo=None):
-        self.repo = repo
+    def __init__(self, root_dir=os.curdir):
         self.root_dir = os.path.realpath(root_dir)
 
     def __repr__(self):
