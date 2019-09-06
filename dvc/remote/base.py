@@ -680,19 +680,44 @@ class RemoteBASE(object):
         self.remove(path_info)
 
     def _checkout_file(
-        self, path_info, checksum, force, progress_callback=None
+        self,
+        path_info,
+        checksum,
+        force,
+        progress_callback=None,
+        save_link=True,
     ):
-        cache_info = self.checksum_to_path_info(checksum)
-        if self.exists(path_info):
-            msg = "data '{}' exists. Removing before checkout."
-            logger.warning(msg.format(str(path_info)))
+        # NOTE: In case if path_info is already cached and path_info's
+        # link type matches cache link type, we would like to avoid
+        # relinking.
+        if self.changed(
+            path_info, {self.PARAM_CHECKSUM: checksum}
+        ) or not self._link_matches(path_info):
             self.safe_remove(path_info, force=force)
 
-        self.link(cache_info, path_info)
-        self.state.save_link(path_info)
-        self.state.save(path_info, checksum)
+            cache_info = self.checksum_to_path_info(checksum)
+            self.link(cache_info, path_info)
+
+            if save_link:
+                self.state.save_link(path_info)
+
+            self.state.save(path_info, checksum)
+        else:
+            # NOTE: performing (un)protection costs us +/- the same as checking
+            # if path_info is protected. Instead of implementing logic,
+            # just (un)protect according to self.protected.
+            if self.protected:
+                self.protect(path_info)
+            else:
+                # NOTE dont allow copy, because we checked before that link
+                # type matches cache, and we don't want data duplication
+                self.unprotect(path_info, allow_copy=False)
+
         if progress_callback:
             progress_callback(str(path_info))
+
+    def _link_matches(self, path_info):
+        return True
 
     def makedirs(self, path_info):
         raise NotImplementedError
@@ -712,17 +737,14 @@ class RemoteBASE(object):
         for entry in dir_info:
             relative_path = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
-            entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
-
-            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
-            if self.changed(entry_info, entry_checksum_info):
-                if self.exists(entry_info):
-                    self.safe_remove(entry_info, force=force)
-                self.link(entry_cache_info, entry_info)
-                self.state.save(entry_info, entry_checksum)
-            if progress_callback:
-                progress_callback(str(entry_info))
+            self._checkout_file(
+                entry_info,
+                entry_checksum,
+                force,
+                progress_callback,
+                save_link=False,
+            )
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -803,7 +825,7 @@ class RemoteBASE(object):
         return 1
 
     @staticmethod
-    def unprotect(path_info):
+    def unprotect(path_info, allow_copy=True):
         pass
 
     def _get_unpacked_dir_names(self, checksums):
