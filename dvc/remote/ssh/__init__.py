@@ -258,9 +258,7 @@ class RemoteSSH(RemoteBASE):
             if "b" in mode:
                 yield fd
             else:
-                yield io.TextIOWrapper(
-                    fd, encoding=encoding, write_through=True
-                )
+                yield io.TextIOWrapper(fd, encoding=encoding)
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
