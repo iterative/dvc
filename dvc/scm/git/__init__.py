@@ -12,6 +12,8 @@ from dvc.scm.base import (
     SCMError,
     FileNotInRepoError,
     FileNotInTargetSubdirError,
+    CloneError,
+    RevError,
 )
 from dvc.scm.git.tree import GitTree
 
@@ -32,11 +34,11 @@ class Git(Base):
     GITIGNORE = ".gitignore"
     GIT_DIR = ".git"
 
-    def __init__(self, root_dir=os.curdir, repo=None):
+    def __init__(self, root_dir=os.curdir):
         """Git class constructor.
         Requires `Repo` class from `git` module (from gitpython package).
         """
-        super(Git, self).__init__(root_dir, repo=repo)
+        super(Git, self).__init__(root_dir)
 
         import git
         from git.exc import InvalidGitRepositoryError
@@ -55,6 +57,32 @@ class Git(Base):
 
         self.ignored_paths = []
         self.files_to_track = set()
+
+    @staticmethod
+    def clone(url, to_path, rev=None):
+        import git
+
+        try:
+            tmp_repo = git.Repo.clone_from(
+                url,
+                to_path,
+                env=fix_env(None),  # needed before we can fix it in __init__
+                no_single_branch=True,
+            )
+            tmp_repo.close()
+        except git.exc.GitCommandError as exc:
+            raise CloneError(url, to_path, exc)
+
+        # NOTE: using our wrapper to make sure that env is fixed in __init__
+        repo = Git(to_path)
+
+        if rev:
+            try:
+                repo.checkout(rev)
+            except git.exc.GitCommandError as exc:
+                raise RevError(url, rev, exc)
+
+        return repo
 
     @staticmethod
     def is_repo(root_dir):

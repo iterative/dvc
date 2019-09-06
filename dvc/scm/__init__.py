@@ -12,7 +12,7 @@ class NoSCM(Base):
     pass
 
 
-def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
+def SCM(root_dir):  # pylint: disable=invalid-name
     """Returns SCM instance that corresponds to a repo at the specified
     path.
 
@@ -24,6 +24,6 @@ def SCM(root_dir, repo=None):  # pylint: disable=invalid-name
         dvc.scm.base.Base: SCM instance.
     """
     if Git.is_repo(root_dir) or Git.is_submodule(root_dir):
-        return Git(root_dir, repo=repo)
+        return Git(root_dir)
 
-    return NoSCM(root_dir, repo=repo)
+    return NoSCM(root_dir)

@@ -66,7 +66,7 @@ class Repo(object):
 
         self.config = Config(self.dvc_dir)
 
-        self.scm = SCM(self.root_dir, repo=self)
+        self.scm = SCM(self.root_dir)
 
         self.tree = WorkingTree(self.root_dir)
 
@@ -471,3 +471,15 @@ class Repo(object):
     @cached_property
     def dvcignore(self):
         return DvcIgnoreFilter(self.root_dir)
+
+    def close(self):
+        self.scm.close()
+
+    @staticmethod
+    def clone(url, to_path, rev=None):
+        from dvc.scm.git import Git
+
+        git = Git.clone(url, to_path, rev=rev)
+        git.close()
+
+        return Repo(to_path)
