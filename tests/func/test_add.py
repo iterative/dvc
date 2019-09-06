@@ -553,3 +553,81 @@ def test_readding_dir_should_not_unprotect_all(dvc_repo, repo_dir):
 
     assert not unprotect_spy.mock.called
     assert System.is_symlink(new_file)
+
+
+def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
+    dvc_repo.cache.local.cache_types = ["copy"]
+
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.BAR)
+
+    shutil.copy(repo_dir.BAR, repo_dir.FOO)
+
+    copy_spy = spy(shutil.copyfile)
+
+    RemoteLOCAL.CACHE_TYPE_MAP["copy"] = copy_spy
+    dvc_repo.add(repo_dir.FOO)
+
+    assert copy_spy.mock.call_count == 0
+
+
+@pytest.mark.parametrize(
+    "link,new_link,link_test_func",
+    [
+        ("hardlink", "copy", lambda path: not System.is_hardlink(path)),
+        ("symlink", "copy", lambda path: not System.is_symlink(path)),
+        ("copy", "hardlink", System.is_hardlink),
+        ("copy", "symlink", System.is_symlink),
+    ],
+)
+def test_should_relink_on_repeated_add(
+    link, new_link, link_test_func, repo_dir, dvc_repo
+):
+    dvc_repo.cache.local.cache_types = [link]
+
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.BAR)
+
+    os.remove(repo_dir.FOO)
+    RemoteLOCAL.CACHE_TYPE_MAP[link](repo_dir.BAR, repo_dir.FOO)
+
+    dvc_repo.cache.local.cache_types = [new_link]
+
+    dvc_repo.add(repo_dir.FOO)
+
+    assert link_test_func(repo_dir.FOO)
+
+
+@pytest.mark.parametrize(
+    "link, link_func",
+    [("hardlink", System.hardlink), ("symlink", System.symlink)],
+)
+def test_should_relink_single_file_in_dir(link, link_func, dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = [link]
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+
+    # NOTE status triggers unpacked dir creation for hardlink case
+    dvc_repo.status()
+
+    dvc_repo.unprotect(repo_dir.DATA_SUB)
+
+    link_spy = spy(link_func)
+    RemoteLOCAL.CACHE_TYPE_MAP[link] = link_spy
+    dvc_repo.add(repo_dir.DATA_DIR)
+
+    assert link_spy.mock.call_count == 1
+
+
+@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
+def test_should_protect_on_repeated_add(link, dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = [link]
+    dvc_repo.cache.local.protected = True
+
+    dvc_repo.add(repo_dir.FOO)
+
+    dvc_repo.unprotect(repo_dir.FOO)
+
+    dvc_repo.add(repo_dir.FOO)
+
+    assert not os.access(repo_dir.FOO, os.W_OK)

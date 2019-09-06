@@ -115,6 +115,143 @@ class RemoteLOCAL(RemoteBASE):
     def makedirs(self, path_info):
         makedirs(path_info, exist_ok=True, mode=self._dir_mode)
 
+<<<<<<< HEAD
+||||||| merged common ancestors
+    def link(self, from_info, to_info):
+        self._link(from_info, to_info, self.cache_types)
+
+    def _link(self, from_info, to_info, link_types):
+        from_path = from_info.fspath
+        to_path = to_info.fspath
+
+        assert os.path.isfile(from_path)
+
+        dname = os.path.dirname(to_path)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        # NOTE: just create an empty file for an empty cache
+        if os.path.getsize(from_path) == 0:
+            open(to_path, "w+").close()
+
+            msg = "Created empty file: {} -> {}".format(from_path, to_path)
+            logger.debug(msg)
+            return
+
+        self._try_links(from_info, to_info, link_types)
+
+    @classmethod
+    def _get_link_method(cls, link_type):
+        try:
+            return cls.CACHE_TYPE_MAP[link_type]
+        except KeyError:
+            raise DvcException(
+                "Cache type: '{}' not supported!".format(link_type)
+            )
+
+    def _do_link(self, from_info, to_info, link_method):
+        if self.exists(to_info):
+            raise DvcException("Link '{}' already exists!".format(to_info))
+        else:
+            link_method(from_info.fspath, to_info.fspath)
+
+        if self.protected:
+            self.protect(to_info)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_info,
+            to_info,
+        )
+        logger.debug(msg)
+
+    @slow_link_guard
+    def _try_links(self, from_info, to_info, link_types):
+        i = len(link_types)
+        while i > 0:
+            link_method = self._get_link_method(link_types[0])
+            try:
+                self._do_link(from_info, to_info, link_method)
+                return
+
+            except DvcException as exc:
+                msg = "Cache type '{}' is not supported: {}"
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
+                i -= 1
+
+        raise DvcException("no possible cache types left to try out.")
+
+=======
+    def link(self, from_info, to_info):
+        self._link(from_info, to_info, self.cache_types)
+
+    def _link(self, from_info, to_info, link_types):
+        from_path = from_info.fspath
+        to_path = to_info.fspath
+
+        assert os.path.isfile(from_path)
+
+        dname = os.path.dirname(to_path)
+        if not os.path.exists(dname):
+            os.makedirs(dname)
+
+        # NOTE: just create an empty file for an empty cache
+        if os.path.getsize(from_path) == 0:
+            open(to_path, "w+").close()
+
+            msg = "Created empty file: {} -> {}".format(from_path, to_path)
+            logger.debug(msg)
+            return
+
+        self._try_links(from_info, to_info, link_types)
+
+    @classmethod
+    def _get_link_method(cls, link_type):
+        try:
+            return cls.CACHE_TYPE_MAP[link_type]
+        except KeyError:
+            raise DvcException(
+                "Cache type: '{}' not supported!".format(link_type)
+            )
+
+    def _do_link(self, from_info, to_info, link_method):
+        if self.exists(to_info):
+            raise DvcException("Link '{}' already exists!".format(to_info))
+        else:
+            link_method(from_info.fspath, to_info.fspath)
+
+        if self.protected:
+            self.protect(to_info)
+
+        msg = "Created {}'{}': {} -> {}".format(
+            "protected " if self.protected else "",
+            self.cache_types[0],
+            from_info,
+            to_info,
+        )
+        logger.debug(msg)
+
+    @slow_link_guard
+    def _try_links(self, from_info, to_info, link_types):
+        i = len(link_types)
+        while i > 0:
+            link_method = self._get_link_method(link_types[0])
+            try:
+                self._do_link(from_info, to_info, link_method)
+                self.cache_type_confirmed = True
+                return
+
+            except DvcException as exc:
+                msg = "Cache type '{}' is not supported: {}"
+                logger.debug(msg.format(link_types[0], str(exc)))
+                del link_types[0]
+                i -= 1
+
+        raise DvcException("no possible cache types left to try out.")
+
+>>>>>>> master
     def already_cached(self, path_info):
         assert path_info.scheme in ["", "local"]
 
@@ -425,19 +562,22 @@ class RemoteLOCAL(RemoteBASE):
             logger.warning(msg)
 
     @staticmethod
-    def _unprotect_file(path):
+    def _unprotect_file(path, allow_copy=True):
         if System.is_symlink(path) or System.is_hardlink(path):
-            logger.debug("Unprotecting '{}'".format(path))
-            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
+            if allow_copy:
+                logger.debug("Unprotecting '{}'".format(path))
+                tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
 
-            # The operations order is important here - if some application
-            # would access the file during the process of copyfile then it
-            # would get only the part of file. So, at first, the file should be
-            # copied with the temporary name, and then original file should be
-            # replaced by new.
-            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
-            remove(path)
-            os.rename(tmp, path)
+                # The operations order is important here - if some application
+                # would access the file during the process of copyfile then it
+                # would get only the part of file. So, at first, the file
+                # should be copied with the temporary name, and then
+                # original file should be replaced by new.
+                copyfile(
+                    path, tmp, name="Unprotecting '{}'".format(relpath(path))
+                )
+                remove(path)
+                os.rename(tmp, path)
 
         else:
             logger.debug(
@@ -447,11 +587,11 @@ class RemoteLOCAL(RemoteBASE):
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
-    def _unprotect_dir(self, path):
+    def _unprotect_dir(self, path, allow_copy=True):
         for fname in walk_files(path, self.repo.dvcignore):
-            RemoteLOCAL._unprotect_file(fname)
+            self._unprotect_file(fname, allow_copy)
 
-    def unprotect(self, path_info):
+    def unprotect(self, path_info, allow_copy=True):
         path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
@@ -459,9 +599,9 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         if os.path.isdir(path):
-            self._unprotect_dir(path)
+            self._unprotect_dir(path, allow_copy)
         else:
-            RemoteLOCAL._unprotect_file(path)
+            self._unprotect_file(path, allow_copy)
 
     @staticmethod
     def protect(path_info):
@@ -535,3 +675,36 @@ class RemoteLOCAL(RemoteBASE):
             if self.is_dir_checksum(c):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
+
+    def _get_cache_type(self, path_info):
+        if self.cache_type_confirmed:
+            return self.cache_types[0]
+
+        workspace_file = path_info.with_name("." + uuid())
+        test_cache_file = self.path_info / ".cache_type_test_file"
+        if not self.exists(test_cache_file):
+            with open(fspath_py35(test_cache_file), "wb") as fobj:
+                fobj.write(bytes(1))
+        try:
+            self.link(test_cache_file, workspace_file)
+        finally:
+            self.remove(workspace_file)
+            self.remove(test_cache_file)
+
+        self.cache_type_confirmed = True
+        return self.cache_types[0]
+
+    def _link_matches(self, path_info):
+        is_hardlink = System.is_hardlink(path_info)
+        is_symlink = System.is_symlink(path_info)
+        is_copy_or_reflink = not is_hardlink and not is_symlink
+
+        cache_type = self._get_cache_type(path_info)
+
+        if cache_type == "symlink":
+            return is_symlink
+
+        if cache_type == "hardlink":
+            return is_hardlink
+
+        return is_copy_or_reflink
