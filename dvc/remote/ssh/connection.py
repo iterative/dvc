@@ -295,7 +295,15 @@ class SSHConnection:
         self.sftp.symlink(src, dest)
 
     def reflink(self, src, dest):
-        self.execute("cp --reflink {} {}".format(src, dest))
+        if self.uname == "Linux":
+            return self.execute("cp --reflink {} {}".format(src, dest))
+
+        if self.uname == "Darwin":
+            return self.execute("cp -c {} {}".format(src, dest))
+
+        raise DvcException(
+            "'{}' is not supported as a SSH remote".format(self.uname)
+        )
 
     def hardlink(self, src, dest):
         self.execute("ln {} {}".format(src, dest))
