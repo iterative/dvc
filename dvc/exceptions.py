@@ -60,22 +60,12 @@ class OutputNotFoundError(DvcException):
         output (unicode): path to the file/directory.
     """
 
-    def __init__(self, out):
-        import tempfile
-        import fnmatch
-        import os
-
-        msg = "unable to find DVC-file with output '{}'".format(relpath(out))
-
-        def is_dvc_repo(out):
-            tempdir = tempfile.gettempdir()
-            pattern = os.path.join(tempdir, "*dvc-repo*")
-            return fnmatch.fnmatch(out, pattern)
-
-        if is_dvc_repo(out):
-            msg = "unable to find DVC-file with given output path"
-
-        super(OutputNotFoundError, self).__init__(msg)
+    def __init__(self, output):
+        super(OutputNotFoundError, self).__init__(
+            "unable to find DVC-file with output '{path}'".format(
+                path=relpath(output)
+            )
+        )
 
 
 class StagePathAsOutputError(DvcException):
