@@ -866,7 +866,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
         ret = main(["remote", "add", "myrepo", cache])
         self.assertEqual(ret, 0)
-        ret = main(["remote", "modify", "myrepo", "type", "hardlink"])
+        ret = main(["remote", "modify", "myrepo", "type", self.cache_type])
         self.assertEqual(ret, 0)
 
         remote_name = "myremote"
