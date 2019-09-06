@@ -721,7 +721,7 @@ class RemoteBASE(object):
         if self.protected:
             self.protect(path_info)
         else:
-            self.unprotect(path_info, False)
+            self.unprotect(path_info, allow_copy=False)
 
     def makedirs(self, path_info):
         raise NotImplementedError
