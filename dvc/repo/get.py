@@ -4,7 +4,12 @@ import shortuuid
 
 from dvc.stage import Stage
 from dvc.config import Config
-from dvc.exceptions import NotDvcRepoError, UrlNotDvcRepoError, GetDVCFileError
+from dvc.exceptions import (
+    NotDvcRepoError,
+    UrlNotDvcRepoError,
+    GetDVCFileError,
+    OutputNotFoundError,
+)
 from dvc.path_info import PathInfo
 from dvc.external_repo import external_repo
 from dvc.state import StateNoop
@@ -59,5 +64,7 @@ def get(url, path, out=None, rev=None):
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
+    except OutputNotFoundError:
+        raise OutputNotFoundError(path)
     finally:
         remove(tmp_dir)
