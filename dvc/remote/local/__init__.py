@@ -500,7 +500,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _unprotect_dir(self, path, allow_copy=True):
         for fname in walk_files(path, self.repo.dvcignore):
-            RemoteLOCAL._unprotect_file(fname, allow_copy)
+            self._unprotect_file(fname, allow_copy)
 
     def unprotect(self, path_info, allow_copy=True):
         path = path_info.fspath
@@ -599,7 +599,6 @@ class RemoteLOCAL(RemoteBASE):
             path_info, {self.PARAM_CHECKSUM: checksum}
         ) and self._is_same_link_as_cache(path_info):
             msg = "File '{}' didn't change"
-            logger.debug(msg.format(str(path_info)))
             return False
         return True
 
