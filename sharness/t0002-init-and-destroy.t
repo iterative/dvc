@@ -19,9 +19,9 @@ test_expect_success 'Track a simple file' '
 '
 
 test_expect_success 'dvc destroy' '
-    dvc destroy <<< y &&
+    dvc destroy -f &&
     [[ ! -d .dvc ]] &&
-    [[ ! -f file1.txt.dvc ]]
+    [[ ! -f file1.txt.dvc ]] &&
     [[ -f file1.txt ]]
 '
 
