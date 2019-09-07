@@ -5,8 +5,10 @@ import posixpath
 import platform
 import pytest
 import filecmp
+import tempfile
 
 from dvc.system import System
+from dvc.command.version import CmdVersion
 
 
 here = os.path.abspath(os.path.dirname(__file__))
@@ -73,7 +75,9 @@ def test_walk(tmp_path, ssh):
 
 
 @pytest.mark.skipif(
-    platform.system() != "Darwin", reason="Only works on OSX (because of APFS)"
+    CmdVersion.get_fs_type(tempfile.gettempdir())[0]
+    not in ["xfs", "apfs", "btrfs"],
+    reason="Reflinks only work in specified file systems",
 )
 def test_reflink(repo_dir, ssh):
     ssh.reflink("foo", "link")
@@ -82,6 +86,10 @@ def test_reflink(repo_dir, ssh):
     assert not System.is_hardlink("link")
 
 
+@pytest.mark.skipif(
+    platform.system() != "Windows",
+    reason="sftp symlink is not supported on Windows",
+)
 def test_symlink(repo_dir, ssh):
     ssh.symlink("foo", "link")
     assert System.is_symlink("link")

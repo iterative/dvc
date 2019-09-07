@@ -113,6 +113,7 @@ tests_requirements = [
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
     "flake8",
+    "psutil",
     "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
