@@ -87,7 +87,7 @@ def test_reflink(repo_dir, ssh):
 
 
 @pytest.mark.skipif(
-    platform.system() != "Windows",
+    platform.system() == "Windows",
     reason="sftp symlink is not supported on Windows",
 )
 def test_symlink(repo_dir, ssh):
