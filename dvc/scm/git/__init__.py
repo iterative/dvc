@@ -241,7 +241,7 @@ class Git(Base):
 
     def _install_hook(self, name, cmd):
         command = (
-            '[ "$3" == "0" ]'
+            '[ "$3" = "0" ]'
             ' || [ -z "$(git ls-files .dvc)" ]'
             " || exec dvc {}".format(cmd)
         )
