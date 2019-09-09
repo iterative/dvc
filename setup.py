@@ -138,7 +138,11 @@ setup(
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ":python_version=='2.7'": ["futures", "pathlib2", "flufl.lock==2.4.1"],
+        ":python_version=='2.7'": [
+            "futures",
+            "pathlib2",
+            "zc.lockfile>=1.2.1",
+        ],
         ":python_version>='3.0'": ["flufl.lock>=3.2"],
         "tests": tests_requirements,
     },
