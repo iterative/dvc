@@ -39,7 +39,7 @@ class TestInstall(object):
         expected_script = (
             "#!/bin/sh\n"
             "echo hello\n"
-            '[ "$3" == "0" ]'
+            '[ "$3" = "0" ]'
             ' || [ -z "$(git ls-files .dvc)" ]'
             " || exec dvc checkout\n"
         )
@@ -53,7 +53,7 @@ class TestInstall(object):
 
         expected_script = (
             "#!/bin/sh\n"
-            '[ "$3" == "0" ]'
+            '[ "$3" = "0" ]'
             ' || [ -z "$(git ls-files .dvc)" ]'
             " || exec dvc checkout\n"
         )
