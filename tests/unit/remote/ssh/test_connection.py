@@ -95,11 +95,19 @@ def test_symlink(repo_dir, ssh):
     assert System.is_symlink("link")
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="hardlink is temporarily not supported on Windows",
+)
 def test_hardlink(repo_dir, ssh):
     ssh.hardlink("foo", "link")
     assert System.is_hardlink("link")
 
 
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="copy is temporarily not supported on Windows",
+)
 def test_copy(repo_dir, ssh):
     ssh.copy("foo", "link")
     assert filecmp.cmp("foo", "link")
