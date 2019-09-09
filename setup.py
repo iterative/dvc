@@ -117,8 +117,7 @@ tests_requirements = [
     "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
-    # Using fork of mock-ssh-server that supports `lstat`
-    "mock-ssh-server @ git+https://github.com/iterative/mock-ssh-server@master#egg=mock-ssh-server",  # noqa: E501
+    "mock-ssh-server>=0.6.0",
     "moto>=1.3.14.dev55",
     "rangehttpserver==1.2.0",
 ]
