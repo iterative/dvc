@@ -107,7 +107,8 @@ class RemoteLOCAL(RemoteBASE):
 
         return self.checksum_to_path_info(md5).url
 
-    def exists(self, path_info):
+    @staticmethod
+    def exists(path_info):
         assert path_info.scheme == "local"
         return os.path.lexists(fspath_py35(path_info))
 
@@ -135,13 +136,16 @@ class RemoteLOCAL(RemoteBASE):
 
         return False
 
-    def isfile(self, path_info):
+    @staticmethod
+    def isfile(path_info):
         return os.path.isfile(fspath_py35(path_info))
 
-    def isdir(self, path_info):
+    @staticmethod
+    def isdir(path_info):
         return os.path.isdir(fspath_py35(path_info))
 
-    def getsize(self, path_info):
+    @staticmethod
+    def getsize(path_info):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk(self, path_info):
@@ -170,10 +174,12 @@ class RemoteLOCAL(RemoteBASE):
 
         move(from_info, to_info, mode=mode)
 
-    def copy(self, from_info, to_info):
+    @staticmethod
+    def copy(from_info, to_info):
         System.copy(from_info, to_info)
 
-    def symlink(self, from_info, to_info):
+    @staticmethod
+    def symlink(from_info, to_info):
         System.symlink(from_info, to_info)
 
     def hardlink(self, from_info, to_info):
@@ -202,7 +208,8 @@ class RemoteLOCAL(RemoteBASE):
 
         System.hardlink(from_info, to_info)
 
-    def reflink(self, from_info, to_info):
+    @staticmethod
+    def reflink(from_info, to_info):
         System.reflink(from_info, to_info)
 
     def cache_exists(self, checksums, jobs=None, name=None):
@@ -238,7 +245,8 @@ class RemoteLOCAL(RemoteBASE):
             name=name,
         )
 
-    def open(self, path_info, mode="r", encoding=None):
+    @staticmethod
+    def open(path_info, mode="r", encoding=None):
         return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
     def _group(self, checksum_infos, show_checksums=False):
