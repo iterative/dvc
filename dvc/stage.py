@@ -139,6 +139,7 @@ class Stage(object):
     PARAM_OUTS = "outs"
     PARAM_LOCKED = "locked"
     PARAM_META = "meta"
+    PARAM_ALWAYS_CHANGED = "always_changed"
 
     SCHEMA = {
         Optional(PARAM_MD5): Or(str, None),
@@ -148,6 +149,7 @@ class Stage(object):
         Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
         Optional(PARAM_LOCKED): bool,
         Optional(PARAM_META): object,
+        Optional(PARAM_ALWAYS_CHANGED): bool,
     }
 
     TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
@@ -164,6 +166,7 @@ class Stage(object):
         locked=False,
         tag=None,
         state=None,
+        always_changed=False,
     ):
         if deps is None:
             deps = []
@@ -179,6 +182,7 @@ class Stage(object):
         self.md5 = md5
         self.locked = locked
         self.tag = tag
+        self.always_changed = always_changed
         self._state = state or {}
 
     def __repr__(self):
@@ -242,6 +246,9 @@ class Stage(object):
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )
+            return True
+
+        if self.always_changed:
             return True
 
         for dep in self.deps:
@@ -457,6 +464,7 @@ class Stage(object):
             wdir=wdir,
             cmd=kwargs.get("cmd", None),
             locked=kwargs.get("locked", False),
+            always_changed=kwargs.get("always_changed", False),
         )
 
         Stage._fill_stage_outputs(stage, **kwargs)
@@ -515,6 +523,7 @@ class Stage(object):
                 not ignore_build_cache
                 and stage.is_cached
                 and not stage.is_callback
+                and not stage.always_changed
             ):
                 logger.info("Stage is cached, skipping.")
                 return None
@@ -619,6 +628,7 @@ class Stage(object):
             md5=d.get(Stage.PARAM_MD5),
             locked=d.get(Stage.PARAM_LOCKED, False),
             tag=tag,
+            always_changed=d.get(Stage.PARAM_ALWAYS_CHANGED, False),
             state=state,
         )
 
@@ -643,6 +653,7 @@ class Stage(object):
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
                 Stage.PARAM_META: self._state.get("meta"),
+                Stage.PARAM_ALWAYS_CHANGED: self.always_changed,
             }.items()
             if value
         }
@@ -843,6 +854,7 @@ class Stage(object):
                 if (
                     not force
                     and not self.is_callback
+                    and not self.always_changed
                     and self._already_cached()
                 ):
                     self.checkout()
@@ -889,7 +901,7 @@ class Stage(object):
         if self.changed_md5():
             ret.append("changed checksum")
 
-        if self.is_callback:
+        if self.is_callback or self.always_changed:
             ret.append("always changed")
 
         if ret:

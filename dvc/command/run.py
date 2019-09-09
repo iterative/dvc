@@ -51,6 +51,7 @@ class CmdRun(CmdBase):
                 no_commit=self.args.no_commit,
                 outs_persist=self.args.outs_persist,
                 outs_persist_no_cache=self.args.outs_persist_no_cache,
+                always_changed=self.args.always_changed,
             )
         except DvcException:
             logger.exception("failed to run command")
@@ -188,6 +189,12 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory that will not be "
         "removed upon repro (do not put into DVC cache).",
+    )
+    run_parser.add_argument(
+        "--always-changed",
+        action="store_true",
+        default=False,
+        help="Always consider this DVC-file as changed.",
     )
     run_parser.add_argument(
         "command", nargs=argparse.REMAINDER, help="Command to execute."

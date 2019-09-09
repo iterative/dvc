@@ -32,6 +32,7 @@ def test_run(mocker, dvc_repo):
             "outs-persist",
             "--outs-persist-no-cache",
             "outs-persist-no-cache",
+            "--always-changed",
             "command",
         ]
     )
@@ -58,6 +59,7 @@ def test_run(mocker, dvc_repo):
         ignore_build_cache=True,
         remove_outs=True,
         no_commit=True,
+        always_changed=True,
         cmd="command",
     )
 
@@ -83,6 +85,7 @@ def test_run_args_from_cli(mocker, dvc_repo):
         ignore_build_cache=False,
         remove_outs=False,
         no_commit=False,
+        always_changed=False,
         cmd="echo foo",
     )
 
@@ -108,5 +111,6 @@ def test_run_args_with_spaces(mocker, dvc_repo):
         ignore_build_cache=False,
         remove_outs=False,
         no_commit=False,
+        always_changed=False,
         cmd='echo "foo bar"',
     )

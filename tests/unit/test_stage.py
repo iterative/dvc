@@ -107,3 +107,10 @@ def test_stage_run_ignore_sigint(mocker):
     assert communicate.called_once_with()
     signal_mock.assert_any_call(signal.SIGINT, signal.SIG_IGN)
     assert signal.getsignal(signal.SIGINT) == signal.default_int_handler
+
+
+def test_always_changed():
+    stage = Stage(None, "path", always_changed=True)
+    stage.save()
+    assert stage.changed()
+    assert stage.status()["path"] == ["always changed"]
