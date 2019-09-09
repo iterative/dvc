@@ -23,11 +23,6 @@ class FileNotInCommitError(SCMError):
     """
 
 
-class FileNotInTargetSubdirError(SCMError):
-    """Thrown when trying to place .gitignore for a file that not in
-    the file subdirectory."""
-
-
 class CloneError(SCMError):
     def __init__(self, url, path, cause):
         super(CloneError, self).__init__(

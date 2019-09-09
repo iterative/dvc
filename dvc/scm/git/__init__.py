@@ -11,7 +11,6 @@ from dvc.scm.base import (
     Base,
     SCMError,
     FileNotInRepoError,
-    FileNotInTargetSubdirError,
     CloneError,
     RevError,
 )
@@ -104,21 +103,11 @@ class Git(Base):
     def ignore_file(self):
         return self.GITIGNORE
 
-    def _get_gitignore(self, path, ignore_file_dir=None):
-        if not ignore_file_dir:
-            ignore_file_dir = os.path.dirname(os.path.realpath(path))
+    def _get_gitignore(self, path):
+        ignore_file_dir = os.path.dirname(path)
 
         assert os.path.isabs(path)
         assert os.path.isabs(ignore_file_dir)
-
-        if not path.startswith(ignore_file_dir):
-            msg = (
-                "{} file has to be located in one of '{}' subdirectories"
-                ", not outside '{}'"
-            )
-            raise FileNotInTargetSubdirError(
-                msg.format(self.GITIGNORE, path, ignore_file_dir)
-            )
 
         entry = relpath(path, ignore_file_dir).replace(os.sep, "/")
         # NOTE: using '/' prefix to make path unambiguous
@@ -143,8 +132,7 @@ class Git(Base):
         return False
 
     def ignore(self, path):
-        base_dir = os.path.dirname(path)
-        entry, gitignore = self._get_gitignore(path, base_dir)
+        entry, gitignore = self._get_gitignore(path)
 
         if self._ignored(entry, gitignore):
             return
