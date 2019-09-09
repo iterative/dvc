@@ -47,9 +47,10 @@ class RemoteSSH(RemoteBASE):
     # We use conservative setting of 4 instead to not exhaust max sessions.
     CHECKSUM_JOBS = 4
 
+    DEFAULT_CACHE_TYPES = ["copy"]
+
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
-
         url = config.get(Config.SECTION_REMOTE_URL)
         if url:
             parsed = urlparse(url)
@@ -164,12 +165,54 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(path_info) as ssh:
             return ssh.isdir(path_info.path)
 
+    def isfile(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.isfile(path_info.path)
+
+    def getsize(self, path_info):
+        with self.ssh(path_info) as ssh:
+            return ssh.getsize(path_info.path)
+
     def copy(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.copy(from_info.path, to_info.path)
+
+    def symlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        with self.ssh(from_info) as ssh:
+            ssh.symlink(from_info.path, to_info.path)
+
+    def hardlink(self, from_info, to_info):
+        if not from_info.scheme == to_info.scheme == self.scheme:
+            raise NotImplementedError
+
+        # See dvc/remote/local/__init__.py - hardlink()
+        if self.getsize(from_info) == 0:
+
+            with self.ssh(to_info) as ssh:
+                ssh.sftp.open(to_info.path, "w").close()
+
+            logger.debug(
+                "Created empty file: {src} -> {dest}".format(
+                    src=str(from_info), dest=str(to_info)
+                )
+            )
+            return
+
+        with self.ssh(from_info) as ssh:
+            ssh.hardlink(from_info.path, to_info.path)
+
+    def reflink(self, from_info, to_info):
         if from_info.scheme != self.scheme or to_info.scheme != self.scheme:
             raise NotImplementedError
 
         with self.ssh(from_info) as ssh:
-            ssh.cp(from_info.path, to_info.path)
+            ssh.reflink(from_info.path, to_info.path)
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
@@ -207,12 +250,12 @@ class RemoteSSH(RemoteBASE):
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):
-        assert mode in {"r", "rt", "rb"}
+        assert mode in {"r", "rt", "rb", "wb"}
 
         with self.ssh(path_info) as ssh, closing(
-            ssh.sftp.file(path_info.path, mode="r")
+            ssh.sftp.open(path_info.path, mode)
         ) as fd:
-            if mode == "rb":
+            if "b" in mode:
                 yield fd
             else:
                 yield io.TextIOWrapper(fd, encoding=encoding)

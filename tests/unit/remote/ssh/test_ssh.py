@@ -7,7 +7,10 @@ from unittest import TestCase
 from mock import patch, mock_open
 import pytest
 
+from tests.func.test_data_cloud import get_ssh_url_mocked
+
 from dvc.remote.ssh import RemoteSSH
+from dvc.system import System
 
 
 class TestRemoteSSH(TestCase):
@@ -182,3 +185,30 @@ def test_ssh_gss_auth(mock_file, mock_exists, config, expected_gss_auth):
     mock_exists.assert_called_with(RemoteSSH.ssh_config_filename())
     mock_file.assert_called_with(RemoteSSH.ssh_config_filename())
     assert remote.gss_auth == expected_gss_auth
+
+
+def test_hardlink_optimization(repo_dir, ssh_server):
+    port = ssh_server.test_creds["port"]
+    user = ssh_server.test_creds["username"]
+
+    config = {
+        "url": get_ssh_url_mocked(user, port),
+        "port": port,
+        "user": user,
+        "keyfile": ssh_server.test_creds["key_filename"],
+    }
+    remote = RemoteSSH(None, config)
+
+    from_info = remote.path_info / "empty"
+    to_info = remote.path_info / "link"
+
+    with remote.open(from_info, "wb"):
+        pass
+
+    if os.name == "nt":
+        link_path = "c:" + to_info.path.replace("/", "\\")
+    else:
+        link_path = to_info.path
+
+    remote.hardlink(from_info, to_info)
+    assert not System.is_hardlink(link_path)

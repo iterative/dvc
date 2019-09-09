@@ -565,12 +565,12 @@ def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
 
     shutil.copy(repo_dir.BAR, repo_dir.FOO)
 
-    copy_spy = spy(shutil.copyfile)
+    copy_spy = spy(dvc_repo.cache.local.copy)
 
-    RemoteLOCAL.CACHE_TYPE_MAP["copy"] = copy_spy
-    dvc_repo.add(repo_dir.FOO)
+    with patch.object(dvc_repo.cache.local, "copy", copy_spy):
+        dvc_repo.add(repo_dir.FOO)
 
-    assert copy_spy.mock.call_count == 0
+        assert copy_spy.mock.call_count == 0
 
 
 @pytest.mark.parametrize(
@@ -585,13 +585,13 @@ def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
 def test_should_relink_on_repeated_add(
     link, new_link, link_test_func, repo_dir, dvc_repo
 ):
-    dvc_repo.cache.local.cache_types = [link]
+    dvc_repo.config.set("cache", "type", link)
 
     dvc_repo.add(repo_dir.FOO)
     dvc_repo.add(repo_dir.BAR)
 
     os.remove(repo_dir.FOO)
-    RemoteLOCAL.CACHE_TYPE_MAP[link](repo_dir.BAR, repo_dir.FOO)
+    getattr(dvc_repo.cache.local, link)(repo_dir.BAR, repo_dir.FOO)
 
     dvc_repo.cache.local.cache_types = [new_link]
 
@@ -615,10 +615,11 @@ def test_should_relink_single_file_in_dir(link, link_func, dvc_repo, repo_dir):
     dvc_repo.unprotect(repo_dir.DATA_SUB)
 
     link_spy = spy(link_func)
-    RemoteLOCAL.CACHE_TYPE_MAP[link] = link_spy
-    dvc_repo.add(repo_dir.DATA_DIR)
 
-    assert link_spy.mock.call_count == 1
+    with patch.object(dvc_repo.cache.local, link, link_spy):
+        dvc_repo.add(repo_dir.DATA_DIR)
+
+        assert link_spy.mock.call_count == 1
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])

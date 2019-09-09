@@ -60,7 +60,13 @@ class SSHConnection:
 
     def st_mode(self, path):
         with ignore_file_not_found():
-            return self.sftp.stat(path).st_mode
+            return self.sftp.lstat(path).st_mode
+
+        return 0
+
+    def getsize(self, path):
+        with ignore_file_not_found():
+            return self.sftp.lstat(path).st_size
 
         return 0
 
@@ -267,8 +273,7 @@ class SSHConnection:
         assert len(md5) == 32
         return md5
 
-    def cp(self, src, dest):
-        self.makedirs(posixpath.dirname(dest))
+    def copy(self, src, dest):
         self.execute("cp {} {}".format(src, dest))
 
     def open_max_sftp_channels(self):
@@ -282,3 +287,23 @@ class SSHConnection:
                         raise
                     break
         return self._sftp_channels
+
+    def open(self, *args, **kwargs):
+        return self.sftp.open(*args, **kwargs)
+
+    def symlink(self, src, dest):
+        self.sftp.symlink(src, dest)
+
+    def reflink(self, src, dest):
+        if self.uname == "Linux":
+            return self.execute("cp --reflink {} {}".format(src, dest))
+
+        if self.uname == "Darwin":
+            return self.execute("cp -c {} {}".format(src, dest))
+
+        raise DvcException(
+            "'{}' is not supported as a SSH remote".format(self.uname)
+        )
+
+    def hardlink(self, src, dest):
+        self.execute("ln {} {}".format(src, dest))

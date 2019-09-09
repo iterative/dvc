@@ -5,6 +5,7 @@ import platform
 import argparse
 import logging
 import uuid
+import itertools
 
 try:
     import psutil
@@ -69,9 +70,12 @@ class CmdVersion(CmdBaseNoRepo):
     def get_fs_type(path):
         partition = {
             pathlib.Path(part.mountpoint): (part.fstype, part.device)
-            for part in psutil.disk_partitions()
+            for part in psutil.disk_partitions(all=True)
         }
-        for parent in pathlib.Path(path).parents:
+
+        path = pathlib.Path(path)
+
+        for parent in itertools.chain([path], path.parents):
             if parent in partition:
                 return partition[parent]
         return ("unkown", "none")

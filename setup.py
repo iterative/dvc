@@ -113,10 +113,11 @@ tests_requirements = [
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
     "flake8",
+    "psutil",
     "flake8-docstrings",
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
-    "mock-ssh-server>=0.5.0",
+    "mock-ssh-server>=0.6.0",
     "moto>=1.3.14.dev55",
     "rangehttpserver==1.2.0",
 ]

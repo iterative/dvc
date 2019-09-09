@@ -809,6 +809,10 @@ class TestReproExternalBase(TestDvc):
         return self.scheme
 
     @property
+    def cache_type(self):
+        return "hardlink"
+
+    @property
     def scheme(self):
         return None
 
@@ -862,7 +866,7 @@ class TestReproExternalBase(TestDvc):
         self.assertEqual(ret, 0)
         ret = main(["remote", "add", "myrepo", cache])
         self.assertEqual(ret, 0)
-        ret = main(["remote", "modify", "myrepo", "type", "hardlink"])
+        ret = main(["remote", "modify", "myrepo", "type", self.cache_type])
         self.assertEqual(ret, 0)
 
         remote_name = "myremote"
@@ -873,7 +877,7 @@ class TestReproExternalBase(TestDvc):
 
         ret = main(["remote", "add", remote_name, remote])
         self.assertEqual(ret, 0)
-        ret = main(["remote", "modify", remote_name, "type", "hardlink"])
+        ret = main(["remote", "modify", remote_name, "type", self.cache_type])
         self.assertEqual(ret, 0)
 
         self.dvc = DvcRepo(".")
@@ -992,6 +996,10 @@ class TestReproExternalHDFS(TestReproExternalBase):
     @property
     def scheme(self):
         return "hdfs"
+
+    @property
+    def cache_type(self):
+        return "copy"
 
     @property
     def bucket(self):

@@ -2,6 +2,14 @@ from __future__ import unicode_literals
 
 import os
 import posixpath
+import platform
+import pytest
+import filecmp
+import tempfile
+
+from dvc.system import System
+from dvc.command.version import CmdVersion
+
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -64,3 +72,42 @@ def test_walk(tmp_path, ssh):
             paths.add(posixpath.join(root, entry))
 
     assert paths == expected
+
+
+@pytest.mark.skipif(
+    CmdVersion.get_fs_type(tempfile.gettempdir())[0]
+    not in ["xfs", "apfs", "btrfs"],
+    reason="Reflinks only work in specified file systems",
+)
+def test_reflink(repo_dir, ssh):
+    ssh.reflink("foo", "link")
+    assert filecmp.cmp("foo", "link")
+    assert not System.is_symlink("link")
+    assert not System.is_hardlink("link")
+
+
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="sftp symlink is not supported on Windows",
+)
+def test_symlink(repo_dir, ssh):
+    ssh.symlink("foo", "link")
+    assert System.is_symlink("link")
+
+
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="hardlink is temporarily not supported on Windows",
+)
+def test_hardlink(repo_dir, ssh):
+    ssh.hardlink("foo", "link")
+    assert System.is_hardlink("link")
+
+
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="copy is temporarily not supported on Windows",
+)
+def test_copy(repo_dir, ssh):
+    ssh.copy("foo", "link")
+    assert filecmp.cmp("foo", "link")
