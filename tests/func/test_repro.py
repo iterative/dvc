@@ -810,7 +810,7 @@ class TestReproExternalBase(TestDvc):
 
     @property
     def cache_type(self):
-        return "hardlink"
+        return "copy"
 
     @property
     def scheme(self):
@@ -998,10 +998,6 @@ class TestReproExternalHDFS(TestReproExternalBase):
         return "hdfs"
 
     @property
-    def cache_type(self):
-        return "copy"
-
-    @property
     def bucket(self):
         return "{}@127.0.0.1".format(getpass.getuser())
 
@@ -1107,6 +1103,10 @@ class TestReproExternalLOCAL(TestReproExternalBase):
         ret = main(["config", "cache.type", "hardlink"])
         self.assertEqual(ret, 0)
         self.dvc = DvcRepo(".")
+
+    @property
+    def cache_type(self):
+        return "hardlink"
 
     def should_test(self):
         return True
