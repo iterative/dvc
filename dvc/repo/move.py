@@ -59,9 +59,9 @@ def move(self, from_path, to_path):
             os.path.join(os.curdir, os.path.dirname(to_path))
         )
 
-    to_out = Output.loads_from(
-        stage, [os.path.basename(to_path)], out.use_cache, out.metric
-    )[0]
+    to_path = os.path.relpath(to_path, stage.wdir)
+
+    to_out = Output.loads_from(stage, [to_path], out.use_cache, out.metric)[0]
 
     with self.state:
         out.move(to_out)
