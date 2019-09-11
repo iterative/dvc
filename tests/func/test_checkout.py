@@ -4,6 +4,8 @@ import filecmp
 import collections
 import logging
 
+import pytest
+
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
@@ -23,6 +25,7 @@ from dvc.exceptions import (
 
 from mock import patch
 
+from tests.utils import spy
 
 logger = logging.getLogger("dvc")
 
@@ -475,3 +478,56 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
     dvc_repo.checkout(stage.path, force=True)
     assert not os.path.exists(repo_dir.FOO)
+
+
+@pytest.mark.parametrize(
+    "link, link_test_func",
+    [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
+)
+def test_should_relink_on_checkout(link, link_test_func, repo_dir, dvc_repo):
+    dvc_repo.cache.local.cache_types = [link]
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+    dvc_repo.unprotect(repo_dir.DATA_SUB)
+
+    dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+
+    assert link_test_func(repo_dir.DATA_SUB)
+
+
+@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
+def test_should_protect_on_checkout(link, dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = [link]
+    dvc_repo.cache.local.protected = True
+
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.unprotect(repo_dir.FOO)
+
+    dvc_repo.checkout(repo_dir.FOO + Stage.STAGE_FILE_SUFFIX)
+
+    assert not os.access(repo_dir.FOO, os.W_OK)
+
+
+def test_should_relink_only_one_file_in_dir(dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = ["symlink"]
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+    dvc_repo.unprotect(repo_dir.DATA_SUB)
+
+    link_spy = spy(System.symlink)
+    with patch.object(dvc_repo.cache.local, "symlink", link_spy):
+        dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+
+    assert link_spy.mock.call_count == 1
+
+
+@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
+def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
+    dvc_repo.cache.local.cache_types = [link]
+
+    dvc_repo.add(repo_dir.DATA_DIR)
+
+    with patch.object(dvc_repo.cache.local, "link") as mock_link:
+        dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+
+    assert not mock_link.called
