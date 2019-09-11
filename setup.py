@@ -71,11 +71,7 @@ else:
 
 # Extra dependencies for remote integrations
 
-# Restricting google-resumable-media version is due to the fact that
-# since 0.3.3 our binaries built by pyinstaller started to fail on Linux and
-# macOS. This restriction will be removed after
-# https://github.com/iterative/dvc/issues/2441 is resolved.
-gs = ["google-resumable-media>=0.4.0", "google-cloud-storage==1.19.0"]
+gs = ["google-resumable-media>=0.4.0", "google-cloud-storage>=1.19.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
@@ -107,6 +103,7 @@ tests_requirements = [
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
     "awscli>=1.16.125",
+    "google-compute-engine==2.8.13",
     "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
