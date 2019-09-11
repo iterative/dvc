@@ -30,16 +30,11 @@ if is_py3:
         Args:
             lockfile (str): the lock filename
                 in.
-            lifetime (int | timedelta): hold the lock for so long.
             tmp_dir (str): a directory to store claim files.
         """
 
-        def __init__(self, lockfile, lifetime=None, tmp_dir=None):
-            if lifetime is None:
-                lifetime = timedelta(days=365)  # Lock for good by default
-            elif isinstance(lifetime, int):
-                lifetime = timedelta(seconds=lifetime)
-
+        def __init__(self, lockfile, tmp_dir=None):
+            lifetime = timedelta(days=365)  # Lock for good by default
             self._tmp_dir = tmp_dir
             if self._tmp_dir is not None:
                 makedirs(self._tmp_dir, exist_ok=True)
@@ -83,7 +78,7 @@ else:
         Uses zc.lockfile as backend.
         """
 
-        def __init__(self, lockfile, lifetime=None, tmp_dir=None):
+        def __init__(self, lockfile, tmp_dir=None):
             self.lockfile = lockfile
             self._lock = None
 
