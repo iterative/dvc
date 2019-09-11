@@ -35,7 +35,9 @@ if is_py3:
         """
 
         def __init__(self, lockfile, lifetime=None, tmp_dir=None):
-            if isinstance(lifetime, int):
+            if lifetime is None:
+                lifetime = timedelta(days=365)  # Lock for good by default
+            elif isinstance(lifetime, int):
                 lifetime = timedelta(seconds=lifetime)
 
             self._tmp_dir = tmp_dir
@@ -80,8 +82,6 @@ else:
 
         Uses zc.lockfile as backend.
         """
-
-        TIMEOUT = 5
 
         def __init__(self, lockfile, lifetime=None, tmp_dir=None):
             self.lockfile = lockfile

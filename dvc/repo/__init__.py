@@ -72,8 +72,6 @@ class Repo(object):
 
         self.lock = Lock(
             os.path.join(self.dvc_dir, "lock"),
-            # This should be longer than operations we are protecting
-            lifetime=60 * 60 * 24 * 30,
             tmp_dir=os.path.join(self.dvc_dir, "tmp"),
         )
         # NOTE: storing state and link_state in the repository itself to avoid
