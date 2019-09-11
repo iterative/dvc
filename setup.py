@@ -39,7 +39,6 @@ class build_py(_build_py):
 install_requires = [
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
-    "zc.lockfile>=1.2.1",
     "future>=0.16.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
@@ -145,7 +144,12 @@ setup(
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ":python_version=='2.7'": ["futures", "pathlib2"],
+        ":python_version=='2.7'": [
+            "futures",
+            "pathlib2",
+            "zc.lockfile>=1.2.1",
+        ],
+        ":python_version>='3.0'": ["flufl.lock>=3.2"],
         "tests": tests_requirements,
     },
     keywords="data science, data version control, machine learning",

@@ -70,7 +70,10 @@ class Repo(object):
 
         self.tree = WorkingTree(self.root_dir)
 
-        self.lock = Lock(self.dvc_dir)
+        self.lock = Lock(
+            os.path.join(self.dvc_dir, "lock"),
+            tmp_dir=os.path.join(self.dvc_dir, "tmp"),
+        )
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self, self.config.config)
@@ -128,12 +131,12 @@ class Repo(object):
 
         updater = Updater(self.dvc_dir)
 
-        flist = [
-            self.lock.lock_file,
-            self.config.config_local_file,
-            updater.updater_file,
-            updater.lock.lock_file,
-        ] + self.state.files
+        flist = (
+            [self.config.config_local_file, updater.updater_file]
+            + self.state.files
+            + self.lock.files
+            + updater.lock.files
+        )
 
         if self.cache.local.cache_dir.startswith(self.root_dir):
             flist += [self.cache.local.cache_dir]

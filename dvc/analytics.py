@@ -66,7 +66,7 @@ class Analytics(object):
                 raise
 
         self.user_id_file = os.path.join(cdir, self.USER_ID_FILE)
-        self.user_id_file_lock = Lock(cdir, self.USER_ID_FILE + ".lock")
+        self.user_id_file_lock = Lock(self.user_id_file + ".lock")
 
     @staticmethod
     def load(path):
@@ -113,7 +113,7 @@ class Analytics(object):
                 return user_id
         except LockError:
             msg = "Failed to acquire '{}'"
-            logger.debug(msg.format(self.user_id_file_lock.lock_file))
+            logger.debug(msg.format(self.user_id_file_lock.lockfile))
 
     def _collect_windows(self):
         import sys

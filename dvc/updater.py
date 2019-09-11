@@ -25,7 +25,9 @@ class Updater(object):  # pragma: no cover
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
-        self.lock = Lock(dvc_dir, self.updater_file + ".lock")
+        self.lock = Lock(
+            self.updater_file + ".lock", tmp_dir=os.path.join(dvc_dir, "tmp")
+        )
         self.current = parse_version(__version__).base_version
 
     def _is_outdated_file(self):
@@ -41,7 +43,7 @@ class Updater(object):  # pragma: no cover
                 func()
         except LockError:
             msg = "Failed to acquire '{}' before {} updates"
-            logger.debug(msg.format(self.lock.lock_file, action))
+            logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
         if os.getenv("CI") or os.getenv("DVC_TEST"):
