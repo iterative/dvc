@@ -20,8 +20,6 @@ from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
 from dvc.imports import lazy_import
 
-from .connection import SSHConnection
-
 paramiko = lazy_import("paramiko", silent=True)
 
 
@@ -136,6 +134,8 @@ class RemoteSSH(RemoteBASE):
                         )
                     )
                 self.password = password
+
+        from .connection import SSHConnection
 
         return get_connection(
             SSHConnection,
