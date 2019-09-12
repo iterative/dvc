@@ -15,11 +15,19 @@ class DependencyIsNotFileOrDirError(DvcException):
         super(DependencyIsNotFileOrDirError, self).__init__(msg)
 
 
+class DependencyIsStageFileError(DvcException):
+    def __init__(self, path):
+        super(DependencyIsStageFileError, self).__init__(
+            "Stage file '{}' cannot be dependency.".format(path)
+        )
+
+
 class DependencyBase(object):
     IS_DEPENDENCY = True
 
     DoesNotExistError = DependencyDoesNotExistError
     IsNotFileOrDirError = DependencyIsNotFileOrDirError
+    IsStageFileError = DependencyIsStageFileError
 
     def update(self):
         pass
