@@ -9,18 +9,15 @@ from datetime import datetime, timedelta
 from funcy import cached_property
 
 from dvc.scheme import Schemes
-
-try:
-    from azure.storage.blob import BlockBlobService, BlobPermissions
-    from azure.common import AzureMissingResourceHttpError
-except ImportError:
-    BlockBlobService = None
-
 from dvc.utils.compat import urlparse
 from dvc.progress import Tqdm
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.path_info import CloudURLInfo
+from dvc.imports import lazy_import
+
+azure_blob = lazy_import("azure.storage.blob", silent=True)
+azure_common = lazy_import("azure.common", silent=True)
 
 
 logger = logging.getLogger(__name__)
@@ -35,7 +32,7 @@ class RemoteAZURE(RemoteBASE):
         r"(ContainerName=(?P<container_name>[^;]+);?)?"
         r"(?P<connection_string>.+)?)?)$"
     )
-    REQUIRES = {"azure-storage-blob": BlockBlobService}
+    REQUIRES = {"azure-storage-blob": azure_blob}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 
@@ -74,7 +71,7 @@ class RemoteAZURE(RemoteBASE):
     def blob_service(self):
         logger.debug("URL {}".format(self.path_info))
         logger.debug("Connection string {}".format(self.connection_string))
-        blob_service = BlockBlobService(
+        blob_service = azure_blob.BlockBlobService(
             connection_string=self.connection_string
         )
         logger.debug("Container name {}".format(self.path_info.bucket))
@@ -82,7 +79,7 @@ class RemoteAZURE(RemoteBASE):
             blob_service.list_blobs(
                 self.path_info.bucket, delimiter="/", num_results=1
             )
-        except AzureMissingResourceHttpError:
+        except azure_common.AzureMissingResourceHttpError:
             blob_service.create_container(self.path_info.bucket)
         return blob_service
 
@@ -144,7 +141,7 @@ class RemoteAZURE(RemoteBASE):
         sas_token = self.blob_service.generate_blob_shared_access_signature(
             path_info.bucket,
             path_info.path,
-            permission=BlobPermissions.READ,
+            permission=azure_blob.BlobPermissions.READ,
             expiry=expires_at,
         )
         download_url = self.blob_service.make_blob_url(

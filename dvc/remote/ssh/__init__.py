@@ -10,11 +10,6 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, closing
 
-try:
-    import paramiko
-except ImportError:
-    paramiko = None
-
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.utils import to_chunks
@@ -23,8 +18,11 @@ from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
+from dvc.imports import lazy_import
 
 from .connection import SSHConnection
+
+paramiko = lazy_import("paramiko", silent=True)
 
 
 logger = logging.getLogger(__name__)

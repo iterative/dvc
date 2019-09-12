@@ -4,17 +4,16 @@ import os
 import logging
 from funcy import cached_property
 
-try:
-    import boto3
-except ImportError:
-    boto3 = None
-
 from dvc.progress import Tqdm
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.exceptions import DvcException, ETagMismatchError
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
+from dvc.imports import lazy_import
+
+boto3 = lazy_import("boto3", silent=True)
+
 
 logger = logging.getLogger(__name__)
 

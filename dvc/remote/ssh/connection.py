@@ -5,16 +5,14 @@ import errno
 import stat
 from funcy import cached_property
 
-try:
-    import paramiko
-except ImportError:
-    paramiko = None
-
 from dvc.utils import tmp_fname
 from dvc.utils.compat import ignore_file_not_found
 from dvc.progress import Tqdm
 from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteCmdError
+from dvc.imports import lazy_import
+
+paramiko = lazy_import("paramiko", silent=True)
 
 
 logger = logging.getLogger(__name__)

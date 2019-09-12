@@ -5,16 +5,13 @@ import os
 import logging
 
 from dvc.scheme import Schemes
-
-try:
-    import oss2
-except ImportError:
-    oss2 = None
-
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.progress import Tqdm
 from dvc.path_info import CloudURLInfo
+from dvc.imports import lazy_import
+
+oss2 = lazy_import("oss2", silent=True)
 
 
 logger = logging.getLogger(__name__)

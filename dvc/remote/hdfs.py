@@ -9,19 +9,17 @@ import logging
 from subprocess import Popen, PIPE
 from contextlib import contextmanager, closing
 
-try:
-    import pyarrow
-except ImportError:
-    pyarrow = None
-
 from dvc.config import Config
 from dvc.scheme import Schemes
-
 from dvc.utils.compat import urlparse, FileNotFoundError
 from dvc.utils import fix_env, tmp_fname
+from dvc.imports import lazy_import
 
 from .pool import get_connection
 from .base import RemoteBASE, RemoteCmdError
+
+pyarrow = lazy_import("pyarrow", silent=True)
+
 
 logger = logging.getLogger(__name__)
 

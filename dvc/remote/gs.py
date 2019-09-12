@@ -5,16 +5,15 @@ from datetime import timedelta
 from funcy import cached_property
 from dvc.utils.compat import FileNotFoundError
 
-try:
-    from google.cloud import storage
-except ImportError:
-    storage = None
-
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
+from dvc.imports import lazy_import
+
+storage = lazy_import("google.cloud.storage", silent=True)
+
 
 logger = logging.getLogger(__name__)
 
