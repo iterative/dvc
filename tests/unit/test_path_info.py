@@ -1,7 +1,11 @@
 import pytest
 import copy
 
-from dvc.path_info import URLInfo, CloudURLInfo
+from dvc.utils.compat import pathlib
+from dvc.path_info import PathInfo, URLInfo, CloudURLInfo
+
+
+TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1
 
 
 @pytest.mark.parametrize("cls", [URLInfo, CloudURLInfo])
@@ -42,3 +46,32 @@ def test_url_info_deepcopy(cls):
     u1 = cls("ssh://user@test.com:/test1/test2/test3")
     u2 = copy.deepcopy(u1)
     assert u1 == u2
+
+
+@pytest.mark.parametrize(
+    "path, as_posix, osname",
+    [
+        ("/some/abs/path", "/some/abs/path", "posix"),
+        ("some/rel/path", "some/rel/path", "posix"),
+        ("../some/rel/path", "../some/rel/path", "posix"),
+        ("windows\\relpath", "windows/relpath", "nt"),
+        ("..\\windows\\rel\\path", "../windows/rel/path", "nt"),
+        # These ones are to test that no matter how layered this relpath is,
+        # we don't accidentally round it over. E.g. how
+        #
+        #  import os
+        #  os.chdir("/")
+        #  os.path.relpath("../../path")
+        #
+        # results in "path".
+        ("\\".join([".."] * TEST_DEPTH), "/".join([".."] * TEST_DEPTH), "nt"),
+        (
+            "/".join([".."] * TEST_DEPTH),
+            "/".join([".."] * TEST_DEPTH),
+            "posix",
+        ),
+    ],
+)
+def test_path_info_as_posix(mocker, path, as_posix, osname):
+    mocker.patch("os.name", osname)
+    assert PathInfo(path).as_posix() == as_posix

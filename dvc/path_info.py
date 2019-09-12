@@ -36,6 +36,15 @@ class PathInfo(pathlib.PurePath):
     def from_posix(cls, s):
         return cls(PosixPathInfo(s))
 
+    def as_posix(self):
+        f = self._flavour
+        # Unlike original implementation [1] that uses `str()` we actually need
+        # to use `fspath`, because we've overriden `__str__` method to return
+        # relative paths, which will break original `as_posix`.
+        #
+        # [1] https://github.com/python/cpython/blob/v3.7.0/Lib/pathlib.py#L692
+        return self.fspath.replace(f.sep, "/")
+
     def __str__(self):
         path = self.__fspath__()
         return relpath(path)
@@ -93,10 +102,6 @@ class PathInfo(pathlib.PurePath):
 
         def with_name(self, name):
             return pathlib.PurePath.with_name(self, name.encode(fs_encoding))
-
-        def as_posix(self):
-            f = self._flavour
-            return str(self).replace(f.sep, "/")
 
 
 class WindowsPathInfo(PathInfo, pathlib.PureWindowsPath):
