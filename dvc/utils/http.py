@@ -1,8 +1,6 @@
 from contextlib import contextmanager
 import io
 
-import requests
-
 from dvc.utils.compat import FileNotFoundError
 
 
@@ -28,6 +26,7 @@ def open_url(url, mode="r", encoding=None):
 @contextmanager
 def iter_url(url, chunk_size=io.DEFAULT_BUFFER_SIZE):
     """Iterate over chunks requested from url."""
+    import requests
 
     def request(headers=None):
         the_url = url() if callable(url) else url

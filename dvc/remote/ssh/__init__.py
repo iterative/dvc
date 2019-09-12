@@ -24,9 +24,6 @@ from dvc.scheme import Schemes
 from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
 
-from .connection import SSHConnection
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -138,6 +135,8 @@ class RemoteSSH(RemoteBASE):
                         )
                     )
                 self.password = password
+
+        from .connection import SSHConnection
 
         return get_connection(
             SSHConnection,
