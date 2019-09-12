@@ -71,7 +71,7 @@ else:
 
 # Extra dependencies for remote integrations
 
-gs = ["google-resumable-media>=0.4.0", "google-cloud-storage>=1.19.0"]
+gs = ["google-cloud-storage==1.19.0"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
