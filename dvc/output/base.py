@@ -35,7 +35,7 @@ class OutputAlreadyTrackedError(DvcException):
 class OutputIsStageFileError(DvcException):
     def __init__(self, path):
         super(OutputIsStageFileError, self).__init__(
-            "Stage file '{}' cannot be output.".format(path)
+            "Stage file '{}' cannot be an output.".format(path)
         )
 
 
