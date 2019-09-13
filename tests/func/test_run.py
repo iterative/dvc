@@ -946,22 +946,18 @@ def test_bad_stage_fname(repo_dir, dvc_repo):
 
 
 def test_should_raise_on_stage_dependency(repo_dir, dvc_repo):
-    stage_file_name = "name.dvc"
-
     with pytest.raises(DependencyIsStageFileError):
         dvc_repo.run(
             cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
-            deps=[repo_dir.FOO, stage_file_name],
+            deps=[repo_dir.FOO, "name.dvc"],
             outs=["out"],
         )
 
 
 def test_should_raise_on_stage_output(repo_dir, dvc_repo):
-    stage_file_name = "name.dvc"
-
     with pytest.raises(OutputIsStageFileError):
         dvc_repo.run(
             cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
             deps=[repo_dir.FOO],
-            outs=[stage_file_name],
+            outs=["name.dvc"],
         )
