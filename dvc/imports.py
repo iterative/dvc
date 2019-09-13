@@ -1,3 +1,6 @@
+from dvc.utils.compat import builtin_str
+
+
 def import_string(import_name, silent=False):
     """Imports an object based on a string.
 
@@ -8,6 +11,7 @@ def import_string(import_name, silent=False):
 
     :return: imported object
     """
+    import_name = builtin_str(import_name)
     try:
         if "." in import_name:
             module, obj = import_name.rsplit(".", 1)
