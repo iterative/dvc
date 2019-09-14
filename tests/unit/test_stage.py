@@ -70,7 +70,7 @@ def test_stage_fname(add):
 
 
 def test_stage_update(mocker):
-    dep = DependencyREPO({"url": "example.com"}, None, None)
+    dep = DependencyREPO({"url": "example.com"}, None, "dep_path")
     mocker.patch.object(dep, "update", return_value=None)
 
     stage = Stage(None, "path", deps=[dep])
