@@ -61,7 +61,7 @@ class DependencyREPO(DependencyLOCAL):
     def dumpd(self):
         return {self.PARAM_PATH: self.def_path, self.PARAM_REPO: self.def_repo}
 
-    def download(self, to, resume=False):
+    def fetch(self):
         with self._make_repo(
             cache_dir=self.repo.cache.local.cache_dir
         ) as repo:
@@ -70,8 +70,13 @@ class DependencyREPO(DependencyLOCAL):
             out = repo.find_out_by_relpath(self.def_path)
             with repo.state:
                 repo.cloud.pull(out.get_used_cache())
-            to.info = copy.copy(out.info)
-            to.checkout()
+
+        return out
+
+    def download(self, to):
+        out = self.fetch()
+        to.info = copy.copy(out.info)
+        to.checkout()
 
     def update(self):
         with self._make_repo(rev_lock=None) as repo:

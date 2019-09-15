@@ -393,8 +393,10 @@ class OutputBase(object):
         include the `info` of its files.
         """
 
-        if self.stage.is_repo_import:
-            return []
+        # XXX: There's no test for this one, it might not be needed
+        #
+        # if self.stage.is_repo_import:
+        #     return []
 
         if not self.use_cache:
             return []

@@ -214,6 +214,7 @@ class Repo(object):
         cache["hdfs"] = []
         cache["ssh"] = []
         cache["azure"] = []
+        cache["repo"] = []
 
         for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
@@ -231,6 +232,10 @@ class Repo(object):
                 stages = self.stages()
 
             for stage in stages:
+                if stage.is_repo_import:
+                    cache["repo"].append(stage)
+                    continue
+
                 for out in stage.outs:
                     scheme = out.path_info.scheme
                     used_cache = out.get_used_cache(
