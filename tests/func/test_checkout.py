@@ -7,12 +7,14 @@ import logging
 import pytest
 
 from dvc.main import main
+from dvc.remote.base import DirCacheLoadingException
 from dvc.repo import Repo as DvcRepo
+from dvc.scm import Git
 from dvc.system import System
 from dvc.utils import walk_files, relpath
 from dvc.utils.stage import load_stage_file, dump_stage_file
 from dvc.utils.compat import is_py2
-from tests.basic_env import TestDvc, TestDvcGit
+from tests.basic_env import TestDvc, TestDvcGit, TestDirFixture
 from tests.func.test_repro import TestRepro
 from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
 from dvc.remote.local import RemoteLOCAL
@@ -531,3 +533,13 @@ def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
         dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
 
     assert not mock_link.called
+
+
+def test_should_raise_on_no_dir_cache(erepo):
+    test_dir = TestDirFixture()
+    Git.clone(erepo.root_dir, test_dir.root_dir)
+
+    cloned_repo = DvcRepo(test_dir.root_dir)
+
+    with pytest.raises(DirCacheLoadingException):
+        cloned_repo.checkout("data_dir.dvc")
