@@ -49,12 +49,12 @@ def test_fetching_imported_stage(dvc_repo, erepo):
 
     dvc_repo.imp(erepo.root_dir, src, dst)
 
-    dst_stage = Stage.load(dvc_repo, 'foo_imported.dvc')
+    dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
     dst_cache = dst_stage.outs[0].cache_path
 
     os.remove(dst_cache)
 
-    dvc_repo.fetch(['foo_imported.dvc'])
+    dvc_repo.fetch(["foo_imported.dvc"])
 
     assert os.path.isfile(dst_cache)
 
@@ -65,13 +65,13 @@ def test_pulling_imported_stage(dvc_repo, erepo):
 
     dvc_repo.imp(erepo.root_dir, src, dst)
 
-    dst_stage = Stage.load(dvc_repo, 'foo_imported.dvc')
+    dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
     dst_cache = dst_stage.outs[0].cache_path
 
     os.remove(dst)
     os.remove(dst_cache)
 
-    dvc_repo.pull(['foo_imported.dvc'])
+    dvc_repo.pull(["foo_imported.dvc"])
 
     assert os.path.isfile(dst)
     assert os.path.isfile(dst_cache)
