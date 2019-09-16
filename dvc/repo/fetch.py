@@ -24,8 +24,8 @@ def fetch(
             recursive=recursive,
         )
 
-        for stage in used["repo"]:
-            stage.reproduce()
+        for dep in used["repo"]:
+            dep.fetch()
 
         return self.cloud.pull(
             used["local"], jobs, remote=remote, show_checksums=show_checksums

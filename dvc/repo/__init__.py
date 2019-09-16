@@ -233,7 +233,7 @@ class Repo(object):
 
             for stage in stages:
                 if stage.is_repo_import:
-                    cache["repo"].append(stage)
+                    cache["repo"] += stage.deps
                     continue
 
                 for out in stage.outs:
