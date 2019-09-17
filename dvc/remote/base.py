@@ -72,10 +72,10 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
-class DirCacheLoadingException(DvcException):
+class DirCacheDownloadError(DvcException):
     def __init__(self, checksum):
-        m = "Could not load cache for: `{}`".format(checksum)
-        super(DirCacheLoadingException, self).__init__(m)
+        m = "Could not download cache for: `{}`".format(checksum)
+        super(DirCacheDownloadError, self).__init__(m)
 
 
 class RemoteBASE(object):
@@ -263,8 +263,10 @@ class RemoteBASE(object):
         download_result = self.cache.download(
             path_info, to_info, no_progress_bar=True
         )
-        if download_result != 0:
-            raise DirCacheLoadingException(checksum)
+
+        if download_result == 1:
+            raise DirCacheDownloadError(checksum)
+
         try:
             with open(path, "r") as fobj:
                 d = json.load(fobj)

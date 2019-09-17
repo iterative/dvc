@@ -294,3 +294,12 @@ class GetDVCFileError(DvcException):
             "the given path is a DVC-file, you must specify a data file "
             "or a directory"
         )
+
+
+class DirCacheLoadingError(DvcException):
+    def __init__(self, path_info):
+        msg = (
+            "Could not load cache for directory '{}'. "
+            "Did you forget to fetch it?"
+        ).format(path_info)
+        super(DirCacheLoadingError, self).__init__(msg)

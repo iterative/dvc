@@ -6,10 +6,9 @@ from copy import copy
 from schema import Or, Optional
 
 import dvc.prompt as prompt
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, DirCacheLoadingError
 from dvc.utils.compat import str, urlparse
-from dvc.remote.base import RemoteBASE
-
+from dvc.remote.base import RemoteBASE, DirCacheDownloadError
 
 logger = logging.getLogger(__name__)
 
@@ -326,7 +325,12 @@ class OutputBase(object):
         if not self.use_cache:
             return 0
 
-        return self.cache.get_files_number(self.checksum)
+        try:
+            files_number = self.cache.get_files_number(self.checksum)
+        except DirCacheDownloadError:
+            raise DirCacheLoadingError(self.path_info)
+
+        return files_number
 
     def unprotect(self):
         if self.exists:
