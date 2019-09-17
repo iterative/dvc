@@ -30,6 +30,13 @@ class TestInstall(object):
             with open(self._hook(fname), "r") as fobj:
                 assert command in fobj.read()
 
+    def test_should_fail_if_file_already_exists(self, git, dvc_repo):
+        with open(self._hook("post-checkout"), "w") as fobj:
+            fobj.write("hook content")
+
+        assert main(["install"]) != 0
+
+    @pytest.mark.skip(reason="https://github.com/iterative/dvc/issues/2362")
     def test_should_append_hooks_if_file_already_exists(self, git, dvc_repo):
         with open(self._hook("post-checkout"), "w") as fobj:
             fobj.write("#!/bin/sh\n" "echo hello\n")
@@ -47,6 +54,7 @@ class TestInstall(object):
         with open(self._hook("post-checkout"), "r") as fobj:
             assert fobj.read() == expected_script
 
+    @pytest.mark.skip(reason="https://github.com/iterative/dvc/issues/2362")
     def test_should_be_idempotent(self, git, dvc_repo):
         assert main(["install"]) == 0
         assert main(["install"]) == 0
