@@ -558,7 +558,7 @@ class RemoteBASE(object):
             )
         except Exception:
             msg = "failed to download '{}' to '{}'"
-            logger.exception(msg.format(from_info, to_info))
+            logger.warning(msg.format(from_info, to_info))
             return 1  # 1 fail
 
         move(tmp_file, to_info, mode=file_mode)
