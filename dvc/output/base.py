@@ -328,7 +328,7 @@ class OutputBase(object):
         try:
             files_number = self.cache.get_files_number(self.checksum)
         except DirCacheDownloadError:
-            raise DirCacheLoadingError(self.path_info)
+            raise DirCacheLoadingError(self.path_info, cause=exc)
 
         return files_number
 
