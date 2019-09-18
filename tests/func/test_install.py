@@ -36,39 +36,6 @@ class TestInstall(object):
 
         assert main(["install"]) != 0
 
-    @pytest.mark.skip(reason="https://github.com/iterative/dvc/issues/2362")
-    def test_should_append_hooks_if_file_already_exists(self, git, dvc_repo):
-        with open(self._hook("post-checkout"), "w") as fobj:
-            fobj.write("#!/bin/sh\n" "echo hello\n")
-
-        assert main(["install"]) == 0
-
-        expected_script = (
-            "#!/bin/sh\n"
-            "echo hello\n"
-            '[ "$3" = "0" ]'
-            ' || [ -z "$(git ls-files .dvc)" ]'
-            " || exec dvc checkout\n"
-        )
-
-        with open(self._hook("post-checkout"), "r") as fobj:
-            assert fobj.read() == expected_script
-
-    @pytest.mark.skip(reason="https://github.com/iterative/dvc/issues/2362")
-    def test_should_be_idempotent(self, git, dvc_repo):
-        assert main(["install"]) == 0
-        assert main(["install"]) == 0
-
-        expected_script = (
-            "#!/bin/sh\n"
-            '[ "$3" = "0" ]'
-            ' || [ -z "$(git ls-files .dvc)" ]'
-            " || exec dvc checkout\n"
-        )
-
-        with open(self._hook("post-checkout"), "r") as fobj:
-            assert fobj.read() == expected_script
-
     def test_should_post_checkout_hook_checkout(self, repo_dir, git, dvc_repo):
         assert main(["install"]) == 0
 
