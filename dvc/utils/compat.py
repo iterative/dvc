@@ -103,8 +103,6 @@ def ignore_file_not_found():
 if is_py2:
     from urlparse import urlparse, urlunparse, urljoin  # noqa: F401
     from urllib import urlencode  # noqa: F401
-    from BaseHTTPServer import HTTPServer  # noqa: F401
-    from SimpleHTTPServer import SimpleHTTPRequestHandler  # noqa: F401
     import ConfigParser  # noqa: F401
     from io import open  # noqa: F401
     import pathlib2 as pathlib  # noqa: F401
@@ -150,10 +148,6 @@ elif is_py3:
         urljoin,  # noqa: F401
     )
     from io import StringIO, BytesIO  # noqa: F401
-    from http.server import (  # noqa: F401
-        HTTPServer,  # noqa: F401
-        SimpleHTTPRequestHandler,  # noqa: F401
-    )  # noqa: F401
     import configparser as ConfigParser  # noqa: F401
     from collections.abc import Mapping  # noqa: F401
 
