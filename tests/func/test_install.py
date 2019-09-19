@@ -34,7 +34,8 @@ class TestInstall(object):
         with open(self._hook("post-checkout"), "w") as fobj:
             fobj.write("hook content")
 
-        assert main(["install"]) != 0
+        with pytest.raises(GitHookAlreadyExistsError):
+            dvc_repo.scm.install()
 
     def test_should_post_checkout_hook_checkout(self, repo_dir, git, dvc_repo):
         assert main(["install"]) == 0
