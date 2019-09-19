@@ -5,6 +5,9 @@ from __future__ import unicode_literals
 import os
 import logging
 
+from funcy import cached_property
+
+from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.utils.compat import str, open
 from dvc.utils import fix_env, relpath
 from dvc.scm.base import (
@@ -234,7 +237,7 @@ class Git(Base):
             " || exec dvc {}".format(cmd)
         )
 
-        hook = os.path.join(self.root_dir, self.GIT_DIR, "hooks", name)
+        hook = self._hook_path(name)
 
         if os.path.isfile(hook):
             with open(hook, "r+") as fobj:
@@ -247,6 +250,8 @@ class Git(Base):
         os.chmod(hook, 0o777)
 
     def install(self):
+        self._verify_dvc_hooks()
+
         self._install_hook("post-checkout", "checkout")
         self._install_hook("pre-commit", "status")
         self._install_hook("pre-push", "push")
@@ -342,3 +347,19 @@ class Git(Base):
 
     def close(self):
         self.repo.close()
+
+    @cached_property
+    def _hooks_home(self):
+        return os.path.join(self.root_dir, self.GIT_DIR, "hooks")
+
+    def _hook_path(self, name):
+        return os.path.join(self._hooks_home, name)
+
+    def _verify_hook(self, name):
+        if os.path.exists(self._hook_path(name)):
+            raise GitHookAlreadyExistsError(name)
+
+    def _verify_dvc_hooks(self):
+        self._verify_hook("post-checkout")
+        self._verify_hook("pre-commit")
+        self._verify_hook("pre-push")
