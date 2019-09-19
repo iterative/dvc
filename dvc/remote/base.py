@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
 from dvc.ignore import DvcIgnore
-from dvc.utils.compat import str, basestring, urlparse
+from dvc.utils.compat import str, basestring, urlparse, FileNotFoundError
 
-import os
 import json
 import logging
 import tempfile
@@ -250,23 +249,16 @@ class RemoteBASE(object):
     def load_dir_cache(self, checksum):
         path_info = self.checksum_to_path_info(checksum)
 
-        fobj = tempfile.NamedTemporaryFile(delete=False)
-        path = fobj.name
-        to_info = PathInfo(path)
-        self.cache.download(path_info, to_info, no_progress_bar=True)
-
         try:
-            with open(path, "r") as fobj:
+            with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
-        except ValueError:
+        except (ValueError, FileNotFoundError):
             logger.exception("Failed to load dir cache '{}'".format(path_info))
             return []
-        finally:
-            os.unlink(path)
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
-            logger.error(msg.format(relpath(path)))
+            logger.error(msg.format(relpath(path_info)))
             return []
 
         for info in d:
