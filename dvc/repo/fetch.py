@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from dvc.config import ConfigError
 
 
 def fetch(
@@ -27,6 +28,13 @@ def fetch(
         for dep in used["repo"]:
             dep.fetch()
 
-        return self.cloud.pull(
-            used["local"], jobs, remote=remote, show_checksums=show_checksums
-        ) + len(used["repo"])
+        try:
+            return self.cloud.pull(
+                used["local"],
+                jobs,
+                remote=remote,
+                show_checksums=show_checksums,
+            ) + len(used["repo"])
+        except ConfigError:
+            if not used["repo"]:
+                raise

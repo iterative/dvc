@@ -99,11 +99,6 @@ class DataCloud(object):
             show_checksums (bool): show checksums instead of file names in
                 information messages.
         """
-        # XXX: returning earlier to prevent `get_remote` from
-        # raising a ConfigError
-        if not targets:
-            return 0
-
         return self.repo.cache.local.pull(
             targets,
             jobs=jobs,
