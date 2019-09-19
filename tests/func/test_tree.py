@@ -90,7 +90,7 @@ class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
         super(TestGitSubmoduleTree, self).setUp()
         self.scm = SCM(self._root_dir)
         self.tree = GitTree(self.git, "master")
-        self.pushd(self._root_dir)
+        self._pushd(self._root_dir)
 
 
 class AssertWalkEqualMixin(object):

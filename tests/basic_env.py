@@ -57,7 +57,7 @@ class TestDirFixture(object):
     def root_dir(self):
         return self._root_dir
 
-    def pushd(self, d):
+    def _pushd(self, d):
         if not hasattr(self, "_saved_dir"):
             self._saved_dir = os.path.realpath(os.curdir)
         os.chdir(d)
@@ -87,7 +87,7 @@ class TestDirFixture(object):
         )
 
     def setUp(self):
-        self.pushd(self._root_dir)
+        self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
         self.create(self.CODE, self.CODE_CONTENTS)
@@ -150,7 +150,7 @@ class TestGitSubmoduleFixture(TestGitFixture):
         subrepo = Repo.init()
         subrepo_path = "subrepo"
         self.git.create_submodule(subrepo_path, subrepo_path, subrepo.git_dir)
-        self.pushd(subrepo_path)
+        self._pushd(subrepo_path)
 
 
 class TestDvcFixture(TestDirFixture):

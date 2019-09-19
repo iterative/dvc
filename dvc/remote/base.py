@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
 from dvc.ignore import DvcIgnore
-from dvc.utils.compat import str, basestring, urlparse
+from dvc.utils.compat import str, basestring, urlparse, FileNotFoundError
 
-import os
 import json
 import logging
 import tempfile
@@ -70,12 +69,6 @@ class RemoteActionNotImplemented(DvcException):
 
 class RemoteMissingDepsError(DvcException):
     pass
-
-
-class DirCacheDownloadError(DvcException):
-    def __init__(self, checksum):
-        m = "Could not download cache for: `{}`".format(checksum)
-        super(DirCacheDownloadError, self).__init__(m)
 
 
 class RemoteBASE(object):
@@ -256,29 +249,16 @@ class RemoteBASE(object):
     def load_dir_cache(self, checksum):
         path_info = self.checksum_to_path_info(checksum)
 
-        fobj = tempfile.NamedTemporaryFile(delete=False)
-        path = fobj.name
-        to_info = PathInfo(path)
-
-        download_result = self.cache.download(
-            path_info, to_info, no_progress_bar=True
-        )
-
-        if download_result == 1:
-            raise DirCacheDownloadError(checksum)
-
         try:
-            with open(path, "r") as fobj:
+            with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
-        except ValueError:
+        except (ValueError, FileNotFoundError):
             logger.exception("Failed to load dir cache '{}'".format(path_info))
             return []
-        finally:
-            os.unlink(path)
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
-            logger.error(msg.format(relpath(path)))
+            logger.error(msg.format(relpath(path_info)))
             return []
 
         for info in d:
@@ -558,7 +538,7 @@ class RemoteBASE(object):
             )
         except Exception:
             msg = "failed to download '{}' to '{}'"
-            logger.warning(msg.format(from_info, to_info))
+            logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
 
         move(tmp_file, to_info, mode=file_mode)

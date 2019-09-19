@@ -21,7 +21,6 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     TargetNotDirectoryError,
     CheckoutErrorSuggestGit,
-    DirCacheLoadingError,
 )
 
 from mock import patch
@@ -532,8 +531,3 @@ def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
         dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
 
     assert not mock_link.called
-
-
-def test_should_raise_on_no_dir_cache(cloned_dvc_repo):
-    with pytest.raises(DirCacheLoadingError):
-        cloned_dvc_repo.checkout("data_dir.dvc")

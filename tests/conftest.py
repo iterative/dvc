@@ -6,7 +6,6 @@ from git import Repo
 from git.exc import GitCommandNotFound
 
 from dvc.remote.config import RemoteConfig
-from dvc.scm import Git
 from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
@@ -185,17 +184,3 @@ def git_erepo():
     repo.setUp()
     yield repo
     repo.tearDown()
-
-
-@pytest.fixture
-def cloned_dvc_repo(erepo):
-    clone_dir = TestDirFixture()
-    clone_dir.pushd(clone_dir.root_dir)
-
-    cloned_git_repo = Git.clone(erepo.root_dir, clone_dir.root_dir)
-    cloned_dvc_repo = DvcRepo(clone_dir.root_dir)
-
-    yield cloned_dvc_repo
-
-    cloned_git_repo.close()
-    clone_dir.tearDown()
