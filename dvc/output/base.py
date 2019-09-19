@@ -7,7 +7,7 @@ from schema import Or, Optional
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException
-from dvc.utils.compat import str, urlparse
+from dvc.utils.compat import str, urlparse, FileNotFoundError
 from dvc.remote.base import RemoteBASE
 
 
@@ -36,6 +36,15 @@ class OutputIsStageFileError(DvcException):
     def __init__(self, path):
         super(OutputIsStageFileError, self).__init__(
             "Stage file '{}' cannot be an output.".format(path)
+        )
+
+
+class NoDirCacheError(DvcException):
+    def __init__(self, path_info, cause):
+        super(NoDirCacheError, self).__init__(
+            "Could not load cache for dir: '{}'. Did you forget to fetch "
+            "it?".format(path_info),
+            cause=cause,
         )
 
 
@@ -326,7 +335,11 @@ class OutputBase(object):
         if not self.use_cache:
             return 0
 
-        return self.cache.get_files_number(self.checksum)
+        try:
+            files_number = self.cache.get_files_number(self.checksum)
+        except FileNotFoundError as e:
+            raise NoDirCacheError(self.path_info, cause=e)
+        return files_number
 
     def unprotect(self):
         if self.exists:

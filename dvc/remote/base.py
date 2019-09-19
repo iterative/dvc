@@ -266,7 +266,9 @@ class RemoteBASE(object):
         try:
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
-        except (ValueError, FileNotFoundError):
+        except FileNotFoundError:
+            raise
+        except ValueError:
             logger.exception("Failed to load dir cache '{}'".format(path_info))
             return []
 
