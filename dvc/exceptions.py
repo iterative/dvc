@@ -294,3 +294,12 @@ class GetDVCFileError(DvcException):
             "the given path is a DVC-file, you must specify a data file "
             "or a directory"
         )
+
+
+class GitHookAlreadyExistsError(DvcException):
+    def __init__(self, hook_name):
+        super(GitHookAlreadyExistsError, self).__init__(
+            "Hook '{}' already exists. Please refer to "
+            "https://man.dvc.org/install "
+            "for more info.".format(hook_name)
+        )

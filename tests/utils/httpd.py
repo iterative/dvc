@@ -2,9 +2,14 @@ import hashlib
 import os
 import threading
 
-from RangeHTTPServer import RangeRequestHandler
+# Moved in Python 2 -> 3, used only here.
+# Not adding to dvc.utils.compat to not load http.server for non-test runs.
+try:
+    from http.server import HTTPServer
+except ImportError:
+    from BaseHTTPServer import HTTPServer
 
-from dvc.utils.compat import HTTPServer
+from RangeHTTPServer import RangeRequestHandler
 
 
 class TestRequestHandler(RangeRequestHandler):

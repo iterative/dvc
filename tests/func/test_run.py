@@ -7,8 +7,10 @@ import shutil
 import filecmp
 import pytest
 
+from dvc.dependency.base import DependencyIsStageFileError
 from dvc.main import main
 from dvc.output import OutputBase
+from dvc.output.base import OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
 from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file
@@ -941,3 +943,21 @@ def test_bad_stage_fname(repo_dir, dvc_repo):
 
     # Check that command hasn't been run
     assert not os.path.exists("out")
+
+
+def test_should_raise_on_stage_dependency(repo_dir, dvc_repo):
+    with pytest.raises(DependencyIsStageFileError):
+        dvc_repo.run(
+            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
+            deps=[repo_dir.FOO, "name.dvc"],
+            outs=["out"],
+        )
+
+
+def test_should_raise_on_stage_output(repo_dir, dvc_repo):
+    with pytest.raises(OutputIsStageFileError):
+        dvc_repo.run(
+            cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, "out"),
+            deps=[repo_dir.FOO],
+            outs=["name.dvc"],
+        )

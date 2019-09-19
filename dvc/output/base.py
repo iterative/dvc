@@ -32,6 +32,13 @@ class OutputAlreadyTrackedError(DvcException):
         super(OutputAlreadyTrackedError, self).__init__(msg)
 
 
+class OutputIsStageFileError(DvcException):
+    def __init__(self, path):
+        super(OutputIsStageFileError, self).__init__(
+            "Stage file '{}' cannot be an output.".format(path)
+        )
+
+
 class OutputBase(object):
     IS_DEPENDENCY = False
 
@@ -57,6 +64,7 @@ class OutputBase(object):
 
     DoesNotExistError = OutputDoesNotExistError
     IsNotFileOrDirError = OutputIsNotFileOrDirError
+    IsStageFileError = OutputIsStageFileError
 
     sep = "/"
 
@@ -71,6 +79,7 @@ class OutputBase(object):
         persist=False,
         tags=None,
     ):
+        self._validate_output_path(path)
         # This output (and dependency) objects have too many paths/urls
         # here is a list and comments:
         #
@@ -417,3 +426,10 @@ class OutputBase(object):
         ret.extend(self._collect_used_dir_cache(**kwargs))
 
         return ret
+
+    @classmethod
+    def _validate_output_path(cls, path):
+        from dvc.stage import Stage
+
+        if Stage.is_valid_filename(path):
+            raise cls.IsStageFileError(path)
