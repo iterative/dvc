@@ -301,6 +301,5 @@ class GitHookAlreadyExistsError(DvcException):
         super(GitHookAlreadyExistsError, self).__init__(
             "Hook '{}' already exists. Please refer to "
             "https://man.dvc.org/install "
-            "for more info."
-            "".format(hook_name)
+            "for more info.".format(hook_name)
         )

@@ -2,6 +2,8 @@ import os
 import sys
 
 import pytest
+
+from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.utils import file_md5
 
 from dvc.main import main
