@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 from dvc.scheme import Schemes
 from dvc.utils.compat import open
 
-import requests
 import logging
 
 from dvc.progress import Tqdm
@@ -79,6 +78,8 @@ class RemoteHTTP(RemoteBASE):
         return etag
 
     def _request(self, method, url, **kwargs):
+        import requests
+
         kwargs.setdefault("allow_redirects", True)
         kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 

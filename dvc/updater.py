@@ -4,7 +4,6 @@ import sys
 import os
 import time
 import logging
-import requests
 import colorama
 from packaging import version
 
@@ -82,6 +81,7 @@ class Updater(object):  # pragma: no cover
 
     def _get_latest_version(self):
         import json
+        import requests
 
         try:
             r = requests.get(self.URL, timeout=self.TIMEOUT_GET)
