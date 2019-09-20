@@ -3,6 +3,11 @@ from setuptools.command.build_py import build_py as _build_py
 import os
 import sys
 
+# Prevents pkg_resources import in entry point script,
+# see https://github.com/ninjaaron/fast-entry_points.
+# This saves about 200 ms on startup time for non-wheel installs.
+import fastentrypoints  # noqa: F401
+
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
 pkg_dir = os.path.dirname(__file__)
@@ -61,6 +66,7 @@ install_requires = [
     "pathspec>=0.5.9",
     "shortuuid>=0.5.0",
     "tqdm>=4.35.0",
+    "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
 

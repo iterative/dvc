@@ -6,7 +6,7 @@ import time
 import logging
 import requests
 import colorama
-from pkg_resources import parse_version
+from packaging import version
 
 from dvc import __version__
 from dvc.lock import Lock, LockError
@@ -28,7 +28,7 @@ class Updater(object):  # pragma: no cover
         self.lock = Lock(
             self.updater_file + ".lock", tmp_dir=os.path.join(dvc_dir, "tmp")
         )
-        self.current = parse_version(__version__).base_version
+        self.current = version.parse(__version__).base_version
 
     def _is_outdated_file(self):
         ctime = os.path.getmtime(self.updater_file)
@@ -95,7 +95,7 @@ class Updater(object):  # pragma: no cover
             json.dump(info, fobj)
 
     def _is_outdated(self):
-        return parse_version(self.current) < parse_version(self.latest)
+        return version.parse(self.current) < version.parse(self.latest)
 
     def _notify(self):
         if not sys.stdout.isatty():
