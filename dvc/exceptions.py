@@ -321,3 +321,13 @@ class UploadError(DvcException):
         super(UploadError, self).__init__(
             "{amount} files failed to upload".format(amount=amount)
         )
+
+
+class CheckoutFailedException(DvcException):
+    def __init__(self, target_infos):
+        targets = [str(t) for t in target_infos]
+        m = (
+            "Checkout failed for following targets:\n {}\nDid you "
+            "forget to fetch?".format("\n".join(targets))
+        )
+        super(CheckoutFailedException, self).__init__(m)

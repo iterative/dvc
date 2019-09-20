@@ -872,10 +872,14 @@ class Stage(object):
             raise MissingDataSource(paths)
 
     def checkout(self, force=False, progress_callback=None):
+        failed_checkouts = []
         for out in self.outs:
-            out.checkout(
+            failed = out.checkout(
                 force=force, tag=self.tag, progress_callback=progress_callback
             )
+            if failed:
+                failed_checkouts.append(failed)
+        return failed_checkouts
 
     @staticmethod
     def _status(entries):

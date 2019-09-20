@@ -7,7 +7,7 @@ from schema import Or, Optional
 
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException
-from dvc.utils.compat import str, urlparse, FileNotFoundError
+from dvc.utils.compat import str, urlparse
 from dvc.remote.base import RemoteBASE
 
 
@@ -294,7 +294,7 @@ class OutputBase(object):
         else:
             info = self.info
 
-        self.cache.checkout(
+        return self.cache.checkout(
             self.path_info,
             info,
             force=force,
@@ -326,15 +326,7 @@ class OutputBase(object):
         if not self.use_cache:
             return 0
 
-        try:
-            files_number = self.cache.get_files_number(self.checksum)
-        except FileNotFoundError:
-            logger.exception(
-                "Could not load cache for dir: '{}'. Did you forget to "
-                "fetch it?".format(self.path_info)
-            )
-            files_number = 0
-        return files_number
+        return self.cache.get_files_number(self.checksum)
 
     def unprotect(self):
         if self.exists:

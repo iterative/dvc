@@ -21,6 +21,7 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     TargetNotDirectoryError,
     CheckoutErrorSuggestGit,
+    CheckoutFailedException,
 )
 
 from mock import patch
@@ -74,7 +75,8 @@ class TestCheckoutCorruptedCacheFile(TestRepro):
         with open(cache, "a") as fd:
             fd.write("1")
 
-        self.dvc.checkout(force=True)
+        with pytest.raises(CheckoutFailedException):
+            self.dvc.checkout(force=True)
 
         self.assertFalse(os.path.isfile(self.FOO))
         self.assertFalse(os.path.isfile(cache))
@@ -101,7 +103,8 @@ class TestCheckoutCorruptedCacheDir(TestDvc):
         with open(cache, "w+") as fobj:
             fobj.write("1")
 
-        self.dvc.checkout(force=True)
+        with pytest.raises(DvcException):
+            self.dvc.checkout(force=True)
 
         self.assertFalse(os.path.exists(cache))
 
@@ -302,7 +305,8 @@ class TestCheckoutMissingMd5InStageFile(TestRepro):
         del d[Stage.PARAM_DEPS][0][RemoteLOCAL.PARAM_CHECKSUM]
         dump_stage_file(self.file1_stage, d)
 
-        self.dvc.checkout(force=True)
+        with pytest.raises(CheckoutFailedException):
+            self.dvc.checkout(force=True)
 
 
 class TestCheckoutEmptyDir(TestDvc):
@@ -476,7 +480,8 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
 
 def test_checkout_no_checksum(repo_dir, dvc_repo):
     stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
-    dvc_repo.checkout(stage.path, force=True)
+    with pytest.raises(CheckoutFailedException):
+        dvc_repo.checkout(stage.path, force=True)
     assert not os.path.exists(repo_dir.FOO)
 
 
