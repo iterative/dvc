@@ -39,15 +39,6 @@ class OutputIsStageFileError(DvcException):
         )
 
 
-class NoDirCacheError(DvcException):
-    def __init__(self, path_info, cause):
-        super(NoDirCacheError, self).__init__(
-            "Could not load cache for dir: '{}'. Did you forget to fetch "
-            "it?".format(path_info),
-            cause=cause,
-        )
-
-
 class OutputBase(object):
     IS_DEPENDENCY = False
 
@@ -337,8 +328,12 @@ class OutputBase(object):
 
         try:
             files_number = self.cache.get_files_number(self.checksum)
-        except FileNotFoundError as e:
-            raise NoDirCacheError(self.path_info, cause=e)
+        except FileNotFoundError:
+            logger.exception(
+                "Could not load cache for dir: '{}'. Did you forget to "
+                "fetch it?".format(self.path_info)
+            )
+            files_number = 0
         return files_number
 
     def unprotect(self):

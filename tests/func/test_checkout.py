@@ -7,7 +7,6 @@ import logging
 import pytest
 
 from dvc.main import main
-from dvc.output.base import NoDirCacheError
 from dvc.repo import Repo as DvcRepo
 from dvc.system import System
 from dvc.utils import walk_files, relpath
@@ -532,14 +531,3 @@ def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
         dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
 
     assert not mock_link.called
-
-
-def test_should_raise_on_no_dir_cache(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.DATA_DIR)
-
-    shutil.rmtree(repo_dir.DATA_DIR)
-    shutil.rmtree(dvc_repo.cache.local.cache_dir)
-
-    dvc_repo = DvcRepo(dvc_repo.root_dir)
-    with pytest.raises(NoDirCacheError):
-        dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
