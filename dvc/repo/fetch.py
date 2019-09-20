@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-from dvc.config import ConfigError
+from dvc.config import NoRemoteRepositoryError
 
 
 def fetch(
@@ -25,16 +25,21 @@ def fetch(
             recursive=recursive,
         )
 
-        for dep in used["repo"]:
-            dep.fetch()
+        downloaded_files = 0
 
         try:
-            return self.cloud.pull(
+            downloaded_files += self.cloud.pull(
                 used["local"],
                 jobs,
                 remote=remote,
                 show_checksums=show_checksums,
-            ) + len(used["repo"])
-        except ConfigError:
+            )
+        except NoRemoteRepositoryError:
             if not used["repo"]:
                 raise
+
+        for dep in used["repo"]:
+            dep.fetch()
+            downloaded_files += 1
+
+        return downloaded_files
