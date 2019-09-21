@@ -1,7 +1,13 @@
 from __future__ import unicode_literals
+
+import logging
+
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
+
+
+logger = logging.getLogger(__name__)
 
 
 def fetch(
@@ -60,11 +66,11 @@ def fetch(
             try:
                 out = dep.fetch()
                 downloaded += out.get_files_number()
-            except (DownloadError, CloneError, OutputNotFoundError) as exc:
-                if hasattr(exc, "amount"):
-                    failed += exc.amount
-                else:
-                    failed += 1
+            except DownloadError as exc:
+                failed += exc.amount
+            except (CloneError, OutputNotFoundError) as exc:
+                failed += 1
+                logger.exception(str(exc))
 
         if failed:
             raise DownloadError(failed)
