@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, OutputNotFoundError
+from dvc.scm.base import CloneError
 
 
 def fetch(
@@ -49,7 +50,7 @@ def fetch(
                 show_checksums=show_checksums,
             )
         except NoRemoteError:
-            if not used["repo"]:
+            if not used["repo"] and used["local"]:
                 raise
 
         except DownloadError as exc:
@@ -59,8 +60,11 @@ def fetch(
             try:
                 out = dep.fetch()
                 downloaded += out.get_files_number()
-            except DownloadError as exc:
-                failed += exc.amount
+            except (DownloadError, CloneError, OutputNotFoundError) as exc:
+                if hasattr(exc, "amount"):
+                    failed += exc.amount
+                else:
+                    failed += 1
 
         if failed:
             raise DownloadError(failed)
