@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import logging
 from funcy.py3 import cat
 
+from . import locked
+
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +93,7 @@ def _cloud_status(
     return ret
 
 
+@locked
 def status(
     self,
     targets=None,

@@ -1,3 +1,7 @@
+from . import locked
+
+
+@locked
 def commit(self, target, with_deps=False, recursive=False, force=False):
     stages = self.collect(target, with_deps=with_deps, recursive=recursive)
     with self.state:

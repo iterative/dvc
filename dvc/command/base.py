@@ -55,16 +55,6 @@ class CmdBase(object):
         logger.warning(msg)
         return [Stage.STAGE_FILE]
 
-    def run_cmd(self):
-        from dvc.lock import LockError
-
-        try:
-            with self.repo.lock:
-                return self.run()
-        except LockError:
-            logger.exception("failed to lock before running a command")
-            return 1
-
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):
         pass
@@ -73,6 +63,3 @@ class CmdBase(object):
 class CmdBaseNoRepo(CmdBase):
     def __init__(self, args):
         self.args = args
-
-    def run_cmd(self):
-        return self.run()

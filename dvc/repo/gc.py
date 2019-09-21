@@ -3,6 +3,8 @@ from __future__ import unicode_literals
 import collections
 import logging
 
+from . import locked
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,7 @@ def _do_gc(typ, func, clist):
         logger.info("No unused {} cache to remove.".format(typ))
 
 
+@locked
 def gc(
     self,
     all_branches=False,

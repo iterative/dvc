@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+from . import locked
 
+
+@locked
 def push(
     self,
     targets=None,

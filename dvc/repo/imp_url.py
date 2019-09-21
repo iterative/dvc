@@ -1,7 +1,10 @@
 from dvc.utils.compat import pathlib
 from dvc.repo.scm_context import scm_context
 
+from . import locked as locked_repo
 
+
+@locked_repo
 @scm_context
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     from dvc.stage import Stage
