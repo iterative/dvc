@@ -68,9 +68,11 @@ def fetch(
                 downloaded += out.get_files_number()
             except DownloadError as exc:
                 failed += exc.amount
-            except (CloneError, OutputNotFoundError) as exc:
+            except (CloneError, OutputNotFoundError):
                 failed += 1
-                logger.exception("failed to fetch data for '{}'".format(dep.stage.outs[0]))
+                logger.exception(
+                    "failed to fetch data for '{}'".format(dep.stage.outs[0])
+                )
 
         if failed:
             raise DownloadError(failed)
