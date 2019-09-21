@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
 
+from . import locked
 
+
+@locked
 def pull(
     self,
     targets=None,
@@ -12,7 +15,7 @@ def pull(
     force=False,
     recursive=False,
 ):
-    processed_files_count = self.fetch(
+    processed_files_count = self._fetch(
         targets,
         jobs,
         remote=remote,
@@ -22,7 +25,7 @@ def pull(
         recursive=recursive,
     )
     for target in targets or [None]:
-        self.checkout(
+        self._checkout(
             target=target,
             with_deps=with_deps,
             force=force,

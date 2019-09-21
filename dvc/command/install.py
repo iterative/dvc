@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdInstall(CmdBase):
-    def run_cmd(self):
+    def run(self):
         try:
             self.repo.install()
         except Exception:

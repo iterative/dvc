@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class CmdDestroy(CmdBase):
-    def run_cmd(self):
+    def run(self):
         try:
             statement = (
                 "This will destroy all information about your pipelines,"

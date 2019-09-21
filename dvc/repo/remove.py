@@ -1,3 +1,7 @@
+from . import locked
+
+
+@locked
 def remove(self, target, outs_only=False):
     from dvc.stage import Stage
 

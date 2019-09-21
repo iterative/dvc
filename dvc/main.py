@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import logging
 
 from dvc.cli import parse_args
+from dvc.lock import LockError
 from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
@@ -37,7 +38,10 @@ def main(argv=None):
             logger.setLevel(logging.DEBUG)
 
         cmd = args.func(args)
-        ret = cmd.run_cmd()
+        ret = cmd.run()
+    except LockError:
+        logger.exception("failed to lock before running a command")
+        ret = 250
     except ConfigError:
         logger.exception("configuration error")
         ret = 251

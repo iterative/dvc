@@ -7,10 +7,13 @@ from dvc.stage import Stage
 from dvc.utils import walk_files, LARGE_DIR_SIZE
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
+from . import locked
+
 
 logger = logging.getLogger(__name__)
 
 
+@locked
 @scm_context
 def add(repo, target, recursive=False, no_commit=False, fname=None):
     if recursive and fname:

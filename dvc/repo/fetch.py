@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 
-def fetch(
+def _fetch(
     self,
     targets=None,
     jobs=None,

@@ -23,7 +23,9 @@ def get_all_files_numbers(stages):
     return sum(stage.get_all_files_number() for stage in stages)
 
 
-def checkout(self, target=None, with_deps=False, force=False, recursive=False):
+def _checkout(
+    self, target=None, with_deps=False, force=False, recursive=False
+):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
     all_stages = self.stages()

@@ -14,6 +14,8 @@ from dvc.scm.git import (
     DIFF_EQUAL,
 )
 
+from . import locked
+
 
 DIFF_TARGET = "target"
 DIFF_IS_DIR = "is_dir"
@@ -220,6 +222,7 @@ def _diff_royal(self, target, diff_dct):
     return _diff_file(self, target, diff_dct)
 
 
+@locked
 def diff(self, a_ref, target=None, b_ref=None):
     """Gerenates diff message string output
 

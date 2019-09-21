@@ -7,6 +7,9 @@ from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath
 
+from . import locked
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +32,7 @@ def _reproduce_stage(stages, node, **kwargs):
     return [stage]
 
 
+@locked
 @scm_context
 def reproduce(
     self,

@@ -3,6 +3,8 @@ import os
 from dvc.exceptions import MoveNotDataSourceError
 from dvc.repo.scm_context import scm_context
 
+from . import locked
+
 
 def _expand_target_path(from_path, to_path):
     if os.path.isdir(to_path):
@@ -10,6 +12,7 @@ def _expand_target_path(from_path, to_path):
     return to_path
 
 
+@locked
 @scm_context
 def move(self, from_path, to_path):
     """

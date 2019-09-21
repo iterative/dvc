@@ -1,3 +1,7 @@
+from . import locked
+
+
+@locked
 def lock(self, target, unlock=False):
     from dvc.stage import Stage
 

@@ -5,6 +5,7 @@ import logging
 from contextlib import contextmanager
 from itertools import chain
 
+from functools import wraps
 from funcy import cached_property
 
 from dvc.config import Config
@@ -23,6 +24,15 @@ from dvc.utils import relpath
 logger = logging.getLogger(__name__)
 
 
+def locked(f):
+    @wraps(f)
+    def wrapper(repo, *args, **kwargs):
+        with repo.lock:
+            return f(repo, *args, **kwargs)
+
+    return wrapper
+
+
 class Repo(object):
     DVC_DIR = ".dvc"
 
@@ -36,9 +46,9 @@ class Repo(object):
     from dvc.repo.imp import imp
     from dvc.repo.imp_url import imp_url
     from dvc.repo.reproduce import reproduce
-    from dvc.repo.checkout import checkout
+    from dvc.repo.checkout import _checkout
     from dvc.repo.push import push
-    from dvc.repo.fetch import fetch
+    from dvc.repo.fetch import _fetch
     from dvc.repo.pull import pull
     from dvc.repo.status import status
     from dvc.repo.gc import gc
@@ -486,3 +496,11 @@ class Repo(object):
         git.close()
 
         return Repo(to_path)
+
+    @locked
+    def checkout(self, *args, **kwargs):
+        return self._checkout(*args, **kwargs)
+
+    @locked
+    def fetch(self, *args, **kwargs):
+        return self._fetch(*args, **kwargs)
