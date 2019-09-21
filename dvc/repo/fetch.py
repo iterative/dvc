@@ -70,7 +70,7 @@ def fetch(
                 failed += exc.amount
             except (CloneError, OutputNotFoundError) as exc:
                 failed += 1
-                logger.exception(str(exc))
+                logger.exception("failed to fetch data for '{}'".format(dep.stage.outs[0]))
 
         if failed:
             raise DownloadError(failed)
