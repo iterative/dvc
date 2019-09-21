@@ -1,5 +1,6 @@
 import os
 import filecmp
+import shutil
 
 from tests.utils import trees_equal
 
@@ -43,23 +44,7 @@ def test_import_rev(repo_dir, git, dvc_repo, erepo):
     assert git.git.check_ignore(dst)
 
 
-def test_fetching_imported_stage(dvc_repo, erepo):
-    src = erepo.FOO
-    dst = erepo.FOO + "_imported"
-
-    dvc_repo.imp(erepo.root_dir, src, dst)
-
-    dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
-    dst_cache = dst_stage.outs[0].cache_path
-
-    os.remove(dst_cache)
-
-    dvc_repo.fetch(["foo_imported.dvc"])
-
-    assert os.path.isfile(dst_cache)
-
-
-def test_pulling_imported_stage(dvc_repo, erepo):
+def test_pull_imported_stage(dvc_repo, erepo):
     src = erepo.FOO
     dst = erepo.FOO + "_imported"
 

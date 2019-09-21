@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
-from dvc.config import NoRemoteRepositoryError
+from dvc.config import NoRemoteError
+from dvc.exceptions import FailedDownloadError
 
 
 def fetch(
@@ -13,6 +14,18 @@ def fetch(
     all_tags=False,
     recursive=False,
 ):
+    """Download data items from a cloud and imported repositories
+
+    Returns:
+        int: number of succesfully downloaded files
+
+    Raises:
+        FailedDownloadError: thrown when there are failed downloads, either
+            during `cloud.pull` or trying to fetch imported files
+
+        config.NoRemoteError: thrown when downloading only local files and no
+            remote is configured
+    """
     with self.state:
         used = self.used_cache(
             targets,
@@ -25,21 +38,30 @@ def fetch(
             recursive=recursive,
         )
 
-        downloaded_files = 0
+        downloaded = 0
+        failed = 0
 
         try:
-            downloaded_files += self.cloud.pull(
+            downloaded += self.cloud.pull(
                 used["local"],
                 jobs,
                 remote=remote,
                 show_checksums=show_checksums,
             )
-        except NoRemoteRepositoryError:
+        except NoRemoteError as exc:
             if not used["repo"]:
                 raise
+        except FailedDownloadError as exc:
+            failed += exc.amount
 
         for dep in used["repo"]:
-            dep.fetch()
-            downloaded_files += 1
+            try:
+                out = dep.fetch()
+                downloaded += out.get_files_number()
+            except FailedDownloadError as exc:
+                failed += exc.amount
 
-        return downloaded_files
+        if failed:
+            raise FailedDownloadError(failed)
+
+        return downloaded

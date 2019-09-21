@@ -31,16 +31,16 @@ class ConfigError(DvcException):
         )
 
 
-class NoRemoteRepositoryError(ConfigError):
+class NoRemoteError(ConfigError):
     def __init__(self, command, cause=None):
         msg = (
-            "No remote repository specified. Setup default repository with\n"
+            "no remote specified. Setup default remote with\n"
             "    dvc config core.remote <name>\n"
             "or use:\n"
             "    dvc {} -r <name>\n".format(command)
         )
 
-        super(NoRemoteRepositoryError, self).__init__(msg, cause=cause)
+        super(NoRemoteError, self).__init__(msg, cause=cause)
 
 
 def supported_cache_type(types):

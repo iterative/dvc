@@ -303,3 +303,21 @@ class GitHookAlreadyExistsError(DvcException):
             "https://man.dvc.org/install "
             "for more info.".format(hook_name)
         )
+
+
+class FailedDownloadError(DvcException):
+    def __init__(self, amount):
+        self.amount = amount
+
+        super(FailedDownloadError, self).__init__(
+            "{amount} files failed to download".format(amount=amount)
+        )
+
+
+class FailedUploadError(DvcException):
+    def __init__(self, amount):
+        self.amount = amount
+
+        super(FailedUploadError, self).__init__(
+            "{amount} files failed to upload".format(amount=amount)
+        )
