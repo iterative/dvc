@@ -1,6 +1,5 @@
 import os
 import filecmp
-import shutil
 
 from tests.utils import trees_equal
 

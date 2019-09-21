@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 from dvc.config import NoRemoteError
-from dvc.exceptions import FailedDownloadError
+from dvc.exceptions import DownloadError
 
 
 def fetch(
@@ -20,7 +20,7 @@ def fetch(
         int: number of succesfully downloaded files
 
     Raises:
-        FailedDownloadError: thrown when there are failed downloads, either
+        DownloadError: thrown when there are failed downloads, either
             during `cloud.pull` or trying to fetch imported files
 
         config.NoRemoteError: thrown when downloading only local files and no
@@ -48,20 +48,21 @@ def fetch(
                 remote=remote,
                 show_checksums=show_checksums,
             )
-        except NoRemoteError as exc:
+        except NoRemoteError:
             if not used["repo"]:
                 raise
-        except FailedDownloadError as exc:
+
+        except DownloadError as exc:
             failed += exc.amount
 
         for dep in used["repo"]:
             try:
                 out = dep.fetch()
                 downloaded += out.get_files_number()
-            except FailedDownloadError as exc:
+            except DownloadError as exc:
                 failed += exc.amount
 
         if failed:
-            raise FailedDownloadError(failed)
+            raise DownloadError(failed)
 
         return downloaded

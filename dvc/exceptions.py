@@ -305,19 +305,19 @@ class GitHookAlreadyExistsError(DvcException):
         )
 
 
-class FailedDownloadError(DvcException):
+class DownloadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super(FailedDownloadError, self).__init__(
+        super(DownloadError, self).__init__(
             "{amount} files failed to download".format(amount=amount)
         )
 
 
-class FailedUploadError(DvcException):
+class UploadError(DvcException):
     def __init__(self, amount):
         self.amount = amount
 
-        super(FailedUploadError, self).__init__(
+        super(UploadError, self).__init__(
             "{amount} files failed to upload".format(amount=amount)
         )
