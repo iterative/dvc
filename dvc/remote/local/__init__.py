@@ -30,7 +30,7 @@ from dvc.utils import (
     makedirs,
 )
 from dvc.config import Config
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, DownloadError, UploadError
 from dvc.progress import Tqdm, TqdmThreadPoolExecutor
 
 from dvc.path_info import PathInfo
@@ -388,10 +388,9 @@ class RemoteLOCAL(RemoteBASE):
             fails = sum(map(func, *plans))
 
         if fails:
-            msg = "{} files failed to {}"
-            raise DvcException(
-                msg.format(fails, "download" if download else "upload")
-            )
+            if download:
+                raise DownloadError(fails)
+            raise UploadError(fails)
 
         return len(plans[0])
 

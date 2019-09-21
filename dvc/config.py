@@ -31,6 +31,18 @@ class ConfigError(DvcException):
         )
 
 
+class NoRemoteError(ConfigError):
+    def __init__(self, command, cause=None):
+        msg = (
+            "no remote specified. Setup default remote with\n"
+            "    dvc config core.remote <name>\n"
+            "or use:\n"
+            "    dvc {} -r <name>\n".format(command)
+        )
+
+        super(NoRemoteError, self).__init__(msg, cause=cause)
+
+
 def supported_cache_type(types):
     """Checks if link type config option has a valid value.
 

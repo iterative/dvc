@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.config import Config, ConfigError
+from dvc.config import Config, NoRemoteError
 from dvc.remote import Remote
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.gs import RemoteGS
@@ -60,12 +60,7 @@ class DataCloud(object):
         if remote:
             return self._init_remote(remote)
 
-        raise ConfigError(
-            "No remote repository specified. Setup default repository with\n"
-            "    dvc config core.remote <name>\n"
-            "or use:\n"
-            "    dvc {} -r <name>\n".format(command)
-        )
+        raise NoRemoteError(command)
 
     def _init_remote(self, remote):
         return Remote(self.repo, name=remote)
