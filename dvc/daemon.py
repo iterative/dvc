@@ -94,7 +94,7 @@ def daemon(args):
 
     cmd = [sys.executable]
     if not is_binary():
-        cmd += ["-m", "dvc"]
+        cmd += [sys.argv[0]]
     cmd += ["daemon", "-q"] + args
 
     env = fix_env()
