@@ -28,7 +28,9 @@ def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
         with repo.lock:
-            return f(repo, *args, **kwargs)
+            ret = f(repo, *args, **kwargs)
+            repo.reset()
+            return ret
 
     return wrapper
 
@@ -155,7 +157,8 @@ class Repo(object):
 
     def check_dag(self, stages):
         """Generate graph including the new stage to check for errors"""
-        self.graph(stages=stages)
+        self.reset()
+        self._collect_graph(self.stages + stages)
 
     @staticmethod
     def _check_cyclic_graph(graph):
@@ -167,30 +170,60 @@ class Repo(object):
         if cycles:
             raise CyclicGraphError(cycles[0])
 
-    def _get_pipeline(self, node):
-        pipelines = [i for i in self.pipelines() if i.has_node(node)]
-        assert len(pipelines) == 1
-        return pipelines[0]
+    @staticmethod
+    def _get_pipeline(pipelines, node):
+        found = [i for i in pipelines if i.has_node(node)]
+        assert len(found) == 1
+        return found[0]
 
-    def collect(self, target, with_deps=False, recursive=False):
+    def get_pipeline(self, node):
+        return self._get_pipeline(self.pipelines, node)
+
+    def get_active_pipeline(self, node):
+        return self._get_pipeline(self.active_pipelines, node)
+
+    def _collect(self, target, with_deps=False, recursive=False, active=False):
         import networkx as nx
         from dvc.stage import Stage
 
-        if not target or (recursive and os.path.isdir(target)):
-            return self.stages(target)
+        if not target:
+            return self.stages
+
+        target = os.path.abspath(target)
+
+        if recursive and os.path.isdir(target):
+            G = self.active_graph if active else self.graph
+            attrs = nx.get_node_attributes(G, "stage")
+            nodes = [node for node in nx.dfs_postorder_nodes(G)]
+
+            ret = []
+            for node in nodes:
+                stage = attrs[node]
+                if stage.path.startswith(target + os.sep):
+                    ret.append(stage)
+            return ret
 
         stage = Stage.load(self, target)
         if not with_deps:
             return [stage]
 
         node = relpath(stage.path, self.root_dir)
-        G = self._get_pipeline(node)
+        if active:
+            G = self.get_active_pipeline(node)
+        else:
+            G = self.get_pipeline(node)
 
         ret = []
         for n in nx.dfs_postorder_nodes(G, node):
             ret.append(G.node[n]["stage"])
 
         return ret
+
+    def collect(self, *args, **kwargs):
+        return self._collect(*args, active=False, **kwargs)
+
+    def collect_active(self, *args, **kwargs):
+        return self._collect(*args, active=True, **kwargs)
 
     def used_cache(
         self,
@@ -232,14 +265,12 @@ class Repo(object):
             if targets:
                 stages = []
                 for target in targets:
-                    if recursive and os.path.isdir(target):
-                        stages.extend(self.stages(target))
-                    else:
-                        stages.extend(
-                            self.collect(target, with_deps=with_deps)
-                        )
+                    collected = self.collect(
+                        target, recursive=recursive, with_deps=with_deps
+                    )
+                    stages.extend(collected)
             else:
-                stages = self.stages()
+                stages = self.stages
 
             for stage in stages:
                 if stage.is_repo_import:
@@ -258,7 +289,7 @@ class Repo(object):
 
         return cache
 
-    def graph(self, stages=None, from_directory=None):
+    def _collect_graph(self, stages=None):
         """Generate a graph by using the given stages on the given directory
 
         The nodes of the graph are the stage's path relative to the root.
@@ -309,7 +340,7 @@ class Repo(object):
 
         G = nx.DiGraph()
         G_active = nx.DiGraph()
-        stages = stages or self.stages(from_directory, check_dag=False)
+        stages = stages or self.collect_stages()
         stages = [stage for stage in stages if stage]
         outs = {}
 
@@ -360,14 +391,38 @@ class Repo(object):
 
         return G, G_active
 
-    def pipelines(self, from_directory=None):
+    @cached_property
+    def _graph(self):
+        return self._collect_graph()
+
+    @property
+    def graph(self):
+        return self._graph[0]
+
+    @property
+    def active_graph(self):
+        return self._graph[1]
+
+    @cached_property
+    def _pipelines(self):
         import networkx as nx
 
-        G, G_active = self.graph(from_directory=from_directory)
+        def _get_pipelines(G):
+            return [
+                G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
+            ]
 
-        return [
-            G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
-        ]
+        G, G_active = self._graph
+
+        return _get_pipelines(G), _get_pipelines(G_active)
+
+    @property
+    def pipelines(self):
+        return self._pipelines[0]
+
+    @property
+    def active_pipelines(self):
+        return self._pipelines[1]
 
     @staticmethod
     def _filter_out_dirs(dirs, outs, root_dir):
@@ -380,7 +435,7 @@ class Repo(object):
 
         return list(filter(filter_dirs, dirs))
 
-    def stages(self, from_directory=None, check_dag=True):
+    def collect_stages(self, from_directory=None):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -415,18 +470,29 @@ class Repo(object):
 
             dirs[:] = self._filter_out_dirs(dirs, outs, root)
 
-        if check_dag:
-            self.check_dag(stages)
-
         return stages
+
+    @cached_property
+    def _stages(self):
+        import networkx
+
+        G, G_active = self._graph
+
+        def _get_stages(G):
+            return list(networkx.get_node_attributes(G, "stage").values())
+
+        return _get_stages(G), _get_stages(G_active)
+
+    @property
+    def stages(self):
+        return self._stages[0]
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
             # there is no `from_directory=path` argument because some data
             # files might be generated to an upper level, and so it is
             # needed to look at all the files (project root_dir)
-            stages = self.stages()
-            outs = [out for stage in stages for out in stage.outs]
+            outs = [out for stage in self.stages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
         is_dir = self.tree.isdir(abs_path)
@@ -509,3 +575,8 @@ class Repo(object):
     @locked
     def fetch(self, *args, **kwargs):
         return self._fetch(*args, **kwargs)
+
+    def reset(self):
+        self.__dict__.pop("_graph", None)
+        self.__dict__.pop("_stages", None)
+        self.__dict__.pop("_pipelines", None)

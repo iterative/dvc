@@ -19,7 +19,7 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
 
         stage = Stage.load(self.repo, target)
-        G = self.repo.graph()[0]
+        G = self.repo.graph
         stages = networkx.get_node_attributes(G, "stage")
         node = relpath(stage.path, self.repo.root_dir)
         nodes = networkx.dfs_postorder_nodes(G, node)
@@ -46,7 +46,7 @@ class CmdPipelineShow(CmdBase):
         node = relpath(stage.path, self.repo.root_dir)
 
         pipelines = list(
-            filter(lambda g: node in g.nodes(), self.repo.pipelines())
+            filter(lambda g: node in g.nodes(), self.repo.pipelines)
         )
 
         assert len(pipelines) == 1
@@ -168,7 +168,7 @@ class CmdPipelineList(CmdBase):
     def run(self):
         import networkx
 
-        pipelines = self.repo.pipelines()
+        pipelines = self.repo.pipelines
         for p in pipelines:
             stages = networkx.get_node_attributes(p, "stage")
             for stage in stages:

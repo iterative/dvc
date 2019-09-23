@@ -15,7 +15,7 @@ def run(self, no_exec=False, **kwargs):
     if stage is None:
         return None
 
-    self.check_dag(self.stages() + [stage])
+    self.check_dag([stage])
 
     with self.state:
         if not no_exec:

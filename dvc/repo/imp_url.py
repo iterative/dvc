@@ -19,7 +19,7 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     if stage is None:
         return None
 
-    self.check_dag(self.stages() + [stage])
+    self.check_dag([stage])
 
     with self.state:
         stage.run()

@@ -8,22 +8,15 @@ import dvc.repo.diff as diff
 from tests.basic_env import TestDvcGit
 
 
-def _get_checksum(repo, file_name):
-    outs = [out for s in repo.stages() for out in s.outs]
-    for out in outs:
-        if out.def_path == file_name:
-            return out.checksum
-
-
 class TestDiff(TestDvcGit):
     def setUp(self):
         super(TestDiff, self).setUp()
 
         self.new_file = "new_test_file"
         self.create(self.new_file, self.new_file)
-        self.dvc.add(self.new_file)
+        stage = self.dvc.add(self.new_file)[0]
         self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-        self.new_checksum = _get_checksum(self.dvc, self.new_file)
+        self.new_checksum = stage.outs[0].checksum
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("adds new_file")
         self.test_dct = {
@@ -67,19 +60,19 @@ class TestDiffDir(TestDvcGit):
     def setUp(self):
         super(TestDiffDir, self).setUp()
 
-        self.dvc.add(self.DATA_DIR)
+        stage = self.dvc.add(self.DATA_DIR)[0]
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit("adds data_dir")
         self.a_ref = self.git.git.rev_parse(
             self.dvc.scm.repo.head.commit, short=True
         )
-        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.old_checksum = stage.outs[0].checksum
         self.new_file = os.path.join(self.DATA_SUB_DIR, diff.DIFF_NEW_FILE)
         self.create(self.new_file, self.new_file)
-        self.dvc.add(self.DATA_DIR)
+        stage = self.dvc.add(self.DATA_DIR)[0]
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit(message="adds data_dir with new_file")
-        self.new_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.new_checksum = stage.outs[0].checksum
 
     def test(self):
         out = self.dvc.scm.get_diff_trees(self.a_ref)
@@ -128,9 +121,10 @@ class TestDiffDirRepoDeletedFile(TestDiffDir):
         super(TestDiffDirRepoDeletedFile, self).setUp()
 
         self.b_ref = self.a_ref
+        tmp = self.new_checksum
         self.new_checksum = self.old_checksum
         self.a_ref = str(self.dvc.scm.repo.head.commit)
-        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.old_checksum = tmp
 
     def test(self):
         result = self.dvc.diff(
@@ -175,14 +169,14 @@ class TestDiffModifiedFile(TestDiff):
     def setUp(self):
         super(TestDiffModifiedFile, self).setUp()
 
-        self.old_checksum = _get_checksum(self.dvc, self.new_file)
+        self.old_checksum = self.new_checksum
         self.new_file_content = "new_test_file_bigger_content_123456789"
         self.diff_len = len(self.new_file) + len(self.new_file_content)
         self.create(self.new_file, self.new_file_content)
-        self.dvc.add(self.new_file)
+        stage = self.dvc.add(self.new_file)[0]
         self.git.index.add([self.new_file + ".dvc"])
         self.git.index.commit("change new_file content to be bigger")
-        self.new_checksum = _get_checksum(self.dvc, self.new_file)
+        self.new_checksum = stage.outs[0].checksum
         self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
 
     def test(self):
@@ -211,14 +205,14 @@ class TestDiffDirWithFile(TestDiffDir):
         super(TestDiffDirWithFile, self).setUp()
 
         self.a_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
-        self.old_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.old_checksum = self.new_checksum
         self.new_file_content = "new_test_file_bigger_content_123456789"
         self.diff_len = len(self.new_file_content)
         self.create(self.new_file, self.new_file_content)
-        self.dvc.add(self.DATA_DIR)
+        stage = self.dvc.add(self.DATA_DIR)[0]
         self.git.index.add([self.DATA_DIR + ".dvc"])
         self.git.index.commit(message="modify file in the data dir")
-        self.new_checksum = _get_checksum(self.dvc, self.DATA_DIR)
+        self.new_checksum = stage.outs[0].checksum
         self.b_ref = self.git.git.rev_parse(self.git.head.commit, short=True)
 
     def test(self):

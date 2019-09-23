@@ -34,6 +34,7 @@ class TestCollect(TestDvcGit):
             self.dvc.tree = GitTree(self.dvc.scm.repo, branch)
         else:
             self.dvc.tree = WorkingTree()
+        self.dvc.reset()
         result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
         self.assertEqual([[str(j) for j in i.outs] for i in result], expected)
         return result
@@ -56,13 +57,13 @@ class TestIgnore(TestDvcGit):
         ret = main(["add", self.FOO, self.BAR, self.DATA, self.DATA_SUB])
         self.assertEqual(0, ret)
 
-        stages = self.dvc.stages()
+        stages = self.dvc.stages
         self.assertEqual(4, len(stages))
 
         self.create(DvcIgnore.DVCIGNORE_FILE, self.DATA_DIR)
 
         self.dvc = Repo(self.dvc.root_dir)
-        stages = self.dvc.stages()
+        stages = self.dvc.stages
         self.assertEqual(2, len(stages))
 
         stagenames = [s.relpath for s in stages]

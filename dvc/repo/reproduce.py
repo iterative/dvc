@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import os
 import logging
 
 from dvc.exceptions import ReproductionError
@@ -56,27 +55,22 @@ def reproduce(
             config.SECTION_CORE_INTERACTIVE, False
         )
 
-    targets = []
-    if recursive and os.path.isdir(target):
-        G = self.graph(from_directory=target)[1]
-        dir_targets = [
-            os.path.join(self.root_dir, n) for n in nx.dfs_postorder_nodes(G)
-        ]
-        targets.extend(dir_targets)
-    elif pipeline or all_pipelines:
-        if pipeline:
+    if pipeline or all_pipelines:
+        if all_pipelines:
+            pipelines = self.active_pipelines
+        else:
             stage = Stage.load(self, target)
             node = relpath(stage.path, self.root_dir)
-            pipelines = [self._get_pipeline(node)]
-        else:
-            pipelines = self.pipelines()
+            pipelines = [self.get_active_pipeline(node)]
 
+        targets = []
         for G in pipelines:
+            attrs = nx.get_node_attributes(G, "stage")
             for node in G.nodes():
                 if G.in_degree(node) == 0:
-                    targets.append(os.path.join(self.root_dir, node))
+                    targets.append(attrs[node])
     else:
-        targets.append(target)
+        targets = self.collect_active(target, recursive=recursive)
 
     ret = []
     with self.state:
@@ -87,16 +81,13 @@ def reproduce(
     return ret
 
 
-def _reproduce(self, target, **kwargs):
+def _reproduce(self, stage, **kwargs):
     import networkx as nx
-    from dvc.stage import Stage
 
-    stage = Stage.load(self, target)
-    G = self.graph()[1]
-    stages = nx.get_node_attributes(G, "stage")
+    stages = nx.get_node_attributes(self.active_graph, "stage")
     node = relpath(stage.path, self.root_dir)
 
-    return _reproduce_stages(G, stages, node, **kwargs)
+    return _reproduce_stages(self.active_graph, stages, node, **kwargs)
 
 
 def _reproduce_stages(

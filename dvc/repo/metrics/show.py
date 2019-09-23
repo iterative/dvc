@@ -8,6 +8,7 @@ import logging
 
 from jsonpath_ng.ext import parse
 
+from dvc.repo import locked
 from dvc.exceptions import OutputNotFoundError, NoMetricsError
 from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
 
@@ -170,7 +171,7 @@ def _collect_metrics(repo, path, recursive, typ, xpath, branch):
             - typ:
             - xpath:
     """
-    outs = [out for stage in repo.stages() for out in stage.outs]
+    outs = [out for stage in repo.stages for out in stage.outs]
 
     if path:
         try:
@@ -257,6 +258,7 @@ def _read_metrics(repo, metrics, branch):
     return res
 
 
+@locked
 def show(
     repo,
     targets=None,

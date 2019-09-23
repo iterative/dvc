@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import logging
 import colorama
@@ -34,12 +36,19 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
             )
         )
 
-    stages = _create_stages(repo, targets, fname, no_commit)
+    with repo.state:
+        stages = _create_stages(repo, targets, fname)
 
-    repo.check_dag(repo.stages() + stages)
+        repo.check_dag(stages)
 
-    for stage in stages:
-        stage.dump()
+        for stage in stages:
+            stage.save()
+
+            if not no_commit:
+                stage.commit()
+
+            stage.dump()
+
     return stages
 
 
@@ -56,21 +65,15 @@ def _find_all_targets(repo, target, recursive):
     return [target]
 
 
-def _create_stages(repo, targets, fname, no_commit):
+def _create_stages(repo, targets, fname):
     stages = []
 
-    with repo.state:
-        for out in targets:
-            stage = Stage.create(repo, outs=[out], add=True, fname=fname)
+    for out in targets:
+        stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
-            if not stage:
-                continue
+        if not stage:
+            continue
 
-            stage.save()
-
-            if not no_commit:
-                stage.commit()
-
-            stages.append(stage)
+        stages.append(stage)
 
     return stages

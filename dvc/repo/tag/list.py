@@ -1,3 +1,7 @@
+from dvc.repo import locked
+
+
+@locked
 def list(self, target=None, with_deps=False, recursive=False):
     ret = {}
     stages = self.collect(target, with_deps=with_deps, recursive=recursive)

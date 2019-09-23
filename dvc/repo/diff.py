@@ -142,9 +142,11 @@ def _is_dir(path, a_outs, b_outs):
 
 def _get_diff_outs(self, diff_dct):
     self.tree = diff_dct[DIFF_A_TREE]
-    a_outs = {str(out): out for st in self.stages() for out in st.outs}
+    self.reset()
+    a_outs = {str(out): out for st in self.stages for out in st.outs}
     self.tree = diff_dct[DIFF_B_TREE]
-    b_outs = {str(out): out for st in self.stages() for out in st.outs}
+    self.reset()
+    b_outs = {str(out): out for st in self.stages for out in st.outs}
     outs_paths = set(a_outs.keys())
     outs_paths.update(b_outs.keys())
     results = {}
