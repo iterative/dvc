@@ -4,11 +4,6 @@ import os
 import logging
 from funcy import cached_property
 
-try:
-    import boto3
-except ImportError:
-    boto3 = None
-
 from dvc.progress import Tqdm
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
@@ -22,7 +17,7 @@ logger = logging.getLogger(__name__)
 class RemoteS3(RemoteBASE):
     scheme = Schemes.S3
     path_cls = CloudURLInfo
-    REQUIRES = {"boto3": boto3}
+    REQUIRES = {"boto3": "boto3"}
     PARAM_CHECKSUM = "etag"
 
     def __init__(self, repo, config):
@@ -61,6 +56,8 @@ class RemoteS3(RemoteBASE):
 
     @cached_property
     def s3(self):
+        import boto3
+
         session = boto3.session.Session(
             profile_name=self.profile, region_name=self.region
         )

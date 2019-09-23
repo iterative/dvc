@@ -10,11 +10,6 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager, closing
 
-try:
-    import paramiko
-except ImportError:
-    paramiko = None
-
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.utils import to_chunks
@@ -33,7 +28,7 @@ saved_passwords_lock = threading.Lock()
 
 class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
-    REQUIRES = {"paramiko": paramiko}
+    REQUIRES = {"paramiko": "paramiko"}
 
     JOBS = 4
     PARAM_CHECKSUM = "md5"
@@ -93,6 +88,8 @@ class RemoteSSH(RemoteBASE):
 
     @staticmethod
     def _load_user_ssh_config(hostname):
+        import paramiko
+
         user_config_file = RemoteSSH.ssh_config_filename()
         user_ssh_config = {}
         if hostname and os.path.exists(user_config_file):
