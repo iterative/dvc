@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.utils import to_chunks
+from dvc.utils import to_chunks, fix_env
 
 
 @pytest.mark.parametrize(
@@ -28,3 +28,30 @@ def test_to_chunks_num_chunks(num_chunks, expected_chunks):
     list_to_chunk = [1, 2, 3, 4]
     result = to_chunks(list_to_chunk, num_chunks=num_chunks)
     assert result == expected_chunks
+
+
+@pytest.mark.parametrize(
+    "path, orig",
+    [
+        (
+            "/pyenv/bin:/pyenv/libexec:/pyenv/hook:/orig/path1:/orig/path2",
+            "/orig/path1:/orig/path2",
+        ),
+        (
+            "/pyenv/bin:/pyenv/libexec:/orig/path1:/orig/path2",
+            "/orig/path1:/orig/path2",
+        ),
+        (
+            "/pyenv/bin:/some/libexec:/pyenv/hook:/orig/path1:/orig/path2",
+            "/orig/path1:/orig/path2",
+        ),
+        ("/orig/path1:/orig/path2", "/orig/path1:/orig/path2"),
+        (
+            "/orig/path1:/orig/path2:/pyenv/bin:/pyenv/libexec",
+            "/orig/path1:/orig/path2:/pyenv/bin:/pyenv/libexec",
+        ),
+    ],
+)
+def test_fix_env_pyenv(path, orig):
+    env = {"PATH": path, "PYENV_ROOT": "/pyenv"}
+    assert fix_env(env)["PATH"] == orig
