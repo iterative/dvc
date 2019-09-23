@@ -6,14 +6,6 @@ import logging
 
 from dvc.config import Config, NoRemoteError
 from dvc.remote import Remote
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.gs import RemoteGS
-from dvc.remote.azure import RemoteAZURE
-from dvc.remote.oss import RemoteOSS
-from dvc.remote.ssh import RemoteSSH
-from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.http import RemoteHTTP
 
 
 logger = logging.getLogger(__name__)
@@ -29,18 +21,6 @@ class DataCloud(object):
     Raises:
         config.ConfigError: thrown when config has invalid format.
     """
-
-    CLOUD_MAP = {
-        "aws": RemoteS3,
-        "gcp": RemoteGS,
-        "azure": RemoteAZURE,
-        "oss": RemoteOSS,
-        "ssh": RemoteSSH,
-        "hdfs": RemoteHDFS,
-        "local": RemoteLOCAL,
-        "http": RemoteHTTP,
-        "https": RemoteHTTP,
-    }
 
     def __init__(self, repo):
         self.repo = repo
