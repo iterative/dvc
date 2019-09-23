@@ -264,7 +264,11 @@ class RemoteBASE(object):
         if dir_info:
             return dir_info
 
-        dir_info = self.load_dir_cache(checksum)
+        try:
+            dir_info = self.load_dir_cache(checksum)
+        except DirCacheError:
+            dir_info = []
+
         self._dir_info[checksum] = dir_info
         return dir_info
 
@@ -274,8 +278,8 @@ class RemoteBASE(object):
         try:
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
-        except (ValueError, FileNotFoundError):
-            raise DirCacheError(checksum)
+        except (ValueError, FileNotFoundError) as exc:
+            raise DirCacheError(checksum, cause=exc)
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
@@ -899,10 +903,7 @@ class RemoteBASE(object):
             return 0
 
         if self.is_dir_checksum(checksum):
-            try:
-                return len(self.get_dir_cache(checksum))
-            except FileNotFoundError:
-                return 0
+            return len(self.get_dir_cache(checksum))
 
         return 1
 

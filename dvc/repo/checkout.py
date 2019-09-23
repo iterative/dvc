@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.exceptions import CheckoutErrorSuggestGit, CheckoutFailedException
+from dvc.exceptions import CheckoutErrorSuggestGit, CheckoutError
 from dvc.progress import Tqdm
 
 
@@ -61,4 +61,4 @@ def _checkout(
                     )
                 )
         if failed:
-            raise CheckoutFailedException(failed)
+            raise CheckoutError(failed)
