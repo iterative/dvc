@@ -10,12 +10,6 @@ from funcy import cached_property
 
 from dvc.scheme import Schemes
 
-try:
-    from azure.storage.blob import BlockBlobService, BlobPermissions
-    from azure.common import AzureMissingResourceHttpError
-except ImportError:
-    BlockBlobService = None
-
 from dvc.utils.compat import urlparse
 from dvc.progress import Tqdm
 from dvc.config import Config
@@ -35,7 +29,7 @@ class RemoteAZURE(RemoteBASE):
         r"(ContainerName=(?P<container_name>[^;]+);?)?"
         r"(?P<connection_string>.+)?)?)$"
     )
-    REQUIRES = {"azure-storage-blob": BlockBlobService}
+    REQUIRES = {"azure-storage-blob": "azure.storage.blob"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 
@@ -72,6 +66,9 @@ class RemoteAZURE(RemoteBASE):
 
     @cached_property
     def blob_service(self):
+        from azure.storage.blob import BlockBlobService
+        from azure.common import AzureMissingResourceHttpError
+
         logger.debug("URL {}".format(self.path_info))
         logger.debug("Connection string {}".format(self.connection_string))
         blob_service = BlockBlobService(
@@ -139,6 +136,8 @@ class RemoteAZURE(RemoteBASE):
         return any(path_info.path == path for path in paths)
 
     def _generate_download_url(self, path_info, expires=3600):
+        from azure.storage.blob import BlobPermissions
+
         expires_at = datetime.utcnow() + timedelta(seconds=expires)
 
         sas_token = self.blob_service.generate_blob_shared_access_signature(

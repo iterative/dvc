@@ -86,31 +86,8 @@ class RemoteBASE(object):
 
     def __init__(self, repo, config):
         self.repo = repo
-        deps_ok = all(self.REQUIRES.values())
-        if not deps_ok:
-            missing = [k for k, v in self.REQUIRES.items() if v is None]
-            url = config.get(
-                Config.SECTION_REMOTE_URL, "{}://".format(self.scheme)
-            )
-            msg = (
-                "URL '{}' is supported but requires these missing "
-                "dependencies: {}. If you have installed dvc using pip, "
-                "choose one of these options to proceed: \n"
-                "\n"
-                "    1) Install specific missing dependencies:\n"
-                "        pip install {}\n"
-                "    2) Install dvc package that includes those missing "
-                "dependencies: \n"
-                "        pip install 'dvc[{}]'\n"
-                "    3) Install dvc package with all possible "
-                "dependencies included: \n"
-                "        pip install 'dvc[all]'\n"
-                "\n"
-                "If you have installed dvc from a binary package and you "
-                "are still seeing this message, please report it to us "
-                "using https://github.com/iterative/dvc/issues. Thank you!"
-            ).format(url, missing, " ".join(missing), self.scheme)
-            raise RemoteMissingDepsError(msg)
+
+        self._check_requires(config)
 
         core = config.get(Config.SECTION_CORE, {})
         self.checksum_jobs = core.get(
@@ -129,6 +106,43 @@ class RemoteBASE(object):
         else:
             self.cache_types = copy(self.DEFAULT_CACHE_TYPES)
         self.cache_type_confirmed = False
+
+    def _check_requires(self, config):
+        import importlib
+
+        missing = []
+
+        for package, module in self.REQUIRES.items():
+            try:
+                importlib.import_module(module)
+            except ImportError:
+                missing.append(package)
+
+        if not missing:
+            return
+
+        url = config.get(
+            Config.SECTION_REMOTE_URL, "{}://".format(self.scheme)
+        )
+        msg = (
+            "URL '{}' is supported but requires these missing "
+            "dependencies: {}. If you have installed dvc using pip, "
+            "choose one of these options to proceed: \n"
+            "\n"
+            "    1) Install specific missing dependencies:\n"
+            "        pip install {}\n"
+            "    2) Install dvc package that includes those missing "
+            "dependencies: \n"
+            "        pip install 'dvc[{}]'\n"
+            "    3) Install dvc package with all possible "
+            "dependencies included: \n"
+            "        pip install 'dvc[all]'\n"
+            "\n"
+            "If you have installed dvc from a binary package and you "
+            "are still seeing this message, please report it to us "
+            "using https://github.com/iterative/dvc/issues. Thank you!"
+        ).format(url, missing, " ".join(missing), self.scheme)
+        raise RemoteMissingDepsError(msg)
 
     def __repr__(self):
         return "{class_name}: '{path_info}'".format(

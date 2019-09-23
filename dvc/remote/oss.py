@@ -6,11 +6,6 @@ import logging
 
 from dvc.scheme import Schemes
 
-try:
-    import oss2
-except ImportError:
-    oss2 = None
-
 from dvc.config import Config
 from dvc.remote.base import RemoteBASE
 from dvc.progress import Tqdm
@@ -41,7 +36,7 @@ class RemoteOSS(RemoteBASE):
 
     scheme = Schemes.OSS
     path_cls = CloudURLInfo
-    REQUIRES = {"oss2": oss2}
+    REQUIRES = {"oss2": "oss2"}
     PARAM_CHECKSUM = "etag"
     COPY_POLL_SECONDS = 5
 
@@ -71,6 +66,8 @@ class RemoteOSS(RemoteBASE):
 
     @property
     def oss_service(self):
+        import oss2
+
         if self._bucket is None:
             logger.debug("URL {}".format(self.path_info))
             logger.debug("key id {}".format(self.key_id))
@@ -98,6 +95,8 @@ class RemoteOSS(RemoteBASE):
         self.oss_service.delete_object(path_info.path)
 
     def _list_paths(self, prefix):
+        import oss2
+
         for blob in oss2.ObjectIterator(self.oss_service, prefix=prefix):
             yield blob.key
 

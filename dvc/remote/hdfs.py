@@ -9,11 +9,6 @@ import logging
 from subprocess import Popen, PIPE
 from contextlib import contextmanager, closing
 
-try:
-    import pyarrow
-except ImportError:
-    pyarrow = None
-
 from dvc.config import Config
 from dvc.scheme import Schemes
 
@@ -30,7 +25,7 @@ class RemoteHDFS(RemoteBASE):
     scheme = Schemes.HDFS
     REGEX = r"^hdfs://((?P<user>.*)@)?.*$"
     PARAM_CHECKSUM = "checksum"
-    REQUIRES = {"pyarrow": pyarrow}
+    REQUIRES = {"pyarrow": "pyarrow"}
 
     def __init__(self, repo, config):
         super(RemoteHDFS, self).__init__(repo, config)
@@ -55,8 +50,9 @@ class RemoteHDFS(RemoteBASE):
             path=parsed.path,
         )
 
-    @staticmethod
-    def hdfs(path_info):
+    def hdfs(self, path_info):
+        import pyarrow
+
         return get_connection(
             pyarrow.hdfs.connect,
             path_info.host,

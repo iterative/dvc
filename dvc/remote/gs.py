@@ -5,11 +5,6 @@ from datetime import timedelta
 from funcy import cached_property
 from dvc.utils.compat import FileNotFoundError
 
-try:
-    from google.cloud import storage
-except ImportError:
-    storage = None
-
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -22,7 +17,7 @@ logger = logging.getLogger(__name__)
 class RemoteGS(RemoteBASE):
     scheme = Schemes.GS
     path_cls = CloudURLInfo
-    REQUIRES = {"google.cloud.storage": storage}
+    REQUIRES = {"google-cloud-storage": "google.cloud.storage"}
     PARAM_CHECKSUM = "md5"
 
     def __init__(self, repo, config):
@@ -37,10 +32,12 @@ class RemoteGS(RemoteBASE):
 
     @cached_property
     def gs(self):
+        from google.cloud.storage import Client
+
         return (
-            storage.Client.from_service_account_json(self.credentialpath)
+            Client.from_service_account_json(self.credentialpath)
             if self.credentialpath
-            else storage.Client(self.projectname)
+            else Client(self.projectname)
         )
 
     def get_file_checksum(self, path_info):

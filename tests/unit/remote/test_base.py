@@ -10,8 +10,8 @@ class TestRemoteBASE(object):
 
 class TestMissingDeps(TestCase, TestRemoteBASE):
     def test(self):
-        REQUIRES = {"foo": None, "bar": None, "mock": mock}
-        with mock.patch.object(self.REMOTE_CLS, "REQUIRES", REQUIRES):
+        requires = {"missing": "missing"}
+        with mock.patch.object(self.REMOTE_CLS, "REQUIRES", requires):
             with self.assertRaises(RemoteMissingDepsError):
                 self.REMOTE_CLS(None, {})
 
