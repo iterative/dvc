@@ -245,9 +245,11 @@ def is_binary():
     return getattr(sys, "frozen", False)
 
 
-# NOTE: Fix env variables modified by PyInstaller
-# http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
 def fix_env(env=None):
+    """Fix env variables modified by PyInstaller [1] and pyenv [2].
+    [1] http://pyinstaller.readthedocs.io/en/stable/runtime-information.html
+    [2] https://github.com/pyenv/pyenv/issues/985
+    """
     if env is None:
         env = os.environ.copy()
     else:
@@ -261,6 +263,32 @@ def fix_env(env=None):
             env[cast_bytes_py2(lp_key)] = cast_bytes_py2(lp_orig)
         else:
             env.pop(lp_key, None)
+
+    # Unlike PyInstaller, pyenv doesn't leave backups of original env vars
+    # when it modifies them. If we look into the shim, pyenv and pyenv-exec,
+    # we can figure out that the PATH is modified like this:
+    #
+    #     PATH=$PYENV_BIN_PATH:${bin_path}:${plugin_bin}:$PATH
+    #
+    # where
+    #
+    #     PYENV_BIN_PATH - starts with $PYENV_ROOT, see pyenv-exec source code.
+    #     bin_path - might not start with $PYENV_ROOT as it runs realpath on
+    #         it, see pyenv source code.
+    #     plugin_bin - might contain more than 1 entry, which start with
+    #         $PYENV_ROOT, see pyenv source code.
+    #
+    # So having this, we can make a rightful assumption about what parts of the
+    # PATH we need to remove in order to get the original PATH.
+    path = env.get("PATH")
+    pyenv_root = env.get("PYENV_ROOT")
+    if path and pyenv_root and path.startswith(pyenv_root):
+        # removing PYENV_BIN_PATH and bin_path
+        parts = path.split(":")[2:]
+        # removing plugin_bin from the left
+        while pyenv_root in parts[0]:
+            del parts[0]
+        env["PATH"] = ":".join(parts)
 
     return env
 
