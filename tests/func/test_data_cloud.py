@@ -15,8 +15,8 @@ from mock import patch
 from dvc.utils.compat import str
 from dvc.main import main
 from dvc.config import Config
-from dvc.data_cloud import (
-    DataCloud,
+from dvc.data_cloud import DataCloud
+from dvc.remote import (
     RemoteS3,
     RemoteGS,
     RemoteAZURE,
