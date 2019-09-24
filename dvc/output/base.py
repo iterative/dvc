@@ -287,7 +287,7 @@ class OutputBase(object):
     def checkout(self, force=False, progress_callback=None, tag=None):
         if not self.use_cache:
             progress_callback(str(self.path_info), self.get_files_number())
-            return
+            return None
 
         if tag:
             info = self.tags[tag]
