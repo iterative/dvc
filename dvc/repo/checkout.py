@@ -2,7 +2,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.exceptions import CheckoutErrorSuggestGit
+from dvc.exceptions import CheckoutErrorSuggestGit, CheckoutError
 from dvc.progress import Tqdm
 
 
@@ -42,6 +42,7 @@ def _checkout(
         total = get_all_files_numbers(stages)
         if total == 0:
             logger.info("Nothing to do")
+        failed = []
         with Tqdm(
             total=total, unit="file", desc="Checkout", disable=total == 0
         ) as pbar:
@@ -54,4 +55,10 @@ def _checkout(
                         )
                     )
 
-                stage.checkout(force=force, progress_callback=pbar.update_desc)
+                failed.extend(
+                    stage.checkout(
+                        force=force, progress_callback=pbar.update_desc
+                    )
+                )
+        if failed:
+            raise CheckoutError(failed)

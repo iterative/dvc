@@ -294,7 +294,7 @@ class OutputBase(object):
         else:
             info = self.info
 
-        self.cache.checkout(
+        return self.cache.checkout(
             self.path_info,
             info,
             force=force,

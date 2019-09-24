@@ -6,6 +6,7 @@ import configobj
 
 from dvc.cache import Cache
 from dvc.main import main
+from dvc.remote.base import DirCacheError
 from dvc.utils import relpath
 
 from tests.basic_env import TestDvc, TestDir
@@ -49,7 +50,8 @@ class TestCacheLoadBadDirCache(TestDvc):
         checksum = "123.dir"
         fname = self.dvc.cache.local.get(checksum)
         self.create(fname, "<clearly>not,json")
-        self._do_test(self.dvc.cache.local.load_dir_cache(checksum))
+        with pytest.raises(DirCacheError):
+            self.dvc.cache.local.load_dir_cache(checksum)
 
         checksum = "234.dir"
         fname = self.dvc.cache.local.get(checksum)

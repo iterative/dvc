@@ -71,6 +71,14 @@ class RemoteMissingDepsError(DvcException):
     pass
 
 
+class DirCacheError(DvcException):
+    def __init__(self, checksum, cause=None):
+        super(DirCacheError, self).__init__(
+            "Failed to load dir cache for checksum: '{}'.".format(checksum),
+            cause=cause,
+        )
+
+
 class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
@@ -256,7 +264,11 @@ class RemoteBASE(object):
         if dir_info:
             return dir_info
 
-        dir_info = self.load_dir_cache(checksum)
+        try:
+            dir_info = self.load_dir_cache(checksum)
+        except DirCacheError:
+            dir_info = []
+
         self._dir_info[checksum] = dir_info
         return dir_info
 
@@ -266,9 +278,8 @@ class RemoteBASE(object):
         try:
             with self.cache.open(path_info, "r") as fobj:
                 d = json.load(fobj)
-        except (ValueError, FileNotFoundError):
-            logger.exception("Failed to load dir cache '{}'".format(path_info))
-            return []
+        except (ValueError, FileNotFoundError) as exc:
+            raise DirCacheError(checksum, cause=exc)
 
         if not isinstance(d, list):
             msg = "dir cache file format error '{}' [skipping the file]"
@@ -848,32 +859,33 @@ class RemoteBASE(object):
             raise NotImplementedError
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
-        skip = False
+        failed = None
         if not checksum:
             logger.warning(
                 "No checksum info found for '{}'. "
                 "It won't be created.".format(str(path_info))
             )
             self.safe_remove(path_info, force=force)
-            skip = True
+            failed = path_info
 
         elif self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
-            skip = True
+            failed = path_info
 
-        if skip:
+        if failed:
             if progress_callback:
                 progress_callback(
                     str(path_info), self.get_files_number(checksum)
                 )
-            return
+            return failed
 
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
         self._checkout(path_info, checksum, force, progress_callback)
+        return None
 
     def _checkout(
         self, path_info, checksum, force=False, progress_callback=None
