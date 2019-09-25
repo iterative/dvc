@@ -9,6 +9,8 @@ import logging
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
+from dvc.repo.graph import get_pipeline
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +47,7 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.repo, target)
         node = relpath(stage.path, self.repo.root_dir)
 
-        pipelines = list(
-            filter(lambda g: node in g.nodes(), self.repo.pipelines)
-        )
-
-        assert len(pipelines) == 1
-        G = pipelines[0]
+        G = get_pipeline(self.repo.pipelines, node)
         stages = networkx.get_node_attributes(G, "stage")
 
         nodes = []
