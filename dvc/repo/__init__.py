@@ -108,11 +108,11 @@ class Repo(object):
 
     @property
     def tree(self):
-        return self.__tree
+        return self._tree
 
     @tree.setter
     def tree(self, tree):
-        self.__tree = tree
+        self._tree = tree
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
         self.reset()
