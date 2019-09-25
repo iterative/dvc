@@ -31,6 +31,7 @@ def locked(f):
     def wrapper(repo, *args, **kwargs):
         with repo.lock:
             ret = f(repo, *args, **kwargs)
+            # Our graph cache is no longer valid after we release the repo.lock
             repo.reset()
             return ret
 
