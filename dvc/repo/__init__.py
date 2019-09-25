@@ -32,7 +32,7 @@ def locked(f):
         with repo.lock:
             ret = f(repo, *args, **kwargs)
             # Our graph cache is no longer valid after we release the repo.lock
-            repo.reset()
+            repo._reset()
             return ret
 
     return wrapper
@@ -116,7 +116,7 @@ class Repo(object):
         self._tree = tree
         # Our graph cache is no longer valid, as it was based on the previous
         # tree.
-        self.reset()
+        self._reset()
 
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
@@ -507,7 +507,7 @@ class Repo(object):
     def fetch(self, *args, **kwargs):
         return self._fetch(*args, **kwargs)
 
-    def reset(self):
+    def _reset(self):
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
