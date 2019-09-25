@@ -66,7 +66,7 @@ class DvcIgnoreFilter(object):
         self._update(root_dir)
         for root, dirs, _ in os.walk(root_dir):
             for d in dirs:
-                self._update(os.path.join(root, decode(d, 'utf-8')))
+                self._update(os.path.join(root, decode(d, "utf-8")))
 
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)

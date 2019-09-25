@@ -266,7 +266,7 @@ def _build_sugiyama_layout(vertexes, edges):
     # Y
     #
 
-    vertexes = {v: Vertex(" {} ".format(decode(v, 'utf-8'))) for v in vertexes}
+    vertexes = {v: Vertex(" {} ".format(decode(v, "utf-8"))) for v in vertexes}
     # NOTE: reverting edges to correctly orientate the graph
     edges = [Edge(vertexes[e], vertexes[s]) for s, e in edges]
     vertexes = vertexes.values()
