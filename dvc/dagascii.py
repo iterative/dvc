@@ -6,6 +6,8 @@ from __future__ import print_function
 import sys
 import math
 
+from dvc.utils.compat import decode
+
 from grandalf.graphs import Vertex, Edge, Graph
 from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import route_with_lines, EdgeViewer
@@ -264,7 +266,7 @@ def _build_sugiyama_layout(vertexes, edges):
     # Y
     #
 
-    vertexes = {v: Vertex(" {} ".format(v)) for v in vertexes}
+    vertexes = {v: Vertex(" {} ".format(decode(v, 'utf-8'))) for v in vertexes}
     # NOTE: reverting edges to correctly orientate the graph
     edges = [Edge(vertexes[e], vertexes[s]) for s, e in edges]
     vertexes = vertexes.values()
