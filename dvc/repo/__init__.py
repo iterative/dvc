@@ -157,7 +157,6 @@ class Repo(object):
 
     def check_dag(self, stages):
         """Generate graph including the new stage to check for errors"""
-        self.reset()
         self._collect_graph(self.stages + stages)
 
     @staticmethod
