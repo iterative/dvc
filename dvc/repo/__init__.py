@@ -12,7 +12,6 @@ from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
-    TargetNotDirectoryError,
     OutputFileMissingError,
 )
 from dvc.ignore import DvcIgnoreFilter
@@ -302,8 +301,8 @@ class Repo(object):
               (weakly connected components)
 
         Args:
-            stages (list): used to build a graph, if None given, use the ones
-                on the `from_directory`.
+            stages (list): used to build a graph, if None given, collect stages
+                in the repository.
 
         Raises:
             OutputDuplicationError: two outputs with the same path
@@ -385,7 +384,7 @@ class Repo(object):
 
         return list(filter(filter_dirs, dirs))
 
-    def collect_stages(self, from_directory=None):
+    def collect_stages(self):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -397,16 +396,11 @@ class Repo(object):
         """
         from dvc.stage import Stage
 
-        if not from_directory:
-            from_directory = self.root_dir
-        elif not os.path.isdir(from_directory):
-            raise TargetNotDirectoryError(from_directory)
-
         stages = []
         outs = []
 
         for root, dirs, files in self.tree.walk(
-            from_directory, dvcignore=self.dvcignore
+            self.root_dir, dvcignore=self.dvcignore
         ):
             for fname in files:
                 path = os.path.join(root, fname)
@@ -428,9 +422,6 @@ class Repo(object):
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
-            # there is no `from_directory=path` argument because some data
-            # files might be generated to an upper level, and so it is
-            # needed to look at all the files (project root_dir)
             outs = [out for stage in self.stages for out in stage.outs]
 
         abs_path = os.path.abspath(path)

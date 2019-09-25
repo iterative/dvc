@@ -19,7 +19,6 @@ from dvc.remote.local import RemoteLOCAL
 from dvc.exceptions import (
     DvcException,
     ConfirmRemoveError,
-    TargetNotDirectoryError,
     CheckoutErrorSuggestGit,
     CheckoutError,
 )
@@ -423,10 +422,7 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        try:
-            self.dvc.checkout(target=self.FOO + ".dvc", recursive=True)
-        except TargetNotDirectoryError:
-            self.fail("should not raise TargetNotDirectoryError")
+        self.dvc.checkout(target=self.FOO + ".dvc", recursive=True)
 
 
 class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):

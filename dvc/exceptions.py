@@ -244,13 +244,6 @@ class OverlappingOutputPathsError(DvcException):
         )
 
 
-class TargetNotDirectoryError(DvcException):
-    def __init__(self, path):
-        super(TargetNotDirectoryError, self).__init__(
-            "Target: {} is not a directory".format(path)
-        )
-
-
 class CheckoutErrorSuggestGit(DvcException):
     def __init__(self, target, cause):
         super(CheckoutErrorSuggestGit, self).__init__(
