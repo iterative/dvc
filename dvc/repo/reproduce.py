@@ -7,6 +7,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath
 
 from . import locked
+from .graph import get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,7 @@ def reproduce(
         )
 
     active_graph = _get_active_graph(self.graph)
-    active_pipelines = self.get_pipelines(active_graph)
+    active_pipelines = get_pipelines(active_graph)
 
     if pipeline or all_pipelines:
         if all_pipelines:
@@ -81,7 +82,7 @@ def reproduce(
         else:
             stage = Stage.load(self, target)
             node = relpath(stage.path, self.root_dir)
-            pipelines = [self.get_pipeline(active_pipelines, node)]
+            pipelines = [get_pipeline(active_pipelines, node)]
 
         targets = []
         for G in pipelines:

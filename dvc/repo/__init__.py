@@ -21,6 +21,9 @@ from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils.compat import open as _open, fspath_py35, FileNotFoundError
 from dvc.utils import relpath
 
+from .graph import check_acyclic, get_pipeline, get_pipelines, get_stages
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -170,22 +173,6 @@ class Repo(object):
         """Generate graph including the new stage to check for errors"""
         self._collect_graph(self.stages + new_stages)
 
-    @staticmethod
-    def _check_cyclic_graph(graph):
-        import networkx as nx
-        from dvc.exceptions import CyclicGraphError
-
-        cycles = list(nx.simple_cycles(graph))
-
-        if cycles:
-            raise CyclicGraphError(cycles[0])
-
-    @staticmethod
-    def get_pipeline(pipelines, node):
-        found = [i for i in pipelines if i.has_node(node)]
-        assert len(found) == 1
-        return found[0]
-
     def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
         from dvc.stage import Stage
@@ -193,7 +180,7 @@ class Repo(object):
         G = graph or self.graph
 
         if not target:
-            return self.get_stages(G)
+            return get_stages(G)
 
         target = os.path.abspath(target)
 
@@ -213,7 +200,7 @@ class Repo(object):
             return [stage]
 
         node = relpath(stage.path, self.root_dir)
-        pipeline = self.get_pipeline(self.get_pipelines(G), node)
+        pipeline = get_pipeline(get_pipelines(G), node)
 
         ret = []
         for n in nx.dfs_postorder_nodes(pipeline, node):
@@ -375,7 +362,7 @@ class Repo(object):
                         G.add_node(dep_node, stage=dep_stage)
                         G.add_edge(node, dep_node)
 
-        self._check_cyclic_graph(G)
+        check_acyclic(G)
 
         return G
 
@@ -383,17 +370,9 @@ class Repo(object):
     def graph(self):
         return self._collect_graph()
 
-    @staticmethod
-    def get_pipelines(G):
-        import networkx as nx
-
-        return [
-            G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
-        ]
-
     @cached_property
     def pipelines(self):
-        return self.get_pipelines(self.graph)
+        return get_pipelines(self.graph)
 
     @staticmethod
     def _filter_out_dirs(dirs, outs, root_dir):
@@ -443,15 +422,9 @@ class Repo(object):
 
         return stages
 
-    @staticmethod
-    def get_stages(G):
-        import networkx
-
-        return list(networkx.get_node_attributes(G, "stage").values())
-
     @cached_property
     def stages(self):
-        return self.get_stages(self.graph)
+        return get_stages(self.graph)
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
