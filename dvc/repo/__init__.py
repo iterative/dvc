@@ -202,11 +202,10 @@ class Repo(object):
         node = relpath(stage.path, self.root_dir)
         pipeline = get_pipeline(get_pipelines(G), node)
 
-        ret = []
-        for n in nx.dfs_postorder_nodes(pipeline, node):
-            ret.append(pipeline.node[n]["stage"])
-
-        return ret
+        return [
+            pipeline.node[n]["stage"]
+            for n in nx.dfs_postorder_nodes(pipeline, node)
+        ]
 
     def used_cache(
         self,
