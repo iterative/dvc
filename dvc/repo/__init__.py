@@ -18,7 +18,12 @@ from dvc.exceptions import (
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.utils.compat import open as _open, fspath_py35, FileNotFoundError
+from dvc.utils.compat import (
+    open as _open,
+    fspath_py35,
+    FileNotFoundError,
+    decode,
+)
 from dvc.utils import relpath
 
 logger = logging.getLogger(__name__)
@@ -111,6 +116,8 @@ class Repo(object):
             root = os.getcwd()
         else:
             root = os.path.abspath(os.path.realpath(root))
+
+        root = decode(root, "utf-8")
 
         while True:
             dvc_dir = os.path.join(root, cls.DVC_DIR)
