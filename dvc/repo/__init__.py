@@ -104,6 +104,17 @@ class Repo(object):
 
         self._ignore()
 
+    @property
+    def tree(self):
+        return self.__tree
+
+    @tree.setter
+    def tree(self, tree):
+        self.__tree = tree
+        # Our graph cache is no longer valid, as it was based on the previous
+        # tree.
+        self.reset()
+
     def __repr__(self):
         return "Repo: '{root_dir}'".format(root_dir=self.root_dir)
 

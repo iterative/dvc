@@ -34,7 +34,6 @@ class TestCollect(TestDvcGit):
             self.dvc.tree = GitTree(self.dvc.scm.repo, branch)
         else:
             self.dvc.tree = WorkingTree()
-        self.dvc.reset()
         result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
         self.assertEqual([[str(j) for j in i.outs] for i in result], expected)
         return result

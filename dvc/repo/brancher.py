@@ -49,7 +49,6 @@ def brancher(  # noqa: E302
     # stay in place. This behavior is a subject to change.
     for rev in revs:
         self.tree = scm.get_tree(rev)
-        self.reset()
         yield rev
 
     self.tree = saved_tree
