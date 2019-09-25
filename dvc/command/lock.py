@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,12 @@ def add_parser(subparsers, parent_parser):
         help=LOCK_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    lock_parser.add_argument("targets", nargs="+", help="DVC-files to lock.")
+    lock_parser.add_argument(
+        "targets",
+        nargs="+",
+        help="DVC-files to lock.",
+        type=lambda s: decode(s, "utf8"),
+    )
     lock_parser.set_defaults(func=CmdLock)
 
     UNLOCK_HELP = "Unlock DVC-files."
@@ -57,6 +63,9 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unlock_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to unlock."
+        "targets",
+        nargs="+",
+        help="DVC-files to unlock.",
+        type=lambda s: decode(s, "utf8"),
     )
     unlock_parser.set_defaults(func=CmdUnlock)

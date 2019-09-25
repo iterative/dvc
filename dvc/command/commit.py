@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -69,5 +70,6 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to commit. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
+        type=lambda s: decode(s, "utf8"),
     )
     commit_parser.set_defaults(func=CmdCommit)

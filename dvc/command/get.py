@@ -6,6 +6,7 @@ import logging
 from dvc.repo import Repo
 from dvc.exceptions import DvcException
 from .base import CmdBaseNoRepo, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -44,7 +45,11 @@ def add_parser(subparsers, parent_parser):
     )
     get_parser.add_argument("path", help="Path to data within DVC repository.")
     get_parser.add_argument(
-        "-o", "--out", nargs="?", help="Destination path to put data to."
+        "-o",
+        "--out",
+        nargs="?",
+        help="Destination path to put data to.",
+        type=lambda s: decode(s, "utf8"),
     )
     get_parser.add_argument(
         "--rev", nargs="?", help="DVC repository git revision."

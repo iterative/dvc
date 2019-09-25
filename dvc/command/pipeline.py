@@ -8,6 +8,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -250,6 +251,7 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to show pipeline for. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
+        type=lambda s: decode(s, "utf8"),
     )
     pipeline_show_parser.set_defaults(func=CmdPipelineShow)
 

@@ -6,6 +6,7 @@ import logging
 from dvc.repo import Repo
 from dvc.exceptions import DvcException
 from .base import CmdBaseNoRepo, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ def add_parser(subparsers, parent_parser):
         "url", help="See `dvc import-url -h` for full list of supported URLs."
     )
     get_parser.add_argument(
-        "out", nargs="?", help="Destination path to put data to."
+        "out",
+        nargs="?",
+        help="Destination path to put data to.",
+        type=lambda s: decode(s, "utf8"),
     )
     get_parser.set_defaults(func=CmdGetUrl)

@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException, BadMetricError
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -130,6 +131,7 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="Metric files or directories (see -R) to show "
         "(leave empty to display all)",
+        type=lambda s: decode(s, "utf8"),
     )
     metrics_show_parser.add_argument(
         "-t",
@@ -183,7 +185,9 @@ def add_parser(subparsers, parent_parser):
     metrics_add_parser.add_argument(
         "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
     )
-    metrics_add_parser.add_argument("path", help="Path to a metric file.")
+    metrics_add_parser.add_argument(
+        "path", help="Path to a metric file.", type=lambda s: decode(s, "utf8")
+    )
     metrics_add_parser.set_defaults(func=CmdMetricsAdd)
 
     METRICS_MODIFY_HELP = "Modify metric file options."
@@ -200,7 +204,9 @@ def add_parser(subparsers, parent_parser):
     metrics_modify_parser.add_argument(
         "-x", "--xpath", help="json/tsv/htsv/csv/hcsv path."
     )
-    metrics_modify_parser.add_argument("path", help="Path to a metric file.")
+    metrics_modify_parser.add_argument(
+        "path", help="Path to a metric file.", type=lambda s: decode(s, "utf8")
+    )
     metrics_modify_parser.set_defaults(func=CmdMetricsModify)
 
     METRICS_REMOVE_HELP = "Remove files's metric tag."
@@ -211,5 +217,7 @@ def add_parser(subparsers, parent_parser):
         help=METRICS_REMOVE_HELP,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    metrics_remove_parser.add_argument("path", help="Path to a metric file.")
+    metrics_remove_parser.add_argument(
+        "path", help="Path to a metric file.", type=lambda s: decode(s, "utf8")
+    )
     metrics_remove_parser.set_defaults(func=CmdMetricsRemove)

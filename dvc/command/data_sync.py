@@ -5,6 +5,7 @@ import logging
 
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -90,6 +91,7 @@ def shared_parent_parser():
         nargs="*",
         help="Limit command scope to these DVC-files. "
         "Using -R, directories to search DVC-files in can also be given.",
+        type=lambda s: decode(s, "utf8"),
     )
 
     return shared_parent_parser

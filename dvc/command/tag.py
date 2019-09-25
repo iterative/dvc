@@ -1,6 +1,7 @@
 import logging
 
 from dvc.utils import to_yaml_string
+from dvc.utils.compat import decode
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
@@ -82,7 +83,11 @@ def add_parser(subparsers, parent_parser):
     )
     tag_add_parser.add_argument("tag", help="Dvc tag.")
     tag_add_parser.add_argument(
-        "targets", nargs="*", default=[None], help="DVC-files."
+        "targets",
+        nargs="*",
+        default=[None],
+        help="DVC-files.",
+        type=lambda s: decode(s, "utf8"),
     )
     tag_add_parser.add_argument(
         "-d",
@@ -109,7 +114,11 @@ def add_parser(subparsers, parent_parser):
     )
     tag_remove_parser.add_argument("tag", help="Dvc tag.")
     tag_remove_parser.add_argument(
-        "targets", nargs="*", default=[None], help="DVC-files."
+        "targets",
+        nargs="*",
+        default=[None],
+        help="DVC-files.",
+        type=lambda s: decode(s, "utf8"),
     )
     tag_remove_parser.add_argument(
         "-d",
@@ -135,7 +144,11 @@ def add_parser(subparsers, parent_parser):
         help=TAG_LIST_HELP,
     )
     tag_list_parser.add_argument(
-        "targets", nargs="*", default=[None], help="DVC-files."
+        "targets",
+        nargs="*",
+        default=[None],
+        help="DVC-files.",
+        type=lambda s: decode(s, "utf8"),
     )
     tag_list_parser.add_argument(
         "-d",

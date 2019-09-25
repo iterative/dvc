@@ -6,6 +6,7 @@ import logging
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,9 @@ def add_parser(subparsers, parent_parser):
         help="Force purge.",
     )
     remove_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to remove."
+        "targets",
+        nargs="+",
+        help="DVC-files to remove.",
+        type=lambda s: decode(s, "utf8"),
     )
     remove_parser.set_defaults(func=CmdRemove)

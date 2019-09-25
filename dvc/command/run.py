@@ -5,6 +5,7 @@ import logging
 
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import DvcException
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -96,6 +97,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare dependencies for reproducible cmd.",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "-o",
@@ -103,6 +105,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare output file or directory.",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "-O",
@@ -111,6 +114,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory "
         "(do not put into DVC cache).",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "-m",
@@ -118,6 +122,7 @@ def add_parser(subparsers, parent_parser):
         action="append",
         default=[],
         help="Declare output metric file or directory.",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "-M",
@@ -126,9 +131,13 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output metric file or directory "
         "(do not put into DVC cache).",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "-f",
+        "--file",
+        help="Specify name of the DVC-file it generates.",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "-c", "--cwd", help="Deprecated, use -w and -f instead."
@@ -182,6 +191,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory that will not be "
         "removed upon repro.",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "--outs-persist-no-cache",
@@ -189,6 +199,7 @@ def add_parser(subparsers, parent_parser):
         default=[],
         help="Declare output file or directory that will not be "
         "removed upon repro (do not put into DVC cache).",
+        type=lambda s: decode(s, "utf8"),
     )
     run_parser.add_argument(
         "--always-changed",

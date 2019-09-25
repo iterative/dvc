@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -54,9 +55,15 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     add_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "-f",
+        "--file",
+        help="Specify name of the DVC-file it generates.",
+        type=lambda s: decode(s, "utf8"),
     )
     add_parser.add_argument(
-        "targets", nargs="+", help="Input files/directories to add."
+        "targets",
+        nargs="+",
+        help="Input files/directories to add.",
+        type=lambda s: decode(s, "utf8"),
     )
     add_parser.set_defaults(func=CmdAdd)

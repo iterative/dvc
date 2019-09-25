@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,9 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     unprotect_parser.add_argument(
-        "targets", nargs="+", help="Data files/directories to unprotect."
+        "targets",
+        nargs="+",
+        help="Data files/directories to unprotect.",
+        type=lambda s: decode(s, "utf8"),
     )
     unprotect_parser.set_defaults(func=CmdUnprotect)

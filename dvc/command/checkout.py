@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import argparse
 
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 class CmdCheckout(CmdBase):
@@ -56,5 +57,6 @@ def add_parser(subparsers, parent_parser):
         nargs="*",
         help="DVC-files to checkout. Optional. "
         "(Finds all DVC-files in the workspace by default.)",
+        type=lambda s: decode(s, "utf8"),
     )
     checkout_parser.set_defaults(func=CmdCheckout)

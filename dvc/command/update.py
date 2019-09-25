@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -32,6 +33,9 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     update_parser.add_argument(
-        "targets", nargs="+", help="DVC-files to update."
+        "targets",
+        nargs="+",
+        help="DVC-files to update.",
+        type=lambda s: decode(s, "utf8"),
     )
     update_parser.set_defaults(func=CmdUpdate)

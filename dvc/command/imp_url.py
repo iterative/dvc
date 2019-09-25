@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -52,9 +53,15 @@ def add_parser(subparsers, parent_parser):
         "remote://myremote/path/to/file (see `dvc remote`)",
     )
     import_parser.add_argument(
-        "out", nargs="?", help="Destination path to put files to."
+        "out",
+        nargs="?",
+        help="Destination path to put files to.",
+        type=lambda s: decode(s, "utf8"),
     )
     import_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "-f",
+        "--file",
+        help="Specify name of the DVC-file it generates.",
+        type=lambda s: decode(s, "utf8"),
     )
     import_parser.set_defaults(func=CmdImportUrl)

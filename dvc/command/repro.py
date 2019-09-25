@@ -8,6 +8,7 @@ from dvc.command.base import CmdBase, append_doc_link
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException
+from dvc.utils.compat import decode
 
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,7 @@ def add_parser(subparsers, parent_parser):
         "targets",
         nargs="*",
         help="DVC-file to reproduce. 'Dvcfile' by default.",
+        type=lambda s: decode(s, "utf8"),
     )
     repro_parser.add_argument(
         "-f",
