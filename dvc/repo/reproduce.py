@@ -31,6 +31,23 @@ def _reproduce_stage(stages, node, **kwargs):
     return [stage]
 
 
+def _get_active_graph(G):
+    import networkx as nx
+
+    active = G.copy()
+    stages = nx.get_node_attributes(G, "stage")
+    for node in G.nodes():
+        stage = stages[node]
+        if not stage.locked:
+            continue
+        for n in nx.dfs_postorder_nodes(G, node):
+            if n == node:
+                continue
+            if n in active.nodes():
+                active.remove_node(n)
+    return active
+
+
 @locked
 @scm_context
 def reproduce(
@@ -55,13 +72,16 @@ def reproduce(
             config.SECTION_CORE_INTERACTIVE, False
         )
 
+    active_graph = _get_active_graph(self.graph)
+    active_pipelines = self.get_pipelines(active_graph)
+
     if pipeline or all_pipelines:
         if all_pipelines:
-            pipelines = self.active_pipelines
+            pipelines = active_pipelines
         else:
             stage = Stage.load(self, target)
             node = relpath(stage.path, self.root_dir)
-            pipelines = [self.get_active_pipeline(node)]
+            pipelines = [self.get_pipeline(active_pipelines, node)]
 
         targets = []
         for G in pipelines:
@@ -70,24 +90,24 @@ def reproduce(
                 if G.in_degree(node) == 0:
                     targets.append(attrs[node])
     else:
-        targets = self.collect_active(target, recursive=recursive)
+        targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     ret = []
     with self.state:
         for target in targets:
-            stages = _reproduce(self, target, **kwargs)
+            stages = _reproduce(self, active_graph, target, **kwargs)
             ret.extend(stages)
 
     return ret
 
 
-def _reproduce(self, stage, **kwargs):
+def _reproduce(self, G, stage, **kwargs):
     import networkx as nx
 
-    stages = nx.get_node_attributes(self.active_graph, "stage")
+    stages = nx.get_node_attributes(G, "stage")
     node = relpath(stage.path, self.root_dir)
 
-    return _reproduce_stages(self.active_graph, stages, node, **kwargs)
+    return _reproduce_stages(G, stages, node, **kwargs)
 
 
 def _reproduce_stages(

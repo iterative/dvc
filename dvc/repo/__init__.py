@@ -170,28 +170,23 @@ class Repo(object):
             raise CyclicGraphError(cycles[0])
 
     @staticmethod
-    def _get_pipeline(pipelines, node):
+    def get_pipeline(pipelines, node):
         found = [i for i in pipelines if i.has_node(node)]
         assert len(found) == 1
         return found[0]
 
-    def get_pipeline(self, node):
-        return self._get_pipeline(self.pipelines, node)
-
-    def get_active_pipeline(self, node):
-        return self._get_pipeline(self.active_pipelines, node)
-
-    def _collect(self, target, with_deps=False, recursive=False, active=False):
+    def collect(self, target, with_deps=False, recursive=False, graph=None):
         import networkx as nx
         from dvc.stage import Stage
 
+        G = graph or self.graph
+
         if not target:
-            return self.stages
+            return self.get_stages(G)
 
         target = os.path.abspath(target)
 
         if recursive and os.path.isdir(target):
-            G = self.active_graph if active else self.graph
             attrs = nx.get_node_attributes(G, "stage")
             nodes = [node for node in nx.dfs_postorder_nodes(G)]
 
@@ -207,22 +202,13 @@ class Repo(object):
             return [stage]
 
         node = relpath(stage.path, self.root_dir)
-        if active:
-            G = self.get_active_pipeline(node)
-        else:
-            G = self.get_pipeline(node)
+        pipeline = self.get_pipeline(self.get_pipelines(G), node)
 
         ret = []
-        for n in nx.dfs_postorder_nodes(G, node):
-            ret.append(G.node[n]["stage"])
+        for n in nx.dfs_postorder_nodes(pipeline, node):
+            ret.append(pipeline.node[n]["stage"])
 
         return ret
-
-    def collect(self, *args, **kwargs):
-        return self._collect(*args, active=False, **kwargs)
-
-    def collect_active(self, *args, **kwargs):
-        return self._collect(*args, active=True, **kwargs)
 
     def used_cache(
         self,
@@ -321,9 +307,6 @@ class Repo(object):
             stages (list): used to build a graph, if None given, use the ones
                 on the `from_directory`.
 
-            from_directory (str): directory where to look at for stages, if
-                None is given, use the current working directory
-
         Raises:
             OutputDuplicationError: two outputs with the same path
             StagePathAsOutputError: stage inside an output directory
@@ -338,7 +321,6 @@ class Repo(object):
         )
 
         G = nx.DiGraph()
-        G_active = nx.DiGraph()
         stages = stages or self.collect_stages()
         stages = [stage for stage in stages if stage]
         outs = {}
@@ -366,7 +348,6 @@ class Repo(object):
             node = relpath(stage.path, self.root_dir)
 
             G.add_node(node, stage=stage)
-            G_active.add_node(node, stage=stage)
 
             for dep in stage.deps:
                 if dep.path_info is None:
@@ -382,46 +363,26 @@ class Repo(object):
                         dep_node = relpath(dep_stage.path, self.root_dir)
                         G.add_node(dep_node, stage=dep_stage)
                         G.add_edge(node, dep_node)
-                        if not stage.locked:
-                            G_active.add_node(dep_node, stage=dep_stage)
-                            G_active.add_edge(node, dep_node)
 
         self._check_cyclic_graph(G)
 
-        return G, G_active
+        return G
 
     @cached_property
-    def _graph(self):
+    def graph(self):
         return self._collect_graph()
 
-    @property
-    def graph(self):
-        return self._graph[0]
-
-    @property
-    def active_graph(self):
-        return self._graph[1]
-
-    @cached_property
-    def _pipelines(self):
+    @staticmethod
+    def get_pipelines(G):
         import networkx as nx
 
-        def _get_pipelines(G):
-            return [
-                G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
-            ]
+        return [
+            G.subgraph(c).copy() for c in nx.weakly_connected_components(G)
+        ]
 
-        G, G_active = self._graph
-
-        return _get_pipelines(G), _get_pipelines(G_active)
-
-    @property
+    @cached_property
     def pipelines(self):
-        return self._pipelines[0]
-
-    @property
-    def active_pipelines(self):
-        return self._pipelines[1]
+        return self.get_pipelines(self.graph)
 
     @staticmethod
     def _filter_out_dirs(dirs, outs, root_dir):
@@ -471,20 +432,15 @@ class Repo(object):
 
         return stages
 
-    @cached_property
-    def _stages(self):
+    @staticmethod
+    def get_stages(G):
         import networkx
 
-        G, G_active = self._graph
+        return list(networkx.get_node_attributes(G, "stage").values())
 
-        def _get_stages(G):
-            return list(networkx.get_node_attributes(G, "stage").values())
-
-        return _get_stages(G), _get_stages(G_active)
-
-    @property
+    @cached_property
     def stages(self):
-        return self._stages[0]
+        return self.get_stages(self.graph)
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
@@ -576,6 +532,6 @@ class Repo(object):
         return self._fetch(*args, **kwargs)
 
     def reset(self):
-        self.__dict__.pop("_graph", None)
-        self.__dict__.pop("_stages", None)
-        self.__dict__.pop("_pipelines", None)
+        self.__dict__.pop("graph", None)
+        self.__dict__.pop("stages", None)
+        self.__dict__.pop("pipelines", None)
