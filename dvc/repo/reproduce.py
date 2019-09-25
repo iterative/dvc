@@ -37,14 +37,14 @@ def _get_active_graph(G):
 
     active = G.copy()
     stages = nx.get_node_attributes(G, "stage")
-    for node in G.nodes():
+    for node in G:
         stage = stages[node]
         if not stage.locked:
             continue
         for n in nx.dfs_postorder_nodes(G, node):
             if n == node:
                 continue
-            if n in active.nodes():
+            if n in active:
                 active.remove_node(n)
     return active
 
@@ -87,7 +87,7 @@ def reproduce(
         targets = []
         for G in pipelines:
             attrs = nx.get_node_attributes(G, "stage")
-            for node in G.nodes():
+            for node in G:
                 if G.in_degree(node) == 0:
                     targets.append(attrs[node])
     else:

@@ -51,7 +51,7 @@ class CmdPipelineShow(CmdBase):
         stages = networkx.get_node_attributes(G, "stage")
 
         nodes = []
-        for n in G.nodes():
+        for n in G:
             stage = stages[n]
             if commands:
                 if stage.cmd is None:
