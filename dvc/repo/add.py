@@ -39,7 +39,7 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
     with repo.state:
         stages = _create_stages(repo, targets, fname)
 
-        repo.check_dag(stages)
+        repo.check_modified_graph(stages)
 
         for stage in stages:
             stage.save()

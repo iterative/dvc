@@ -155,9 +155,9 @@ class Repo(object):
 
         self.scm.ignore_list(flist)
 
-    def check_dag(self, stages):
+    def check_modified_graph(self, new_stages):
         """Generate graph including the new stage to check for errors"""
-        self._collect_graph(self.stages + stages)
+        self._collect_graph(self.stages + new_stages)
 
     @staticmethod
     def _check_cyclic_graph(graph):
