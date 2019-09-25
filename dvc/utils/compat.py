@@ -28,6 +28,12 @@ def encode(u, encoding=None):
     return u.encode(encoding, "replace")
 
 
+def decode(u, encoding=None):
+    if is_py2:
+        return u.decode(encoding)
+    return u
+
+
 def csv_reader(unicode_csv_data, dialect=None, **kwargs):
     """csv.reader doesn't support Unicode input, so need to use some tricks
     to work around this.
