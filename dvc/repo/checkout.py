@@ -28,8 +28,6 @@ def _checkout(
 ):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
-    all_stages = self.stages()
-
     try:
         stages = self.collect(target, with_deps=with_deps, recursive=recursive)
     except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
@@ -38,7 +36,7 @@ def _checkout(
         raise CheckoutErrorSuggestGit(target, exc)
 
     with self.state:
-        _cleanup_unused_links(self, all_stages)
+        _cleanup_unused_links(self, self.stages)
         total = get_all_files_numbers(stages)
         if total == 0:
             logger.info("Nothing to do")

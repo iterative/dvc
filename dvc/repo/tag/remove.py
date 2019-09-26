@@ -1,9 +1,12 @@
 import logging
 
+from dvc.repo import locked
+
 
 logger = logging.getLogger(__name__)
 
 
+@locked
 def remove(self, tag, target=None, with_deps=False, recursive=False):
     stages = self.collect(target, with_deps=with_deps, recursive=recursive)
     for stage in stages:

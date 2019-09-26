@@ -1,8 +1,10 @@
 from __future__ import unicode_literals
 
+from dvc.repo import locked
 from dvc.exceptions import DvcException
 
 
+@locked
 def modify(repo, path, typ=None, xpath=None, delete=False):
     supported_types = ["raw", "json", "csv", "tsv", "hcsv", "htsv"]
     outs = repo.find_outs_by_path(path)

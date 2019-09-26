@@ -9,6 +9,8 @@ import logging
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
+from dvc.repo.graph import get_pipeline
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ class CmdPipelineShow(CmdBase):
         from dvc.stage import Stage
 
         stage = Stage.load(self.repo, target)
-        G = self.repo.graph()[0]
+        G = self.repo.graph
         stages = networkx.get_node_attributes(G, "stage")
         node = relpath(stage.path, self.repo.root_dir)
         nodes = networkx.dfs_postorder_nodes(G, node)
@@ -45,16 +47,11 @@ class CmdPipelineShow(CmdBase):
         stage = Stage.load(self.repo, target)
         node = relpath(stage.path, self.repo.root_dir)
 
-        pipelines = list(
-            filter(lambda g: node in g.nodes(), self.repo.pipelines())
-        )
-
-        assert len(pipelines) == 1
-        G = pipelines[0]
+        G = get_pipeline(self.repo.pipelines, node)
         stages = networkx.get_node_attributes(G, "stage")
 
         nodes = []
-        for n in G.nodes():
+        for n in G:
             stage = stages[n]
             if commands:
                 if stage.cmd is None:
@@ -168,7 +165,7 @@ class CmdPipelineList(CmdBase):
     def run(self):
         import networkx
 
-        pipelines = self.repo.pipelines()
+        pipelines = self.repo.pipelines
         for p in pipelines:
             stages = networkx.get_node_attributes(p, "stage")
             for stage in stages:

@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import os
 import logging
 
 from dvc.exceptions import ReproductionError
@@ -8,6 +7,7 @@ from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath
 
 from . import locked
+from .graph import get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,23 @@ def _reproduce_stage(stages, node, **kwargs):
         stage.dump()
 
     return [stage]
+
+
+def _get_active_graph(G):
+    import networkx as nx
+
+    active = G.copy()
+    stages = nx.get_node_attributes(G, "stage")
+    for node in G:
+        stage = stages[node]
+        if not stage.locked:
+            continue
+        for n in nx.dfs_postorder_nodes(G, node):
+            if n == node:
+                continue
+            if n in active:
+                active.remove_node(n)
+    return active
 
 
 @locked
@@ -56,43 +73,38 @@ def reproduce(
             config.SECTION_CORE_INTERACTIVE, False
         )
 
-    targets = []
-    if recursive and os.path.isdir(target):
-        G = self.graph(from_directory=target)[1]
-        dir_targets = [
-            os.path.join(self.root_dir, n) for n in nx.dfs_postorder_nodes(G)
-        ]
-        targets.extend(dir_targets)
-    elif pipeline or all_pipelines:
-        if pipeline:
+    active_graph = _get_active_graph(self.graph)
+    active_pipelines = get_pipelines(active_graph)
+
+    if pipeline or all_pipelines:
+        if all_pipelines:
+            pipelines = active_pipelines
+        else:
             stage = Stage.load(self, target)
             node = relpath(stage.path, self.root_dir)
-            pipelines = [self._get_pipeline(node)]
-        else:
-            pipelines = self.pipelines()
+            pipelines = [get_pipeline(active_pipelines, node)]
 
+        targets = []
         for G in pipelines:
-            for node in G.nodes():
+            attrs = nx.get_node_attributes(G, "stage")
+            for node in G:
                 if G.in_degree(node) == 0:
-                    targets.append(os.path.join(self.root_dir, node))
+                    targets.append(attrs[node])
     else:
-        targets.append(target)
+        targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     ret = []
     with self.state:
         for target in targets:
-            stages = _reproduce(self, target, **kwargs)
+            stages = _reproduce(self, active_graph, target, **kwargs)
             ret.extend(stages)
 
     return ret
 
 
-def _reproduce(self, target, **kwargs):
+def _reproduce(self, G, stage, **kwargs):
     import networkx as nx
-    from dvc.stage import Stage
 
-    stage = Stage.load(self, target)
-    G = self.graph()[1]
     stages = nx.get_node_attributes(G, "stage")
     node = relpath(stage.path, self.root_dir)
 

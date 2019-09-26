@@ -56,13 +56,13 @@ class TestIgnore(TestDvcGit):
         ret = main(["add", self.FOO, self.BAR, self.DATA, self.DATA_SUB])
         self.assertEqual(0, ret)
 
-        stages = self.dvc.stages()
+        stages = self.dvc.stages
         self.assertEqual(4, len(stages))
 
         self.create(DvcIgnore.DVCIGNORE_FILE, self.DATA_DIR)
 
         self.dvc = Repo(self.dvc.root_dir)
-        stages = self.dvc.stages()
+        stages = self.dvc.stages
         self.assertEqual(2, len(stages))
 
         stagenames = [s.relpath for s in stages]

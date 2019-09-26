@@ -186,14 +186,14 @@ class TestPipelineListSingle(TestPipelineShowDeep):
 
 class TestDvcRepoPipeline(TestDvc):
     def test_no_stages(self):
-        pipelines = self.dvc.pipelines()
+        pipelines = self.dvc.pipelines
         self.assertEqual(len(pipelines), 0)
 
     def one_pipeline(self):
         self.dvc.add("foo")
         self.dvc.run(deps=["foo"], outs=["bar"], cmd="")
         self.dvc.run(deps=["bar"], outs=["baz"], cmd="echo baz > baz")
-        pipelines = self.dvc.pipelines()
+        pipelines = self.dvc.pipelines
 
         self.assertEqual(len(pipelines), 1)
         self.assertEqual(pipelines[0].nodes, 3)
@@ -206,7 +206,7 @@ class TestDvcRepoPipeline(TestDvc):
 
         self.dvc.add("code.py")
 
-        pipelines = self.dvc.pipelines()
+        pipelines = self.dvc.pipelines
 
         self.assertEqual(len(pipelines), 2)
         self.assertEqual(pipelines[0].nodes, 3)
@@ -218,5 +218,5 @@ class TestDvcRepoPipeline(TestDvc):
         self.dvc.add("foo")
         self.dvc.lock_stage("foo.dvc")
 
-        pipelines = self.dvc.pipelines()
+        pipelines = self.dvc.pipelines
         self.assertEqual(len(pipelines), 0)
