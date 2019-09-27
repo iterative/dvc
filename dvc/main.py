@@ -10,6 +10,7 @@ from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
 from dvc.remote.pool import close_pools
+from dvc.utils.compat import is_py2
 
 
 logger = logging.getLogger("dvc")
@@ -53,6 +54,15 @@ def main(argv=None):
         ret = 253
     except DvcParserError:
         ret = 254
+    except UnicodeError:
+        if is_py2:
+            logger.exception(
+                "unicode is not fully supported in DVC for Python 2.\n"
+                "Python 2.7 will not be maintained past 2020.\n"
+                "Please upgrade to Python 3 to work correctly with unicode.\n"
+                "Exception"
+            )
+        ret = 255
     except Exception:  # pylint: disable=broad-except
         logger.exception("unexpected error")
         ret = 255
