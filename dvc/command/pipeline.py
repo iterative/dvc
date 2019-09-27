@@ -9,8 +9,6 @@ import logging
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
 
-from dvc.repo.graph import get_pipeline
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +41,7 @@ class CmdPipelineShow(CmdBase):
     def __build_graph(self, target, commands, outs):
         import networkx
         from dvc.stage import Stage
+        from dvc.repo.graph import get_pipeline
 
         stage = Stage.load(self.repo, target)
         node = relpath(stage.path, self.repo.root_dir)
