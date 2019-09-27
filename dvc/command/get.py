@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
-from dvc.repo import Repo
 from dvc.exceptions import DvcException
 from .base import CmdBaseNoRepo, append_doc_link
 
@@ -13,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 class CmdGet(CmdBaseNoRepo):
     def run(self):
+        from dvc.repo import Repo
+
         try:
             Repo.get(
                 self.args.url,

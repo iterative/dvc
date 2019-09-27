@@ -14,7 +14,6 @@ except ImportError:
 
 from dvc.utils import is_binary
 from dvc.utils.compat import pathlib
-from dvc.repo import Repo
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
@@ -26,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 class CmdVersion(CmdBaseNoRepo):
     def run(self):
+        from dvc.repo import Repo
+
         dvc_version = __version__
         python_version = platform.python_version()
         platform_type = platform.platform()

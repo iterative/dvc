@@ -9,7 +9,6 @@ from funcy import compact
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
-import dvc.repo.diff as diff
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,8 @@ class CmdDiff(CmdBase):
 
     @classmethod
     def _get_dir_changes(cls, dct):
+        import dvc.repo.diff as diff
+
         engine = inflect.engine()
         changes_msg = (
             "{} {} untouched, {} {} modified, {} {} added, "
@@ -57,6 +58,8 @@ class CmdDiff(CmdBase):
 
     @classmethod
     def _get_file_changes(cls, dct):
+        import dvc.repo.diff as diff
+
         if (
             dct.get(diff.DIFF_OLD_FILE)
             and dct.get(diff.DIFF_NEW_FILE)
@@ -79,6 +82,8 @@ class CmdDiff(CmdBase):
 
     @classmethod
     def _get_royal_changes(cls, dct):
+        import dvc.repo.diff as diff
+
         if dct[diff.DIFF_SIZE] != diff.DIFF_SIZE_UNKNOWN:
             if dct.get("is_dir"):
                 return cls._get_dir_changes(dct)
@@ -88,6 +93,8 @@ class CmdDiff(CmdBase):
 
     @classmethod
     def _show(cls, diff_dct):
+        import dvc.repo.diff as diff
+
         msg = "dvc diff from {} to {}".format(
             diff_dct[diff.DIFF_A_REF], diff_dct[diff.DIFF_B_REF]
         )
