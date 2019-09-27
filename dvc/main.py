@@ -55,13 +55,12 @@ def main(argv=None):
     except DvcParserError:
         ret = 254
     except UnicodeError:
-        if is_py2:
-            logger.exception(
-                "unicode is not fully supported in DVC for Python 2.\n"
-                "Python 2.7 will not be maintained past 2020.\n"
-                "Please upgrade to Python 3 to work correctly with unicode.\n"
-                "Exception"
-            )
+        if not is_py2:
+            raise
+        logger.exception(
+            "unicode is not supported in DVC for Python 2"
+            " (end-of-life January 1, 2020), please upgrade to Python 3"
+        )
         ret = 255
     except Exception:  # pylint: disable=broad-except
         logger.exception("unexpected error")
