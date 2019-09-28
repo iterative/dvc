@@ -38,12 +38,7 @@ def add(repo, target, recursive=False, no_commit=False, fname=None, pbar=None):
             )
         )
 
-    stages = _create_stages(
-            repo,
-            targets,
-            fname,
-            callback=pbar.update_desc if pbar is not None else None
-        )
+    stages = _create_stages(repo, targets, fname, pbar=pbar)
 
     repo.check_modified_graph(stages)
 
@@ -71,18 +66,19 @@ def _find_all_targets(repo, target, recursive):
     return [target]
 
 
-def _create_stages(repo, targets, fname, callback=None):
+def _create_stages(repo, targets, fname, pbar=None):
     stages = []
 
     for out in targets:
         stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
         if not stage:
+            if pbar is not None:
+                pbar.total -= 1
             continue
 
         stages.append(stage)
-
-        if callback is not None:
-            callback(out)
+        if pbar is not None:
+            pbar.update_desc(out)
 
     return stages

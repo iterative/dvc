@@ -24,7 +24,7 @@ class CmdAdd(CmdBase):
                 total=len(self.args.targets), desc="Adding", unit="file"
             ) as pbar:
                 for target in self.args.targets:
-                    stages = self.repo.add(
+                    self.repo.add(
                         target,
                         recursive=self.args.recursive,
                         no_commit=self.args.no_commit,
