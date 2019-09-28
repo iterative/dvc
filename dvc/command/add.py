@@ -32,20 +32,20 @@ class CmdAdd(CmdBase):
                         pbar=pbar,
                     )
 
-        except DvcException as e:
-            logger.exception("{}:{}".format(type(e).__name__, e))
+        except DvcException as err:
+            logger.exception("{}:{}".format(type(err).__name__, err))
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = "Add data files or directories to DVC control."
+    add_help = "Add data files or directories to DVC control."
 
     add_parser = subparsers.add_parser(
         "add",
         parents=[parent_parser],
-        description=append_doc_link(ADD_HELP, "add"),
-        help=ADD_HELP,
+        description=append_doc_link(add_help, "add"),
+        help=add_help,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_parser.add_argument(
