@@ -10,6 +10,11 @@ import logging.handlers
 import logging.config
 import colorama
 
+try:  # https://docs.python.org/3/library/exceptions.html#RecursionError
+    RecursionError
+except NameError:  # Python < 3.5
+    RecursionError = RuntimeError
+
 
 class LoggingException(Exception):
     def __init__(self, record):
