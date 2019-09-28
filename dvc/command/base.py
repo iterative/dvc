@@ -26,7 +26,7 @@ def append_doc_link(help_message, path):
     if not path:
         return help_message
     doc_base = "https://man.dvc.org/"
-    return "{message}\ndocumentation: {blue}{base}{path}{nc}".format(
+    return "{message}\nDocumentation: <{blue}{base}{path}{nc}>".format(
         message=help_message,
         base=doc_base,
         path=path,
@@ -57,7 +57,7 @@ class CmdBase(object):
 
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):
-        pass
+        raise NotImplementedError("Abstract")
 
 
 class CmdBaseNoRepo(CmdBase):

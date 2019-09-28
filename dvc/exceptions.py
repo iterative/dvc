@@ -224,9 +224,9 @@ class StageFileCorruptedError(DvcException):
 
 
 class RecursiveAddingWhileUsingFilename(DvcException):
-    def __init__(self):
+    def __init__(self, msg=None):
         super(RecursiveAddingWhileUsingFilename, self).__init__(
-            "using fname with recursive is not allowed."
+            msg or "using fname with recursive is not allowed."
         )
 
 

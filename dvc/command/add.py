@@ -5,6 +5,7 @@ import logging
 
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
+from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,9 @@ class CmdAdd(CmdBase):
     def run(self):
         try:
             if len(self.args.targets) > 1 and self.args.file:
-                raise DvcException("can't use '--file' with multiple targets")
+                raise RecursiveAddingWhileUsingFilename(
+                    "can't use '--file' with multiple targets"
+                )
 
             for target in self.args.targets:
                 self.repo.add(
@@ -24,14 +27,14 @@ class CmdAdd(CmdBase):
                     fname=self.args.file,
                 )
 
-        except DvcException:
-            logger.exception("failed to add file")
+        except DvcException as e:
+            logger.exception("{}:{}".format(type(e).__name__, e))
             return 1
         return 0
 
 
 def add_parser(subparsers, parent_parser):
-    ADD_HELP = "Take data files or directories under DVC control."
+    ADD_HELP = "Add data files or directories to DVC control."
 
     add_parser = subparsers.add_parser(
         "add",
@@ -45,7 +48,7 @@ def add_parser(subparsers, parent_parser):
         "--recursive",
         action="store_true",
         default=False,
-        help="Recursively add each file under the directory.",
+        help="Recursively add files under directories.",
     )
     add_parser.add_argument(
         "--no-commit",
@@ -54,7 +57,7 @@ def add_parser(subparsers, parent_parser):
         help="Don't put files/directories into cache.",
     )
     add_parser.add_argument(
-        "-f", "--file", help="Specify name of the DVC-file it generates."
+        "-f", "--file", help="Specify name of the generated DVC file."
     )
     add_parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
