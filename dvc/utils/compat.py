@@ -19,7 +19,9 @@ is_py3 = _ver[0] == 3
 DEFAULT_ENCODING = sys.getdefaultencoding()
 
 # https://docs.python.org/3/library/exceptions.html#RecursionError
-if _ver[:2] < (3, 5):
+try:
+    RecursionError
+except NameError:  # _ver[:2] < (3, 5)
     RecursionError = RuntimeError
 
 
