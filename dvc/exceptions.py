@@ -47,7 +47,7 @@ class OutputDuplicationError(DvcException):
             for stage in stages
         )
         msg = (
-            "file/directory '{}' is specified as an output in more than one"
+            "file/directory '{}' is specified as an output in more than one "
             "stage: {}"
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
@@ -82,8 +82,8 @@ class StagePathAsOutputError(DvcException):
         assert isinstance(wdir, str) or isinstance(wdir, builtin_str)
         assert isinstance(fname, str) or isinstance(fname, builtin_str)
         msg = (
-            "current working directory '{cwd}' is specified as an output in"
-            " '{fname}'. Use another CWD to prevent any data removal.".format(
+            "current working directory '{cwd}' is specified as an output in "
+            "'{fname}'. Use another CWD to prevent any data removal.".format(
                 cwd=wdir, fname=fname
             )
         )
@@ -167,8 +167,8 @@ class CyclicGraphError(DvcException):
         assert isinstance(stages, list)
         stages = "\n".join("\t- {}".format(stage) for stage in stages)
         msg = (
-            "you've introduced a cycle in your pipeline that involves"
-            " the following stages:"
+            "you've introduced a cycle in your pipeline that involves "
+            "the following stages:"
             "\n"
             "{stages}".format(stages=stages)
         )
