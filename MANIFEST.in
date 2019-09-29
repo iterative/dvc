@@ -1,2 +1,3 @@
 include fastentrypoints.py
 include LICENSE
+include dvc/remote/gdrive/settings.yaml

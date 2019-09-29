@@ -21,6 +21,7 @@ from dvc.data_cloud import DataCloud
 from dvc.remote import (
     RemoteS3,
     RemoteGS,
+    RemoteGDrive,
     RemoteAZURE,
     RemoteOSS,
     RemoteLOCAL,
@@ -67,6 +68,14 @@ def _should_test_aws():
         return True
 
     return False
+
+
+def _should_test_gdrive():
+    if os.getenv("DVC_TEST_GDRIVE") == "true":
+        return True
+    elif os.getenv("DVC_TEST_GDRIVE") == "false":
+        return False
+    return True
 
 
 def _should_test_gcp():
@@ -201,6 +210,10 @@ def get_aws_url():
     return "s3://" + get_aws_storagepath()
 
 
+def get_gdrive_url():
+    return "gdrive://root/" + str(uuid.uuid4())
+
+
 def get_gcp_storagepath():
     return TEST_GCP_REPO_BUCKET + "/" + str(uuid.uuid4())
 
@@ -234,6 +247,7 @@ class TestDataCloud(TestDvc):
 
         clist = [
             ("s3://mybucket/", RemoteS3),
+            ("gdrive://root/", RemoteGDrive),
             ("gs://mybucket/", RemoteGS),
             ("ssh://user@localhost:/", RemoteSSH),
             ("http://localhost:8000/", RemoteHTTP),
@@ -372,6 +386,17 @@ class TestRemoteS3(TestDataCloudBase):
 
     def _get_cloud_class(self):
         return RemoteS3
+
+
+class TestRemoteGDrive(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_gdrive()
+
+    def _get_url(self):
+        return get_gdrive_url()
+
+    def _get_cloud_class(self):
+        return RemoteGDrive
 
 
 class TestRemoteGS(TestDataCloudBase):
@@ -616,6 +641,19 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
         url = get_aws_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestRemoteGDriveCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_gdrive()
+
+    def _test(self):
+        url = get_gdrive_url()
+
+        self.main(["remote", "add", TEST_REMOTE, url])
+        self.main(["remote", "modify", TEST_REMOTE, "oauth_id", "test"])
 
         self._test_cloud(TEST_REMOTE)
 
