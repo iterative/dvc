@@ -2,18 +2,13 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, StringIO
+from dvc.utils.compat import str, StringIO, RecursionError
 from dvc.progress import Tqdm
 
 import logging
 import logging.handlers
 import logging.config
 import colorama
-
-try:  # https://docs.python.org/3/library/exceptions.html#RecursionError
-    RecursionError
-except NameError:  # Python < 3.5
-    RecursionError = RuntimeError
 
 
 class LoggingException(Exception):
