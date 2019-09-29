@@ -21,7 +21,7 @@ from dvc.exceptions import (
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
 )
-from dvc.progress import Tqdm, TqdmThreadPoolExecutor
+from dvc.progress import Tqdm
 from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
@@ -178,9 +178,7 @@ class RemoteBASE(object):
 
     def _calculate_checksums(self, file_infos):
         file_infos = list(file_infos)
-        with TqdmThreadPoolExecutor(
-            max_workers=self.checksum_jobs
-        ) as executor:
+        with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             tasks = executor.map(self.get_file_checksum, file_infos)
 
             if len(file_infos) > LARGE_DIR_SIZE:
