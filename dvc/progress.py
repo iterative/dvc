@@ -1,6 +1,7 @@
 """Manages progress bars for dvc repo."""
 from __future__ import print_function
 import logging
+import sys
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
@@ -66,6 +67,7 @@ class Tqdm(tqdm):
         """
         kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
+        kwargs.setdefault("file", sys.stderr)
         if bytes:
             bytes_defaults = dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
@@ -74,6 +76,8 @@ class Tqdm(tqdm):
         self.desc_persist = desc
         if disable is None:
             disable = logger.getEffectiveLevel() > level
+            if not disable and hasattr(kwargs["file"], "isatty"):
+                disable = not kwargs["file"].isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
