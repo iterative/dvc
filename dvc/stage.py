@@ -789,8 +789,34 @@ class Stage(object):
 
     def _run(self):
         self._check_missing_deps()
-        executable = os.getenv("SHELL") if os.name != "nt" else None
-        self._warn_if_fish(executable)
+
+        kwargs = {"cwd": self.wdir, "env": fix_env(None), "close_fds": True}
+
+        if os.name == "nt":
+            kwargs["shell"] = True
+            cmd = self.cmd
+        else:
+            # NOTE: when you specify `shell=True`, `Popen` [1] will default to
+            # `/bin/sh` on *nix and will add ["/bin/sh", "-c"] to your command.
+            # But we actually want to run the same shell that we are running
+            # from right now, which is usually determined by the `SHELL` env
+            # var. So instead, we compose our command on our own, making sure
+            # to include special flags to prevent shell from reading any
+            # configs and modifying env, which may change the behavior or the
+            # command we are running. See [2] for more info.
+            #
+            # [1] https://github.com/python/cpython/blob/3.7/Lib/subprocess.py
+            #                                                            #L1426
+            # [2] https://github.com/iterative/dvc/issues/2506
+            #                                           #issuecomment-535396799
+            kwargs["shell"] = False
+            executable = os.getenv("SHELL") or "/bin/sh"
+
+            self._warn_if_fish(executable)
+
+            opts = {"zsh": ["--no-rcs"], "bash": ["--noprofile", "--norc"]}
+            name = os.path.basename(executable).lower()
+            cmd = [executable] + opts.get(name, []) + ["-c", self.cmd]
 
         main_thread = isinstance(
             threading.current_thread(), threading._MainThread
@@ -799,14 +825,7 @@ class Stage(object):
         p = None
 
         try:
-            p = subprocess.Popen(
-                self.cmd,
-                cwd=self.wdir,
-                shell=True,
-                env=fix_env(os.environ),
-                executable=executable,
-                close_fds=True,
-            )
+            p = subprocess.Popen(cmd, **kwargs)
             if main_thread:
                 old_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
             p.communicate()
