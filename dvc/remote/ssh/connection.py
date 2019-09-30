@@ -106,10 +106,10 @@ class SSHConnection:
                 # Since paramiko errors are very vague we need to recheck
                 # whether it's because path already exists or something else
                 if e.errno == errno.EACCES or not self.exists(path):
-                    logger.exception(
-                        "unable to create directory {}".format(path)
+                    raise DvcException(
+                        "unable to create remote directory '{}'".format(path),
+                        cause=e,
                     )
-                    raise
 
     def walk(self, directory, topdown=True):
         # NOTE: original os.walk() implementation [1] with default options was
