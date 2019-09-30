@@ -8,8 +8,8 @@ import logging
 from funcy import cached_property
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.utils.compat import str, open
-from dvc.utils import fix_env, relpath
+from dvc.utils.compat import str, open, cast_bytes_py2
+from dvc.utils import fix_env, relpath, is_binary
 from dvc.scm.base import (
     Base,
     SCMError,
@@ -64,11 +64,24 @@ class Git(Base):
     def clone(url, to_path, rev=None):
         import git
 
+        ld_key = "LD_LIBRARY_PATH"
+
+        env = fix_env(None)
+        if is_binary() and ld_key not in env.keys():
+            # In fix_env, we delete LD_LIBRARY_PATH key if it was empty before
+            # PyInstaller modified it. GitPython, in git.Repo.clone_from, uses
+            # env to update its own internal state. When there is no key in
+            # env, this value is not updated and GitPython re-uses
+            # LD_LIBRARY_PATH that has been set by PyInstaller.
+            # See [1] for more info.
+            # [1] https://github.com/gitpython-developers/GitPython/issues/924
+            env[cast_bytes_py2(ld_key)] = ""
+
         try:
             tmp_repo = git.Repo.clone_from(
                 url,
                 to_path,
-                env=fix_env(None),  # needed before we can fix it in __init__
+                env=env,  # needed before we can fix it in __init__
                 no_single_branch=True,
             )
             tmp_repo.close()
