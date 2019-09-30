@@ -262,13 +262,13 @@ def fix_env(env=None):
             # NOTE: py2 doesn't like unicode strings in environ
             env[cast_bytes_py2(lp_key)] = cast_bytes_py2(lp_orig)
         else:
-            # We used to delete "LD_LIBRARY_PATH" key. We cannot do that
-            # because GitPython uses env to "update" his own internal state.
+            # We used to delete LD_LIBRARY_PATH key. We cannot do that
+            # because GitPython, in git.Repo.clone_from, uses env to update
+            # its own internal state.
             # When there is no key in env, this value is not updated and
-            # GitPython re-uses "LD_LIBRARY_PATH" that has been set by
-            # PyInstaller
-            # Related:
-            # - https://github.com/gitpython-developers/GitPython/issues/924
+            # GitPython re-uses LD_LIBRARY_PATH that has been set by
+            # PyInstaller. See [1] for more info.
+            # [1] https://github.com/gitpython-developers/GitPython/issues/924
             env[cast_bytes_py2(lp_key)] = ""
 
     # Unlike PyInstaller, pyenv doesn't leave backups of original env vars
