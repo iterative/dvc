@@ -165,6 +165,7 @@ class Git(Base):
 
     @staticmethod
     def _escape(entry):
+        # Reference: https://git-scm.com/docs/gitignore#_pattern_format
         meta_characters = r"[]!*#"
 
         return "".join("\\" + x if x in meta_characters else x for x in entry)
