@@ -2,7 +2,7 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, StringIO
+from dvc.utils.compat import str, StringIO, RecursionError
 from dvc.progress import Tqdm
 
 import logging

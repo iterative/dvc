@@ -18,6 +18,11 @@ is_py3 = _ver[0] == 3
 # simplified version of ipython_genutils/encoding.py
 DEFAULT_ENCODING = sys.getdefaultencoding()
 
+if _ver[:2] < (3, 5):
+    RecursionError = RuntimeError
+else:
+    RecursionError = RecursionError
+
 
 def no_code(x, encoding=None):
     return x
