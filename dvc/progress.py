@@ -2,11 +2,16 @@
 from __future__ import print_function
 import logging
 import sys
+import os
+import re
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
 
 logger = logging.getLogger(__name__)
+TQDM_DISABLE = os.environ.get("TQDM_DISABLE", None)
+if TQDM_DISABLE is not None:
+    TQDM_DISABLE = bool(re.search("1|y|yes|true", TQDM_DISABLE, flags=re.I))
 
 
 class TqdmThreadPoolExecutor(ThreadPoolExecutor):
@@ -63,6 +68,9 @@ class Tqdm(tqdm):
         desc  : persists after `close()`
         level  : effective logging level for determining `disable`;
             used only if `disable` is unspecified
+        disable  : Overridden by env var TQDM_DISABLE; otherwise
+            if (default: None), will be determined by logging level
+            and TTY status.
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -74,10 +82,13 @@ class Tqdm(tqdm):
             )
             kwargs = merge(bytes_defaults, kwargs)
         self.desc_persist = desc
-        if disable is None:
-            disable = logger.getEffectiveLevel() > level
-        if not disable and hasattr(kwargs["file"], "isatty"):
-            disable = not kwargs["file"].isatty()
+        if TQDM_DISABLE is not None:  # env var override
+            disable = TQDM_DISABLE
+        else:  # auto-disable based on `logger.level` and `file.isatty()`
+            if disable is None:
+                disable = logger.getEffectiveLevel() > level
+            if not disable and hasattr(kwargs["file"], "isatty"):
+                disable = not kwargs["file"].isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
