@@ -149,8 +149,9 @@ class Git(Base):
 
         self.ignored_paths.append(path)
 
-    @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore):
+    def _add_entry_to_gitignore(self, entry, gitignore):
+        entry = self._escape(entry)
+
         with open(gitignore, "a+", encoding="utf-8") as fobj:
             fobj.seek(0, os.SEEK_END)
             if fobj.tell() == 0:
@@ -161,6 +162,12 @@ class Git(Base):
                 last = fobj.read(1)
                 prefix = "" if last == "\n" else "\n"
             fobj.write("{}{}\n".format(prefix, entry))
+
+    @staticmethod
+    def _escape(entry):
+        meta_characters = r"[]!*#"
+
+        return "".join("\\" + x if x in meta_characters else x for x in entry)
 
     def ignore_remove(self, path):
         entry, gitignore = self._get_gitignore(path)
