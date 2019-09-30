@@ -76,8 +76,8 @@ class Tqdm(tqdm):
         self.desc_persist = desc
         if disable is None:
             disable = logger.getEffectiveLevel() > level
-            if not disable and hasattr(kwargs["file"], "isatty"):
-                disable = not kwargs["file"].isatty()
+        if not disable and hasattr(kwargs["file"], "isatty"):
+            disable = not kwargs["file"].isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
