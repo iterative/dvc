@@ -15,7 +15,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.remote.gdrive.utils import TrackFileReadProgress
-from dvc.progress import Tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -133,6 +132,7 @@ class RemoteGDrive(RemoteBASE):
             from_file = TrackFileReadProgress(name, from_file)
 
         file1.content = from_file
+
         file1.Upload()
         from_file.close()
 
@@ -140,5 +140,5 @@ class RemoteGDrive(RemoteBASE):
         file_id = self.get_path_id(from_info)
         gdrive_file = self.gdrive.CreateFile({"id": file_id})
         gdrive_file.GetContentFile(to_file)
-        #if not no_progress_bar:
+        # if not no_progress_bar:
         #    progress.update_target(name, 1, 1)
