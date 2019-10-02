@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from dvc.utils import to_chunks, fix_env
@@ -30,11 +32,15 @@ def test_to_chunks_num_chunks(num_chunks, expected_chunks):
     assert result == expected_chunks
 
 
+@pytest.mark.skipif(os.name == "nt", reason="pyenv-win is not supported")
 @pytest.mark.parametrize(
     "path, orig",
     [
         (
-            "/pyenv/bin:/pyenv/libexec:/pyenv/hook:/orig/path1:/orig/path2",
+            (
+                "/pyenv/bin:/pyenv/libexec:/pyenv/plugins/plugin:"
+                "/orig/path1:/orig/path2"
+            ),
             "/orig/path1:/orig/path2",
         ),
         (
@@ -42,7 +48,10 @@ def test_to_chunks_num_chunks(num_chunks, expected_chunks):
             "/orig/path1:/orig/path2",
         ),
         (
-            "/pyenv/bin:/some/libexec:/pyenv/hook:/orig/path1:/orig/path2",
+            (
+                "/pyenv/bin:/some/libexec:/pyenv/plugins/plugin:"
+                "/orig/path1:/orig/path2"
+            ),
             "/orig/path1:/orig/path2",
         ),
         ("/orig/path1:/orig/path2", "/orig/path1:/orig/path2"),
@@ -53,5 +62,11 @@ def test_to_chunks_num_chunks(num_chunks, expected_chunks):
     ],
 )
 def test_fix_env_pyenv(path, orig):
-    env = {"PATH": path, "PYENV_ROOT": "/pyenv"}
+    env = {
+        "PATH": path,
+        "PYENV_ROOT": "/pyenv",
+        "PYENV_VERSION": "3.7.2",
+        "PYENV_DIR": "/some/dir",
+        "PYENV_HOOK_PATH": "/some/hook/path",
+    }
     assert fix_env(env)["PATH"] == orig
