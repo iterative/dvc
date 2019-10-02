@@ -11,7 +11,7 @@ class BaseTree(object):
     def tree_root(self):
         pass
 
-    def open(self, path, binary=False):
+    def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
 
     def exists(self, path):
@@ -42,11 +42,9 @@ class WorkingTree(BaseTree):
     def tree_root(self):
         return self.repo_root
 
-    def open(self, path, binary=False):
+    def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
-        if binary:
-            return open(path, "rb")
-        return open(path, encoding="utf-8")
+        return open(path, mode=mode, encoding=encoding)
 
     def exists(self, path):
         """Test whether a path exists."""
