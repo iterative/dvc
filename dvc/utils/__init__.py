@@ -272,22 +272,45 @@ def fix_env(env=None):
     #
     # where
     #
-    #     PYENV_BIN_PATH - starts with $PYENV_ROOT, see pyenv-exec source code.
+    #     PYENV_BIN_PATH - might not start with $PYENV_ROOT if we are running
+    #         `system` version of the command, see pyenv-exec source code.
     #     bin_path - might not start with $PYENV_ROOT as it runs realpath on
-    #         it, see pyenv source code.
+    #         it, but always has `libexec` part in it, see pyenv source code.
     #     plugin_bin - might contain more than 1 entry, which start with
     #         $PYENV_ROOT, see pyenv source code.
     #
+    # Also, we know that whenever pyenv is running, it exports these env vars:
+    #
+    #     PYENV_DIR
+    #     PYENV_HOOK_PATH
+    #     PYENV_VERSION
+    #     PYENV_ROOT
+    #
     # So having this, we can make a rightful assumption about what parts of the
     # PATH we need to remove in order to get the original PATH.
-    path = env.get("PATH")
+    path = env.get("PATH", "")
+    parts = path.split(":")
+    bin_path = parts[1] if len(parts) > 2 else ""
+    pyenv_dir = env.get("PYENV_DIR")
+    pyenv_hook_path = env.get("PYENV_HOOK_PATH")
+    pyenv_version = env.get("PYENV_VERSION")
     pyenv_root = env.get("PYENV_ROOT")
-    if path and pyenv_root and path.startswith(pyenv_root):
+
+    env_matches = all([pyenv_dir, pyenv_hook_path, pyenv_version, pyenv_root])
+
+    bin_path_matches = os.path.basename(bin_path) == "libexec"
+
+    # NOTE: we don't support pyenv-win
+    if os.name != "nt" and env_matches and bin_path_matches:
         # removing PYENV_BIN_PATH and bin_path
-        parts = path.split(":")[2:]
-        # removing plugin_bin from the left
-        while pyenv_root in parts[0]:
-            del parts[0]
+        parts = parts[2:]
+
+        if parts:
+            # removing plugin_bin from the left
+            plugin_bin = os.path.join(pyenv_root, "plugins")
+            while parts[0].startswith(plugin_bin):
+                del parts[0]
+
         env["PATH"] = ":".join(parts)
 
     return env
