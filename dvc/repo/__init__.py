@@ -457,8 +457,13 @@ class Repo(object):
         try:
             with self._open(path, remote, mode, encoding) as fd:
                 yield fd
-        except FileNotFoundError:
-            raise OutputFileMissingError(relpath(path, self.root_dir))
+        except (FileNotFoundError, OutputNotFoundError):
+            try:
+                with self.tree.open(path, mode, encoding) as fd:
+                    yield fd
+
+            except FileNotFoundError:
+                raise OutputFileMissingError(relpath(path, self.root_dir))
 
     def _open(self, path, remote=None, mode="r", encoding=None):
         out, = self.find_outs_by_path(path)

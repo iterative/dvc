@@ -143,3 +143,11 @@ def _set_remote_url_and_commit(repo, remote_url):
     rconfig.modify("upstream", "url", remote_url)
     repo.scm.add([repo.config.config_file])
     repo.scm.commit("modify remote")
+
+
+def test_open_scm_controlled(dvc_repo, repo_dir):
+    stage, = dvc_repo.add(repo_dir.FOO)
+
+    stage_content = open(stage.path, "r").read()
+    with api.open(stage.path) as fd:
+        assert fd.read() == stage_content
