@@ -154,3 +154,16 @@ def test_open_scm_controlled(dvc_repo, repo_dir):
     stage_content = open(stage.path, "r").read()
     with api.open(stage.path) as fd:
         assert fd.read() == stage_content
+
+
+def test_open_not_cached_metric(dvc_repo, repo_dir):
+    dvc_repo.add(repo_dir.FOO)
+    metric_file = "metric.txt"
+    dvc_repo.run(
+        deps=[repo_dir.FOO],
+        metrics_no_cache=[metric_file],
+        cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, metric_file),
+    )
+
+    with api.open(metric_file) as fd:
+        assert fd.read() == repo_dir.FOO_CONTENTS
