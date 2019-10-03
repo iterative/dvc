@@ -455,17 +455,16 @@ class Repo(object):
     def open(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
         try:
-            with self._open(path, remote, mode, encoding) as fd:
+            with self._open_out(path, remote, mode, encoding) as fd:
                 yield fd
-        except (FileNotFoundError, OutputNotFoundError):
-            try:
+        except (FileNotFoundError, OutputNotFoundError) as e:
+            if self.tree.exists(path):
                 with self.tree.open(path, mode, encoding) as fd:
                     yield fd
+            else:
+                raise FileMissingError(relpath(path, self.root_dir), cause=e)
 
-            except FileNotFoundError:
-                raise FileMissingError(relpath(path, self.root_dir))
-
-    def _open(self, path, remote=None, mode="r", encoding=None):
+    def _open_out(self, path, remote=None, mode="r", encoding=None):
         out, = self.find_outs_by_path(path)
         if out.isdir():
             raise ValueError("Can't open a dir")
