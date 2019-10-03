@@ -75,7 +75,7 @@ def _should_test_gdrive():
         return True
     elif os.getenv("DVC_TEST_GDRIVE") == "false":
         return False
-    return True
+    return False
 
 
 def _should_test_gcp():
@@ -653,7 +653,6 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
         url = get_gdrive_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
-        self.main(["remote", "modify", TEST_REMOTE, "oauth_id", "test"])
 
         self._test_cloud(TEST_REMOTE)
 

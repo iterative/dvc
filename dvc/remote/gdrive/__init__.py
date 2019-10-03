@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import os
-import logging
 
 try:
     from pydrive.auth import GoogleAuth
@@ -15,9 +14,6 @@ from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.remote.gdrive.utils import TrackFileReadProgress
-
-
-logger = logging.getLogger(__name__)
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -53,6 +49,10 @@ class RemoteGDrive(RemoteBASE):
         gauth.CommandLineAuth()
         return GoogleDrive(gauth)
 
+    def cache_dirs(self, dirs_list):
+        for dir1 in dirs_list:
+            self.root_dirs_list[dir1["title"]] = dir1["id"]
+
     def cache_root_content(self):
         if not self.root_content_cached:
             for dirs_list in self.gdrive.ListFile(
@@ -62,33 +62,23 @@ class RemoteGDrive(RemoteBASE):
                     "maxResults": 256,
                 }
             ):
-                for dir1 in dirs_list:
-                    self.root_dirs_list[dir1["title"]] = dir1["id"]
+                self.cache_dirs(dirs_list)
             self.root_content_cached = True
 
-    def get_path_id(self, path_info, create=False):
-        file_id = ""
-        parts = path_info.path.split("/")
-
-        if parts and (parts[0] in self.root_dirs_list):
-            parent_id = self.root_dirs_list[parts[0]]
-            file_id = self.root_dirs_list[parts[0]]
-            parts.pop(0)
-        else:
-            parent_id = path_info.netloc
+    def resolve_file_id(self, file_id, parent_id, path_parts, create):
         file_list = self.gdrive.ListFile(
             {"q": "'%s' in parents and trashed=false" % parent_id}
         ).GetList()
 
-        for part in parts:
+        for part in path_parts:
             file_id = ""
-            for f in file_list:
-                if f["title"] == part:
-                    file_id = f["id"]
+            for file1 in file_list:
+                if file1["title"] == part:
+                    file_id = file1["id"]
                     file_list = self.gdrive.ListFile(
                         {"q": "'%s' in parents and trashed=false" % file_id}
                     ).GetList()
-                    parent_id = f["id"]
+                    parent_id = file1["id"]
                     break
             if file_id == "":
                 if create:
@@ -104,6 +94,19 @@ class RemoteGDrive(RemoteBASE):
                 else:
                     break
         return file_id
+
+    def get_path_id(self, path_info, create=False):
+        file_id = ""
+        parts = path_info.path.split("/")
+
+        if parts and (parts[0] in self.root_dirs_list):
+            parent_id = self.root_dirs_list[parts[0]]
+            file_id = self.root_dirs_list[parts[0]]
+            parts.pop(0)
+        else:
+            parent_id = path_info.netloc
+
+        return self.resolve_file_id(file_id, parent_id, parts, create)
 
     def exists(self, path_info):
         return self.get_path_id(path_info) != ""
@@ -136,9 +139,20 @@ class RemoteGDrive(RemoteBASE):
         file1.Upload()
         from_file.close()
 
-    def _download(self, from_info, to_file, name, no_progress_bar):
+    def _download(
+        self, from_info, to_file, _unused_name, _unused_no_progress_bar
+    ):
         file_id = self.get_path_id(from_info)
         gdrive_file = self.gdrive.CreateFile({"id": file_id})
         gdrive_file.GetContentFile(to_file)
         # if not no_progress_bar:
         #    progress.update_target(name, 1, 1)
+
+    def get_file_checksum(self, path_info):
+        raise NotImplementedError
+
+    def list_cache_paths(self):
+        raise NotImplementedError
+
+    def walk(self, path_info):
+        raise NotImplementedError

@@ -6,7 +6,7 @@ import logging
 from dvc.progress import Tqdm
 
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 MIME_GOOGLE_APPS_FOLDER = "application/vnd.google-apps.folder"
@@ -62,7 +62,7 @@ def only_once(func):
 
 @only_once
 def shared_token_warning():
-    logger.warning(
+    LOGGER.warning(
         "Warning: a shared GoogleAPI token is in use. "
         "Please create your own token."
     )
