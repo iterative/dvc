@@ -78,6 +78,9 @@ install_dependencies()
 
 	gem install --no-document fpm
 
+	print_info "Uprgading pip..."
+	pip install --upgrade pip
+
 	print_info "Installing requirements..."
 	pip install .[all] psutil
 
