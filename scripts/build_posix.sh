@@ -17,7 +17,14 @@ BUILD_DIR=build
 BIN_DIR=$BUILD_DIR/$INSTALL_DIR/bin
 DESC='Data Version Control - datasets, models, and experiments versioning for ML or data science projects'
 LIB_DIR=$BUILD_DIR/$INSTALL_DIR/lib
-CMPLT_DIR=etc/bash_completion.d
+
+if [[ "$(uname)" == 'Linux' ]]; then
+	CMPLT_DIR=etc/bash_completion.d
+	FPM_PACKAGE_DIRS="usr etc"
+else
+	CMPLT_DIR=usr/local/etc/bash_completion.d
+	FPM_PACKAGE_DIRS="usr"
+fi
 
 print_error()
 {
@@ -52,15 +59,14 @@ fpm_build()
 	    $FPM_FLAGS \
 	    -n dvc \
 	    -v $VERSION \
-	    --config-files $CMPLT_DIR/dvc \
-	    -C $BUILD_DIR usr
+	    -C $BUILD_DIR \
+	    $FPM_PACKAGE_DIRS
 }
 
 cleanup()
 {
 	print_info "Cleaning up..."
 	rm -rf build
-	rm -rf $CMPLT_DIR
 }
 
 install_dependencies()
@@ -110,10 +116,8 @@ build_dvc()
 		$BIN_DIR/dvc --help
 	fi
 
-	if [[ "$(uname)" == 'Linux' ]]; then
-		mkdir -p $CMPLT_DIR
-		cp scripts/completion/dvc.bash $CMPLT_DIR/dvc
-	fi
+	mkdir -p $BUILD_DIR/$CMPLT_DIR
+	cp scripts/completion/dvc.bash $BUILD_DIR/$CMPLT_DIR/dvc
 }
 
 cleanup
