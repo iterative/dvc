@@ -73,8 +73,6 @@ def _should_test_aws():
 def _should_test_gdrive():
     if os.getenv("DVC_TEST_GDRIVE") == "true":
         return True
-    elif os.getenv("DVC_TEST_GDRIVE") == "false":
-        return False
     return False
 
 
