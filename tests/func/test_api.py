@@ -1,8 +1,10 @@
+import os
+
 import pytest
 import shutil
 
 from dvc import api
-from dvc.exceptions import OutputFileMissingError
+from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
@@ -133,8 +135,9 @@ def test_missing(repo_dir, dvc_repo, remote_url):
 
     # Remove cache to make foo missing
     shutil.rmtree(dvc_repo.cache.local.cache_dir)
+    os.remove(repo_dir.FOO)
 
-    with pytest.raises(OutputFileMissingError):
+    with pytest.raises(FileMissingError):
         api.read(repo_dir.FOO)
 
 

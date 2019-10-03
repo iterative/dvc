@@ -46,6 +46,7 @@ class GitTree(BaseTree):
         return self.git.working_dir
 
     def open(self, path, mode="r", encoding="utf-8"):
+        assert mode in {"r", "rb"}
 
         relative_path = relpath(path, self.git.working_dir)
 
@@ -61,7 +62,7 @@ class GitTree(BaseTree):
         # the `open()` behavior (since data_stream.read() returns bytes,
         # and `open` with default "r" mode returns str)
         data = obj.data_stream.read()
-        if mode.endswith("b"):
+        if mode == "rb":
             return BytesIO(data)
         return StringIO(data.decode(encoding))
 

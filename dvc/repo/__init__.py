@@ -12,7 +12,7 @@ from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
-    OutputFileMissingError,
+    FileMissingError,
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
@@ -463,7 +463,7 @@ class Repo(object):
                     yield fd
 
             except FileNotFoundError:
-                raise OutputFileMissingError(relpath(path, self.root_dir))
+                raise FileMissingError(relpath(path, self.root_dir))
 
     def _open(self, path, remote=None, mode="r", encoding=None):
         out, = self.find_outs_by_path(path)
