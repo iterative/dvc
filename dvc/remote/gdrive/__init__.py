@@ -65,34 +65,44 @@ class RemoteGDrive(RemoteBASE):
                 self.cache_dirs(dirs_list)
             self.root_content_cached = True
 
+    def resolve_file_id_from_part(self, part, parent_id, file_list):
+        file_id = ""
+        for file1 in file_list:
+            if file1["title"] == part:
+                file_id = file1["id"]
+                file_list = self.gdrive.ListFile(
+                    {"q": "'%s' in parents and trashed=false" % file_id}
+                ).GetList()
+                parent_id = file1["id"]
+                break
+        return file_id, parent_id, file_list
+
+    def create_file_id(self, file_id, parent_id, part, create):
+        if file_id == "":
+            if create:
+                gdrive_file = self.gdrive.CreateFile(
+                    {
+                        "title": part,
+                        "parents": [{"id": parent_id}],
+                        "mimeType": "application/vnd.google-apps.folder",
+                    }
+                )
+                gdrive_file.Upload()
+                file_id = gdrive_file["id"]
+        return file_id
+
     def resolve_file_id(self, file_id, parent_id, path_parts, create):
         file_list = self.gdrive.ListFile(
             {"q": "'%s' in parents and trashed=false" % parent_id}
         ).GetList()
 
         for part in path_parts:
-            file_id = ""
-            for file1 in file_list:
-                if file1["title"] == part:
-                    file_id = file1["id"]
-                    file_list = self.gdrive.ListFile(
-                        {"q": "'%s' in parents and trashed=false" % file_id}
-                    ).GetList()
-                    parent_id = file1["id"]
-                    break
+            file_id, parent_id, file_list = self.resolve_file_id_from_part(
+                part, parent_id, file_list
+            )
+            file_id = self.create_file_id(file_id, parent_id, part, create)
             if file_id == "":
-                if create:
-                    gdrive_file = self.gdrive.CreateFile(
-                        {
-                            "title": part,
-                            "parents": [{"id": parent_id}],
-                            "mimeType": "application/vnd.google-apps.folder",
-                        }
-                    )
-                    gdrive_file.Upload()
-                    file_id = gdrive_file["id"]
-                else:
-                    break
+                break
         return file_id
 
     def get_path_id(self, path_info, create=False):
