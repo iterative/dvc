@@ -48,6 +48,7 @@ install_requires = [
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>=2.1.8",
+    "gitdb2>=2.0.6",  # See https://github.com/iterative/dvc/issues/1880
     "setuptools>=34.0.0",
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
