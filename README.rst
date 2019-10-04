@@ -46,7 +46,7 @@ learning projects. Key features:
 
 #. it helps manage experiments with Git tags or branches and **metrics** tracking;
 
-It aims to replace tools like Excel and Docs that are being commonly used as a knowledge repo and
+**DVC** aims to replace tools like Excel and Google Docs that are being commonly used as a knowledge repo and
 a ledger for the team, ad-hoc scripts to track and move deploy different model versions, ad-hoc
 data file suffixes and prefixes.
 
