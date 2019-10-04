@@ -13,6 +13,7 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
     OutputFileMissingError,
+    NotCachedOutputFileMissingError,
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
@@ -458,6 +459,7 @@ class Repo(object):
             with self.tree.open(path, mode, encoding) as fd:
                 yield fd
             return
+
         try:
             with self._open_out(path, remote, mode, encoding) as fd:
                 yield fd
@@ -466,6 +468,10 @@ class Repo(object):
 
     def _open_out(self, path, remote=None, mode="r", encoding=None):
         out, = self.find_outs_by_path(path)
+
+        if not out.use_cache and not out.exists:
+            raise NotCachedOutputFileMissingError(out.path_info)
+
         if out.isdir():
             raise ValueError("Can't open a dir")
 
