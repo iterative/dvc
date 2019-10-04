@@ -63,8 +63,7 @@ install_requires = [
     "humanize>=0.5.1",
     "ruamel.yaml>=0.16.1",
     "funcy>=1.12",
-    # pathspec: Waiting for a release (0.6.0) including commit 1d321d
-    "pathspec@git+https://github.com/cpburnz/python-path-specification@1d321d",
+    "pathspec>=0.6.0",
     "shortuuid>=0.5.0",
     "tqdm>=4.35.0",
     "packaging>=19.0",
