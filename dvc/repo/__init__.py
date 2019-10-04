@@ -12,7 +12,7 @@ from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
-    FileMissingError,
+    OutputFileMissingError,
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
@@ -454,15 +454,15 @@ class Repo(object):
     @contextmanager
     def open(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
+        if not remote and self.tree.exists(path):
+            with self.tree.open(path, mode, encoding) as fd:
+                yield fd
+            return
         try:
             with self._open_out(path, remote, mode, encoding) as fd:
                 yield fd
-        except (FileNotFoundError, OutputNotFoundError) as e:
-            if self.tree.exists(path):
-                with self.tree.open(path, mode, encoding) as fd:
-                    yield fd
-            else:
-                raise FileMissingError(relpath(path, self.root_dir), cause=e)
+        except FileNotFoundError as e:
+            raise OutputFileMissingError(relpath(path, self.root_dir), cause=e)
 
     def _open_out(self, path, remote=None, mode="r", encoding=None):
         out, = self.find_outs_by_path(path)
