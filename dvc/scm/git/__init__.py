@@ -6,6 +6,7 @@ import os
 import logging
 
 from funcy import cached_property
+from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
 from dvc.utils.compat import str, open, cast_bytes_py2
@@ -162,8 +163,9 @@ class Git(Base):
 
         self.ignored_paths.append(path)
 
-    @staticmethod
-    def _add_entry_to_gitignore(entry, gitignore):
+    def _add_entry_to_gitignore(self, entry, gitignore):
+        entry = GitWildMatchPattern.escape(entry)
+
         with open(gitignore, "a+", encoding="utf-8") as fobj:
             fobj.seek(0, os.SEEK_END)
             if fobj.tell() == 0:

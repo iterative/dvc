@@ -634,3 +634,20 @@ def test_should_protect_on_repeated_add(link, dvc_repo, repo_dir):
     dvc_repo.add(repo_dir.FOO)
 
     assert not os.access(repo_dir.FOO, os.W_OK)
+
+
+def test_escape_gitignore_entries(git, dvc_repo, repo_dir):
+    fname = "file!with*weird#naming_[1].t?t"
+    ignored_fname = r"/file\!with\*weird\#naming_\[1\].t\?t"
+
+    if os.name == "nt":
+        # Some characters are not supported by Windows in the filename
+        # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+        fname = "file!with_weird#naming_[1].txt"
+        ignored_fname = r"/file\!with_weird\#naming_\[1\].txt"
+
+    os.rename(repo_dir.FOO, fname)
+
+    dvc_repo.add(fname)
+
+    assert ignored_fname in get_gitignore_content()
