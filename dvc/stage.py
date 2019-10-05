@@ -293,7 +293,7 @@ class Stage(object):
         if ret:
             logger.warning("Stage '{}' changed.".format(self.relpath))
         else:
-            logger.info("Stage '{}' didn't change.".format(self.relpath))
+            logger.debug("Stage '{}' didn't change.".format(self.relpath))
 
         return ret
 
