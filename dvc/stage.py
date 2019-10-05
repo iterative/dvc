@@ -731,9 +731,8 @@ class Stage(object):
             msg += " and " if (changed_deps and changed_outs) else ""
             msg += "outputs {}".format(changed_outs) if changed_outs else ""
             msg += "md5" if not (changed_deps or changed_outs) else ""
-            msg += " of '{}' changed. Are you sure you commit it?".format(
-                self.relpath
-            )
+            msg += " of '{}' changed.".format(self.relpath)
+            msg += "Are you sure you want to commit it?"
             if not force and not prompt.confirm(msg):
                 raise StageCommitError(
                     "unable to commit changed '{}'. Use `-f|--force` to "
