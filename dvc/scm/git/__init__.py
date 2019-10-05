@@ -155,7 +155,7 @@ class Git(Base):
             return
 
         msg = "Adding '{}' to '{}'.".format(relpath(path), relpath(gitignore))
-        logger.info(msg)
+        logger.debug(msg)
 
         self._add_entry_to_gitignore(entry, gitignore)
 
