@@ -2,13 +2,6 @@ from __future__ import unicode_literals
 
 import os
 
-try:
-    from pydrive.auth import GoogleAuth
-    from pydrive.drive import GoogleDrive
-except ImportError:
-    GoogleAuth = None
-    GoogleDrive = None
-
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
@@ -37,17 +30,20 @@ class RemoteGDrive(RemoteBASE):
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self.root_content_cached = False
         self.root_dirs_list = {}
-        self.init_gdrive()
-
-    def init_gdrive(self):
-        self.gdrive = self.drive()
+        self._gdrive = None
         self.cache_root_content()
 
+    @property
     def drive(self):
-        GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-        gauth = GoogleAuth(settings_file=self.GOOGLE_AUTH_SETTINGS_PATH)
-        gauth.CommandLineAuth()
-        return GoogleDrive(gauth)
+        from pydrive.auth import GoogleAuth
+        from pydrive.drive import GoogleDrive
+
+        if self._gdrive is None:
+            GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
+            gauth = GoogleAuth(settings_file=self.GOOGLE_AUTH_SETTINGS_PATH)
+            gauth.CommandLineAuth()
+            self._gdrive = GoogleDrive(gauth)
+        return self._gdrive
 
     def cache_dirs(self, dirs_list):
         for dir1 in dirs_list:
@@ -55,7 +51,7 @@ class RemoteGDrive(RemoteBASE):
 
     def cache_root_content(self):
         if not self.root_content_cached:
-            for dirs_list in self.gdrive.ListFile(
+            for dirs_list in self.drive.ListFile(
                 {
                     "q": "'%s' in parents and trashed=false"
                     % self.path_info.netloc,
@@ -70,7 +66,7 @@ class RemoteGDrive(RemoteBASE):
         for file1 in file_list:
             if file1["title"] == part:
                 file_id = file1["id"]
-                file_list = self.gdrive.ListFile(
+                file_list = self.drive.ListFile(
                     {"q": "'%s' in parents and trashed=false" % file_id}
                 ).GetList()
                 parent_id = file1["id"]
@@ -80,7 +76,7 @@ class RemoteGDrive(RemoteBASE):
     def create_file_id(self, file_id, parent_id, part, create):
         if file_id == "":
             if create:
-                gdrive_file = self.gdrive.CreateFile(
+                gdrive_file = self.drive.CreateFile(
                     {
                         "title": part,
                         "parents": [{"id": parent_id}],
@@ -92,7 +88,7 @@ class RemoteGDrive(RemoteBASE):
         return file_id
 
     def resolve_file_id(self, file_id, parent_id, path_parts, create):
-        file_list = self.gdrive.ListFile(
+        file_list = self.drive.ListFile(
             {"q": "'%s' in parents and trashed=false" % parent_id}
         ).GetList()
 
@@ -136,7 +132,7 @@ class RemoteGDrive(RemoteBASE):
         else:
             parent_id = to_info.netloc
 
-        file1 = self.gdrive.CreateFile(
+        file1 = self.drive.CreateFile(
             {"title": to_info.name, "parents": [{"id": parent_id}]}
         )
 
@@ -153,7 +149,7 @@ class RemoteGDrive(RemoteBASE):
         self, from_info, to_file, _unused_name, _unused_no_progress_bar
     ):
         file_id = self.get_path_id(from_info)
-        gdrive_file = self.gdrive.CreateFile({"id": file_id})
+        gdrive_file = self.drive.CreateFile({"id": file_id})
         gdrive_file.GetContentFile(to_file)
         # if not no_progress_bar:
         #    progress.update_target(name, 1, 1)
