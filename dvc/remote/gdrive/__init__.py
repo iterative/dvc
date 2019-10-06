@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import os
 
+from funcy import cached_property
+
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
@@ -30,20 +32,17 @@ class RemoteGDrive(RemoteBASE):
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self.root_content_cached = False
         self.root_dirs_list = {}
-        self._gdrive = None
         self.cache_root_content()
 
-    @property
+    @cached_property
     def drive(self):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
 
-        if self._gdrive is None:
-            GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-            gauth = GoogleAuth(settings_file=self.GOOGLE_AUTH_SETTINGS_PATH)
-            gauth.CommandLineAuth()
-            self._gdrive = GoogleDrive(gauth)
-        return self._gdrive
+        GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
+        gauth = GoogleAuth(settings_file=self.GOOGLE_AUTH_SETTINGS_PATH)
+        gauth.CommandLineAuth()
+        return GoogleDrive(gauth)
 
     def cache_dirs(self, dirs_list):
         for dir1 in dirs_list:
