@@ -112,6 +112,7 @@ if is_py2:
     from io import open  # noqa: F401
     import pathlib2 as pathlib  # noqa: F401
     from collections import Mapping  # noqa: F401
+    from contextlib2 import ExitStack  # noqa: F401
 
     builtin_str = str  # noqa: F821
     bytes = str  # noqa: F821
@@ -155,6 +156,7 @@ elif is_py3:
     from io import StringIO, BytesIO  # noqa: F401
     import configparser as ConfigParser  # noqa: F401
     from collections.abc import Mapping  # noqa: F401
+    from contextlib import ExitStack  # noqa: F401
 
     builtin_str = str  # noqa: F821
     str = str  # noqa: F821

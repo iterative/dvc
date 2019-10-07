@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 def locked(f):
     @wraps(f)
     def wrapper(repo, *args, **kwargs):
-        with repo.lock:
+        with repo.lock, repo.state:
             ret = f(repo, *args, **kwargs)
             # Our graph cache is no longer valid after we release the repo.lock
             repo._reset()

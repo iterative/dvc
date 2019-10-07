@@ -33,18 +33,17 @@ def _load_all_used_cache(
     clists = []
 
     for repo in repos:
-        with repo.state:
-            repo_clist = repo.used_cache(
-                targets=None,
-                all_branches=all_branches,
-                with_deps=with_deps,
-                all_tags=all_tags,
-                remote=remote,
-                force=force,
-                jobs=jobs,
-            )
+        repo_clist = repo.used_cache(
+            targets=None,
+            all_branches=all_branches,
+            with_deps=with_deps,
+            all_tags=all_tags,
+            remote=remote,
+            force=force,
+            jobs=jobs,
+        )
 
-            clists.append(repo_clist)
+        clists.append(repo_clist)
 
     return clists
 
@@ -67,45 +66,50 @@ def gc(
     jobs=None,
     repos=None,
 ):
+    from dvc.utils.compat import ExitStack
     from dvc.repo import Repo
 
-    all_repos = [self]
+    all_repos = []
 
     if repos:
-        all_repos.extend(Repo(path) for path in repos)
+        all_repos = [Repo(path) for path in repos]
 
-    all_clists = _load_all_used_cache(
-        all_repos,
-        all_branches=all_branches,
-        with_deps=with_deps,
-        all_tags=all_tags,
-        remote=remote,
-        force=force,
-        jobs=jobs,
-    )
+    with ExitStack() as stack:
+        for repo in all_repos:
+            stack.enter_context(repo.lock)
+            stack.enter_context(repo.state)
+
+        all_clists = _load_all_used_cache(
+            all_repos + [self],
+            all_branches=all_branches,
+            with_deps=with_deps,
+            all_tags=all_tags,
+            remote=remote,
+            force=force,
+            jobs=jobs,
+        )
 
     if len(all_clists) > 1:
         clist = _merge_cache_lists(all_clists)
     else:
         clist = all_clists[0]
 
-    with self.state:
-        _do_gc("local", self.cache.local.gc, clist)
+    _do_gc("local", self.cache.local.gc, clist)
 
-        if self.cache.s3:
-            _do_gc("s3", self.cache.s3.gc, clist)
+    if self.cache.s3:
+        _do_gc("s3", self.cache.s3.gc, clist)
 
-        if self.cache.gs:
-            _do_gc("gs", self.cache.gs.gc, clist)
+    if self.cache.gs:
+        _do_gc("gs", self.cache.gs.gc, clist)
 
-        if self.cache.ssh:
-            _do_gc("ssh", self.cache.ssh.gc, clist)
+    if self.cache.ssh:
+        _do_gc("ssh", self.cache.ssh.gc, clist)
 
-        if self.cache.hdfs:
-            _do_gc("hdfs", self.cache.hdfs.gc, clist)
+    if self.cache.hdfs:
+        _do_gc("hdfs", self.cache.hdfs.gc, clist)
 
-        if self.cache.azure:
-            _do_gc("azure", self.cache.azure.gc, clist)
+    if self.cache.azure:
+        _do_gc("azure", self.cache.azure.gc, clist)
 
-        if cloud:
-            _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, clist)
+    if cloud:
+        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, clist)

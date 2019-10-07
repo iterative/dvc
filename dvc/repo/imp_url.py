@@ -11,18 +11,16 @@ def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
 
     out = out or pathlib.PurePath(url).name
 
-    with self.state:
-        stage = Stage.create(
-            self, cmd=None, deps=[url], outs=[out], fname=fname, erepo=erepo
-        )
+    stage = Stage.create(
+        self, cmd=None, deps=[url], outs=[out], fname=fname, erepo=erepo
+    )
 
     if stage is None:
         return None
 
     self.check_modified_graph([stage])
 
-    with self.state:
-        stage.run()
+    stage.run()
 
     stage.locked = locked
 
