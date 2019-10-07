@@ -12,8 +12,7 @@ from dvc.config import Config
 from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
-    OutputFileMissingError,
-    NotCachedOutputFileMissingError,
+    FileMissingError,
 )
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
@@ -455,23 +454,29 @@ class Repo(object):
     @contextmanager
     def open(self, path, remote=None, mode="r", encoding=None):
         """Opens a specified resource as a file descriptor"""
-        if not remote and self.tree.exists(path):
+        cause = None
+        try:
+            out, = self.find_outs_by_path(path)
+        except OutputNotFoundError as e:
+            out = None
+            cause = e
+
+        if out and out.use_cache:
+            try:
+                with self._open_cached(out, remote, mode, encoding) as fd:
+                    yield fd
+                return
+            except FileNotFoundError as e:
+                raise FileMissingError(relpath(path, self.root_dir), cause=e)
+
+        if self.tree.exists(path):
             with self.tree.open(path, mode, encoding) as fd:
                 yield fd
             return
 
-        try:
-            with self._open_out(path, remote, mode, encoding) as fd:
-                yield fd
-        except FileNotFoundError as e:
-            raise OutputFileMissingError(relpath(path, self.root_dir), cause=e)
+        raise FileMissingError(relpath(path, self.root_dir), cause=cause)
 
-    def _open_out(self, path, remote=None, mode="r", encoding=None):
-        out, = self.find_outs_by_path(path)
-
-        if not out.use_cache and not out.exists:
-            raise NotCachedOutputFileMissingError(out.path_info)
-
+    def _open_cached(self, out, remote=None, mode="r", encoding=None):
         if out.isdir():
             raise ValueError("Can't open a dir")
 

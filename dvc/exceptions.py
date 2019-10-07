@@ -259,18 +259,11 @@ class ETagMismatchError(DvcException):
         )
 
 
-class OutputFileMissingError(DvcException):
-    def __init__(self, path, cause):
-        super(OutputFileMissingError, self).__init__(
+class FileMissingError(DvcException):
+    def __init__(self, path, cause=None):
+        super(FileMissingError, self).__init__(
             "Can't find '{}' neither locally nor on remote".format(path),
             cause=cause,
-        )
-
-
-class NotCachedOutputFileMissingError(DvcException):
-    def __init__(self, path_info):
-        super(NotCachedOutputFileMissingError, self).__init__(
-            "Can't find '{}'. This file was not cached.".format(path_info)
         )
 
 

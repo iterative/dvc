@@ -4,10 +4,7 @@ import pytest
 import shutil
 
 from dvc import api
-from dvc.exceptions import (
-    OutputFileMissingError,
-    NotCachedOutputFileMissingError,
-)
+from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
@@ -138,9 +135,8 @@ def test_missing(repo_dir, dvc_repo, remote_url):
 
     # Remove cache to make foo missing
     shutil.rmtree(dvc_repo.cache.local.cache_dir)
-    os.remove(repo_dir.FOO)
 
-    with pytest.raises(OutputFileMissingError):
+    with pytest.raises(FileMissingError):
         api.read(repo_dir.FOO)
 
 
@@ -159,36 +155,20 @@ def test_open_scm_controlled(dvc_repo, repo_dir):
         assert fd.read() == stage_content
 
 
-def test_open_not_cached(dvc_repo, repo_dir):
+def test_open_not_cached(dvc_repo):
     metric_file = "metric.txt"
-    code_file = "metric_writing_code.py"
     metric_content = "0.6"
-    metric_code = 'open("{}", "w").write("{}")'.format(
+    metric_code = "open('{}', 'w').write('{}')".format(
         metric_file, metric_content
     )
-    repo_dir.create(code_file, metric_code)
-
     dvc_repo.run(
-        metrics_no_cache=[metric_file], cmd="python {}".format(code_file)
+        metrics_no_cache=[metric_file],
+        cmd=('python -c "{}"'.format(metric_code)),
     )
 
     with api.open(metric_file) as fd:
         assert fd.read() == metric_content
 
-
-def test_open_missing_not_cached(dvc_repo, repo_dir):
-    metric_file = "metric.txt"
-    code_file = "metric_writing_code.py"
-    metric_content = "0.6"
-    metric_code = 'open("{}", "w").write("{}")'.format(
-        metric_file, metric_content
-    )
-    repo_dir.create(code_file, metric_code)
-
-    dvc_repo.run(
-        metrics_no_cache=[metric_file], cmd="python {}".format(code_file)
-    )
     os.remove(metric_file)
-
-    with pytest.raises(NotCachedOutputFileMissingError):
+    with pytest.raises(FileMissingError):
         api.read(metric_file)
