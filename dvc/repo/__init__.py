@@ -489,15 +489,6 @@ class Repo(object):
     def close(self):
         self.scm.close()
 
-    @staticmethod
-    def clone(url, to_path, rev=None):
-        from dvc.scm.git import Git
-
-        git = Git.clone(url, to_path, rev=rev)
-        git.close()
-
-        return Repo(to_path)
-
     @locked
     def checkout(self, *args, **kwargs):
         return self._checkout(*args, **kwargs)

@@ -1,8 +1,8 @@
 import os
 import filecmp
-import shutil
 
 import pytest
+from mock import patch
 from tests.utils import trees_equal
 
 from dvc.stage import Stage
@@ -73,9 +73,10 @@ def test_download_error_pulling_imported_stage(dvc_repo, erepo):
     dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
     dst_cache = dst_stage.outs[0].cache_path
 
-    shutil.rmtree(erepo.root_dir)
     os.remove(dst)
     os.remove(dst_cache)
 
-    with pytest.raises(DownloadError):
+    with patch(
+        "dvc.remote.RemoteLOCAL._download", side_effect=Exception
+    ), pytest.raises(DownloadError):
         dvc_repo.pull(["foo_imported.dvc"])

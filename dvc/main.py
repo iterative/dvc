@@ -10,6 +10,7 @@ from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
 from dvc.remote.pool import close_pools
+from dvc.external_repo import clean_repos
 from dvc.utils.compat import is_py2
 
 
@@ -65,9 +66,14 @@ def main(argv=None):
         ret = 255
     finally:
         logger.setLevel(outerLogLevel)
+
         # Python 2 fails to close these clean occasionally and users see
         # weird error messages, so we do it manually
         close_pools()
+
+        # Remove cached repos in the end of the call, these are anonymous
+        # so won't be reused by any other subsequent run anyway.
+        clean_repos()
 
     Analytics().send_cmd(cmd, args, ret)
 

@@ -22,6 +22,11 @@ class CacheConfig(object):
             Config.SECTION_CACHE, Config.SECTION_CACHE_DIR, path, level=level
         )
 
+    def unset_dir(self, level=None):
+        self.config.unset(
+            Config.SECTION_CACHE, Config.SECTION_CACHE_DIR, level=level
+        )
+
 
 def _make_remote_property(name):
     """
