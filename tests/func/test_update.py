@@ -3,6 +3,7 @@ import shutil
 import filecmp
 
 from dvc.repo import Repo
+from dvc.external_repo import clean_repos
 
 
 def test_update_import(dvc_repo, erepo):
@@ -33,6 +34,10 @@ def test_update_import(dvc_repo, erepo):
     repo.scm.close()
 
     os.chdir(saved_dir)
+
+    # Caching in external repos doesn't see upstream updates within single
+    # cli call, so we need to clean the caches to see the changes.
+    clean_repos()
 
     assert dvc_repo.status([stage.path]) == {}
     dvc_repo.update(stage.path)
