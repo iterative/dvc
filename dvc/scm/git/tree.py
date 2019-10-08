@@ -45,7 +45,8 @@ class GitTree(BaseTree):
     def tree_root(self):
         return self.git.working_dir
 
-    def open(self, path, binary=False):
+    def open(self, path, mode="r", encoding="utf-8"):
+        assert mode in {"r", "rb"}
 
         relative_path = relpath(path, self.git.working_dir)
 
@@ -61,9 +62,9 @@ class GitTree(BaseTree):
         # the `open()` behavior (since data_stream.read() returns bytes,
         # and `open` with default "r" mode returns str)
         data = obj.data_stream.read()
-        if binary:
+        if mode == "rb":
             return BytesIO(data)
-        return StringIO(data.decode("utf-8"))
+        return StringIO(data.decode(encoding))
 
     def exists(self, path):
         return self.git_object_by_path(path) is not None
