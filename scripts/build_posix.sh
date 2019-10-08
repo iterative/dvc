@@ -120,11 +120,15 @@ build_dvc()
 		$BIN_DIR/dvc --help
 	fi
 
-	mkdir -p $BUILD_DIR/$BASH_CMPLT_DIR 
-	cp scripts/completion/dvc.bash $BUILD_DIR/$BASH_CMPLT_DIR/dvc
+        # NOTE: temporarily not adding scripts to mac package. See [1]
+        # [1] https://github.com/iterative/dvc/issues/2585
+        if [[ "$(uname)" == 'Linux' ]]; then
+            mkdir -p $BUILD_DIR/$BASH_CMPLT_DIR
+            cp scripts/completion/dvc.bash $BUILD_DIR/$BASH_CMPLT_DIR/dvc
 
-	mkdir -p $BUILD_DIR/$ZSH_CMPLT_DIR
-	cp scripts/completion/dvc.zsh $BUILD_DIR/$ZSH_CMPLT_DIR
+            mkdir -p $BUILD_DIR/$ZSH_CMPLT_DIR
+            cp scripts/completion/dvc.zsh $BUILD_DIR/$ZSH_CMPLT_DIR
+        fi
 }
 
 cleanup
