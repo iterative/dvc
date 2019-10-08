@@ -21,6 +21,8 @@ def test_external_repo(erepo):
 
         # Check cache_dir is unset
         with external_repo(url) as repo:
-            assert repo.cache.local.cache_dir.startswith(repo.root_dir + "/")
+            assert repo.cache.local.cache_dir.startswith(
+                repo.root_dir + os.sep
+            )
 
         assert mock.call_count == 1
