@@ -167,7 +167,7 @@ class CmdPipelineList(CmdBase):
         pipelines = self.repo.pipelines
         for p in pipelines:
             stages = networkx.get_node_attributes(p, "stage")
-            for stage in stages:
+            for stage in sorted(stages):
                 logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
