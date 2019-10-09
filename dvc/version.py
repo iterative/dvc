@@ -7,7 +7,7 @@ import os
 import subprocess
 
 
-_BASE_VERSION = "0.61.2"
+_BASE_VERSION = "0.62.0"
 
 
 def _generate_version(base_version):
