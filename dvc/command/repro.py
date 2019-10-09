@@ -48,6 +48,7 @@ class CmdRepro(CmdBase):
                 if self.args.metrics:
                     metrics = self.repo.metrics.show()
                     show_metrics(metrics)
+                logger.info("Don't forget to execute 'dvc push'")
             except DvcException:
                 logger.exception("")
                 ret = 1
