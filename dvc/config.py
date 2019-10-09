@@ -147,6 +147,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
+    CREDENTIALPATH = "credentialpath"
+
     LEVEL_LOCAL = 0
     LEVEL_REPO = 1
     LEVEL_GLOBAL = 2
@@ -215,7 +217,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # backward compatibility
     SECTION_AWS = "aws"
     SECTION_AWS_STORAGEPATH = "storagepath"
-    SECTION_AWS_CREDENTIALPATH = "credentialpath"
+    SECTION_AWS_CREDENTIALPATH = CREDENTIALPATH
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
     SECTION_AWS_LIST_OBJECTS = "listobjects"
     SECTION_AWS_REGION = "region"
@@ -238,12 +240,14 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # backward compatibility
     SECTION_GCP = "gcp"
     SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
-    SECTION_GCP_CREDENTIALPATH = SECTION_AWS_CREDENTIALPATH
+    SECTION_GCP_CREDENTIALPATH = CREDENTIALPATH
     SECTION_GCP_PROJECTNAME = "projectname"
     SECTION_GCP_SCHEMA = {
         SECTION_GCP_STORAGEPATH: str,
         Optional(SECTION_GCP_PROJECTNAME): str,
     }
+
+    SECTION_GDRIVE_CREDENTIALPATH = CREDENTIALPATH
 
     # backward compatibility
     SECTION_LOCAL = "local"
@@ -271,7 +275,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_REMOTE_URL: str,
         Optional(SECTION_AWS_REGION): str,
         Optional(SECTION_AWS_PROFILE): str,
-        Optional(SECTION_AWS_CREDENTIALPATH): str,
+        Optional(CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
         Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
         Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,

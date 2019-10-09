@@ -8,7 +8,7 @@ from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
-from dvc.remote.gdrive.utils import TrackFileReadProgress
+from dvc.remote.gdrive.utils import TrackFileReadProgress, shared_token_warning
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -23,24 +23,43 @@ class RemoteGDrive(RemoteBASE):
     REGEX = r"^gdrive://.*$"
     REQUIRES = {"pydrive": "pydrive"}
     PARAM_CHECKSUM = "md5Checksum"
-    GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
+    DEFAULT_GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
         os.path.dirname(__file__), "settings.yaml"
     )
+    FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
+        if Config.SECTION_GDRIVE_CREDENTIALPATH not in config:
+            shared_token_warning()
+        self.gdrive_credentials_path = config.get(
+            Config.SECTION_GDRIVE_CREDENTIALPATH,
+            self.DEFAULT_GOOGLE_AUTH_SETTINGS_PATH,
+        )
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self.root_content_cached = False
         self.root_dirs_list = {}
+        self.get_path_id(self.path_info, create=True)
         self.cache_root_content()
 
     @cached_property
     def drive(self):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
+        import logging
+
+        if os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"):
+            with open("credentials.json", "w") as credentials_file:
+                credentials_file.write(
+                    os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT")
+                )
+
+        logging.getLogger("googleapiclient.discovery_cache").setLevel(
+            logging.ERROR
+        )
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-        gauth = GoogleAuth(settings_file=self.GOOGLE_AUTH_SETTINGS_PATH)
+        gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
         gauth.CommandLineAuth()
         return GoogleDrive(gauth)
 
@@ -79,7 +98,7 @@ class RemoteGDrive(RemoteBASE):
                     {
                         "title": part,
                         "parents": [{"id": parent_id}],
-                        "mimeType": "application/vnd.google-apps.folder",
+                        "mimeType": self.FOLDER_MIME_TYPE,
                     }
                 )
                 gdrive_file.Upload()
@@ -110,6 +129,9 @@ class RemoteGDrive(RemoteBASE):
             parts.pop(0)
         else:
             parent_id = path_info.netloc
+
+        if not parts and file_id:
+            return file_id
 
         return self.resolve_file_id(file_id, parent_id, parts, create)
 
@@ -144,20 +166,36 @@ class RemoteGDrive(RemoteBASE):
         file1.Upload()
         from_file.close()
 
-    def _download(
-        self, from_info, to_file, _unused_name, _unused_no_progress_bar
-    ):
+    def _download(self, from_info, to_file, name, no_progress_bar):
+        from dvc.progress import Tqdm
+
         file_id = self.get_path_id(from_info)
         gdrive_file = self.drive.CreateFile({"id": file_id})
+        if not no_progress_bar:
+            tqdm = Tqdm(desc=name, total=int(gdrive_file["fileSize"]))
         gdrive_file.GetContentFile(to_file)
-        # if not no_progress_bar:
-        #    progress.update_target(name, 1, 1)
+        if not no_progress_bar:
+            tqdm.close()
 
     def get_file_checksum(self, path_info):
         raise NotImplementedError
 
     def list_cache_paths(self):
-        raise NotImplementedError
+        file_id = self.get_path_id(self.path_info)
+        prefix = self.path_info.path
+        for path in self.list_path(file_id):
+            yield prefix + "/" + path
 
     def walk(self, path_info):
         raise NotImplementedError
+
+    def list_path(self, parent_id):
+        file_list = self.drive.ListFile(
+            {"q": "'%s' in parents and trashed=false" % parent_id}
+        ).GetList()
+        for file1 in file_list:
+            if file1["mimeType"] == self.FOLDER_MIME_TYPE:
+                for i in self.list_path(file1["id"]):
+                    yield file1["title"] + "/" + i
+            else:
+                yield file1["title"]
