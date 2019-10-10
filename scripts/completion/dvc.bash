@@ -82,7 +82,8 @@ _dvc () {
       *)  COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
-    local options_list="_dvc_${COMP_WORDS[1]}"
+    local replace_hyphen=$(echo ${COMP_WORDS[1]} | sed 's/-/_/g')
+    local options_list="_dvc_${replace_hyphen}"
 
     COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
   elif [ "${COMP_CWORD}" -eq 3 ]; then
