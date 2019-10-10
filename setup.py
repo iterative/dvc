@@ -10,13 +10,20 @@ import fastentrypoints  # noqa: F401
 
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
-pkg_dir = os.path.dirname(__file__)
+pkg_dir = os.path.dirname(os.path.abspath(__file__))
+version_path = os.path.join(pkg_dir, "dvc", "version.py")
+if sys.version_info[0] == 2:
+    import imp
 
-# This will define __version__ implicitly
-with open(os.path.join(pkg_dir, "dvc", "version.py")) as fobj:
-    exec(fobj.read())
+    dvc_version = imp.load_source("dvc.version", version_path)
+else:
+    import importlib.util
 
-version = __version__  # noqa: F821
+    spec = importlib.util.spec_from_file_location("dvc.version", version_path)
+    dvc_version = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(dvc_version)
+
+version = dvc_version.__version__  # noqa: F821
 
 
 # To achieve consistency between the build version and the one provided
