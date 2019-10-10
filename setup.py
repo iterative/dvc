@@ -14,9 +14,11 @@ pkg_dir = os.path.dirname(os.path.abspath(__file__))
 version_path = os.path.join(pkg_dir, "dvc", "version.py")
 if sys.version_info[0] == 2:
     import imp
-    dvc_version = imp.load_source('dvc.version', version_path)
+
+    dvc_version = imp.load_source("dvc.version", version_path)
 else:
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("dvc.version", version_path)
     dvc_version = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(dvc_version)
