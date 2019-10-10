@@ -12,7 +12,7 @@ _BASE_VERSION = "0.62.0"
 
 def _generate_version(base_version):
     """Generate a version with information about the git repository"""
-    pkg_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    pkg_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     if not _is_git_repo(pkg_dir) or not _have_git():
         return base_version
