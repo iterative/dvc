@@ -325,7 +325,7 @@ class TestAddCommit(TestDvc):
         ret = main(["add", self.FOO, "--no-commit"])
         self.assertEqual(ret, 0)
         self.assertTrue(os.path.isfile(self.FOO))
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
+        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
 
         ret = main(["commit", self.FOO + ".dvc"])
         self.assertEqual(ret, 0)

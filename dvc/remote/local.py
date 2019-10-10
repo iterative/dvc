@@ -69,9 +69,6 @@ class RemoteLOCAL(RemoteBASE):
             cwd = config[Config.PRIVATE_CWD]
             cache_dir = os.path.abspath(os.path.join(cwd, cache_dir))
 
-        if cache_dir is not None and not os.path.exists(cache_dir):
-            os.mkdir(cache_dir)
-
         self.path_info = PathInfo(cache_dir) if cache_dir else None
         self._dir_info = {}
 

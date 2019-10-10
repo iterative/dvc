@@ -1,7 +1,6 @@
 import os
 import stat
 import pytest
-import shutil
 import configobj
 
 from dvc.cache import Cache
@@ -66,7 +65,7 @@ class TestExternalCacheDir(TestDvc):
         ret = main(["config", "cache.dir", cache_dir])
         self.assertEqual(ret, 0)
 
-        shutil.rmtree(".dvc/cache")
+        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
 
         ret = main(["add", self.FOO])
         self.assertEqual(ret, 0)
@@ -101,7 +100,7 @@ class TestSharedCacheDir(TestDir):
             ret = main(["config", "cache.dir", cache_dir])
             self.assertEqual(ret, 0)
 
-            shutil.rmtree(os.path.join(".dvc", "cache"))
+            self.assertFalse(os.path.exists(os.path.join(".dvc", "cache")))
 
             with open("common", "w+") as fd:
                 fd.write("common")
