@@ -11,7 +11,6 @@ from dvc.utils import remove
 
 
 REPO_CACHE = {}
-REPO_BY_URL = {}
 
 
 @contextmanager
@@ -25,6 +24,10 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
 
 
 def _external_repo(url=None, rev=None, cache_dir=None):
+    from dvc.config import Config
+    from dvc.cache import CacheConfig
+    from dvc.repo import Repo
+
     key = (url, rev, cache_dir)
     if key in REPO_CACHE:
         return REPO_CACHE[key]
@@ -32,36 +35,41 @@ def _external_repo(url=None, rev=None, cache_dir=None):
     new_path = tempfile.mkdtemp("dvc-erepo")
 
     # Copy and adjust existing clone
-    if url in REPO_BY_URL:
-        old_path, old_rev, old_cache_dir = REPO_BY_URL[url]
+    if (url, None, None) in REPO_CACHE:
+        old_path = REPO_CACHE[url, None, None]
 
         # This one unlike shutil.copytree() works with an existing dir
         copy_tree(old_path, new_path)
+    else:
+        # Create a new clone
+        _clone_repo(url, new_path)
 
-        if old_rev != rev:
-            _set_rev(new_path, rev)
+        # Save clean clone dir so that we will have access to a default branch
+        clean_clone_path = tempfile.mkdtemp("dvc-erepo")
+        copy_tree(new_path, clean_clone_path)
+        REPO_CACHE[url, None, None] = clean_clone_path
 
-        if old_cache_dir != cache_dir:
-            _set_cache_dir(new_path, cache_dir)
+    # Adjust new clone/copy to fit rev and cache_dir
+    repo = Repo(new_path)
+    try:
+        if rev is not None:
+            repo.scm.checkout(rev)
 
-        REPO_CACHE[key] = new_path
-        return new_path
-
-    # Create a new clone
-    _clone_repo(url, new_path, rev=rev)
-    if cache_dir:
-        _set_cache_dir(new_path, cache_dir)
+        if cache_dir is not None:
+            cache_config = CacheConfig(repo.config)
+            cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
+    finally:
+        # Need to close/reopen repo to force config reread
+        repo.close()
 
     REPO_CACHE[key] = new_path
-    REPO_BY_URL[url] = new_path, rev, cache_dir
     return new_path
 
 
 def clean_repos():
-    # Outside code should not see these while we are removing
+    # Outside code should not see cache while we are removing
     repo_paths = list(REPO_CACHE.values())
     REPO_CACHE.clear()
-    REPO_BY_URL.clear()
 
     for path in repo_paths:
         _remove(path)
@@ -76,36 +84,8 @@ def _remove(path):
         remove(path)
 
 
-def _clone_repo(url, path, rev=None):
+def _clone_repo(url, path):
     from dvc.scm.git import Git
 
-    git = Git.clone(url, path, rev=rev)
+    git = Git.clone(url, path)
     git.close()
-
-
-def _set_rev(path, rev):
-    from dvc.repo import Repo
-
-    repo = Repo(path)
-
-    try:
-        repo.scm.checkout(rev or "master")
-    finally:
-        repo.close()
-
-
-def _set_cache_dir(path, cache_dir):
-    from dvc.config import Config
-    from dvc.cache import CacheConfig
-    from dvc.repo import Repo
-
-    repo = Repo(path)
-
-    try:
-        cache_config = CacheConfig(repo.config)
-        if cache_dir:
-            cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
-        else:
-            cache_config.unset_dir(level=Config.LEVEL_LOCAL)
-    finally:
-        repo.close()
