@@ -164,7 +164,7 @@ class Repo(object):
             + updater.lock.files
         )
 
-        if self.cache.local.cache_dir.startswith(self.root_dir):
+        if self.cache.local.cache_dir.startswith(self.root_dir + os.sep):
             flist += [self.cache.local.cache_dir]
 
         self.scm.ignore_list(flist)
