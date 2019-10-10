@@ -36,18 +36,17 @@ def add(repo, target, recursive=False, no_commit=False, fname=None):
             )
         )
 
-    with repo.state:
-        stages = _create_stages(repo, targets, fname)
+    stages = _create_stages(repo, targets, fname)
 
-        repo.check_modified_graph(stages)
+    repo.check_modified_graph(stages)
 
-        for stage in stages:
-            stage.save()
+    for stage in stages:
+        stage.save()
 
-            if not no_commit:
-                stage.commit()
+        if not no_commit:
+            stage.commit()
 
-            stage.dump()
+        stage.dump()
 
     return stages
 

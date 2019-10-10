@@ -14,15 +14,14 @@ def push(
     all_tags=False,
     recursive=False,
 ):
-    with self.state:
-        used = self.used_cache(
-            targets,
-            all_branches=all_branches,
-            all_tags=all_tags,
-            with_deps=with_deps,
-            force=True,
-            remote=remote,
-            jobs=jobs,
-            recursive=recursive,
-        )["local"]
-        return self.cloud.push(used, jobs, remote=remote)
+    used = self.used_cache(
+        targets,
+        all_branches=all_branches,
+        all_tags=all_tags,
+        with_deps=with_deps,
+        force=True,
+        remote=remote,
+        jobs=jobs,
+        recursive=recursive,
+    )["local"]
+    return self.cloud.push(used, jobs, remote=remote)

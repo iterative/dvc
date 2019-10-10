@@ -47,47 +47,50 @@ class TestTag(TestDvc):
 
 class TestTagAll(TestDvc):
     def test(self):
-        ret = main(["add", self.FOO, self.BAR])
-        self.assertEqual(ret, 0)
+        with self._caplog.at_level(logging.INFO, logger="dvc"):
+            ret = main(["add", self.FOO, self.BAR])
+            self.assertEqual(ret, 0)
 
-        self._caplog.clear()
+            self._caplog.clear()
 
-        ret = main(["tag", "list"])
-        self.assertEqual(ret, 0)
+            ret = main(["tag", "list"])
+            self.assertEqual(ret, 0)
 
-        self.assertEqual("", self._caplog.text)
+            self.assertEqual("", self._caplog.text)
 
-        ret = main(["tag", "add", "v1"])
-        self.assertEqual(ret, 0)
+            ret = main(["tag", "add", "v1"])
+            self.assertEqual(ret, 0)
 
-        self._caplog.clear()
+            self._caplog.clear()
 
-        ret = main(["tag", "list"])
-        self.assertEqual(ret, 0)
+            ret = main(["tag", "list"])
+            self.assertEqual(ret, 0)
 
-        expected = {
-            "foo.dvc": {
-                "foo": {"v1": {"md5": "acbd18db4cc2f85cedef654fccc4a4d8"}}
-            },
-            "bar.dvc": {
-                "bar": {"v1": {"md5": "8978c98bb5a48c2fb5f2c4c905768afa"}}
-            },
-        }
+            expected = {
+                "foo.dvc": {
+                    "foo": {"v1": {"md5": "acbd18db4cc2f85cedef654fccc4a4d8"}}
+                },
+                "bar.dvc": {
+                    "bar": {"v1": {"md5": "8978c98bb5a48c2fb5f2c4c905768afa"}}
+                },
+            }
 
-        stdout = "\n".join(record.message for record in self._caplog.records)
-        received = from_yaml_string(stdout)
+            stdout = "\n".join(
+                record.message for record in self._caplog.records
+            )
+            received = from_yaml_string(stdout)
 
-        assert expected == received
+            assert expected == received
 
-        ret = main(["tag", "remove", "v1"])
-        self.assertEqual(ret, 0)
+            ret = main(["tag", "remove", "v1"])
+            self.assertEqual(ret, 0)
 
-        self._caplog.clear()
+            self._caplog.clear()
 
-        ret = main(["tag", "list"])
-        self.assertEqual(ret, 0)
+            ret = main(["tag", "list"])
+            self.assertEqual(ret, 0)
 
-        self.assertEqual("", self._caplog.text)
+            self.assertEqual("", self._caplog.text)
 
 
 class TestTagAddNoChecksumInfo(TestDvc):

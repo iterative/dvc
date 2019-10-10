@@ -94,10 +94,9 @@ def reproduce(
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     ret = []
-    with self.state:
-        for target in targets:
-            stages = _reproduce(self, active_graph, target, **kwargs)
-            ret.extend(stages)
+    for target in targets:
+        stages = _reproduce(self, active_graph, target, **kwargs)
+        ret.extend(stages)
 
     return ret
 

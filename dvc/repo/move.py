@@ -66,8 +66,7 @@ def move(self, from_path, to_path):
 
     to_out = Output.loads_from(stage, [to_path], out.use_cache, out.metric)[0]
 
-    with self.state:
-        out.move(to_out)
-        stage.save()
+    out.move(to_out)
+    stage.save()
 
     stage.dump()

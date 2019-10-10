@@ -104,15 +104,14 @@ def status(
     with_deps=False,
     all_tags=False,
 ):
-    with self.state:
-        if cloud or remote:
-            return _cloud_status(
-                self,
-                targets,
-                jobs,
-                all_branches=all_branches,
-                with_deps=with_deps,
-                remote=remote,
-                all_tags=all_tags,
-            )
-        return _local_status(self, targets, with_deps=with_deps)
+    if cloud or remote:
+        return _cloud_status(
+            self,
+            targets,
+            jobs,
+            all_branches=all_branches,
+            with_deps=with_deps,
+            remote=remote,
+            all_tags=all_tags,
+        )
+    return _local_status(self, targets, with_deps=with_deps)

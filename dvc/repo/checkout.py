@@ -35,28 +35,23 @@ def _checkout(
             raise
         raise CheckoutErrorSuggestGit(target, exc)
 
-    with self.state:
-        _cleanup_unused_links(self, self.stages)
-        total = get_all_files_numbers(stages)
-        if total == 0:
-            logger.info("Nothing to do")
-        failed = []
-        with Tqdm(
-            total=total, unit="file", desc="Checkout", disable=total == 0
-        ) as pbar:
-            for stage in stages:
-                if stage.locked:
-                    logger.warning(
-                        "DVC-file '{path}' is locked. Its dependencies are"
-                        " not going to be checked out.".format(
-                            path=stage.relpath
-                        )
-                    )
-
-                failed.extend(
-                    stage.checkout(
-                        force=force, progress_callback=pbar.update_desc
-                    )
+    _cleanup_unused_links(self, self.stages)
+    total = get_all_files_numbers(stages)
+    if total == 0:
+        logger.info("Nothing to do")
+    failed = []
+    with Tqdm(
+        total=total, unit="file", desc="Checkout", disable=total == 0
+    ) as pbar:
+        for stage in stages:
+            if stage.locked:
+                logger.warning(
+                    "DVC-file '{path}' is locked. Its dependencies are"
+                    " not going to be checked out.".format(path=stage.relpath)
                 )
-        if failed:
-            raise CheckoutError(failed)
+
+            failed.extend(
+                stage.checkout(force=force, progress_callback=pbar.update_desc)
+            )
+    if failed:
+        raise CheckoutError(failed)
