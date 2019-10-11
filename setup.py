@@ -97,7 +97,7 @@ ssh = ["paramiko>=2.5.0"]
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
 hdfs = ["pyarrow==0.14.0"]
-all_remotes = gs + s3 + azure + ssh + oss
+all_remotes = gs + s3 + azure + ssh + oss + gdrive
 
 if os.name != "nt" or sys.version_info[0] != 2:
     # NOTE: there are no pyarrow wheels for python2 on windows

@@ -22,7 +22,7 @@ class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
     REGEX = r"^gdrive://.*$"
-    REQUIRES = {"pydrive": "pydrive", "ratelimit": "ratelimit"}
+    REQUIRES = {"pydrive": "pydrive"}
     PARAM_CHECKSUM = "md5Checksum"
     DEFAULT_GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
         os.path.dirname(__file__), "settings.yaml"
