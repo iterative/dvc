@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 
 from funcy import cached_property
+import ratelimit
 
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
@@ -54,7 +55,7 @@ class RemoteGDrive(RemoteBASE):
         return cached_dirs
 
     @property
-    def drive(self):
+    def raw_drive(self):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
         import logging
@@ -77,6 +78,12 @@ class RemoteGDrive(RemoteBASE):
 
             self.get_path_id(self.path_info, create=True)
         return self._drive
+
+    @property
+    @ratelimit.sleep_and_retry
+    @ratelimit.limits(calls=8, period=10)
+    def drive(self):
+        return self.raw_drive
 
     def resolve_file_id_from_part(self, part, parent_id, file_list):
         file_id = ""
