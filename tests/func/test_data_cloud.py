@@ -71,7 +71,7 @@ def _should_test_aws():
 
 
 def _should_test_gdrive():
-    if os.getenv("DVC_TEST_GDRIVE") == "true" and os.getenv(
+    if os.getenv("DVC_TEST_GDRIVE") == "true" or os.getenv(
         "PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"
     ):
         return True

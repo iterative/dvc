@@ -37,47 +37,46 @@ class RemoteGDrive(RemoteBASE):
             self.DEFAULT_GOOGLE_AUTH_SETTINGS_PATH,
         )
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
-        self.root_content_cached = False
-        self.root_dirs_list = {}
-        self.get_path_id(self.path_info, create=True)
-        self.cache_root_content()
+        self._drive = None
 
     @cached_property
+    def cached_root_dirs(self):
+        cached_dirs = {}
+        for dirs_list in self.drive.ListFile(
+            {
+                "q": "'%s' in parents and trashed=false"
+                % self.path_info.netloc,
+                "maxResults": 256,
+            }
+        ):
+            for dir1 in dirs_list:
+                cached_dirs[dir1["title"]] = dir1["id"]
+        return cached_dirs
+
+    @property
     def drive(self):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
         import logging
 
-        if os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"):
-            with open("credentials.json", "w") as credentials_file:
-                credentials_file.write(
-                    os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT")
-                )
+        if self._drive is None:
+            if os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"):
+                with open("credentials.json", "w") as credentials_file:
+                    credentials_file.write(
+                        os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT")
+                    )
 
-        logging.getLogger("googleapiclient.discovery_cache").setLevel(
-            logging.ERROR
-        )
+            logging.getLogger("googleapiclient.discovery_cache").setLevel(
+                logging.ERROR
+            )
 
-        GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-        gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
-        gauth.CommandLineAuth()
-        return GoogleDrive(gauth)
+            GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
+            gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
+            gauth.CommandLineAuth()
+            self._drive = GoogleDrive(gauth)
 
-    def cache_dirs(self, dirs_list):
-        for dir1 in dirs_list:
-            self.root_dirs_list[dir1["title"]] = dir1["id"]
-
-    def cache_root_content(self):
-        if not self.root_content_cached:
-            for dirs_list in self.drive.ListFile(
-                {
-                    "q": "'%s' in parents and trashed=false"
-                    % self.path_info.netloc,
-                    "maxResults": 256,
-                }
-            ):
-                self.cache_dirs(dirs_list)
-            self.root_content_cached = True
+            self.get_path_id(self.path_info, create=True)
+        return self._drive
 
     def resolve_file_id_from_part(self, part, parent_id, file_list):
         file_id = ""
@@ -123,9 +122,9 @@ class RemoteGDrive(RemoteBASE):
         file_id = ""
         parts = path_info.path.split("/")
 
-        if parts and (parts[0] in self.root_dirs_list):
-            parent_id = self.root_dirs_list[parts[0]]
-            file_id = self.root_dirs_list[parts[0]]
+        if parts and (parts[0] in self.cached_root_dirs):
+            parent_id = self.cached_root_dirs[parts[0]]
+            file_id = self.cached_root_dirs[parts[0]]
             parts.pop(0)
         else:
             parent_id = path_info.netloc
