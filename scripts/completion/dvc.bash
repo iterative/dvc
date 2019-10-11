@@ -72,6 +72,10 @@ _dvc_version=''
 #       ${!x} ->  ${hello} ->  "world"
 #
 _dvc () {
+  replace_hyphen () {
+    echo $(echo $1 | sed 's/-/_/g')
+  }
+
   local word="${COMP_WORDS[COMP_CWORD]}"
 
   COMPREPLY=()
@@ -82,11 +86,11 @@ _dvc () {
       *)  COMPREPLY=($(compgen -W "$_dvc_commands" -- "$word")) ;;
     esac
   elif [ "${COMP_CWORD}" -eq 2 ]; then
-    local options_list="_dvc_${COMP_WORDS[1]}"
+    local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})"
 
     COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
   elif [ "${COMP_CWORD}" -eq 3 ]; then
-    local options_list="_dvc_${COMP_WORDS[1]}_${COMP_WORDS[2]}"
+    local options_list="_dvc_$(replace_hyphen ${COMP_WORDS[1]})_$(replace_hyphen ${COMP_WORDS[2]})"
 
     COMPREPLY=($(compgen -W "$_dvc_global_options ${!options_list}" -- "$word"))
   fi
