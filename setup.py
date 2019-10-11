@@ -119,8 +119,6 @@ tests_requirements = [
     "xmltodict>=0.11.0",
     "awscli>=1.16.125",
     "google-compute-engine==2.8.13",
-    "pydrive>=1.3.1",
-    "ratelimit==2.2.1",
     "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",

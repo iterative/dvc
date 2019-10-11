@@ -22,7 +22,7 @@ class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = GDriveURLInfo
     REGEX = r"^gdrive://.*$"
-    REQUIRES = {"pydrive": "pydrive"}
+    REQUIRES = {"pydrive": "pydrive", "ratelimit": "ratelimit"}
     PARAM_CHECKSUM = "md5Checksum"
     DEFAULT_GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
         os.path.dirname(__file__), "settings.yaml"
@@ -40,18 +40,18 @@ class RemoteGDrive(RemoteBASE):
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self._drive = None
 
+    def list_drive_item(self, query):
+        for page in self.drive.ListFile({"q": query, "maxResults": 1000}):
+            for item in page:
+                yield item
+
     @cached_property
     def cached_root_dirs(self):
         cached_dirs = {}
-        for dirs_list in self.drive.ListFile(
-            {
-                "q": "'%s' in parents and trashed=false"
-                % self.path_info.netloc,
-                "maxResults": 256,
-            }
+        for dir1 in self.list_drive_item(
+            "'%s' in parents and trashed=false" % self.path_info.netloc
         ):
-            for dir1 in dirs_list:
-                cached_dirs[dir1["title"]] = dir1["id"]
+            cached_dirs[dir1["title"]] = dir1["id"]
         return cached_dirs
 
     @property
@@ -196,10 +196,9 @@ class RemoteGDrive(RemoteBASE):
         raise NotImplementedError
 
     def list_path(self, parent_id):
-        file_list = self.drive.ListFile(
-            {"q": "'%s' in parents and trashed=false" % parent_id}
-        ).GetList()
-        for file1 in file_list:
+        for file1 in self.list_drive_item(
+            "'%s' in parents and trashed=false" % parent_id
+        ):
             if file1["mimeType"] == self.FOLDER_MIME_TYPE:
                 for i in self.list_path(file1["id"]):
                     yield file1["title"] + "/" + i
