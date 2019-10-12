@@ -187,7 +187,8 @@ class RemoteBASE(object):
                 )
                 tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
             checksums = dict(zip(file_infos, tasks))
-            del tasks
+            if hasattr(tasks, "close"):
+                tasks.close()
         return checksums
 
     def _collect_dir(self, path_info):
