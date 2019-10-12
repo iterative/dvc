@@ -113,23 +113,26 @@ class RemoteGDrive(RemoteBASE):
     def resolve_remote_file(self, parent_id, path_parts, create):
         for path_part in path_parts:
             item = self.get_drive_item(path_part, parent_id)
-            if not item:
-                if create:
-                    item = self.create_drive_item(parent_id, path_part)
-                else:
-                    break
+            if not item and create:
+                item = self.create_drive_item(parent_id, path_part)
+            elif not item:
+                return None
             parent_id = item["id"]
         return item
 
-    def get_path_id(self, path_info, create=False):
+    def get_path_id_from_cache(self, path_info):
+        file_id = ""
         parts = path_info.path.split("/")
-
         if parts and (parts[0] in self.cached_root_dirs):
             parent_id = self.cached_root_dirs[parts[0]]
             file_id = self.cached_root_dirs[parts[0]]
             parts.pop(0)
         else:
             parent_id = path_info.netloc
+        return file_id, parent_id, parts
+
+    def get_path_id(self, path_info, create=False):
+        file_id, parent_id, parts = self.get_path_id_from_cache(path_info)
 
         if not parts and file_id:
             return file_id
@@ -190,12 +193,16 @@ class RemoteGDrive(RemoteBASE):
     def walk(self, path_info):
         raise NotImplementedError
 
+    def list_file_path(self, drive_file):
+        if drive_file["mimeType"] == self.FOLDER_MIME_TYPE:
+            for i in self.list_path(drive_file["id"]):
+                yield drive_file["title"] + "/" + i
+        else:
+            yield drive_file["title"]
+
     def list_path(self, parent_id):
         for file1 in self.list_drive_item(
             "'%s' in parents and trashed=false" % parent_id
         ):
-            if file1["mimeType"] == self.FOLDER_MIME_TYPE:
-                for i in self.list_path(file1["id"]):
-                    yield file1["title"] + "/" + i
-            else:
-                yield file1["title"]
+            for path in self.list_file_path(file1):
+                yield path
