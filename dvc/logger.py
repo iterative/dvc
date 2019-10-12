@@ -22,6 +22,11 @@ class ExcludeErrorsFilter(logging.Filter):
         return record.levelno < logging.WARNING
 
 
+class ExcludeInfoFilter(logging.Filter):
+    def filter(self, record):
+        return record.levelno < logging.INFO
+
+
 class ColorFormatter(logging.Formatter):
     """Enable color support when logging to a terminal that supports it.
 
@@ -170,15 +175,25 @@ def setup(level=logging.INFO):
     logging.config.dictConfig(
         {
             "version": 1,
-            "filters": {"exclude_errors": {"()": ExcludeErrorsFilter}},
+            "filters": {
+                "exclude_errors": {"()": ExcludeErrorsFilter},
+                "exclude_info": {"()": ExcludeInfoFilter},
+            },
             "formatters": {"color": {"()": ColorFormatter}},
             "handlers": {
-                "console": {
+                "console_info": {
+                    "class": "dvc.logger.LoggerHandler",
+                    "level": "INFO",
+                    # "formatter": "color",
+                    "stream": "ext://sys.stdout",
+                    "filters": ["exclude_errors"],
+                },
+                "console_debug": {
                     "class": "dvc.logger.LoggerHandler",
                     "level": "DEBUG",
                     "formatter": "color",
                     "stream": "ext://sys.stdout",
-                    "filters": ["exclude_errors"],
+                    "filters": ["exclude_info"],
                 },
                 "console_errors": {
                     "class": "dvc.logger.LoggerHandler",
@@ -190,15 +205,27 @@ def setup(level=logging.INFO):
             "loggers": {
                 "dvc": {
                     "level": level,
-                    "handlers": ["console", "console_errors"],
+                    "handlers": [
+                        "console_info",
+                        "console_debug",
+                        "console_errors",
+                    ],
                 },
                 "paramiko": {
                     "level": logging.CRITICAL,
-                    "handlers": ["console", "console_errors"],
+                    "handlers": [
+                        "console_info",
+                        "console_debug",
+                        "console_errors",
+                    ],
                 },
                 "flufl.lock": {
                     "level": logging.CRITICAL,
-                    "handlers": ["console", "console_errors"],
+                    "handlers": [
+                        "console_info",
+                        "console_debug",
+                        "console_errors",
+                    ],
                 },
             },
         }
