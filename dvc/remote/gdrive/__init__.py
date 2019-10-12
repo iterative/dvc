@@ -67,6 +67,7 @@ class RemoteGDrive(RemoteBASE):
                         os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT")
                     )
 
+            # Supress import error on GoogleAuth warning
             logging.getLogger("googleapiclient.discovery_cache").setLevel(
                 logging.ERROR
             )
@@ -85,48 +86,42 @@ class RemoteGDrive(RemoteBASE):
     def drive(self):
         return self.raw_drive
 
-    def resolve_file_id_from_part(self, part, parent_id, file_list):
-        file_id = ""
-        for file1 in file_list:
-            if file1["title"] == part:
-                file_id = file1["id"]
-                file_list = self.drive.ListFile(
-                    {"q": "'%s' in parents and trashed=false" % file_id}
-                ).GetList()
-                parent_id = file1["id"]
-                break
-        return file_id, parent_id, file_list
+    def create_drive_item(self, parent_id, title):
+        item = self.drive.CreateFile(
+            {
+                "title": title,
+                "parents": [{"id": parent_id}],
+                "mimeType": self.FOLDER_MIME_TYPE,
+            }
+        )
+        item.Upload()
+        return item
 
-    def create_file_id(self, file_id, parent_id, part, create):
-        if file_id == "":
-            if create:
-                gdrive_file = self.drive.CreateFile(
+    def get_drive_item(self, name, parent_id):
+        return next(
+            iter(
+                self.drive.ListFile(
                     {
-                        "title": part,
-                        "parents": [{"id": parent_id}],
-                        "mimeType": self.FOLDER_MIME_TYPE,
+                        "q": "'%s' in parents and trashed=false and title='%s'"
+                        % (parent_id, name)
                     }
-                )
-                gdrive_file.Upload()
-                file_id = gdrive_file["id"]
-        return file_id
+                ).GetList()
+            ),
+            None,
+        )
 
-    def resolve_file_id(self, file_id, parent_id, path_parts, create):
-        file_list = self.drive.ListFile(
-            {"q": "'%s' in parents and trashed=false" % parent_id}
-        ).GetList()
-
-        for part in path_parts:
-            file_id, parent_id, file_list = self.resolve_file_id_from_part(
-                part, parent_id, file_list
-            )
-            file_id = self.create_file_id(file_id, parent_id, part, create)
-            if file_id == "":
-                break
-        return file_id
+    def resolve_remote_file(self, parent_id, path_parts, create):
+        for path_part in path_parts:
+            item = self.get_drive_item(path_part, parent_id)
+            if not item:
+                if create:
+                    item = self.create_drive_item(parent_id, path_part)
+                else:
+                    break
+            parent_id = item["id"]
+        return item
 
     def get_path_id(self, path_info, create=False):
-        file_id = ""
         parts = path_info.path.split("/")
 
         if parts and (parts[0] in self.cached_root_dirs):
@@ -139,7 +134,8 @@ class RemoteGDrive(RemoteBASE):
         if not parts and file_id:
             return file_id
 
-        return self.resolve_file_id(file_id, parent_id, parts, create)
+        file1 = self.resolve_remote_file(parent_id, parts, create)
+        return file1["id"] if file1 else ""
 
     def exists(self, path_info):
         return self.get_path_id(path_info) != ""
@@ -152,7 +148,6 @@ class RemoteGDrive(RemoteBASE):
         return results
 
     def _upload(self, from_file, to_info, name, no_progress_bar):
-
         dirname = to_info.parent
         if dirname:
             parent_id = self.get_path_id(dirname, True)
