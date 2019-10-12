@@ -10,7 +10,7 @@ os.putenv(
     "PATH", ":".join([os.path.join(REPO_ROOT, "bin"), os.getenv("PATH")])
 )
 os.putenv("DVC_HOME", REPO_ROOT)
-os.putenv("TQDM_DISABLE", "False")
+os.putenv("TQDM_ISATTY", "True")
 
 params = " ".join(sys.argv[1:])
 

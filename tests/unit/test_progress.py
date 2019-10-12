@@ -1,5 +1,5 @@
 import logging
-from dvc.progress import Tqdm, TQDM_DISABLE
+from dvc.progress import Tqdm, TQDM_ISATTY
 import sys
 
 
@@ -9,10 +9,7 @@ def test_quiet_logging(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if TQDM_DISABLE is False:  # False but not None
-            assert "0/10" in out_err.err
-        else:
-            assert out_err.err == ""
+        assert out_err.err == ""
 
 
 def test_quiet_notty(caplog, capsys):
@@ -21,7 +18,7 @@ def test_quiet_notty(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if TQDM_DISABLE is False:  # False but not None
+        if TQDM_ISATTY:
             assert "0/10" in out_err.err
         else:
             assert out_err.err == ""
@@ -35,7 +32,4 @@ def test_default(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if TQDM_DISABLE:
-            assert out_err.err == ""
-        else:
-            assert "0/10" in out_err.err
+        assert "0/10" in out_err.err
