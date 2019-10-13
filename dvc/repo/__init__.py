@@ -516,3 +516,4 @@ class Repo(object):
         self.__dict__.pop("graph", None)
         self.__dict__.pop("stages", None)
         self.__dict__.pop("pipelines", None)
+        self.__dict__.pop("dvcignore", None)
