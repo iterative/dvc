@@ -38,7 +38,10 @@ class RemoteGDrive(RemoteBASE):
             self.DEFAULT_GOOGLE_AUTH_SETTINGS_PATH,
         )
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
-        self._drive = None
+        self.init_drive()
+
+    def init_drive(self):
+        self.get_path_id(self.path_info, create=True)
 
     def list_drive_item(self, query):
         for page in self.drive.ListFile({"q": query, "maxResults": 1000}):
@@ -54,35 +57,31 @@ class RemoteGDrive(RemoteBASE):
             cached_dirs[dir1["title"]] = dir1["id"]
         return cached_dirs
 
-    @property
+    @cached_property
     def raw_drive(self):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
         import logging
 
-        if self._drive is None:
-            if os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"):
-                with open("credentials.json", "w") as credentials_file:
-                    credentials_file.write(
-                        os.getenv("PYDRIVE_USER_CREDENTIALS_FILE_CONTENT")
-                    )
+        if os.getenv("PYDRIVE_USER_CREDENTIALS_DATA"):
+            with open("credentials.json", "w") as credentials_file:
+                credentials_file.write(
+                    os.getenv("PYDRIVE_USER_CREDENTIALS_DATA")
+                )
 
-            # Supress import error on GoogleAuth warning
-            logging.getLogger("googleapiclient.discovery_cache").setLevel(
-                logging.ERROR
-            )
+        # Supress import error on GoogleAuth warning
+        logging.getLogger("googleapiclient.discovery_cache").setLevel(
+            logging.ERROR
+        )
 
-            GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-            gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
-            gauth.CommandLineAuth()
-            self._drive = GoogleDrive(gauth)
-
-            self.get_path_id(self.path_info, create=True)
-        return self._drive
+        GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
+        gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
+        gauth.CommandLineAuth()
+        return GoogleDrive(gauth)
 
     @property
     @ratelimit.sleep_and_retry
-    @ratelimit.limits(calls=8, period=10)
+    @ratelimit.limits(calls=10, period=10)
     def drive(self):
         return self.raw_drive
 

@@ -71,9 +71,7 @@ def _should_test_aws():
 
 
 def _should_test_gdrive():
-    if os.getenv("DVC_TEST_GDRIVE") == "true" or os.getenv(
-        "PYDRIVE_USER_CREDENTIALS_FILE_CONTENT"
-    ):
+    if os.getenv("PYDRIVE_USER_CREDENTIALS_DATA"):
         return True
 
     return False
@@ -248,7 +246,6 @@ class TestDataCloud(TestDvc):
 
         clist = [
             ("s3://mybucket/", RemoteS3),
-            ("gdrive://root/", RemoteGDrive),
             ("gs://mybucket/", RemoteGS),
             ("ssh://user@localhost:/", RemoteSSH),
             ("http://localhost:8000/", RemoteHTTP),
