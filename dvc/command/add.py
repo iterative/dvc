@@ -6,7 +6,6 @@ import logging
 from dvc.exceptions import DvcException
 from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
-from dvc.progress import Tqdm
 
 
 logger = logging.getLogger(__name__)
@@ -20,17 +19,13 @@ class CmdAdd(CmdBase):
                     "can't use '--file' with multiple targets"
                 )
 
-            with Tqdm(
-                total=len(self.args.targets), desc="Adding", unit="file"
-            ) as pbar:
-                for target in self.args.targets:
-                    self.repo.add(
-                        target,
-                        recursive=self.args.recursive,
-                        no_commit=self.args.no_commit,
-                        fname=self.args.file,
-                        pbar=pbar,
-                    )
+            self.repo.add(
+                self.args.targets,
+                recursive=self.args.recursive,
+                no_commit=self.args.no_commit,
+                fname=self.args.file,
+                progress=True,
+            )
 
         except DvcException as err:
             logger.exception("{}:{}".format(type(err).__name__, err))
