@@ -492,7 +492,7 @@ class RemoteBASE(object):
 
     def _save(self, path_info, checksum):
         to_info = self.checksum_to_path_info(checksum)
-        logger.info("Saving '{}' to '{}'.".format(path_info, to_info))
+        logger.debug("Saving '{}' to '{}'.".format(path_info, to_info))
         if self.isdir(path_info):
             self._save_dir(path_info, checksum)
             return
