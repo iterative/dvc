@@ -1280,7 +1280,7 @@ class TestReproNoCommit(TestRepro):
         shutil.rmtree(self.dvc.cache.local.cache_dir)
         ret = main(["repro", self.file1_stage, "--no-commit"])
         self.assertEqual(ret, 0)
-        self.assertEqual(len(os.listdir(self.dvc.cache.local.cache_dir)), 0)
+        self.assertFalse(os.path.exists(self.dvc.cache.local.cache_dir))
 
 
 class TestReproAlreadyCached(TestRepro):

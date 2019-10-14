@@ -5,7 +5,11 @@ from dvc.main import main
 from dvc.command.version import psutil
 
 
-def test_info_in_repo(dvc_repo, caplog):
+def test_info_in_repo(repo_dir, dvc_repo, caplog):
+    # adding a file so that dvc creates `.dvc/cache`, that is needed for proper
+    # supported link types check.
+    assert main(["add", repo_dir.FOO]) == 0
+
     assert main(["version"]) == 0
 
     assert re.search(re.compile(r"DVC version: \d+\.\d+\.\d+"), caplog.text)

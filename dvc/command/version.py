@@ -48,9 +48,21 @@ class CmdVersion(CmdBaseNoRepo):
             repo = Repo()
             root_directory = repo.root_dir
 
-            info += "Cache: {cache}\n".format(
-                cache=self.get_linktype_support_info(repo)
-            )
+            # cache_dir might not exist yet (e.g. after `dvc init`), and we
+            # can't auto-create it, as it might cause issues if the user
+            # later decides to enable shared cache mode with
+            # `dvc config cache.shared group`.
+            if os.path.exists(repo.cache.local.cache_dir):
+                info += "Cache: {cache}\n".format(
+                    cache=self.get_linktype_support_info(repo)
+                )
+            else:
+                logger.warning(
+                    "Unable to detect supported link types, as cache "
+                    "directory '{}' doesn't exist. It is usually auto-created "
+                    "by commands such as `dvc add/fetch/pull/run/import`, but "
+                    "you could create it manually to enable this check."
+                )
 
             if psutil:
                 info += (
