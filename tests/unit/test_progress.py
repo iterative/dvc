@@ -1,5 +1,5 @@
 import logging
-from dvc.progress import Tqdm, TQDM_ISATTY
+from dvc.progress import Tqdm, DVC_ISATTY
 import sys
 import mock
 
@@ -19,7 +19,7 @@ def test_quiet_notty(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if TQDM_ISATTY:
+        if DVC_ISATTY:
             assert "0/10" in out_err.err
         else:
             assert out_err.err == ""

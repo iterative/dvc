@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
 
 logger = logging.getLogger(__name__)
-TQDM_ISATTY = os.environ.get("TQDM_ISATTY", None)
+DVC_ISATTY = os.environ.get("DVC_ISATTY", None)
 
 
 class TqdmThreadPoolExecutor(ThreadPoolExecutor):
@@ -67,7 +67,7 @@ class Tqdm(tqdm):
             used only if `disable` is unspecified
         disable  : If (default: None), will be determined by logging level.
             May be overridden to `True` due to non-TTY status.
-            Skip override by specifying env var `TQDM_ISATTY`.
+            Skip override by specifying env var `DVC_ISATTY`.
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -85,7 +85,7 @@ class Tqdm(tqdm):
         # auto-disable based on TTY
         if (
             not disable
-            and TQDM_ISATTY is None
+            and DVC_ISATTY is None
             and hasattr(kwargs["file"], "isatty")
         ):
             disable = kwargs["file"].isatty()
