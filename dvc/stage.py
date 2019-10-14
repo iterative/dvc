@@ -205,8 +205,8 @@ class Stage(object):
             # path.endswith doesn't work for encoded unicode filenames on
             # Python 2 and since Stage.STAGE_FILE_SUFFIX is ascii then it is
             # not needed to decode the path from py2's str
-            path[-len(Stage.STAGE_FILE_SUFFIX) :] == Stage.STAGE_FILE_SUFFIX
-            or os.path.basename(path) == Stage.STAGE_FILE
+            path[-len(Stage.STAGE_FILE_SUFFIX):] == Stage.STAGE_FILE_SUFFIX or
+            os.path.basename(path) == Stage.STAGE_FILE
         )
 
     @staticmethod
@@ -370,9 +370,9 @@ class Stage(object):
         fname = out.path_info.name + cls.STAGE_FILE_SUFFIX
 
         if (
-            add
-            and out.is_in_repo
-            and not contains_symlink_up_to(out.fspath, out.repo.root_dir)
+            add and
+            out.is_in_repo and
+            not contains_symlink_up_to(out.fspath, out.repo.root_dir)
         ):
             fname = out.path_info.with_name(fname).fspath
 
@@ -520,10 +520,10 @@ class Stage(object):
 
         if os.path.exists(path):
             if (
-                not ignore_build_cache
-                and stage.is_cached
-                and not stage.is_callback
-                and not stage.always_changed
+                not ignore_build_cache and
+                stage.is_cached and
+                not stage.is_callback and
+                not stage.always_changed
             ):
                 logger.info("Stage is cached, skipping.")
                 return None
@@ -753,8 +753,8 @@ class Stage(object):
     @staticmethod
     def _warn_if_fish(executable):  # pragma: no cover
         if (
-            executable is None
-            or os.path.basename(os.path.realpath(executable)) != "fish"
+            executable is None or
+            os.path.basename(os.path.realpath(executable)) != "fish"
         ):
             return
 
@@ -870,10 +870,10 @@ class Stage(object):
             logger.info("Running command:\n\t{}".format(self.cmd))
             if not dry:
                 if (
-                    not force
-                    and not self.is_callback
-                    and not self.always_changed
-                    and self._already_cached()
+                    not force and
+                    not self.is_callback and
+                    not self.always_changed and
+                    self._already_cached()
                 ):
                     self.checkout()
                 else:
@@ -933,9 +933,9 @@ class Stage(object):
 
     def _already_cached(self):
         return (
-            not self.changed_md5()
-            and all(not dep.changed() for dep in self.deps)
-            and all(
+            not self.changed_md5() and
+            all(not dep.changed() for dep in self.deps) and
+            all(
                 not out.changed_cache() if out.use_cache else not out.changed()
                 for out in self.outs
             )
