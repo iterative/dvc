@@ -1,6 +1,7 @@
 import logging
 from dvc.progress import Tqdm, TQDM_ISATTY
 import sys
+import mock
 
 
 def test_quiet_logging(caplog, capsys):
@@ -27,9 +28,9 @@ def test_quiet_notty(caplog, capsys):
 def test_default(caplog, capsys):
     with caplog.at_level(logging.INFO, logger="dvc"):
         # simulate interactive terminal
-        sys.stderr.isatty = lambda: True
-        for _ in Tqdm(range(10)):
-            pass
-        out_err = capsys.readouterr()
-        assert out_err.out == ""
-        assert "0/10" in out_err.err
+        with mock.patch.object(sys.stderr, "isatty", return_value=True):
+            for _ in Tqdm(range(10)):
+                pass
+            out_err = capsys.readouterr()
+            assert out_err.out == ""
+            assert "0/10" in out_err.err
