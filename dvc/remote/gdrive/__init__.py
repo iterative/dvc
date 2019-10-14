@@ -81,7 +81,7 @@ class RemoteGDrive(RemoteBASE):
 
     @property
     @ratelimit.sleep_and_retry
-    @ratelimit.limits(calls=10, period=10)
+    @ratelimit.limits(calls=10, period=1)
     def drive(self):
         return self.raw_drive
 
