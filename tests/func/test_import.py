@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import filecmp
 
@@ -6,6 +8,7 @@ from mock import patch
 from tests.utils import trees_equal
 
 from dvc.stage import Stage
+from dvc.utils import makedirs
 from dvc.exceptions import DownloadError
 
 
@@ -80,3 +83,18 @@ def test_download_error_pulling_imported_stage(dvc_repo, erepo):
         "dvc.remote.RemoteLOCAL._download", side_effect=Exception
     ), pytest.raises(DownloadError):
         dvc_repo.pull(["foo_imported.dvc"])
+
+
+@pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
+def test_import_to_dir(dname, repo_dir, dvc_repo, erepo):
+    src = erepo.FOO
+
+    makedirs(dname, exist_ok=True)
+
+    stage = dvc_repo.imp(erepo.root_dir, src, dname)
+
+    dst = os.path.join(dname, os.path.basename(src))
+
+    assert stage.outs[0].fspath == os.path.abspath(dst)
+    assert os.path.isdir(dname)
+    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)

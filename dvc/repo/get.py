@@ -13,15 +13,14 @@ from dvc.exceptions import (
 from dvc.path_info import PathInfo
 from dvc.external_repo import external_repo
 from dvc.state import StateNoop
-from dvc.utils import remove
-from dvc.utils.compat import urlparse
+from dvc.utils import remove, resolve_output
 
 logger = logging.getLogger(__name__)
 
 
 @staticmethod
 def get(url, path, out=None, rev=None):
-    out = out or os.path.basename(urlparse(path).path)
+    out = resolve_output(path, out)
 
     if Stage.is_valid_filename(out):
         raise GetDVCFileError()

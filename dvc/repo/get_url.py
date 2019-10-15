@@ -3,12 +3,12 @@ import os
 import dvc.output as output
 import dvc.dependency as dependency
 
-from dvc.utils.compat import urlparse
+from dvc.utils import resolve_output
 
 
 @staticmethod
 def get_url(url, out=None):
-    out = out or os.path.basename(urlparse(url).path)
+    out = resolve_output(url, out)
 
     if os.path.exists(url):
         url = os.path.abspath(url)

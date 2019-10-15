@@ -460,3 +460,14 @@ def relpath(path, start=os.curdir):
     ):
         return path
     return os.path.relpath(path, start)
+
+
+def resolve_output(inp, out):
+    from dvc.utils.compat import urlparse
+
+    name = os.path.basename(urlparse(inp).path)
+    if not out:
+        return name
+    if os.path.isdir(out):
+        return os.path.join(out, name)
+    return out
