@@ -1,4 +1,4 @@
-from dvc.utils.compat import pathlib
+from dvc.utils import resolve_output
 from dvc.repo.scm_context import scm_context
 
 from . import locked as locked_repo
@@ -9,7 +9,7 @@ from . import locked as locked_repo
 def imp_url(self, url, out=None, fname=None, erepo=None, locked=True):
     from dvc.stage import Stage
 
-    out = out or pathlib.PurePath(url).name
+    out = resolve_output(url, out)
 
     stage = Stage.create(
         self, cmd=None, deps=[url], outs=[out], fname=fname, erepo=erepo

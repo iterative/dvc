@@ -1,12 +1,17 @@
-import dvc
-
-from dvc.utils.compat import str
+from __future__ import unicode_literals
 
 import os
 from uuid import uuid4
 
-from dvc.main import main
+import pytest
+import filecmp
 from mock import patch
+
+import dvc
+from dvc.main import main
+from dvc.utils import makedirs
+from dvc.utils.compat import str
+
 from tests.basic_env import TestDvc
 from tests.utils import spy
 
@@ -86,3 +91,18 @@ class TestImportFilename(TestDvc):
         ret = main(["import-url", "--file", path, self.external_source])
         self.assertEqual(0, ret)
         self.assertTrue(os.path.exists(path))
+
+
+@pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
+def test_import_url_to_dir(dname, repo_dir, dvc_repo):
+    src = repo_dir.DATA
+
+    makedirs(dname, exist_ok=True)
+
+    stage = dvc_repo.imp_url(src, dname)
+
+    dst = os.path.join(dname, os.path.basename(src))
+
+    assert stage.outs[0].fspath == os.path.abspath(dst)
+    assert os.path.isdir(dname)
+    assert filecmp.cmp(repo_dir.DATA, dst, shallow=False)
