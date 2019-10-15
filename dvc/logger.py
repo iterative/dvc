@@ -19,7 +19,7 @@ class LoggingException(Exception):
 
 class ExcludeErrorsFilter(logging.Filter):
     def filter(self, record):
-        return record.levelno < logging.ERROR
+        return record.levelno < logging.WARNING
 
 
 class ColorFormatter(logging.Formatter):
