@@ -182,7 +182,7 @@ def setup(level=logging.INFO):
                 },
                 "console_errors": {
                     "class": "dvc.logger.LoggerHandler",
-                    "level": "ERROR",
+                    "level": "WARNING",
                     "formatter": "color",
                     "stream": "ext://sys.stderr",
                 },
