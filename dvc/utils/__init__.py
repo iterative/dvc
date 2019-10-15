@@ -468,6 +468,6 @@ def resolve_output(inp, out):
     name = os.path.basename(urlparse(inp).path)
     if not out:
         return name
-    elif os.path.isdir(out):
+    if os.path.isdir(out):
         return os.path.join(out, name)
     return out
