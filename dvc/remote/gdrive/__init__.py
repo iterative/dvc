@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import os
+import posixpath
 
 from funcy import cached_property
 import ratelimit
@@ -52,7 +53,7 @@ class RemoteGDrive(RemoteBASE):
     def cached_root_dirs(self):
         cached_dirs = {}
         for dir1 in self.list_drive_item(
-            "'%s' in parents and trashed=false" % self.path_info.netloc
+            "'{}' in parents and trashed=false".format(self.path_info.netloc)
         ):
             cached_dirs[dir1["title"]] = dir1["id"]
         return cached_dirs
@@ -77,11 +78,12 @@ class RemoteGDrive(RemoteBASE):
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
         gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
         gauth.CommandLineAuth()
-        return GoogleDrive(gauth)
+        gdrive = GoogleDrive(gauth)
+        return gdrive
 
     @property
     @ratelimit.sleep_and_retry
-    @ratelimit.limits(calls=10, period=1)
+    @ratelimit.limits(calls=8, period=1.2)
     def drive(self):
         return self.raw_drive
 
@@ -97,17 +99,14 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     def get_drive_item(self, name, parent_id):
-        return next(
-            iter(
-                self.drive.ListFile(
-                    {
-                        "q": "'%s' in parents and trashed=false and title='%s'"
-                        % (parent_id, name)
-                    }
-                ).GetList()
-            ),
-            None,
-        )
+        item_list = self.drive.ListFile(
+            {
+                "q": "'{}' in parents and trashed=false and title='{}'".format(
+                    parent_id, name
+                )
+            }
+        ).GetList()
+        return next(iter(item_list), None)
 
     def resolve_remote_file(self, parent_id, path_parts, create):
         for path_part in path_parts:
@@ -142,13 +141,6 @@ class RemoteGDrive(RemoteBASE):
     def exists(self, path_info):
         return self.get_path_id(path_info) != ""
 
-    def batch_exists(self, path_infos, callback):
-        results = []
-        for path_info in path_infos:
-            results.append(self.exists(path_info))
-            callback.update(str(path_info))
-        return results
-
     def _upload(self, from_file, to_info, name, no_progress_bar):
         dirname = to_info.parent
         if dirname:
@@ -160,14 +152,13 @@ class RemoteGDrive(RemoteBASE):
             {"title": to_info.name, "parents": [{"id": parent_id}]}
         )
 
-        from_file = open(from_file, "rb")
-        if not no_progress_bar:
-            from_file = TrackFileReadProgress(name, from_file)
+        with open(from_file, "rb") as from_file:
+            if not no_progress_bar:
+                from_file = TrackFileReadProgress(name, from_file)
 
-        file1.content = from_file
+            file1.content = from_file
 
-        file1.Upload()
-        from_file.close()
+            file1.Upload()
 
     def _download(self, from_info, to_file, name, no_progress_bar):
         from dvc.progress import Tqdm
@@ -180,28 +171,22 @@ class RemoteGDrive(RemoteBASE):
         if not no_progress_bar:
             tqdm.close()
 
-    def get_file_checksum(self, path_info):
-        raise NotImplementedError
-
     def list_cache_paths(self):
         file_id = self.get_path_id(self.path_info)
         prefix = self.path_info.path
         for path in self.list_path(file_id):
-            yield prefix + "/" + path
-
-    def walk(self, path_info):
-        raise NotImplementedError
+            yield posixpath.join(prefix, path)
 
     def list_file_path(self, drive_file):
         if drive_file["mimeType"] == self.FOLDER_MIME_TYPE:
             for i in self.list_path(drive_file["id"]):
-                yield drive_file["title"] + "/" + i
+                yield posixpath.join(drive_file["title"], i)
         else:
             yield drive_file["title"]
 
     def list_path(self, parent_id):
         for file1 in self.list_drive_item(
-            "'%s' in parents and trashed=false" % parent_id
+            "'{}' in parents and trashed=false".format(parent_id)
         ):
             for path in self.list_file_path(file1):
                 yield path
