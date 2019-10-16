@@ -179,3 +179,10 @@ class TestColorFormatter:
                     logger.info("some info")
                     captured = capsys.readouterr()
                     assert captured.out == ""
+
+
+def test_handlers():
+    stdout, stderr = logger.handlers
+
+    assert stdout.level == logging.DEBUG
+    assert stderr.level == logging.WARNING
