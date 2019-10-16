@@ -104,7 +104,7 @@ if os.name != "nt" or sys.version_info[0] != 2:
 
 # Extra dependecies to run tests
 tests_requirements = [
-    "PyInstaller==3.4",
+    "PyInstaller==3.5",
     "wheel>=0.31.1",
     "pydot>=1.2.4",
     # Test requirements:
