@@ -249,3 +249,14 @@ class RemoteS3(RemoteBASE):
         return self.s3.generate_presigned_url(
             ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
         )
+
+    def _collect_dir(self, path_info):
+        root = path_info.path
+
+        return [
+            {
+                self.PARAM_CHECKSUM: entry["ETag"],
+                self.PARAM_RELPATH: os.path.relpath(entry["Key"], start=root),
+            }
+            for entry in self._list_objects(path_info)
+        ]
