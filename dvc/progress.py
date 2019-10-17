@@ -1,8 +1,8 @@
 """Manages progress bars for dvc repo."""
 from __future__ import print_function
 import logging
-from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
 from funcy import merge
 
 logger = logging.getLogger(__name__)
