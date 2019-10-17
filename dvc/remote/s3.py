@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import logging
+import posixpath
 from funcy import cached_property
 
 from dvc.progress import Tqdm
@@ -207,8 +208,10 @@ class RemoteS3(RemoteBASE):
         return self._list_paths(self.path_info)
 
     def exists(self, path_info):
-        paths = self._list_paths(path_info)
-        return any(path_info.path == path for path in paths)
+        dir_path = posixpath.join(path_info.path, "")
+        fname = next(self._list_paths(path_info, max_items=1), "")
+        return path_info.path == fname or dir_path in fname
+
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
