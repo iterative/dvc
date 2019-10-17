@@ -19,7 +19,7 @@ stages:
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
-# Note that we specify language as ruby-2.4.0 to help us satisfy
+# Note that we specify language as ruby-2.4.3 to help us satisfy
 # fpm dependencies, as travis runs el capitan with an old ruby
 # version, that causes fpm to crash.
 jobs:
@@ -78,7 +78,7 @@ jobs:
     os: osx
     osx_image: xcode9.4
     language: ruby
-    rvm: 2.4.0
+    rvm: 2.4.3
     install:
     script: ./scripts/build_posix.sh
   - name: "Windows pkg"
