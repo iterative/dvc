@@ -11,9 +11,7 @@ import configobj
 from schema import Schema, Optional, And, Use, Regex, SchemaError
 from dvc.utils.compat import str, open
 from dvc.exceptions import DvcException, NotDvcRepoError
-
 logger = logging.getLogger(__name__)
-
 
 class ConfigError(DvcException):
     """DVC config exception.
