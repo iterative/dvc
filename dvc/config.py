@@ -9,13 +9,7 @@ import errno
 import logging
 import configobj
 from schema import Schema, Optional, And, Use, Regex, SchemaError
-
-
 from dvc.utils.compat import str, open
-
-
-import logging
-
 from dvc.exceptions import DvcException, NotDvcRepoError
 
 logger = logging.getLogger(__name__)
