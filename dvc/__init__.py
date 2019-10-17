@@ -5,9 +5,9 @@ Make your data science projects reproducible and shareable.
 """
 
 from __future__ import unicode_literals
-
-from dvc.version import __version__  # noqa: F401
 import warnings
+from dvc.version import __version__  # noqa: F401
+
 import dvc.logger
 
 
