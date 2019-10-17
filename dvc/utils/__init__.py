@@ -462,6 +462,10 @@ def relpath(path, start=os.curdir):
     return os.path.relpath(path, start)
 
 
+def env2bool(var):
+    return bool(re.search("1|y|yes|true", os.environ.get(var, ""), flags=re.I))
+
+
 def resolve_output(inp, out):
     from dvc.utils.compat import urlparse
 

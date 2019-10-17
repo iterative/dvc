@@ -2,10 +2,10 @@
 from __future__ import print_function
 import logging
 import sys
-import os
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
+from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class Tqdm(tqdm):
         # auto-disable based on TTY
         if (
             not disable
-            and os.environ.get("DVC_ISATTY", None) is None
+            and not env2bool("DVC_ISATTY")
             and hasattr(file, "isatty")
         ):
             disable = file.isatty()

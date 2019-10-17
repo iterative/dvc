@@ -1,7 +1,7 @@
 import logging
 from dvc.progress import Tqdm
+from dvc.utils import env2bool
 import sys
-import os
 import mock
 
 
@@ -20,7 +20,7 @@ def test_quiet_notty(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if os.environ.get("DVC_ISATTY", None):
+        if env2bool("DVC_ISATTY"):
             assert "0/10" in out_err.err
         else:
             assert out_err.err == ""
