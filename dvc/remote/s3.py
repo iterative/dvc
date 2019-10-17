@@ -36,7 +36,10 @@ class RemoteS3(RemoteBASE):
 
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
-        self.list_objects = config.get(Config.SECTION_AWS_LIST_OBJECTS)
+        if config.get(Config.SECTION_AWS_LIST_OBJECTS):
+            self.list_objects_api = "list_objects"
+        else:
+            self.list_objects_api = "list_objects_v2"
 
         self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
 
@@ -183,11 +186,7 @@ class RemoteS3(RemoteBASE):
     def _list_paths(self, bucket, prefix):
         """ Read config for list object api, paginate through list objects."""
         kwargs = {"Bucket": bucket, "Prefix": prefix}
-        if self.list_objects:
-            list_objects_api = "list_objects"
-        else:
-            list_objects_api = "list_objects_v2"
-        paginator = self.s3.get_paginator(list_objects_api)
+        paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", None)
             if not contents:
