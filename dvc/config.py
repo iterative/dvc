@@ -3,18 +3,13 @@
 from __future__ import unicode_literals
 
 import os
-
 import re
-
 import copy
-
 import errno
-
 import logging
-
 import configobj
-from schema import Schema, Optional, And, Use, Regex, SchemaError
 
+from schema import Schema, Optional, And, Use, Regex, SchemaError
 from dvc.utils.compat import str, open
 from dvc.exceptions import DvcException, NotDvcRepoError
 
