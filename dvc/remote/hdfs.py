@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import os
 import re
 import io
-import getpass
 import posixpath
 import logging
 from subprocess import Popen, PIPE
@@ -36,11 +35,7 @@ class RemoteHDFS(RemoteBASE):
 
         parsed = urlparse(url)
 
-        user = (
-            parsed.username
-            or config.get(Config.SECTION_REMOTE_USER)
-            or getpass.getuser()
-        )
+        user = parsed.username or config.get(Config.SECTION_REMOTE_USER)
 
         self.path_info = self.path_cls.from_parts(
             scheme=self.scheme,
