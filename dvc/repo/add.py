@@ -37,6 +37,7 @@ def add(
         desc="Adding",
         unit="file",
         disable=not progress,
+        leave=True,
     ) as pbar:
         for target in target_list:
             targets = _find_all_targets(repo, target, recursive)
@@ -68,6 +69,7 @@ def add(
                 stage.dump()
 
             stages_list += stages
+        pbar.bar_format = pbar.BAR_FMT_DEFAULT.replace("|{bar:10}|", " ")
 
     return stages_list
 
