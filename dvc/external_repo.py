@@ -4,8 +4,8 @@ import os
 import tempfile
 from distutils.dir_util import copy_tree
 
-from funcy import retry
 from contextlib import contextmanager
+from funcy import retry
 
 from dvc.utils import remove
 
