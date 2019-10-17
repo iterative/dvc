@@ -9,7 +9,7 @@ from packaging import version
 
 from dvc import __version__
 from dvc.lock import Lock, LockError
-from dvc.utils import is_binary, boxify
+from dvc.utils import is_binary, boxify, env2bool
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ class Updater(object):  # pragma: no cover
             logger.debug(msg.format(self.lock.lockfile, action))
 
     def check(self):
-        if os.getenv("CI") or os.getenv("DVC_TEST"):
+        if os.getenv("CI") or env2bool("DVC_TEST"):
             return
 
         self._with_lock(self._check, "checking")

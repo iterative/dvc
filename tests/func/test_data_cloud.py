@@ -13,6 +13,7 @@ import pytest
 from mock import patch
 
 from dvc.utils.compat import str
+from dvc.utils import env2bool
 from dvc.main import main
 from dvc.config import Config
 from dvc.data_cloud import DataCloud
@@ -57,11 +58,9 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 
 def _should_test_aws():
-    dvc_test_aws = os.getenv("DVC_TEST_AWS")
-    if dvc_test_aws == "true":
-        return True
-    elif dvc_test_aws == "false":
-        return False
+    do_test = env2bool("DVC_TEST_AWS", undefined=None)
+    if do_test is not None:
+        return do_test
 
     if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
         return True
@@ -70,8 +69,9 @@ def _should_test_aws():
 
 
 def _should_test_gcp():
-    if os.getenv("DVC_TEST_GCP") == "true":
-        return True
+    do_test = env2bool("DVC_TEST_GCP", undefined=None)
+    if do_test is not None:
+        return do_test
 
     if not os.path.exists(TEST_GCP_CREDS_FILE):
         return False
@@ -92,10 +92,9 @@ def _should_test_gcp():
 
 
 def _should_test_azure():
-    if os.getenv("DVC_TEST_AZURE") == "true":
-        return True
-    elif os.getenv("DVC_TEST_AZURE") == "false":
-        return False
+    do_test = env2bool("DVC_TEST_AZURE", undefined=None)
+    if do_test is not None:
+        return do_test
 
     return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
         "AZURE_STORAGE_CONNECTION_STRING"
@@ -103,10 +102,9 @@ def _should_test_azure():
 
 
 def _should_test_oss():
-    if os.getenv("DVC_TEST_OSS") == "true":
-        return True
-    elif os.getenv("DVC_TEST_OSS") == "false":
-        return False
+    do_test = env2bool("DVC_TEST_OSS", undefined=None)
+    if do_test is not None:
+        return do_test
 
     return (
         os.getenv("OSS_ENDPOINT")
@@ -116,8 +114,9 @@ def _should_test_oss():
 
 
 def _should_test_ssh():
-    if os.getenv("DVC_TEST_SSH") == "true":
-        return True
+    do_test = env2bool("DVC_TEST_SSH", undefined=None)
+    if do_test is not None:
+        return do_test
 
     # FIXME: enable on windows
     if os.name == "nt":

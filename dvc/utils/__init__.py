@@ -462,8 +462,14 @@ def relpath(path, start=os.curdir):
     return os.path.relpath(path, start)
 
 
-def env2bool(var):
-    return bool(re.search("1|y|yes|true", os.environ.get(var, ""), flags=re.I))
+def env2bool(var, undefined=False):
+    """
+    undefined: return value if env var is unset
+    """
+    var = os.getenv(var, None)
+    if var is None:
+        return undefined
+    return bool(re.search("1|y|yes|true", var, flags=re.I))
 
 
 def resolve_output(inp, out):

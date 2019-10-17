@@ -10,6 +10,7 @@ import errno
 import logging
 
 from dvc import __version__
+from dvc.utils import env2bool
 
 
 logger = logging.getLogger(__name__)
@@ -229,7 +230,7 @@ class Analytics(object):
     def is_enabled(cmd=None):
         from dvc.command.daemon import CmdDaemonBase
 
-        if os.getenv("DVC_TEST"):
+        if env2bool("DVC_TEST"):
             return False
 
         if isinstance(cmd, CmdDaemonBase):
