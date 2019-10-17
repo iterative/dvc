@@ -57,6 +57,7 @@ class Tqdm(tqdm):
         leave=False,
         bar_format=None,
         bytes=False,  # pylint: disable=W0622
+        file=None,
         **kwargs
     ):
         """
@@ -72,23 +73,20 @@ class Tqdm(tqdm):
         """
         kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
-        kwargs.setdefault("file", sys.stderr)
         if bytes:
             bytes_defaults = dict(
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
             )
             kwargs = merge(bytes_defaults, kwargs)
+        if file is None:
+            file = sys.stderr
         self.desc_persist = desc
         # auto-disable based on `logger.level`
         if disable is None:
             disable = logger.getEffectiveLevel() > level
         # auto-disable based on TTY
-        if (
-            not disable
-            and DVC_ISATTY is None
-            and hasattr(kwargs["file"], "isatty")
-        ):
-            disable = kwargs["file"].isatty()
+        if not disable and DVC_ISATTY is None and hasattr(file, "isatty"):
+            disable = file.isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
