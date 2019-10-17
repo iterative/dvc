@@ -183,9 +183,13 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_objects(self, path_info):
+    def _list_objects(self, path_info, max_items=None):
         """ Read config for list object api, paginate through list objects."""
-        kwargs = {"Bucket": path_info.bucket, "Prefix": path_info.path}
+        kwargs = {
+            "Bucket": path_info.bucket,
+            "Prefix": path_info.path,
+            "PaginationConfig": {"MaxItems": max_items},
+        }
         paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", None)
@@ -194,8 +198,10 @@ class RemoteS3(RemoteBASE):
             for item in contents:
                 yield item
 
-    def _list_paths(self, path_info):
-        return (item["Key"] for item in self._list_objects(path_info))
+    def _list_paths(self, path_info, max_items=None):
+        return (
+            item["Key"] for item in self._list_objects(path_info, max_items)
+        )
 
     def list_cache_paths(self):
         return self._list_paths(self.path_info)
