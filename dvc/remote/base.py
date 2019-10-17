@@ -1,17 +1,17 @@
 from __future__ import unicode_literals
 
-from dvc.ignore import DvcIgnore
-from dvc.utils.compat import str, basestring, urlparse, FileNotFoundError
-
+from operator import itemgetter
+from multiprocessing import cpu_count
 import json
 import logging
 import tempfile
 import itertools
-from operator import itemgetter
-from multiprocessing import cpu_count
 from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+
+from dvc.ignore import DvcIgnore
+from dvc.utils.compat import str, basestring, urlparse, FileNotFoundError
 from dvc.remote.slow_link_detection import slow_link_guard
 
 import dvc.prompt as prompt
@@ -27,15 +27,12 @@ from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 from dvc.utils.http import open_url
 
-
 logger = logging.getLogger(__name__)
-
 
 STATUS_OK = 1
 STATUS_MISSING = 2
 STATUS_NEW = 3
 STATUS_DELETED = 4
-
 
 STATUS_MAP = {
     # (local_exists, remote_exists)
