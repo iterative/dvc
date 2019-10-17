@@ -1,14 +1,17 @@
 from __future__ import unicode_literals
 
-from dvc.scheme import Schemes
-from dvc.utils.compat import str, fspath_py35, open
-
 import os
 import stat
 import errno
-from shortuuid import uuid
 import logging
 from functools import partial
+
+from shortuuid import uuid
+
+from dvc.scheme import Schemes
+from dvc.utils.compat import str, fspath_py35, open
+
+
 
 from dvc.system import System
 from dvc.remote.base import (
