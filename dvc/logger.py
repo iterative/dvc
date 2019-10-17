@@ -2,13 +2,15 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, StringIO, RecursionError
-from dvc.progress import Tqdm
-
 import logging
 import logging.handlers
 import logging.config
 import colorama
+
+from dvc.utils.compat import str, StringIO, RecursionError
+from dvc.progress import Tqdm
+
+
 
 
 class LoggingException(Exception):

@@ -2,9 +2,11 @@
 
 from __future__ import unicode_literals
 
+import traceback
+
 from dvc.utils.compat import str, builtin_str
 
-import traceback
+
 
 from dvc.utils import relpath
 
