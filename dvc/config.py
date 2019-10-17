@@ -2,16 +2,20 @@
 
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
-
 import os
+
 import re
+
 import copy
+
 import errno
-import configobj
+
 import logging
 
+import configobj
 from schema import Schema, Optional, And, Use, Regex, SchemaError
+
+from dvc.utils.compat import str, open
 from dvc.exceptions import DvcException, NotDvcRepoError
 
 logger = logging.getLogger(__name__)

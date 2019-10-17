@@ -2,12 +2,17 @@
 
 from __future__ import unicode_literals
 
+import os
+
+import json
+
+import errno
+
+import logging
+
 from dvc.utils.compat import str
 
-import os
-import json
-import errno
-import logging
+
 
 from dvc import __version__
 
