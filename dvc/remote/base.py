@@ -42,8 +42,10 @@ STATUS_MAP = {
     (False, True): STATUS_DELETED,
 }
 
+
 class DataCloudError(DvcException):
     """ Data Cloud exception """
+
 
     def __init__(self, msg):
         super(DataCloudError, self).__init__("Data sync error: {}".format(msg))
