@@ -22,7 +22,7 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import Tqdm
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
+from dvc.utils import tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 from dvc.utils.http import open_url
@@ -177,18 +177,13 @@ class RemoteBASE(object):
         file_infos = list(file_infos)
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             tasks = executor.map(self.get_file_checksum, file_infos)
-
-            if len(file_infos) > LARGE_DIR_SIZE:
-                logger.info(
-                    (
-                        "Computing md5 for a large number of files. "
-                        "This is only done once."
-                    )
-                )
-                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
-            checksums = dict(zip(file_infos, tasks))
-            if hasattr(tasks, "close"):
-                tasks.close()
+            with Tqdm(
+                tasks,
+                total=len(file_infos),
+                unit="md5",
+                desc="Computing hashes (only done once)",
+            ) as tasks:
+                checksums = dict(zip(file_infos, tasks))
         return checksums
 
     def _collect_dir(self, path_info):
