@@ -114,5 +114,11 @@ class Tqdm(tqdm):
         d = super(Tqdm, self).format_dict
         ncols = d["ncols"] or 80
         ncols_desc = ncols - len(self.format_meter(ncols_desc=1, **d)) + 1
-        d["ncols_desc"] = max(ncols_desc, 0)
+        ncols_desc = max(ncols_desc, 0)
+        if ncols_desc:
+            d["ncols_desc"] = ncols_desc
+        else:
+            # work-around for zero-width desc
+            d["ncols_desc"] = 1
+            d["desc"] = 0
         return d
