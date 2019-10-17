@@ -3,22 +3,14 @@
 from __future__ import unicode_literals
 
 import os
-
 import json
-
 import errno
-
 import logging
 
 from dvc.utils.compat import str
-
-
-
 from dvc import __version__
 
-
 logger = logging.getLogger(__name__)
-
 
 class Analytics(object):
     """Class for collecting and sending usage analytics.
