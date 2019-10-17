@@ -49,7 +49,6 @@ class build_py(_build_py):
 
 
 install_requires = [
-    "networkx>=2.1,<2.3",
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
     "future>=0.16.0",
@@ -78,6 +77,11 @@ install_requires = [
     "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
+
+if sys.version_info[0] == 2:
+    install_requires.append("networkx>=2.1,<2.3")
+else:
+    install_requires.append("networkx>=2.1,<2.4")
 
 # Extra dependencies for remote integrations
 
