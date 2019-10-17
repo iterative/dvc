@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 
+import logging
 from dvc.scheme import Schemes
 from dvc.utils.compat import open
-
-import logging
 
 from dvc.progress import Tqdm
 from dvc.exceptions import DvcException
