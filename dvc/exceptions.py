@@ -5,11 +5,7 @@ from __future__ import unicode_literals
 import traceback
 
 from dvc.utils.compat import str, builtin_str
-
-
-
 from dvc.utils import relpath
-
 
 class DvcException(Exception):
     """Base class for all dvc exceptions.
