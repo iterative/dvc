@@ -10,9 +10,6 @@ import colorama
 from dvc.utils.compat import str, StringIO, RecursionError
 from dvc.progress import Tqdm
 
-
-
-
 class LoggingException(Exception):
     def __init__(self, record):
         msg = "failed to log {}".format(str(record))
