@@ -76,7 +76,7 @@ def _cloud_status(
         force=True,
         remote=remote,
         jobs=jobs,
-    )["local"]
+    )
 
     ret = {}
     status_info = self.cloud.status(used, jobs, remote=remote)

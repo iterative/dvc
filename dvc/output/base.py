@@ -5,6 +5,7 @@ from copy import copy
 
 from schema import Or, Optional
 
+from dvc.cache import NamedCache
 import dvc.prompt as prompt
 from dvc.exceptions import DvcException
 from dvc.utils.compat import str, urlparse
@@ -345,12 +346,11 @@ class OutputBase(object):
             $ echo "bar" > directory/bar
             $ dvc add directory
 
-            It will return something similar to the following list:
+            It will return a NamedCache like:
 
-            [
-                { 'path': 'directory/foo', 'md5': 'c157a79031e1', ... },
-                { 'path': 'directory/bar', 'md5': 'd3b07384d113', ... },
-            ]
+            nc = NamedCache()
+            nc.add(self.scheme, 'c157a79031e1', 'directory/foo')
+            nc.add(self.scheme, 'd3b07384d113', 'directory/bar')
         """
 
         ret = []
@@ -358,12 +358,7 @@ class OutputBase(object):
         if self.cache.changed_cache_file(self.checksum):
             try:
                 self.repo.cloud.pull(
-                    [
-                        {
-                            self.remote.PARAM_CHECKSUM: self.checksum,
-                            "name": str(self),
-                        }
-                    ],
+                    NamedCache.make("local", self.checksum, str(self)),
                     jobs=jobs,
                     remote=remote,
                     show_checksums=False,
@@ -385,13 +380,13 @@ class OutputBase(object):
             else:
                 return ret
 
+        cache = NamedCache()
         for entry in self.dir_cache:
-            info = copy(entry)
+            checksum = entry[self.remote.PARAM_CHECKSUM]
             path_info = self.path_info / entry[self.remote.PARAM_RELPATH]
-            info["name"] = str(path_info)
-            ret.append(info)
+            cache.add(self.scheme, checksum, str(path_info))
 
-        return ret
+        return cache
 
     def get_used_cache(self, **kwargs):
         """Get a dumpd of the given `out`, with an entry including the branch.
@@ -403,7 +398,7 @@ class OutputBase(object):
         """
 
         if not self.use_cache:
-            return []
+            return NamedCache()
 
         if not self.info:
             logger.warning(
@@ -411,14 +406,14 @@ class OutputBase(object):
                 "not be collected. Use dvc repro to get your pipeline up to "
                 "date.".format(self, self.stage)
             )
-            return []
+            return NamedCache()
 
-        ret = [{self.remote.PARAM_CHECKSUM: self.checksum, "name": str(self)}]
+        ret = NamedCache.make(self.scheme, self.checksum, str(self))
 
         if not self.is_dir_checksum:
             return ret
 
-        ret.extend(self._collect_used_dir_cache(**kwargs))
+        ret.update(self._collect_used_dir_cache(**kwargs))
 
         return ret
 

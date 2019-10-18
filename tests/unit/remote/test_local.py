@@ -1,3 +1,4 @@
+from dvc.cache import NamedCache
 from dvc.remote.local import RemoteLOCAL
 
 
@@ -8,16 +9,11 @@ def test_status_download_optimization(mocker):
     """
     remote = RemoteLOCAL(None, {})
 
-    infos = [
-        {"name": "foo", "md5": "acbd18db4cc2f85cedef654fccc4a4d8"},
-        {"name": "bar", "md5": "37b51d194a7513e45b56f6524f2d51f2"},
-    ]
+    infos = NamedCache()
+    infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
+    infos.add("local", "37b51d194a7513e45b56f6524f2d51f2", "bar")
 
-    local_exists = [
-        "acbd18db4cc2f85cedef654fccc4a4d8",
-        "37b51d194a7513e45b56f6524f2d51f2",
-    ]
-
+    local_exists = list(infos.checksums_for("local"))
     mocker.patch.object(remote, "cache_exists", return_value=local_exists)
 
     other_remote = mocker.Mock()

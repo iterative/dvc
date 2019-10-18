@@ -249,31 +249,9 @@ class RemoteLOCAL(RemoteBASE):
     def open(path_info, mode="r", encoding=None):
         return open(fspath_py35(path_info), mode=mode, encoding=encoding)
 
-    def _group(self, checksum_infos, show_checksums=False):
-        by_md5 = {}
-
-        for info in checksum_infos:
-            md5 = info[self.PARAM_CHECKSUM]
-
-            if show_checksums:
-                by_md5[md5] = {"name": md5}
-                continue
-
-            name = info["name"]
-            branch = info.get("branch")
-            if branch:
-                name += "({})".format(branch)
-
-            if md5 not in by_md5.keys():
-                by_md5[md5] = {"name": name}
-            else:
-                by_md5[md5]["name"] += " " + name
-
-        return by_md5
-
     def status(
         self,
-        checksum_infos,
+        named_cache,
         remote,
         jobs=None,
         show_checksums=False,
@@ -282,8 +260,7 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        ret = self._group(checksum_infos, show_checksums=show_checksums) or {}
-        md5s = list(ret)
+        md5s = named_cache.checksums_for(self.scheme)
 
         logger.debug("Collecting information from local cache...")
         local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
@@ -302,6 +279,10 @@ class RemoteLOCAL(RemoteBASE):
                 )
             )
 
+        ret = {
+            checksum: {"name": checksum if show_checksums else name}
+            for checksum, name in named_cache.items_for(self.scheme)
+        }
         self._fill_statuses(ret, local_exists, remote_exists)
 
         self._log_missing_caches(ret)
@@ -341,7 +322,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def _process(
         self,
-        checksum_infos,
+        named_cache,
         remote,
         jobs=None,
         show_checksums=False,
@@ -369,7 +350,7 @@ class RemoteLOCAL(RemoteBASE):
             jobs = remote.JOBS
 
         status_info = self.status(
-            checksum_infos,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
@@ -394,18 +375,18 @@ class RemoteLOCAL(RemoteBASE):
 
         return len(plans[0])
 
-    def push(self, checksum_infos, remote, jobs=None, show_checksums=False):
+    def push(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
-            checksum_infos,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,
             download=False,
         )
 
-    def pull(self, checksum_infos, remote, jobs=None, show_checksums=False):
+    def pull(self, named_cache, remote, jobs=None, show_checksums=False):
         return self._process(
-            checksum_infos,
+            named_cache,
             remote,
             jobs=jobs,
             show_checksums=show_checksums,

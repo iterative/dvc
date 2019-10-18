@@ -15,6 +15,7 @@ from mock import patch
 from dvc.utils.compat import str
 from dvc.main import main
 from dvc.config import Config
+from dvc.cache import NamedCache
 from dvc.data_cloud import DataCloud
 from dvc.remote import (
     RemoteS3,
@@ -290,72 +291,71 @@ class TestDataCloudBase(TestDvc):
         self.assertTrue(stage is not None)
         out = stage.outs[0]
         cache = out.cache_path
-        name = str(out)
         md5 = out.checksum
-        info = {"name": name, out.remote.PARAM_CHECKSUM: md5}
+        info = out.get_used_cache()
 
         stages = self.dvc.add(self.DATA_DIR)
         self.assertEqual(len(stages), 1)
         stage_dir = stages[0]
         self.assertTrue(stage_dir is not None)
         out_dir = stage_dir.outs[0]
-        cache_dir = out.cache_path
-        name_dir = str(out)
-        md5_dir = out.checksum
-        info_dir = {"name": name_dir, out_dir.remote.PARAM_CHECKSUM: md5_dir}
+        cache_dir = out_dir.cache_path
+        name_dir = str(out_dir)
+        md5_dir = out_dir.checksum
+        info_dir = NamedCache.make(out_dir.scheme, md5_dir, name_dir)
 
         with self.cloud.repo.state:
             # Check status
-            status = self.cloud.status([info], show_checksums=True)
+            status = self.cloud.status(info, show_checksums=True)
             expected = {md5: {"name": md5, "status": STATUS_NEW}}
             self.assertEqual(status, expected)
 
-            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            status_dir = self.cloud.status(info_dir, show_checksums=True)
             expected = {md5_dir: {"name": md5_dir, "status": STATUS_NEW}}
             self.assertEqual(status_dir, expected)
 
             # Push and check status
-            self.cloud.push([info])
+            self.cloud.push(info)
             self.assertTrue(os.path.exists(cache))
             self.assertTrue(os.path.isfile(cache))
 
-            self.cloud.push([info_dir])
+            self.cloud.push(info_dir)
             self.assertTrue(os.path.isfile(cache_dir))
 
-            status = self.cloud.status([info], show_checksums=True)
+            status = self.cloud.status(info, show_checksums=True)
             expected = {md5: {"name": md5, "status": STATUS_OK}}
             self.assertEqual(status, expected)
 
-            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            status_dir = self.cloud.status(info_dir, show_checksums=True)
             expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
             self.assertEqual(status_dir, expected)
 
             # Remove and check status
             shutil.rmtree(self.dvc.cache.local.cache_dir)
 
-            status = self.cloud.status([info], show_checksums=True)
+            status = self.cloud.status(info, show_checksums=True)
             expected = {md5: {"name": md5, "status": STATUS_DELETED}}
             self.assertEqual(status, expected)
 
-            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            status_dir = self.cloud.status(info_dir, show_checksums=True)
             expected = {md5_dir: {"name": md5_dir, "status": STATUS_DELETED}}
             self.assertEqual(status_dir, expected)
 
             # Pull and check status
-            self.cloud.pull([info])
+            self.cloud.pull(info)
             self.assertTrue(os.path.exists(cache))
             self.assertTrue(os.path.isfile(cache))
             with open(cache, "r") as fd:
                 self.assertEqual(fd.read(), self.FOO_CONTENTS)
 
-            self.cloud.pull([info_dir])
+            self.cloud.pull(info_dir)
             self.assertTrue(os.path.isfile(cache_dir))
 
-            status = self.cloud.status([info], show_checksums=True)
+            status = self.cloud.status(info, show_checksums=True)
             expected = {md5: {"name": md5, "status": STATUS_OK}}
             self.assertEqual(status, expected)
 
-            status_dir = self.cloud.status([info_dir], show_checksums=True)
+            status_dir = self.cloud.status(info_dir, show_checksums=True)
             expected = {md5_dir: {"name": md5_dir, "status": STATUS_OK}}
             self.assertTrue(status_dir, expected)
 

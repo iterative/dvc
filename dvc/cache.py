@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import os
+from collections import defaultdict
 from funcy import cached_property
 
 from dvc.utils.compat import builtin_str
@@ -103,3 +104,35 @@ class Cache(object):
     ssh = _make_remote_property(Config.SECTION_CACHE_SSH)
     hdfs = _make_remote_property(Config.SECTION_CACHE_HDFS)
     azure = _make_remote_property(Config.SECTION_CACHE_AZURE)
+
+
+class NamedCache(object):
+    def __init__(self):
+        self._items = defaultdict(lambda: defaultdict(set))
+        self.repo = []
+
+    @classmethod
+    def make(cls, scheme, checksum, name):
+        cache = cls()
+        cache.add(scheme, checksum, name)
+        return cache
+
+    def __getitem__(self, key):
+        return self._items[key]
+
+    def add(self, scheme, checksum, name):
+        self._items[scheme][checksum].add(name)
+
+    def update(self, cache, suffix=""):
+        for scheme in cache._items:
+            for checksum, name in cache.items_for(scheme):
+                self.add(scheme, checksum, name + suffix)
+
+        self.repo.extend(cache.repo)
+
+    def checksums_for(self, scheme):
+        return self._items[scheme].keys()
+
+    def items_for(self, scheme):
+        for checksum, names in self._items[scheme].items():
+            yield checksum, " ".join(sorted(names))

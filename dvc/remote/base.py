@@ -623,14 +623,11 @@ class RemoteBASE(object):
                 # We ignore all the non-cache looking files
                 pass
 
-    def gc(self, cinfos):
-        used = self.extract_used_local_checksums(cinfos)
+    def gc(self, named_cache):
+        used = self.extract_used_local_checksums(named_cache)
 
         if self.scheme != "":
-            used |= {
-                info[self.PARAM_CHECKSUM]
-                for info in cinfos.get(self.scheme, [])
-            }
+            used.update(named_cache.checksums_for(self.scheme))
 
         removed = False
         for checksum in self.all():
@@ -912,10 +909,8 @@ class RemoteBASE(object):
     def _get_unpacked_dir_names(self, checksums):
         return set()
 
-    def extract_used_local_checksums(self, cinfos):
-        from dvc.remote import RemoteLOCAL
-
-        used = {info[RemoteLOCAL.PARAM_CHECKSUM] for info in cinfos["local"]}
+    def extract_used_local_checksums(self, named_cache):
+        used = set(named_cache.checksums_for("local"))
         unpacked = self._get_unpacked_dir_names(used)
         return used | unpacked
 

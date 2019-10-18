@@ -231,15 +231,9 @@ class Repo(object):
             A dictionary with Schemes (representing output's location) as keys,
             and a list with the outputs' `dumpd` as values.
         """
+        from dvc.cache import NamedCache
 
-        cache = {}
-        cache["local"] = []
-        cache["s3"] = []
-        cache["gs"] = []
-        cache["hdfs"] = []
-        cache["ssh"] = []
-        cache["azure"] = []
-        cache["repo"] = []
+        cache = NamedCache()
 
         for branch in self.brancher(
             all_branches=all_branches, all_tags=all_tags
@@ -256,18 +250,15 @@ class Repo(object):
 
             for stage in stages:
                 if stage.is_repo_import:
-                    cache["repo"] += stage.deps
+                    cache.repo += stage.deps
                     continue
 
                 for out in stage.outs:
-                    scheme = out.path_info.scheme
                     used_cache = out.get_used_cache(
                         remote=remote, force=force, jobs=jobs
                     )
-
-                    cache[scheme].extend(
-                        dict(entry, branch=branch) for entry in used_cache
-                    )
+                    suffix = "({})".format(branch) if branch else ""
+                    cache.update(used_cache, suffix=suffix)
 
         return cache
 
