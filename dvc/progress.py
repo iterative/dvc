@@ -67,7 +67,7 @@ class Tqdm(tqdm):
             used only if `disable` is unspecified
         disable  : If (default: None), will be determined by logging level.
             May be overridden to `True` due to non-TTY status.
-            Skip override by specifying env var `DVC_ISATTY`.
+            Skip override by specifying env var `DVC_IGNORE_ISATTY`.
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -86,7 +86,7 @@ class Tqdm(tqdm):
         # auto-disable based on TTY
         if (
             not disable
-            and not env2bool("DVC_ISATTY")
+            and not env2bool("DVC_IGNORE_ISATTY")
             and hasattr(file, "isatty")
         ):
             disable = file.isatty()

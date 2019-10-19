@@ -20,7 +20,7 @@ def test_quiet_notty(caplog, capsys):
             pass
         out_err = capsys.readouterr()
         assert out_err.out == ""
-        if env2bool("DVC_ISATTY"):
+        if env2bool("DVC_IGNORE_ISATTY"):
             assert "0/10" in out_err.err
         else:
             assert out_err.err == ""
