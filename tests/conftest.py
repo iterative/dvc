@@ -13,6 +13,8 @@ from .basic_env import TestDirFixture, TestDvcGitFixture, TestGitFixture
 
 # Prevent updater and analytics from running their processes
 os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")
+# Ensure progress output even when not outputting to raw sys.stderr console
+os.environ[cast_bytes_py2("DVC_IGNORE_ISATTY")] = cast_bytes_py2("true")
 
 
 @pytest.fixture(autouse=True)

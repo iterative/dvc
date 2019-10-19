@@ -1,9 +1,11 @@
 """Manages progress bars for dvc repo."""
 from __future__ import print_function
 import logging
+import sys
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
+from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +56,7 @@ class Tqdm(tqdm):
         leave=False,
         bar_format=None,
         bytes=False,  # pylint: disable=W0622
+        file=None,
         **kwargs
     ):
         """
@@ -62,6 +65,9 @@ class Tqdm(tqdm):
         desc  : persists after `close()`
         level  : effective logging level for determining `disable`;
             used only if `disable` is unspecified
+        disable  : If (default: None), will be determined by logging level.
+            May be overridden to `True` due to non-TTY status.
+            Skip override by specifying env var `DVC_IGNORE_ISATTY`.
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
@@ -71,9 +77,19 @@ class Tqdm(tqdm):
                 unit="B", unit_scale=True, unit_divisor=1024, miniters=1
             )
             kwargs = merge(bytes_defaults, kwargs)
+        if file is None:
+            file = sys.stderr
         self.desc_persist = desc
+        # auto-disable based on `logger.level`
         if disable is None:
             disable = logger.getEffectiveLevel() > level
+        # auto-disable based on TTY
+        if (
+            not disable
+            and not env2bool("DVC_IGNORE_ISATTY")
+            and hasattr(file, "isatty")
+        ):
+            disable = file.isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,

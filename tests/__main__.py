@@ -7,7 +7,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(REPO_ROOT)
 
 os.putenv(
-    "PATH", "{}:{}".format(os.path.join(REPO_ROOT, "bin"), os.getenv("PATH"))
+    "PATH", ":".join([os.path.join(REPO_ROOT, "bin"), os.getenv("PATH")])
 )
 os.putenv("DVC_HOME", REPO_ROOT)
 
