@@ -260,7 +260,7 @@ class RemoteLOCAL(RemoteBASE):
         logger.debug(
             "Preparing to collect status from {}".format(remote.path_info)
         )
-        md5s = named_cache.checksums_for(self.scheme)
+        md5s = list(named_cache[self.scheme])
 
         logger.debug("Collecting information from local cache...")
         local_exists = self.cache_exists(md5s, jobs=jobs, name=self.cache_dir)
@@ -280,8 +280,8 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         ret = {
-            checksum: {"name": checksum if show_checksums else name}
-            for checksum, name in named_cache.items_for(self.scheme)
+            checksum: {"name": checksum if show_checksums else " ".join(names)}
+            for checksum, names in named_cache[self.scheme].items()
         }
         self._fill_statuses(ret, local_exists, remote_exists)
 

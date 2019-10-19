@@ -13,7 +13,7 @@ def test_status_download_optimization(mocker):
     infos.add("local", "acbd18db4cc2f85cedef654fccc4a4d8", "foo")
     infos.add("local", "37b51d194a7513e45b56f6524f2d51f2", "bar")
 
-    local_exists = list(infos.checksums_for("local"))
+    local_exists = list(infos["local"])
     mocker.patch.object(remote, "cache_exists", return_value=local_exists)
 
     other_remote = mocker.Mock()

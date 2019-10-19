@@ -627,7 +627,7 @@ class RemoteBASE(object):
         used = self.extract_used_local_checksums(named_cache)
 
         if self.scheme != "":
-            used.update(named_cache.checksums_for(self.scheme))
+            used.update(named_cache[self.scheme])
 
         removed = False
         for checksum in self.all():
@@ -910,7 +910,7 @@ class RemoteBASE(object):
         return set()
 
     def extract_used_local_checksums(self, named_cache):
-        used = set(named_cache.checksums_for("local"))
+        used = set(named_cache["local"])
         unpacked = self._get_unpacked_dir_names(used)
         return used | unpacked
 

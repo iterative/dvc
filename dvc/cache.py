@@ -124,15 +124,9 @@ class NamedCache(object):
         self._items[scheme][checksum].add(name)
 
     def update(self, cache, suffix=""):
-        for scheme in cache._items:
-            for checksum, name in cache.items_for(scheme):
-                self.add(scheme, checksum, name + suffix)
+        for scheme, src in cache._items.items():
+            dst = self._items[scheme]
+            for checksum, names in src.items():
+                dst[checksum].update(names)
 
         self.repo.extend(cache.repo)
-
-    def checksums_for(self, scheme):
-        return self._items[scheme].keys()
-
-    def items_for(self, scheme):
-        for checksum, names in self._items[scheme].items():
-            yield checksum, " ".join(sorted(names))
