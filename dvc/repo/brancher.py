@@ -1,3 +1,4 @@
+from funcy import group_by
 from dvc.scm.tree import WorkingTree
 
 
@@ -47,8 +48,8 @@ def brancher(  # noqa: E302
     # `brancher()`, but this could cause problems on exception handling
     # code which might expect the tree on which exception was raised to
     # stay in place. This behavior is a subject to change.
-    for rev in revs:
-        self.tree = scm.get_tree(rev)
-        yield rev
+    for sha, names in group_by(scm.resolve_rev, revs).items():
+        self.tree = scm.get_tree(sha)
+        yield ", ".join(names)
 
     self.tree = saved_tree

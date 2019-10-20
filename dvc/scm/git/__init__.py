@@ -360,6 +360,9 @@ class Git(Base):
     def get_rev(self):
         return self.repo.git.rev_parse("HEAD")
 
+    def resolve_rev(self, rev):
+        return self.repo.git.rev_parse(rev)
+
     def close(self):
         self.repo.close()
 
