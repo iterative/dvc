@@ -4,19 +4,101 @@ import os
 import posixpath
 
 from funcy import cached_property
-import ratelimit
+from ratelimit import limits, sleep_and_retry
+from backoff import on_exception, expo
 
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.remote.gdrive.utils import TrackFileReadProgress, shared_token_warning
-
+from dvc.exceptions import DvcException
 
 class GDriveURLInfo(CloudURLInfo):
     @property
     def netloc(self):
         return self.parsed.netloc
+
+
+class RequestBASE:
+    def __init__(self, drive):
+        self.drive = drive
+
+    def execute(self):
+        raise NotImplementedError
+
+
+class RequestListFile(RequestBASE):
+    def __init__(self, drive, query):
+        super(RequestListFile, self).__init__(drive)
+        self.query = query
+
+    def execute(self):
+        return self.drive.ListFile({"q": self.query, "maxResults": 1000}).GetList()
+
+
+class RequestUploadFile(RequestBASE):
+    def __init__(
+        self,
+        drive,
+        title,
+        parent_id,
+        mime_type,
+        no_progress_bar=True,
+        from_file="",
+        progress_name="",
+    ):
+        super(RequestUploadFile, self).__init__(drive)
+        self.title = title
+        self.parent_id = parent_id
+        self.mime_type = mime_type
+        self.no_progress_bar = no_progress_bar
+        self.from_file = from_file
+        self.proress_name = progress_name
+
+    def execute(self):
+        item = self.drive.CreateFile(
+            {
+                "title": self.title,
+                "parents": [{"id": self.parent_id}],
+                "mimeType": self.mime_type,
+            }
+        )
+        if self.mime_type == RemoteGDrive.FOLDER_MIME_TYPE:
+            item.Upload()
+        else:
+            with open(self.from_file, "rb") as from_file:
+                if not self.no_progress_bar:
+                    from_file = TrackFileReadProgress(
+                        self.proress_name, from_file
+                    )
+                if os.stat(self.from_file).st_size:
+                    item.content = from_file
+                item.Upload()
+        return item
+
+
+class RequestDownloadFile(RequestBASE):
+    def __init__(
+        self, drive, file_id, to_file, progress_name, no_progress_bar=True
+    ):
+        super(RequestDownloadFile, self).__init__(drive)
+        self.file_id = file_id
+        self.to_file = to_file
+        self.progress_name = progress_name
+        self.no_progress_bar = no_progress_bar
+
+    def execute(self):
+        from dvc.progress import Tqdm
+
+        gdrive_file = self.drive.CreateFile({"id": self.file_id})
+        if not self.no_progress_bar:
+            tqdm = Tqdm(
+                desc=self.progress_name, total=int(gdrive_file["fileSize"])
+            )
+        gdrive_file.GetContentFile(self.to_file)
+        if not self.no_progress_bar:
+            tqdm.close()
 
 
 class RemoteGDrive(RemoteBASE):
@@ -32,6 +114,7 @@ class RemoteGDrive(RemoteBASE):
 
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
+        self.no_traverse = False
         if Config.SECTION_GDRIVE_CREDENTIALPATH not in config:
             shared_token_warning()
         self.gdrive_credentials_path = config.get(
@@ -42,21 +125,38 @@ class RemoteGDrive(RemoteBASE):
         self.init_drive()
 
     def init_drive(self):
-        self.get_path_id(self.path_info, create=True)
+        self.root_id = self.get_path_id(self.path_info, create=True)
+
+    @on_exception(expo, DvcException, max_tries=8)
+    @sleep_and_retry
+    @limits(calls=10, period=1)
+    def execute_request(self, request):
+        try:
+            result = request.execute()
+        except Exception as exception:
+            if ('Rate Limit Exceeded' in str(exception)):
+                raise DvcException("API usage rate limit exceeded")
+            raise
+        return result
 
     def list_drive_item(self, query):
-        for page in self.drive.ListFile({"q": query, "maxResults": 1000}):
-            for item in page:
-                yield item
+        list_request = RequestListFile(self.drive, query)
+        for item in self.execute_request(list_request):
+            yield item
+        #for page in self.execute_request(list_request):
+        #    for item in page:
+        #        yield item
 
     @cached_property
     def cached_root_dirs(self):
-        cached_dirs = {}
+        self.cached_dirs = {}
+        self.cached_dir_id = {}
         for dir1 in self.list_drive_item(
-            "'{}' in parents and trashed=false".format(self.path_info.netloc)
+            "'{}' in parents and trashed=false".format(self.root_id)
         ):
-            cached_dirs[dir1["title"]] = dir1["id"]
-        return cached_dirs
+            self.cached_dirs[dir1["title"]] = dir1["id"]
+            self.cached_dir_id[dir1["id"]] = dir1["title"]
+        return self.cached_dirs
 
     @cached_property
     def raw_drive(self):
@@ -82,30 +182,24 @@ class RemoteGDrive(RemoteBASE):
         return gdrive
 
     @property
-    @ratelimit.sleep_and_retry
-    @ratelimit.limits(calls=8, period=1.2)
     def drive(self):
         return self.raw_drive
 
     def create_drive_item(self, parent_id, title):
-        item = self.drive.CreateFile(
-            {
-                "title": title,
-                "parents": [{"id": parent_id}],
-                "mimeType": self.FOLDER_MIME_TYPE,
-            }
+        upload_request = RequestUploadFile(
+            self.drive, title, parent_id, self.FOLDER_MIME_TYPE
         )
-        item.Upload()
-        return item
+        result = self.execute_request(upload_request)
+        return result
 
     def get_drive_item(self, name, parent_id):
-        item_list = self.drive.ListFile(
-            {
-                "q": "'{}' in parents and trashed=false and title='{}'".format(
-                    parent_id, name
-                )
-            }
-        ).GetList()
+        list_request = RequestListFile(
+            self.drive,
+            "'{}' in parents and trashed=false and title='{}'".format(
+                parent_id, name
+            ),
+        )
+        item_list = self.execute_request(list_request)
         return next(iter(item_list), None)
 
     def resolve_remote_file(self, parent_id, path_parts, create):
@@ -121,7 +215,11 @@ class RemoteGDrive(RemoteBASE):
     def get_path_id_from_cache(self, path_info):
         file_id = ""
         parts = path_info.path.split("/")
-        if parts and (parts[0] in self.cached_root_dirs):
+        if (
+            path_info != self.path_info
+            and parts
+            and (parts[0] in self.cached_root_dirs)
+        ):
             parent_id = self.cached_root_dirs[parts[0]]
             file_id = self.cached_root_dirs[parts[0]]
             parts.pop(0)
@@ -148,28 +246,23 @@ class RemoteGDrive(RemoteBASE):
         else:
             parent_id = to_info.netloc
 
-        file1 = self.drive.CreateFile(
-            {"title": to_info.name, "parents": [{"id": parent_id}]}
+        upload_request = RequestUploadFile(
+            self.drive,
+            to_info.name,
+            parent_id,
+            "",
+            no_progress_bar,
+            from_file,
+            name,
         )
-
-        with open(from_file, "rb") as from_file:
-            if not no_progress_bar:
-                from_file = TrackFileReadProgress(name, from_file)
-
-            file1.content = from_file
-
-            file1.Upload()
+        self.execute_request(upload_request)
 
     def _download(self, from_info, to_file, name, no_progress_bar):
-        from dvc.progress import Tqdm
-
         file_id = self.get_path_id(from_info)
-        gdrive_file = self.drive.CreateFile({"id": file_id})
-        if not no_progress_bar:
-            tqdm = Tqdm(desc=name, total=int(gdrive_file["fileSize"]))
-        gdrive_file.GetContentFile(to_file)
-        if not no_progress_bar:
-            tqdm.close()
+        download_request = RequestDownloadFile(
+            self.drive, file_id, to_file, name, no_progress_bar
+        )
+        self.execute_request(download_request)
 
     def list_cache_paths(self):
         file_id = self.get_path_id(self.path_info)
@@ -190,3 +283,25 @@ class RemoteGDrive(RemoteBASE):
         ):
             for path in self.list_file_path(file1):
                 yield path
+
+    def all(self):
+        query = " or ".join(
+            "'{}' in parents".format(dir_id)
+            for dir_title, dir_id in self.cached_root_dirs.items()
+        )
+        if not query:
+            return
+        query += " and trashed=false"
+        print("All query: {}".format(query))
+        for file1 in self.list_drive_item(query):
+            parent_id = file1["parents"][0]["id"]
+            print(self.cached_dir_id[parent_id])
+            print(file1["title"])
+            path = posixpath.join(
+                self.cached_dir_id[parent_id], file1["title"]
+            )
+            try:
+                yield self.path_to_checksum(path)
+            except ValueError:
+                # We ignore all the non-cache looking files
+                pass
