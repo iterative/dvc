@@ -24,16 +24,22 @@ def get_all_files_numbers(stages):
 
 
 def _checkout(
-    self, target=None, with_deps=False, force=False, recursive=False
+    self, targets=None, with_deps=False, force=False, recursive=False
 ):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
-    try:
-        stages = self.collect(target, with_deps=with_deps, recursive=recursive)
-    except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
-        if not target:
-            raise
-        raise CheckoutErrorSuggestGit(target, exc)
+    stages = set()
+    targets = targets or [None]
+    for target in targets:
+        try:
+            new = self.collect(
+                target, with_deps=with_deps, recursive=recursive
+            )
+            stages.update(new)
+        except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
+            if not target:
+                raise
+            raise CheckoutErrorSuggestGit(target, exc)
 
     _cleanup_unused_links(self, self.stages)
     total = get_all_files_numbers(stages)
