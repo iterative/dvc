@@ -1,51 +1,12 @@
 from __future__ import unicode_literals
 
-import collections
 import logging
 
+from dvc.cache import NamedCache
 from . import locked
 
 
 logger = logging.getLogger(__name__)
-
-
-def _merge_cache_lists(clists):
-    merged_cache = collections.defaultdict(list)
-
-    for cache_list in clists:
-        for scheme, cache in cache_list.items():
-            for item in cache:
-                if item not in merged_cache[scheme]:
-                    merged_cache[scheme].append(item)
-
-    return merged_cache
-
-
-def _load_all_used_cache(
-    repos,
-    all_branches=False,
-    with_deps=False,
-    all_tags=False,
-    remote=None,
-    force=False,
-    jobs=None,
-):
-    clists = []
-
-    for repo in repos:
-        repo_clist = repo.used_cache(
-            targets=None,
-            all_branches=all_branches,
-            with_deps=with_deps,
-            all_tags=all_tags,
-            remote=remote,
-            force=force,
-            jobs=jobs,
-        )
-
-        clists.append(repo_clist)
-
-    return clists
 
 
 def _do_gc(typ, func, clist):
@@ -79,37 +40,35 @@ def gc(
             stack.enter_context(repo.lock)
             stack.enter_context(repo.state)
 
-        all_clists = _load_all_used_cache(
-            all_repos + [self],
-            all_branches=all_branches,
-            with_deps=with_deps,
-            all_tags=all_tags,
-            remote=remote,
-            force=force,
-            jobs=jobs,
-        )
+        used = NamedCache()
+        for repo in all_repos + [self]:
+            used.update(
+                repo.used_cache(
+                    all_branches=all_branches,
+                    with_deps=with_deps,
+                    all_tags=all_tags,
+                    remote=remote,
+                    force=force,
+                    jobs=jobs,
+                )
+            )
 
-    if len(all_clists) > 1:
-        clist = _merge_cache_lists(all_clists)
-    else:
-        clist = all_clists[0]
-
-    _do_gc("local", self.cache.local.gc, clist)
+    _do_gc("local", self.cache.local.gc, used)
 
     if self.cache.s3:
-        _do_gc("s3", self.cache.s3.gc, clist)
+        _do_gc("s3", self.cache.s3.gc, used)
 
     if self.cache.gs:
-        _do_gc("gs", self.cache.gs.gc, clist)
+        _do_gc("gs", self.cache.gs.gc, used)
 
     if self.cache.ssh:
-        _do_gc("ssh", self.cache.ssh.gc, clist)
+        _do_gc("ssh", self.cache.ssh.gc, used)
 
     if self.cache.hdfs:
-        _do_gc("hdfs", self.cache.hdfs.gc, clist)
+        _do_gc("hdfs", self.cache.hdfs.gc, used)
 
     if self.cache.azure:
-        _do_gc("azure", self.cache.azure.gc, clist)
+        _do_gc("azure", self.cache.azure.gc, used)
 
     if cloud:
-        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, clist)
+        _do_gc("remote", self.cloud.get_remote(remote, "gc -c").gc, used)

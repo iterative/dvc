@@ -49,16 +49,16 @@ def _fetch(
 
     try:
         downloaded += self.cloud.pull(
-            used["local"], jobs, remote=remote, show_checksums=show_checksums
+            used, jobs, remote=remote, show_checksums=show_checksums
         )
     except NoRemoteError:
-        if not used["repo"] and used["local"]:
+        if not used.repo and used["local"]:
             raise
 
     except DownloadError as exc:
         failed += exc.amount
 
-    for dep in used["repo"]:
+    for dep in used.repo:
         try:
             out = dep.fetch()
             downloaded += out.get_files_number()

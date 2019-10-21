@@ -23,5 +23,5 @@ def push(
         remote=remote,
         jobs=jobs,
         recursive=recursive,
-    )["local"]
+    )
     return self.cloud.push(used, jobs, remote=remote)
