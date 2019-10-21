@@ -89,7 +89,7 @@ class Tqdm(tqdm):
             and not env2bool("DVC_IGNORE_ISATTY")
             and hasattr(file, "isatty")
         ):
-            disable = file.isatty()
+            disable = not file.isatty()
         super(Tqdm, self).__init__(
             iterable=iterable,
             disable=disable,
