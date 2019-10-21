@@ -34,30 +34,32 @@ class CmdAdd(CmdBase):
 def add_parser(subparsers, parent_parser):
     add_help = "Add data files or directories to DVC control."
 
-    add_parser = subparsers.add_parser(
+    parser = subparsers.add_parser(
         "add",
         parents=[parent_parser],
         description=append_doc_link(add_help, "add"),
         help=add_help,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    add_parser.add_argument(
+    parser.add_argument(
         "-R",
         "--recursive",
         action="store_true",
         default=False,
-        help="Recursively add files under directories.",
+        help="Recursively add files under directory targets.",
     )
-    add_parser.add_argument(
+    parser.add_argument(
         "--no-commit",
         action="store_true",
         default=False,
         help="Don't put files/directories into cache.",
     )
-    add_parser.add_argument(
-        "-f", "--file", help="Specify name of the generated DVC-file."
+    parser.add_argument(
+        "-f",
+        "--file",
+        help="Specify name of the DVC-file this command will generate.",
     )
-    add_parser.add_argument(
+    parser.add_argument(
         "targets", nargs="+", help="Input files/directories to add."
     )
-    add_parser.set_defaults(func=CmdAdd)
+    parser.set_defaults(func=CmdAdd)
