@@ -15,9 +15,7 @@ class CmdAdd(CmdBase):
     def run(self):
         try:
             if len(self.args.targets) > 1 and self.args.file:
-                raise RecursiveAddingWhileUsingFilename(
-                    "can't use '--file' with multiple targets"
-                )
+                raise RecursiveAddingWhileUsingFilename()
 
             self.repo.add(
                 self.args.targets,
