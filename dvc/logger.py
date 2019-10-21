@@ -184,7 +184,7 @@ def setup(level=logging.INFO):
                 "console_info": {
                     "class": "dvc.logger.LoggerHandler",
                     "level": "INFO",
-                    # "formatter": "color",
+                    "formatter": "color",
                     "stream": "ext://sys.stdout",
                     "filters": ["exclude_errors"],
                 },
