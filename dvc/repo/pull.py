@@ -24,11 +24,7 @@ def pull(
         with_deps=with_deps,
         recursive=recursive,
     )
-    for target in targets or [None]:
-        self._checkout(
-            target=target,
-            with_deps=with_deps,
-            force=force,
-            recursive=recursive,
-        )
+    self._checkout(
+        targets=targets, with_deps=with_deps, force=force, recursive=recursive
+    )
     return processed_files_count

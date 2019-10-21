@@ -7,16 +7,12 @@ from dvc.command.base import CmdBase, append_doc_link
 
 class CmdCheckout(CmdBase):
     def run(self):
-        if not self.args.targets:
-            self.repo.checkout(force=self.args.force)
-        else:
-            for target in self.args.targets:
-                self.repo.checkout(
-                    target=target,
-                    with_deps=self.args.with_deps,
-                    force=self.args.force,
-                    recursive=self.args.recursive,
-                )
+        self.repo.checkout(
+            targets=self.args.targets,
+            with_deps=self.args.with_deps,
+            force=self.args.force,
+            recursive=self.args.recursive,
+        )
         return 0
 
 

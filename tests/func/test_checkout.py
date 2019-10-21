@@ -391,14 +391,14 @@ class TestCheckoutSuggestGit(TestRepro):
     def test(self):
 
         try:
-            self.dvc.checkout(target="gitbranch")
+            self.dvc.checkout(targets=["gitbranch"])
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
             self.assertIsInstance(exc.cause, StageFileDoesNotExistError)
             self.assertIsNone(exc.cause.cause)
 
         try:
-            self.dvc.checkout(target=self.FOO)
+            self.dvc.checkout(targets=[self.FOO])
         except DvcException as exc:
             self.assertIsInstance(exc, CheckoutErrorSuggestGit)
             self.assertIsInstance(exc.cause, StageFileBadNameError)
@@ -422,7 +422,7 @@ class TestCheckoutRecursiveNotDirectory(TestDvc):
         ret = main(["add", self.FOO])
         self.assertEqual(0, ret)
 
-        self.dvc.checkout(target=self.FOO + ".dvc", recursive=True)
+        self.dvc.checkout(targets=[self.FOO + ".dvc"], recursive=True)
 
 
 class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
@@ -477,7 +477,7 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
 def test_checkout_no_checksum(repo_dir, dvc_repo):
     stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
     with pytest.raises(CheckoutError):
-        dvc_repo.checkout(stage.path, force=True)
+        dvc_repo.checkout([stage.path], force=True)
     assert not os.path.exists(repo_dir.FOO)
 
 
@@ -491,7 +491,7 @@ def test_should_relink_on_checkout(link, link_test_func, repo_dir, dvc_repo):
     dvc_repo.add(repo_dir.DATA_DIR)
     dvc_repo.unprotect(repo_dir.DATA_SUB)
 
-    dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+    dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
 
     assert link_test_func(repo_dir.DATA_SUB)
 
@@ -504,7 +504,7 @@ def test_should_protect_on_checkout(link, dvc_repo, repo_dir):
     dvc_repo.add(repo_dir.FOO)
     dvc_repo.unprotect(repo_dir.FOO)
 
-    dvc_repo.checkout(repo_dir.FOO + Stage.STAGE_FILE_SUFFIX)
+    dvc_repo.checkout([repo_dir.FOO + Stage.STAGE_FILE_SUFFIX])
 
     assert not os.access(repo_dir.FOO, os.W_OK)
 
@@ -517,7 +517,7 @@ def test_should_relink_only_one_file_in_dir(dvc_repo, repo_dir):
 
     link_spy = spy(System.symlink)
     with patch.object(dvc_repo.cache.local, "symlink", link_spy):
-        dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+        dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
 
     assert link_spy.mock.call_count == 1
 
@@ -529,6 +529,6 @@ def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
     dvc_repo.add(repo_dir.DATA_DIR)
 
     with patch.object(dvc_repo.cache.local, "link") as mock_link:
-        dvc_repo.checkout(repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX)
+        dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
 
     assert not mock_link.called
