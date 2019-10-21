@@ -22,38 +22,7 @@ class LockError(DvcException):
 
 
 if is_py3:
-    import socket
-
     import flufl.lock
-    from funcy import monkey
-
-    # Workaround for slow and obsoleted gethostbyaddr used in
-    # `socket.getfqdn()`. See [1], [2] and [3] for more info.
-    #
-    # [1] https://bugs.python.org/issue5004
-    # [2] https://github.com/iterative/dvc/issues/2582
-    # [3] https://gitlab.com/warsaw/flufl.lock/merge_requests/12
-    @monkey(socket)
-    def getfqdn(name=""):
-        """Get fully qualified domain name from name.
-
-        An empty argument is interpreted as meaning the local host.
-        """
-        name = name.strip()
-        if not name or name == "0.0.0.0":
-            name = socket.gethostname()
-        try:
-            addrs = socket.getaddrinfo(
-                name, None, 0, socket.SOCK_DGRAM, 0, socket.AI_CANONNAME
-            )
-        except socket.error:
-            pass
-        else:
-            for addr in addrs:
-                if addr[3]:
-                    name = addr[3]
-                    break
-        return name
 
     class Lock(flufl.lock.Lock):
         """Class for dvc repo lock.
@@ -65,12 +34,31 @@ if is_py3:
         """
 
         def __init__(self, lockfile, tmp_dir=None):
-            lifetime = timedelta(days=365)  # Lock for good by default
+            import socket
+
             self._tmp_dir = tmp_dir
             if self._tmp_dir is not None:
                 makedirs(self._tmp_dir, exist_ok=True)
 
-            super(Lock, self).__init__(lockfile, lifetime=lifetime)
+            # NOTE: this is basically Lock.__init__ copy-paste, except that
+            # instead of using `socket.getfqdn()` we use `socket.gethostname()`
+            # to speed this up. We've seen [1] `getfqdn()` take ~5sec to return
+            # anything, which is way too slow. `gethostname()` is actually a
+            # fallback for `getfqdn()` when it is not able to resolve a
+            # canonical hostname through network. The claimfile that uses
+            # `self._hostname` is still usable, as it uses `pid` and random
+            # number to generate the resulting lock file name, which is unique
+            # enough for our application.
+            #
+            # [1] https://github.com/iterative/dvc/issues/2582
+            self._hostname = socket.gethostname()
+
+            self._lockfile = lockfile
+            self._lifetime = timedelta(days=365)  # Lock for good by default
+            self._separator = flufl.lock.SEP
+            self._set_claimfile()
+            self._owned = True
+            self._retry_errnos = []
 
         @property
         def lockfile(self):
