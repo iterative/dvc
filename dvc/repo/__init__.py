@@ -213,6 +213,7 @@ class Repo(object):
         all_branches=False,
         with_deps=False,
         all_tags=False,
+        all_commits=False,
         remote=None,
         force=False,
         jobs=None,
@@ -236,7 +237,9 @@ class Repo(object):
         cache = NamedCache()
 
         for branch in self.brancher(
-            all_branches=all_branches, all_tags=all_tags
+            all_branches=all_branches,
+            all_tags=all_tags,
+            all_commits=all_commits,
         ):
             if targets:
                 stages = []
