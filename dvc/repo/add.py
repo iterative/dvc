@@ -18,32 +18,27 @@ logger = logging.getLogger(__name__)
 @locked
 @scm_context
 def add(
-    repo,
-    target_list,
-    recursive=False,
-    no_commit=False,
-    fname=None,
-    progress=False,
+    repo, targets, recursive=False, no_commit=False, fname=None, progress=False
 ):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
-    if isinstance(target_list, string_types):
-        target_list = [target_list]
+    if isinstance(targets, string_types):
+        targets = [targets]
 
     stages_list = []
     with Tqdm(
-        total=len(target_list),
+        total=len(targets),
         desc="Adding",
         unit="file",
         disable=not progress,
         leave=True,
     ) as pbar:
-        for target in target_list:
-            targets = _find_all_targets(repo, target, recursive)
-            pbar.total += len(targets) - 1
+        for target in targets:
+            sub_targets = _find_all_targets(repo, target, recursive)
+            pbar.total += len(sub_targets) - 1
 
-            if os.path.isdir(target) and len(targets) > LARGE_DIR_SIZE:
+            if os.path.isdir(target) and len(sub_targets) > LARGE_DIR_SIZE:
                 logger.warning(
                     "You are adding a large directory '{target}' recursively,"
                     " consider tracking it as a whole instead.\n"
@@ -56,7 +51,7 @@ def add(
                     )
                 )
 
-            stages = _create_stages(repo, targets, fname, pbar=pbar)
+            stages = _create_stages(repo, sub_targets, fname, pbar=pbar)
 
             repo.check_modified_graph(stages)
 
