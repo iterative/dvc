@@ -1,9 +1,11 @@
 from __future__ import unicode_literals
 
 import logging
+
+from funcy import cached_property
+
 from dvc.scheme import Schemes
 from dvc.utils.compat import open
-
 from dvc.progress import Tqdm
 from dvc.exceptions import DvcException
 from dvc.config import Config, ConfigError
@@ -14,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 class RemoteHTTP(RemoteBASE):
     scheme = Schemes.HTTP
+    SESSION_RETRIES = 5
+    SESSION_BACKOFF_FACTOR = 0.1
     REQUEST_TIMEOUT = 10
     CHUNK_SIZE = 2 ** 16
     PARAM_CHECKSUM = "etag"
@@ -76,6 +80,24 @@ class RemoteHTTP(RemoteBASE):
 
         return etag
 
+    @cached_property
+    def _session(self):
+        import requests
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+
+        session = requests.Session()
+
+        retries = Retry(
+            total=self.SESSION_RETRIES,
+            backoff_factor=self.SESSION_BACKOFF_FACTOR,
+        )
+
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        session.mount("https://", HTTPAdapter(max_retries=retries))
+
+        return session
+
     def _request(self, method, url, **kwargs):
         import requests
 
@@ -83,7 +105,7 @@ class RemoteHTTP(RemoteBASE):
         kwargs.setdefault("timeout", self.REQUEST_TIMEOUT)
 
         try:
-            return requests.request(method, url, **kwargs)
+            return self._session.request(method, url, **kwargs)
         except requests.exceptions.RequestException:
             raise DvcException("could not perform a {} request".format(method))
 
