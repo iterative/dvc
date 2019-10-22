@@ -29,7 +29,7 @@ def add(
     stages_list = []
     with Tqdm(
         total=len(targets),
-        desc="Adding",
+        desc="Add",
         unit="file",
         disable=not progress,
         leave=True,
