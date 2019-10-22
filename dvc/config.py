@@ -550,7 +550,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             config[section] = {}
         elif not force:
             raise ConfigError(
-                "Section '{}' already exists. Use `-f|--force` to overwrite "
+                "Section '{}' already exists. Use '-f|--force' to overwrite "
                 "section with new value.".format(section)
             )
 

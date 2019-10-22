@@ -32,7 +32,7 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     get_parser.add_argument(
-        "url", help="See `dvc import-url -h` for full list of supported URLs."
+        "url", help="See 'dvc import-url -h' for full list of supported URLs."
     )
     get_parser.add_argument(
         "out", nargs="?", help="Destination path to put data to."

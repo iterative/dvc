@@ -31,7 +31,7 @@ class RemoteHTTP(RemoteBASE):
         if not self.no_traverse:
             raise ConfigError(
                 "HTTP doesn't support traversing the remote to list existing "
-                "files. Use: `dvc remote modify <name> no_traverse true`"
+                "files. Use: 'dvc remote modify <name> no_traverse true'"
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):

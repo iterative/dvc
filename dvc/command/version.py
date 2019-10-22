@@ -60,7 +60,7 @@ class CmdVersion(CmdBaseNoRepo):
                 logger.warning(
                     "Unable to detect supported link types, as cache "
                     "directory '{}' doesn't exist. It is usually auto-created "
-                    "by commands such as `dvc add/fetch/pull/run/import`, "
+                    "by commands such as 'dvc add/fetch/pull/run/import', "
                     "but you could create it manually to enable this "
                     "check.".format(relpath(repo.cache.local.cache_dir))
                 )

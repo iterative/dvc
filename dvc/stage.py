@@ -735,8 +735,8 @@ class Stage(object):
             msg += "Are you sure you want to commit it?"
             if not force and not prompt.confirm(msg):
                 raise StageCommitError(
-                    "unable to commit changed '{}'. Use `-f|--force` to "
-                    "force.`".format(self.relpath)
+                    "unable to commit changed '{}'. Use '-f|--force' to "
+                    "force.".format(self.relpath)
                 )
             self.save()
 
