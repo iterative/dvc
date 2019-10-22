@@ -32,7 +32,7 @@ class CmdAdd(CmdBase):
 
 
 def add_parser(subparsers, parent_parser):
-    add_help = "Add data files or directories to DVC control."
+    add_help = "Track data files or directories with DVC."
 
     parser = subparsers.add_parser(
         "add",
