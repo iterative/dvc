@@ -12,7 +12,7 @@ try:
 except ImportError:
     psutil = None
 
-from dvc.utils import is_binary
+from dvc.utils import is_binary, relpath
 from dvc.utils.compat import pathlib
 from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
@@ -60,8 +60,9 @@ class CmdVersion(CmdBaseNoRepo):
                 logger.warning(
                     "Unable to detect supported link types, as cache "
                     "directory '{}' doesn't exist. It is usually auto-created "
-                    "by commands such as `dvc add/fetch/pull/run/import`, but "
-                    "you could create it manually to enable this check."
+                    "by commands such as `dvc add/fetch/pull/run/import`, "
+                    "but you could create it manually to enable this "
+                    "check.".format(relpath(repo.cache.local.cache_dir))
                 )
 
             if psutil:
