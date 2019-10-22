@@ -255,7 +255,7 @@ class RemoteS3(RemoteBASE):
 
         return [
             {
-                self.PARAM_CHECKSUM: entry["ETag"],
+                self.PARAM_CHECKSUM: entry["ETag"].strip('"'),
                 self.PARAM_RELPATH: os.path.relpath(entry["Key"], start=root),
             }
             for entry in self._list_objects(path_info)
