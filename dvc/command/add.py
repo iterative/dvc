@@ -25,8 +25,8 @@ class CmdAdd(CmdBase):
                 progress=True,
             )
 
-        except DvcException as err:
-            logger.exception("{}:{}".format(type(err).__name__, err))
+        except DvcException:
+            logger.exception("")
             return 1
         return 0
 
