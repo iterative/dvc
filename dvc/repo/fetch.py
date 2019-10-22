@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 import logging
 
 from dvc.config import NoRemoteError
-from dvc.exceptions import DownloadError, OutputNotFoundError, CheckoutError
+from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
 
 
@@ -64,7 +64,7 @@ def _fetch(
             downloaded += out.get_files_number()
         except DownloadError as exc:
             failed += exc.amount
-        except (CloneError, OutputNotFoundError, CheckoutError):
+        except (CloneError, OutputNotFoundError):
             failed += 1
             logger.exception(
                 "failed to fetch data for '{}'".format(dep.stage.outs[0])

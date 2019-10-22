@@ -24,6 +24,7 @@ def pull(
         with_deps=with_deps,
         recursive=recursive,
     )
+    # This throws CheckoutError
     self._checkout(
         targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )

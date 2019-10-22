@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import filecmp
+import shutil
 
 import pytest
 from mock import patch
@@ -82,6 +83,12 @@ def test_download_error_pulling_imported_stage(dvc_repo, erepo):
     with patch(
         "dvc.remote.RemoteLOCAL._download", side_effect=Exception
     ), pytest.raises(DownloadError):
+        dvc_repo.pull(["foo_imported.dvc"])
+
+    # When repo is absent we should still get DownloadError
+    shutil.rmtree(erepo.dvc.cache.local.cache_dir)
+
+    with pytest.raises(DownloadError):
         dvc_repo.pull(["foo_imported.dvc"])
 
 
