@@ -325,3 +325,7 @@ class CheckoutError(DvcException):
             "forget to fetch?".format("\n".join(targets))
         )
         super(CheckoutError, self).__init__(m)
+
+
+class CollectCacheError(DvcException):
+    pass
