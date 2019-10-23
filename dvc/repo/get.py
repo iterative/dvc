@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @staticmethod
 def get(url, path, out=None, rev=None):
     out = resolve_output(path, out)
+    path = path.lstrip("/")
 
     if Stage.is_valid_filename(out):
         raise GetDVCFileError()
