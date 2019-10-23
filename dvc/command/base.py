@@ -57,7 +57,7 @@ class CmdBase(object):
 
     # Abstract methods that have to be implemented by any inheritance class
     def run(self):
-        raise NotImplementedError("Abstract")
+        raise NotImplementedError
 
 
 class CmdBaseNoRepo(CmdBase):

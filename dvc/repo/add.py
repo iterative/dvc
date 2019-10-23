@@ -64,6 +64,7 @@ def add(
                 stage.dump()
 
             stages_list += stages
+        # remove filled bar bit of progress, leaving stats
         pbar.bar_format = pbar.BAR_FMT_DEFAULT.replace("|{bar:10}|", " ")
 
     return stages_list
