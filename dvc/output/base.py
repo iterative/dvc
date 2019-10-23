@@ -353,7 +353,7 @@ class OutputBase(object):
             nc.add(self.scheme, 'd3b07384d113', 'directory/bar')
         """
 
-        ret = []
+        cache = NamedCache()
 
         if self.cache.changed_cache_file(self.checksum):
             try:
@@ -378,9 +378,8 @@ class OutputBase(object):
                     " without cache for directory '{}'".format(self)
                 )
             else:
-                return ret
+                return cache
 
-        cache = NamedCache()
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
             path_info = self.path_info / entry[self.remote.PARAM_RELPATH]
