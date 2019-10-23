@@ -3,7 +3,12 @@ from dvc.scm.tree import WorkingTree
 
 
 def brancher(  # noqa: E302
-    self, branches=None, all_branches=False, tags=None, all_tags=False
+    self,
+    branches=None,
+    all_branches=False,
+    tags=None,
+    all_tags=False,
+    all_commits=False,
 ):
     """Generator that iterates over specified revisions.
 
@@ -19,7 +24,7 @@ def brancher(  # noqa: E302
             - empty string it there is no branches to iterate over
             - "Working Tree" if there are uncommited changes in the SCM repo
     """
-    if not any([branches, all_branches, tags, all_tags]):
+    if not any([branches, all_branches, tags, all_tags, all_commits]):
         yield ""
         return
 
@@ -31,17 +36,20 @@ def brancher(  # noqa: E302
     self.tree = WorkingTree(self.root_dir)
     yield "working tree"
 
-    if all_branches:
-        branches = scm.list_branches()
+    if all_commits:
+        revs = scm.list_all_commits()
+    else:
+        if all_branches:
+            branches = scm.list_branches()
 
-    if all_tags:
-        tags = scm.list_tags()
+        if all_tags:
+            tags = scm.list_tags()
 
-    if branches is not None:
-        revs.extend(branches)
+        if branches is not None:
+            revs.extend(branches)
 
-    if tags is not None:
-        revs.extend(tags)
+        if tags is not None:
+            revs.extend(tags)
 
     # NOTE: it might be a good idea to wrap this loop in try/finally block
     # to don't leave the tree on some unexpected branch after the

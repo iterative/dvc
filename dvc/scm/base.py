@@ -120,6 +120,10 @@ class Base(object):
         """Returns a list of available tags in the repo."""
         return []
 
+    def list_all_commits(self):  # pylint: disable=no-self-use
+        """Returns a list of commits in the repo."""
+        return []
+
     def install(self):
         """Adds dvc commands to SCM hooks for the repo."""
 
