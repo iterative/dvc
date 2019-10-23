@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 
 @locked
 @scm_context
-def add(
-    repo, targets, recursive=False, no_commit=False, fname=None, progress=False
-):
+def add(repo, targets, recursive=False, no_commit=False, fname=None):
     if recursive and fname:
         raise RecursiveAddingWhileUsingFilename()
 
@@ -27,13 +25,7 @@ def add(
         targets = [targets]
 
     stages_list = []
-    with Tqdm(
-        total=len(targets),
-        desc="Add",
-        unit="file",
-        disable=not progress,
-        leave=True,
-    ) as pbar:
+    with Tqdm(total=len(targets), desc="Add", unit="file", leave=True) as pbar:
         for target in targets:
             sub_targets = _find_all_targets(repo, target, recursive)
             pbar.total += len(sub_targets) - 1

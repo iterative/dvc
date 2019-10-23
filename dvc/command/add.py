@@ -22,7 +22,6 @@ class CmdAdd(CmdBase):
                 recursive=self.args.recursive,
                 no_commit=self.args.no_commit,
                 fname=self.args.file,
-                progress=True,
             )
 
         except DvcException:
