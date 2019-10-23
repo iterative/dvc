@@ -144,8 +144,8 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
-        for fname in walk_files(str(path_info), self.repo.dvcignore):
-            yield path_info / os.path.relpath(fname, path_info)
+        for fname in walk_files(path_info, self.repo.dvcignore):
+            yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
         return file_md5(fspath_py35(path_info))[0]

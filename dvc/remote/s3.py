@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import logging
+import posixpath
 from funcy import cached_property
 
 from dvc.progress import Tqdm
@@ -270,4 +271,4 @@ class RemoteS3(RemoteBASE):
 
     def walk_files(self, path_info, max_items=None):
         for fname in self._list_paths(path_info, max_items):
-            yield path_info / os.path.relpath(fname, path_info.path)
+            yield path_info / posixpath.relpath(fname, path_info.path)

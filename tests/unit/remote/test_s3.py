@@ -31,7 +31,6 @@ def s3():
         "AWS_SESSION_TOKEN": "testing",
     }
 
-
     with mock.patch.dict(os.environ, aws_credentials):
         with mock_s3():
             s3 = boto3.client("s3", region_name="us-east-1")
@@ -56,34 +55,36 @@ def remote():
 
 
 @pytest.mark.parametrize(
-    "path, result", [
-        ("data",          True),
-        ("data/",         True),
-        ("data/subdir",   True),
-        ("empty_dir",     True),
-        ("foo",           False),
-        ("data/alice",    False),
-        ("data/al",       False),
+    "path, result",
+    [
+        ("data", True),
+        ("data/", True),
+        ("data/subdir", True),
+        ("empty_dir", True),
+        ("foo", False),
+        ("data/alice", False),
+        ("data/al", False),
         ("data/subdir/1", False),
-    ]
+    ],
 )
 def test_isdir(s3, remote, path, result):
     assert remote.isdir(remote.path_info / path) == result
 
 
 @pytest.mark.parametrize(
-    "path, result", [
-        ("data",          True),
-        ("data/",         True),
-        ("data/subdir",   True),
-        ("empty_dir",     True),
-        ("empty_file",    True),
-        ("foo",           True),
-        ("data/alice",    True),
+    "path, result",
+    [
+        ("data", True),
+        ("data/", True),
+        ("data/subdir", True),
+        ("empty_dir", True),
+        ("empty_file", True),
+        ("foo", True),
+        ("data/alice", True),
         ("data/subdir/1", True),
-        ("data/al",       False),
-        ("foo/",          False),
-    ]
+        ("data/al", False),
+        ("foo/", False),
+    ],
 )
 def test_exists(s3, remote, path, result):
     assert remote.exists(remote.path_info / path) == result
