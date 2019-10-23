@@ -7,7 +7,7 @@ from schema import Or, Optional
 
 from dvc.cache import NamedCache
 import dvc.prompt as prompt
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, CollectCacheError
 from dvc.utils.compat import str, urlparse
 from dvc.remote.base import RemoteBASE
 
@@ -373,7 +373,7 @@ class OutputBase(object):
                 "Would you like to continue? Use '-f' to force."
             )
             if not force and not prompt.confirm(msg.format(self.path_info)):
-                raise DvcException(
+                raise CollectCacheError(
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )

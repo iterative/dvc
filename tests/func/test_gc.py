@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 import os
+
+import pytest
 import configobj
 
 from git import Repo
@@ -7,6 +9,7 @@ from git import Repo
 from dvc.utils.compat import pathlib
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
+from dvc.exceptions import CollectCacheError
 
 from tests.basic_env import TestDvcGit
 from tests.basic_env import TestDir
@@ -208,3 +211,20 @@ def test_all_commits(git, dvc_repo):
 
 def _count_files(path):
     return sum(len(files) for _, _, files in os.walk(path))
+
+
+def test_gc_no_dir_cache(repo_dir, dvc_repo):
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.BAR)
+    dir_stage, = dvc_repo.add(repo_dir.DATA_DIR)
+
+    os.unlink(dir_stage.outs[0].cache_path)
+
+    with pytest.raises(CollectCacheError):
+        dvc_repo.gc()
+
+    assert _count_files(dvc_repo.cache.local.cache_dir) == 4
+
+    dvc_repo.gc(force=True)
+
+    assert _count_files(dvc_repo.cache.local.cache_dir) == 2
