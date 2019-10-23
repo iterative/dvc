@@ -233,8 +233,8 @@ class RemoteS3(RemoteBASE):
         # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
         # While `data/al/` will return nothing.
         #
-        dir_path = posixpath.join(path_info.path, "")
-        return bool(self._list_paths(path_info, max_items=1))
+        dir_path = path_info / ""
+        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
