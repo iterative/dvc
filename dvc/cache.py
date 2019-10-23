@@ -127,6 +127,9 @@ class NamedCache(object):
         for scheme, src in cache._items.items():
             dst = self._items[scheme]
             for checksum, names in src.items():
-                dst[checksum].update(names)
+                if suffix:
+                    dst[checksum].update(n + suffix for n in names)
+                else:
+                    dst[checksum].update(names)
 
         self.repo.extend(cache.repo)

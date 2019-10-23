@@ -245,6 +245,9 @@ class Git(Base):
     def list_tags(self):
         return [t.name for t in self.repo.tags]
 
+    def list_all_commits(self):
+        return [c.hexsha for c in self.repo.iter_commits("--all")]
+
     def _install_hook(self, name, cmd):
         command = (
             '[ "$3" = "0" ]'

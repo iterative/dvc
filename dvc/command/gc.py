@@ -13,17 +13,19 @@ logger = logging.getLogger(__name__)
 
 class CmdGC(CmdBase):
     def run(self):
-        msg = "this will remove all cache except the cache that is used in "
-        if not self.args.all_branches and not self.args.all_tags:
-            msg += "the current git branch"
-        elif self.args.all_branches and not self.args.all_tags:
-            msg += "all git branches"
-        elif not self.args.all_branches and self.args.all_tags:
-            msg += "all git tags"
-        else:
-            msg += "all git branches and all git tags"
+        msg = "This will remove all cache except items used in "
 
-        if self.args.repos is not None and len(self.args.repos) > 0:
+        msg += "the working tree"
+        if self.args.all_commits:
+            msg += " and all git commits"
+        elif self.args.all_branches and self.args.all_tags:
+            msg += " and all git branches and tags"
+        elif self.args.all_branches:
+            msg += " and all git branches"
+        elif self.args.all_tags:
+            msg += " and all git tags"
+
+        if self.args.repos:
             msg += " of the current and the following repos:"
 
             for repo_path in self.args.repos:
@@ -40,6 +42,7 @@ class CmdGC(CmdBase):
         self.repo.gc(
             all_branches=self.args.all_branches,
             all_tags=self.args.all_tags,
+            all_commits=self.args.all_commits,
             cloud=self.args.cloud,
             remote=self.args.remote,
             force=self.args.force,
@@ -75,6 +78,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Keep data files for all git tags.",
+    )
+    gc_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help="Keep data files for all commits.",
     )
     gc_parser.add_argument(
         "-c",
