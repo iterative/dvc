@@ -202,7 +202,7 @@ Related technologies
 
 Contributing
 ============
-Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/code>`_ for more
+Contributions are welcome! Please see our `Contributing Guide <https://dvc.org/doc/user-guide/contributing/core>`_ for more
 details.
 
 .. image:: https://sourcerer.io/fame/efiop/iterative/dvc/images/0

@@ -1,5 +1,5 @@
 * [ ] Have you followed the guidelines in our
-      [Contributing document](https://dvc.org/doc/user-guide/contributing/code)?
+      [Contributing document](https://dvc.org/doc/user-guide/contributing/core)?
 
 * [ ] Does your PR affect documented changes or does it add new functionality
       that should be documented? If yes, have you created a PR for
