@@ -205,7 +205,7 @@ class RemoteS3(RemoteBASE):
         )
 
     def list_cache_paths(self):
-        return self._list_paths(self.path_info)
+        return self.walk_files(self.path_info)
 
     def exists(self, path_info):
         dir_path = posixpath.join(path_info.path, "")
@@ -250,13 +250,6 @@ class RemoteS3(RemoteBASE):
             ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
         )
 
-    def _collect_dir(self, path_info):
-        root = path_info.path
-
-        return [
-            {
-                self.PARAM_CHECKSUM: entry["ETag"].strip('"'),
-                self.PARAM_RELPATH: os.path.relpath(entry["Key"], start=root),
-            }
-            for entry in self._list_objects(path_info)
-        ]
+    def walk_files(self, path_info, max_items=None):
+        for fname in self._list_paths(path_info, max_items):
+            yield path_info / os.path.relpath(fname, path_info.path)

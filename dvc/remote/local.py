@@ -25,7 +25,6 @@ from dvc.utils import (
     file_md5,
     walk_files,
     relpath,
-    dvc_walk,
     makedirs,
 )
 from dvc.config import Config
@@ -144,8 +143,9 @@ class RemoteLOCAL(RemoteBASE):
     def getsize(path_info):
         return os.path.getsize(fspath_py35(path_info))
 
-    def walk(self, path_info):
-        return dvc_walk(path_info, self.repo.dvcignore)
+    def walk_files(self, path_info):
+        for fname in walk_files(str(path_info), self.repo.dvcignore):
+            yield path_info / os.path.relpath(fname, path_info)
 
     def get_file_checksum(self, path_info):
         return file_md5(fspath_py35(path_info))[0]

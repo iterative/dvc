@@ -260,10 +260,10 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(self.path_info) as ssh:
             return list(ssh.walk_files(self.path_info.path))
 
-    def walk(self, path_info):
+    def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:
-            for entry in ssh.walk(path_info.path):
-                yield entry
+            for fname in ssh.walk_files(path_info.path):
+                yield path_info / os.path.relpath(fname, path_info.path)
 
     def makedirs(self, path_info):
         with self.ssh(path_info) as ssh:
