@@ -98,3 +98,20 @@ def test_import_to_dir(dname, repo_dir, dvc_repo, erepo):
     assert stage.outs[0].fspath == os.path.abspath(dst)
     assert os.path.isdir(dname)
     assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+
+
+def test_pull_non_workspace(git, dvc_repo, erepo):
+    src = "version"
+    dst = src
+
+    stage = dvc_repo.imp(erepo.root_dir, src, dst, rev="branch")
+    dvc_repo.scm.add([stage.relpath])
+    dvc_repo.scm.commit("imported branch")
+    dvc_repo.scm.tag("ref-to-branch")
+
+    # Ovewrite via import
+    dvc_repo.imp(erepo.root_dir, src, dst, rev="master")
+
+    os.remove(stage.outs[0].cache_path)
+    dvc_repo.fetch(all_tags=True)
+    assert os.path.exists(stage.outs[0].cache_path)

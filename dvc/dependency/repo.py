@@ -35,6 +35,11 @@ class DependencyREPO(DependencyLOCAL):
     def is_in_repo(self):
         return False
 
+    @property
+    def repo_pair(self):
+        d = self.def_repo
+        return d[self.PARAM_URL], d[self.PARAM_REV_LOCK] or d[self.PARAM_REV]
+
     def __str__(self):
         return "{} ({})".format(self.def_path, self.def_repo[self.PARAM_URL])
 
