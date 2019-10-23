@@ -74,6 +74,7 @@ def test_exists(s3, remote):
     assert remote.exists(remote.path_info / "data/alice")
     assert remote.exists(remote.path_info / "data/subdir/1")
     assert not remote.exists(remote.path_info / "data/al")
+    assert not remote.exists(remote.path_info / "foo/")
 
 
 def test_walk_files(s3, remote):

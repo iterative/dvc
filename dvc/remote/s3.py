@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import os
 import logging
-import posixpath
 from funcy import cached_property
 
 from dvc.progress import Tqdm
@@ -208,9 +207,9 @@ class RemoteS3(RemoteBASE):
         return self.walk_files(self.path_info)
 
     def exists(self, path_info):
-        dir_path = posixpath.join(path_info.path, "")
+        dir_path = path_info / ""
         fname = next(self._list_paths(path_info, max_items=1), "")
-        return path_info.path == fname or fname.startswith(dir_path)
+        return path_info.path == fname or fname.startswith(dir_path.path)
 
     def isdir(self, path_info):
         # S3 doesn't have a concept for directories.
