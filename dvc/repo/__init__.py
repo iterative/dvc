@@ -250,7 +250,8 @@ class Repo(object):
 
             for stage in stages:
                 if stage.is_repo_import:
-                    cache.repo += stage.deps
+                    dep, = stage.deps
+                    cache.external[dep.repo_pair].add(dep.def_path)
                     continue
 
                 for out in stage.outs:
