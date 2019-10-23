@@ -1,22 +1,14 @@
 import boto3
 import os
 import pytest
+import mock
 from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
 
 
 @pytest.fixture
-def aws_credentials():
-    """Mocked AWS Credentials for moto."""
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-
-
-@pytest.fixture
-def s3(aws_credentials):
+def s3():
     """Returns a connection to a bucket with the following file structure:
 
         bucket
@@ -31,20 +23,30 @@ def s3(aws_credentials):
         ├── empty_file
         └── foo
     """
-    with mock_s3():
-        s3 = boto3.client("s3", region_name="us-east-1")
-        s3.create_bucket(Bucket="bucket")
+    # Mocked AWS Credentials for moto.
+    aws_credentials = {
+        "AWS_ACCESS_KEY_ID": "testing",
+        "AWS_SECRET_ACCESS_KEY": "testing",
+        "AWS_SECURITY_TOKEN": "testing",
+        "AWS_SESSION_TOKEN": "testing",
+    }
 
-        s3.put_object(Bucket="bucket", Key="empty_dir/")
-        s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
-        s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
-        s3.put_object(Bucket="bucket", Key="data/alice", Body=b"alice")
-        s3.put_object(Bucket="bucket", Key="data/alpha", Body=b"alpha")
-        s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
-        s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
-        s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
 
-        yield s3
+    with mock.patch.dict(os.environ, aws_credentials):
+        with mock_s3():
+            s3 = boto3.client("s3", region_name="us-east-1")
+            s3.create_bucket(Bucket="bucket")
+
+            s3.put_object(Bucket="bucket", Key="empty_dir/")
+            s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
+            s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
+            s3.put_object(Bucket="bucket", Key="data/alice", Body=b"alice")
+            s3.put_object(Bucket="bucket", Key="data/alpha", Body=b"alpha")
+            s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
+            s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
+            s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
+
+            yield s3
 
 
 @pytest.fixture
@@ -53,28 +55,38 @@ def remote():
     yield RemoteS3(None, {"url": "s3://bucket", "region": "us-east-1"})
 
 
-def test_isdir(s3, remote):
-    assert remote.isdir(remote.path_info / "data")
-    assert remote.isdir(remote.path_info / "data/")
-    assert remote.isdir(remote.path_info / "data/subdir")
-    assert remote.isdir(remote.path_info / "empty_dir")
-    assert not remote.isdir(remote.path_info / "foo")
-    assert not remote.isdir(remote.path_info / "data/alice")
-    assert not remote.isdir(remote.path_info / "data/al")
-    assert not remote.isdir(remote.path_info / "data/subdir/1")
+@pytest.mark.parametrize(
+    "path, result", [
+        ("data",          True),
+        ("data/",         True),
+        ("data/subdir",   True),
+        ("empty_dir",     True),
+        ("foo",           False),
+        ("data/alice",    False),
+        ("data/al",       False),
+        ("data/subdir/1", False),
+    ]
+)
+def test_isdir(s3, remote, path, result):
+    assert remote.isdir(remote.path_info / path) == result
 
 
-def test_exists(s3, remote):
-    assert remote.exists(remote.path_info / "data")
-    assert remote.exists(remote.path_info / "data/")
-    assert remote.exists(remote.path_info / "data/subdir")
-    assert remote.exists(remote.path_info / "empty_dir")
-    assert remote.exists(remote.path_info / "empty_file")
-    assert remote.exists(remote.path_info / "foo")
-    assert remote.exists(remote.path_info / "data/alice")
-    assert remote.exists(remote.path_info / "data/subdir/1")
-    assert not remote.exists(remote.path_info / "data/al")
-    assert not remote.exists(remote.path_info / "foo/")
+@pytest.mark.parametrize(
+    "path, result", [
+        ("data",          True),
+        ("data/",         True),
+        ("data/subdir",   True),
+        ("empty_dir",     True),
+        ("empty_file",    True),
+        ("foo",           True),
+        ("data/alice",    True),
+        ("data/subdir/1", True),
+        ("data/al",       False),
+        ("foo/",          False),
+    ]
+)
+def test_exists(s3, remote, path, result):
+    assert remote.exists(remote.path_info / path) == result
 
 
 def test_walk_files(s3, remote):
