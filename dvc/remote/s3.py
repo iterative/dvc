@@ -210,12 +210,31 @@ class RemoteS3(RemoteBASE):
     def exists(self, path_info):
         dir_path = posixpath.join(path_info.path, "")
         fname = next(self._list_paths(path_info, max_items=1), "")
-        return path_info.path == fname or dir_path in fname
+        return path_info.path == fname or fname.startswith(dir_path)
 
     def isdir(self, path_info):
+        # S3 doesn't have a concept for directories.
+        #
+        # Using `head_object` with a path pointing to a directory
+        # will throw a 404 error.
+        #
+        # A reliable way to know if a given path is a directory is by
+        # checking if there are more files sharing the same prefix
+        # with a `list_objects` call.
+        #
+        # We need to make sure that the path ends with a forward slash,
+        # since we can end with false-positives like the following example:
+        #
+        #       bucket
+        #       └── data
+        #          ├── alice
+        #          └── alpha
+        #
+        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
+        # While `data/al/` will return nothing.
+        #
         dir_path = posixpath.join(path_info.path, "")
-        fname = next(self._list_paths(path_info, max_items=1), "")
-        return dir_path in fname
+        return bool(self._list_paths(path_info, max_items=1))
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
