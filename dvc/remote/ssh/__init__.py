@@ -115,9 +115,7 @@ class RemoteSSH(RemoteBASE):
             return identity_file[0]
         return None
 
-    def ssh(self, path_info):
-        host, user, port = path_info.host, path_info.user, path_info.port
-
+    def ensure_credentials(self, host, user, port):
         # NOTE: we use the same password regardless of the server :(
         if self.ask_password and self.password is None:
             with saved_passwords_lock:
@@ -132,6 +130,10 @@ class RemoteSSH(RemoteBASE):
                         )
                     )
                 self.password = password
+
+    def ssh(self, path_info):
+        host, user, port = path_info.host, path_info.user, path_info.port
+        self.ensure_credentials(host, user, port)
 
         from .connection import SSHConnection
 
@@ -305,6 +307,10 @@ class RemoteSSH(RemoteBASE):
         """
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
+
+        # possibly prompt for credentials before "Querying" progress output
+        path_info = self.checksum_to_path_info(checksums[0])
+        self.ensure_credentials(path_info.host, path_info.user, path_info.port)
 
         with Tqdm(
             desc="Querying "
