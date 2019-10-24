@@ -175,7 +175,7 @@ setup(
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
-    url="http://dataversioncontrol.com",
+    url="http://dvc.org",
     entry_points={"console_scripts": ["dvc = dvc.main:main"]},
     cmdclass={"build_py": build_py},
     zip_safe=False,
