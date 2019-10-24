@@ -136,5 +136,5 @@ class Tqdm(tqdm):
         else:
             # work-around for zero-width desc
             d["ncols_desc"] = 1
-            d["desc"] = 0
+            d["desc"] = ""
         return d
