@@ -134,14 +134,9 @@ Homebrew
 
 .. code-block:: bash
 
-   brew install iterative/homebrew-dvc/dvc
+   brew install dvc
 
-or:
 
-.. code-block:: bash
-
-   brew cask install iterative/homebrew-dvc/dvc
-   
 Conda (Anaconda)
 ----------------
 
