@@ -23,29 +23,20 @@ def s3():
         ├── empty_file
         └── foo
     """
-    # Mocked AWS Credentials for moto.
-    aws_credentials = {
-        "AWS_ACCESS_KEY_ID": "testing",
-        "AWS_SECRET_ACCESS_KEY": "testing",
-        "AWS_SECURITY_TOKEN": "testing",
-        "AWS_SESSION_TOKEN": "testing",
-    }
+    with mock_s3():
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket="bucket")
 
-    with mock.patch.dict(os.environ, aws_credentials):
-        with mock_s3():
-            s3 = boto3.client("s3", region_name="us-east-1")
-            s3.create_bucket(Bucket="bucket")
+        s3.put_object(Bucket="bucket", Key="empty_dir/")
+        s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
+        s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
+        s3.put_object(Bucket="bucket", Key="data/alice", Body=b"alice")
+        s3.put_object(Bucket="bucket", Key="data/alpha", Body=b"alpha")
+        s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
+        s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
+        s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
 
-            s3.put_object(Bucket="bucket", Key="empty_dir/")
-            s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
-            s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
-            s3.put_object(Bucket="bucket", Key="data/alice", Body=b"alice")
-            s3.put_object(Bucket="bucket", Key="data/alpha", Body=b"alpha")
-            s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
-            s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
-            s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
-
-            yield s3
+        yield s3
 
 
 @pytest.fixture
