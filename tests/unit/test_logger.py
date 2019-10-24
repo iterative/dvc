@@ -182,7 +182,8 @@ class TestColorFormatter:
 
 
 def test_handlers():
-    stdout, stderr = logger.handlers
+    out, deb, err = logger.handlers
 
-    assert stdout.level == logging.DEBUG
-    assert stderr.level == logging.WARNING
+    assert out.level == logging.INFO
+    assert deb.level == logging.DEBUG
+    assert err.level == logging.WARNING
