@@ -1,4 +1,5 @@
-import boto3
+# -*- coding: utf-8 -*-
+
 import pytest
 from moto import mock_s3
 
@@ -6,8 +7,8 @@ from dvc.remote.s3 import RemoteS3
 
 
 @pytest.fixture
-def s3():
-    """Returns a connection to a bucket with the following file structure:
+def remote():
+    """Returns a RemoteS3 connected to a bucket with the following structure:
 
         bucket
         ├── data
@@ -22,9 +23,10 @@ def s3():
         └── foo
     """
     with mock_s3():
-        s3 = boto3.client("s3", region_name="us-east-1")
-        s3.create_bucket(Bucket="bucket")
+        remote = RemoteS3(None, {"url": "s3://bucket", "region": "us-east-1"})
+        s3 = remote.s3
 
+        s3.create_bucket(Bucket="bucket")
         s3.put_object(Bucket="bucket", Key="empty_dir/")
         s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
         s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
@@ -34,18 +36,11 @@ def s3():
         s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
         s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
 
-        yield s3
+        yield remote
 
 
-@pytest.fixture
-def remote():
-    """Returns RemoteS3 instance to work with the `s3` fixture."""
-    yield RemoteS3(None, {"url": "s3://bucket", "region": "us-east-1"})
-
-
-@pytest.mark.parametrize(
-    "result, path",
-    [
+def test_isdir(remote):
+    test_cases = [
         (True, "data"),
         (True, "data/"),
         (True, "data/subdir"),
@@ -54,15 +49,14 @@ def remote():
         (False, "data/alice"),
         (False, "data/al"),
         (False, "data/subdir/1"),
-    ],
-)
-def test_isdir(s3, remote, path, result):
-    assert remote.isdir(remote.path_info / path) == result
+    ]
+
+    for expected, path in test_cases:
+        assert remote.isdir(remote.path_info / path) == expected
 
 
-@pytest.mark.parametrize(
-    "result, path",
-    [
+def test_exists(remote):
+    test_cases = [
         (True, "data"),
         (True, "data/"),
         (True, "data/subdir"),
@@ -73,13 +67,13 @@ def test_isdir(s3, remote, path, result):
         (True, "data/subdir/1"),
         (False, "data/al"),
         (False, "foo/"),
-    ],
-)
-def test_exists(s3, remote, path, result):
-    assert remote.exists(remote.path_info / path) == result
+    ]
+
+    for expected, path in test_cases:
+        assert remote.exists(remote.path_info / path) == expected
 
 
-def test_walk_files(s3, remote):
+def test_walk_files(remote):
     files = [
         remote.path_info / "data/alice",
         remote.path_info / "data/alpha",
