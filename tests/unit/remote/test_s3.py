@@ -1,7 +1,5 @@
 import boto3
-import os
 import pytest
-import mock
 from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
@@ -46,16 +44,16 @@ def remote():
 
 
 @pytest.mark.parametrize(
-    "path, result",
+    "result, path",
     [
-        ("data", True),
-        ("data/", True),
-        ("data/subdir", True),
-        ("empty_dir", True),
-        ("foo", False),
-        ("data/alice", False),
-        ("data/al", False),
-        ("data/subdir/1", False),
+        (True, "data"),
+        (True, "data/"),
+        (True, "data/subdir"),
+        (True, "empty_dir"),
+        (False, "foo"),
+        (False, "data/alice"),
+        (False, "data/al"),
+        (False, "data/subdir/1"),
     ],
 )
 def test_isdir(s3, remote, path, result):
@@ -63,18 +61,18 @@ def test_isdir(s3, remote, path, result):
 
 
 @pytest.mark.parametrize(
-    "path, result",
+    "result, path",
     [
-        ("data", True),
-        ("data/", True),
-        ("data/subdir", True),
-        ("empty_dir", True),
-        ("empty_file", True),
-        ("foo", True),
-        ("data/alice", True),
-        ("data/subdir/1", True),
-        ("data/al", False),
-        ("foo/", False),
+        (True, "data"),
+        (True, "data/"),
+        (True, "data/subdir"),
+        (True, "empty_dir"),
+        (True, "empty_file"),
+        (True, "foo"),
+        (True, "data/alice"),
+        (True, "data/subdir/1"),
+        (False, "data/al"),
+        (False, "foo/"),
     ],
 )
 def test_exists(s3, remote, path, result):
