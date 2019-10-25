@@ -162,13 +162,19 @@ class CmdPipelineShow(CmdBase):
 
 class CmdPipelineList(CmdBase):
     def run(self):
-        import networkx
+        import networkx as nx
 
         pipelines = self.repo.pipelines
         for p in pipelines:
-            stages = networkx.get_node_attributes(p, "stage")
-            for stage in stages:
-                logger.info(stage)
+            active = p.copy()
+            stages = nx.get_node_attributes(p, "stage")
+            for node in p:
+                stage = stages[node]
+                # if not stage.locked:
+                #     continue
+                for n in nx.dfs_postorder_nodes(p, node):
+                    if n == node:
+                        logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
         logger.info("{} pipelines total".format(len(pipelines)))
