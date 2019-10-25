@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 from operator import itemgetter
 from multiprocessing import cpu_count
+
 import json
 import logging
 import tempfile
@@ -22,7 +23,7 @@ from dvc.exceptions import (
     DvcIgnoreInCollectedDirError,
 )
 from dvc.progress import Tqdm
-from dvc.utils import LARGE_DIR_SIZE, tmp_fname, move, relpath, makedirs
+from dvc.utils import tmp_fname, move, relpath, makedirs
 from dvc.state import StateNoop
 from dvc.path_info import PathInfo, URLInfo
 from dvc.utils.http import open_url
@@ -177,27 +178,23 @@ class RemoteBASE(object):
         file_infos = list(file_infos)
         with ThreadPoolExecutor(max_workers=self.checksum_jobs) as executor:
             tasks = executor.map(self.get_file_checksum, file_infos)
-
-            if len(file_infos) > LARGE_DIR_SIZE:
-                logger.info(
-                    (
-                        "Computing md5 for a large number of files. "
-                        "This is only done once."
-                    )
-                )
-                tasks = Tqdm(tasks, total=len(file_infos), unit="md5")
-            checksums = dict(zip(file_infos, tasks))
+            with Tqdm(
+                tasks,
+                total=len(file_infos),
+                unit="md5",
+                desc="Computing hashes (only done once)",
+            ) as tasks:
+                checksums = dict(zip(file_infos, tasks))
         return checksums
 
     def _collect_dir(self, path_info):
-
         file_infos = set()
-        for root, _dirs, files in self.walk(path_info):
 
-            if DvcIgnore.DVCIGNORE_FILE in files:
-                raise DvcIgnoreInCollectedDirError(root)
+        for fname in self.walk_files(path_info):
+            if DvcIgnore.DVCIGNORE_FILE == fname.name:
+                raise DvcIgnoreInCollectedDirError(fname.parent)
 
-            file_infos.update(path_info / root / fname for fname in files)
+            file_infos.add(fname)
 
         checksums = {fi: self.state.get(fi) for fi in file_infos}
         not_in_state = {
@@ -466,7 +463,8 @@ class RemoteBASE(object):
         """
         return False
 
-    def walk(self, path_info):
+    def walk_files(self, path_info):
+        """Return a generator with `PathInfo`s to all the files"""
         raise NotImplementedError
 
     @staticmethod
@@ -831,11 +829,7 @@ class RemoteBASE(object):
         self.state.save(path_info, checksum)
 
     def _remove_redundant_files(self, path_info, dir_info, force):
-        existing_files = set(
-            path_info / root / fname
-            for root, _, files in self.walk(path_info)
-            for fname in files
-        )
+        existing_files = set(self.walk_files(path_info))
 
         needed_files = {
             path_info / entry[self.PARAM_RELPATH] for entry in dir_info

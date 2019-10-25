@@ -5,10 +5,17 @@ def check_acyclic(graph):
     import networkx as nx
     from dvc.exceptions import CyclicGraphError
 
-    cycle = next(nx.simple_cycles(graph), None)
+    try:
+        edges = nx.find_cycle(graph, orientation="original")
+    except nx.NetworkXNoCycle:
+        return
 
-    if cycle:
-        raise CyclicGraphError(cycle)
+    stages = set()
+    for from_node, to_node, _ in edges:
+        stages.add(from_node)
+        stages.add(to_node)
+
+    raise CyclicGraphError(list(stages))
 
 
 def get_pipeline(pipelines, node):

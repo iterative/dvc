@@ -1,10 +1,15 @@
+from __future__ import unicode_literals
 import os
+
+import pytest
 import configobj
 
 from git import Repo
 
+from dvc.utils.compat import pathlib
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
+from dvc.exceptions import CollectCacheError
 
 from tests.basic_env import TestDvcGit
 from tests.basic_env import TestDir
@@ -173,3 +178,53 @@ class TestGCMultipleDvcRepos(TestDvcGit):
 
         self.dvc.gc()
         self._check_cache(2)
+
+
+def test_all_commits(git, dvc_repo):
+    def add_and_commit():
+        stages = dvc_repo.add(str(testfile))
+        dvc_repo.scm.add([s.relpath for s in stages])
+        dvc_repo.scm.commit("message")
+
+    cache_dir = os.path.join(dvc_repo.root_dir, ".dvc", "cache")
+    testfile = pathlib.Path("testfile")
+
+    testfile.write_text("uncommited")
+    dvc_repo.add(str(testfile))
+
+    testfile.write_text("commited")
+    add_and_commit()
+
+    testfile.write_text("modified")
+    add_and_commit()
+
+    testfile.write_text("workspace")
+    dvc_repo.add(str(testfile))
+
+    N = _count_files(cache_dir)
+
+    dvc_repo.gc(all_commits=True)
+
+    # Only one uncommited file should go away
+    assert _count_files(cache_dir) == N - 1
+
+
+def _count_files(path):
+    return sum(len(files) for _, _, files in os.walk(path))
+
+
+def test_gc_no_dir_cache(repo_dir, dvc_repo):
+    dvc_repo.add(repo_dir.FOO)
+    dvc_repo.add(repo_dir.BAR)
+    dir_stage, = dvc_repo.add(repo_dir.DATA_DIR)
+
+    os.unlink(dir_stage.outs[0].cache_path)
+
+    with pytest.raises(CollectCacheError):
+        dvc_repo.gc()
+
+    assert _count_files(dvc_repo.cache.local.cache_dir) == 4
+
+    dvc_repo.gc(force=True)
+
+    assert _count_files(dvc_repo.cache.local.cache_dir) == 2

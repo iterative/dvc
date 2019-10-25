@@ -5,6 +5,8 @@ import logging
 from dvc.config import NoRemoteError
 from dvc.exceptions import DownloadError, OutputNotFoundError
 from dvc.scm.base import CloneError
+from dvc.external_repo import external_repo
+from dvc.cache import NamedCache
 
 
 logger = logging.getLogger(__name__)
@@ -52,25 +54,50 @@ def _fetch(
             used, jobs, remote=remote, show_checksums=show_checksums
         )
     except NoRemoteError:
-        if not used.repo and used["local"]:
+        if not used.external and used["local"]:
             raise
-
     except DownloadError as exc:
         failed += exc.amount
 
-    for dep in used.repo:
-        try:
-            out = dep.fetch()
-            downloaded += out.get_files_number()
-        except DownloadError as exc:
-            failed += exc.amount
-        except (CloneError, OutputNotFoundError):
-            failed += 1
-            logger.exception(
-                "failed to fetch data for '{}'".format(dep.stage.outs[0])
-            )
+    for (repo_url, repo_rev), files in used.external.items():
+        d, f = _fetch_external(self, repo_url, repo_rev, files)
+        downloaded += d
+        failed += f
 
     if failed:
         raise DownloadError(failed)
 
     return downloaded
+
+
+def _fetch_external(self, repo_url, repo_rev, files):
+    failed = 0
+
+    cache_dir = self.cache.local.cache_dir
+    try:
+        with external_repo(repo_url, repo_rev, cache_dir=cache_dir) as repo:
+            cache = NamedCache()
+            for name in files:
+                try:
+                    out = repo.find_out_by_relpath(name)
+                except OutputNotFoundError:
+                    failed += 1
+                    logger.exception(
+                        "failed to fetch data for '{}'".format(name)
+                    )
+                    continue
+                else:
+                    cache.update(out.get_used_cache())
+
+            with repo.state:
+                try:
+                    return repo.cloud.pull(cache), failed
+                except DownloadError as exc:
+                    failed += exc.amount
+    except CloneError:
+        failed += 1
+        logger.exception(
+            "failed to fetch data for '{}'".format(", ".join(files))
+        )
+
+    return 0, failed

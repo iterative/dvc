@@ -134,7 +134,7 @@ class Tqdm(tqdm):
         if ncols_desc:
             d["ncols_desc"] = ncols_desc
         else:
-            # work-around for zero-width desc
+            # work-around for zero-width description
             d["ncols_desc"] = 1
-            d["desc"] = 0
+            d["prefix"] = ""
         return d

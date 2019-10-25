@@ -73,7 +73,7 @@ install_requires = [
     "funcy>=1.12",
     "pathspec>=0.6.0",
     "shortuuid>=0.5.0",
-    "tqdm>=4.35.0",
+    "tqdm>=4.35.0,<5",
     "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
@@ -175,7 +175,7 @@ setup(
     ],
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
-    url="http://dataversioncontrol.com",
+    url="http://dvc.org",
     entry_points={"console_scripts": ["dvc = dvc.main:main"]},
     cmdclass={"build_py": build_py},
     zip_safe=False,

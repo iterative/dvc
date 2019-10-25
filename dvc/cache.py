@@ -109,7 +109,7 @@ class Cache(object):
 class NamedCache(object):
     def __init__(self):
         self._items = defaultdict(lambda: defaultdict(set))
-        self.repo = []
+        self.external = defaultdict(set)
 
     @classmethod
     def make(cls, scheme, checksum, name):
@@ -123,10 +123,17 @@ class NamedCache(object):
     def add(self, scheme, checksum, name):
         self._items[scheme][checksum].add(name)
 
+    def add_external(self, url, rev, path):
+        self.external[url, rev].add(path)
+
     def update(self, cache, suffix=""):
         for scheme, src in cache._items.items():
             dst = self._items[scheme]
             for checksum, names in src.items():
-                dst[checksum].update(names)
+                if suffix:
+                    dst[checksum].update(n + suffix for n in names)
+                else:
+                    dst[checksum].update(names)
 
-        self.repo.extend(cache.repo)
+        for repo_pair, files in cache.external.items():
+            self.external[repo_pair].update(files)

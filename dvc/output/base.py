@@ -7,7 +7,7 @@ from schema import Or, Optional
 
 from dvc.cache import NamedCache
 import dvc.prompt as prompt
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, CollectCacheError
 from dvc.utils.compat import str, urlparse
 from dvc.remote.base import RemoteBASE
 
@@ -353,7 +353,7 @@ class OutputBase(object):
             nc.add(self.scheme, 'd3b07384d113', 'directory/bar')
         """
 
-        ret = []
+        cache = NamedCache()
 
         if self.cache.changed_cache_file(self.checksum):
             try:
@@ -373,14 +373,13 @@ class OutputBase(object):
                 "Would you like to continue? Use '-f' to force."
             )
             if not force and not prompt.confirm(msg.format(self.path_info)):
-                raise DvcException(
+                raise CollectCacheError(
                     "unable to fully collect used cache"
                     " without cache for directory '{}'".format(self)
                 )
             else:
-                return ret
+                return cache
 
-        cache = NamedCache()
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
             path_info = self.path_info / entry[self.remote.PARAM_RELPATH]

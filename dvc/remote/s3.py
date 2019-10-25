@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import unicode_literals
 
 import os
 import logging
+import posixpath
 from funcy import cached_property
 
 from dvc.progress import Tqdm
@@ -36,7 +39,10 @@ class RemoteS3(RemoteBASE):
 
         self.endpoint_url = config.get(Config.SECTION_AWS_ENDPOINT_URL)
 
-        self.list_objects = config.get(Config.SECTION_AWS_LIST_OBJECTS)
+        if config.get(Config.SECTION_AWS_LIST_OBJECTS):
+            self.list_objects_api = "list_objects"
+        else:
+            self.list_objects_api = "list_objects_v2"
 
         self.use_ssl = config.get(Config.SECTION_AWS_USE_SSL, True)
 
@@ -180,27 +186,57 @@ class RemoteS3(RemoteBASE):
         logger.debug("Removing {}".format(path_info))
         self.s3.delete_object(Bucket=path_info.bucket, Key=path_info.path)
 
-    def _list_paths(self, bucket, prefix):
+    def _list_objects(self, path_info, max_items=None):
         """ Read config for list object api, paginate through list objects."""
-        kwargs = {"Bucket": bucket, "Prefix": prefix}
-        if self.list_objects:
-            list_objects_api = "list_objects"
-        else:
-            list_objects_api = "list_objects_v2"
-        paginator = self.s3.get_paginator(list_objects_api)
+        kwargs = {
+            "Bucket": path_info.bucket,
+            "Prefix": path_info.path,
+            "PaginationConfig": {"MaxItems": max_items},
+        }
+        paginator = self.s3.get_paginator(self.list_objects_api)
         for page in paginator.paginate(**kwargs):
             contents = page.get("Contents", None)
             if not contents:
                 continue
             for item in contents:
-                yield item["Key"]
+                yield item
+
+    def _list_paths(self, path_info, max_items=None):
+        return (
+            item["Key"] for item in self._list_objects(path_info, max_items)
+        )
 
     def list_cache_paths(self):
-        return self._list_paths(self.path_info.bucket, self.path_info.path)
+        return self.walk_files(self.path_info)
 
     def exists(self, path_info):
-        paths = self._list_paths(path_info.bucket, path_info.path)
-        return any(path_info.path == path for path in paths)
+        dir_path = path_info / ""
+        fname = next(self._list_paths(path_info, max_items=1), "")
+        return path_info.path == fname or fname.startswith(dir_path.path)
+
+    def isdir(self, path_info):
+        # S3 doesn't have a concept for directories.
+        #
+        # Using `head_object` with a path pointing to a directory
+        # will throw a 404 error.
+        #
+        # A reliable way to know if a given path is a directory is by
+        # checking if there are more files sharing the same prefix
+        # with a `list_objects` call.
+        #
+        # We need to make sure that the path ends with a forward slash,
+        # since we can end with false-positives like the following example:
+        #
+        #       bucket
+        #       └── data
+        #          ├── alice
+        #          └── alpha
+        #
+        # Using `data/al` as prefix will return `[data/alice, data/alpha]`,
+        # While `data/al/` will return nothing.
+        #
+        dir_path = path_info / ""
+        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
         total = os.path.getsize(from_file)
@@ -234,3 +270,7 @@ class RemoteS3(RemoteBASE):
         return self.s3.generate_presigned_url(
             ClientMethod="get_object", Params=params, ExpiresIn=int(expires)
         )
+
+    def walk_files(self, path_info, max_items=None):
+        for fname in self._list_paths(path_info, max_items):
+            yield path_info / posixpath.relpath(fname, path_info.path)

@@ -1,1 +1,1 @@
-### See our contribution guide at [dvc.org](https://dvc.org/doc/user-guide/contributing#contributing).
+### See our contribution guide at [dvc.org](https://dvc.org/doc/user-guide/contributing/core).
