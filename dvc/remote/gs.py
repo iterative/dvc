@@ -125,7 +125,7 @@ class RemoteGS(RemoteBASE):
 
     def _upload(self, from_file, to_info, **_kwargs):
         bucket = self.gs.bucket(to_info.bucket)
-        _upload_to_bucket(bucket, from_file)
+        _upload_to_bucket(bucket, from_file, to_info)
 
     def _download(self, from_info, to_file, **_kwargs):
         bucket = self.gs.bucket(from_info.bucket)
