@@ -207,7 +207,7 @@ class RemoteS3(RemoteBASE):
         )
 
     def list_cache_paths(self):
-        return self.walk_files(self.path_info)
+        return [info.path for info in self.walk_files(self.path_info)]
 
     def exists(self, path_info):
         dir_path = path_info / ""
