@@ -166,7 +166,6 @@ class CmdPipelineList(CmdBase):
 
         pipelines = self.repo.pipelines
         for p in pipelines:
-            active = p.copy()
             stages = nx.get_node_attributes(p, "stage")
             for node in p:
                 stage = stages[node]
