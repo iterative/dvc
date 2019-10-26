@@ -372,7 +372,9 @@ class RemoteLOCAL(RemoteBASE):
             fails += failure[0]
             from_info, to_info = failure[1], failure[2]
             operation = failure[3]
-            msgs += f"Failed to {operation} '{from_info}' to '{to_info}'\n"
+            msgs += "Failed to {} '{}' to '{}'\n".format(
+                operation, from_info, to_info
+            )
 
         if msgs:
             logger.exception(msgs)
