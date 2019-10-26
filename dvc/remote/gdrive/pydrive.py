@@ -1,6 +1,6 @@
 import os
 
-from dvc.remote.gdrive.utils import TrackFileReadProgress
+from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
 
 
 class RequestBASE:
@@ -64,7 +64,7 @@ class RequestUploadFile(RequestBASE):
                 "mimeType": self.mime_type,
             }
         )
-        if self.mime_type == "application/vnd.google-apps.folder":
+        if self.mime_type == FOLDER_MIME_TYPE:
             item.Upload()
         else:
             self.upload(item)

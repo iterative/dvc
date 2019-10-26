@@ -1,15 +1,9 @@
-import functools
 import os
-import threading
-import logging
 
 from dvc.progress import Tqdm
 
 
-LOGGER = logging.getLogger(__name__)
-
-
-MIME_GOOGLE_APPS_FOLDER = "application/vnd.google-apps.folder"
+FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 
 class TrackFileReadProgress(object):
@@ -36,33 +30,3 @@ class TrackFileReadProgress(object):
 
     def __getattr__(self, attr):
         return getattr(self.fobj, attr)
-
-
-def only_once(func):
-    lock = threading.Lock()
-    locks = {}
-    results = {}
-
-    @functools.wraps(func)
-    def wrapped(*args, **kwargs):
-        key = (args, tuple(kwargs.items()))
-        # could do with just setdefault, but it would require
-        # create/delete a "default" Lock() object for each call, so it
-        # is better to lock a single one for a short time
-        with lock:
-            if key not in locks:
-                locks[key] = threading.Lock()
-        with locks[key]:
-            if key not in results:
-                results[key] = func(*args, **kwargs)
-        return results[key]
-
-    return wrapped
-
-
-@only_once
-def shared_token_warning():
-    LOGGER.warning(
-        "Warning: a shared GoogleAPI token is in use. "
-        "Please create your own token."
-    )
