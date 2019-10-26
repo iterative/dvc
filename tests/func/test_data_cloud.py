@@ -58,6 +58,10 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 # Ensure that absolute path is used
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
+TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
+    os.path.dirname(__file__), "gdrive-settings.yaml"
+)
+
 
 def _should_test_aws():
     do_test = env2bool("DVC_TEST_AWS", undefined=None)
@@ -390,6 +394,9 @@ class TestRemoteGDrive(TestDataCloudBase):
     def _should_test(self):
         return _should_test_gdrive()
 
+    def _get_keyfile(self):
+        return TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH
+
     def _get_url(self):
         return get_gdrive_url()
 
@@ -651,6 +658,15 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
         url = get_gdrive_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                Config.SECTION_REMOTE_KEY_FILE,
+                TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH,
+            ]
+        )
 
         self._test_cloud(TEST_REMOTE)
 

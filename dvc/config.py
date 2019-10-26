@@ -247,8 +247,6 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_GCP_PROJECTNAME): str,
     }
 
-    SECTION_GDRIVE_CREDENTIALPATH = CREDENTIALPATH
-
     # backward compatibility
     SECTION_LOCAL = "local"
     SECTION_LOCAL_STORAGEPATH = SECTION_AWS_STORAGEPATH

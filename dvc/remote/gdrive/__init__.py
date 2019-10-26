@@ -38,18 +38,19 @@ class RemoteGDrive(RemoteBASE):
         self.no_traverse = False
         self.cached_dirs = {}
         self.cached_ids = {}
-        if Config.SECTION_GDRIVE_CREDENTIALPATH not in config:
+        self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
+        self.config = config
+        self.init_drive()
+
+    def init_drive(self):
+        if Config.SECTION_REMOTE_KEY_FILE not in self.config:
             raise DvcException(
                 "Google Drive settings file path is missed from config. "
                 "Learn more at https://dvc.org/doc."
             )
-        self.gdrive_credentials_path = config.get(
-            Config.SECTION_GDRIVE_CREDENTIALPATH
+        self.gdrive_credentials_path = self.config.get(
+            Config.SECTION_REMOTE_KEY_FILE
         )
-        self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
-        self.init_drive()
-
-    def init_drive(self):
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cache_root_dirs()
 
