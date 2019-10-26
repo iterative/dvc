@@ -366,12 +366,12 @@ class RemoteLOCAL(RemoteBASE):
         else:
             failures = list(map(func, *plans))
 
-        for it in failures:
-            if not isinstance(it, tuple):
+        for failure in failures:
+            if not isinstance(failure, tuple):
                 continue
-            fails += it[0]
-            from_info, to_info = it[1], it[2]
-            operation = it[3]
+            fails += failure[0]
+            from_info, to_info = failure[1], failure[2]
+            operation = failure[3]
             msgs += f"Failed to {operation} '{from_info}' to '{to_info}'\n"
 
         if msgs:
