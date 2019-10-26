@@ -247,7 +247,11 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_GCP_PROJECTNAME): str,
     }
 
+    SECTION_GDRIVE = "gdrive"
     SECTION_GDRIVE_CREDENTIALPATH = CREDENTIALPATH
+    SECTION_GDRIVE_SCHEMA = {
+        Optional(SECTION_GDRIVE_CREDENTIALPATH): str,
+    }
 
     # backward compatibility
     SECTION_LOCAL = "local"
@@ -316,6 +320,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS, default={}): SECTION_AWS_SCHEMA,
         Optional(SECTION_GCP, default={}): SECTION_GCP_SCHEMA,
         Optional(SECTION_LOCAL, default={}): SECTION_LOCAL_SCHEMA,
+        Optional(SECTION_GDRIVE, default={}): SECTION_GDRIVE_SCHEMA,
     }
 
     def __init__(self, dvc_dir=None, validate=True):
