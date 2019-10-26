@@ -515,9 +515,7 @@ class RemoteBASE(object):
                 no_progress_bar=no_progress_bar,
             )
         except Exception:
-            msg = "failed to upload '{}' to '{}'"
-            logger.exception(msg.format(from_info, to_info))
-            return 1  # 1 fail
+            return 1, from_info, to_info, "upload"  # 1 fail
 
         return 0
 
@@ -555,9 +553,7 @@ class RemoteBASE(object):
                 from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
             )
         except Exception:
-            msg = "failed to download '{}' to '{}'"
-            logger.exception(msg.format(from_info, to_info))
-            return 1  # 1 fail
+            return 1, from_info, to_info, "download"  # 1 fail
 
         move(tmp_file, to_info, mode=file_mode)
 

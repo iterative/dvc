@@ -358,11 +358,24 @@ class RemoteLOCAL(RemoteBASE):
         if len(plans[0]) == 0:
             return 0
 
+        fails = 0
+        msgs = ""
         if jobs > 1:
             with TqdmThreadPoolExecutor(max_workers=jobs) as executor:
-                fails = sum(executor.map(func, *plans))
+                failures = executor.map(func, *plans)
         else:
-            fails = sum(map(func, *plans))
+            failures = list(map(func, *plans))
+
+        for it in failures:
+            if not isinstance(it, tuple):
+                continue
+            fails += it[0]
+            from_info, to_info = it[1], it[2]
+            operation = it[3]
+            msgs += f"Failed to {operation} '{from_info}' to '{to_info}'\n"
+
+        if msgs:
+            logger.exception(msgs)
 
         if fails:
             if download:
