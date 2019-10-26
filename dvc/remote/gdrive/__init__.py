@@ -115,7 +115,7 @@ class RemoteGDrive(RemoteBASE):
             "'{}' in parents".format(parent_id) for parent_id in parents_ids
         )
         if not query:
-            return
+            return None
         query += " and trashed=false and title='{}'".format(name)
 
         list_request = RequestListFile(self.drive, query)
@@ -133,17 +133,15 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     def subtract_root_path(self, parts):
-        parents_ids = [self.path_info.netloc]
         if not hasattr(self, "root_id"):
-            return parts, parents_ids
+            return parts, [self.path_info.netloc]
 
         for part in self.path_info.path.split("/"):
             if parts and parts[0] == part:
                 parts.pop(0)
-                parents_ids = [self.root_id]
             else:
                 break
-        return parts, parents_ids
+        return parts, [self.root_id]
 
     def get_path_id_from_cache(self, path_info):
         files_ids = []
