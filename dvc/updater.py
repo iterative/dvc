@@ -186,13 +186,15 @@ class Updater(object):  # pragma: no cover
 
             return None
 
+        package_manager = None
+
         if __file__.startswith("/usr/local/Cellar"):
-            return "formula"
+            package_manager = "formula"
 
         if "conda" in self._get_dvc_path("darwin"):
-            return "conda"
+            package_manager = "conda"
 
-        return "pip"
+        return package_manager or "pip"
 
     def _get_windows(self):
         if is_binary():
