@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import subprocess
 import sys
 import os
 import time
@@ -134,6 +135,7 @@ class Updater(object):  # pragma: no cover
                 "2. Go to {blue}https://dvc.org{reset}\n"
                 "3. Download and install new binary"
             ),
+            "conda": "Run {yellow}conda{reset} {update}update{reset} dvc",
             None: (
                 "Find the latest release at\n{blue}"
                 "https://github.com/iterative/dvc/releases/latest"
@@ -145,10 +147,20 @@ class Updater(object):  # pragma: no cover
 
         return instructions[package_manager]
 
+    def _get_dvc_path(self, system):
+        if system in ("linux", "darwin"):
+            output = subprocess.run(["which", "dvc"], capture_output=True)
+        else:
+            output = subprocess.run(["where", "dvc"], capture_output=True)
+
+        return output.stdout.decode("utf-8").lower()
+
     def _get_linux(self):
         import distro
 
         if not is_binary():
+            if "conda" in self._get_dvc_path("linux"):
+                return "conda"
             return "pip"
 
         package_managers = {
@@ -168,6 +180,8 @@ class Updater(object):  # pragma: no cover
             if __file__.startswith("/usr/local/Cellar"):
                 return "formula"
             else:
+                if "conda" in self._get_dvc_path("darwin"):
+                    return "conda"
                 return "pip"
 
         # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
@@ -180,7 +194,13 @@ class Updater(object):  # pragma: no cover
         return None
 
     def _get_windows(self):
-        return None if is_binary() else "pip"
+        if is_binary():
+            return None
+
+        if "conda" in self._get_dvc_path("linux"):
+            return "conda"
+
+        return "pip"
 
     def _get_package_manager(self):
         import platform
