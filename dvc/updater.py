@@ -147,7 +147,8 @@ class Updater(object):  # pragma: no cover
 
         return instructions[package_manager]
 
-    def _get_dvc_path(self, system):
+    @staticmethod
+    def _get_dvc_path(system):
         if system in ("linux", "darwin"):
             output = subprocess.run(["which", "dvc"], capture_output=True)
         else:
