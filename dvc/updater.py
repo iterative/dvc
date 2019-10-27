@@ -180,13 +180,6 @@ class Updater(object):  # pragma: no cover
 
     def _get_darwin(self):
         if is_binary():
-            # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
-            # so in order to know which method of installation was used,
-            # we need to actually call `brew cask`
-            ret = os.system("brew cask ls dvc")
-            if ret == 0:
-                return "cask"
-
             return None
 
         package_manager = None
