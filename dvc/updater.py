@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import subprocess
 import sys
 import os
 import time
@@ -150,11 +149,11 @@ class Updater(object):  # pragma: no cover
     @staticmethod
     def _get_dvc_path(system):
         if system in ("linux", "darwin"):
-            output = subprocess.run(["which", "dvc"], capture_output=True)
+            output = os.popen("which dvc")
         else:
-            output = subprocess.run(["where", "dvc"], capture_output=True)
+            output = os.popen("where dvc")
 
-        return output.stdout.decode("utf-8").lower()
+        return output.read().lower()
 
     def _get_linux(self):
         import distro
@@ -177,22 +176,23 @@ class Updater(object):  # pragma: no cover
         return package_managers.get(distro.id())
 
     def _get_darwin(self):
-        if not is_binary():
-            if __file__.startswith("/usr/local/Cellar"):
-                return "formula"
-            else:
-                if "conda" in self._get_dvc_path("darwin"):
-                    return "conda"
-                return "pip"
+        if is_binary():
+            # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
+            # so in order to know which method of installation was used,
+            # we need to actually call `brew cask`
+            ret = os.system("brew cask ls dvc")
+            if ret == 0:
+                return "cask"
 
-        # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
-        # so in order to know which method of installation was used,
-        # we need to actually call `brew cask`
-        ret = os.system("brew cask ls dvc")
-        if ret == 0:
-            return "cask"
+            return None
 
-        return None
+        if __file__.startswith("/usr/local/Cellar"):
+            return "formula"
+
+        if "conda" in self._get_dvc_path("darwin"):
+            return "conda"
+
+        return "pip"
 
     def _get_windows(self):
         if is_binary():
