@@ -156,15 +156,15 @@ class Updater(object):  # pragma: no cover
         return output.read().lower()
 
     @staticmethod
-    def _get_conda(path):
-        return "conda" if "conda" in path else None
+    def _is_conda(path):
+        return "conda" in path
 
     def _get_linux(self):
         import distro
 
         if not is_binary():
             dvc_path = self._get_dvc_path("linux")
-            return self._get_conda(dvc_path) or "pip"
+            return "conda" if self._is_conda(dvc_path) else "pip"
 
         package_managers = {
             "rhel": "yum",
@@ -195,7 +195,8 @@ class Updater(object):  # pragma: no cover
             package_manager = "formula"
 
         dvc_path = self._get_dvc_path("darwin")
-        package_manager = package_manager or self._get_conda(dvc_path)
+        if self._is_conda(dvc_path):
+            package_manager = "conda"
 
         return package_manager or "pip"
 
@@ -204,7 +205,10 @@ class Updater(object):  # pragma: no cover
             return None
 
         dvc_path = self._get_dvc_path("windows")
-        return self._get_conda(dvc_path) or "pip"
+        if self._is_conda(dvc_path):
+            return "conda"
+
+        return "pip"
 
     def _get_package_manager(self):
         import platform
