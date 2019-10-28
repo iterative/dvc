@@ -79,13 +79,12 @@ def add_parser(subparsers, parent_parser):
         default=False,
         help="Keep data files for all git tags.",
     )
-    # Issue number 2681
-    # gc_parser.add_argument(
-    #     "--all-commits",
-    #     action="store_true",
-    #     default=False,
-    #     help="Keep data files for all commits.",
-    # )
+    gc_parser.add_argument(
+        "--all-commits",
+        action="store_true",
+        default=False,
+        help=argparse.SUPPRESS,
+    )
     gc_parser.add_argument(
         "-c",
         "--cloud",
