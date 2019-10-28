@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 
 import logging
 from datetime import timedelta
-from funcy import cached_property
-from dvc.utils.compat import FileNotFoundError
+from functools import wraps
 
+from funcy import cached_property
+
+from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -12,6 +14,41 @@ from dvc.path_info import CloudURLInfo
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
+
+
+def dynamic_chunk_size(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        import requests
+        from google.cloud.storage.blob import Blob, _DEFAULT_CHUNKSIZE
+
+        # Default chunk size for gs is 100M, which might be too much for
+        # particular network (see [1]). So if we are getting ConnectionError,
+        # we should try lowering the chunk size until we reach the minimum
+        # allowed chunk size of 256K. Also note that `chunk_size` must be a
+        # multiple of 256K per the API specification.
+        #
+        # [1] https://github.com/iterative/dvc/issues/2572
+
+        # skipcq: PYL-W0212
+        multiplier = int(_DEFAULT_CHUNKSIZE / Blob._CHUNK_SIZE_MULTIPLE)
+        while True:
+            try:
+                # skipcq: PYL-W0212
+                chunk_size = Blob._CHUNK_SIZE_MULTIPLE * multiplier
+                return func(*args, chunk_size=chunk_size, **kwargs)
+            except requests.exceptions.ConnectionError:
+                multiplier = int(multiplier / 2)
+                if not multiplier:
+                    raise
+
+    return wrapper
+
+
+@dynamic_chunk_size
+def _upload_to_bucket(bucket, from_file, to_info, **kwargs):
+    blob = bucket.blob(to_info.path, **kwargs)
+    blob.upload_from_filename(from_file)
 
 
 class RemoteGS(RemoteBASE):
@@ -88,8 +125,7 @@ class RemoteGS(RemoteBASE):
 
     def _upload(self, from_file, to_info, **_kwargs):
         bucket = self.gs.bucket(to_info.bucket)
-        blob = bucket.blob(to_info.path)
-        blob.upload_from_filename(from_file)
+        _upload_to_bucket(bucket, from_file, to_info)
 
     def _download(self, from_info, to_file, **_kwargs):
         bucket = self.gs.bucket(from_info.bucket)

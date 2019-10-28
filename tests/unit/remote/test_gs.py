@@ -1,7 +1,9 @@
 import mock
+import pytest
+import requests
 from unittest import TestCase
 
-from dvc.remote.gs import RemoteGS
+from dvc.remote.gs import RemoteGS, dynamic_chunk_size
 
 
 class TestRemoteGS(TestCase):
@@ -36,3 +38,27 @@ class TestRemoteGS(TestCase):
         remote = RemoteGS(None, config)
         remote.gs()
         mock_client.assert_called_with(self.PROJECT)
+
+
+def test_dynamic_chunk_size():
+    chunk_sizes = []
+
+    @dynamic_chunk_size
+    def upload(chunk_size=None):
+        chunk_sizes.append(chunk_size)
+        raise requests.exceptions.ConnectionError()
+
+    with pytest.raises(requests.exceptions.ConnectionError):
+        upload()
+
+    assert chunk_sizes == [
+        104857600,
+        52428800,
+        26214400,
+        13107200,
+        6553600,
+        3145728,
+        1572864,
+        786432,
+        262144,
+    ]

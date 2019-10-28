@@ -4,6 +4,7 @@ import errno
 import itertools
 import io
 import os
+import posixpath
 import getpass
 import logging
 import threading
@@ -115,9 +116,10 @@ class RemoteSSH(RemoteBASE):
             return identity_file[0]
         return None
 
-    def ssh(self, path_info):
+    def ensure_credentials(self, path_info=None):
+        if path_info is None:
+            path_info = self.path_info
         host, user, port = path_info.host, path_info.user, path_info.port
-
         # NOTE: we use the same password regardless of the server :(
         if self.ask_password and self.password is None:
             with saved_passwords_lock:
@@ -133,13 +135,16 @@ class RemoteSSH(RemoteBASE):
                     )
                 self.password = password
 
+    def ssh(self, path_info):
+        self.ensure_credentials(path_info)
+
         from .connection import SSHConnection
 
         return get_connection(
             SSHConnection,
-            host,
-            username=user,
-            port=port,
+            path_info.host,
+            username=path_info.user,
+            port=path_info.port,
             key_filename=self.keyfile,
             timeout=self.timeout,
             password=self.password,
@@ -260,10 +265,10 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(self.path_info) as ssh:
             return list(ssh.walk_files(self.path_info.path))
 
-    def walk(self, path_info):
+    def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:
-            for entry in ssh.walk(path_info.path):
-                yield entry
+            for fname in ssh.walk_files(path_info.path):
+                yield path_info / posixpath.relpath(fname, path_info.path)
 
     def makedirs(self, path_info):
         with self.ssh(path_info) as ssh:
@@ -305,6 +310,9 @@ class RemoteSSH(RemoteBASE):
         """
         if not self.no_traverse:
             return list(set(checksums) & set(self.all()))
+
+        # possibly prompt for credentials before "Querying" progress output
+        self.ensure_credentials()
 
         with Tqdm(
             desc="Querying "

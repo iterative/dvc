@@ -663,7 +663,7 @@ class Stage(object):
 
         self._check_dvc_filename(fname)
 
-        logger.info(
+        logger.debug(
             "Saving information to '{file}'.".format(file=relpath(fname))
         )
         d = self.dumpd()
