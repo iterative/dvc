@@ -14,6 +14,7 @@ from dvc.utils.fs import (
     contains_symlink_up_to,
     BasePathNotInCheckedPathException,
     get_parent_dirs_up_to,
+    get_inode,
 )
 from mock import patch
 from tests.basic_env import TestDir
@@ -149,3 +150,9 @@ def test_relpath_windows_different_drives():
     rel_info = relpath(info1, info2)
     assert isinstance(rel_info, str)
     assert rel_info == path1
+
+
+def test_get_inode(repo_dir):
+    path = repo_dir.FOO
+    path_info = PathInfo(path)
+    assert get_inode(path) == get_inode(path_info)
