@@ -19,7 +19,7 @@ class CmdImportUrl(CmdBase):
         except DvcException:
             logger.exception(
                 "failed to import {}. You could also try downloading "
-                "it manually, and adding it with 'dvc add'.".format(
+                "it manually, and adding it with `dvc add`.".format(
                     self.args.url
                 )
             )
@@ -49,7 +49,7 @@ def add_parser(subparsers, parent_parser):
         "gs://bucket/path/to/file\n"
         "hdfs://example.com/path/to/file\n"
         "ssh://example.com:/path/to/file\n"
-        "remote://myremote/path/to/file (see 'dvc remote')",
+        "remote://myremote/path/to/file (see `dvc remote`)",
     )
     import_parser.add_argument(
         "out", nargs="?", help="Destination path to put files to."

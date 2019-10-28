@@ -30,6 +30,6 @@ def test_failed_import_url(mocker, caplog, dvc_repo):
             expected_error = (
                 "failed to import http://somesite.com/file_name. "
                 "You could also try downloading it manually, and "
-                "adding it with 'dvc add'."
+                "adding it with `dvc add`."
             )
             assert expected_error in caplog.text

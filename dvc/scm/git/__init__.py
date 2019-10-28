@@ -201,7 +201,7 @@ class Git(Base):
         except AssertionError:
             msg = (
                 "failed to add '{}' to git. You can add those files "
-                "manually using 'git add'. See "
+                "manually using `git add`. See "
                 "https://github.com/iterative/dvc/issues/610 for more "
                 "details.".format(str(paths))
             )
