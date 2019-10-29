@@ -1,6 +1,11 @@
 from __future__ import unicode_literals
 
-from . import locked
+import logging
+
+from dvc.repo import locked
+
+
+logger = logging.getLogger(__name__)
 
 
 @locked
@@ -20,11 +25,16 @@ def pull(
         jobs,
         remote=remote,
         all_branches=all_branches,
-        all_tags=all_tags,
         with_deps=with_deps,
+        all_tags=all_tags,
         recursive=recursive,
     )
     self._checkout(
-        targets=targets, with_deps=with_deps, force=force, recursive=recursive
+        targets=targets,
+        with_deps=with_deps,
+        force=force,
+        recursive=recursive,
+
     )
+    logger.info("Data retrieved successfully from DVC remote storage.")
     return processed_files_count
