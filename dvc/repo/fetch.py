@@ -90,10 +90,10 @@ def _fetch_external(self, repo_url, repo_rev, files):
                     else:
                         cache.update(out.get_used_cache())
 
-                    try:
-                        return repo.cloud.pull(cache), failed
-                    except DownloadError as exc:
-                        failed += exc.amount
+                try:
+                    return repo.cloud.pull(cache), failed
+                except DownloadError as exc:
+                    failed += exc.amount
     except CloneError:
         failed += 1
         logger.exception(
