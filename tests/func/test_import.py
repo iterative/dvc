@@ -71,7 +71,7 @@ def test_pull_imported_stage(dvc_repo, erepo):
 def test_pull_imported_directory_stage(dvc_repo, erepo):
     src = erepo.DATA_DIR
     dst = erepo.DATA_DIR + "_imported"
-    stage_file = erepo.DATA_DIR + "_imported.dvc"
+    stage_file = dst + ".dvc"
 
     dvc_repo.imp(erepo.root_dir, src, dst)
 
