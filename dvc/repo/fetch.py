@@ -76,20 +76,20 @@ def _fetch_external(self, repo_url, repo_rev, files):
     cache_dir = self.cache.local.cache_dir
     try:
         with external_repo(repo_url, repo_rev, cache_dir=cache_dir) as repo:
-            cache = NamedCache()
-            for name in files:
-                try:
-                    out = repo.find_out_by_relpath(name)
-                except OutputNotFoundError:
-                    failed += 1
-                    logger.exception(
-                        "failed to fetch data for '{}'".format(name)
-                    )
-                    continue
-                else:
-                    cache.update(out.get_used_cache())
-
             with repo.state:
+                cache = NamedCache()
+                for name in files:
+                    try:
+                        out = repo.find_out_by_relpath(name)
+                    except OutputNotFoundError:
+                        failed += 1
+                        logger.exception(
+                            "failed to fetch data for '{}'".format(name)
+                        )
+                        continue
+                    else:
+                        cache.update(out.get_used_cache())
+
                 try:
                     return repo.cloud.pull(cache), failed
                 except DownloadError as exc:
