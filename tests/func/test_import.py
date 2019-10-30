@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import filecmp
+import shutil
 
 import pytest
 from mock import patch
@@ -65,6 +66,23 @@ def test_pull_imported_stage(dvc_repo, erepo):
 
     assert os.path.isfile(dst)
     assert os.path.isfile(dst_cache)
+
+
+def test_pull_imported_directory_stage(dvc_repo, erepo):
+    src = erepo.DATA_DIR
+    dst = erepo.DATA_DIR + "_imported"
+    stage_file = erepo.DATA_DIR + "_imported.dvc"
+
+    dvc_repo.imp(erepo.root_dir, src, dst)
+
+    shutil.rmtree(dst)
+    shutil.rmtree(dvc_repo.cache.local.cache_dir)
+
+    dvc_repo.pull([stage_file])
+
+    assert os.path.exists(dst)
+    assert os.path.isdir(dst)
+    trees_equal(src, dst)
 
 
 def test_download_error_pulling_imported_stage(dvc_repo, erepo):
