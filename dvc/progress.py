@@ -20,7 +20,7 @@ class TqdmThreadPoolExecutor(ThreadPoolExecutor):
         Creates a blank initial dummy progress bar if needed so that workers
         are forced to create "nested" bars.
         """
-        blank_bar = Tqdm(bar_format="Multi-Threaded:", leave=False)
+        blank_bar = Tqdm(bar_format="", leave=False)
         if blank_bar.pos > 0:
             # already nested - don't need a placeholder bar
             blank_bar.close()
