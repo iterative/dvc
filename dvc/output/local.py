@@ -26,9 +26,10 @@ class OutputLOCAL(OutputBase):
             # so we should expect both posix and windows style paths.
             # PathInfo accepts both, i.e. / works everywhere, \ only on win.
             #
-            # FIXME: if we have Windows path containig / or posix one with \
+            # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
             p = self.REMOTE.path_cls(path)
+
             if not p.is_absolute():
                 p = self.stage.wdir / p
 

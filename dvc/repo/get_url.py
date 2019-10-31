@@ -12,7 +12,8 @@ def get_url(url, out=None):
 
     if os.path.exists(url):
         url = os.path.abspath(url)
-        out = os.path.abspath(out)
+
+    out = os.path.abspath(out)
 
     dep, = dependency.loads_from(None, [url])
     out, = output.loads_from(None, [out], use_cache=False)
