@@ -555,7 +555,7 @@ class RemoteBASE(object):
                 from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
             )
         except Exception:
-            msg = "failed to upload '{}' to '{}'"
+            msg = "failed to download '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
 
