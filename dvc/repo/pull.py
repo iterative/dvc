@@ -30,11 +30,7 @@ def pull(
         recursive=recursive,
     )
     self._checkout(
-        targets=targets,
-        with_deps=with_deps,
-        force=force,
-        recursive=recursive,
-
+        targets=targets, with_deps=with_deps, force=force, recursive=recursive
     )
     logger.info("Data retrieved successfully from DVC remote storage.")
     return processed_files_count
