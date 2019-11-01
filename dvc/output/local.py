@@ -29,7 +29,6 @@ class OutputLOCAL(OutputBase):
             # FIXME: if we have Windows path containing / or posix one with \
             # then we have #2059 bug and can't really handle that.
             p = self.REMOTE.path_cls(path)
-
             if not p.is_absolute():
                 p = self.stage.wdir / p
 
