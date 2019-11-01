@@ -194,7 +194,12 @@ class SSHConnection:
         self.makedirs(posixpath.dirname(dst))
 
         tmp = tmp_fname(dst)
-        self.copy(src, tmp)
+
+        try:
+            self.sftp.rename(src, tmp)
+        except OSError:
+            self.copy(src, tmp)
+
         self.sftp.rename(tmp, dst)
         self.remove(src)
 
