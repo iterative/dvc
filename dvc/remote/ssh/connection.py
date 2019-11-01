@@ -185,23 +185,27 @@ class SSHConnection:
             self.sftp.get(src, dest, callback=pbar.update_to)
 
     def move(self, src, dst):
-        """Atomically move src to dst.
-
-        Moving is performed in two stages to make the whole operation atomic in
-        case src and dst are on different filesystems and actual physical
-        copying of data is happening.
+        """Rename src to dst, if it is not possible (in case src and dst are
+        on different filesystems) and actual physical copying of data is
+        happening.
         """
         self.makedirs(posixpath.dirname(dst))
 
+        try:
+            self.sftp.rename(src, dst)
+        except OSError:
+            self._atomic_copy(src, dst)
+
+        self.remove(src)
+
+    def _atomic_copy(self, src, dst):
         tmp = tmp_fname(dst)
 
         try:
-            self.sftp.rename(src, tmp)
-        except OSError:
             self.copy(src, tmp)
-
-        self.sftp.rename(tmp, dst)
-        self.remove(src)
+            self.sftp.rename(tmp, dst)
+        finally:
+            self.remove(tmp)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self.makedirs(posixpath.dirname(dest))
