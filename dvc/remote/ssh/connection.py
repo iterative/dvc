@@ -185,8 +185,17 @@ class SSHConnection:
             self.sftp.get(src, dest, callback=pbar.update_to)
 
     def move(self, src, dst):
+        """Use `SFTP RENAME` operation when possible, otherwise,
+        fallback to copy and remove, since the former one doesn't
+        work across drives.
+        """
         self.makedirs(posixpath.dirname(dst))
-        self.sftp.rename(src, dst)
+
+        try:
+            self.sftp.rename(src, dst)
+        except OSError:
+            self.copy(src, dst)
+            self.remove(src)
 
     def upload(self, src, dest, no_progress_bar=False, progress_title=None):
         self.makedirs(posixpath.dirname(dest))
