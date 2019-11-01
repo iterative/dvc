@@ -3,6 +3,7 @@
 from __future__ import unicode_literals
 
 import logging
+import colorama
 
 from dvc.cli import parse_args
 from dvc.lock import LockError
@@ -15,6 +16,16 @@ from dvc.utils.compat import is_py2
 
 
 logger = logging.getLogger("dvc")
+
+footer = (
+    "\n{yellow}Having any troubles?{nc}"
+    " Hit us up at {blue}https://dvc.org/support{nc},"
+    " we are always happy to help!"
+).format(
+    blue=colorama.Fore.BLUE,
+    nc=colorama.Fore.RESET,
+    yellow=colorama.Fore.YELLOW,
+)
 
 
 def main(argv=None):
@@ -74,6 +85,9 @@ def main(argv=None):
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.
         clean_repos()
+
+    if ret != 0:
+        logger.info(footer)
 
     Analytics().send_cmd(cmd, args, ret)
 
