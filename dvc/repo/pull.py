@@ -25,8 +25,8 @@ def pull(
         jobs,
         remote=remote,
         all_branches=all_branches,
-        with_deps=with_deps,
         all_tags=all_tags,
+        with_deps=with_deps,
         recursive=recursive,
     )
     self._checkout(
