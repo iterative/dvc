@@ -369,7 +369,6 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         assert path_info.scheme == "local"
         assert checksum is not None
-
         assert os.path.exists(fspath_py35(path_info))
 
         actual_mtime, actual_size = get_mtime_and_size(

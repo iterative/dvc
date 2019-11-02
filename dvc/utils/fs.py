@@ -26,7 +26,7 @@ def get_mtime_and_size(path, dvcignore):
         files_mtimes = {}
         for file_path in walk_files(path, dvcignore):
             try:
-                stat = os.stat(fspath_py35(file_path))
+                stat = os.stat(file_path)
             except OSError as exc:
                 # NOTE: broken symlink case.
                 if exc.errno != errno.ENOENT:
