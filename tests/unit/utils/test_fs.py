@@ -39,15 +39,6 @@ class TestMtimeAndSize(TestDir):
         self.assertIs(type(dir_size), str)
         self.assertEqual(dir_size, str(actual_dir_size))
 
-    def test_path_object_and_str_are_valid_types(self):
-        dvcignore = DvcIgnoreFilter(self.root_dir)
-        file_time, file_size = get_mtime_and_size(self.DATA, dvcignore)
-        file_object_time, file_object_size = get_mtime_and_size(
-            PathInfo(self.DATA), dvcignore
-        )
-        self.assertEqual(file_time, file_object_time)
-        self.assertEqual(file_size, file_object_size)
-
 
 class TestContainsLink(TestCase):
     def test_should_raise_exception_on_base_path_not_in_path(self):
@@ -165,3 +156,14 @@ def test_get_inode(repo_dir):
     path = repo_dir.FOO
     path_info = PathInfo(path)
     assert get_inode(path) == get_inode(path_info)
+
+
+@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
+def test_path_object_and_str_are_valid_types_get_mtime_and_size(
+    path, repo_dir
+):
+    dvcignore = DvcIgnoreFilter(repo_dir.root_dir)
+    time, size = get_mtime_and_size(path, dvcignore)
+    object_time, object_size = get_mtime_and_size(PathInfo(path), dvcignore)
+    assert time == object_time
+    assert size == object_size
