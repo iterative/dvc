@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 
 import os
 import posixpath
+import logging
 
 from funcy import cached_property
-from ratelimit import limits, sleep_and_retry
 from backoff import on_exception, expo
 
 from dvc.scheme import Schemes
@@ -20,6 +20,8 @@ from dvc.remote.gdrive.pydrive import (
 )
 from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
 
+LOGGER = logging.getLogger(__name__)
+
 
 class GDriveURLInfo(CloudURLInfo):
     @property
@@ -32,6 +34,8 @@ class RemoteGDrive(RemoteBASE):
     path_cls = GDriveURLInfo
     REGEX = r"^gdrive://.*$"
     REQUIRES = {"pydrive": "pydrive"}
+    GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
+    CREDENTIALS_FILE_PATH = "credentials.json"
 
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
@@ -43,26 +47,26 @@ class RemoteGDrive(RemoteBASE):
         self.init_drive()
 
     def init_drive(self):
-        if Config.SECTION_REMOTE_KEY_FILE not in self.config:
+        self.gdrive_credentials_path = self.config.get(
+            Config.SECTION_REMOTE_KEY_FILE, None
+        )
+        if not self.gdrive_credentials_path:
             raise DvcException(
                 "Google Drive settings file path is missed from config. "
-                "Learn more at https://dvc.org/doc."
+                "Learn more at "
+                "https://dvc.org/doc/command-reference/remote/add."
             )
-        self.gdrive_credentials_path = self.config.get(
-            Config.SECTION_REMOTE_KEY_FILE
-        )
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cache_root_dirs()
 
     @on_exception(expo, DvcException, max_tries=8)
-    @sleep_and_retry
-    @limits(calls=10, period=1)
     def execute_request(self, request):
         try:
             result = request.execute()
         except Exception as exception:
-            if "Rate Limit Exceeded" in str(exception):
-                raise DvcException("API usage rate limit exceeded")
+            retry_codes = ["403", "500", "502", "503", "504"]
+            if any(code in str(exception) for code in retry_codes):
+                raise DvcException("Google API request failed")
             raise
         return result
 
@@ -86,10 +90,10 @@ class RemoteGDrive(RemoteBASE):
         from pydrive.auth import GoogleAuth
         from pydrive.drive import GoogleDrive
 
-        if os.getenv("PYDRIVE_USER_CREDENTIALS_DATA"):
-            with open("credentials.json", "w") as credentials_file:
+        if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+            with open(self.CREDENTIALS_FILE_PATH, "w") as credentials_file:
                 credentials_file.write(
-                    os.getenv("PYDRIVE_USER_CREDENTIALS_DATA")
+                    os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
                 )
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
@@ -111,11 +115,12 @@ class RemoteGDrive(RemoteBASE):
         return result
 
     def get_drive_item(self, name, parents_ids):
+        if not parents_ids:
+            return None
         query = " or ".join(
             "'{}' in parents".format(parent_id) for parent_id in parents_ids
         )
-        if not query:
-            return None
+
         query += " and trashed=false and title='{}'".format(name)
 
         list_request = RequestListFile(self.drive, query)
@@ -223,11 +228,13 @@ class RemoteGDrive(RemoteBASE):
                 yield path
 
     def all(self):
+        if not self.cached_ids:
+            return
+
         query = " or ".join(
             "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
         )
-        if not query:
-            return
+
         query += " and trashed=false"
         for file1 in self.list_drive_item(query):
             parent_id = file1["parents"][0]["id"]
@@ -236,4 +243,4 @@ class RemoteGDrive(RemoteBASE):
                 yield self.path_to_checksum(path)
             except ValueError:
                 # We ignore all the non-cache looking files
-                pass
+                LOGGER.debug('Ignoring path as "non-cache looking"')

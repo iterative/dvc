@@ -75,7 +75,7 @@ def _should_test_aws():
 
 
 def _should_test_gdrive():
-    if os.getenv("PYDRIVE_USER_CREDENTIALS_DATA"):
+    if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
         return True
 
     return False
