@@ -156,3 +156,14 @@ def test_get_inode(repo_dir):
     path = repo_dir.FOO
     path_info = PathInfo(path)
     assert get_inode(path) == get_inode(path_info)
+
+
+@pytest.mark.parametrize("path", [TestDir.DATA, TestDir.DATA_DIR])
+def test_path_object_and_str_are_valid_types_get_mtime_and_size(
+    path, repo_dir
+):
+    dvcignore = DvcIgnoreFilter(repo_dir.root_dir)
+    time, size = get_mtime_and_size(path, dvcignore)
+    object_time, object_size = get_mtime_and_size(PathInfo(path), dvcignore)
+    assert time == object_time
+    assert size == object_size
