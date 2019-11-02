@@ -3,12 +3,10 @@ from __future__ import print_function
 import logging
 import sys
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
-TqdmThreadPoolExecutor = ThreadPoolExecutor
 
 
 class Tqdm(tqdm):

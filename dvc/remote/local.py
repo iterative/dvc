@@ -4,6 +4,7 @@ import stat
 import errno
 import logging
 from functools import partial
+from concurrent.futures import ThreadPoolExecutor
 
 from shortuuid import uuid
 
@@ -29,7 +30,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException, DownloadError, UploadError
-from dvc.progress import Tqdm, TqdmThreadPoolExecutor
+from dvc.progress import Tqdm
 
 from dvc.path_info import PathInfo
 
@@ -359,7 +360,7 @@ class RemoteLOCAL(RemoteBASE):
             return 0
 
         if jobs > 1:
-            with TqdmThreadPoolExecutor(max_workers=jobs) as executor:
+            with ThreadPoolExecutor(max_workers=jobs) as executor:
                 fails = sum(executor.map(func, *plans))
         else:
             fails = sum(map(func, *plans))
