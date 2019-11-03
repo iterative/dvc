@@ -12,8 +12,6 @@ from dvc.remote import RemoteS3
 from dvc.repo import Repo
 from dvc.utils import makedirs
 
-from tests.func.test_data_cloud import get_aws_url
-
 
 def test_get_file(repo_dir):
     src = repo_dir.FOO
@@ -45,7 +43,7 @@ def test_get_url_to_dir(dname, repo_dir):
 def test_get_url_from_non_local_path_to_dir_and_file(repo_dir, dst):
     file_name = "from"
     file_content = "data"
-    base_info = RemoteS3.path_cls(get_aws_url())
+    base_info = RemoteS3.path_cls("s3://bucket/path")
     from_info = base_info / file_name
 
     s3 = boto3.client("s3")
