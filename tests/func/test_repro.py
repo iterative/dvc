@@ -964,8 +964,8 @@ class TestReproExternalS3(TestReproExternalBase):
         return "aws s3 cp {} {}".format(i, o)
 
     def write(self, bucket, key, body):
-        s3 = boto3.resource("s3")
-        s3.Bucket(bucket).put_object(Key=key, Body=body)
+        s3 = boto3.client("s3")
+        s3.put_object(Bucket=bucket, Key=key, Body=body)
 
 
 class TestReproExternalGS(TestReproExternalBase):
