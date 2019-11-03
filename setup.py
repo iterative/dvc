@@ -127,7 +127,7 @@ tests_requirements = [
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.6.0",
-    "moto>=1.3.14.dev55",
+    "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
 ]
 
