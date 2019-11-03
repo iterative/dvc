@@ -54,7 +54,9 @@ def test_get_url_from_non_local_path_to_dir_and_file(repo_dir, dst):
 
         Repo.get_url(from_info.url, dst)
 
-        result_path = os.path.join(dst, file_name) if os.path.isdir(dst) else dst
+        result_path = (
+            os.path.join(dst, file_name) if os.path.isdir(dst) else dst
+        )
 
         assert os.path.exists(result_path)
         assert os.path.isfile(result_path)
