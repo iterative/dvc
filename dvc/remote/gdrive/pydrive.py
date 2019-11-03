@@ -36,6 +36,24 @@ class RequestListFilePaginated(RequestBASE):
         return next(self.iter, None)
 
 
+class RequestCreateFolder(RequestBASE):
+    def __init__(self, args):
+        super(RequestCreateFolder, self).__init__(args["drive"])
+        self.title = args["title"]
+        self.parent_id = args["parent_id"]
+
+    def execute(self):
+        item = self.drive.CreateFile(
+            {
+                "title": self.title,
+                "parents": [{"id": self.parent_id}],
+                "mimeType": FOLDER_MIME_TYPE,
+            }
+        )
+        item.Upload()
+        return item
+
+
 class RequestUploadFile(RequestBASE):
     def __init__(
         self, args, no_progress_bar=True, from_file="", progress_name=""
@@ -43,32 +61,25 @@ class RequestUploadFile(RequestBASE):
         super(RequestUploadFile, self).__init__(args["drive"])
         self.title = args["title"]
         self.parent_id = args["parent_id"]
-        self.mime_type = args["mime_type"]
         self.no_progress_bar = no_progress_bar
         self.from_file = from_file
-        self.proress_name = progress_name
+        self.progress_name = progress_name
 
     def upload(self, item):
         with open(self.from_file, "rb") as from_file:
             if not self.no_progress_bar:
-                from_file = TrackFileReadProgress(self.proress_name, from_file)
+                from_file = TrackFileReadProgress(
+                    self.progress_name, from_file
+                )
             if os.stat(self.from_file).st_size:
                 item.content = from_file
             item.Upload()
 
     def execute(self):
         item = self.drive.CreateFile(
-            {
-                "title": self.title,
-                "parents": [{"id": self.parent_id}],
-                "mimeType": self.mime_type,
-            }
+            {"title": self.title, "parents": [{"id": self.parent_id}]}
         )
-        if self.mime_type == FOLDER_MIME_TYPE:
-            item.Upload()
-        else:
-            self.upload(item)
-
+        self.upload(item)
         return item
 
 

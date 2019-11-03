@@ -15,12 +15,13 @@ from dvc.exceptions import DvcException
 from dvc.remote.gdrive.pydrive import (
     RequestListFile,
     RequestListFilePaginated,
+    RequestCreateFolder,
     RequestUploadFile,
     RequestDownloadFile,
 )
 from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
 
-LOGGER = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class GDriveURLInfo(CloudURLInfo):
@@ -40,8 +41,6 @@ class RemoteGDrive(RemoteBASE):
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
         self.no_traverse = False
-        self.cached_dirs = {}
-        self.cached_ids = {}
         self.path_info = self.path_cls(config[Config.SECTION_REMOTE_URL])
         self.config = config
         self.init_drive()
@@ -54,10 +53,10 @@ class RemoteGDrive(RemoteBASE):
             raise DvcException(
                 "Google Drive settings file path is missed from config. "
                 "Learn more at "
-                "https://dvc.org/doc/command-reference/remote/add."
+                "https://man.dvc.org/remote/add."
             )
         self.root_id = self.get_path_id(self.path_info, create=True)
-        self.cache_root_dirs()
+        self.cached_dirs, self.cached_ids = self.cache_root_dirs()
 
     @on_exception(expo, DvcException, max_tries=8)
     def execute_request(self, request):
@@ -79,11 +78,14 @@ class RemoteGDrive(RemoteBASE):
             page_list = self.execute_request(list_request)
 
     def cache_root_dirs(self):
+        cached_dirs = {}
+        cached_ids = {}
         for dir1 in self.list_drive_item(
             "'{}' in parents and trashed=false".format(self.root_id)
         ):
-            self.cached_dirs.setdefault(dir1["title"], []).append(dir1["id"])
-            self.cached_ids[dir1["id"]] = dir1["title"]
+            cached_dirs.setdefault(dir1["title"], []).append(dir1["id"])
+            cached_ids[dir1["id"]] = dir1["title"]
+        return cached_dirs, cached_ids
 
     @cached_property
     def drive(self):
@@ -103,13 +105,8 @@ class RemoteGDrive(RemoteBASE):
         return gdrive
 
     def create_drive_item(self, parent_id, title):
-        upload_request = RequestUploadFile(
-            {
-                "drive": self.drive,
-                "title": title,
-                "parent_id": parent_id,
-                "mime_type": FOLDER_MIME_TYPE,
-            }
+        upload_request = RequestCreateFolder(
+            {"drive": self.drive, "title": title, "parent_id": parent_id}
         )
         result = self.execute_request(upload_request)
         return result
@@ -152,7 +149,8 @@ class RemoteGDrive(RemoteBASE):
         files_ids = []
         parts, parents_ids = self.subtract_root_path(path_info.path.split("/"))
         if (
-            path_info != self.path_info
+            hasattr(self, "cached_dirs")
+            and path_info != self.path_info
             and parts
             and (parts[0] in self.cached_dirs)
         ):
@@ -186,7 +184,6 @@ class RemoteGDrive(RemoteBASE):
                 "drive": self.drive,
                 "title": to_info.name,
                 "parent_id": parent_id,
-                "mime_type": "",
             },
             no_progress_bar,
             from_file,
@@ -228,7 +225,7 @@ class RemoteGDrive(RemoteBASE):
                 yield path
 
     def all(self):
-        if not self.cached_ids:
+        if not hasattr(self, "cached_ids") or not self.cached_ids:
             return
 
         query = " or ".join(
@@ -243,4 +240,4 @@ class RemoteGDrive(RemoteBASE):
                 yield self.path_to_checksum(path)
             except ValueError:
                 # We ignore all the non-cache looking files
-                LOGGER.debug('Ignoring path as "non-cache looking"')
+                logger.debug('Ignoring path as "non-cache looking"')
