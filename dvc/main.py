@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 
 import logging
-import sys
 
 from dvc.cli import parse_args
 from dvc.lock import LockError
@@ -78,7 +77,7 @@ def main(argv=None):
         clean_repos()
 
     if ret != 0:
-        print(FOOTER, file=sys.stderr)
+        logger.info(FOOTER)
 
     Analytics().send_cmd(cmd, args, ret)
 
