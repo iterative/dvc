@@ -9,8 +9,8 @@ from packaging import version
 
 from dvc import __version__
 from dvc.lock import Lock, LockError
-from dvc.utils import is_binary, boxify, env2bool
-
+from dvc.utils import boxify, env2bool
+from dvc.utils.pkg import get_package_manager
 
 logger = logging.getLogger(__name__)
 
@@ -140,52 +140,6 @@ class Updater(object):  # pragma: no cover
             ),
         }
 
-        package_manager = self._get_package_manager()
+        package_manager = get_package_manager()
 
         return instructions[package_manager]
-
-    def _get_linux(self):
-        import distro
-
-        if not is_binary():
-            return "pip"
-
-        package_managers = {
-            "rhel": "yum",
-            "centos": "yum",
-            "fedora": "yum",
-            "amazon": "yum",
-            "opensuse": "yum",
-            "ubuntu": "apt",
-            "debian": "apt",
-        }
-
-        return package_managers.get(distro.id())
-
-    def _get_darwin(self):
-        if not is_binary():
-            if __file__.startswith("/usr/local/Cellar"):
-                return "formula"
-            else:
-                return "pip"
-        return None
-
-    def _get_windows(self):
-        return None if is_binary() else "pip"
-
-    def _get_package_manager(self):
-        import platform
-        from dvc.exceptions import DvcException
-
-        m = {
-            "Windows": self._get_windows,
-            "Darwin": self._get_darwin,
-            "Linux": self._get_linux,
-        }
-
-        system = platform.system()
-        func = m.get(system)
-        if func is None:
-            raise DvcException("not supported system '{}'".format(system))
-
-        return func()
