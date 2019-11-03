@@ -123,7 +123,6 @@ class Updater(object):  # pragma: no cover
             "yum": "Run {yellow}yum{reset} update dvc",
             "yay": "Run {yellow}yay{reset} {blue}-S{reset} dvc",
             "formula": "Run {yellow}brew{reset} upgrade dvc",
-            "cask": "Run {yellow}brew cask{reset} upgrade dvc",
             "apt": (
                 "Run {yellow}apt-get{reset} install"
                 " {blue}--only-upgrade{reset} dvc"
@@ -173,10 +172,6 @@ class Updater(object):  # pragma: no cover
         # NOTE: both pkg and cask put dvc binary into /usr/local/bin,
         # so in order to know which method of installation was used,
         # we need to actually call `brew cask`
-        ret = os.system("brew cask ls dvc")
-        if ret == 0:
-            return "cask"
-
         return None
 
     def _get_windows(self):
