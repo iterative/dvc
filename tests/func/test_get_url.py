@@ -38,25 +38,25 @@ def test_get_url_to_dir(dname, repo_dir):
     assert filecmp.cmp(repo_dir.DATA, dst, shallow=False)
 
 
-@mock_s3
 @pytest.mark.parametrize("dst", [".", "./from"])
 def test_get_url_from_non_local_path_to_dir_and_file(repo_dir, dst):
-    file_name = "from"
-    file_content = "data"
-    base_info = RemoteS3.path_cls("s3://bucket/path")
-    from_info = base_info / file_name
+    with mock_s3():
+        file_name = "from"
+        file_content = "data"
+        base_info = RemoteS3.path_cls("s3://bucket/path")
+        from_info = base_info / file_name
 
-    s3 = boto3.client("s3")
-    s3.create_bucket(Bucket=from_info.bucket)
-    s3.put_object(
-        Bucket=from_info.bucket, Key=from_info.path, Body=file_content
-    )
+        s3 = boto3.client("s3")
+        s3.create_bucket(Bucket=from_info.bucket)
+        s3.put_object(
+            Bucket=from_info.bucket, Key=from_info.path, Body=file_content
+        )
 
-    Repo.get_url(from_info.url, dst)
+        Repo.get_url(from_info.url, dst)
 
-    result_path = os.path.join(dst, file_name) if os.path.isdir(dst) else dst
+        result_path = os.path.join(dst, file_name) if os.path.isdir(dst) else dst
 
-    assert os.path.exists(result_path)
-    assert os.path.isfile(result_path)
-    with open(result_path, "r") as fd:
-        assert fd.read() == file_content
+        assert os.path.exists(result_path)
+        assert os.path.isfile(result_path)
+        with open(result_path, "r") as fd:
+            assert fd.read() == file_content
