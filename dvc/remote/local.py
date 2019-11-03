@@ -264,7 +264,7 @@ class RemoteLOCAL(RemoteBASE):
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
-        # there's no need to check the remote storage for the existance of
+        # there's no need to check the remote storage for the existence of
         # those files.
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
