@@ -3,10 +3,11 @@
 from __future__ import unicode_literals
 
 import logging
-import colorama
+import sys
 
 from dvc.cli import parse_args
 from dvc.lock import LockError
+from dvc.logger import FOOTER
 from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
@@ -16,16 +17,6 @@ from dvc.utils.compat import is_py2
 
 
 logger = logging.getLogger("dvc")
-
-footer = (
-    "\n{yellow}Having any troubles?{nc}"
-    " Hit us up at {blue}https://dvc.org/support{nc},"
-    " we are always happy to help!"
-).format(
-    blue=colorama.Fore.BLUE,
-    nc=colorama.Fore.RESET,
-    yellow=colorama.Fore.YELLOW,
-)
 
 
 def main(argv=None):
@@ -87,7 +78,7 @@ def main(argv=None):
         clean_repos()
 
     if ret != 0:
-        logger.info(footer)
+        print(FOOTER, file=sys.stderr)
 
     Analytics().send_cmd(cmd, args, ret)
 

@@ -11,6 +11,17 @@ import logging.config
 import colorama
 
 
+FOOTER = (
+    "\n{yellow}Having any troubles?{nc}"
+    " Hit us up at {blue}https://dvc.org/support{nc},"
+    " we are always happy to help!"
+).format(
+    blue=colorama.Fore.BLUE,
+    nc=colorama.Fore.RESET,
+    yellow=colorama.Fore.YELLOW,
+)
+
+
 class LoggingException(Exception):
     def __init__(self, record):
         msg = "failed to log {}".format(str(record))
