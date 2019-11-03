@@ -26,7 +26,7 @@ def _fetch(
     """Download data items from a cloud and imported repositories
 
     Returns:
-        int: number of succesfully downloaded files
+        int: number of successfully downloaded files
 
     Raises:
         DownloadError: thrown when there are failed downloads, either
