@@ -144,7 +144,7 @@ class RemoteS3(RemoteBASE):
         # multipart.
         #
         # If an object's etag looks like '8978c98bb5a48c2fb5f2c4c905768afa',
-        # then it was transfered as a single part, which means that the chunk
+        # then it was transferred as a single part, which means that the chunk
         # size used to transfer it was greater or equal to the ContentLength
         # of that object. So to preserve that tag over the next transfer, we
         # could use any value >= ContentLength.
