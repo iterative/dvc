@@ -1,16 +1,14 @@
 """Collect and send usage analytics"""
-
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
-
-import os
-import json
 import errno
+import json
 import logging
+import os
 
 from dvc import __version__
 from dvc.utils import env2bool
+from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)

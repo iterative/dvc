@@ -1,15 +1,19 @@
 from __future__ import unicode_literals
+
+import os
+
 import mockssh
 import pytest
-import os
 from git import Repo
 from git.exc import GitCommandNotFound
 
+from .basic_env import TestDirFixture
+from .basic_env import TestDvcGitFixture
+from .basic_env import TestGitFixture
 from dvc.remote.config import RemoteConfig
-from dvc.utils.compat import cast_bytes_py2
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from .basic_env import TestDirFixture, TestDvcGitFixture, TestGitFixture
+from dvc.utils.compat import cast_bytes_py2
 
 # Prevent updater and analytics from running their processes
 os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")

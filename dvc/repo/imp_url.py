@@ -1,7 +1,6 @@
-from dvc.utils import resolve_output
-from dvc.repo.scm_context import scm_context
-
 from . import locked as locked_repo
+from dvc.repo.scm_context import scm_context
+from dvc.utils import resolve_output
 
 
 @locked_repo

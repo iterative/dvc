@@ -1,8 +1,7 @@
 import os
 
-import dvc.output as output
 import dvc.dependency as dependency
-
+import dvc.output as output
 from dvc.utils import resolve_output
 
 

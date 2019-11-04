@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 import pytest
 from moto import mock_s3
 

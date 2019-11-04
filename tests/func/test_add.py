@@ -1,36 +1,34 @@
 from __future__ import unicode_literals
 
-import os
-
-import pytest
-
-import dvc
-import time
-import shutil
 import filecmp
-import posixpath
 import logging
-import colorama
+import os
+import posixpath
+import shutil
+import time
 
-from dvc.remote import RemoteLOCAL
-from dvc.system import System
+import colorama
+import pytest
 from mock import patch
 
+import dvc
+from dvc.exceptions import DvcException
+from dvc.exceptions import RecursiveAddingWhileUsingFilename
+from dvc.exceptions import StageFileCorruptedError
 from dvc.main import main
-from dvc.utils import file_md5, LARGE_DIR_SIZE, relpath
-from dvc.utils.stage import load_stage_file
-from dvc.utils.compat import range
-from dvc.stage import Stage
-from dvc.exceptions import (
-    DvcException,
-    RecursiveAddingWhileUsingFilename,
-    StageFileCorruptedError,
-)
 from dvc.output.base import OutputAlreadyTrackedError
+from dvc.remote import RemoteLOCAL
 from dvc.repo import Repo as DvcRepo
-
+from dvc.stage import Stage
+from dvc.system import System
+from dvc.utils import file_md5
+from dvc.utils import LARGE_DIR_SIZE
+from dvc.utils import relpath
+from dvc.utils.compat import range
+from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
-from tests.utils import spy, get_gitignore_content
+from tests.utils import get_gitignore_content
+from tests.utils import spy
 
 
 class TestAdd(TestDvc):

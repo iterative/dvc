@@ -1,7 +1,10 @@
-import mock
 from unittest import TestCase
 
-from dvc.remote.base import RemoteBASE, RemoteCmdError, RemoteMissingDepsError
+import mock
+
+from dvc.remote.base import RemoteBASE
+from dvc.remote.base import RemoteCmdError
+from dvc.remote.base import RemoteMissingDepsError
 
 
 class TestRemoteBASE(object):

@@ -1,9 +1,12 @@
 """Manages progress bars for dvc repo."""
 from __future__ import print_function
+
 import logging
 import sys
-from tqdm import tqdm
+
 from funcy import merge
+from tqdm import tqdm
+
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)

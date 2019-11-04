@@ -1,9 +1,9 @@
 import os
 
-from dvc.main import main
-
-from tests.basic_env import TestDvc
 from mock import patch
+
+from dvc.main import main
+from tests.basic_env import TestDvc
 
 
 class TestStatus(TestDvc):

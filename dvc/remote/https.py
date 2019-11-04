@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.scheme import Schemes
-
 from .http import RemoteHTTP
+from dvc.scheme import Schemes
 
 
 class RemoteHTTPS(RemoteHTTP):

@@ -1,15 +1,15 @@
 """Launch `dvc daemon` command in a separate detached process."""
-
 from __future__ import unicode_literals
 
-import os
-import sys
 import inspect
 import logging
+import os
+import sys
 from subprocess import Popen
 
 from dvc.env import DVC_DAEMON
-from dvc.utils import is_binary, fix_env
+from dvc.utils import fix_env
+from dvc.utils import is_binary
 from dvc.utils.compat import cast_bytes_py2
 
 

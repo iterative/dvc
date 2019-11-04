@@ -1,9 +1,8 @@
-from dvc.utils.compat import open
-
-from ruamel.yaml.error import YAMLError
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from dvc.exceptions import StageFileCorruptedError
+from dvc.utils.compat import open
 
 
 def load_stage_file(path):

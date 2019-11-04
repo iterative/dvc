@@ -2,20 +2,19 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.scheme import Schemes
-from dvc.utils.compat import urlparse, str
-
 from dvc.output.base import OutputBase
-from dvc.output.s3 import OutputS3
 from dvc.output.gs import OutputGS
-from dvc.output.local import OutputLOCAL
 from dvc.output.hdfs import OutputHDFS
+from dvc.output.local import OutputLOCAL
+from dvc.output.s3 import OutputS3
 from dvc.output.ssh import OutputSSH
-
 from dvc.remote import Remote
-from dvc.remote.s3 import RemoteS3
 from dvc.remote.hdfs import RemoteHDFS
 from dvc.remote.local import RemoteLOCAL
+from dvc.remote.s3 import RemoteS3
+from dvc.scheme import Schemes
+from dvc.utils.compat import str
+from dvc.utils.compat import urlparse
 
 OUTS = [
     OutputHDFS,

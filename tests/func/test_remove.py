@@ -1,13 +1,14 @@
 import os
 import shutil
 
-from dvc.main import main
-from dvc.system import System
-from dvc.stage import Stage, StageFileDoesNotExistError
-from dvc.exceptions import DvcException
-
-from tests.basic_env import TestDvc
 from mock import patch
+
+from dvc.exceptions import DvcException
+from dvc.main import main
+from dvc.stage import Stage
+from dvc.stage import StageFileDoesNotExistError
+from dvc.system import System
+from tests.basic_env import TestDvc
 
 
 class TestRemove(TestDvc):

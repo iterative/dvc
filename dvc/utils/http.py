@@ -1,5 +1,5 @@
-from contextlib import contextmanager
 import io
+from contextlib import contextmanager
 
 from dvc.utils.compat import FileNotFoundError
 

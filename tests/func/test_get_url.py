@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-import os
 import filecmp
+import os
 
 import pytest
 

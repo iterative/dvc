@@ -1,14 +1,16 @@
 """Draws DAG in ASCII."""
-
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
-import sys
 import math
+import sys
 
-from grandalf.graphs import Vertex, Edge, Graph
+from grandalf.graphs import Edge
+from grandalf.graphs import Graph
+from grandalf.graphs import Vertex
 from grandalf.layouts import SugiyamaLayout
-from grandalf.routing import route_with_lines, EdgeViewer
+from grandalf.routing import EdgeViewer
+from grandalf.routing import route_with_lines
 
 
 class VertexViewer(object):

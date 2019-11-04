@@ -1,10 +1,10 @@
 import os
 
+from dvc.exceptions import InitError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.exceptions import InitError
-
-from tests.basic_env import TestGit, TestDir
+from tests.basic_env import TestDir
+from tests.basic_env import TestGit
 
 
 class TestInit(TestGit):

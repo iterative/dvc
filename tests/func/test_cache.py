@@ -1,14 +1,15 @@
 import os
 import stat
-import pytest
+
 import configobj
+import pytest
 
 from dvc.cache import Cache
 from dvc.main import main
 from dvc.remote.base import DirCacheError
 from dvc.utils import relpath
-
-from tests.basic_env import TestDvc, TestDir
+from tests.basic_env import TestDir
+from tests.basic_env import TestDvc
 
 
 class TestCache(TestDvc):

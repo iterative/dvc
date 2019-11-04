@@ -1,5 +1,4 @@
 from dvc.output.ssh import OutputSSH
-
 from tests.unit.output.test_local import TestOutputLOCAL
 
 

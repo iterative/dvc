@@ -1,17 +1,17 @@
 """Main entry point for dvc CLI."""
-
 from __future__ import unicode_literals
 
 import logging
 
+from dvc.analytics import Analytics
 from dvc.cli import parse_args
+from dvc.config import ConfigError
+from dvc.exceptions import DvcParserError
+from dvc.exceptions import NotDvcRepoError
+from dvc.external_repo import clean_repos
 from dvc.lock import LockError
 from dvc.logger import FOOTER
-from dvc.config import ConfigError
-from dvc.analytics import Analytics
-from dvc.exceptions import NotDvcRepoError, DvcParserError
 from dvc.remote.pool import close_pools
-from dvc.external_repo import clean_repos
 from dvc.utils.compat import is_py2
 
 

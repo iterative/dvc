@@ -1,43 +1,49 @@
 from __future__ import unicode_literals
-from dvc.utils.compat import str, urljoin, pathlib
 
-import os
-import re
-import shutil
 import filecmp
 import getpass
+import os
 import posixpath
-from subprocess import Popen, PIPE
+import re
+import shutil
+import uuid
+from subprocess import PIPE
+from subprocess import Popen
 
 import boto3
-import uuid
 import paramiko
-from google.cloud import storage as gc
-from flaky.flaky_decorator import flaky
 import pytest
+from flaky.flaky_decorator import flaky
+from google.cloud import storage as gc
+from mock import patch
 
+from dvc.exceptions import CyclicGraphError
+from dvc.exceptions import ReproductionError
+from dvc.exceptions import StagePathAsOutputError
 from dvc.main import main
-from dvc.repo import Repo as DvcRepo
-from dvc.utils import file_md5, relpath
-from dvc.utils.stage import load_stage_file, dump_stage_file
+from dvc.output.base import OutputBase
 from dvc.path_info import URLInfo
 from dvc.remote.local import RemoteLOCAL
-from dvc.stage import Stage, StageFileDoesNotExistError
+from dvc.repo import Repo as DvcRepo
+from dvc.stage import Stage
+from dvc.stage import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.output.base import OutputBase
-from dvc.exceptions import (
-    CyclicGraphError,
-    StagePathAsOutputError,
-    ReproductionError,
-)
-
+from dvc.utils import file_md5
+from dvc.utils import relpath
+from dvc.utils.compat import pathlib
+from dvc.utils.compat import str
+from dvc.utils.compat import urljoin
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
-from tests.func.test_data_cloud import _should_test_aws, TEST_AWS_REPO_BUCKET
-from tests.func.test_data_cloud import _should_test_gcp, TEST_GCP_REPO_BUCKET
-from tests.func.test_data_cloud import _should_test_ssh, _should_test_hdfs
+from tests.func.test_data_cloud import _should_test_aws
+from tests.func.test_data_cloud import _should_test_gcp
+from tests.func.test_data_cloud import _should_test_hdfs
+from tests.func.test_data_cloud import _should_test_ssh
 from tests.func.test_data_cloud import get_ssh_url
+from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET
+from tests.func.test_data_cloud import TEST_GCP_REPO_BUCKET
 from tests.utils.httpd import StaticFileServer
-from mock import patch
 
 
 class TestRepro(TestDvc):

@@ -3,8 +3,11 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
-from dvc.exceptions import DvcException, BadMetricError
-from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
+from dvc.command.base import fix_subparsers
+from dvc.exceptions import BadMetricError
+from dvc.exceptions import DvcException
 
 
 logger = logging.getLogger(__name__)

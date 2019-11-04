@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 
 import os
 
+import dvc.repo.diff as diff
 from dvc.main import main
 from dvc.scm.base import FileNotInCommitError
-import dvc.repo.diff as diff
 from tests.basic_env import TestDvcGit
 
 

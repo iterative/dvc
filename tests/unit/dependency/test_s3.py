@@ -1,5 +1,4 @@
 from dvc.dependency.s3 import DependencyS3
-
 from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 

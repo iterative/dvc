@@ -1,13 +1,17 @@
-import os
-import colorama
 import logging
+import os
 
-from dvc.repo import Repo
-from dvc.scm import SCM, NoSCM
+import colorama
+
+from dvc.analytics import Analytics
 from dvc.config import Config
 from dvc.exceptions import InitError
-from dvc.utils import boxify, relpath, remove
-from dvc.analytics import Analytics
+from dvc.repo import Repo
+from dvc.scm import NoSCM
+from dvc.scm import SCM
+from dvc.utils import boxify
+from dvc.utils import relpath
+from dvc.utils import remove
 
 logger = logging.getLogger(__name__)
 

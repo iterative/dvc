@@ -2,7 +2,8 @@ import os
 
 import pytest
 
-from dvc.utils import to_chunks, fix_env
+from dvc.utils import fix_env
+from dvc.utils import to_chunks
 
 
 @pytest.mark.parametrize(

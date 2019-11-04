@@ -1,16 +1,16 @@
 from __future__ import unicode_literals
 
-import os
 import filecmp
+import os
 import shutil
 
 import pytest
 from mock import patch
-from tests.utils import trees_equal
 
+from dvc.exceptions import DownloadError
 from dvc.stage import Stage
 from dvc.utils import makedirs
-from dvc.exceptions import DownloadError
+from tests.utils import trees_equal
 
 
 def test_import(repo_dir, git, dvc_repo, erepo):

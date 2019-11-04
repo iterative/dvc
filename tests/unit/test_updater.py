@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 from dvc import __version__
 from dvc.updater import Updater

@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.output.ssh import OutputSSH
 from dvc.dependency.base import DependencyBase
+from dvc.output.ssh import OutputSSH
 
 
 class DependencySSH(DependencyBase, OutputSSH):

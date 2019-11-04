@@ -1,12 +1,13 @@
-import tempfile
 import os
+import tempfile
 
 from dvc.main import main
 from dvc.output.local import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
-from dvc.stage import Stage, StageFileFormatError
-from dvc.utils.stage import load_stage_file, dump_stage_file
-
+from dvc.stage import Stage
+from dvc.stage import StageFileFormatError
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 
 

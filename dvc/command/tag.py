@@ -1,8 +1,10 @@
 import logging
 
-from dvc.utils import to_yaml_string
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
+from dvc.command.base import fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from dvc.utils import to_yaml_string
 
 
 logger = logging.getLogger(__name__)

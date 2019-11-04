@@ -1,9 +1,8 @@
 from mock import patch
 
-from dvc.stage import Stage
 from dvc.output import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
-
+from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 

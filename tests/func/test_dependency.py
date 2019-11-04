@@ -1,10 +1,12 @@
 from __future__ import unicode_literals
+
 import copy
+
 import pytest
 
+from dvc.dependency import _get
+from dvc.dependency import DEP_MAP
 from dvc.stage import Stage
-from dvc.dependency import _get, DEP_MAP
-
 from tests.func.test_output import TESTS as OUT_TESTS
 
 

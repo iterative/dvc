@@ -1,16 +1,20 @@
 from __future__ import unicode_literals
 
-import errno
-import os
 import csv
+import errno
 import json
 import logging
+import os
 
 from jsonpath_ng.ext import parse
 
+from dvc.exceptions import NoMetricsError
+from dvc.exceptions import OutputNotFoundError
 from dvc.repo import locked
-from dvc.exceptions import OutputNotFoundError, NoMetricsError
-from dvc.utils.compat import builtin_str, open, StringIO, csv_reader
+from dvc.utils.compat import builtin_str
+from dvc.utils.compat import csv_reader
+from dvc.utils.compat import open
+from dvc.utils.compat import StringIO
 
 NO_METRICS_FILE_AT_REFERENCE_WARNING = (
     "Metrics file '{}' does not exist at the reference '{}'."

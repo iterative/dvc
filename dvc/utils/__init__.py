@@ -1,34 +1,31 @@
 """Helpers for other modules."""
-
 from __future__ import unicode_literals
 
-from dvc.utils.compat import (
-    str,
-    builtin_str,
-    open,
-    cast_bytes_py2,
-    StringIO,
-    fspath_py35,
-    fspath,
-    makedirs as _makedirs,
-)
-
-import os
-import sys
-import stat
-import math
-import json
 import errno
-import shutil
 import hashlib
-import nanotime
-import time
-import colorama
-import re
+import json
 import logging
+import math
+import os
+import re
+import shutil
+import stat
+import sys
+import time
 
-from shortuuid import uuid
+import colorama
+import nanotime
 from ruamel.yaml import YAML
+from shortuuid import uuid
+
+from dvc.utils.compat import builtin_str
+from dvc.utils.compat import cast_bytes_py2
+from dvc.utils.compat import fspath
+from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import makedirs as _makedirs
+from dvc.utils.compat import open
+from dvc.utils.compat import str
+from dvc.utils.compat import StringIO
 
 
 logger = logging.getLogger(__name__)

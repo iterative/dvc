@@ -1,21 +1,24 @@
 from __future__ import unicode_literals
 
-import os
-import re
 import io
-import posixpath
 import logging
-from subprocess import Popen, PIPE
-from contextlib import contextmanager, closing
+import os
+import posixpath
+import re
+from contextlib import closing
+from contextlib import contextmanager
+from subprocess import PIPE
+from subprocess import Popen
 
+from .base import RemoteBASE
+from .base import RemoteCmdError
+from .pool import get_connection
 from dvc.config import Config
 from dvc.scheme import Schemes
-
-from dvc.utils.compat import urlparse, FileNotFoundError
-from dvc.utils import fix_env, tmp_fname
-
-from .pool import get_connection
-from .base import RemoteBASE, RemoteCmdError
+from dvc.utils import fix_env
+from dvc.utils import tmp_fname
+from dvc.utils.compat import FileNotFoundError
+from dvc.utils.compat import urlparse
 
 logger = logging.getLogger(__name__)
 

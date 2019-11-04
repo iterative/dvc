@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-
 from __future__ import unicode_literals
 
-import os
 import logging
+import os
+
 from funcy import cached_property
 
-from dvc.progress import Tqdm
 from dvc.config import Config
-from dvc.remote.base import RemoteBASE
-from dvc.exceptions import DvcException, ETagMismatchError
+from dvc.exceptions import DvcException
+from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)

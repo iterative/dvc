@@ -1,17 +1,16 @@
 from __future__ import unicode_literals
 
+import filecmp
 import os
 from uuid import uuid4
 
 import pytest
-import filecmp
 from mock import patch
 
 import dvc
 from dvc.main import main
 from dvc.utils import makedirs
 from dvc.utils.compat import str
-
 from tests.basic_env import TestDvc
 from tests.utils import spy
 

@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
+from .base import append_doc_link
+from .base import CmdBaseNoRepo
 from dvc.exceptions import DvcException
-from .base import CmdBaseNoRepo, append_doc_link
 
 
 logger = logging.getLogger(__name__)

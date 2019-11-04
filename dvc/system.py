@@ -1,9 +1,12 @@
 from __future__ import unicode_literals
-import os
+
 import errno
+import os
 import shutil
 
-from dvc.utils.compat import str, open, fspath
+from dvc.utils.compat import fspath
+from dvc.utils.compat import open
+from dvc.utils.compat import str
 
 
 class System(object):

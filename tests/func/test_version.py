@@ -1,8 +1,9 @@
 import re
+
 import pytest
 
-from dvc.main import main
 from dvc.command.version import psutil
+from dvc.main import main
 
 
 def test_info_in_repo(repo_dir, dvc_repo, caplog):

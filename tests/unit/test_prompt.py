@@ -1,5 +1,6 @@
-import mock
 from unittest import TestCase
+
+import mock
 
 from dvc.prompt import confirm
 

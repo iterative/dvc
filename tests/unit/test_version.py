@@ -1,6 +1,6 @@
-import mock
 import subprocess
 
+import mock
 
 import dvc.version
 from dvc.utils.compat import cast_bytes

@@ -1,8 +1,8 @@
 import logging
 
 from dvc.cli import parse_args
-from dvc.exceptions import DvcException
 from dvc.command.imp_url import CmdImportUrl
+from dvc.exceptions import DvcException
 
 
 def test_import_url(mocker, dvc_repo):

@@ -1,13 +1,14 @@
 from __future__ import unicode_literals
 
-from dvc.utils import relpath
-from dvc.utils.compat import str
-
 import argparse
 import logging
 
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
+from dvc.command.base import fix_subparsers
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, fix_subparsers, append_doc_link
+from dvc.utils import relpath
+from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)

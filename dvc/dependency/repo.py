@@ -1,15 +1,14 @@
 from __future__ import unicode_literals
 
 import copy
+from contextlib import contextmanager
 
 from funcy import merge
 from schema import Optional
-from contextlib import contextmanager
-
-from dvc.external_repo import external_repo
-from dvc.utils.compat import str
 
 from .local import DependencyLOCAL
+from dvc.external_repo import external_repo
+from dvc.utils.compat import str
 
 
 class DependencyREPO(DependencyLOCAL):

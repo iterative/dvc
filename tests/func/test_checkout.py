@@ -1,30 +1,31 @@
+import collections
+import filecmp
+import logging
 import os
 import shutil
-import filecmp
-import collections
-import logging
 
 import pytest
-
-from dvc.main import main
-from dvc.repo import Repo as DvcRepo
-from dvc.system import System
-from dvc.utils import walk_files, relpath
-from dvc.utils.stage import load_stage_file, dump_stage_file
-from dvc.utils.compat import is_py2
-from tests.basic_env import TestDvc, TestDvcGit
-from tests.func.test_repro import TestRepro
-from dvc.stage import Stage, StageFileBadNameError, StageFileDoesNotExistError
-from dvc.remote.local import RemoteLOCAL
-from dvc.exceptions import (
-    DvcException,
-    ConfirmRemoveError,
-    CheckoutErrorSuggestGit,
-    CheckoutError,
-)
-
 from mock import patch
 
+from dvc.exceptions import CheckoutError
+from dvc.exceptions import CheckoutErrorSuggestGit
+from dvc.exceptions import ConfirmRemoveError
+from dvc.exceptions import DvcException
+from dvc.main import main
+from dvc.remote.local import RemoteLOCAL
+from dvc.repo import Repo as DvcRepo
+from dvc.stage import Stage
+from dvc.stage import StageFileBadNameError
+from dvc.stage import StageFileDoesNotExistError
+from dvc.system import System
+from dvc.utils import relpath
+from dvc.utils import walk_files
+from dvc.utils.compat import is_py2
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_file
+from tests.basic_env import TestDvc
+from tests.basic_env import TestDvcGit
+from tests.func.test_repro import TestRepro
 from tests.utils import spy
 
 logger = logging.getLogger("dvc")

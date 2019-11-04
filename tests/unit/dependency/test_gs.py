@@ -1,5 +1,4 @@
 from dvc.dependency.gs import DependencyGS
-
 from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 

@@ -1,10 +1,9 @@
 """Manages user prompts."""
-
-from __future__ import unicode_literals
 from __future__ import print_function
+from __future__ import unicode_literals
 
-import sys
 import logging
+import sys
 from getpass import getpass
 
 from dvc.utils.compat import input

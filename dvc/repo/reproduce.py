@@ -2,12 +2,12 @@ from __future__ import unicode_literals
 
 import logging
 
+from . import locked
+from .graph import get_pipeline
+from .graph import get_pipelines
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
 from dvc.utils import relpath
-
-from . import locked
-from .graph import get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)

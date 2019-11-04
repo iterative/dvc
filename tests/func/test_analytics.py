@@ -1,10 +1,13 @@
 import os
+
 import mock
 import requests
 
-from dvc.main import main
 from dvc.analytics import Analytics
-from tests.basic_env import TestDvc, TestGit, TestDir
+from dvc.main import main
+from tests.basic_env import TestDir
+from tests.basic_env import TestDvc
+from tests.basic_env import TestGit
 
 
 def _clean_getenv(key, default=None):

@@ -2,9 +2,10 @@ from __future__ import unicode_literals
 
 import argparse
 
-from dvc.command.base import fix_subparsers, append_doc_link
-from dvc.command.config import CmdConfig
 from dvc.cache import CacheConfig
+from dvc.command.base import append_doc_link
+from dvc.command.base import fix_subparsers
+from dvc.command.config import CmdConfig
 
 
 class CmdCacheDir(CmdConfig):

@@ -1,24 +1,25 @@
 """Manages Git."""
-
 from __future__ import unicode_literals
 
-import os
 import logging
+import os
 
 from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.utils.compat import str, open, cast_bytes_py2
-from dvc.utils import fix_env, relpath, is_binary
-from dvc.scm.base import (
-    Base,
-    SCMError,
-    FileNotInRepoError,
-    CloneError,
-    RevError,
-)
+from dvc.scm.base import Base
+from dvc.scm.base import CloneError
+from dvc.scm.base import FileNotInRepoError
+from dvc.scm.base import RevError
+from dvc.scm.base import SCMError
 from dvc.scm.git.tree import GitTree
+from dvc.utils import fix_env
+from dvc.utils import is_binary
+from dvc.utils import relpath
+from dvc.utils.compat import cast_bytes_py2
+from dvc.utils.compat import open
+from dvc.utils.compat import str
 
 
 logger = logging.getLogger(__name__)

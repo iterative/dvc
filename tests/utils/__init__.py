@@ -1,9 +1,10 @@
 import os
+from contextlib import contextmanager
 from filecmp import dircmp
 
-from dvc.scm import Git
 from mock import MagicMock
-from contextlib import contextmanager
+
+from dvc.scm import Git
 
 
 def spy(method_to_decorate):

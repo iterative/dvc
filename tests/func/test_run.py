@@ -1,32 +1,33 @@
+import filecmp
+import logging
 import os
+import shutil
 import uuid
 
-import logging
 import mock
-import shutil
-import filecmp
 import pytest
 
 from dvc.dependency.base import DependencyIsStageFileError
+from dvc.exceptions import ArgumentDuplicationError
+from dvc.exceptions import CircularDependencyError
+from dvc.exceptions import CyclicGraphError
+from dvc.exceptions import OutputDuplicationError
+from dvc.exceptions import OverlappingOutputPathsError
+from dvc.exceptions import StagePathAsOutputError
 from dvc.main import main
 from dvc.output import OutputBase
 from dvc.output.base import OutputIsStageFileError
 from dvc.repo import Repo as DvcRepo
+from dvc.stage import MissingDep
+from dvc.stage import Stage
+from dvc.stage import StageFileAlreadyExistsError
+from dvc.stage import StageFileBadNameError
+from dvc.stage import StagePathNotDirectoryError
+from dvc.stage import StagePathNotFoundError
+from dvc.stage import StagePathOutsideError
+from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils.stage import load_stage_file
-from dvc.system import System
-from dvc.stage import Stage, StagePathNotFoundError, StagePathNotDirectoryError
-from dvc.stage import StageFileBadNameError, MissingDep
-from dvc.stage import StagePathOutsideError, StageFileAlreadyExistsError
-from dvc.exceptions import (
-    OutputDuplicationError,
-    CircularDependencyError,
-    CyclicGraphError,
-    ArgumentDuplicationError,
-    StagePathAsOutputError,
-    OverlappingOutputPathsError,
-)
-
 from tests.basic_env import TestDvc
 
 

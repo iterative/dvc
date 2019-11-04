@@ -1,12 +1,11 @@
 """Exceptions raised by the dvc."""
-
 from __future__ import unicode_literals
-
-from dvc.utils.compat import str, builtin_str
 
 import traceback
 
 from dvc.utils import relpath
+from dvc.utils.compat import builtin_str
+from dvc.utils.compat import str
 
 
 class DvcException(Exception):

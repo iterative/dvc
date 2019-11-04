@@ -4,8 +4,9 @@ import argparse
 import logging
 
 import dvc.prompt as prompt
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, append_doc_link
 
 
 logger = logging.getLogger(__name__)

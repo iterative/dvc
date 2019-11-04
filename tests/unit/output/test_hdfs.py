@@ -1,9 +1,9 @@
 import os
 import sys
+
 import pytest
 
 from dvc.output.hdfs import OutputHDFS
-
 from tests.unit.output.test_local import TestOutputLOCAL
 
 

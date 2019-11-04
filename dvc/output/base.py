@@ -3,13 +3,16 @@ from __future__ import unicode_literals
 import logging
 from copy import copy
 
-from schema import Or, Optional
+from schema import Optional
+from schema import Or
 
-from dvc.cache import NamedCache
 import dvc.prompt as prompt
-from dvc.exceptions import DvcException, CollectCacheError
-from dvc.utils.compat import str, urlparse
+from dvc.cache import NamedCache
+from dvc.exceptions import CollectCacheError
+from dvc.exceptions import DvcException
 from dvc.remote.base import RemoteBASE
+from dvc.utils.compat import str
+from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)

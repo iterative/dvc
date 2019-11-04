@@ -1,9 +1,10 @@
 import logging
-import time
 import sys
+import time
 from functools import wraps
 
 import colorama
+
 from dvc.config import Config
 
 

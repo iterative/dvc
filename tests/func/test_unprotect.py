@@ -2,7 +2,6 @@ import os
 import stat
 
 from dvc.main import main
-
 from tests.basic_env import TestDvc
 
 

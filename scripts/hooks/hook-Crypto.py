@@ -6,7 +6,6 @@
 #
 # The full license is in the file COPYING.txt, distributed with this software.
 # -----------------------------------------------------------------------------
-
 """
 Hook for PyCryptodome library: https://pypi.python.org/pypi/pycryptodome
 
@@ -27,9 +26,8 @@ triggered also when PyCrypto is installed, so it must be tested with both.
 Tested with PyCryptodome 3.5.1, PyCrypto 2.6.1, Python 2.7 & 3.6, Fedora &
 Windows
 """
-
-import os
 import glob
+import os
 
 from PyInstaller.compat import EXTENSION_SUFFIXES
 from PyInstaller.utils.hooks import get_module_file_attribute

@@ -1,6 +1,6 @@
+import filecmp
 import os
 import shutil
-import filecmp
 
 from dvc import utils
 from tests.basic_env import TestDvc

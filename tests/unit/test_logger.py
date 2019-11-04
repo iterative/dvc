@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
-import traceback
 import logging
+import traceback
+
 import colorama
 
 import dvc.logger
