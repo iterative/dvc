@@ -10,7 +10,7 @@ from packaging import version
 from dvc import __version__
 from dvc.lock import Lock, LockError
 from dvc.utils import boxify, env2bool
-
+from dvc.utils.pkg import get_package_manager
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +140,6 @@ class Updater(object):  # pragma: no cover
             ),
         }
 
-        package_manager = self._get_package_manager()
+        package_manager = get_package_manager()
 
         return instructions[package_manager]
