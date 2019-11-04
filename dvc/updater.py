@@ -15,7 +15,6 @@ from dvc.utils import boxify
 from dvc.utils import env2bool
 from dvc.utils import is_binary
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -28,9 +27,8 @@ class Updater(object):  # pragma: no cover
     def __init__(self, dvc_dir):
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
-        self.lock = Lock(
-            self.updater_file + ".lock", tmp_dir=os.path.join(dvc_dir, "tmp")
-        )
+        self.lock = Lock(self.updater_file + ".lock",
+                         tmp_dir=os.path.join(dvc_dir, "tmp"))
         self.current = version.parse(__version__).base_version
 
     def _is_outdated_file(self):
@@ -107,43 +105,41 @@ class Updater(object):  # pragma: no cover
 
         message = (
             "Update available {red}{current}{reset} -> {green}{latest}{reset}"
-            + "\n"
-            + self._get_update_instructions()
-        ).format(
-            red=colorama.Fore.RED,
-            reset=colorama.Fore.RESET,
-            green=colorama.Fore.GREEN,
-            yellow=colorama.Fore.YELLOW,
-            blue=colorama.Fore.BLUE,
-            current=self.current,
-            latest=self.latest,
-        )
+            + "\n" + self._get_update_instructions()).format(
+                red=colorama.Fore.RED,
+                reset=colorama.Fore.RESET,
+                green=colorama.Fore.GREEN,
+                yellow=colorama.Fore.YELLOW,
+                blue=colorama.Fore.BLUE,
+                current=self.current,
+                latest=self.latest,
+            )
 
         logger.info(boxify(message, border_color="yellow"))
 
     def _get_update_instructions(self):
         instructions = {
-            "pip": "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
-            "yum": "Run {yellow}yum{reset} update dvc",
-            "yay": "Run {yellow}yay{reset} {blue}-S{reset} dvc",
-            "formula": "Run {yellow}brew{reset} upgrade dvc",
-            "cask": "Run {yellow}brew cask{reset} upgrade dvc",
-            "apt": (
-                "Run {yellow}apt-get{reset} install"
-                " {blue}--only-upgrade{reset} dvc"
-            ),
-            "binary": (
-                "To upgrade follow this steps:\n"
-                "1. Uninstall dvc binary\n"
-                "2. Go to {blue}https://dvc.org{reset}\n"
-                "3. Download and install new binary"
-            ),
-            "conda": "Run {yellow}conda{reset} {update}update{reset} dvc",
-            None: (
-                "Find the latest release at\n{blue}"
-                "https://github.com/iterative/dvc/releases/latest"
-                "{reset}"
-            ),
+            "pip":
+            "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
+            "yum":
+            "Run {yellow}yum{reset} update dvc",
+            "yay":
+            "Run {yellow}yay{reset} {blue}-S{reset} dvc",
+            "formula":
+            "Run {yellow}brew{reset} upgrade dvc",
+            "cask":
+            "Run {yellow}brew cask{reset} upgrade dvc",
+            "apt": ("Run {yellow}apt-get{reset} install"
+                    " {blue}--only-upgrade{reset} dvc"),
+            "binary": ("To upgrade follow this steps:\n"
+                       "1. Uninstall dvc binary\n"
+                       "2. Go to {blue}https://dvc.org{reset}\n"
+                       "3. Download and install new binary"),
+            "conda":
+            "Run {yellow}conda{reset} {update}update{reset} dvc",
+            None: ("Find the latest release at\n{blue}"
+                   "https://github.com/iterative/dvc/releases/latest"
+                   "{reset}"),
         }
 
         package_manager = self._get_package_manager()
