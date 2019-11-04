@@ -133,6 +133,7 @@ class Updater(object):  # pragma: no cover
                 "2. Go to {blue}https://dvc.org{reset}\n"
                 "3. Download and install new binary"
             ),
+            "conda": "Run {yellow}conda{reset} {update}update{reset} dvc",
             None: (
                 "Find the latest release at\n{blue}"
                 "https://github.com/iterative/dvc/releases/latest"

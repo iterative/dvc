@@ -1,6 +1,15 @@
 from dvc.utils import is_binary
 
 
+def is_conda():
+    try:
+        from .build import PKG  # patched during conda package build
+
+        return PKG == "conda"
+    except ImportError:
+        return False
+
+
 def get_linux():
     import distro
 
@@ -36,6 +45,9 @@ def get_windows():
 def get_package_manager():
     import platform
     from dvc.exceptions import DvcException
+
+    if is_conda():
+        return "conda"
 
     m = {
         "Windows": get_windows(),
