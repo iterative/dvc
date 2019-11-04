@@ -1,8 +1,20 @@
 from dvc.utils import is_binary
 
 
+def is_conda():
+    try:
+        from .build import PKG  # patched during conda package build
+
+        return PKG == "conda"
+    except ImportError:
+        return False
+
+
 def get_linux():
     import distro
+
+    if is_conda():
+        return "conda"
 
     if not is_binary():
         return "pip"
@@ -21,6 +33,8 @@ def get_linux():
 
 
 def get_darwin():
+    if is_conda():
+        return "conda"
     if not is_binary():
         if __file__.startswith("/usr/local/Cellar"):
             return "formula"
@@ -30,6 +44,8 @@ def get_darwin():
 
 
 def get_windows():
+    if is_conda():
+        return "conda"
     return None if is_binary() else "pip"
 
 
