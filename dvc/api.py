@@ -9,8 +9,6 @@ except ImportError:
 from dvc.utils.compat import urlparse
 from dvc.repo import Repo
 from dvc.external_repo import external_repo
-
-
 def get_url(path, repo=None, rev=None, remote=None):
     """Returns an url of a resource specified by path in repo"""
     with _make_repo(repo, rev=rev) as _repo:
