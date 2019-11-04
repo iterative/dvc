@@ -13,5 +13,5 @@
       everything to be addresses. Please review them carefully and fix those
       that actually improve code or fix bugs.
 
-Thank you for the contribution - we'll try to review it as soon as possible 🙏.
+Thank you for the contribution - we'll try to review it as soon as possible. 🙏
 
