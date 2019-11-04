@@ -369,14 +369,12 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         """
         assert path_info.scheme == "local"
         assert checksum is not None
-
-        path = fspath_py35(path_info)
-        assert os.path.exists(path)
+        assert os.path.exists(fspath_py35(path_info))
 
         actual_mtime, actual_size = get_mtime_and_size(
-            path, self.repo.dvcignore
+            path_info, self.repo.dvcignore
         )
-        actual_inode = get_inode(path)
+        actual_inode = get_inode(path_info)
 
         existing_record = self.get_state_record_for_inode(actual_inode)
         if not existing_record:

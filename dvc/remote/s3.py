@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 
 import os
 import logging
-import posixpath
 from funcy import cached_property
 
 from dvc.progress import Tqdm
@@ -145,13 +144,13 @@ class RemoteS3(RemoteBASE):
         # multipart.
         #
         # If an object's etag looks like '8978c98bb5a48c2fb5f2c4c905768afa',
-        # then it was transfered as a single part, which means that the chunk
+        # then it was transferred as a single part, which means that the chunk
         # size used to transfer it was greater or equal to the ContentLength
         # of that object. So to preserve that tag over the next transfer, we
         # could use any value >= ContentLength.
         #
         # If an object's etag looks like '50d67013a5e1a4070bef1fc8eea4d5f9-13',
-        # then it was transfered as a multipart, which means that the chunk
+        # then it was transferred as a multipart, which means that the chunk
         # size used to transfer it was less than ContentLength of that object.
         # Unfortunately, in general, it doesn't mean that the chunk size was
         # the same throughout the transfer, so it means that in order to
@@ -273,4 +272,4 @@ class RemoteS3(RemoteBASE):
 
     def walk_files(self, path_info, max_items=None):
         for fname in self._list_paths(path_info, max_items):
-            yield path_info / posixpath.relpath(fname, path_info.path)
+            yield path_info.replace(path=fname)
