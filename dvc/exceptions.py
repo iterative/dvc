@@ -179,7 +179,7 @@ class ConfirmRemoveError(DvcException):
     def __init__(self, path):
         super(ConfirmRemoveError, self).__init__(
             "unable to remove '{}' without a confirmation from the user. Use "
-            "`-f` to force.".format(path)
+            "'-f' to force.".format(path)
         )
 
 
@@ -209,7 +209,7 @@ class NoMetricsError(DvcException):
     def __init__(self):
         super(NoMetricsError, self).__init__(
             "no metric files in this repository. "
-            "Use `dvc metrics add` to add a metric file to track."
+            "Use 'dvc metrics add' to add a metric file to track."
         )
 
 
@@ -247,7 +247,7 @@ class OverlappingOutputPathsError(DvcException):
 class CheckoutErrorSuggestGit(DvcException):
     def __init__(self, target, cause):
         super(CheckoutErrorSuggestGit, self).__init__(
-            "Did you mean `git checkout {}`?".format(target), cause=cause
+            "Did you mean 'git checkout {}'?".format(target), cause=cause
         )
 
 

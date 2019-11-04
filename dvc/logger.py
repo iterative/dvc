@@ -11,17 +11,6 @@ import logging.config
 import colorama
 
 
-FOOTER = (
-    "\n{yellow}Having any troubles?{nc}"
-    " Hit us up at {blue}https://dvc.org/support{nc},"
-    " we are always happy to help!"
-).format(
-    blue=colorama.Fore.BLUE,
-    nc=colorama.Fore.RESET,
-    yellow=colorama.Fore.YELLOW,
-)
-
-
 class LoggingException(Exception):
     def __init__(self, record):
         msg = "failed to log {}".format(str(record))
@@ -59,6 +48,16 @@ class ColorFormatter(logging.Formatter):
         "CRITICAL": colorama.Fore.RED,
     }
 
+    footer = (
+        "{yellow}Having any troubles?{nc}"
+        " Hit us up at {blue}https://dvc.org/support{nc},"
+        " we are always happy to help!"
+    ).format(
+        blue=colorama.Fore.BLUE,
+        nc=colorama.Fore.RESET,
+        yellow=colorama.Fore.YELLOW,
+    )
+
     def format(self, record):
         if record.levelname == "INFO":
             return record.msg
@@ -67,7 +66,10 @@ class ColorFormatter(logging.Formatter):
             exception, stack_trace = self._parse_exc(record.exc_info)
 
             return (
-                "{color}{levelname}{nc}: {description}" "{stack_trace}\n"
+                "{color}{levelname}{nc}: {description}"
+                "{stack_trace}\n"
+                "\n"
+                "{footer}"
             ).format(
                 color=self.color_code.get(record.levelname, ""),
                 nc=colorama.Fore.RESET,
@@ -75,6 +77,7 @@ class ColorFormatter(logging.Formatter):
                 description=self._description(record.msg, exception),
                 msg=record.msg,
                 stack_trace=stack_trace,
+                footer=self.footer,
             )
 
         return "{color}{levelname}{nc}: {msg}".format(

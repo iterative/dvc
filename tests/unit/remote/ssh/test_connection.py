@@ -111,9 +111,3 @@ def test_hardlink(repo_dir, ssh):
 def test_copy(repo_dir, ssh):
     ssh.copy("foo", "link")
     assert filecmp.cmp("foo", "link")
-
-
-def test_move(repo_dir, ssh):
-    ssh.move("foo", "copy")
-    assert os.path.exists("copy")
-    assert not os.path.exists("foo")

@@ -245,5 +245,5 @@ def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
 
 
 def get_last_exc(caplog):
-    _, exc, _ = caplog.records[-2].exc_info
+    _, exc, _ = caplog.records[-1].exc_info
     return exc

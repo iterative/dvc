@@ -1,5 +1,0 @@
-# Config for https://github.com/apps/release-drafter
-branches:
-  - master
-template: |
-  $CHANGES

@@ -4,7 +4,6 @@ import stat
 import errno
 import logging
 from functools import partial
-from concurrent.futures import ThreadPoolExecutor
 
 from shortuuid import uuid
 
@@ -30,7 +29,7 @@ from dvc.utils import (
 )
 from dvc.config import Config
 from dvc.exceptions import DvcException, DownloadError, UploadError
-from dvc.progress import Tqdm
+from dvc.progress import Tqdm, TqdmThreadPoolExecutor
 
 from dvc.path_info import PathInfo
 
@@ -264,7 +263,7 @@ class RemoteLOCAL(RemoteBASE):
 
         # This is a performance optimization. We can safely assume that,
         # if the resources that we want to fetch are already cached,
-        # there's no need to check the remote storage for the existence of
+        # there's no need to check the remote storage for the existance of
         # those files.
         if download and sorted(local_exists) == sorted(md5s):
             remote_exists = local_exists
@@ -360,7 +359,7 @@ class RemoteLOCAL(RemoteBASE):
             return 0
 
         if jobs > 1:
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
+            with TqdmThreadPoolExecutor(max_workers=jobs) as executor:
                 fails = sum(executor.map(func, *plans))
         else:
             fails = sum(map(func, *plans))

@@ -24,7 +24,7 @@ class CmdDestroy(CmdBase):
             if not self.args.force and not prompt.confirm(statement):
                 raise DvcException(
                     "cannot destroy without a confirmation from the user."
-                    " Use `-f` to force."
+                    " Use '-f' to force."
                 )
 
             self.repo.destroy()

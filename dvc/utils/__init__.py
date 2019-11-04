@@ -232,7 +232,7 @@ def _to_chunks_by_chunks_number(list_to_split, num_chunks):
 def to_chunks(list_to_split, num_chunks=None, chunk_size=None):
     if (num_chunks and chunk_size) or (not num_chunks and not chunk_size):
         raise ValueError(
-            "Only one among `num_chunks` or `chunk_size` must be defined."
+            "One and only one of 'num_chunks', 'chunk_size' must be defined"
         )
     if chunk_size:
         return _split(list_to_split, chunk_size)

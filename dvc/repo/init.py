@@ -65,7 +65,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     if isinstance(scm, NoSCM) and not no_scm:
         raise InitError(
             "{repo} is not tracked by any supported scm tool (e.g. git). "
-            "Use `--no-scm` if you don't want to use any scm.".format(
+            "Use '--no-scm' if you don't want to use any scm.".format(
                 repo=root_dir
             )
         )
@@ -73,7 +73,7 @@ def init(root_dir=os.curdir, no_scm=False, force=False):
     if os.path.isdir(dvc_dir):
         if not force:
             raise InitError(
-                "'{repo}' exists. Use `-f` to force.".format(
+                "'{repo}' exists. Use '-f' to force.".format(
                     repo=relpath(dvc_dir)
                 )
             )

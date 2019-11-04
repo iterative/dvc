@@ -83,7 +83,7 @@ def add_parser(subparsers, parent_parser):
         "--all-commits",
         action="store_true",
         default=False,
-        help=argparse.SUPPRESS,
+        help="Keep data files for all commits.",
     )
     gc_parser.add_argument(
         "-c",

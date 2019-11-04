@@ -28,7 +28,7 @@ class CmdRemove(CmdBase):
 
         raise DvcException(
             "Cannot purge without a confirmation from the user."
-            " Use `-f` to force."
+            " Use '-f' to force."
         )
 
     def run(self):

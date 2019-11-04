@@ -4,7 +4,6 @@ neatlynx/__pycache__
 cache
 *.pyc
 .env/
-.env2.7/
 
 cache
 .dvc.conf.lock

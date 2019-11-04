@@ -26,7 +26,7 @@ def _fetch(
     """Download data items from a cloud and imported repositories
 
     Returns:
-        int: number of successfully downloaded files
+        int: number of succesfully downloaded files
 
     Raises:
         DownloadError: thrown when there are failed downloads, either
@@ -76,20 +76,20 @@ def _fetch_external(self, repo_url, repo_rev, files):
     cache_dir = self.cache.local.cache_dir
     try:
         with external_repo(repo_url, repo_rev, cache_dir=cache_dir) as repo:
-            with repo.state:
-                cache = NamedCache()
-                for name in files:
-                    try:
-                        out = repo.find_out_by_relpath(name)
-                    except OutputNotFoundError:
-                        failed += 1
-                        logger.exception(
-                            "failed to fetch data for '{}'".format(name)
-                        )
-                        continue
-                    else:
-                        cache.update(out.get_used_cache())
+            cache = NamedCache()
+            for name in files:
+                try:
+                    out = repo.find_out_by_relpath(name)
+                except OutputNotFoundError:
+                    failed += 1
+                    logger.exception(
+                        "failed to fetch data for '{}'".format(name)
+                    )
+                    continue
+                else:
+                    cache.update(out.get_used_cache())
 
+            with repo.state:
                 try:
                     return repo.cloud.pull(cache), failed
                 except DownloadError as exc:

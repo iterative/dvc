@@ -27,9 +27,9 @@ class CmdRun(CmdBase):
             ]
         ):  # pragma: no cover
             logger.error(
-                "too few arguments. Specify at least one: `-d`, `-o`, `-O`, "
-                "`-m`, `-M`, `--outs-persist`, `--outs-persist-no-cache`, "
-                "`command`."
+                "too few arguments. Specify at least one: '-d', '-o', '-O',"
+                " '-m', '-M', '--outs-persist', '--outs-persist-no-cache',"
+                " 'command'."
             )
             return 1
 

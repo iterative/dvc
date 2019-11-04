@@ -50,6 +50,12 @@ def _checkout(
         total=total, unit="file", desc="Checkout", disable=total == 0
     ) as pbar:
         for stage in stages:
+            if stage.locked:
+                logger.warning(
+                    "DVC-file '{path}' is locked. Its dependencies are"
+                    " not going to be checked out.".format(path=stage.relpath)
+                )
+
             failed.extend(
                 stage.checkout(force=force, progress_callback=pbar.update_desc)
             )

@@ -83,20 +83,3 @@ def test_walk_files(remote):
     ]
 
     assert list(remote.walk_files(remote.path_info / "data")) == files
-
-
-def test_copy_preserve_etag_across_buckets(remote):
-    s3 = remote.s3
-    s3.create_bucket(Bucket="another")
-
-    another = RemoteS3(None, {"url": "s3://another", "region": "us-east-1"})
-
-    from_info = remote.path_info / "foo"
-    to_info = another.path_info / "foo"
-
-    remote.copy(from_info, to_info)
-
-    from_etag = RemoteS3.get_etag(s3, "bucket", "foo")
-    to_etag = RemoteS3.get_etag(s3, "another", "foo")
-
-    assert from_etag == to_etag

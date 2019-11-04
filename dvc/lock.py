@@ -87,17 +87,6 @@ if is_py3:
                     self._tmp_dir, filename + ".lock"
                 )
 
-        # Fix for __del__ bug in flufl.lock [1] which is causing errors on
-        # Python shutdown [2].
-        # [1] https://gitlab.com/warsaw/flufl.lock/issues/7
-        # [2] https://github.com/iterative/dvc/issues/2573
-        def __del__(self):
-            try:
-                if self._owned:
-                    self.finalize()
-            except ImportError:
-                pass
-
 
 else:
     import zc.lockfile

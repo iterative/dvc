@@ -8,12 +8,13 @@ from funcy import cached_property
 
 from dvc.utils.compat import str, builtin_str, basestring, is_py2
 from dvc.utils.compat import pathlib, urlparse
-from dvc.utils import relpath
 
 
 # On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,
 # which is lossy, thus we can't use that,
 # see https://github.com/mcmtroffaes/pathlib2/issues/56.
+from dvc.utils import relpath
+
 if is_py2:
     fs_encoding = "utf-8"
 
@@ -111,80 +112,52 @@ class PosixPathInfo(PathInfo, pathlib.PurePosixPath):
     pass
 
 
-class _URLPathInfo(PosixPathInfo):
-    def __str__(self):
-        return self.__fspath__()
-
-    __unicode__ = __str__
-
-
 class _URLPathParents(object):
-    def __init__(self, src):
-        self.src = src
-        self._parents = self.src._path.parents
+    def __init__(self, pathcls, scheme, netloc, path):
+        self._scheme = scheme
+        self._netloc = netloc
+        self._parents = path.parents
+        self._pathcls = pathcls
 
     def __len__(self):
         return len(self._parents)
 
     def __getitem__(self, idx):
-        return self.src.replace(path=self._parents[idx])
+        return self._pathcls.from_parts(
+            scheme=self._scheme,
+            netloc=self._netloc,
+            path=self._parents[idx].fspath,
+        )
 
     def __repr__(self):
-        return "<{}.parents>".format(self.src)
+        return "<{}.parents>".format(self._pathcls.__name__)
 
 
 class URLInfo(object):
     DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
 
     def __init__(self, url):
-        p = urlparse(url)
-        assert not p.query and not p.params and not p.fragment
-        assert p.password is None
-
-        self.fill_parts(p.scheme, p.hostname, p.username, p.port, p.path)
+        self.parsed = urlparse(url)
+        assert self.parsed.scheme != "remote"
 
     @classmethod
     def from_parts(
-        cls, scheme=None, host=None, user=None, port=None, path="", netloc=None
+        cls, scheme=None, netloc=None, host=None, user=None, port=None, path=""
     ):
-        assert bool(host) ^ bool(netloc)
+        assert scheme and (bool(host) ^ bool(netloc))
 
-        if netloc is not None:
-            return cls("{}://{}{}".format(scheme, netloc, path))
-
-        obj = cls.__new__(cls)
-        obj.fill_parts(scheme, host, user, port, path)
-        return obj
-
-    def fill_parts(self, scheme, host, user, port, path):
-        assert scheme != "remote"
-        assert isinstance(path, (basestring, _URLPathInfo))
-
-        self.scheme, self.host, self.user = scheme, host, user
-        self.port = int(port) if port else self.DEFAULT_PORTS.get(self.scheme)
-
-        if isinstance(path, _URLPathInfo):
-            self._spath = builtin_str(path)
-            self._path = path
-        else:
-            if path and path[0] != "/":
-                path = "/" + path
-            self._spath = path
-
-    @property
-    def _base_parts(self):
-        return (self.scheme, self.host, self.user, self.port)
-
-    @property
-    def parts(self):
-        return self._base_parts + self._path.parts
-
-    def replace(self, path=None):
-        return self.from_parts(*self._base_parts, path=path)
+        if netloc is None:
+            netloc = host
+            if user:
+                netloc = user + "@" + host
+            if port:
+                netloc += ":" + str(port)
+        return cls("{}://{}{}".format(scheme, netloc, path))
 
     @cached_property
     def url(self):
-        return "{}://{}{}".format(self.scheme, self.netloc, self._spath)
+        p = self.parsed
+        return "{}://{}{}".format(p.scheme, self.netloc, p.path)
 
     def __str__(self):
         return self.url
@@ -197,60 +170,92 @@ class URLInfo(object):
             other = self.__class__(other)
         return (
             self.__class__ == other.__class__
-            and self._base_parts == other._base_parts
+            and self.scheme == other.scheme
+            and self.netloc == other.netloc
             and self._path == other._path
         )
 
     def __hash__(self):
-        return hash(self.parts)
+        return hash(self.url)
 
     def __div__(self, other):
-        return self.replace(path=posixpath.join(self._spath, other))
+        p = self.parsed
+        new_path = posixpath.join(p.path, str(other))
+        if not new_path.startswith("/"):
+            new_path = "/" + new_path
+        new_url = "{}://{}{}".format(p.scheme, p.netloc, new_path)
+        return self.__class__(new_url)
 
     __truediv__ = __div__
 
+    def __getattr__(self, name):
+        # When deepcopy is called, it creates and object without __init__,
+        # self.parsed is not initialized and it causes infinite recursion.
+        # More on this special casing here:
+        # https://stackoverflow.com/a/47300262/298182
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return getattr(self.parsed, name)
+
+    @cached_property
+    def netloc(self):
+        p = self.parsed
+        netloc = p.hostname
+        if p.username:
+            netloc = p.username + "@" + netloc
+        if p.port and int(p.port) != self.DEFAULT_PORTS.get(p.scheme):
+            netloc += ":" + str(p.port)
+        return netloc
+
     @property
-    def path(self):
-        return self._spath
+    def port(self):
+        return self.parsed.port or self.DEFAULT_PORTS.get(self.parsed.scheme)
+
+    @property
+    def host(self):
+        return self.parsed.hostname
+
+    @property
+    def user(self):
+        return self.parsed.username
 
     @cached_property
     def _path(self):
-        return _URLPathInfo(self._spath)
+        return PosixPathInfo(self.parsed.path)
 
     @property
     def name(self):
         return self._path.name
 
-    @cached_property
-    def netloc(self):
-        netloc = self.host
-        if self.user:
-            netloc = self.user + "@" + netloc
-        if self.port and int(self.port) != self.DEFAULT_PORTS.get(self.scheme):
-            netloc += ":" + str(self.port)
-        return netloc
+    @property
+    def parts(self):
+        return (self.scheme, self.netloc) + self._path.parts
 
     @property
     def bucket(self):
-        return self.netloc
+        return self.parsed.netloc
 
     @property
     def parent(self):
-        return self.replace(path=self._path.parent)
+        return self.from_parts(
+            scheme=self.scheme,
+            netloc=self.parsed.netloc,
+            path=self._path.parent.fspath,
+        )
 
     @property
     def parents(self):
-        return _URLPathParents(self)
+        return _URLPathParents(
+            type(self), self.scheme, self.parsed.netloc, self._path
+        )
 
     def relative_to(self, other):
-        if isinstance(other, basestring):
-            other = self.__class__(other)
-        if self.__class__ != other.__class__:
-            msg = "'{}' has incompatible class with '{}'".format(self, other)
-            raise ValueError(msg)
-        if self._base_parts != other._base_parts:
-            msg = "'{}' does not start with '{}'".format(self, other)
-            raise ValueError(msg)
+        if isinstance(other, str):
+            other = URLInfo(other)
+        if self.scheme != other.scheme or self.netloc != other.netloc:
+            raise ValueError(
+                "'{}' does not start with '{}'".format(self, other)
+            )
         return self._path.relative_to(other._path)
 
     def isin(self, other):
@@ -258,12 +263,14 @@ class URLInfo(object):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return self._base_parts == other._base_parts and self._path.isin(
-            other._path
+        return (
+            self.scheme == other.scheme
+            and self.netloc == other.netloc
+            and self._path.isin(other._path)
         )
 
 
 class CloudURLInfo(URLInfo):
     @property
     def path(self):
-        return self._spath.lstrip("/")
+        return self.parsed.path.lstrip("/")

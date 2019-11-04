@@ -53,7 +53,7 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help=(
-            "Overwrite existing '.dvc/' directory. "
+            "Overwrite existing '.dvc' directory. "
             "This operation removes local cache."
         ),
     )

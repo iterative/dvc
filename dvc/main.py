@@ -6,7 +6,6 @@ import logging
 
 from dvc.cli import parse_args
 from dvc.lock import LockError
-from dvc.logger import FOOTER
 from dvc.config import ConfigError
 from dvc.analytics import Analytics
 from dvc.exceptions import NotDvcRepoError, DvcParserError
@@ -75,9 +74,6 @@ def main(argv=None):
         # Remove cached repos in the end of the call, these are anonymous
         # so won't be reused by any other subsequent run anyway.
         clean_repos()
-
-    if ret != 0:
-        logger.info(FOOTER)
 
     Analytics().send_cmd(cmd, args, ret)
 
