@@ -76,6 +76,7 @@ install_requires = [
     "tqdm>=4.36.1,<5",
     "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
+    "pywin32>=225; sys_platform == 'win32'",
 ]
 
 if sys.version_info[0] == 2:
@@ -118,7 +119,6 @@ tests_requirements = [
     "xmltodict>=0.11.0",
     "awscli==1.16.266",
     "google-compute-engine==2.8.13",
-    "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
     "flake8",

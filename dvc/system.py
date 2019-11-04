@@ -146,10 +146,10 @@ class System(object):
 
     @staticmethod
     def _getdirinfo(path):
-        import ctypes
-        from ctypes import c_void_p, c_wchar_p, Structure, WinError, POINTER
-        from ctypes.wintypes import DWORD, HANDLE, BOOL
+        from collections import namedtuple
         from win32file import (
+            CreateFileW,
+            GetFileInformationByHandle,
             FILE_FLAG_BACKUP_SEMANTICS,
             FILE_FLAG_OPEN_REPARSE_POINT,
             FILE_SHARE_READ,
@@ -159,61 +159,30 @@ class System(object):
         # NOTE: use FILE_FLAG_OPEN_REPARSE_POINT to open symlink itself and not
         # the target See https://docs.microsoft.com/en-us/windows/desktop/api/
         # fileapi/nf-fileapi-createfilew#symbolic-link-behavior
-
-        class FILETIME(Structure):
-            _fields_ = [("dwLowDateTime", DWORD), ("dwHighDateTime", DWORD)]
-
-        class BY_HANDLE_FILE_INFORMATION(Structure):
-            _fields_ = [
-                ("dwFileAttributes", DWORD),
-                ("ftCreationTime", FILETIME),
-                ("ftLastAccessTime", FILETIME),
-                ("ftLastWriteTime", FILETIME),
-                ("dwVolumeSerialNumber", DWORD),
-                ("nFileSizeHigh", DWORD),
-                ("nFileSizeLow", DWORD),
-                ("nNumberOfLinks", DWORD),
-                ("nFileIndexHigh", DWORD),
-                ("nFileIndexLow", DWORD),
-            ]
-
         flags = FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT
 
-        func = ctypes.windll.kernel32.CreateFileW
-        func.argtypes = [
-            c_wchar_p,
-            DWORD,
-            DWORD,
-            c_void_p,
-            DWORD,
-            DWORD,
-            HANDLE,
-        ]
-        func.restype = HANDLE
-
-        hfile = func(
+        hfile = CreateFileW(
             path, 0, FILE_SHARE_READ, None, OPEN_EXISTING, flags, None
         )
-        if hfile is None:
-            raise WinError()
 
-        func = ctypes.windll.kernel32.GetFileInformationByHandle
-        func.argtypes = [HANDLE, POINTER(BY_HANDLE_FILE_INFORMATION)]
-        func.restype = BOOL
+        # See BY_HANDLE_FILE_INFORMATION structure from fileapi.h
+        Info = namedtuple(
+            "BY_HANDLE_FILE_INFORMATION",
+            [
+                "dwFileAttributes",
+                "ftCreationTime",
+                "ftLastAccessTime",
+                "ftLastWriteTime",
+                "dwVolumeSerialNumber",
+                "nFileSizeHigh",
+                "nFileSizeLow",
+                "nNumberOfLinks",
+                "nFileIndexHigh",
+                "nFileIndexLow",
+            ],
+        )
 
-        info = BY_HANDLE_FILE_INFORMATION()
-        rv = func(hfile, info)
-
-        func = ctypes.windll.kernel32.CloseHandle
-        func.argtypes = [HANDLE]
-        func.restype = BOOL
-
-        func(hfile)
-
-        if rv == 0:
-            raise WinError()
-
-        return info
+        return Info(*GetFileInformationByHandle(hfile))
 
     @staticmethod
     def inode(path):
