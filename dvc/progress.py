@@ -3,33 +3,10 @@ from __future__ import print_function
 import logging
 import sys
 from tqdm import tqdm
-from concurrent.futures import ThreadPoolExecutor
 from funcy import merge
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
-
-
-class TqdmThreadPoolExecutor(ThreadPoolExecutor):
-    """
-    Ensure worker progressbars are cleared away properly.
-    """
-
-    def __enter__(self):
-        """
-        Creates a blank initial dummy progress bar if needed so that workers
-        are forced to create "nested" bars.
-        """
-        blank_bar = Tqdm(bar_format="Multi-Threaded:", leave=False)
-        if blank_bar.pos > 0:
-            # already nested - don't need a placeholder bar
-            blank_bar.close()
-        self.bar = blank_bar
-        return super(TqdmThreadPoolExecutor, self).__enter__()
-
-    def __exit__(self, *a, **k):
-        super(TqdmThreadPoolExecutor, self).__exit__(*a, **k)
-        self.bar.close()
 
 
 class Tqdm(tqdm):

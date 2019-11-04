@@ -4,7 +4,6 @@ import errno
 import itertools
 import io
 import os
-import posixpath
 import getpass
 import logging
 import threading
@@ -268,7 +267,7 @@ class RemoteSSH(RemoteBASE):
     def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:
             for fname in ssh.walk_files(path_info.path):
-                yield path_info / posixpath.relpath(fname, path_info.path)
+                yield path_info.replace(path=fname)
 
     def makedirs(self, path_info):
         with self.ssh(path_info) as ssh:

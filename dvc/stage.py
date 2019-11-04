@@ -242,7 +242,7 @@ class Stage(object):
 
         if self.is_callback:
             logger.warning(
-                "DVC-file '{fname}' is a 'callback' stage "
+                "DVC-file '{fname}' is a \"callback\" stage "
                 "(has a command and no dependencies) and thus always "
                 "considered as changed.".format(fname=self.relpath)
             )
@@ -451,8 +451,8 @@ class Stage(object):
             if fname is not None and os.path.basename(fname) != fname:
                 raise StageFileBadNameError(
                     "DVC-file name '{fname}' may not contain subdirectories"
-                    " if '-c|--cwd' (deprecated) is specified. Use '-w|--wdir'"
-                    " along with '-f' to specify DVC-file path with working"
+                    " if `-c|--cwd` (deprecated) is specified. Use `-w|--wdir`"
+                    " along with `-f` to specify DVC-file path with working"
                     " directory.".format(fname=fname)
                 )
             wdir = cwd
@@ -571,8 +571,8 @@ class Stage(object):
     def _check_dvc_filename(fname):
         if not Stage.is_valid_filename(fname):
             raise StageFileBadNameError(
-                "bad DVC-file name '{}'. DVC-files should be named"
-                " 'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
+                "bad DVC-file name '{}'. DVC-files should be named "
+                "'Dvcfile' or have a '.dvc' suffix (e.g. '{}.dvc').".format(
                     relpath(fname), os.path.basename(fname)
                 )
             )
@@ -736,7 +736,7 @@ class Stage(object):
             if not force and not prompt.confirm(msg):
                 raise StageCommitError(
                     "unable to commit changed '{}'. Use `-f|--force` to "
-                    "force.`".format(self.relpath)
+                    "force.".format(self.relpath)
                 )
             self.save()
 

@@ -1,6 +1,11 @@
 from __future__ import unicode_literals
 
-from . import locked
+import logging
+
+from dvc.repo import locked
+
+
+logger = logging.getLogger(__name__)
 
 
 @locked

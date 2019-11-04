@@ -73,7 +73,7 @@ install_requires = [
     "funcy>=1.12",
     "pathspec>=0.6.0",
     "shortuuid>=0.5.0",
-    "tqdm>=4.35.0,<5",
+    "tqdm>=4.36.1,<5",
     "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
 ]
@@ -116,7 +116,7 @@ tests_requirements = [
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
-    "awscli>=1.16.125",
+    "awscli==1.16.266",
     "google-compute-engine==2.8.13",
     "pywin32; sys_platform == 'win32'",
     "Pygments",  # required by collective.checkdocs,
@@ -127,7 +127,7 @@ tests_requirements = [
     "pydocstyle<4.0",
     "jaraco.windows==3.9.2",
     "mock-ssh-server>=0.6.0",
-    "moto>=1.3.14.dev55",
+    "moto==1.3.14.dev464",
     "rangehttpserver==1.2.0",
 ]
 
