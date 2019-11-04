@@ -2,11 +2,13 @@
       [Contributing to DVC](https://dvc.org/doc/user-guide/contributing/core)
       list?
 
-* [ ] 📖 This PR does _not_ require [documentation](https://dvc.org/doc) updates
-      or modifications. If it _does_, have you created a PR for
-      [dvc.org](https://github.com/iterative/dvc.org) or at least opened an
-      issue for it? If so, please add a link to it and after that check this
-      box.
+* [ ] 📖 Check this box if this PR **does not** require
+      [documentation](https://dvc.org/doc) updates, or if it does **and** you
+      have created a separate PR in
+      [dvc.org](https://github.com/iterative/dvc.org)
+      with such updates (or at least opened an issue about it in that repo).
+      Please link below to your PR (or issue) in the
+      [dvc.org](https://github.com/iterative/dvc.org) repo.
 
 * [ ] ❌ Have you checked DeepSource, CodeClimate, and other sanity checks
       below? We consider their findings recommendatory and don't expect
