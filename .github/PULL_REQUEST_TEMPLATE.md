@@ -9,9 +9,9 @@
       box.
 
 * [ ] ❌ Have you checked DeepSource, CodeClimate, and other sanity checks
-      below? Their findings are considered recommendatory. We don't expect all
-      of them to be fixed. Please, read them carefully and fix those that
-      actually improve code and/or fix bugs.
+      below? We consider their findings recommendatory and don't expect
+      everything to be addresses. Please review them carefully and fix those
+      that actually improve code or fix bugs.
 
 Thank you for the contribution - we'll try to review it as soon as possible 🙏.
 
