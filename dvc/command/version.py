@@ -18,7 +18,7 @@ from dvc.command.base import CmdBaseNoRepo, append_doc_link
 from dvc.version import __version__
 from dvc.exceptions import DvcException, NotDvcRepoError
 from dvc.system import System
-from dvc.updater import Updater
+from dvc.utils.pkg import get_package_manager
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class CmdVersion(CmdBaseNoRepo):
         python_version = platform.python_version()
         platform_type = platform.platform()
         binary = is_binary()
-        package_manager = Updater("dvc/")._get_package_manager()
+        package_manager = get_package_manager()
         info = (
             "DVC version: {dvc_version}\n"
             "Python version: {python_version}\n"
