@@ -51,7 +51,7 @@ def test_check_version_outdated(updater):
     assert updater._is_outdated()
 
 
-@mock.patch("dvc.updater.Updater._is_conda")
+@mock.patch("dvc.utils.pkg.is_conda")
 def test_check_dvc_from_conda(mocked_is_conda, updater):
     mocked_is_conda.return_value = True
     updater.latest = "0.21.0"
