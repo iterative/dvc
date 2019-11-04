@@ -13,9 +13,6 @@ def is_conda():
 def get_linux():
     import distro
 
-    if is_conda():
-        return "conda"
-
     if not is_binary():
         return "pip"
 
@@ -33,8 +30,6 @@ def get_linux():
 
 
 def get_darwin():
-    if is_conda():
-        return "conda"
     if not is_binary():
         if __file__.startswith("/usr/local/Cellar"):
             return "formula"
@@ -44,14 +39,15 @@ def get_darwin():
 
 
 def get_windows():
-    if is_conda():
-        return "conda"
     return None if is_binary() else "pip"
 
 
 def get_package_manager():
     import platform
     from dvc.exceptions import DvcException
+
+    if is_conda():
+        return "conda"
 
     m = {
         "Windows": get_windows(),
