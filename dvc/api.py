@@ -9,7 +9,6 @@ except ImportError:
 from dvc.utils.compat import urlparse
 from dvc.repo import Repo
 
-
 from dvc.external_repo import external_repo
 
 
@@ -24,7 +23,7 @@ def get_url(path, repo=None, rev=None, remote=None):
 
 def open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """Opens a specified resource as a file descriptor"""
-    args = (path,)
+    args = (path, )
     kwargs = {
         "repo": repo,
         "remote": remote,
@@ -42,24 +41,25 @@ class _OpenContextManager(GCM):
 
     def __getattr__(self, name):
         raise AttributeError(
-            "dvc.api.open() should be used in a with statement"
-        )
+            "dvc.api.open() should be used in a with statement")
 
 
 def _open(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     with _make_repo(repo, rev=rev) as _repo:
         abspath = os.path.join(_repo.root_dir, path)
-        with _repo.open(
-            abspath, remote=remote, mode=mode, encoding=encoding
-        ) as fd:
+        with _repo.open(abspath, remote=remote, mode=mode,
+                        encoding=encoding) as fd:
             yield fd
 
 
 def read(path, repo=None, rev=None, remote=None, mode="r", encoding=None):
     """Read a specified resource into string"""
-    with open(
-        path, repo=repo, rev=rev, remote=remote, mode=mode, encoding=encoding
-    ) as fd:
+    with open(path,
+              repo=repo,
+              rev=rev,
+              remote=remote,
+              mode=mode,
+              encoding=encoding) as fd:
         return fd.read()
 
 
