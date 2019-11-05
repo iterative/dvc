@@ -9,6 +9,7 @@ import nanotime
 from dvc.exceptions import DvcException
 from dvc.system import System
 from dvc.utils import dict_md5
+from dvc.utils import fspath
 from dvc.utils import fspath_py35
 from dvc.utils import walk_files
 from dvc.utils.compat import str
@@ -61,6 +62,9 @@ class BasePathNotInCheckedPathException(DvcException):
 
 
 def contains_symlink_up_to(path, base_path):
+    base_path = fspath(base_path)
+    path = fspath(path)
+
     if base_path not in path:
         raise BasePathNotInCheckedPathException(path, base_path)
 
