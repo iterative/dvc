@@ -6,6 +6,7 @@ import os
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
+from dvc.utils import dvc_walk
 from dvc.utils import relpath
 from dvc.utils.compat import open
 
@@ -47,6 +48,9 @@ class DvcIgnorePatterns(DvcIgnore):
         return hash(self.ignore_file_path)
 
     def __eq__(self, other):
+        if not isinstance(other, DvcIgnorePatterns):
+            return NotImplemented
+
         return self.ignore_file_path == other.ignore_file_path
 
 
@@ -59,12 +63,21 @@ class DvcIgnoreDirs(DvcIgnore):
 
         return dirs, files
 
+    def __hash__(self):
+        return hash(tuple(self.basenames))
+
+    def __eq__(self, other):
+        if not isinstance(other, DvcIgnoreDirs):
+            return NotImplemented
+
+        return self.basenames == other.basenames
+
 
 class DvcIgnoreFilter(object):
     def __init__(self, root_dir):
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
         self._update(root_dir)
-        for root, dirs, _ in os.walk(root_dir):
+        for root, dirs, _ in dvc_walk(root_dir, self):
             for d in dirs:
                 self._update(os.path.join(root, d))
 
