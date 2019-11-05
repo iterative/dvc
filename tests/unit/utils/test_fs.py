@@ -94,6 +94,14 @@ class TestContainsLink(TestCase):
         ):
             self.assertFalse(contains_symlink_up_to(target_path, base_path))
 
+    def test_path_object_and_str_are_valid_arg_types(self):
+        base_path = "foo"
+        target_path = os.path.join(base_path, "bar")
+        self.assertFalse(contains_symlink_up_to(target_path, base_path))
+        self.assertFalse(
+            contains_symlink_up_to(PathInfo(target_path), PathInfo(base_path))
+        )
+
 
 @pytest.mark.parametrize(
     "path1, path2",
