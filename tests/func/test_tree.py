@@ -1,5 +1,4 @@
 # encoding: utf-8
-
 from __future__ import unicode_literals
 
 from os.path import join
@@ -8,8 +7,9 @@ from dvc.ignore import DvcIgnoreFilter
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
-
-from tests.basic_env import TestDir, TestGit, TestGitSubmodule
+from tests.basic_env import TestDir
+from tests.basic_env import TestGit
+from tests.basic_env import TestGitSubmodule
 
 
 class TestWorkingTree(TestDir):

@@ -1,14 +1,19 @@
-from __future__ import unicode_literals, absolute_import
+from __future__ import absolute_import
+from __future__ import unicode_literals
 
-import sys
 import os
 import posixpath
+import sys
 
 from funcy import cached_property
 
-from dvc.utils.compat import str, builtin_str, basestring, is_py2
-from dvc.utils.compat import pathlib, urlparse
 from dvc.utils import relpath
+from dvc.utils.compat import basestring
+from dvc.utils.compat import builtin_str
+from dvc.utils.compat import is_py2
+from dvc.utils.compat import pathlib
+from dvc.utils.compat import str
+from dvc.utils.compat import urlparse
 
 
 # On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,

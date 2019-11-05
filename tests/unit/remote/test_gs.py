@@ -1,9 +1,11 @@
+from unittest import TestCase
+
 import mock
 import pytest
 import requests
-from unittest import TestCase
 
-from dvc.remote.gs import RemoteGS, dynamic_chunk_size
+from dvc.remote.gs import dynamic_chunk_size
+from dvc.remote.gs import RemoteGS
 
 
 class TestRemoteGS(TestCase):

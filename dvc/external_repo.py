@@ -2,9 +2,9 @@ from __future__ import unicode_literals
 
 import os
 import tempfile
+from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 
-from contextlib import contextmanager
 from funcy import retry
 
 from dvc.utils import remove

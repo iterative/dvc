@@ -1,26 +1,28 @@
 from __future__ import unicode_literals
 
-import os
 import logging
+import os
 from contextlib import contextmanager
+from functools import wraps
 from itertools import chain
 
-from functools import wraps
 from funcy import cached_property
 
+from .graph import check_acyclic
+from .graph import get_pipeline
+from .graph import get_pipelines
+from .graph import get_stages
 from dvc.config import Config
-from dvc.exceptions import (
-    NotDvcRepoError,
-    OutputNotFoundError,
-    FileMissingError,
-)
+from dvc.exceptions import FileMissingError
+from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import OutputNotFoundError
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
-from dvc.utils.compat import open as _open, fspath_py35, FileNotFoundError
 from dvc.utils import relpath
-
-from .graph import check_acyclic, get_pipeline, get_pipelines, get_stages
+from dvc.utils.compat import FileNotFoundError
+from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import open as _open
 
 
 logger = logging.getLogger(__name__)

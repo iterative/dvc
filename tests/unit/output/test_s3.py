@@ -1,5 +1,4 @@
 from dvc.output.s3 import OutputS3
-
 from tests.unit.output.test_local import TestOutputLOCAL
 
 

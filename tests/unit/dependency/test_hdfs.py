@@ -1,9 +1,9 @@
 import os
 import sys
+
 import pytest
 
 from dvc.dependency.hdfs import DependencyHDFS
-
 from tests.unit.dependency.test_local import TestDependencyLOCAL
 
 

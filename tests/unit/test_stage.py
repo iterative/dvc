@@ -1,14 +1,15 @@
-from dvc.path_info import PathInfo
-from dvc.stage import Stage, StageUpdateError
-from dvc.dependency.repo import DependencyREPO
-
 import signal
-import threading
 import subprocess
+import threading
+from unittest import TestCase
 
 import mock
 import pytest
-from unittest import TestCase
+
+from dvc.dependency.repo import DependencyREPO
+from dvc.path_info import PathInfo
+from dvc.stage import Stage
+from dvc.stage import StageUpdateError
 
 
 TEST_STAGE_DICT = {

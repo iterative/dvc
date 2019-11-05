@@ -2,11 +2,11 @@ from __future__ import unicode_literals
 
 import logging
 import os
+
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.utils import relpath
-
 from dvc.utils.compat import open
 
 logger = logging.getLogger(__name__)

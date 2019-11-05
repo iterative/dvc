@@ -4,12 +4,13 @@ import logging
 
 from funcy import cached_property
 
+from dvc.config import Config
+from dvc.config import ConfigError
+from dvc.exceptions import DvcException
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.utils.compat import open
-from dvc.progress import Tqdm
-from dvc.exceptions import DvcException
-from dvc.config import Config, ConfigError
-from dvc.remote.base import RemoteBASE
 
 logger = logging.getLogger(__name__)
 

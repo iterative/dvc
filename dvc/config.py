@@ -1,18 +1,24 @@
 """DVC config objects."""
-
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, open
-
-import os
-import re
 import copy
 import errno
-import configobj
 import logging
+import os
+import re
 
-from schema import Schema, Optional, And, Use, Regex, SchemaError
-from dvc.exceptions import DvcException, NotDvcRepoError
+import configobj
+from schema import And
+from schema import Optional
+from schema import Regex
+from schema import Schema
+from schema import SchemaError
+from schema import Use
+
+from dvc.exceptions import DvcException
+from dvc.exceptions import NotDvcRepoError
+from dvc.utils.compat import open
+from dvc.utils.compat import str
 
 logger = logging.getLogger(__name__)
 

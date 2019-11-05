@@ -4,11 +4,14 @@ import os
 
 from git import Repo
 
+from dvc.scm import Git
+from dvc.scm import NoSCM
+from dvc.scm import SCM
 from dvc.system import System
 from dvc.utils.compat import str  # noqa: F401
-from dvc.scm import SCM, NoSCM, Git
-
-from tests.basic_env import TestDir, TestGit, TestGitSubmodule
+from tests.basic_env import TestDir
+from tests.basic_env import TestGit
+from tests.basic_env import TestGitSubmodule
 from tests.utils import get_gitignore_content
 
 

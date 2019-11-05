@@ -1,21 +1,21 @@
 # encoding: utf-8
-
 from __future__ import unicode_literals
 
-import os
-import shortuuid
-import tempfile
 import logging
+import os
+import tempfile
 import warnings
+from unittest import TestCase
 
+import pytest
+import shortuuid
 from git import Repo
 from git.exc import GitCommandNotFound
-from unittest import TestCase
-import pytest
 
 from dvc.repo import Repo as DvcRepo
-from dvc.utils.compat import open, str
 from dvc.utils import remove
+from dvc.utils.compat import open
+from dvc.utils.compat import str
 
 
 logger = logging.getLogger("dvc")

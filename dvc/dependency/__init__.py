@@ -2,20 +2,18 @@ from __future__ import unicode_literals
 
 import schema
 
-from dvc.scheme import Schemes
-
 import dvc.output as output
-from dvc.output.base import OutputBase
-from dvc.dependency.s3 import DependencyS3
+from .repo import DependencyREPO
 from dvc.dependency.gs import DependencyGS
-from dvc.dependency.local import DependencyLOCAL
 from dvc.dependency.hdfs import DependencyHDFS
-from dvc.dependency.ssh import DependencySSH
 from dvc.dependency.http import DependencyHTTP
 from dvc.dependency.https import DependencyHTTPS
-from .repo import DependencyREPO
-
+from dvc.dependency.local import DependencyLOCAL
+from dvc.dependency.s3 import DependencyS3
+from dvc.dependency.ssh import DependencySSH
+from dvc.output.base import OutputBase
 from dvc.remote import Remote
+from dvc.scheme import Schemes
 
 
 DEPS = [

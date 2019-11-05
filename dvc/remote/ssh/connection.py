@@ -1,8 +1,9 @@
+import errno
+import logging
 import os
 import posixpath
-import logging
-import errno
 import stat
+
 from funcy import cached_property
 
 try:

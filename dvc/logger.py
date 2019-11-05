@@ -1,14 +1,15 @@
 """Manages logging configuration for dvc repo."""
-
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str, StringIO, RecursionError
-from dvc.progress import Tqdm
-
-import logging
-import logging.handlers
 import logging.config
+import logging.handlers
+
 import colorama
+
+from dvc.progress import Tqdm
+from dvc.utils.compat import RecursionError
+from dvc.utils.compat import str
+from dvc.utils.compat import StringIO
 
 
 FOOTER = (

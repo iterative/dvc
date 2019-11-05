@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import io
+
 import requests
 
 from dvc.utils.http import open_url

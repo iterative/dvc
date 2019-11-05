@@ -1,28 +1,33 @@
 from __future__ import unicode_literals
 
-from dvc.utils.compat import str
-
 import copy
-import re
-import os
-import subprocess
 import logging
+import os
+import re
 import signal
+import subprocess
 import threading
 from itertools import chain
 
-from dvc.utils import relpath
-from dvc.utils.compat import pathlib
-from dvc.utils.fs import contains_symlink_up_to
-from schema import Schema, SchemaError, Optional, Or, And
+from schema import And
+from schema import Optional
+from schema import Or
+from schema import Schema
+from schema import SchemaError
 
-import dvc.prompt as prompt
 import dvc.dependency as dependency
 import dvc.output as output
+import dvc.prompt as prompt
 from dvc.exceptions import DvcException
-from dvc.utils import dict_md5, fix_env
+from dvc.utils import dict_md5
+from dvc.utils import fix_env
+from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.stage import load_stage_fd, dump_stage_file
+from dvc.utils.compat import pathlib
+from dvc.utils.compat import str
+from dvc.utils.fs import contains_symlink_up_to
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_fd
 
 
 logger = logging.getLogger(__name__)

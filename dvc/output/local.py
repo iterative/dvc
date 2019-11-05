@@ -1,13 +1,15 @@
 from __future__ import unicode_literals
 
-import os
 import logging
+import os
 
-from dvc.utils.compat import urlparse, fspath_py35, str
-from dvc.istextfile import istextfile
 from dvc.exceptions import DvcException
-from dvc.remote.local import RemoteLOCAL
+from dvc.istextfile import istextfile
 from dvc.output.base import OutputBase
+from dvc.remote.local import RemoteLOCAL
+from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import str
+from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)

@@ -1,8 +1,10 @@
+from unittest import TestCase
+
+import mock
+
 from dvc.repo import Repo
 from dvc.repo.scm_context import scm_context
 from dvc.scm import NoSCM
-from unittest import TestCase
-import mock
 
 
 class TestScmContext(TestCase):

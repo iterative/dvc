@@ -1,7 +1,8 @@
 import pytest
-from dvc.utils.stage import load_stage_file, dump_stage_file
 
 from dvc.stage import StageCommitError
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_file
 
 
 def test_commit_recursive(dvc_repo, repo_dir):

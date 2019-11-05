@@ -1,31 +1,34 @@
 from __future__ import unicode_literals
 
-from operator import itemgetter
-from multiprocessing import cpu_count
-
+import itertools
 import json
 import logging
 import tempfile
-import itertools
-from functools import partial
 from concurrent.futures import ThreadPoolExecutor
 from copy import copy
-
-from dvc.ignore import DvcIgnore
-from dvc.utils.compat import str, basestring, urlparse, FileNotFoundError
-from dvc.remote.slow_link_detection import slow_link_guard
+from functools import partial
+from multiprocessing import cpu_count
+from operator import itemgetter
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.exceptions import (
-    DvcException,
-    ConfirmRemoveError,
-    DvcIgnoreInCollectedDirError,
-)
+from dvc.exceptions import ConfirmRemoveError
+from dvc.exceptions import DvcException
+from dvc.exceptions import DvcIgnoreInCollectedDirError
+from dvc.ignore import DvcIgnore
+from dvc.path_info import PathInfo
+from dvc.path_info import URLInfo
 from dvc.progress import Tqdm
-from dvc.utils import tmp_fname, move, relpath, makedirs
+from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
-from dvc.path_info import PathInfo, URLInfo
+from dvc.utils import makedirs
+from dvc.utils import move
+from dvc.utils import relpath
+from dvc.utils import tmp_fname
+from dvc.utils.compat import basestring
+from dvc.utils.compat import FileNotFoundError
+from dvc.utils.compat import str
+from dvc.utils.compat import urlparse
 from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)

@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import os
 import json
 import logging
+import os
 
-from dvc.repo import Repo as DvcRepo
+from dvc.exceptions import DvcException
+from dvc.exceptions import NoMetricsError
 from dvc.main import main
-from dvc.exceptions import DvcException, NoMetricsError
+from dvc.repo import Repo as DvcRepo
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
 from dvc.stage import Stage
 from dvc.utils import relpath

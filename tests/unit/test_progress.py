@@ -1,8 +1,10 @@
 import logging
+import sys
+
+import mock
+
 from dvc.progress import Tqdm
 from dvc.utils import env2bool
-import sys
-import mock
 
 
 def test_quiet_logging(caplog, capsys):

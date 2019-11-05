@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
 
 import argparse
-import os
 import logging
+import os
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
 from dvc.command.metrics import show_metrics
 from dvc.command.status import CmdDataStatus
 from dvc.exceptions import DvcException

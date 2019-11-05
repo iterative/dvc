@@ -1,9 +1,8 @@
 """Manages dvc lock file."""
-
 from __future__ import unicode_literals
 
-import os
 import hashlib
+import os
 import time
 from datetime import timedelta
 

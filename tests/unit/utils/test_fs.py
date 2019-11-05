@@ -1,22 +1,20 @@
 import os
 from unittest import TestCase
 
-import dvc
 import pytest
+from mock import patch
 
+import dvc
 from dvc.ignore import DvcIgnoreFilter
-from dvc.system import System
 from dvc.path_info import PathInfo
+from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.compat import str
-from dvc.utils.fs import (
-    get_mtime_and_size,
-    contains_symlink_up_to,
-    BasePathNotInCheckedPathException,
-    get_parent_dirs_up_to,
-    get_inode,
-)
-from mock import patch
+from dvc.utils.fs import BasePathNotInCheckedPathException
+from dvc.utils.fs import contains_symlink_up_to
+from dvc.utils.fs import get_inode
+from dvc.utils.fs import get_mtime_and_size
+from dvc.utils.fs import get_parent_dirs_up_to
 from tests.basic_env import TestDir
 from tests.utils import spy
 

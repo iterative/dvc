@@ -1,9 +1,9 @@
-import pytest
 import mock
+import pytest
 
 import dvc.remote.slow_link_detection
-from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.config import Config
+from dvc.remote.slow_link_detection import slow_link_guard
 
 
 @pytest.fixture(autouse=True)

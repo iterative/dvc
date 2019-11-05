@@ -1,9 +1,9 @@
 import logging
 
 from dvc.main import main
-
 from tests.basic_env import TestDvc
-from tests.func.test_repro import TestRepro, TestReproChangedDeepData
+from tests.func.test_repro import TestRepro
+from tests.func.test_repro import TestReproChangedDeepData
 
 
 class TestPipelineShowSingle(TestDvc):

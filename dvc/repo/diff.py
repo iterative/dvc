@@ -3,18 +3,14 @@ from __future__ import unicode_literals
 import os
 from errno import ENOENT
 
-
 import dvc.logger as logger
-from dvc.scm.base import FileNotInCommitError
-from dvc.scm.git import (
-    DIFF_A_TREE,
-    DIFF_B_TREE,
-    DIFF_A_REF,
-    DIFF_B_REF,
-    DIFF_EQUAL,
-)
-
 from . import locked
+from dvc.scm.base import FileNotInCommitError
+from dvc.scm.git import DIFF_A_REF
+from dvc.scm.git import DIFF_A_TREE
+from dvc.scm.git import DIFF_B_REF
+from dvc.scm.git import DIFF_B_TREE
+from dvc.scm.git import DIFF_EQUAL
 
 
 DIFF_TARGET = "target"

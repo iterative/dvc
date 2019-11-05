@@ -1,11 +1,10 @@
 from dvc.ignore import DvcIgnore
 from dvc.main import main
 from dvc.repo import Repo
-from dvc.stage import Stage
-from tests.basic_env import TestDvcGit
-
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
+from dvc.stage import Stage
+from tests.basic_env import TestDvcGit
 
 
 class TestCollect(TestDvcGit):

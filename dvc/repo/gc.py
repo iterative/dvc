@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.cache import NamedCache
 from . import locked
+from dvc.cache import NamedCache
 
 
 logger = logging.getLogger(__name__)

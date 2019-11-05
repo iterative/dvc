@@ -3,8 +3,9 @@ import sys
 
 import pytest
 
+from dvc.output import _get
+from dvc.output import OUTS_MAP
 from dvc.stage import Stage
-from dvc.output import _get, OUTS_MAP
 
 
 TESTS = [

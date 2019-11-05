@@ -1,16 +1,18 @@
 from __future__ import unicode_literals
 
-import os
 import logging
+import os
+
 import colorama
 from six import string_types
 
-from dvc.repo.scm_context import scm_context
-from dvc.stage import Stage
-from dvc.utils import walk_files, LARGE_DIR_SIZE
+from . import locked
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.progress import Tqdm
-from . import locked
+from dvc.repo.scm_context import scm_context
+from dvc.stage import Stage
+from dvc.utils import LARGE_DIR_SIZE
+from dvc.utils import walk_files
 
 logger = logging.getLogger(__name__)
 

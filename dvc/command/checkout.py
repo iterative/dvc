@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 
 import argparse
 
-from dvc.command.base import CmdBase, append_doc_link
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
 
 
 class CmdCheckout(CmdBase):

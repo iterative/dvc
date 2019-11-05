@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 
+import argparse
+import itertools
+import logging
 import os
 import platform
-import argparse
-import logging
 import uuid
-import itertools
 
 try:
     import psutil

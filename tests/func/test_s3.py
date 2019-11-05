@@ -1,8 +1,8 @@
-import boto3
-
-from moto import mock_s3
 from functools import wraps
+
+import boto3
 import moto.s3.models as s3model
+from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
 from tests.func.test_data_cloud import get_aws_url

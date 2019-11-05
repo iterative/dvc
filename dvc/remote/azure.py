@@ -1,20 +1,20 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import logging
 import os
 import re
-import logging
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
 from funcy import cached_property
 
-from dvc.scheme import Schemes
-
-from dvc.utils.compat import urlparse
-from dvc.progress import Tqdm
 from dvc.config import Config
-from dvc.remote.base import RemoteBASE
 from dvc.path_info import CloudURLInfo
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
+from dvc.scheme import Schemes
+from dvc.utils.compat import urlparse
 
 
 logger = logging.getLogger(__name__)

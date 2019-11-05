@@ -1,8 +1,11 @@
-import pytest
 import copy
 
+import pytest
+
+from dvc.path_info import CloudURLInfo
+from dvc.path_info import PathInfo
+from dvc.path_info import URLInfo
 from dvc.utils.compat import pathlib
-from dvc.path_info import PathInfo, URLInfo, CloudURLInfo
 
 
 TEST_DEPTH = len(pathlib.Path(__file__).parents) + 1

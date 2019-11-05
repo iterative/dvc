@@ -2,7 +2,8 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.exceptions import CheckoutErrorSuggestGit, CheckoutError
+from dvc.exceptions import CheckoutError
+from dvc.exceptions import CheckoutErrorSuggestGit
 from dvc.progress import Tqdm
 
 

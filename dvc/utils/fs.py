@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 
-import os
 import errno
-import nanotime
 import logging
+import os
+
+import nanotime
 
 from dvc.exceptions import DvcException
 from dvc.system import System
-from dvc.utils import dict_md5, walk_files, fspath_py35
+from dvc.utils import dict_md5
+from dvc.utils import fspath_py35
+from dvc.utils import walk_files
 from dvc.utils.compat import str
 
 

@@ -1,10 +1,10 @@
 """Manages dvc remotes that user can use with push/pull/status comamnds."""
-
 from __future__ import unicode_literals
 
 import logging
 
-from dvc.config import Config, NoRemoteError
+from dvc.config import Config
+from dvc.config import NoRemoteError
 from dvc.remote import Remote
 
 

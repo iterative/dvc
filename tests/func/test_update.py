@@ -1,9 +1,9 @@
+import filecmp
 import os
 import shutil
-import filecmp
 
-from dvc.repo import Repo
 from dvc.external_repo import clean_repos
+from dvc.repo import Repo
 
 
 def test_update_import(dvc_repo, erepo):

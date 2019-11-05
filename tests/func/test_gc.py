@@ -1,18 +1,17 @@
 from __future__ import unicode_literals
+
 import os
 
-import pytest
 import configobj
-
+import pytest
 from git import Repo
 
-from dvc.utils.compat import pathlib
+from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.exceptions import CollectCacheError
-
-from tests.basic_env import TestDvcGit
+from dvc.utils.compat import pathlib
 from tests.basic_env import TestDir
+from tests.basic_env import TestDvcGit
 
 
 class TestGC(TestDvcGit):

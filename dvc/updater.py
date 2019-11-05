@@ -1,15 +1,18 @@
 from __future__ import unicode_literals
 
-import sys
-import os
-import time
 import logging
+import os
+import sys
+import time
+
 import colorama
 from packaging import version
 
 from dvc import __version__
-from dvc.lock import Lock, LockError
-from dvc.utils import boxify, env2bool
+from dvc.lock import Lock
+from dvc.lock import LockError
+from dvc.utils import boxify
+from dvc.utils import env2bool
 from dvc.utils.pkg import get_package_manager
 
 logger = logging.getLogger(__name__)

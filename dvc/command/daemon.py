@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.command.base import CmdBaseNoRepo, fix_subparsers
+from dvc.command.base import CmdBaseNoRepo
+from dvc.command.base import fix_subparsers
 
 
 class CmdDaemonBase(CmdBaseNoRepo):

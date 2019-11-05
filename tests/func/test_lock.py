@@ -1,9 +1,8 @@
 import os
 
+from dvc.lock import Lock
 from dvc.lock import LockError
 from dvc.main import main
-from dvc.lock import Lock
-
 from tests.basic_env import TestDvc
 
 

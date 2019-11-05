@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 
-import os
 import filecmp
+import os
 
 import pytest
 
-from dvc.exceptions import UrlNotDvcRepoError, GetDVCFileError
+from dvc.exceptions import GetDVCFileError
+from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo import Repo
 from dvc.utils import makedirs
-
 from tests.utils import trees_equal
 
 

@@ -4,10 +4,9 @@ import sys
 import pytest
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.utils import file_md5
-
 from dvc.main import main
 from dvc.stage import Stage
+from dvc.utils import file_md5
 
 
 @pytest.mark.skipif(

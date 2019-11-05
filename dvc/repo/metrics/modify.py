@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
-from dvc.repo import locked
 from dvc.exceptions import DvcException
+from dvc.repo import locked
 
 
 @locked

@@ -1,15 +1,14 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
-import os
 import logging
-
-from dvc.scheme import Schemes
+import os
 
 from dvc.config import Config
-from dvc.remote.base import RemoteBASE
-from dvc.progress import Tqdm
 from dvc.path_info import CloudURLInfo
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
+from dvc.scheme import Schemes
 
 
 logger = logging.getLogger(__name__)

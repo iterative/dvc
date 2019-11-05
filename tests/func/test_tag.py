@@ -1,11 +1,10 @@
-import os
-import shutil
 import filecmp
 import logging
+import os
+import shutil
 
 from dvc.main import main
 from dvc.utils import from_yaml_string
-
 from tests.basic_env import TestDvc
 
 

@@ -36,8 +36,9 @@ This is better.
 (c) 2016, Aaron Christianson
 http://github.com/ninjaaron/fast-entry_points
 """
-from setuptools.command import easy_install
 import re
+
+from setuptools.command import easy_install
 
 TEMPLATE = r"""
 # -*- coding: utf-8 -*-

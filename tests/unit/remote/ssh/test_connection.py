@@ -1,14 +1,15 @@
 from __future__ import unicode_literals
 
-import os
-import posixpath
-import platform
-import pytest
 import filecmp
+import os
+import platform
+import posixpath
 import tempfile
 
-from dvc.system import System
+import pytest
+
 from dvc.command.version import CmdVersion
+from dvc.system import System
 
 
 here = os.path.abspath(os.path.dirname(__file__))

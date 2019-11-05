@@ -1,7 +1,8 @@
 from __future__ import unicode_literals
 
-import colorama
 import logging
+
+import colorama
 
 
 logger = logging.getLogger(__name__)

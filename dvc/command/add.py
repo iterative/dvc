@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 import argparse
 import logging
 
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
 from dvc.exceptions import DvcException
-from dvc.command.base import CmdBase, append_doc_link
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 
 

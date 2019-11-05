@@ -1,23 +1,25 @@
 from __future__ import unicode_literals
 
 import errno
-import itertools
-import io
-import os
 import getpass
+import io
+import itertools
 import logging
+import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager, closing
+from contextlib import closing
+from contextlib import contextmanager
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.utils import to_chunks
-from dvc.utils.compat import urlparse, StringIO
-from dvc.remote.base import RemoteBASE
-from dvc.scheme import Schemes
-from dvc.remote.pool import get_connection
 from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
+from dvc.remote.pool import get_connection
+from dvc.scheme import Schemes
+from dvc.utils import to_chunks
+from dvc.utils.compat import StringIO
+from dvc.utils.compat import urlparse
 
 logger = logging.getLogger(__name__)
 

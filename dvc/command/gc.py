@@ -1,11 +1,12 @@
 from __future__ import unicode_literals
 
 import argparse
-import os
-import dvc.prompt as prompt
 import logging
+import os
 
-from dvc.command.base import CmdBase, append_doc_link
+import dvc.prompt as prompt
+from dvc.command.base import append_doc_link
+from dvc.command.base import CmdBase
 
 
 logger = logging.getLogger(__name__)

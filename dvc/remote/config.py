@@ -1,10 +1,11 @@
-import os
 import logging
+import os
 import posixpath
 
+from dvc.config import Config
+from dvc.config import ConfigError
 from dvc.utils import relpath
 from dvc.utils.compat import urlparse
-from dvc.config import Config, ConfigError
 
 
 logger = logging.getLogger(__name__)

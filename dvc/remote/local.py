@@ -1,38 +1,38 @@
 from __future__ import unicode_literals
-import os
-import stat
+
 import errno
 import logging
-from functools import partial
+import os
+import stat
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 from shortuuid import uuid
 
-from dvc.scheme import Schemes
-from dvc.utils.compat import str, fspath_py35, open
-from dvc.system import System
-from dvc.remote.base import (
-    RemoteBASE,
-    STATUS_MAP,
-    STATUS_NEW,
-    STATUS_DELETED,
-    STATUS_MISSING,
-)
-from dvc.utils import (
-    remove,
-    move,
-    copyfile,
-    tmp_fname,
-    file_md5,
-    walk_files,
-    relpath,
-    makedirs,
-)
 from dvc.config import Config
-from dvc.exceptions import DvcException, DownloadError, UploadError
-from dvc.progress import Tqdm
-
+from dvc.exceptions import DownloadError
+from dvc.exceptions import DvcException
+from dvc.exceptions import UploadError
 from dvc.path_info import PathInfo
+from dvc.progress import Tqdm
+from dvc.remote.base import RemoteBASE
+from dvc.remote.base import STATUS_DELETED
+from dvc.remote.base import STATUS_MAP
+from dvc.remote.base import STATUS_MISSING
+from dvc.remote.base import STATUS_NEW
+from dvc.scheme import Schemes
+from dvc.system import System
+from dvc.utils import copyfile
+from dvc.utils import file_md5
+from dvc.utils import makedirs
+from dvc.utils import move
+from dvc.utils import relpath
+from dvc.utils import remove
+from dvc.utils import tmp_fname
+from dvc.utils import walk_files
+from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import open
+from dvc.utils.compat import str
 
 logger = logging.getLogger(__name__)
 

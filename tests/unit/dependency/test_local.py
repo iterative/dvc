@@ -1,8 +1,7 @@
 import mock
 
-from dvc.stage import Stage
 from dvc.dependency import DependencyLOCAL
-
+from dvc.stage import Stage
 from tests.basic_env import TestDvc
 
 

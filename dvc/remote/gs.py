@@ -6,12 +6,12 @@ from functools import wraps
 
 from funcy import cached_property
 
-from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
-from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
+from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
+from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
 
 logger = logging.getLogger(__name__)
 

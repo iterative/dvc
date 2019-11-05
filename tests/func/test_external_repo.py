@@ -1,4 +1,5 @@
 import os
+
 from mock import patch
 
 from dvc.external_repo import external_repo

@@ -1,7 +1,8 @@
-import os
-import mock
 import inspect
+import os
 from unittest import TestCase
+
+import mock
 
 import dvc.daemon as daemon
 

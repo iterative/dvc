@@ -1,19 +1,19 @@
 import logging
 import os
+
 import shortuuid
 
-from dvc.stage import Stage
 from dvc.config import Config
-from dvc.exceptions import (
-    NotDvcRepoError,
-    UrlNotDvcRepoError,
-    GetDVCFileError,
-    OutputNotFoundError,
-)
-from dvc.path_info import PathInfo
+from dvc.exceptions import GetDVCFileError
+from dvc.exceptions import NotDvcRepoError
+from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import UrlNotDvcRepoError
 from dvc.external_repo import external_repo
+from dvc.path_info import PathInfo
+from dvc.stage import Stage
 from dvc.state import StateNoop
-from dvc.utils import remove, resolve_output
+from dvc.utils import remove
+from dvc.utils import resolve_output
 
 logger = logging.getLogger(__name__)
 

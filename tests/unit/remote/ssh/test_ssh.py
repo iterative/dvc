@@ -1,16 +1,15 @@
 import getpass
 import os
 import sys
-
 from unittest import TestCase
 
-from mock import patch, mock_open
 import pytest
-
-from tests.func.test_data_cloud import get_ssh_url_mocked
+from mock import mock_open
+from mock import patch
 
 from dvc.remote.ssh import RemoteSSH
 from dvc.system import System
+from tests.func.test_data_cloud import get_ssh_url_mocked
 
 
 class TestRemoteSSH(TestCase):
