@@ -71,22 +71,3 @@ def contains_symlink_up_to(path, base_path):
     if os.path.dirname(path) == path:
         return False
     return contains_symlink_up_to(os.path.dirname(path), base_path)
-
-
-def get_parent_dirs_up_to(wdir, root_dir):
-
-    assert os.path.isabs(wdir)
-    assert os.path.isabs(root_dir)
-
-    wdir = os.path.normpath(wdir)
-    root_dir = os.path.normpath(root_dir)
-    if root_dir not in wdir:
-        return []
-
-    dirs = []
-    dirs.append(wdir)
-    while wdir != root_dir:
-        wdir = os.path.dirname(wdir)
-        dirs.append(wdir)
-
-    return dirs

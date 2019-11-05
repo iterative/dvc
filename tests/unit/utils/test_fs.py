@@ -14,7 +14,6 @@ from dvc.utils.fs import BasePathNotInCheckedPathException
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
-from dvc.utils.fs import get_parent_dirs_up_to
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -93,49 +92,6 @@ class TestContainsLink(TestCase):
             System, "is_symlink", side_effect=base_path_is_symlink
         ):
             self.assertFalse(contains_symlink_up_to(target_path, base_path))
-
-
-@pytest.mark.parametrize(
-    "path1, path2",
-    [
-        (
-            os.path.join("non", "abs", "path"),
-            os.path.join(os.sep, "full", "path"),
-        ),
-        (
-            os.path.join(os.sep, "full", "path"),
-            os.path.join("non", "abs", "path"),
-        ),
-    ],
-)
-def test_get_parent_dirs_up_to_should_raise_on_no_absolute(path1, path2):
-    with pytest.raises(AssertionError):
-        get_parent_dirs_up_to(path1, path2)
-
-
-@pytest.mark.parametrize(
-    "path1, path2, expected_dirs",
-    [
-        (
-            os.path.join(os.sep, "non", "matching", "path"),
-            os.path.join(os.sep, "other", "path"),
-            [],
-        ),
-        (
-            os.path.join(os.sep, "some", "long", "path"),
-            os.path.join(os.sep, "some"),
-            [
-                os.path.join(os.sep, "some"),
-                os.path.join(os.sep, "some", "long"),
-                os.path.join(os.sep, "some", "long", "path"),
-            ],
-        ),
-    ],
-)
-def test_get_parent_dirs_up_to(path1, path2, expected_dirs):
-    result = get_parent_dirs_up_to(path1, path2)
-
-    assert set(result) == set(expected_dirs)
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
