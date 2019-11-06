@@ -149,7 +149,7 @@ class RemoteLOCAL(RemoteBASE):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
-        return file_md5(fspath_py35(path_info))[0]
+        return file_md5(path_info)[0]
 
     def remove(self, path_info):
         if path_info.scheme != "local":
