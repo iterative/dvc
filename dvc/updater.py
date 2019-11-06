@@ -131,7 +131,7 @@ class Updater(object):  # pragma: no cover
                 " {blue}--only-upgrade{reset} dvc"
             ),
             "binary": (
-                "To upgrade follow this steps:\n"
+                "To upgrade follow these steps:\n"
                 "1. Uninstall dvc binary\n"
                 "2. Go to {blue}https://dvc.org{reset}\n"
                 "3. Download and install new binary"
