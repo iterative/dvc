@@ -1,12 +1,16 @@
 from __future__ import unicode_literals
 
 import errno
+import logging
 import os
 import shutil
 
 from dvc.utils.compat import fspath
 from dvc.utils.compat import open
 from dvc.utils.compat import str
+
+
+logger = logging.getLogger(__name__)
 
 
 class System(object):
@@ -74,7 +78,6 @@ class System(object):
     @staticmethod
     def _reflink_darwin(src, dst):
         import ctypes
-        import dvc.logger as logger
 
         LIBC = "libc.dylib"
         LIBC_FALLBACK = "/usr/lib/libSystem.dylib"
