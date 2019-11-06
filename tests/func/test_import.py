@@ -7,8 +7,10 @@ import shutil
 import pytest
 from mock import patch
 
+from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.stage import Stage
+from dvc.system import System
 from dvc.utils import makedirs
 from tests.utils import trees_equal
 
@@ -66,6 +68,25 @@ def test_pull_imported_stage(dvc_repo, erepo):
 
     assert os.path.isfile(dst)
     assert os.path.isfile(dst_cache)
+
+
+def test_cache_type_is_properly_overridden(repo_dir, git, dvc_repo, erepo):
+    erepo.dvc.config.set(
+        Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
+    )
+    erepo.dvc.scm.add([erepo.dvc.config.config_file])
+    erepo.dvc.scm.commit("set source repo cache type to symlinks")
+
+    src = erepo.FOO
+    dst = erepo.FOO + "_imported"
+
+    dvc_repo.imp(erepo.root_dir, src, dst)
+
+    assert not System.is_symlink(dst)
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert git.git.check_ignore(dst)
 
 
 def test_pull_imported_directory_stage(dvc_repo, erepo):

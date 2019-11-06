@@ -188,10 +188,10 @@ def test_all_commits(git, dvc_repo):
     cache_dir = os.path.join(dvc_repo.root_dir, ".dvc", "cache")
     testfile = pathlib.Path("testfile")
 
-    testfile.write_text("uncommited")
+    testfile.write_text("uncommitted")
     dvc_repo.add(str(testfile))
 
-    testfile.write_text("commited")
+    testfile.write_text("committed")
     add_and_commit()
 
     testfile.write_text("modified")
@@ -200,12 +200,12 @@ def test_all_commits(git, dvc_repo):
     testfile.write_text("workspace")
     dvc_repo.add(str(testfile))
 
-    N = _count_files(cache_dir)
+    n = _count_files(cache_dir)
 
     dvc_repo.gc(all_commits=True)
 
-    # Only one uncommited file should go away
-    assert _count_files(cache_dir) == N - 1
+    # Only one uncommitted file should go away
+    assert _count_files(cache_dir) == n - 1
 
 
 def _count_files(path):
