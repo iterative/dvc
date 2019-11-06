@@ -5,9 +5,11 @@ import os
 
 import pytest
 
+from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo import Repo
+from dvc.system import System
 from dvc.utils import makedirs
 from tests.utils import trees_equal
 
@@ -32,6 +34,23 @@ def test_get_repo_dir(repo_dir, erepo):
     assert os.path.exists(dst)
     assert os.path.isdir(dst)
     trees_equal(src, dst)
+
+
+def test_cache_type_is_properly_overridden(repo_dir, erepo):
+    erepo.dvc.config.set(
+        Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
+    )
+    erepo.dvc.scm.add([erepo.dvc.config.config_file])
+    erepo.dvc.scm.commit("set cache type to symlinks")
+
+    src = erepo.FOO
+    dst = erepo.FOO + "_imported"
+
+    Repo.get(erepo.root_dir, src, dst)
+
+    assert not System.is_symlink(dst)
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
 
 
 def test_get_repo_rev(repo_dir, erepo):

@@ -3,7 +3,6 @@ import os
 
 import shortuuid
 
-from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
@@ -48,11 +47,7 @@ def get(url, path, out=None, rev=None):
             #
             # Also, we can't use theoretical "move" link type here, because
             # the same cache file might be used a few times in a directory.
-            repo.config.set(
-                Config.SECTION_CACHE,
-                Config.SECTION_CACHE_TYPE,
-                "reflink,hardlink,copy",
-            )
+            repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
             o = repo.find_out_by_relpath(path)
             with repo.state:
