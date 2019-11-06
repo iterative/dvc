@@ -2,6 +2,8 @@ import os
 
 import pytest
 
+from dvc.path_info import PathInfo
+from dvc.utils import file_md5
 from dvc.utils import fix_env
 from dvc.utils import to_chunks
 
@@ -71,3 +73,9 @@ def test_fix_env_pyenv(path, orig):
         "PYENV_HOOK_PATH": "/some/hook/path",
     }
     assert fix_env(env)["PATH"] == orig
+
+
+def test_file_md5(repo_dir):
+    fname = repo_dir.FOO
+    fname_object = PathInfo(fname)
+    assert file_md5(fname) == file_md5(fname_object)

@@ -44,6 +44,8 @@ def file_md5(fname):
     from dvc.progress import Tqdm
     from dvc.istextfile import istextfile
 
+    fname = fspath_py35(fname)
+
     if os.path.exists(fname):
         hash_md5 = hashlib.md5()
         binary = not istextfile(fname)
