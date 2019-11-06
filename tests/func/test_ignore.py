@@ -5,6 +5,9 @@ import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore
+from dvc.ignore import DvcIgnoreDirs
+from dvc.ignore import DvcIgnoreFilter
+from dvc.ignore import DvcIgnorePatterns
 from dvc.utils.compat import cast_bytes
 from dvc.utils.fs import get_mtime_and_size
 from tests.basic_env import TestDvc
@@ -131,3 +134,21 @@ def test_should_raise_on_dvcignore_in_out_dir(dvc_repo, repo_dir):
 
     with pytest.raises(DvcIgnoreInCollectedDirError):
         dvc_repo.add(repo_dir.DATA_DIR)
+
+
+@pytest.mark.parametrize("dname", [TestDvc.DATA_DIR, TestDvc.DATA_SUB_DIR])
+def test_ignore_collecting_dvcignores(repo_dir, dname):
+    top_ignore_file = os.path.join(
+        repo_dir.root_dir, os.path.dirname(dname), DvcIgnore.DVCIGNORE_FILE
+    )
+    repo_dir.create(top_ignore_file, os.path.basename(dname))
+
+    ignore_file = os.path.join(
+        repo_dir.root_dir, dname, DvcIgnore.DVCIGNORE_FILE
+    )
+    repo_dir.create(ignore_file, repo_dir.FOO)
+
+    assert DvcIgnoreFilter(repo_dir.root_dir).ignores == {
+        DvcIgnoreDirs([".git", ".hg", ".dvc"]),
+        DvcIgnorePatterns(top_ignore_file),
+    }
