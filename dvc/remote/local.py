@@ -236,10 +236,7 @@ class RemoteLOCAL(RemoteBASE):
         self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
     ):
         copyfile(
-            fspath_py35(from_info),
-            to_file,
-            no_progress_bar=no_progress_bar,
-            name=name,
+            from_info, to_file, no_progress_bar=no_progress_bar, name=name
         )
 
     @staticmethod

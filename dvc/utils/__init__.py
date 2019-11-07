@@ -121,6 +121,9 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     from dvc.progress import Tqdm
     from dvc.system import System
 
+    src = fspath_py35(src)
+    dest = fspath_py35(dest)
+
     name = name if name else os.path.basename(dest)
     total = os.stat(src).st_size
 
