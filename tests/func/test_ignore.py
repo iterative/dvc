@@ -8,6 +8,7 @@ from dvc.ignore import DvcIgnore
 from dvc.ignore import DvcIgnoreDirs
 from dvc.ignore import DvcIgnoreFilter
 from dvc.ignore import DvcIgnorePatterns
+from dvc.scm.tree import WorkingTree
 from dvc.utils.compat import cast_bytes
 from dvc.utils.fs import get_mtime_and_size
 from tests.basic_env import TestDvc
@@ -148,7 +149,9 @@ def test_ignore_collecting_dvcignores(repo_dir, dname):
     )
     repo_dir.create(ignore_file, repo_dir.FOO)
 
-    assert DvcIgnoreFilter(repo_dir.root_dir).ignores == {
+    assert DvcIgnoreFilter(
+        repo_dir.root_dir, WorkingTree(repo_dir.root_dir)
+    ).ignores == {
         DvcIgnoreDirs([".git", ".hg", ".dvc"]),
-        DvcIgnorePatterns(top_ignore_file),
+        DvcIgnorePatterns(top_ignore_file, WorkingTree(repo_dir.root_dir)),
     }

@@ -1,20 +1,18 @@
 import os
 
 import pytest
+from mock import MagicMock
 from mock import mock_open
 from mock import patch
 
-import dvc
 from dvc.ignore import DvcIgnoreDirs
 from dvc.ignore import DvcIgnorePatterns
 
 
 def mock_dvcignore(dvcignore_path, patterns):
-
-    with patch.object(
-        dvc.ignore, "open", mock_open(read_data="\n".join(patterns))
-    ):
-        ignore_patterns = DvcIgnorePatterns(dvcignore_path)
+    tree = MagicMock()
+    with patch.object(tree, "open", mock_open(read_data="\n".join(patterns))):
+        ignore_patterns = DvcIgnorePatterns(dvcignore_path, tree)
 
     return ignore_patterns
 

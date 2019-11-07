@@ -6,9 +6,7 @@ import os
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 
-from dvc.utils import dvc_walk
 from dvc.utils import relpath
-from dvc.utils.compat import open
 
 logger = logging.getLogger(__name__)
 
@@ -21,13 +19,13 @@ class DvcIgnore(object):
 
 
 class DvcIgnorePatterns(DvcIgnore):
-    def __init__(self, ignore_file_path):
+    def __init__(self, ignore_file_path, tree):
         assert os.path.isabs(ignore_file_path)
 
         self.ignore_file_path = ignore_file_path
         self.dirname = os.path.normpath(os.path.dirname(ignore_file_path))
 
-        with open(ignore_file_path, encoding="utf-8") as fobj:
+        with tree.open(ignore_file_path, encoding="utf-8") as fobj:
             self.ignore_spec = PathSpec.from_lines(GitWildMatchPattern, fobj)
 
     def __call__(self, root, dirs, files):
@@ -74,17 +72,18 @@ class DvcIgnoreDirs(DvcIgnore):
 
 
 class DvcIgnoreFilter(object):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, tree):
+        self.tree = tree
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
         self._update(root_dir)
-        for root, dirs, _ in dvc_walk(root_dir, self):
+        for root, dirs, _ in self.tree.walk(root_dir, dvcignore=self):
             for d in dirs:
                 self._update(os.path.join(root, d))
 
     def _update(self, dirname):
         ignore_file_path = os.path.join(dirname, DvcIgnore.DVCIGNORE_FILE)
-        if os.path.exists(ignore_file_path):
-            self.ignores.add(DvcIgnorePatterns(ignore_file_path))
+        if self.tree.exists(ignore_file_path):
+            self.ignores.add(DvcIgnorePatterns(ignore_file_path, self.tree))
 
     def __call__(self, root, dirs, files):
         for ignore in self.ignores:

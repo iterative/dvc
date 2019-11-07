@@ -496,7 +496,7 @@ class Repo(object):
 
     @cached_property
     def dvcignore(self):
-        return DvcIgnoreFilter(self.root_dir)
+        return DvcIgnoreFilter(self.root_dir, self.tree)
 
     def close(self):
         self.scm.close()
