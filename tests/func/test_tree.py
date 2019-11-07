@@ -108,8 +108,8 @@ class AssertWalkEqualMixin(object):
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        dvcignore = DvcIgnoreFilter(self.root_dir)
         tree = WorkingTree(self._root_dir)
+        dvcignore = DvcIgnoreFilter(self.root_dir, tree)
         self.assertWalkEqual(
             tree.walk(self._root_dir, dvcignore=dvcignore),
             [
@@ -128,8 +128,8 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        dvcignore = DvcIgnoreFilter(self.root_dir)
         tree = WorkingTree(self._root_dir)
+        dvcignore = DvcIgnoreFilter(self.root_dir, tree)
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir"), dvcignore=dvcignore),
             [
@@ -145,7 +145,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
         tree = WorkingTree(self._root_dir)
-        dvcignore = DvcIgnoreFilter(self._root_dir)
+        dvcignore = DvcIgnoreFilter(self._root_dir, tree)
         self.assertWalkEqual(
             tree.walk(".", dvcignore=dvcignore),
             [

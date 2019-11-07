@@ -7,6 +7,7 @@ from mock import patch
 import dvc
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
+from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.compat import str
@@ -20,7 +21,7 @@ from tests.utils import spy
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        dvcignore = DvcIgnoreFilter(self.root_dir)
+        dvcignore = DvcIgnoreFilter(self.root_dir, WorkingTree(self.root_dir))
         file_time, file_size = get_mtime_and_size(self.DATA, dvcignore)
         dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, dvcignore)
 
@@ -124,7 +125,9 @@ def test_get_inode(repo_dir):
 def test_path_object_and_str_are_valid_types_get_mtime_and_size(
     path, repo_dir
 ):
-    dvcignore = DvcIgnoreFilter(repo_dir.root_dir)
+    dvcignore = DvcIgnoreFilter(
+        repo_dir.root_dir, WorkingTree(repo_dir.root_dir)
+    )
     time, size = get_mtime_and_size(path, dvcignore)
     object_time, object_size = get_mtime_and_size(PathInfo(path), dvcignore)
     assert time == object_time
