@@ -1,3 +1,4 @@
+import itertools
 import os
 import shutil
 
@@ -155,3 +156,31 @@ def test_ignore_collecting_dvcignores(repo_dir, dname):
         DvcIgnoreDirs([".git", ".hg", ".dvc"]),
         DvcIgnorePatterns(top_ignore_file, WorkingTree(repo_dir.root_dir)),
     }
+
+
+def test_ignore_on_branch(git, dvc_repo, repo_dir):
+    dvc_repo.add(repo_dir.DATA_DIR)
+    dvc_repo.scm.commit("add data dir")
+
+    branch_name = "branch_one"
+    dvc_repo.scm.checkout(branch_name, create_new=True)
+
+    repo_dir.create(DvcIgnore.DVCIGNORE_FILE, to_posixpath(repo_dir.DATA_SUB))
+    dvc_repo.scm.add([DvcIgnore.DVCIGNORE_FILE])
+    git.index.commit("add ignore")
+
+    dvc_repo.scm.checkout("master")
+
+    git_tree = dvc_repo.scm.get_tree(branch_name)
+    branch_data_files = set(
+        itertools.chain.from_iterable(
+            [
+                files
+                for _, _, files in dvc_repo.tree.walk(
+                    repo_dir.DATA_DIR,
+                    dvcignore=DvcIgnoreFilter(repo_dir.root_dir, git_tree),
+                )
+            ]
+        )
+    )
+    assert branch_data_files == {"data"}
