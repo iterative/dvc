@@ -10,14 +10,14 @@ from dvc.progress import Tqdm
 logger = logging.getLogger(__name__)
 
 
-def _cleanup_unused_links(self, all_stages):
+def _cleanup_unused_links(repo):
     used = [
         out.fspath
-        for stage in all_stages
+        for stage in repo.stages
         for out in stage.outs
         if out.scheme == "local"
     ]
-    self.state.remove_unused_links(used)
+    repo.state.remove_unused_links(used)
 
 
 def get_all_files_numbers(stages):
@@ -30,7 +30,11 @@ def _checkout(
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
     stages = set()
-    targets = targets or [None]
+
+    if not targets:
+        targets = [None]
+        _cleanup_unused_links(self)
+
     for target in targets:
         try:
             new = self.collect(
@@ -42,7 +46,6 @@ def _checkout(
                 raise
             raise CheckoutErrorSuggestGit(target, exc)
 
-    _cleanup_unused_links(self, self.stages)
     total = get_all_files_numbers(stages)
     if total == 0:
         logger.info("Nothing to do")
