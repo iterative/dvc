@@ -224,7 +224,7 @@ class RemoteLOCAL(RemoteBASE):
     def _upload(
         self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
     ):
-        makedirs(fspath_py35(to_info.parent), exist_ok=True)
+        makedirs(to_info.parent, exist_ok=True)
 
         tmp_file = tmp_fname(to_info)
         copyfile(
