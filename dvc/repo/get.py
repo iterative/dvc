@@ -3,9 +3,11 @@ import os
 
 import shortuuid
 
+from dvc.config import NoRemoteError
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import RemoteNotSpecifiedInTargetRepoError
 from dvc.exceptions import UrlNotDvcRepoError
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
@@ -56,6 +58,8 @@ def get(url, path, out=None, rev=None):
             with o.repo.state:
                 o.checkout()
 
+    except NoRemoteError:
+        raise RemoteNotSpecifiedInTargetRepoError(url)
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
     except OutputNotFoundError:

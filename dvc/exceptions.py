@@ -328,3 +328,10 @@ class CheckoutError(DvcException):
 
 class CollectCacheError(DvcException):
     pass
+
+
+class RemoteNotSpecifiedInTargetRepoError(DvcException):
+    def __init__(self, url):
+        super(RemoteNotSpecifiedInTargetRepoError, self).__init__(
+            "No DVC remote is specified in target repository '{}'".format(url)
+        )
