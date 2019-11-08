@@ -205,27 +205,8 @@ class Analytics(object):
             return fobj.name
 
     @staticmethod
-    def _is_enabled_config(config):
-        from dvc.config import Config
-
-        core = config.config.get(Config.SECTION_CORE, {})
-        return core.get(Config.SECTION_CORE_ANALYTICS, True)
-
-    @staticmethod
-    def _get_current_config():
-        from dvc.config import Config
-        from dvc.repo import Repo
-        from dvc.exceptions import NotDvcRepoError
-
-        try:
-            dvc_dir = Repo.find_dvc_dir()
-            config = Config(dvc_dir)
-        except NotDvcRepoError:
-            config = Config(validate=False)
-        return config
-
-    @staticmethod
     def is_enabled(cmd=None):
+        from dvc.config import Config, to_bool
         from dvc.command.daemon import CmdDaemonBase
 
         if env2bool("DVC_TEST"):
@@ -234,15 +215,8 @@ class Analytics(object):
         if isinstance(cmd, CmdDaemonBase):
             return False
 
-        config = (
-            Analytics._get_current_config()
-            if cmd is None or not hasattr(cmd, "config")
-            else cmd.config
-        )
-
-        assert config is not None
-
-        enabled = Analytics._is_enabled_config(config)
+        core = Config(validate=False).config.get(Config.SECTION_CORE, {})
+        enabled = to_bool(core.get(Config.SECTION_CORE_ANALYTICS, "true"))
         logger.debug(
             "Analytics is {}.".format("enabled" if enabled else "disabled")
         )
