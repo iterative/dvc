@@ -6,6 +6,7 @@ import os
 import time
 from datetime import timedelta
 
+import colorama
 from funcy.py3 import lkeep
 
 from dvc.exceptions import DvcException
@@ -73,7 +74,11 @@ if is_py3:
             except flufl.lock.TimeOutError:
                 raise LockError(
                     "cannot perform the cmd since DVC is busy and "
-                    "locked. Please retry the cmd later."
+                    "locked. You can delete .dvc/lock to fix it, but first "
+                    "please make sure there's no other dvc process ongoing "
+                    "by running: {blue}`ps xaf | grep dvc`{nc}.".format(
+                        blue=colorama.Back.BLUE, nc=colorama.Back.RESET
+                    )
                 )
 
         def _set_claimfile(self, pid=None):
@@ -121,7 +126,11 @@ else:
             except zc.lockfile.LockError:
                 raise LockError(
                     "cannot perform the cmd since DVC is busy and "
-                    "locked. Please retry the cmd later."
+                    "locked. You can delete .dvc/lock to fix it, but first "
+                    "please make sure there's no other dvc process ongoing "
+                    "by running: {blue}`ps xaf | grep dvc`{nc}.".format(
+                        blue=colorama.Back.BLUE, nc=colorama.Back.RESET
+                    )
                 )
 
         def lock(self):
