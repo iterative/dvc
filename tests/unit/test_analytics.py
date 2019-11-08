@@ -1,14 +1,24 @@
+import pytest
+
 from dvc.analytics import Analytics
-from dvc.config import Config
-from dvc.repo import NotDvcRepoError
 
 
-def test_broken_config(mocker, dvc_repo):
-    Config(dvc_repo.dvc_dir, validate=False).set("cache", "type", "unknown")
+@pytest.mark.parametrize(
+    "config, result",
+    [
+        ({}, True),
+        ({"analytics": "false"}, False),
+        ({"analytics": "true"}, True),
+        ({"unknown": "broken"}, True),
+        ({"analytics": "false", "unknown": "broken"}, False),
+    ],
+)
+def test_is_enabled(dvc_repo, config, result, monkeypatch):
+    configobj = dvc_repo.config._repo_config
+    configobj["core"] = config
+    configobj.write()
 
-    assert Analytics._get_current_config()
+    # reset DVC_TEST env var, which affects `is_enabled()`
+    monkeypatch.delenv("DVC_TEST")
 
-    with mocker.patch(
-        "dvc.repo.Repo.find_dvc_dir", side_effect=NotDvcRepoError(".")
-    ):
-        assert Analytics._get_current_config()
+    assert result == Analytics.is_enabled()

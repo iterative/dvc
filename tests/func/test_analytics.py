@@ -30,24 +30,18 @@ class TestAnalytics(TestDir):
         self.assertNotEqual(a.info[a.PARAM_SYSTEM_INFO], {})
 
     @mock.patch.object(os, "getenv", new=_clean_getenv)
-    @mock.patch(
-        "dvc.analytics.Analytics._is_enabled_config", return_value=True
-    )
     @mock.patch("requests.post")
-    def test_send(self, mockpost, _):
+    def test_send(self, mockpost):
         ret = main(["daemon", "analytics", Analytics().dump(), "-v"])
         self.assertEqual(ret, 0)
 
         self.assertTrue(mockpost.called)
 
     @mock.patch.object(os, "getenv", new=_clean_getenv)
-    @mock.patch(
-        "dvc.analytics.Analytics._is_enabled_config", return_value=True
-    )
     @mock.patch.object(
         requests, "post", side_effect=requests.exceptions.RequestException()
     )
-    def test_send_failed(self, mockpost, _):
+    def test_send_failed(self, mockpost):
         ret = main(["daemon", "analytics", Analytics().dump(), "-v"])
         self.assertEqual(ret, 0)
 
