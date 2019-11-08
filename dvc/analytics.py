@@ -219,10 +219,10 @@ class Analytics(object):
 
         try:
             dvc_dir = Repo.find_dvc_dir()
-            config = Config(dvc_dir)
         except NotDvcRepoError:
-            config = Config(validate=False)
-        return config
+            dvc_dir = None
+
+        return Config(dvc_dir, validate=False)
 
     @staticmethod
     def is_enabled(cmd=None):
