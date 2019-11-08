@@ -7,6 +7,7 @@ from dvc.path_info import PathInfo
 from dvc.utils import copyfile
 from dvc.utils import file_md5
 from dvc.utils import fix_env
+from dvc.utils import makedirs
 from dvc.utils import to_chunks
 from tests.basic_env import TestDir
 
@@ -108,3 +109,16 @@ def test_copyfile(path, repo_dir):
         )
     else:
         assert filecmp.cmp(src_info.fspath, dest_info.fspath, shallow=False)
+
+
+def test_makedirs(repo_dir):
+    path = os.path.join(repo_dir.root_dir, "directory")
+    path_info = PathInfo(
+        os.path.join(repo_dir.root_dir, "another", "directory")
+    )
+
+    makedirs(path)
+    assert os.path.isdir(path)
+
+    makedirs(path_info)
+    assert os.path.isdir(path_info.fspath)
