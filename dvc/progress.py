@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import logging
 import sys
+from threading import RLock
 
 from funcy import merge
 from tqdm import tqdm
@@ -10,6 +11,7 @@ from tqdm import tqdm
 from dvc.utils import env2bool
 
 logger = logging.getLogger(__name__)
+tqdm.set_lock(RLock())
 
 
 class Tqdm(tqdm):
@@ -76,6 +78,7 @@ class Tqdm(tqdm):
             leave=leave,
             desc=desc,
             bar_format="!",
+            lock_args=(False,),
             **kwargs
         )
         if bar_format is None:
