@@ -15,6 +15,7 @@ from dvc.utils.fs import BasePathNotInCheckedPathException
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
+from dvc.utils.fs import move
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -132,3 +133,22 @@ def test_path_object_and_str_are_valid_types_get_mtime_and_size(
     object_time, object_size = get_mtime_and_size(PathInfo(path), dvcignore)
     assert time == object_time
     assert size == object_size
+
+
+def test_move(repo_dir):
+    src = repo_dir.FOO
+    src_info = PathInfo(repo_dir.BAR)
+    dest = os.path.join("some", "directory")
+    dest_info = PathInfo(os.path.join("some", "path-like", "directory"))
+
+    os.makedirs(dest)
+    assert len(os.listdir(dest)) == 0
+    move(src, dest)
+    assert not os.path.isfile(src)
+    assert len(os.listdir(dest)) == 1
+
+    os.makedirs(dest_info.fspath)
+    assert len(os.listdir(dest_info.fspath)) == 0
+    move(src_info, dest_info)
+    assert not os.path.isfile(src_info.fspath)
+    assert len(os.listdir(dest_info.fspath)) == 1

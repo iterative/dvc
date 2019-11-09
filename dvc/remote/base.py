@@ -22,13 +22,13 @@ from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import makedirs
-from dvc.utils import move
 from dvc.utils import relpath
 from dvc.utils import tmp_fname
 from dvc.utils.compat import basestring
 from dvc.utils.compat import FileNotFoundError
 from dvc.utils.compat import str
 from dvc.utils.compat import urlparse
+from dvc.utils.fs import move
 from dvc.utils.http import open_url
 
 logger = logging.getLogger(__name__)
