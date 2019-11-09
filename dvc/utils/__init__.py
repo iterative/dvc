@@ -159,32 +159,6 @@ def makedirs(path, exist_ok=False, mode=None):
         os.umask(umask)
 
 
-def move(src, dst, mode=None):
-    """Atomically move src to dst and chmod it with mode.
-
-    Moving is performed in two stages to make the whole operation atomic in
-    case src and dst are on different filesystems and actual physical copying
-    of data is happening.
-    """
-
-    src = fspath_py35(src)
-    dst = fspath_py35(dst)
-
-    dst = os.path.abspath(dst)
-    tmp = "{}.{}".format(dst, str(uuid()))
-
-    if os.path.islink(src):
-        shutil.copy(os.readlink(src), tmp)
-        os.unlink(src)
-    else:
-        shutil.move(src, tmp)
-
-    if mode is not None:
-        os.chmod(tmp, mode)
-
-    shutil.move(tmp, dst)
-
-
 def _chmod(func, p, excinfo):
     perm = os.lstat(p).st_mode
     perm |= stat.S_IWRITE
