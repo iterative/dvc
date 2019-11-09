@@ -8,6 +8,7 @@ from dvc.utils import copyfile
 from dvc.utils import file_md5
 from dvc.utils import fix_env
 from dvc.utils import makedirs
+from dvc.utils import move
 from dvc.utils import to_chunks
 from tests.basic_env import TestDir
 
@@ -122,3 +123,22 @@ def test_makedirs(repo_dir):
 
     makedirs(path_info)
     assert os.path.isdir(path_info.fspath)
+
+
+def test_move(repo_dir):
+    src = repo_dir.FOO
+    src_info = PathInfo(repo_dir.BAR)
+    dest = os.path.join("some", "directory")
+    dest_info = PathInfo(os.path.join("some", "path-like", "directory"))
+
+    os.makedirs(dest)
+    assert len(os.listdir(dest)) == 0
+    move(src, dest)
+    assert not os.path.isfile(src)
+    assert len(os.listdir(dest)) == 1
+
+    os.makedirs(dest_info.fspath)
+    assert len(os.listdir(dest_info.fspath)) == 0
+    move(src_info, dest_info)
+    assert not os.path.isfile(src_info.fspath)
+    assert len(os.listdir(dest_info.fspath)) == 1
