@@ -168,15 +168,6 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Arch Linux (AUR)
-^^^^^^^^^^^^^^^^
-*Unofficial package*, any inquiries regarding the AUR package,
-`refer to the maintainer <https://github.com/mroutis/pkgbuilds>`_.
-
-.. code-block:: bash
-
-   yay -S dvc
-
 Related technologies
 ====================
 
