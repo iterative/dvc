@@ -13,7 +13,7 @@ from dvc.lock import Lock
 from dvc.lock import LockError
 from dvc.utils import boxify
 from dvc.utils import env2bool
-from dvc.utils.pkg import get_package_manager
+from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class Updater(object):  # pragma: no cover
             ),
         }
 
-        package_manager = get_package_manager()
+        package_manager = PKG
         if package_manager in ("osxpkg", "exe"):
             package_manager = "binary"
 

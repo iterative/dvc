@@ -133,12 +133,12 @@ build_dvc()
 
 build()
 {
+	cleanup
 	echo "PKG = \"$1\"" > dvc/utils/build.py
 	build_dvc
 	fpm_build $1
 }
 
-cleanup
 install_dependencies
 
 if [[ "$(uname)" == 'Linux' ]]; then
