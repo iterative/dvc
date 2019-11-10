@@ -131,15 +131,21 @@ build_dvc()
         fi
 }
 
-cleanup
+build()
+{
+	cleanup
+	echo "PKG = \"$1\"" > dvc/utils/build.py
+	build_dvc
+	fpm_build $1
+}
+
 install_dependencies
-build_dvc
 
 if [[ "$(uname)" == 'Linux' ]]; then
-	fpm_build rpm
-	fpm_build deb
+	build rpm
+	build deb
 else
-	fpm_build osxpkg
+	build osxpkg
 fi
 
 cleanup

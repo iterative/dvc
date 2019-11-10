@@ -13,7 +13,7 @@ from dvc.lock import Lock
 from dvc.lock import LockError
 from dvc.utils import boxify
 from dvc.utils import env2bool
-from dvc.utils.pkg import get_package_manager
+from dvc.utils.pkg import PKG
 
 logger = logging.getLogger(__name__)
 
@@ -123,10 +123,9 @@ class Updater(object):  # pragma: no cover
     def _get_update_instructions(self):
         instructions = {
             "pip": "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
-            "yum": "Run {yellow}yum{reset} update dvc",
-            "yay": "Run {yellow}yay{reset} {blue}-S{reset} dvc",
-            "formula": "Run {yellow}brew{reset} upgrade dvc",
-            "apt": (
+            "rpm": "Run {yellow}yum{reset} update dvc",
+            "brew": "Run {yellow}brew{reset} upgrade dvc",
+            "deb": (
                 "Run {yellow}apt-get{reset} install"
                 " {blue}--only-upgrade{reset} dvc"
             ),
@@ -136,7 +135,7 @@ class Updater(object):  # pragma: no cover
                 "2. Go to {blue}https://dvc.org{reset}\n"
                 "3. Download and install new binary"
             ),
-            "conda": "Run {yellow}conda{reset} {update}update{reset} dvc",
+            "conda": "Run {yellow}conda{reset} update dvc",
             None: (
                 "Find the latest release at\n{blue}"
                 "https://github.com/iterative/dvc/releases/latest"
@@ -144,6 +143,8 @@ class Updater(object):  # pragma: no cover
             ),
         }
 
-        package_manager = get_package_manager()
+        package_manager = PKG
+        if package_manager in ("osxpkg", "exe"):
+            package_manager = "binary"
 
         return instructions[package_manager]
