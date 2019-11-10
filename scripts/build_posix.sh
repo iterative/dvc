@@ -51,8 +51,8 @@ command_exists()
 
 fpm_build()
 {
+	echo "PKG = \"$1\"" > dvc/build.py
 	print_info "Building $1..."
-	git apply "$(pwd)/scripts/$1.patch"
 	VERSION=$(python -c "import dvc; from dvc import __version__; print(str(__version__))")
 	fpm -s dir \
 	    -f \
@@ -83,7 +83,6 @@ install_dependencies()
 		sudo apt-get install ruby-dev build-essential rpm python-pip python-dev
 	elif command_exists brew; then
 		brew install ruby
-		brew install git
 	else
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
