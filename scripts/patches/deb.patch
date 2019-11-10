@@ -1,8 +1,3 @@
-From 71707795d27aa848d71780b84e056b4f5735650c Mon Sep 17 00:00:00 2001
-From: n3hrox <n3hrox@gmail.com>
-Date: Sun, 10 Nov 2019 17:35:10 +0100
-Subject: [PATCH] Darwin patch
-
 ---
  dvc/utils/build.py | 1 +
  1 file changed, 1 insertion(+)
@@ -10,11 +5,10 @@ Subject: [PATCH] Darwin patch
 
 diff --git a/dvc/utils/build.py b/dvc/utils/build.py
 new file mode 100644
-index 00000000..3d149b9a
+index 00000000..ada7a0bb
 --- /dev/null
 +++ b/dvc/utils/build.py
 @@ -0,0 +1 @@
-+PKG = "darwin"
++PKG = "deb"
 --
 2.17.1
-

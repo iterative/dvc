@@ -123,14 +123,13 @@ class Updater(object):  # pragma: no cover
     def _get_update_instructions(self):
         instructions = {
             "pip": "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
-            "yum": "Run {yellow}yum{reset} update dvc",
-            "yay": "Run {yellow}yay{reset} {blue}-S{reset} dvc",
-            "formula": "Run {yellow}brew{reset} upgrade dvc",
-            "apt": (
+            "rpm": "Run {yellow}yum{reset} update dvc",
+            "osxpkg": "Run {yellow}brew{reset} upgrade dvc",
+            "deb": (
                 "Run {yellow}apt-get{reset} install"
                 " {blue}--only-upgrade{reset} dvc"
             ),
-            "binary": (
+            "exe": (
                 "To upgrade follow these steps:\n"
                 "1. Uninstall dvc binary\n"
                 "2. Go to {blue}https://dvc.org{reset}\n"

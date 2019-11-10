@@ -9,6 +9,6 @@ index 00000000..ada7a0bb
 --- /dev/null
 +++ b/dvc/utils/build.py
 @@ -0,0 +1 @@
-+PKG = "exe"
++PKG = "rpm"
 --
 2.17.1
