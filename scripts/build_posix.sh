@@ -51,7 +51,6 @@ command_exists()
 
 fpm_build()
 {
-	echo "PKG = \"$1\"" > $(pwd)/dvc/utils/build.py
 	print_info "Building $1..."
 	VERSION=$(python -c "import dvc; from dvc import __version__; print(str(__version__))")
 	fpm -s dir \
@@ -132,15 +131,21 @@ build_dvc()
         fi
 }
 
+build()
+{
+	echo "PKG = \"$1\"" > dvc/utils/build.py
+	build_dvc
+	fpm_build $1
+}
+
 cleanup
 install_dependencies
-build_dvc
 
 if [[ "$(uname)" == 'Linux' ]]; then
-	fpm_build rpm
-	fpm_build deb
+	build rpm
+	build deb
 else
-	fpm_build osxpkg
+	build osxpkg
 fi
 
 cleanup

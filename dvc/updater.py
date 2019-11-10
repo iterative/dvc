@@ -124,12 +124,12 @@ class Updater(object):  # pragma: no cover
         instructions = {
             "pip": "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
             "rpm": "Run {yellow}yum{reset} update dvc",
-            "osxpkg": "Run {yellow}brew{reset} upgrade dvc",
+            "brew": "Run {yellow}brew{reset} upgrade dvc",
             "deb": (
                 "Run {yellow}apt-get{reset} install"
                 " {blue}--only-upgrade{reset} dvc"
             ),
-            "exe": (
+            "binary": (
                 "To upgrade follow these steps:\n"
                 "1. Uninstall dvc binary\n"
                 "2. Go to {blue}https://dvc.org{reset}\n"
@@ -144,5 +144,7 @@ class Updater(object):  # pragma: no cover
         }
 
         package_manager = get_package_manager()
+        if package_manager in ("osxpkg", "exe"):
+            package_manager = "binary"
 
         return instructions[package_manager]

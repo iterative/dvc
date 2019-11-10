@@ -3,7 +3,7 @@ from dvc.utils import is_binary
 
 def check_build_patch():
     try:
-        from .build import PKG  # patched during conda package build
+        from .build import PKG  # file created during dvc build
 
         return PKG
     except ImportError:
