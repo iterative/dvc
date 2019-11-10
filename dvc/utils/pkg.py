@@ -1,11 +1,11 @@
 from dvc.utils import is_binary
 
 
-def is_conda():
+def check_build_patch():
     try:
         from .build import PKG  # patched during conda package build
 
-        return PKG == "conda"
+        return PKG
     except ImportError:
         return False
 
@@ -31,7 +31,7 @@ def get_linux():
 
 def get_darwin():
     if not is_binary():
-        if __file__.startswith("/usr/local/Cellar"):
+        if check_build_patch() == "darwin":
             return "formula"
         else:
             return "pip"
@@ -46,7 +46,7 @@ def get_package_manager():
     import platform
     from dvc.exceptions import DvcException
 
-    if is_conda():
+    if check_build_patch() == "conda":
         return "conda"
 
     m = {

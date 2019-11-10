@@ -82,6 +82,7 @@ install_dependencies()
 		sudo apt-get install ruby-dev build-essential rpm python-pip python-dev
 	elif command_exists brew; then
 		brew install ruby
+		brew install git
 	else
 		echo "Unable to install fpm dependencies" && exit 1
 	fi
@@ -101,6 +102,11 @@ install_dependencies()
 build_dvc()
 {
 	print_info "Building dvc binary..."
+
+  if [[ "$(uname)" != 'Linux' ]]; then
+    git apply $(pwd)/scripts/darwin.patch
+  fi
+
 	pyinstaller \
             --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py \
             --name dvc \

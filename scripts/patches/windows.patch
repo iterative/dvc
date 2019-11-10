@@ -1,0 +1,19 @@
+From 6b53dcffe5e13cb3c196d29a495d8da9bcc26d6d Mon Sep 17 00:00:00 2001
+From: n3hrox <n3hrox@gmail.com>
+Date: Sun, 10 Nov 2019 15:44:14 +0100
+Subject: [PATCH] Windows patch
+
+---
+ dvc/utils/buid.py | 1 +
+ 1 file changed, 1 insertion(+)
+ create mode 100644 dvc/utils/buid.py
+
+diff --git a/dvc/utils/buid.py b/dvc/utils/buid.py
+new file mode 100644
+index 00000000..ada7a0bb
+--- /dev/null
++++ b/dvc/utils/buid.py
+@@ -0,0 +1 @@
++PKG = "windows"
+--
+2.17.1
