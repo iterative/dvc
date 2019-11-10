@@ -102,7 +102,6 @@ install_dependencies()
 build_dvc()
 {
 	print_info "Building dvc binary..."
-
 	pyinstaller \
             --additional-hooks-dir $(pwd)/scripts/hooks dvc/__main__.py \
             --name dvc \
