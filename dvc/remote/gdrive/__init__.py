@@ -131,11 +131,11 @@ class RemoteGDrive(RemoteBASE):
         # Pass non existent settings path to force DEFAULT_SETTINGS loading
         gauth = GoogleAuth(settings_file="")
         gauth.CommandLineAuth()
-        gdrive = GoogleDrive(gauth)
 
         if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
             os.remove(self.gdrive_user_credentials_path)
 
+        gdrive = GoogleDrive(gauth)
         return gdrive
 
     def create_drive_item(self, parent_id, title):
