@@ -2,7 +2,6 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.pyenv
-sudo: true
 dist: xenial
 env:
   global:
