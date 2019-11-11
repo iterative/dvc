@@ -21,7 +21,7 @@ where iscc
 if %errorlevel% neq 0 (echo Error: Couldn't find Inno Setup compiler. && goto :error)
 
 echo ====== Installing requirements... ======
-echo 'PKG = "exe"' > dvc\utils\build.py
+echo PKG = "exe" > dvc\utils\build.py
 call pip install .[all] || goto :error
 call pip install psutil || goto :error
 call dvc pull || goto :error
