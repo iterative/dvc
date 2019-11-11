@@ -26,7 +26,7 @@ jobs:
   include:
   # patch formatting checks
   - name: "Check patch formatting"
-    stage: "check"
+    stage: check
     os: linux
     language: python
     python: 3.7
@@ -41,35 +41,28 @@ jobs:
     env:
     - PY2=1
   - name: "3.7 on Windows"
-    stage: test
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
   - name: "2.7 on Linux"
-    stage: test
     language: python
     python: 2.7
     env:
     - PY2=1
   - name: "3.5 on Linux"
-    stage: test
     language: python
     python: 3.5
   - name: "3.6 on Linux"
-    stage: test
     language: python
     python: 3.6
   - name: "3.7 on Linux"
-    stage: test
     language: python
     python: 3.7
   - name: "2.7 on Mac"
-    stage: test
     os: osx
     osx_image: xcode9.4
     env:
     - PY2=1
   - name: "3.6 on Mac"
-    stage: test
     os: osx
     osx_image: xcode9.4
   # build jobs
@@ -82,20 +75,17 @@ jobs:
     install:
     script: ./scripts/build_posix.sh
   - name: "Windows pkg"
-    stage: build
     os: windows
     language: shell
     install:
     script: ./scripts/build_windows.cmd
   - name: "Linux pkgs"
-    stage: build
     language: python
     python: 3.7
     before_install:
     install:
     script: ./scripts/build_posix.sh
   - name: "Pypi pkgs"
-    stage: build
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
