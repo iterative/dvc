@@ -32,19 +32,16 @@ class ConfigError(DvcException):
     """
 
     def __init__(self, msg, cause=None):
-        super(ConfigError, self).__init__(
-            "config file error: {}".format(msg), cause=cause
-        )
+        super(ConfigError, self).__init__("config file error: {}".format(msg),
+                                          cause=cause)
 
 
 class NoRemoteError(ConfigError):
     def __init__(self, command, cause=None):
-        msg = (
-            "no remote specified. Setup default remote with\n"
-            "    dvc config core.remote <name>\n"
-            "or use:\n"
-            "    dvc {} -r <name>\n".format(command)
-        )
+        msg = ("no remote specified. Setup default remote with\n"
+               "    dvc config core.remote <name>\n"
+               "or use:\n"
+               "    dvc {} -r <name>\n".format(command))
 
         super(NoRemoteError, self).__init__(msg, cause=cause)
 
@@ -165,8 +162,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE = "core"
     SECTION_CORE_LOGLEVEL = "loglevel"
     SECTION_CORE_LOGLEVEL_SCHEMA = And(
-        Use(str.lower), Choices("info", "debug", "warning", "error")
-    )
+        Use(str.lower), Choices("info", "debug", "warning", "error"))
     SECTION_CORE_REMOTE = "remote"
     SECTION_CORE_INTERACTIVE_SCHEMA = BOOL_SCHEMA
     SECTION_CORE_INTERACTIVE = "interactive"
@@ -205,19 +201,16 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     }
 
     SECTION_CORE_SCHEMA = {
-        Optional(SECTION_CORE_LOGLEVEL): And(
-            str, Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA
-        ),
-        Optional(SECTION_CORE_REMOTE, default=""): And(str, Use(str.lower)),
-        Optional(
-            SECTION_CORE_INTERACTIVE, default=False
-        ): SECTION_CORE_INTERACTIVE_SCHEMA,
-        Optional(
-            SECTION_CORE_ANALYTICS, default=True
-        ): SECTION_CORE_ANALYTICS_SCHEMA,
-        Optional(
-            SECTION_CORE_CHECKSUM_JOBS, default=None
-        ): SECTION_CORE_CHECKSUM_JOBS_SCHEMA,
+        Optional(SECTION_CORE_LOGLEVEL):
+        And(str, Use(str.lower), SECTION_CORE_LOGLEVEL_SCHEMA),
+        Optional(SECTION_CORE_REMOTE, default=""):
+        And(str, Use(str.lower)),
+        Optional(SECTION_CORE_INTERACTIVE, default=False):
+        SECTION_CORE_INTERACTIVE_SCHEMA,
+        Optional(SECTION_CORE_ANALYTICS, default=True):
+        SECTION_CORE_ANALYTICS_SCHEMA,
+        Optional(SECTION_CORE_CHECKSUM_JOBS, default=None):
+        SECTION_CORE_CHECKSUM_JOBS_SCHEMA,
     }
 
     # backward compatibility
@@ -354,9 +347,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import user_config_dir
 
-        return user_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
-        )
+        return user_config_dir(appname=Config.APPNAME,
+                               appauthor=Config.APPAUTHOR)
 
     @staticmethod
     def get_system_config_dir():
@@ -367,9 +359,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import site_config_dir
 
-        return site_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
-        )
+        return site_config_dir(appname=Config.APPNAME,
+                               appauthor=Config.APPAUTHOR)
 
     @staticmethod
     def init(dvc_dir):
@@ -412,13 +403,11 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         return ret
 
     def _load_configs(self):
-        system_config_file = os.path.join(
-            self.get_system_config_dir(), self.CONFIG
-        )
+        system_config_file = os.path.join(self.get_system_config_dir(),
+                                          self.CONFIG)
 
-        global_config_file = os.path.join(
-            self.get_global_config_dir(), self.CONFIG
-        )
+        global_config_file = os.path.join(self.get_global_config_dir(),
+                                          self.CONFIG)
 
         self._system_config = configobj.ConfigObj(system_config_file)
         self._global_config = configobj.ConfigObj(global_config_file)
@@ -452,10 +441,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
 
         self.config = configobj.ConfigObj()
         for c in [
-            self._system_config,
-            self._global_config,
-            self._repo_config,
-            self._local_config,
+                self._system_config,
+                self._global_config,
+                self._repo_config,
+                self._local_config,
         ]:
             c = self._resolve_paths(c)
             c = self._lower(c)
@@ -531,9 +520,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             if opt not in config[section].keys():
                 if force:
                     return
-                raise ConfigError(
-                    "option '{}.{}' doesn't exist".format(section, opt)
-                )
+                raise ConfigError("option '{}.{}' doesn't exist".format(
+                    section, opt))
             del config[section][opt]
 
             if not config[section]:
@@ -566,8 +554,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         elif not force:
             raise ConfigError(
                 "Section '{}' already exists. Use `-f|--force` to overwrite "
-                "section with new value.".format(section)
-            )
+                "section with new value.".format(section))
 
         config[section][opt] = value
         self.save(config)
@@ -589,9 +576,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
             raise ConfigError("section '{}' doesn't exist".format(section))
 
         if opt not in config[section].keys():
-            raise ConfigError(
-                "option '{}.{}' doesn't exist".format(section, opt)
-            )
+            raise ConfigError("option '{}.{}' doesn't exist".format(
+                section, opt))
 
         return config[section][opt]
 

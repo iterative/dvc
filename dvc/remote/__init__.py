@@ -12,7 +12,6 @@ from dvc.remote.oss import RemoteOSS
 from dvc.remote.s3 import RemoteS3
 from dvc.remote.ssh import RemoteSSH
 
-
 REMOTES = [
     RemoteAZURE,
     RemoteGDrive,

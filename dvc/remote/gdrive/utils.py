@@ -2,7 +2,6 @@ import os
 
 from dvc.progress import Tqdm
 
-
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 

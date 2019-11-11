@@ -37,13 +37,16 @@ from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import spy
 
-
 TEST_REMOTE = "upstream"
 TEST_SECTION = 'remote "{}"'.format(TEST_REMOTE)
 TEST_CONFIG = {
     Config.SECTION_CACHE: {},
-    Config.SECTION_CORE: {Config.SECTION_CORE_REMOTE: TEST_REMOTE},
-    TEST_SECTION: {Config.SECTION_REMOTE_URL: ""},
+    Config.SECTION_CORE: {
+        Config.SECTION_CORE_REMOTE: TEST_REMOTE
+    },
+    TEST_SECTION: {
+        Config.SECTION_REMOTE_URL: ""
+    },
 }
 
 TEST_AWS_REPO_BUCKET = os.environ.get("DVC_TEST_AWS_REPO_BUCKET", "dvc-test")
@@ -54,14 +57,12 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
     os.environ.get(
         "GOOGLE_APPLICATION_CREDENTIALS",
         os.path.join("scripts", "ci", "gcp-creds.json"),
-    )
-)
+    ))
 # Ensure that absolute path is used
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
 TEST_GDRIVE_CLIENT_ID = (
-    "719861249063-v4an78j9grdtuuuqg3lnm0sugna6v3lh.apps.googleusercontent.com"
-)
+    "719861249063-v4an78j9grdtuuuqg3lnm0sugna6v3lh.apps.googleusercontent.com")
 TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
 
@@ -92,15 +93,13 @@ def _should_test_gcp():
         return False
 
     try:
-        check_output(
-            [
-                "gcloud",
-                "auth",
-                "activate-service-account",
-                "--key-file",
-                TEST_GCP_CREDS_FILE,
-            ]
-        )
+        check_output([
+            "gcloud",
+            "auth",
+            "activate-service-account",
+            "--key-file",
+            TEST_GCP_CREDS_FILE,
+        ])
     except (CalledProcessError, OSError):
         return False
     return True
@@ -112,8 +111,7 @@ def _should_test_azure():
         return do_test
 
     return os.getenv("AZURE_STORAGE_CONTAINER_NAME") and os.getenv(
-        "AZURE_STORAGE_CONNECTION_STRING"
-    )
+        "AZURE_STORAGE_CONNECTION_STRING")
 
 
 def _should_test_oss():
@@ -121,11 +119,8 @@ def _should_test_oss():
     if do_test is not None:
         return do_test
 
-    return (
-        os.getenv("OSS_ENDPOINT")
-        and os.getenv("OSS_ACCESS_KEY_ID")
-        and os.getenv("OSS_ACCESS_KEY_SECRET")
-    )
+    return (os.getenv("OSS_ENDPOINT") and os.getenv("OSS_ACCESS_KEY_ID")
+            and os.getenv("OSS_ACCESS_KEY_SECRET"))
 
 
 def _should_test_ssh():
@@ -150,9 +145,9 @@ def _should_test_hdfs():
         return False
 
     try:
-        check_output(
-            ["hadoop", "version"], shell=True, executable=os.getenv("SHELL")
-        )
+        check_output(["hadoop", "version"],
+                     shell=True,
+                     executable=os.getenv("SHELL"))
     except (CalledProcessError, IOError):
         return False
 
@@ -177,9 +172,8 @@ def get_local_url():
 
 
 def get_ssh_url():
-    return "ssh://{}@127.0.0.1:22{}".format(
-        getpass.getuser(), get_local_storagepath()
-    )
+    return "ssh://{}@127.0.0.1:22{}".format(getpass.getuser(),
+                                            get_local_storagepath())
 
 
 def get_ssh_url_mocked(user, port):
@@ -202,9 +196,8 @@ def get_ssh_url_mocked(user, port):
 
 
 def get_hdfs_url():
-    return "hdfs://{}@127.0.0.1{}".format(
-        getpass.getuser(), get_local_storagepath()
-    )
+    return "hdfs://{}@127.0.0.1{}".format(getpass.getuser(),
+                                          get_local_storagepath())
 
 
 def get_aws_storagepath():
@@ -281,9 +274,8 @@ class TestDataCloudBase(TestDvc):
 
     def _ensure_should_run(self):
         if not self._should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest("Test {} is disabled".format(
+                self.__class__.__name__))
 
     def _setup_cloud(self):
         self._ensure_should_run()
@@ -404,11 +396,9 @@ class TestRemoteGDrive(TestDataCloudBase):
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][
-            Config.SECTION_GDRIVE_CLIENT_ID
-        ] = TEST_GDRIVE_CLIENT_ID
+            Config.SECTION_GDRIVE_CLIENT_ID] = TEST_GDRIVE_CLIENT_ID
         config[TEST_SECTION][
-            Config.SECTION_GDRIVE_CLIENT_SECRET
-        ] = TEST_GDRIVE_CLIENT_SECRET
+            Config.SECTION_GDRIVE_CLIENT_SECRET] = TEST_GDRIVE_CLIENT_SECRET
         self.dvc.config.config = config
         self.cloud = DataCloud(self.dvc)
 
@@ -433,8 +423,7 @@ class TestRemoteGS(TestDataCloudBase):
         config = copy.deepcopy(TEST_CONFIG)
         config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
         config[TEST_SECTION][
-            Config.SECTION_GCP_CREDENTIALPATH
-        ] = TEST_GCP_CREDS_FILE
+            Config.SECTION_GCP_CREDENTIALPATH] = TEST_GCP_CREDS_FILE
         self.dvc.config.config = config
         self.cloud = DataCloud(self.dvc)
 
@@ -616,9 +605,8 @@ class TestDataCloudCLIBase(TestDvc):
 
     def test(self):
         if not self._should_test():
-            raise SkipTest(
-                "Test {} is disabled".format(self.__class__.__name__)
-            )
+            raise SkipTest("Test {} is disabled".format(
+                self.__class__.__name__))
         self._test()
 
 
@@ -675,24 +663,20 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
         url = get_gdrive_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                Config.SECTION_GDRIVE_CLIENT_ID,
-                TEST_GDRIVE_CLIENT_ID,
-            ]
-        )
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                Config.SECTION_GDRIVE_CLIENT_SECRET,
-                TEST_GDRIVE_CLIENT_SECRET,
-            ]
-        )
+        self.main([
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            Config.SECTION_GDRIVE_CLIENT_ID,
+            TEST_GDRIVE_CLIENT_ID,
+        ])
+        self.main([
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            Config.SECTION_GDRIVE_CLIENT_SECRET,
+            TEST_GDRIVE_CLIENT_SECRET,
+        ])
 
         self._test_cloud(TEST_REMOTE)
 
@@ -705,15 +689,13 @@ class TestRemoteGSCLI(TestDataCloudCLIBase):
         url = get_gcp_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
-        self.main(
-            [
-                "remote",
-                "modify",
-                TEST_REMOTE,
-                "credentialpath",
-                TEST_GCP_CREDS_FILE,
-            ]
-        )
+        self.main([
+            "remote",
+            "modify",
+            TEST_REMOTE,
+            "credentialpath",
+            TEST_GCP_CREDS_FILE,
+        ])
 
         self._test_cloud(TEST_REMOTE)
 
@@ -778,8 +760,7 @@ class TestWarnOnOutdatedStage(TestDvc):
             expected_warning = (
                 "Output 'bar'(Stage: 'bar.dvc') is missing version info."
                 " Cache for it will not be collected."
-                " Use dvc repro to get your pipeline up to date."
-            )
+                " Use dvc repro to get your pipeline up to date.")
 
             assert expected_warning in self._caplog.text
 
@@ -872,9 +853,8 @@ class TestRecursiveSyncOperations(TestDataCloudBase):
 class TestCheckSumRecalculation(TestDvc):
     def test(self):
         test_get_file_checksum = spy(RemoteLOCAL.get_file_checksum)
-        with patch.object(
-            RemoteLOCAL, "get_file_checksum", test_get_file_checksum
-        ):
+        with patch.object(RemoteLOCAL, "get_file_checksum",
+                          test_get_file_checksum):
             url = get_local_url()
             ret = main(["remote", "add", "-d", TEST_REMOTE, url])
             self.assertEqual(ret, 0)
@@ -910,14 +890,11 @@ class TestShouldWarnOnNoChecksumInLocalAndRemoteCache(TestDvc):
         checksum_bar = file_md5(self.BAR)[0]
         self.message_header = (
             "Some of the cache files do not exist neither locally "
-            "nor on remote. Missing cache files: "
-        )
+            "nor on remote. Missing cache files: ")
         self.message_bar_part = "name: {}, md5: {}".format(
-            self.BAR, checksum_bar
-        )
+            self.BAR, checksum_bar)
         self.message_foo_part = "name: {}, md5: {}".format(
-            self.FOO, checksum_foo
-        )
+            self.FOO, checksum_foo)
 
     def test(self):
         self._caplog.clear()

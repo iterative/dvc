@@ -46,17 +46,13 @@ class RemoteGDrive(RemoteBASE):
 
     def init_drive(self):
         self.gdrive_client_id = self.config.get(
-            Config.SECTION_GDRIVE_CLIENT_ID, None
-        )
+            Config.SECTION_GDRIVE_CLIENT_ID, None)
         self.gdrive_client_secret = self.config.get(
-            Config.SECTION_GDRIVE_CLIENT_SECRET, None
-        )
+            Config.SECTION_GDRIVE_CLIENT_SECRET, None)
         if not self.gdrive_client_id or not self.gdrive_client_secret:
-            raise DvcException(
-                "Please specify Google Drive's client id and "
-                "secret in DVC's config. Learn more at "
-                "https://man.dvc.org/remote/add."
-            )
+            raise DvcException("Please specify Google Drive's client id and "
+                               "secret in DVC's config. Learn more at "
+                               "https://man.dvc.org/remote/add.")
         self.gdrive_user_credentials_path = self.config.get(
             Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
             self.DEFAULT_USER_CREDENTIALS_FILE,
@@ -88,8 +84,7 @@ class RemoteGDrive(RemoteBASE):
         cached_dirs = {}
         cached_ids = {}
         for dir1 in self.list_drive_item(
-            "'{}' in parents and trashed=false".format(self.root_id)
-        ):
+                "'{}' in parents and trashed=false".format(self.root_id)):
             cached_dirs.setdefault(dir1["title"], []).append(dir1["id"])
             cached_ids[dir1["id"]] = dir1["title"]
         return cached_dirs, cached_ids
@@ -100,12 +95,10 @@ class RemoteGDrive(RemoteBASE):
         from pydrive.drive import GoogleDrive
 
         if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-            with open(
-                self.gdrive_user_credentials_path, "w"
-            ) as credentials_file:
+            with open(self.gdrive_user_credentials_path,
+                      "w") as credentials_file:
                 credentials_file.write(
-                    os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
-                )
+                    os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA))
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
         GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
@@ -119,8 +112,7 @@ class RemoteGDrive(RemoteBASE):
         GoogleAuth.DEFAULT_SETTINGS["save_credentials"] = True
         GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
         GoogleAuth.DEFAULT_SETTINGS[
-            "save_credentials_file"
-        ] = self.gdrive_user_credentials_path
+            "save_credentials_file"] = self.gdrive_user_credentials_path
         GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
         GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
             "https://www.googleapis.com/auth/drive",
@@ -138,18 +130,19 @@ class RemoteGDrive(RemoteBASE):
         return gdrive
 
     def create_drive_item(self, parent_id, title):
-        upload_request = RequestCreateFolder(
-            {"drive": self.drive, "title": title, "parent_id": parent_id}
-        )
+        upload_request = RequestCreateFolder({
+            "drive": self.drive,
+            "title": title,
+            "parent_id": parent_id
+        })
         result = self.execute_request(upload_request)
         return result
 
     def get_drive_item(self, name, parents_ids):
         if not parents_ids:
             return None
-        query = " or ".join(
-            "'{}' in parents".format(parent_id) for parent_id in parents_ids
-        )
+        query = " or ".join("'{}' in parents".format(parent_id)
+                            for parent_id in parents_ids)
 
         query += " and trashed=false and title='{}'".format(name)
 
@@ -181,12 +174,8 @@ class RemoteGDrive(RemoteBASE):
     def get_path_id_from_cache(self, path_info):
         files_ids = []
         parts, parents_ids = self.subtract_root_path(path_info.path.split("/"))
-        if (
-            hasattr(self, "cached_dirs")
-            and path_info != self.path_info
-            and parts
-            and (parts[0] in self.cached_dirs)
-        ):
+        if (hasattr(self, "cached_dirs") and path_info != self.path_info
+                and parts and (parts[0] in self.cached_dirs)):
             parents_ids = self.cached_dirs[parts[0]]
             files_ids = self.cached_dirs[parts[0]]
             parts.pop(0)
@@ -226,15 +215,18 @@ class RemoteGDrive(RemoteBASE):
 
     def _download(self, from_info, to_file, name, no_progress_bar):
         file_id = self.get_path_id(from_info)
-        download_request = RequestDownloadFile(
-            {
-                "drive": self.drive,
-                "file_id": file_id,
-                "to_file": to_file,
-                "progress_name": name,
-                "no_progress_bar": no_progress_bar,
-            }
-        )
+        download_request = RequestDownloadFile({
+            "drive":
+            self.drive,
+            "file_id":
+            file_id,
+            "to_file":
+            to_file,
+            "progress_name":
+            name,
+            "no_progress_bar":
+            no_progress_bar,
+        })
         self.execute_request(download_request)
 
     def list_cache_paths(self):
@@ -252,8 +244,7 @@ class RemoteGDrive(RemoteBASE):
 
     def list_path(self, parent_id):
         for file1 in self.list_drive_item(
-            "'{}' in parents and trashed=false".format(parent_id)
-        ):
+                "'{}' in parents and trashed=false".format(parent_id)):
             for path in self.list_file_path(file1):
                 yield path
 
@@ -261,9 +252,8 @@ class RemoteGDrive(RemoteBASE):
         if not hasattr(self, "cached_ids") or not self.cached_ids:
             return
 
-        query = " or ".join(
-            "'{}' in parents".format(dir_id) for dir_id in self.cached_ids
-        )
+        query = " or ".join("'{}' in parents".format(dir_id)
+                            for dir_id in self.cached_ids)
 
         query += " and trashed=false"
         for file1 in self.list_drive_item(query):

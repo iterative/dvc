@@ -10,7 +10,6 @@ import fastentrypoints  # noqa: F401
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
 
-
 # https://packaging.python.org/guides/single-sourcing-package-version/
 pkg_dir = os.path.dirname(os.path.abspath(__file__))
 version_path = os.path.join(pkg_dir, "dvc", "version.py")

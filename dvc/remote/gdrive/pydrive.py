@@ -18,9 +18,10 @@ class RequestListFile(RequestBASE):
         self.query = query
 
     def execute(self):
-        return self.drive.ListFile(
-            {"q": self.query, "maxResults": 1000}
-        ).GetList()
+        return self.drive.ListFile({
+            "q": self.query,
+            "maxResults": 1000
+        }).GetList()
 
 
 class RequestListFilePaginated(RequestBASE):
@@ -32,8 +33,10 @@ class RequestListFilePaginated(RequestBASE):
     def execute(self):
         if not self.iter:
             self.iter = iter(
-                self.drive.ListFile({"q": self.query, "maxResults": 1000})
-            )
+                self.drive.ListFile({
+                    "q": self.query,
+                    "maxResults": 1000
+                }))
         return next(self.iter, None)
 
 
@@ -44,21 +47,23 @@ class RequestCreateFolder(RequestBASE):
         self.parent_id = args["parent_id"]
 
     def execute(self):
-        item = self.drive.CreateFile(
-            {
-                "title": self.title,
-                "parents": [{"id": self.parent_id}],
-                "mimeType": FOLDER_MIME_TYPE,
-            }
-        )
+        item = self.drive.CreateFile({
+            "title": self.title,
+            "parents": [{
+                "id": self.parent_id
+            }],
+            "mimeType": FOLDER_MIME_TYPE,
+        })
         item.Upload()
         return item
 
 
 class RequestUploadFile(RequestBASE):
-    def __init__(
-        self, args, no_progress_bar=True, from_file="", progress_name=""
-    ):
+    def __init__(self,
+                 args,
+                 no_progress_bar=True,
+                 from_file="",
+                 progress_name=""):
         super(RequestUploadFile, self).__init__(args["drive"])
         self.title = args["title"]
         self.parent_id = args["parent_id"]
@@ -69,17 +74,19 @@ class RequestUploadFile(RequestBASE):
     def upload(self, item):
         with open(self.from_file, "rb") as from_file:
             if not self.no_progress_bar:
-                from_file = TrackFileReadProgress(
-                    self.progress_name, from_file
-                )
+                from_file = TrackFileReadProgress(self.progress_name,
+                                                  from_file)
             if os.stat(self.from_file).st_size:
                 item.content = from_file
             item.Upload()
 
     def execute(self):
-        item = self.drive.CreateFile(
-            {"title": self.title, "parents": [{"id": self.parent_id}]}
-        )
+        item = self.drive.CreateFile({
+            "title": self.title,
+            "parents": [{
+                "id": self.parent_id
+            }]
+        })
         self.upload(item)
         return item
 
@@ -97,9 +104,8 @@ class RequestDownloadFile(RequestBASE):
 
         gdrive_file = self.drive.CreateFile({"id": self.file_id})
         if not self.no_progress_bar:
-            tqdm = Tqdm(
-                desc=self.progress_name, total=int(gdrive_file["fileSize"])
-            )
+            tqdm = Tqdm(desc=self.progress_name,
+                        total=int(gdrive_file["fileSize"]))
         gdrive_file.GetContentFile(self.to_file)
         if not self.no_progress_bar:
             tqdm.close()
