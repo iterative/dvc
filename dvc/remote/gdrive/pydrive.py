@@ -1,6 +1,7 @@
 import os
 
-from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
+from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
+from dvc.remote.gdrive.utils import TrackFileReadProgress
 
 
 class RequestBASE:

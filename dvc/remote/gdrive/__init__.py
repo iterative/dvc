@@ -1,25 +1,24 @@
 from __future__ import unicode_literals
 
+import logging
 import os
 import posixpath
-import logging
 
+from backoff import expo
+from backoff import on_exception
 from funcy import cached_property
-from backoff import on_exception, expo
 
-from dvc.scheme import Schemes
-from dvc.path_info import CloudURLInfo
-from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.remote.gdrive.pydrive import (
-    RequestListFile,
-    RequestListFilePaginated,
-    RequestCreateFolder,
-    RequestUploadFile,
-    RequestDownloadFile,
-)
+from dvc.path_info import CloudURLInfo
+from dvc.remote.base import RemoteBASE
+from dvc.remote.gdrive.pydrive import RequestCreateFolder
+from dvc.remote.gdrive.pydrive import RequestDownloadFile
+from dvc.remote.gdrive.pydrive import RequestListFile
+from dvc.remote.gdrive.pydrive import RequestListFilePaginated
+from dvc.remote.gdrive.pydrive import RequestUploadFile
 from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
+from dvc.scheme import Schemes
 
 logger = logging.getLogger(__name__)
 

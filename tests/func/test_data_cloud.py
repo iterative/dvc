@@ -1,38 +1,39 @@
-from subprocess import CalledProcessError
-from subprocess import check_output, Popen
-from unittest import SkipTest
-import os
-import uuid
-import shutil
-import getpass
-import platform
 import copy
+import getpass
 import logging
-import pytest
+import os
+import platform
+import shutil
+import uuid
+from subprocess import CalledProcessError
+from subprocess import check_output
+from subprocess import Popen
+from unittest import SkipTest
 
+import pytest
 from mock import patch
 
-from dvc.utils.compat import str
-from dvc.utils import env2bool
-from dvc.main import main
-from dvc.config import Config
 from dvc.cache import NamedCache
+from dvc.config import Config
 from dvc.data_cloud import DataCloud
-from dvc.remote import (
-    RemoteS3,
-    RemoteGS,
-    RemoteGDrive,
-    RemoteAZURE,
-    RemoteOSS,
-    RemoteLOCAL,
-    RemoteSSH,
-    RemoteHDFS,
-    RemoteHTTP,
-)
-from dvc.remote.base import STATUS_OK, STATUS_NEW, STATUS_DELETED
+from dvc.main import main
+from dvc.remote import RemoteAZURE
+from dvc.remote import RemoteGDrive
+from dvc.remote import RemoteGS
+from dvc.remote import RemoteHDFS
+from dvc.remote import RemoteHTTP
+from dvc.remote import RemoteLOCAL
+from dvc.remote import RemoteOSS
+from dvc.remote import RemoteS3
+from dvc.remote import RemoteSSH
+from dvc.remote.base import STATUS_DELETED
+from dvc.remote.base import STATUS_NEW
+from dvc.remote.base import STATUS_OK
+from dvc.utils import env2bool
 from dvc.utils import file_md5
-from dvc.utils.stage import load_stage_file, dump_stage_file
-
+from dvc.utils.compat import str
+from dvc.utils.stage import dump_stage_file
+from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import spy
 

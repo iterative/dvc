@@ -1,17 +1,16 @@
 from __future__ import unicode_literals
 
+from .config import RemoteConfig
 from dvc.remote.azure import RemoteAZURE
 from dvc.remote.gdrive import RemoteGDrive
 from dvc.remote.gs import RemoteGS
 from dvc.remote.hdfs import RemoteHDFS
-from dvc.remote.local import RemoteLOCAL
-from dvc.remote.s3 import RemoteS3
-from dvc.remote.ssh import RemoteSSH
 from dvc.remote.http import RemoteHTTP
 from dvc.remote.https import RemoteHTTPS
+from dvc.remote.local import RemoteLOCAL
 from dvc.remote.oss import RemoteOSS
-
-from .config import RemoteConfig
+from dvc.remote.s3 import RemoteS3
+from dvc.remote.ssh import RemoteSSH
 
 
 REMOTES = [

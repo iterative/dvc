@@ -1,12 +1,14 @@
-from setuptools import setup, find_packages
-from setuptools.command.build_py import build_py as _build_py
 import os
 import sys
 
+from setuptools import find_packages
+from setuptools import setup
+from setuptools.command.build_py import build_py as _build_py
+
+import fastentrypoints  # noqa: F401
 # Prevents pkg_resources import in entry point script,
 # see https://github.com/ninjaaron/fast-entry_points.
 # This saves about 200 ms on startup time for non-wheel installs.
-import fastentrypoints  # noqa: F401
 
 
 # https://packaging.python.org/guides/single-sourcing-package-version/
