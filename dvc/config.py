@@ -257,6 +257,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
     SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
     SECTION_OSS_ENDPOINT = "oss_endpoint"
+    # GDrive options
+    SECTION_GDRIVE_CLIENT_ID = "gdrive_client_id"
+    SECTION_GDRIVE_CLIENT_SECRET = "gdrive_client_secret"
+    SECTION_GDRIVE_USER_CREDENTIALS_FILE = "gdrive_user_credentials_file"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -293,6 +297,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_OSS_ACCESS_KEY_ID): str,
         Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
         Optional(SECTION_OSS_ENDPOINT): str,
+        Optional(SECTION_GDRIVE_CLIENT_ID): str,
+        Optional(SECTION_GDRIVE_CLIENT_SECRET): str,
+        Optional(SECTION_GDRIVE_USER_CREDENTIALS_FILE): str,
         Optional(PRIVATE_CWD): str,
         Optional(SECTION_REMOTE_NO_TRAVERSE, default=True): BOOL_SCHEMA,
     }

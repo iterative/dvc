@@ -58,9 +58,10 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 # Ensure that absolute path is used
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
-TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH = os.path.join(
-    os.path.dirname(__file__), "gdrive-settings.yaml"
+TEST_GDRIVE_CLIENT_ID = (
+    "719861249063-v4an78j9grdtuuuqg3lnm0sugna6v3lh.apps.googleusercontent.com"
 )
+TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
 
 
 def _should_test_aws():
@@ -394,8 +395,23 @@ class TestRemoteGDrive(TestDataCloudBase):
     def _should_test(self):
         return _should_test_gdrive()
 
-    def _get_keyfile(self):
-        return TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH
+    def _setup_cloud(self):
+        self._ensure_should_run()
+
+        repo = self._get_url()
+
+        config = copy.deepcopy(TEST_CONFIG)
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][
+            Config.SECTION_GDRIVE_CLIENT_ID
+        ] = TEST_GDRIVE_CLIENT_ID
+        config[TEST_SECTION][
+            Config.SECTION_GDRIVE_CLIENT_SECRET
+        ] = TEST_GDRIVE_CLIENT_SECRET
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
+
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
 
     def _get_url(self):
         return get_gdrive_url()
@@ -663,8 +679,17 @@ class TestRemoteGDriveCLI(TestDataCloudCLIBase):
                 "remote",
                 "modify",
                 TEST_REMOTE,
-                Config.SECTION_REMOTE_KEY_FILE,
-                TEST_GDRIVE_GOOGLE_AUTH_SETTINGS_PATH,
+                Config.SECTION_GDRIVE_CLIENT_ID,
+                TEST_GDRIVE_CLIENT_ID,
+            ]
+        )
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                Config.SECTION_GDRIVE_CLIENT_SECRET,
+                TEST_GDRIVE_CLIENT_SECRET,
             ]
         )
 

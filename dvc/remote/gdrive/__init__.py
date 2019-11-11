@@ -36,7 +36,7 @@ class RemoteGDrive(RemoteBASE):
     REGEX = r"^gdrive://.*$"
     REQUIRES = {"pydrive": "pydrive"}
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
-    CREDENTIALS_FILE_PATH = "credentials.json"
+    DEFAULT_USER_CREDENTIALS_FILE = ".dvc/tmp/gdrive-user-credentials.json"
 
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
@@ -46,15 +46,23 @@ class RemoteGDrive(RemoteBASE):
         self.init_drive()
 
     def init_drive(self):
-        self.gdrive_credentials_path = self.config.get(
-            Config.SECTION_REMOTE_KEY_FILE, None
+        self.gdrive_client_id = self.config.get(
+            Config.SECTION_GDRIVE_CLIENT_ID, None
         )
-        if not self.gdrive_credentials_path:
+        self.gdrive_client_secret = self.config.get(
+            Config.SECTION_GDRIVE_CLIENT_SECRET, None
+        )
+        if not self.gdrive_client_id or not self.gdrive_client_secret:
             raise DvcException(
-                "Google Drive settings file path is missed from config. "
-                "Learn more at "
+                "Please specify Google Drive's client id and "
+                "secret in DVC's config. Learn more at "
                 "https://man.dvc.org/remote/add."
             )
+        self.gdrive_user_credentials_path = self.config.get(
+            Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
+            self.DEFAULT_USER_CREDENTIALS_FILE,
+        )
+
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cached_dirs, self.cached_ids = self.cache_root_dirs()
 
@@ -93,15 +101,41 @@ class RemoteGDrive(RemoteBASE):
         from pydrive.drive import GoogleDrive
 
         if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-            with open(self.CREDENTIALS_FILE_PATH, "w") as credentials_file:
+            with open(
+                self.gdrive_user_credentials_path, "w"
+            ) as credentials_file:
                 credentials_file.write(
                     os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
                 )
 
         GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
-        gauth = GoogleAuth(settings_file=self.gdrive_credentials_path)
+        GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
+            "client_id": self.gdrive_client_id,
+            "client_secret": self.gdrive_client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "revoke_uri": "https://oauth2.googleapis.com/revoke",
+            "redirect_uri": "",
+        }
+        GoogleAuth.DEFAULT_SETTINGS["save_credentials"] = True
+        GoogleAuth.DEFAULT_SETTINGS["save_credentials_backend"] = "file"
+        GoogleAuth.DEFAULT_SETTINGS[
+            "save_credentials_file"
+        ] = self.gdrive_user_credentials_path
+        GoogleAuth.DEFAULT_SETTINGS["get_refresh_token"] = True
+        GoogleAuth.DEFAULT_SETTINGS["oauth_scope"] = [
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/drive.appdata",
+        ]
+
+        # Pass non existent settings path to force DEFAULT_SETTINGS loading
+        gauth = GoogleAuth(settings_file="")
         gauth.CommandLineAuth()
         gdrive = GoogleDrive(gauth)
+
+        if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+            os.remove(self.gdrive_user_credentials_path)
+
         return gdrive
 
     def create_drive_item(self, parent_id, title):
