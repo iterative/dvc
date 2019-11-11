@@ -338,3 +338,12 @@ class RemoteNotSpecifiedInExternalRepoError(DvcException):
             ),
             cause=cause,
         )
+
+
+class NoOutputInExternalRepoError(DvcException):
+    def __init__(self, repo_url, path):
+        super(NoOutputInExternalRepoError, self).__init__(
+            "Output '{}' not found in target repository: '{}'".format(
+                path, repo_url
+            )
+        )
