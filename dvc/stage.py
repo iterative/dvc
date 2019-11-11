@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
 
-import copy
 import logging
 import os
 import re
@@ -27,7 +26,8 @@ from dvc.utils.compat import pathlib
 from dvc.utils.compat import str
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.stage import dump_stage_file
-from dvc.utils.stage import load_stage_fd
+from dvc.utils.stage import parse_stage
+from dvc.utils.stage import parse_stage_for_update
 
 
 logger = logging.getLogger(__name__)
@@ -170,8 +170,8 @@ class Stage(object):
         md5=None,
         locked=False,
         tag=None,
-        state=None,
         always_changed=False,
+        stage_text=None,
     ):
         if deps is None:
             deps = []
@@ -188,7 +188,7 @@ class Stage(object):
         self.locked = locked
         self.tag = tag
         self.always_changed = always_changed
-        self._state = state or {}
+        self._stage_text = stage_text
 
     def __repr__(self):
         return "Stage: '{path}'".format(
@@ -613,10 +613,8 @@ class Stage(object):
         Stage._check_isfile(repo, fname)
 
         with repo.tree.open(fname) as fd:
-            d = load_stage_fd(fd, fname)
-        # Making a deepcopy since the original structure
-        # looses keys in deps and outs load
-        state = copy.deepcopy(d)
+            stage_text = fd.read()
+        d = parse_stage(stage_text, fname)
 
         Stage.validate(d, fname=relpath(fname))
         path = os.path.abspath(fname)
@@ -634,7 +632,8 @@ class Stage(object):
             locked=d.get(Stage.PARAM_LOCKED, False),
             tag=tag,
             always_changed=d.get(Stage.PARAM_ALWAYS_CHANGED, False),
-            state=state,
+            # We store stage text to apply updates to the same structure
+            stage_text=stage_text,
         )
 
         stage.deps = dependency.loadd_from(stage, d.get(Stage.PARAM_DEPS, []))
@@ -657,7 +656,6 @@ class Stage(object):
                 Stage.PARAM_LOCKED: self.locked,
                 Stage.PARAM_DEPS: [d.dumpd() for d in self.deps],
                 Stage.PARAM_OUTS: [o.dumpd() for o in self.outs],
-                Stage.PARAM_META: self._state.get("meta"),
                 Stage.PARAM_ALWAYS_CHANGED: self.always_changed,
             }.items()
             if value
@@ -671,9 +669,18 @@ class Stage(object):
         logger.debug(
             "Saving information to '{file}'.".format(file=relpath(fname))
         )
-        d = self.dumpd()
-        apply_diff(d, self._state)
-        dump_stage_file(fname, self._state)
+        state = self.dumpd()
+
+        # If we have stage file we apply diffs instead of overwriting it
+        # to preserve comments, string formatting and meta key.
+        if self._stage_text is not None:
+            saved_state = parse_stage_for_update(self._stage_text, fname)
+            if "meta" in saved_state:
+                state["meta"] = saved_state["meta"]
+            apply_diff(state, saved_state)
+            state = saved_state
+
+        dump_stage_file(fname, state)
 
         self.repo.scm.track_file(relpath(fname))
 
