@@ -3,7 +3,7 @@ summary: Data Version Control
 description: Git for Data & Models https://dvc.org
 adopt-info: dvc
 grade: stable
-confinement: strict
+confinement: classic  # for same reasons as snap `git-ubuntu`
 base: core18
 license: Apache-2.0
 parts:
@@ -14,10 +14,16 @@ parts:
     build-packages:
     - git
     - libc-dev
+    stage-packages:
+    - git
+    - libc-dev
     override-pull: |
         snapcraftctl pull
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
 apps:
   dvc:
     command: bin/dvc
-    plugs: [home]  # for config
+    environment:
+      GIT_PYTHON_GIT_EXECUTABLE: dvc.git
+  git:
+    command: /usr/bin/git
