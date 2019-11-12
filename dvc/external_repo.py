@@ -7,6 +7,7 @@ from distutils.dir_util import copy_tree
 
 from funcy import retry
 
+from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
 from dvc.utils import remove
 
 
@@ -19,7 +20,10 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
 
     path = _external_repo(url=url, rev=rev_lock or rev, cache_dir=cache_dir)
     repo = Repo(path)
-    yield repo
+    try:
+        yield repo
+    except OutputNotFoundError as e:
+        raise NoOutputInExternalRepoError(url, e.failed_output)
     repo.close()
 
 

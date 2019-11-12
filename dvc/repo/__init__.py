@@ -418,10 +418,15 @@ class Repo(object):
         return get_stages(self.graph)
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
+        abs_path = (
+            os.path.join(self.root_dir, path)
+            if not os.path.isabs(path)
+            else path
+        )
+
         if not outs:
             outs = [out for stage in self.stages for out in stage.outs]
 
-        abs_path = os.path.abspath(path)
         is_dir = self.tree.isdir(abs_path)
 
         def func(out):
@@ -439,9 +444,8 @@ class Repo(object):
 
         return matched
 
-    def find_out_by_relpath(self, relpath):
-        path = os.path.join(self.root_dir, relpath)
-        out, = self.find_outs_by_path(path)
+    def find_out_by_path(self, relpath):
+        out, = self.find_outs_by_path(relpath)
         return out
 
     def is_dvc_internal(self, path):

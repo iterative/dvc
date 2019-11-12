@@ -60,9 +60,10 @@ class OutputNotFoundError(DvcException):
     """
 
     def __init__(self, output):
+        self.failed_output = output
         super(OutputNotFoundError, self).__init__(
             "unable to find DVC-file with output '{path}'".format(
-                path=relpath(output)
+                path=relpath(self.failed_output)
             )
         )
 
