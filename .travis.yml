@@ -110,7 +110,7 @@ jobs:
         tags: true
         repo: iterative/dvc
   - name: Snapcraft snap
-    stage: check  # just for now for travis
+    stage: check  # TODO: remove before merge
     addons:
      snaps:
      - name: snapcraft
@@ -134,6 +134,9 @@ jobs:
       snap: dvc_*.snap
       channel: ${SOURCE_TAG:-latest}/edge
       skip_cleanup: true
+      on:
+        # tags: true  # TODO: uncomment before merge
+        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh

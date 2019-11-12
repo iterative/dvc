@@ -1,7 +1,6 @@
 name: dvc
 summary: Data Version Control
-description: |
- Git for Data & Models https://dvc.org
+description: Git for Data & Models https://dvc.org
 adopt-info: dvc
 grade: stable
 confinement: strict
