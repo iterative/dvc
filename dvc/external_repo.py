@@ -7,7 +7,8 @@ from distutils.dir_util import copy_tree
 
 from funcy import retry
 
-from dvc.exceptions import OutputNotFoundError, NoOutputInExternalRepoError
+from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.exceptions import OutputNotFoundError
 from dvc.utils import remove
 
 
