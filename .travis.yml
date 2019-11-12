@@ -14,7 +14,7 @@ stages:
   - test
   - build
   - name: deploy
-    if: branch = master AND repo = iterative/dvc
+    if: (branch = master OR tag is present) AND repo = iterative/dvc
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
