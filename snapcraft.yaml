@@ -4,15 +4,20 @@ description: |
  Git for Data & Models https://dvc.org
 adopt-info: dvc
 grade: stable
-confinement: strict
+confinement: classic  # for access to home folder config
 base: core18
 license: Apache-2.0
 parts:
   dvc:
     plugin: python
-    python-version: python3
+    python-packages: [wheel]
     source: .
-    parse-info: [setup.py]
+    build-packages:
+    - git
+    - libc-dev
+    override-pull: |
+        snapcraftctl pull
+        snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
 apps:
   dvc:
     command: bin/dvc
