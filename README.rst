@@ -155,7 +155,7 @@ Snap (Snapcraft)
 
 .. code-block:: bash
 
-   snap install dvc
+   snap install dvc --classic
 
 This corresponds to the latest tagged release.
 Add ``--edge`` for the latest ``master`` version.
