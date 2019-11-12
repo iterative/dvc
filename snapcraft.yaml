@@ -1,0 +1,18 @@
+name: dvc
+summary: Data Version Control
+description: |
+ Git for Data & Models https://dvc.org
+adopt-info: dvc
+grade: stable
+confinement: strict
+base: core18
+license: Apache-2.0
+parts:
+  dvc:
+    plugin: python
+    python-version: python3
+    source: .
+    parse-info: [setup.py]
+apps:
+  dvc:
+    command: bin/dvc

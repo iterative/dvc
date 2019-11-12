@@ -109,6 +109,31 @@ jobs:
       on:
         tags: true
         repo: iterative/dvc
+  - name: Snapcraft snap
+    addons:
+     snaps:
+     - name: snapcraft
+       channel: stable
+       confinement: classic
+     - name: lxd
+       channel: stable
+    env:
+    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    script:
+    - sudo /snap/bin/lxd.migrate -yes
+    - sudo /snap/bin/lxd waitready
+    - sudo /snap/bin/lxd init --auto
+    - 'if [ -n "$SOURCE_TAG" ]; then sed -i "s/source-branch.*/source-tag: $SOURCE_TAG/" snap/snapcraft.yaml ; fi'
+    - sudo snapcraft --use-lxd
+    after_failure:
+    - sudo journalctl -u snapd
+    before_deploy:
+    - export SNAP_DEPLOY_TRACK="$SOURCE_TAG"
+    deploy:
+    - provider: snap
+      snap: dvc_*.snap
+      channel: ${SOURCE_TAG:-latest}/edge
+      skip_cleanup: true
 
 before_install:
   - bash ./scripts/ci/before_install.sh
