@@ -21,6 +21,8 @@ stages:
 # Note that we specify language as ruby-2.4.3 to help us satisfy
 # fpm dependencies, as travis runs el capitan with an old ruby
 # version, that causes fpm to crash.
+#
+# Each job will use the previous job's `stage` tag if not specified.
 jobs:
   include:
   # patch formatting checks
