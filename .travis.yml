@@ -110,6 +110,7 @@ jobs:
         tags: true
         repo: iterative/dvc
   - name: Snapcraft snap
+    stage: check  # just for now for travis
     addons:
      snaps:
      - name: snapcraft
@@ -119,16 +120,15 @@ jobs:
        channel: stable
     env:
     - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
-    script:
+    before_install:
     - sudo /snap/bin/lxd.migrate -yes
     - sudo /snap/bin/lxd waitready
     - sudo /snap/bin/lxd init --auto
-    - 'if [ -n "$SOURCE_TAG" ]; then sed -i "s/source-branch.*/source-tag: $SOURCE_TAG/" snap/snapcraft.yaml ; fi'
+    install:
+    script:
     - sudo snapcraft --use-lxd
     after_failure:
     - sudo journalctl -u snapd
-    before_deploy:
-    - export SNAP_DEPLOY_TRACK="$SOURCE_TAG"
     deploy:
     - provider: snap
       snap: dvc_*.snap
