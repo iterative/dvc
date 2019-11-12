@@ -330,8 +330,8 @@ class CollectCacheError(DvcException):
     pass
 
 
-class RemoteNotSpecifiedInTargetRepoError(DvcException):
+class RemoteNotSpecifiedInExternalRepoError(DvcException):
     def __init__(self, url):
-        super(RemoteNotSpecifiedInTargetRepoError, self).__init__(
+        super(RemoteNotSpecifiedInExternalRepoError, self).__init__(
             "No DVC remote is specified in target repository '{}'".format(url)
         )
