@@ -30,6 +30,10 @@
   :target: https://anaconda.org/conda-forge/dvc
   :alt: Conda-forge
 
+.. image:: https://img.shields.io/badge/snap-install-82BEA0.svg?logo=snapcraft
+  :target: https://snapcraft.io/dvc
+  :alt: Snapcraft
+
 |
 
 **Data Version Control** or **DVC** is an **open-source** tool for data science and machine
@@ -145,6 +149,16 @@ Conda (Anaconda)
    conda install -c conda-forge dvc
 
 Currently, it supports only python version 2.7, 3.6 and 3.7.
+
+Snap (Snapcraft)
+----------------
+
+.. code-block:: bash
+
+   snap install dvc
+
+This corresponds to the latest tagged release.
+Add ``--edge`` for the latest ``master`` version.
 
 Package
 -------
