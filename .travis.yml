@@ -14,7 +14,7 @@ stages:
   - test
   - build
   - name: deploy
-    if: tag is present
+    if: branch = master AND repo = iterative/dvc
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
@@ -90,6 +90,7 @@ jobs:
     script: ./scripts/build_package.sh
   # deploy jobs
   - name: "Pypi pkgs"
+    if: tag is present
     stage: deploy
     language: python
     python: 3.7
@@ -106,9 +107,6 @@ jobs:
         - dist/dvc*.whl
         - dist/dvc*.tar.gz
       skip_cleanup: true
-      on:
-        tags: true
-        repo: iterative/dvc
   - name: Snapcraft snap
     stage: check  # TODO: remove before merge
     addons:
@@ -134,8 +132,6 @@ jobs:
       snap: dvc_*.snap
       channel: latest/${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
       skip_cleanup: true
-      on:
-        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh
