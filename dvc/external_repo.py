@@ -9,6 +9,8 @@ from funcy import retry
 
 from dvc.config import NoRemoteError
 from dvc.exceptions import RemoteNotSpecifiedInExternalRepoError
+from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.exceptions import OutputNotFoundError
 from dvc.utils.fs import remove
 
 
@@ -25,6 +27,10 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
         yield repo
     except NoRemoteError as exc:
         raise RemoteNotSpecifiedInExternalRepoError(url, cause=exc)
+    except OutputNotFoundError as exc:
+        if exc.repo is repo:
+            raise NoOutputInExternalRepoError(url, exc.failed_output)
+        raise
     repo.close()
 
 

@@ -59,10 +59,12 @@ class OutputNotFoundError(DvcException):
         output (unicode): path to the file/directory.
     """
 
-    def __init__(self, output):
+    def __init__(self, output, repo=None):
+        self.repo = repo
+        self.failed_output = output
         super(OutputNotFoundError, self).__init__(
             "unable to find DVC-file with output '{path}'".format(
-                path=relpath(output)
+                path=relpath(self.failed_output)
             )
         )
 

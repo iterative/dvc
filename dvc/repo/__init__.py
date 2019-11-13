@@ -418,10 +418,13 @@ class Repo(object):
         return get_stages(self.graph)
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
+        abs_path = (
+            path if os.path.isabs(path) else os.path.join(self.root_dir, path)
+        )
+
         if not outs:
             outs = [out for stage in self.stages for out in stage.outs]
 
-        abs_path = os.path.abspath(path)
         is_dir = self.tree.isdir(abs_path)
 
         def func(out):
@@ -435,12 +438,15 @@ class Repo(object):
 
         matched = list(filter(func, outs))
         if not matched:
-            raise OutputNotFoundError(path)
+            if abs_path.startswith(self.root_dir):
+                failed_output = relpath(abs_path)
+            else:
+                failed_output = path
+            raise OutputNotFoundError(failed_output, self)
 
         return matched
 
-    def find_out_by_relpath(self, relpath):
-        path = os.path.join(self.root_dir, relpath)
+    def find_out_by_path(self, path):
         out, = self.find_outs_by_path(path)
         return out
 

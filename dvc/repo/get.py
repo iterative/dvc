@@ -49,7 +49,7 @@ def get(url, path, out=None, rev=None):
             # the same cache file might be used a few times in a directory.
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            o = repo.find_out_by_relpath(path)
+            o = repo.find_out_by_path(path)
             with repo.state:
                 repo.cloud.pull(o.get_used_cache())
             o.path_info = PathInfo(os.path.abspath(out))
