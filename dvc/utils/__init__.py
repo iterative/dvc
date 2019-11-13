@@ -152,9 +152,9 @@ def makedirs(path, exist_ok=False, mode=None):
         _makedirs(path, exist_ok=exist_ok)
         return
 
-    umask = os.umask(0)
+    umask = os.umask(0o777 - mode)
     try:
-        _makedirs(path, exist_ok=exist_ok, mode=mode)
+        _makedirs(path, exist_ok=exist_ok)
     finally:
         os.umask(umask)
 
