@@ -9,13 +9,3 @@ restylers:
     - "**/*.py"
     interpreters:
     - python
-  - name: reorder-python-imports
-    image: restyled/restyler-reorder-python-imports:v1.6.0
-    command:
-    - reorder-python-imports
-    - "--exit-zero-even-if-changed"
-    arguments: []
-    include:
-    - "**/*.py"
-    interpreters:
-    - python
