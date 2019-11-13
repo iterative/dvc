@@ -10,12 +10,6 @@ scriptdir="$(dirname $0)"
 # work or not.
 $scriptdir/retry.sh pip install --upgrade pip setuptools wheel
 $scriptdir/retry.sh pip install .[all,tests]
-# Installing specific packages to workaround some bugs. Please see [1] and [2]
-#
-# [1] https://github.com/iterative/dvc/issues/2284
-# [2] https://github.com/iterative/dvc/issues/2387
-$scriptdir/retry.sh pip uninstall -y azure-storage-blob
-$scriptdir/retry.sh pip install psutil azure-storage-blob==1.5.0
 
 git config --global user.email "dvctester@example.com"
 git config --global user.name "DVC Tester"
