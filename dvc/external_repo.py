@@ -23,8 +23,8 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
     repo = Repo(path)
     try:
         yield repo
-    except NoRemoteError:
-        raise RemoteNotSpecifiedInExternalRepoError(url)
+    except NoRemoteError as exc:
+        raise RemoteNotSpecifiedInExternalRepoError(url, cause=exc)
     repo.close()
 
 
