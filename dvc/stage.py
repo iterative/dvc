@@ -359,7 +359,7 @@ class Stage(object):
 
     @staticmethod
     def validate(d, fname=None):
-        from dvc.utils import convert_to_unicode
+        from dvc.utils.compat import convert_to_unicode
 
         try:
             Schema(Stage.SCHEMA).validate(convert_to_unicode(d))

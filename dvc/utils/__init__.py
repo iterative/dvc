@@ -292,16 +292,6 @@ def fix_env(env=None):
     return env
 
 
-def convert_to_unicode(data):
-    if isinstance(data, builtin_str):
-        return str(data)
-    if isinstance(data, dict):
-        return dict(map(convert_to_unicode, data.items()))
-    if isinstance(data, (list, tuple)):
-        return type(data)(map(convert_to_unicode, data))
-    return data
-
-
 def tmp_fname(fname):
     """ Temporary name for a partial download """
     return fspath(fname) + "." + str(uuid()) + ".tmp"
