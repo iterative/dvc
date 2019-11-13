@@ -671,10 +671,16 @@ class Stage(object):
         )
         state = self.dumpd()
 
-        # If we have stage file we apply diffs instead of overwriting it
-        # to preserve comments, string formatting and meta key.
+        # When we load a stage we parse yaml with a fast parser, which strips
+        # off all the comments and formatting. To retain those on update we do
+        # a trick here:
+        # - reparse the same yaml text with a slow but smart ruamel yaml parser
+        # - apply changes to a returned structure
+        # - serialize it
         if self._stage_text is not None:
             saved_state = parse_stage_for_update(self._stage_text, fname)
+            # Stage doesn't work with meta in any way, so .dumpd() doesn't
+            # have it. We simply copy it over.
             if "meta" in saved_state:
                 state["meta"] = saved_state["meta"]
             apply_diff(state, saved_state)

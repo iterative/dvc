@@ -24,6 +24,14 @@ def parse_stage(text, path):
 
 
 def parse_stage_for_update(text, path):
+    """Parses text into Python structure.
+
+    Unlike `parse_stage()` this returns ordereddicts, values have special
+    attributes to store comments and line breaks. This allows us to preserve
+    all of those upon dump.
+
+    This one is, however, several times slower than simple `parse_stage()`.
+    """
     try:
         yaml = YAML()
         return yaml.load(text) or {}
