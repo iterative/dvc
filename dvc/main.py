@@ -9,7 +9,6 @@ from dvc.config import ConfigError
 from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
-from dvc.lock import LockError
 from dvc.logger import FOOTER
 from dvc.remote.pool import close_pools
 from dvc.utils.compat import is_py2
@@ -48,9 +47,6 @@ def main(argv=None):
 
         cmd = args.func(args)
         ret = cmd.run()
-    except LockError:
-        logger.exception("failed to lock before running a command")
-        ret = 250
     except ConfigError:
         logger.exception("configuration error")
         ret = 251

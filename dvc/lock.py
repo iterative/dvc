@@ -15,6 +15,12 @@ from dvc.utils.compat import is_py3
 
 DEFAULT_TIMEOUT = 5
 
+FAILED_TO_LOCK_MESSAGE = (
+    "cannot perform the command because another DVC process seems to be "
+    "running on this project. If that is not the case, manually remove "
+    "`.dvc/lock` and try again."
+)
+
 
 class LockError(DvcException):
     """Thrown when unable to acquire the lock for dvc repo."""
@@ -71,10 +77,7 @@ if is_py3:
             try:
                 super(Lock, self).lock(timedelta(seconds=DEFAULT_TIMEOUT))
             except flufl.lock.TimeOutError:
-                raise LockError(
-                    "cannot perform the cmd since DVC is busy and "
-                    "locked. Please retry the cmd later."
-                )
+                raise LockError(FAILED_TO_LOCK_MESSAGE)
 
         def _set_claimfile(self, pid=None):
             super(Lock, self)._set_claimfile(pid)
@@ -119,10 +122,7 @@ else:
             try:
                 self._lock = zc.lockfile.LockFile(self.lockfile)
             except zc.lockfile.LockError:
-                raise LockError(
-                    "cannot perform the cmd since DVC is busy and "
-                    "locked. Please retry the cmd later."
-                )
+                raise LockError(FAILED_TO_LOCK_MESSAGE)
 
         def lock(self):
             try:
