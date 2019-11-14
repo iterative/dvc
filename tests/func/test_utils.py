@@ -1,3 +1,4 @@
+# encoding: utf-8
 import filecmp
 import os
 import shutil
@@ -77,11 +78,14 @@ class TestUtils(TestDvc):
 @pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
 def test_makedirs_permissions():
     dir_mode = 0o755
-    intermediate_dir = "testdir"
+    intermediate_dir = "тестовая-директория"
     test_dir = os.path.join(intermediate_dir, "data")
-    utils.makedirs(test_dir, mode=dir_mode)
 
-    assert stat.S_IMODE(os.stat(test_dir).st_mode) == dir_mode
-    assert stat.S_IMODE(os.stat(intermediate_dir).st_mode) == dir_mode
+    assert not os.path.exists(intermediate_dir)
 
-    shutil.rmtree(test_dir)
+    try:
+        utils.makedirs(test_dir, mode=dir_mode)
+        assert stat.S_IMODE(os.stat(test_dir).st_mode) == dir_mode
+        assert stat.S_IMODE(os.stat(intermediate_dir).st_mode) == dir_mode
+    finally:
+        shutil.rmtree(intermediate_dir)
