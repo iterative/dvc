@@ -1,6 +1,9 @@
 import filecmp
 import os
 import shutil
+import stat
+
+import pytest
 
 from dvc import utils
 from tests.basic_env import TestDvc
@@ -69,3 +72,16 @@ class TestUtils(TestDvc):
         )
 
         assert expected == utils.boxify("message")
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Not supported for Windows.")
+def test_makedirs_permissions():
+    dir_mode = 0o755
+    intermediate_dir = "testdir"
+    test_dir = os.path.join(intermediate_dir, "data")
+    utils.makedirs(test_dir, mode=dir_mode)
+
+    assert stat.S_IMODE(os.stat(test_dir).st_mode) == dir_mode
+    assert stat.S_IMODE(os.stat(intermediate_dir).st_mode) == dir_mode
+
+    shutil.rmtree(test_dir)
