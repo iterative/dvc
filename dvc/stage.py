@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+from dvc.utils.compat import pathlib, str
 import copy
 import logging
 import os
@@ -9,11 +10,7 @@ import subprocess
 import threading
 from itertools import chain
 
-from schema import And
-from schema import Optional
-from schema import Or
-from schema import Schema
-from schema import SchemaError
+from voluptuous import Any, Schema, MultipleInvalid
 
 import dvc.dependency as dependency
 import dvc.output as output
@@ -23,8 +20,6 @@ from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
 from dvc.utils.collections import apply_diff
-from dvc.utils.compat import pathlib
-from dvc.utils.compat import str
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_fd
@@ -147,15 +142,16 @@ class Stage(object):
     PARAM_ALWAYS_CHANGED = "always_changed"
 
     SCHEMA = {
-        Optional(PARAM_MD5): Or(str, None),
-        Optional(PARAM_CMD): Or(str, None),
-        Optional(PARAM_WDIR): Or(str, None),
-        Optional(PARAM_DEPS): Or(And(list, Schema([dependency.SCHEMA])), None),
-        Optional(PARAM_OUTS): Or(And(list, Schema([output.SCHEMA])), None),
-        Optional(PARAM_LOCKED): bool,
-        Optional(PARAM_META): object,
-        Optional(PARAM_ALWAYS_CHANGED): bool,
+        PARAM_MD5: Any(str, None),
+        PARAM_CMD: Any(str, None),
+        PARAM_WDIR: Any(str, None),
+        PARAM_DEPS: Any([dependency.SCHEMA], None),
+        PARAM_OUTS: Any([output.SCHEMA], None),
+        PARAM_LOCKED: bool,
+        PARAM_META: object,
+        PARAM_ALWAYS_CHANGED: bool,
     }
+    COMPILED_SCHEMA = Schema(SCHEMA)
 
     TAG_REGEX = r"^(?P<path>.*)@(?P<tag>[^\\/@:]*)$"
 
@@ -362,8 +358,8 @@ class Stage(object):
         from dvc.utils import convert_to_unicode
 
         try:
-            Schema(Stage.SCHEMA).validate(convert_to_unicode(d))
-        except SchemaError as exc:
+            Stage.COMPILED_SCHEMA(convert_to_unicode(d))
+        except MultipleInvalid as exc:
             raise StageFileFormatError(fname, exc)
 
     @classmethod

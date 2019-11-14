@@ -63,6 +63,8 @@ install_requires = [
     "nanotime>=0.5.2",
     "pyasn1>=0.4.1",
     "schema>=0.6.7",
+    "schema>=0.6.7",
+    "voluptuous==0.11.7",
     "jsonpath-ng>=1.4.3",
     "requests>=2.22.0",
     "grandalf==0.6",

@@ -4,7 +4,6 @@ import copy
 from contextlib import contextmanager
 
 from funcy import merge
-from schema import Optional
 
 from .local import DependencyLOCAL
 from dvc.external_repo import external_repo
@@ -17,11 +16,7 @@ class DependencyREPO(DependencyLOCAL):
     PARAM_REV = "rev"
     PARAM_REV_LOCK = "rev_lock"
 
-    REPO_SCHEMA = {
-        Optional(PARAM_URL): str,
-        Optional(PARAM_REV): str,
-        Optional(PARAM_REV_LOCK): str,
-    }
+    REPO_SCHEMA = {PARAM_URL: str, PARAM_REV: str, PARAM_REV_LOCK: str}
 
     def __init__(self, def_repo, stage, *args, **kwargs):
         self.def_repo = def_repo
