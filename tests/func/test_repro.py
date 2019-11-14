@@ -43,6 +43,7 @@ from tests.func.test_data_cloud import _should_test_ssh
 from tests.func.test_data_cloud import get_ssh_url
 from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET
 from tests.func.test_data_cloud import TEST_GCP_REPO_BUCKET
+from tests.utils.httpd import ContentMD5Handler
 from tests.utils.httpd import StaticFileServer
 
 
@@ -1176,7 +1177,7 @@ class TestReproExternalHTTP(TestReproExternalBase):
 
         self.dvc.remove("imported_file.dvc")
 
-        with StaticFileServer(handler="Content-MD5") as httpd:
+        with StaticFileServer(handler_class=ContentMD5Handler) as httpd:
             import_url = urljoin(self.get_remote(httpd.server_port), self.FOO)
             import_output = "imported_file"
             import_stage = self.dvc.imp_url(import_url, import_output)

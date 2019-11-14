@@ -348,3 +348,11 @@ class NoOutputInExternalRepoError(DvcException):
                 relpath(path, external_repo_path), external_repo_url
             )
         )
+
+
+class HTTPErrorStatusCodeException(DvcException):
+    def __init__(self, code, reason):
+        super(HTTPErrorStatusCodeException, self).__init__(
+            "Server responded with error status code: '{}' and message: "
+            "'{}'".format(code, reason)
+        )

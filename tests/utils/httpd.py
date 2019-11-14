@@ -45,9 +45,9 @@ class ContentMD5Handler(TestRequestHandler):
 class StaticFileServer:
     _lock = threading.Lock()
 
-    def __init__(self, handler="etag"):
+    def __init__(self, handler_class=ETagHandler):
         self._lock.acquire()
-        handler_class = ETagHandler if handler == "etag" else ContentMD5Handler
+        self.response_handler = handler_class
         self._httpd = HTTPServer(("localhost", 0), handler_class)
         self._thread = None
 
