@@ -9,7 +9,7 @@ from funcy import retry
 
 from dvc.config import NoRemoteError
 from dvc.exceptions import RemoteNotSpecifiedInExternalRepoError
-from dvc.utils import remove
+from dvc.utils.fs import remove
 
 
 REPO_CACHE = {}

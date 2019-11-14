@@ -8,7 +8,6 @@ import logging
 import math
 import os
 import re
-import shutil
 import stat
 import sys
 import time
@@ -171,19 +170,6 @@ def _chmod(func, p, excinfo):
             raise
 
     func(p)
-
-
-def remove(path):
-    logger.debug("Removing '{}'".format(relpath(path)))
-
-    try:
-        if os.path.isdir(path):
-            shutil.rmtree(path, onerror=_chmod)
-        else:
-            _chmod(os.unlink, path, None)
-    except OSError as exc:
-        if exc.errno != errno.ENOENT:
-            raise
 
 
 def _split(list_to_split, chunk_size):

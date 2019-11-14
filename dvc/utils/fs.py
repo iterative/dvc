@@ -10,9 +10,11 @@ from shortuuid import uuid
 
 from dvc.exceptions import DvcException
 from dvc.system import System
+from dvc.utils import _chmod
 from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
+from dvc.utils import relpath
 from dvc.utils import walk_files
 from dvc.utils.compat import str
 
@@ -103,3 +105,18 @@ def move(src, dst, mode=None):
         os.chmod(tmp, mode)
 
     shutil.move(tmp, dst)
+
+
+def remove(path):
+    path = fspath_py35(path)
+
+    logger.debug("Removing '{}'".format(relpath(path)))
+
+    try:
+        if os.path.isdir(path):
+            shutil.rmtree(path, onerror=_chmod)
+        else:
+            _chmod(os.unlink, path, None)
+    except OSError as exc:
+        if exc.errno != errno.ENOENT:
+            raise

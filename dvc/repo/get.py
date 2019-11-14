@@ -11,8 +11,8 @@ from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.state import StateNoop
-from dvc.utils import remove
 from dvc.utils import resolve_output
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 
