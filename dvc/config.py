@@ -153,6 +153,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
+    CREDENTIALPATH = "credentialpath"
+
     LEVEL_LOCAL = 0
     LEVEL_REPO = 1
     LEVEL_GLOBAL = 2
@@ -221,7 +223,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # backward compatibility
     SECTION_AWS = "aws"
     SECTION_AWS_STORAGEPATH = "storagepath"
-    SECTION_AWS_CREDENTIALPATH = "credentialpath"
+    SECTION_AWS_CREDENTIALPATH = CREDENTIALPATH
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
     SECTION_AWS_LIST_OBJECTS = "listobjects"
     SECTION_AWS_REGION = "region"
@@ -244,7 +246,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     # backward compatibility
     SECTION_GCP = "gcp"
     SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
-    SECTION_GCP_CREDENTIALPATH = SECTION_AWS_CREDENTIALPATH
+    SECTION_GCP_CREDENTIALPATH = CREDENTIALPATH
     SECTION_GCP_PROJECTNAME = "projectname"
     SECTION_GCP_SCHEMA = {
         SECTION_GCP_STORAGEPATH: str,
@@ -261,6 +263,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
     SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
     SECTION_OSS_ENDPOINT = "oss_endpoint"
+    # GDrive options
+    SECTION_GDRIVE_CLIENT_ID = "gdrive_client_id"
+    SECTION_GDRIVE_CLIENT_SECRET = "gdrive_client_secret"
+    SECTION_GDRIVE_USER_CREDENTIALS_FILE = "gdrive_user_credentials_file"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -277,7 +283,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_REMOTE_URL: str,
         Optional(SECTION_AWS_REGION): str,
         Optional(SECTION_AWS_PROFILE): str,
-        Optional(SECTION_AWS_CREDENTIALPATH): str,
+        Optional(CREDENTIALPATH): str,
         Optional(SECTION_AWS_ENDPOINT_URL): str,
         Optional(SECTION_AWS_LIST_OBJECTS, default=False): BOOL_SCHEMA,
         Optional(SECTION_AWS_USE_SSL, default=True): BOOL_SCHEMA,
@@ -297,6 +303,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_OSS_ACCESS_KEY_ID): str,
         Optional(SECTION_OSS_ACCESS_KEY_SECRET): str,
         Optional(SECTION_OSS_ENDPOINT): str,
+        Optional(SECTION_GDRIVE_CLIENT_ID): str,
+        Optional(SECTION_GDRIVE_CLIENT_SECRET): str,
+        Optional(SECTION_GDRIVE_USER_CREDENTIALS_FILE): str,
         Optional(PRIVATE_CWD): str,
         Optional(SECTION_REMOTE_NO_TRAVERSE, default=True): BOOL_SCHEMA,
     }

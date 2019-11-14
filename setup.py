@@ -90,6 +90,7 @@ else:
 # Extra dependencies for remote integrations
 
 gs = ["google-cloud-storage==1.19.0"]
+gdrive = ["pydrive==1.3.1", "backoff>=1.8.1"]
 s3 = ["boto3==1.9.115"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
@@ -100,7 +101,7 @@ ssh = ["paramiko>=2.5.0"]
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
 hdfs = ["pyarrow==0.14.0"]
-all_remotes = gs + s3 + azure + ssh + oss
+all_remotes = gs + s3 + azure + ssh + oss + gdrive
 
 if os.name != "nt" or sys.version_info[0] != 2:
     # NOTE: there are no pyarrow wheels for python2 on windows
@@ -150,6 +151,7 @@ setup(
     extras_require={
         "all": all_remotes,
         "gs": gs,
+        "gdrive": gdrive,
         "s3": s3,
         "azure": azure,
         "oss": oss,
