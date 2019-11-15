@@ -81,7 +81,7 @@ def _fetch_external(self, repo_url, repo_rev, files):
                 cache = NamedCache()
                 for name in files:
                     try:
-                        out = repo.find_out_by_path(name)
+                        out = repo.find_out_by_relpath(name)
                     except OutputNotFoundError:
                         failed += 1
                         logger.exception(

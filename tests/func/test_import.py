@@ -8,7 +8,7 @@ import pytest
 from mock import patch
 
 from dvc.config import Config
-from dvc.exceptions import DownloadError
+from dvc.exceptions import DownloadError, NoOutputInExternalRepoError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils import makedirs
@@ -154,3 +154,8 @@ def test_pull_non_workspace(git, dvc_repo, erepo):
     os.remove(stage.outs[0].cache_path)
     dvc_repo.fetch(all_tags=True)
     assert os.path.exists(stage.outs[0].cache_path)
+
+
+def test_import_non_existing(dvc_repo, erepo):
+    with pytest.raises(NoOutputInExternalRepoError):
+        dvc_repo.imp(erepo.root_dir, "invalid_output")

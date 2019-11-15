@@ -49,10 +49,10 @@ class DependencyREPO(DependencyLOCAL):
 
     def status(self):
         with self._make_repo() as repo:
-            current = repo.find_out_by_path(self.def_path).info
+            current = repo.find_out_by_relpath(self.def_path).info
 
         with self._make_repo(rev_lock=None) as repo:
-            updated = repo.find_out_by_path(self.def_path).info
+            updated = repo.find_out_by_relpath(self.def_path).info
 
         if current != updated:
             return {str(self): "update available"}
@@ -71,7 +71,7 @@ class DependencyREPO(DependencyLOCAL):
         ) as repo:
             self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()
 
-            out = repo.find_out_by_path(self.def_path)
+            out = repo.find_out_by_relpath(self.def_path)
             with repo.state:
                 repo.cloud.pull(out.get_used_cache())
 
