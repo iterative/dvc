@@ -350,9 +350,8 @@ class NoOutputInExternalRepoError(DvcException):
         )
 
 
-class HTTPErrorStatusCodeException(DvcException):
+class HTTPError(DvcException):
     def __init__(self, code, reason):
-        super(HTTPErrorStatusCodeException, self).__init__(
-            "Server responded with error status code: '{}' and message: "
-            "'{}'".format(code, reason)
+        super(HTTPError, self).__init__(
+            "HTTP error: '{} {}'".format(code, reason)
         )

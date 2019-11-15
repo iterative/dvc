@@ -1,8 +1,12 @@
+try:
+    from http.server import BaseHTTPRequestHandler
+except ImportError:
+    from BaseHTTPServer import BaseHTTPRequestHandler
+
 import pytest
-from BaseHTTPServer import BaseHTTPRequestHandler
 
 from dvc.config import ConfigError
-from dvc.exceptions import HTTPErrorStatusCodeException
+from dvc.exceptions import HTTPError
 from dvc.path_info import URLInfo
 from dvc.remote.http import RemoteHTTP
 from tests.utils.httpd import StaticFileServer
@@ -19,11 +23,10 @@ def test_no_traverse_compatibility(dvc_repo):
         RemoteHTTP(dvc_repo, config)
 
 
-@pytest.mark.parametrize("response_code", [404, 403, 500])
-def test_download_fails_on_error_code(response_code, dvc_repo):
+def test_download_fails_on_error_code(dvc_repo):
     class ErrorStatusRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
-            self.send_response(response_code, message="Error message")
+            self.send_response(404, message="Not found")
             self.end_headers()
 
     with StaticFileServer(ErrorStatusRequestHandler) as httpd:
@@ -31,9 +34,6 @@ def test_download_fails_on_error_code(response_code, dvc_repo):
         config = {"url": url}
 
         remote = RemoteHTTP(dvc_repo, config)
-        import os
 
-        with pytest.raises(HTTPErrorStatusCodeException):
-            remote._download(
-                URLInfo(os.path.join(url, "file.txt")), "file.txt"
-            )
+        with pytest.raises(HTTPError):
+            remote._download(URLInfo(url) / "file.txt", "file.txt")

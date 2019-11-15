@@ -47,7 +47,6 @@ class StaticFileServer:
 
     def __init__(self, handler_class=ETagHandler):
         self._lock.acquire()
-        self.response_handler = handler_class
         self._httpd = HTTPServer(("localhost", 0), handler_class)
         self._thread = None
 

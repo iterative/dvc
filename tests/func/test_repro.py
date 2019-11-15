@@ -43,8 +43,7 @@ from tests.func.test_data_cloud import _should_test_ssh
 from tests.func.test_data_cloud import get_ssh_url
 from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET
 from tests.func.test_data_cloud import TEST_GCP_REPO_BUCKET
-from tests.utils.httpd import ContentMD5Handler
-from tests.utils.httpd import StaticFileServer
+from tests.utils.httpd import StaticFileServer, ContentMD5Handler
 
 
 class TestRepro(TestDvc):

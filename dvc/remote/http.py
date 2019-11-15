@@ -7,8 +7,7 @@ from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.config import ConfigError
-from dvc.exceptions import DvcException
-from dvc.exceptions import HTTPErrorStatusCodeException
+from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
@@ -40,9 +39,7 @@ class RemoteHTTP(RemoteBASE):
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
         response = self._request("GET", from_info.url, stream=True)
         if response.status_code != 200:
-            raise HTTPErrorStatusCodeException(
-                response.status_code, response.reason
-            )
+            raise HTTPError(response.status_code, response.reason)
         with Tqdm(
             total=None if no_progress_bar else self._content_length(from_info),
             leave=False,
