@@ -19,6 +19,7 @@ parts:
     - libc-dev
     override-pull: |
         snapcraftctl pull
+        echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
 apps:
   dvc:

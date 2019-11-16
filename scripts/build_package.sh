@@ -8,7 +8,7 @@ if [ ! -d "dvc" ]; then
     exit 1
 fi
 
-echo "PKG = \"pip\"" > dvc/utils/build.py
+echo 'PKG = "pip"' > dvc/utils/build.py
 
 python setup.py sdist
 python setup.py bdist_wheel --universal
