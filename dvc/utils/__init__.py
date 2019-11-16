@@ -1,15 +1,12 @@
 """Helpers for other modules."""
 from __future__ import unicode_literals
 
-import errno
 import hashlib
 import json
 import logging
 import math
 import os
 import re
-import shutil
-import stat
 import sys
 import time
 
@@ -157,33 +154,6 @@ def makedirs(path, exist_ok=False, mode=None):
         _makedirs(path, exist_ok=exist_ok, mode=mode)
     finally:
         os.umask(umask)
-
-
-def _chmod(func, p, excinfo):
-    perm = os.lstat(p).st_mode
-    perm |= stat.S_IWRITE
-
-    try:
-        os.chmod(p, perm)
-    except OSError as exc:
-        # broken symlink or file is not owned by us
-        if exc.errno not in [errno.ENOENT, errno.EPERM]:
-            raise
-
-    func(p)
-
-
-def remove(path):
-    logger.debug("Removing '{}'".format(relpath(path)))
-
-    try:
-        if os.path.isdir(path):
-            shutil.rmtree(path, onerror=_chmod)
-        else:
-            _chmod(os.unlink, path, None)
-    except OSError as exc:
-        if exc.errno != errno.ENOENT:
-            raise
 
 
 def _split(list_to_split, chunk_size):

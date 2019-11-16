@@ -26,13 +26,13 @@ from dvc.utils import copyfile
 from dvc.utils import file_md5
 from dvc.utils import makedirs
 from dvc.utils import relpath
-from dvc.utils import remove
 from dvc.utils import tmp_fname
 from dvc.utils import walk_files
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import open
 from dvc.utils.compat import str
 from dvc.utils.fs import move
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 

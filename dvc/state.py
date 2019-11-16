@@ -10,7 +10,6 @@ from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.utils import current_timestamp
 from dvc.utils import relpath
-from dvc.utils import remove
 from dvc.utils import to_chunks
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import is_py2
@@ -18,6 +17,7 @@ from dvc.utils.compat import urlencode
 from dvc.utils.compat import urlunparse
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
+from dvc.utils.fs import remove
 
 
 SQLITE_MAX_VARIABLES_NUMBER = 999

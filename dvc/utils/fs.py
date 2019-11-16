@@ -4,6 +4,7 @@ import errno
 import logging
 import os
 import shutil
+import stat
 
 import nanotime
 from shortuuid import uuid
@@ -13,6 +14,7 @@ from dvc.system import System
 from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
+from dvc.utils import relpath
 from dvc.utils import walk_files
 from dvc.utils.compat import str
 
@@ -103,3 +105,32 @@ def move(src, dst, mode=None):
         os.chmod(tmp, mode)
 
     shutil.move(tmp, dst)
+
+
+def _chmod(func, p, excinfo):
+    perm = os.lstat(p).st_mode
+    perm |= stat.S_IWRITE
+
+    try:
+        os.chmod(p, perm)
+    except OSError as exc:
+        # broken symlink or file is not owned by us
+        if exc.errno not in [errno.ENOENT, errno.EPERM]:
+            raise
+
+    func(p)
+
+
+def remove(path):
+    path = fspath_py35(path)
+
+    logger.debug("Removing '{}'".format(relpath(path)))
+
+    try:
+        if os.path.isdir(path):
+            shutil.rmtree(path, onerror=_chmod)
+        else:
+            _chmod(os.unlink, path, None)
+    except OSError as exc:
+        if exc.errno != errno.ENOENT:
+            raise

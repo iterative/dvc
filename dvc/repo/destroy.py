@@ -1,4 +1,4 @@
-from dvc.utils import remove
+from dvc.utils.fs import remove
 
 
 def destroy(self):
