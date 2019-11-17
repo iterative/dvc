@@ -143,7 +143,16 @@ class RemoteGS(RemoteBASE):
     def _download(self, from_info, to_file, **_kwargs):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
-        blob.download_to_filename(to_file)
+        with Tqdm() as pbar:
+            with io.open(to_file, mode="wb") as fd:
+                raw_write = fd.write
+
+                def write(bytes):
+                    raw_write(bytes)
+                    pbar.update(len(bytes))
+
+                fd.write = write
+                blob.download_to_file(fd)
 
     def _generate_download_url(self, path_info, expires=3600):
         expiration = timedelta(seconds=int(expires))
