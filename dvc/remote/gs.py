@@ -3,12 +3,14 @@ from __future__ import unicode_literals
 import logging
 from datetime import timedelta
 from functools import wraps
+import io
 
 from funcy import cached_property
 
 from dvc.config import Config
 from dvc.exceptions import DvcException
 from dvc.path_info import CloudURLInfo
+from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
@@ -46,9 +48,18 @@ def dynamic_chunk_size(func):
 
 
 @dynamic_chunk_size
-def _upload_to_bucket(bucket, from_file, to_info, **kwargs):
-    blob = bucket.blob(to_info.path, **kwargs)
-    blob.upload_from_filename(from_file)
+def _upload_to_bucket(bucket, from_file, to_info, chunk_size=None, **kwargs):
+    blob = bucket.blob(to_info.path, chunk_size=chunk_size, **kwargs)
+    with Tqdm() as pbar:
+        with io.open(from_file, mode="rb", buffering=chunk_size or -1) as fd:
+            raw_read = fd.read
+            def read(self, size=chunk_size):
+                res = raw_read(size)
+                if res:
+                    pbar.update(len(res))
+                return res
+            fd.read = read
+            blob.upload_from_file(fd)
 
 
 class RemoteGS(RemoteBASE):
