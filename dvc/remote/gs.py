@@ -53,11 +53,13 @@ def _upload_to_bucket(bucket, from_file, to_info, chunk_size=None, **kwargs):
     with Tqdm() as pbar:
         with io.open(from_file, mode="rb", buffering=chunk_size or -1) as fd:
             raw_read = fd.read
+
             def read(self, size=chunk_size):
                 res = raw_read(size)
                 if res:
                     pbar.update(len(res))
                 return res
+
             fd.read = read
             blob.upload_from_file(fd)
 
