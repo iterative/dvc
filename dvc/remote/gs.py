@@ -5,7 +5,6 @@ from datetime import timedelta
 from functools import wraps
 import io
 
-
 from funcy import cached_property
 
 from dvc.config import Config
@@ -52,10 +51,10 @@ def dynamic_chunk_size(func):
 def _upload_to_bucket(bucket, from_file, to_info, chunk_size=None, **kwargs):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size, **kwargs)
     with Tqdm() as pbar:
-        with io.open(from_file, mode="rb", buffering=chunk_size or -1) as fd:
+        with io.open(from_file, mode="rb") as fd:
             raw_read = fd.read
 
-            def read(self, size=chunk_size):
+            def read(size=chunk_size):
                 res = raw_read(size)
                 if res:
                     pbar.update(len(res))
