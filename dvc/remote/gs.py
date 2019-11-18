@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import unicode_literals, division
 
 import logging
 from datetime import timedelta
@@ -25,23 +25,26 @@ def dynamic_chunk_size(func):
         import requests
         from google.cloud.storage.blob import Blob, _DEFAULT_CHUNKSIZE
 
-        # Default chunk size for gs is 100M, which might be too much for
-        # particular network (see [1]). So if we are getting ConnectionError,
-        # we should try lowering the chunk size until we reach the minimum
-        # allowed chunk size of 256K. Also note that `chunk_size` must be a
-        # multiple of 256K per the API specification.
+        # `ConnectionError` may be due to too large `chunk_size`
+        # (see [#2572]) so try halving on error.
+        # Note: default 100M is too large for fine-grained progress
+        # so 10M is the starting default.
+        # Note: minimum 256K.
+        # Note: must be multiple of 256K.
         #
-        # [1] https://github.com/iterative/dvc/issues/2572
+        # [#2572]: https://github.com/iterative/dvc/issues/2572
 
         # skipcq: PYL-W0212
-        multiplier = int(_DEFAULT_CHUNKSIZE / Blob._CHUNK_SIZE_MULTIPLE)
+        multiplier = int(
+            _DEFAULT_CHUNKSIZE / (10.0 * Blob._CHUNK_SIZE_MULTIPLE)
+        )
         while True:
             try:
                 # skipcq: PYL-W0212
                 chunk_size = Blob._CHUNK_SIZE_MULTIPLE * multiplier
                 return func(*args, chunk_size=chunk_size, **kwargs)
             except requests.exceptions.ConnectionError:
-                multiplier = int(multiplier / 2)
+                multiplier = multiplier // 2
                 if not multiplier:
                     raise
 
