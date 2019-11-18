@@ -23,28 +23,24 @@ def dynamic_chunk_size(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         import requests
-        from google.cloud.storage.blob import Blob, _DEFAULT_CHUNKSIZE
+        from google.cloud.storage.blob import _DEFAULT_CHUNKSIZE
 
         # `ConnectionError` may be due to too large `chunk_size`
         # (see [#2572]) so try halving on error.
-        # Note: default 100M is too large for fine-grained progress
-        # so 10M is the starting default.
-        # Note: minimum 256K.
+        # Note: start with 40 * [default: 256K] = 10M.
         # Note: must be multiple of 256K.
         #
         # [#2572]: https://github.com/iterative/dvc/issues/2572
 
         # skipcq: PYL-W0212
-        multiplier = int(
-            _DEFAULT_CHUNKSIZE / (10.0 * Blob._CHUNK_SIZE_MULTIPLE)
-        )
+        multiplier = 40
         while True:
             try:
                 # skipcq: PYL-W0212
-                chunk_size = Blob._CHUNK_SIZE_MULTIPLE * multiplier
+                chunk_size = _DEFAULT_CHUNKSIZE * multiplier
                 return func(*args, chunk_size=chunk_size, **kwargs)
             except requests.exceptions.ConnectionError:
-                multiplier = multiplier // 2
+                multiplier //= 2
                 if not multiplier:
                     raise
 
