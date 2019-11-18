@@ -4,8 +4,7 @@ import os
 import posixpath
 import logging
 
-from funcy import cached_property
-from backoff import on_exception, expo
+from funcy import cached_property, retry
 
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
@@ -23,16 +22,13 @@ from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
 
 logger = logging.getLogger(__name__)
 
-
-class GDriveURLInfo(CloudURLInfo):
-    @property
-    def netloc(self):
-        return self.parsed.netloc
-
+class GDriveRetriableError(DvcException):
+    def __init__(self, msg):
+        super(GDriveRetriableError, self).__init__(msg)
 
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
-    path_cls = GDriveURLInfo
+    path_cls = CloudURLInfo
     REGEX = r"^gdrive://.*$"
     REQUIRES = {"pydrive": "pydrive"}
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
@@ -66,14 +62,18 @@ class RemoteGDrive(RemoteBASE):
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cached_dirs, self.cached_ids = self.cache_root_dirs()
 
-    @on_exception(expo, DvcException, max_tries=8)
+    # 8 tries, start at 0.5s, multiply by golden ratio, cap at 10s
+    @retry(8,
+        errors=(GDriveRetriableError),
+        timeout=lambda a: min(0.5 * 1.618 ** a, 10))
     def execute_request(self, request):
+        from pydrive.files import ApiRequestError
         try:
             result = request.execute()
         except Exception as exception:
             retry_codes = ["403", "500", "502", "503", "504"]
-            if any(code in str(exception) for code in retry_codes):
-                raise DvcException("Google API request failed")
+            if any("HttpError {}".format(code) in str(exception) for code in retry_codes):
+                raise GDriveRetriableError("Google API request failed")
             raise
         return result
 
@@ -170,7 +170,7 @@ class RemoteGDrive(RemoteBASE):
 
     def subtract_root_path(self, parts):
         if not hasattr(self, "root_id"):
-            return parts, [self.path_info.netloc]
+            return parts, [self.path_info.bucket]
 
         for part in self.path_info.path.split("/"):
             if parts and parts[0] == part:
@@ -211,7 +211,7 @@ class RemoteGDrive(RemoteBASE):
         if dirname:
             parent_id = self.get_path_id(dirname, True)
         else:
-            parent_id = to_info.netloc
+            parent_id = to_info.bucket
 
         upload_request = RequestUploadFile(
             {
