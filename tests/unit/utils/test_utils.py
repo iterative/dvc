@@ -1,4 +1,5 @@
 import filecmp
+import re
 import os
 
 import pytest
@@ -9,6 +10,7 @@ from dvc.utils import file_md5
 from dvc.utils import fix_env
 from dvc.utils import makedirs
 from dvc.utils import to_chunks
+from dvc.utils import tmp_fname
 from tests.basic_env import TestDir
 
 
@@ -122,3 +124,18 @@ def test_makedirs(repo_dir):
 
     makedirs(path_info)
     assert os.path.isdir(path_info.fspath)
+
+
+def test_tmp_fname():
+    file_path = os.path.join("path", "to", "file")
+    file_path_info = PathInfo(file_path)
+
+    def pattern(path):
+        return r"^" + re.escape(path) + r"\.[a-z0-9]{22}\.tmp$"
+
+    assert re.search(pattern(file_path), tmp_fname(file_path), re.IGNORECASE)
+    assert re.search(
+        pattern(file_path_info.fspath),
+        tmp_fname(file_path_info),
+        re.IGNORECASE,
+    )
