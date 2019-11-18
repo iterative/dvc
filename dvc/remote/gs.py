@@ -4,6 +4,7 @@ import logging
 from datetime import timedelta
 from functools import wraps
 import io
+import os.path
 
 from funcy import cached_property
 
@@ -50,7 +51,9 @@ def dynamic_chunk_size(func):
 @dynamic_chunk_size
 def _upload_to_bucket(bucket, from_file, to_info, chunk_size=None, **kwargs):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size, **kwargs)
-    with Tqdm() as pbar:
+    with Tqdm(
+        desc=to_info.path, total=os.path.getsize(from_file), bytes=True
+    ) as pbar:
         with io.open(from_file, mode="rb") as fd:
             raw_read = fd.read
 
@@ -143,7 +146,7 @@ class RemoteGS(RemoteBASE):
     def _download(self, from_info, to_file, **_kwargs):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
-        with Tqdm() as pbar:
+        with Tqdm(desc=from_info.path, total=blob.size, bytes=True) as pbar:
             with io.open(to_file, mode="wb") as fd:
                 raw_write = fd.write
 
