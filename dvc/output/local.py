@@ -7,9 +7,11 @@ from dvc.exceptions import DvcException
 from dvc.istextfile import istextfile
 from dvc.output.base import OutputBase
 from dvc.remote.local import RemoteLOCAL
+from dvc.utils import relpath
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import str
 from dvc.utils.compat import urlparse
+from dvc.utils.fs import path_isin
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +40,14 @@ class OutputLOCAL(OutputBase):
         return self.REMOTE.path_cls(abs_p)
 
     def __str__(self):
-        return str(self.path_info)
+        if not self.is_in_repo:
+            return str(self.def_path)
+
+        cur_dir = os.getcwd()
+        if path_isin(cur_dir, self.repo.root_dir):
+            return relpath(self.path_info, cur_dir)
+
+        return relpath(self.path_info, self.repo.root_dir)
 
     @property
     def fspath(self):
