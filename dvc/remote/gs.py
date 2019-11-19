@@ -17,13 +17,13 @@ from dvc.scheme import Schemes
 from dvc.utils.compat import FileNotFoundError  # skipcq: PYL-W0622
 
 logger = logging.getLogger(__name__)
+MIN_CHUNKSIZE = 256 * 1024
 
 
 def dynamic_chunk_size(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         import requests
-        from google.cloud.storage.blob import _DEFAULT_CHUNKSIZE
 
         # `ConnectionError` may be due to too large `chunk_size`
         # (see [#2572]) so try halving on error.
@@ -37,7 +37,7 @@ def dynamic_chunk_size(func):
         while True:
             try:
                 # skipcq: PYL-W0212
-                chunk_size = _DEFAULT_CHUNKSIZE * multiplier
+                chunk_size = MIN_CHUNKSIZE * multiplier
                 return func(*args, chunk_size=chunk_size, **kwargs)
             except requests.exceptions.ConnectionError:
                 multiplier //= 2
