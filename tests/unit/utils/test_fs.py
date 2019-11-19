@@ -166,28 +166,23 @@ def test_remove(repo_dir):
     assert not os.path.isfile(path_info.fspath)
 
 
-@pytest.mark.parametrize(
-    "parent",
-    [
-        (os.path.join("path", "to", "")),
-        (os.path.join("path", "to")),
-        (os.path.join("path", "")),
-        (os.path.join("path")),
-    ],
-)
-def test_path_isin_positive(parent):
+def test_path_isin_positive():
     child = os.path.join("path", "to", "folder")
-    assert path_isin(child, parent)
+
+    assert path_isin(child, os.path.join("path", "to", ""))
+    assert path_isin(child, os.path.join("path", "to"))
+    assert path_isin(child, os.path.join("path", ""))
+    assert path_isin(child, os.path.join("path"))
 
 
 def test_path_isin_on_same_path():
     path = os.path.join("path", "to", "folder")
-    path2 = os.path.join(path, "")
+    path_with_sep = os.path.join(path, "")
 
     assert not path_isin(path, path)
-    assert not path_isin(path, path2)
-    assert not path_isin(path2, path)
-    assert not path_isin(path2, path2)
+    assert not path_isin(path, path_with_sep)
+    assert not path_isin(path_with_sep, path)
+    assert not path_isin(path_with_sep, path_with_sep)
 
 
 def test_path_isin_on_common_substring_path():
