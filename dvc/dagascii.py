@@ -63,7 +63,7 @@ class AsciiCanvas(object):
     def draw(self):
         """Draws ASCII canvas on the screen."""
         if sys.stdout.isatty():  # pragma: no cover
-            1/0
+            1 / 0
             lines = []
             for line in self.canvas:
                 lines.append("".join(line))
