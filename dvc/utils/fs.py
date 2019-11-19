@@ -140,7 +140,7 @@ def path_isin(child, parent):
     """Check if given `child` path is inside `parent`."""
 
     def normalize_path(path):
-        return os.path.normpath(fspath(path))
+        return os.path.normpath(fspath_py35(path))
 
     parent = os.path.join(normalize_path(parent), "")
     child = normalize_path(child)
