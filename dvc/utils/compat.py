@@ -85,8 +85,6 @@ def _makedirs(name, mode=0o777, exist_ok=False):
             if e.errno != errno.EEXIST:
                 raise
         cdir = os.curdir
-        if isinstance(tail, bytes):
-            cdir = bytes(os.curdir, "ASCII")
         if tail == cdir:
             return
     try:

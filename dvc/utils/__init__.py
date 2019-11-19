@@ -149,9 +149,12 @@ def makedirs(path, exist_ok=False, mode=None):
         _makedirs(path, exist_ok=exist_ok)
         return
 
-    umask = os.umask(0)
+    # utilize umask to set proper permissions since Python 3.7 the `mode`
+    # `makedirs` argument no longer affects the file permission bits of
+    # newly-created intermediate-level directories.
+    umask = os.umask(0o777 - mode)
     try:
-        _makedirs(path, exist_ok=exist_ok, mode=mode)
+        _makedirs(path, exist_ok=exist_ok)
     finally:
         os.umask(umask)
 
