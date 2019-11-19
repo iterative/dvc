@@ -72,6 +72,7 @@ install_requires = [
     "treelib>=1.5.5",
     "inflect>=2.1.0",
     "humanize>=0.5.1",
+    "PyYAML>=5.1.2",
     "ruamel.yaml>=0.16.1",
     "funcy>=1.12",
     "pathspec>=0.6.0",
