@@ -58,7 +58,7 @@ if is_py3:
             # [1] https://github.com/iterative/dvc/issues/2582
             self._hostname = socket.gethostname()
 
-            self._lockfile = lockfile
+            self._lockfile = str(lockfile)
             self._lifetime = timedelta(days=365)  # Lock for good by default
             self._separator = flufl.lock.SEP
             self._set_claimfile()
@@ -111,7 +111,7 @@ else:
         """
 
         def __init__(self, lockfile, tmp_dir=None):
-            self.lockfile = lockfile
+            self.lockfile = str(lockfile)
             self._lock = None
 
         @property

@@ -1,4 +1,3 @@
-"""Collect and send usage analytics"""
 from __future__ import unicode_literals
 
 import errno
@@ -6,251 +5,203 @@ import json
 import logging
 import os
 
-from dvc import __version__
-from dvc.utils import env2bool
+import attr
+
 from dvc.utils.compat import str
+from dvc.utils.serializers import json_serializer
 
 
 logger = logging.getLogger(__name__)
 
 
-class Analytics(object):
-    """Class for collecting and sending usage analytics.
-
-    Args:
-        info (dict): optional existing analytics report.
-    """
-
-    URL = "https://analytics.dvc.org"
-    TIMEOUT_POST = 5
-
-    USER_ID_FILE = "user_id"
-
-    PARAM_DVC_VERSION = "dvc_version"
-    PARAM_USER_ID = "user_id"
-    PARAM_SYSTEM_INFO = "system_info"
-
-    PARAM_OS = "os"
-
-    PARAM_WINDOWS_VERSION_MAJOR = "windows_version_major"
-    PARAM_WINDOWS_VERSION_MINOR = "windows_version_minor"
-    PARAM_WINDOWS_VERSION_BUILD = "windows_version_build"
-    PARAM_WINDOWS_VERSION_SERVICE_PACK = "windows_version_service_pack"
-
-    PARAM_MAC_VERSION = "mac_version"
-
-    PARAM_LINUX_DISTRO = "linux_distro"
-    PARAM_LINUX_DISTRO_VERSION = "linux_distro_version"
-    PARAM_LINUX_DISTRO_LIKE = "linux_distro_like"
-
-    PARAM_SCM_CLASS = "scm_class"
-    PARAM_IS_BINARY = "is_binary"
-    PARAM_CMD_CLASS = "cmd_class"
-    PARAM_CMD_RETURN_CODE = "cmd_return_code"
-
-    def __init__(self, info=None):
-        from dvc.config import Config
-        from dvc.lock import Lock
-
-        if info is None:
-            info = {}
-
-        self.info = info
-
-        cdir = Config.get_global_config_dir()
-        try:
-            os.makedirs(cdir)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
-
-        self.user_id_file = os.path.join(cdir, self.USER_ID_FILE)
-        self.user_id_file_lock = Lock(self.user_id_file + ".lock")
-
-    @staticmethod
-    def load(path):
-        """Loads analytics report from json file specified by path.
-
-        Args:
-            path (str): path to json file with analytics report.
-        """
-        with open(path, "r") as fobj:
-            analytics = Analytics(info=json.load(fobj))
-        os.unlink(path)
-        return analytics
-
-    def _write_user_id(self):
-        import uuid
-
-        with open(self.user_id_file, "w+") as fobj:
-            user_id = str(uuid.uuid4())
-            info = {self.PARAM_USER_ID: user_id}
-            json.dump(info, fobj)
-            return user_id
-
-    def _read_user_id(self):
-        if not os.path.exists(self.user_id_file):
-            return None
-
-        with open(self.user_id_file, "r") as fobj:
-            try:
-                info = json.load(fobj)
-            except ValueError as exc:
-                logger.debug("Failed to load user_id: {}".format(exc))
-                return None
-
-            return info[self.PARAM_USER_ID]
-
-    def _get_user_id(self):
-        from dvc.lock import LockError
-
-        try:
-            with self.user_id_file_lock:
-                user_id = self._read_user_id()
-                if user_id is None:
-                    user_id = self._write_user_id()
-                return user_id
-        except LockError:
-            msg = "Failed to acquire '{}'"
-            logger.debug(msg.format(self.user_id_file_lock.lockfile))
-
-    def _collect_windows(self):
-        import sys
-
-        version = sys.getwindowsversion()  # pylint: disable=no-member
-        info = {}
-        info[self.PARAM_OS] = "windows"
-        info[self.PARAM_WINDOWS_VERSION_MAJOR] = version.major
-        info[self.PARAM_WINDOWS_VERSION_MINOR] = version.minor
-        info[self.PARAM_WINDOWS_VERSION_BUILD] = version.build
-        info[self.PARAM_WINDOWS_VERSION_SERVICE_PACK] = version.service_pack
-        return info
-
-    def _collect_darwin(self):
-        import platform
-
-        info = {}
-        info[self.PARAM_OS] = "mac"
-        info[self.PARAM_MAC_VERSION] = platform.mac_ver()[0]
-        return info
-
-    def _collect_linux(self):
-        import distro
-
-        info = {}
-        info[self.PARAM_OS] = "linux"
-        info[self.PARAM_LINUX_DISTRO] = distro.id()
-        info[self.PARAM_LINUX_DISTRO_VERSION] = distro.version()
-        info[self.PARAM_LINUX_DISTRO_LIKE] = distro.like()
-        return info
-
-    def _collect_system_info(self):
-        import platform
-
-        system = platform.system()
-
-        if system == "Windows":
-            return self._collect_windows()
-
-        if system == "Darwin":
-            return self._collect_darwin()
-
-        if system == "Linux":
-            return self._collect_linux()
-
-        raise NotImplementedError
+@attr.s
+class SystemInfo:
+    linux_distro                 = attr.ib(default=None)
+    linux_distro_like            = attr.ib(default=None)
+    linux_distro_version         = attr.ib(default=None)
+    mac_version                  = attr.ib(default=None)
+    os                           = attr.ib(default=None)
+    windows_version_build        = attr.ib(default=None)
+    windows_version_major        = attr.ib(default=None)
+    windows_version_minor        = attr.ib(default=None)
+    windows_version_service_pack = attr.ib(default=None)
 
     def collect(self):
-        """Collect analytics report."""
+        import platform
+
+        system = platform.system().lower()
+        f = getattr(self, system)
+        f()
+        return self
+
+    def windows(self):
+        import sys
+
+        version = sys.getwindowsversion()
+        self.os = "windows"
+        self.windows_version_major = version.major
+        self.windows_version_minor = version.minor
+        self.windows_version_build = version.build
+        self.windows_version_service_pack = version.service_pack
+
+    def darwin(self):
+        import platform
+
+        self.os = "mac"
+        self.mac_version = platform.mac_ver()[0]
+
+    def linux(self):
+        import distro
+
+        self.os = "linux"
+        self.linux_distro = distro.id()
+        self.linux_distro_version = distro.version()
+        self.linux_distro_like = distro.like()
+
+
+@json_serializer
+@attr.s
+class UserID:
+    import uuid
+    from dvc.config import Config
+
+    user_id = attr.ib(default=attr.Factory(uuid.uuid4), converter=str)
+
+    config_dir = Config.get_global_config_dir()
+    fname = config_dir / "user_id"
+
+    @classmethod
+    def load(cls):
+        from dvc.lock import Lock, LockError
+        from json import JSONDecodeError
+
+        if not cls.fname.exists:
+            return None
+
+        lock = Lock(cls.fname.with_suffix(".lock"))
+
+        try:
+            with lock:
+                return cls.from_file(cls.fname)
+
+        except ValueError as exc:
+            logger.debug("Failed to load user_id: {}".format(exc))
+
+        except JSONDecodeError:
+            logger.debug("Failed to read '{}'".format(fname))
+
+        except LockError:
+            logger.debug("Failed to acquire '{}'".format(lock.lockfile))
+
+    @classmethod
+    def generate(cls):
+        from dvc.utils import makedirs
+
+        user_id = UserID()
+
+        makedirs(cls.fname.parent, exist_ok=True)
+        user_id.to_file(cls.fname)
+        return user_id
+
+
+@json_serializer
+@attr.s
+class Report:
+    cmd_class       = attr.ib(default=None)
+    cmd_return_code = attr.ib(default=None)
+    dvc_version     = attr.ib(default=None)
+    is_binary       = attr.ib(default=None)
+    scm_class       = attr.ib(default=None)
+    user_id         = attr.ib(default=None)
+    system_info     = attr.ib(default=None)
+
+    def collect(self):
+        from dvc import __version__
+        from dvc.exceptions import NotDvcRepoError
+        from dvc.repo import Repo
         from dvc.scm import SCM
         from dvc.utils import is_binary
-        from dvc.repo import Repo
-        from dvc.exceptions import NotDvcRepoError
 
-        self.info[self.PARAM_DVC_VERSION] = __version__
-        self.info[self.PARAM_IS_BINARY] = is_binary()
-        self.info[self.PARAM_USER_ID] = self._get_user_id()
-
-        self.info[self.PARAM_SYSTEM_INFO] = self._collect_system_info()
+        self.dvc_version = __version__
+        self.is_binary = is_binary()
+        self.user_id = (UserID.load() or UserID.generate()).user_id
+        self.system_info = SystemInfo().collect()
 
         try:
             scm = SCM(root_dir=Repo.find_root())
-            self.info[self.PARAM_SCM_CLASS] = type(scm).__name__
+            self.scm_class = type(scm).__name__
         except NotDvcRepoError:
             pass
 
     def collect_cmd(self, args, ret):
-        """Collect analytics info from a CLI command."""
-        from dvc.command.daemon import CmdDaemonAnalytics
+        if ret:
+            self.cmd_return_code = ret
 
-        assert isinstance(ret, int) or ret is None
+        if args and hasattr(args, "func"):
+            self.cmd_class = args.func.__name__
 
-        if ret is not None:
-            self.info[self.PARAM_CMD_RETURN_CODE] = ret
 
-        if args is not None and hasattr(args, "func"):
-            assert args.func != CmdDaemonAnalytics
-            self.info[self.PARAM_CMD_CLASS] = args.func.__name__
+class Analytics(object):
+    def __init__(self, report=None):
+        self.report = report or Report()
+
+    @staticmethod
+    def load(path):
+        analytics = Analytics(report=Report.from_file(path))
+        os.unlink(path)
+        return analytics
 
     def dump(self):
-        """Save analytics report to a temporary file.
-
-        Returns:
-            str: path to the temporary file that contains the analytics report.
-        """
         import tempfile
 
         with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
-            json.dump(self.info, fobj)
+            self.report.to_file(fobj.name)
             return fobj.name
 
     @staticmethod
-    def is_enabled(cmd=None):
+    def is_enabled():
         from dvc.config import Config, to_bool
-        from dvc.command.daemon import CmdDaemonBase
+        from dvc.utils import env2bool
 
         if env2bool("DVC_TEST"):
             return False
 
-        if isinstance(cmd, CmdDaemonBase):
-            return False
-
         core = Config(validate=False).config.get(Config.SECTION_CORE, {})
         enabled = to_bool(core.get(Config.SECTION_CORE_ANALYTICS, "true"))
+
         logger.debug(
-            "Analytics is {}.".format("enabled" if enabled else "disabled")
+            "Analytics is {status}."
+            .format(status="enabled" if enabled else "disabled")
         )
+
         return enabled
 
     @staticmethod
     def send_cmd(cmd, args, ret):
-        """Collect and send analytics for CLI command.
-
-        Args:
-            args (list): parsed args for the CLI command.
-            ret (int): return value of the CLI command.
-        """
         from dvc.daemon import daemon
+        from dvc.command.daemon import CmdDaemonBase
 
-        if not Analytics.is_enabled(cmd):
-            return
+        if not Analytics.is_enabled() or isinstance(cmd, CmdDaemonBase):
+            return False
 
         analytics = Analytics()
-        analytics.collect_cmd(args, ret)
+        analytics.report.collect_cmd(args, ret)
         daemon(["analytics", analytics.dump()])
 
     def send(self):
-        """Collect and send analytics."""
         import requests
 
         if not self.is_enabled():
             return
 
-        self.collect()
+        self.report.collect()
 
-        logger.debug("Sending analytics: {}".format(self.info))
+        info = self.report.asdict
+        url = "https://analytics.dvc.org"
+
+        logger.debug("Sending analytics: {}".format(info))
 
         try:
-            requests.post(self.URL, json=self.info, timeout=self.TIMEOUT_POST)
+            requests.post(url, json=info, timeout=5)
         except requests.exceptions.RequestException as exc:
             logger.debug("Failed to send analytics: {}".format(str(exc)))
