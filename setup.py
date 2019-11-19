@@ -117,7 +117,7 @@ tests_requirements = [
     "pytest-timeout>=1.3.3",
     "pytest-cov>=2.6.1",
     "pytest-xdist>=1.26.1",
-    "pytest-mock>=1.10.4",
+    "pytest-mock==1.11.2",
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
