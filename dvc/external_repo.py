@@ -29,7 +29,7 @@ def external_repo(url=None, rev=None, rev_lock=None, cache_dir=None):
         raise RemoteNotSpecifiedInExternalRepoError(url, cause=exc)
     except OutputNotFoundError as exc:
         if exc.repo is repo:
-            raise NoOutputInExternalRepoError()
+            raise NoOutputInExternalRepoError(exc.output, repo.root_dir, url)
         raise
     repo.close()
 
