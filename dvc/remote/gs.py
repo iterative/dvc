@@ -63,8 +63,8 @@ def _upload_to_bucket(
         bytes=True,
         disable=no_progress_bar,
     ) as pbar:
-        with io.open(from_file, mode="rb") as fd:
-            raw_read = fd.read
+        with io.open(from_file, mode="rb") as fobj:
+            raw_read = fobj.read
 
             def read(size=chunk_size):
                 res = raw_read(size)
@@ -72,8 +72,8 @@ def _upload_to_bucket(
                     pbar.update(len(res))
                 return res
 
-            fd.read = read
-            blob.upload_from_file(fd)
+            fobj.read = read
+            blob.upload_from_file(fobj)
 
 
 class RemoteGS(RemoteBASE):
@@ -167,15 +167,15 @@ class RemoteGS(RemoteBASE):
             bytes=True,
             disable=no_progress_bar,
         ) as pbar:
-            with io.open(to_file, mode="wb") as fd:
-                raw_write = fd.write
+            with io.open(to_file, mode="wb") as fobj:
+                raw_write = fobj.write
 
-                def write(bytes):
-                    raw_write(bytes)
-                    pbar.update(len(bytes))
+                def write(byte_string):
+                    raw_write(byte_string)
+                    pbar.update(len(byte_string))
 
-                fd.write = write
-                blob.download_to_file(fd)
+                fobj.write = write
+                blob.download_to_file(fobj)
 
     def _generate_download_url(self, path_info, expires=3600):
         expiration = timedelta(seconds=int(expires))
