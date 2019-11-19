@@ -53,14 +53,4 @@ def test_dynamic_chunk_size():
     with pytest.raises(requests.exceptions.ConnectionError):
         upload()
 
-    assert chunk_sizes == [
-        104857600,
-        52428800,
-        26214400,
-        13107200,
-        6553600,
-        3145728,
-        1572864,
-        786432,
-        262144,
-    ]
+    assert chunk_sizes == [10485760, 5242880, 2621440, 1310720, 524288, 262144]
