@@ -3,6 +3,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import math
+import os
+import pydoc
 import sys
 
 from grandalf.graphs import Edge
@@ -61,9 +63,11 @@ class AsciiCanvas(object):
     def draw(self):
         """Draws ASCII canvas on the screen."""
         if sys.stdout.isatty():  # pragma: no cover
-            from asciimatics.screen import Screen
-
-            Screen.wrapper(self._do_draw)
+            1/0
+            lines = []
+            for line in self.canvas:
+                lines.append("".join(line))
+            pydoc.pager(os.linesep.join(lines))
         else:
             for line in self.canvas:
                 print("".join(line))
