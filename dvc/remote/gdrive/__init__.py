@@ -4,27 +4,47 @@ import os
 import posixpath
 import logging
 
-from funcy import cached_property, retry
+from funcy import cached_property, retry, compose, decorator
+from funcy.py3 import cat
 
+from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
-from dvc.remote.gdrive.pydrive import (
-    RequestListFile,
-    RequestListFilePaginated,
-    RequestCreateFolder,
-    RequestUploadFile,
-    RequestDownloadFile,
-)
-from dvc.remote.gdrive.utils import FOLDER_MIME_TYPE
 
 logger = logging.getLogger(__name__)
+
 
 class GDriveRetriableError(DvcException):
     def __init__(self, msg):
         super(GDriveRetriableError, self).__init__(msg)
+
+
+@decorator
+def _wrap_pydrive_retriable(call):
+    try:
+        result = call()
+    except Exception as exception:
+        retry_codes = ["403", "500", "502", "503", "504"]
+        if any(
+            "HttpError {}".format(code) in str(exception)
+            for code in retry_codes
+        ):
+            raise GDriveRetriableError(msg="Google API request failed")
+        raise
+    return result
+
+
+gdrive_retry = compose(
+    # 8 tries, start at 0.5s, multiply by golden ratio, cap at 10s
+    retry(
+        8, GDriveRetriableError, timeout=lambda a: min(0.5 * 1.618 ** a, 10)
+    ),
+    _wrap_pydrive_retriable,
+)
+
 
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
@@ -62,28 +82,57 @@ class RemoteGDrive(RemoteBASE):
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cached_dirs, self.cached_ids = self.cache_root_dirs()
 
-    # 8 tries, start at 0.5s, multiply by golden ratio, cap at 10s
-    @retry(8,
-        errors=(GDriveRetriableError),
-        timeout=lambda a: min(0.5 * 1.618 ** a, 10))
-    def execute_request(self, request):
-        from pydrive.files import ApiRequestError
-        try:
-            result = request.execute()
-        except Exception as exception:
-            retry_codes = ["403", "500", "502", "503", "504"]
-            if any("HttpError {}".format(code) in str(exception) for code in retry_codes):
-                raise GDriveRetriableError("Google API request failed")
-            raise
-        return result
+    def request_list_file(self, query):
+        return self.drive.ListFile({"q": query, "maxResults": 1000}).GetList()
+
+    def request_create_folder(self, title, parent_id):
+        item = self.drive.CreateFile(
+            {
+                "title": title,
+                "parents": [{"id": parent_id}],
+                "mimeType": FOLDER_MIME_TYPE,
+            }
+        )
+        item.Upload()
+        return item
+
+    def request_upload_file(
+        self, args, no_progress_bar=True, from_file="", progress_name=""
+    ):
+        item = self.drive.CreateFile(
+            {"title": args["title"], "parents": [{"id": args["parent_id"]}]}
+        )
+        self.upload_file(item, no_progress_bar, from_file, progress_name)
+        return item
+
+    def upload_file(self, item, no_progress_bar, from_file, progress_name):
+        with open(from_file, "rb") as opened_file:
+            if not no_progress_bar:
+                opened_file = TrackFileReadProgress(progress_name, opened_file)
+            if os.stat(from_file).st_size:
+                item.content = opened_file
+            item.Upload()
+
+    def request_download_file(
+        self, file_id, to_file, progress_name, no_progress_bar
+    ):
+        from dvc.progress import Tqdm
+
+        gdrive_file = self.drive.CreateFile({"id": file_id})
+        if not no_progress_bar:
+            tqdm = Tqdm(desc=progress_name, total=int(gdrive_file["fileSize"]))
+        gdrive_file.GetContentFile(to_file)
+        if not no_progress_bar:
+            tqdm.close()
 
     def list_drive_item(self, query):
-        list_request = RequestListFilePaginated(self.drive, query)
-        page_list = self.execute_request(list_request)
-        while page_list:
-            for item in page_list:
-                yield item
-            page_list = self.execute_request(list_request)
+        file_list = self.drive.ListFile({"q": query, "maxResults": 1000})
+
+        # Isolate and decorate fetching of remote drive items in pages
+        get_list = gdrive_retry(lambda: next(file_list, None))
+
+        # Fetch pages until None is received, lazily flatten the thing
+        return cat(iter(get_list, None))
 
     def cache_root_dirs(self):
         cached_dirs = {}
@@ -139,11 +188,9 @@ class RemoteGDrive(RemoteBASE):
         return gdrive
 
     def create_drive_item(self, parent_id, title):
-        upload_request = RequestCreateFolder(
-            {"drive": self.drive, "title": title, "parent_id": parent_id}
-        )
-        result = self.execute_request(upload_request)
-        return result
+        return gdrive_retry(
+            lambda: self.request_create_folder(title, parent_id)
+        )()
 
     def get_drive_item(self, name, parents_ids):
         if not parents_ids:
@@ -154,8 +201,7 @@ class RemoteGDrive(RemoteBASE):
 
         query += " and trashed=false and title='{}'".format(name)
 
-        list_request = RequestListFile(self.drive, query)
-        item_list = self.execute_request(list_request)
+        item_list = gdrive_retry(lambda: self.request_list_file(query))()
         return next(iter(item_list), None)
 
     def resolve_remote_file(self, parents_ids, path_parts, create):
@@ -213,30 +259,22 @@ class RemoteGDrive(RemoteBASE):
         else:
             parent_id = to_info.bucket
 
-        upload_request = RequestUploadFile(
-            {
-                "drive": self.drive,
-                "title": to_info.name,
-                "parent_id": parent_id,
-            },
-            no_progress_bar,
-            from_file,
-            name,
-        )
-        self.execute_request(upload_request)
+        gdrive_retry(
+            lambda: self.request_upload_file(
+                {"title": to_info.name, "parent_id": parent_id},
+                no_progress_bar,
+                from_file,
+                name,
+            )
+        )()
 
     def _download(self, from_info, to_file, name, no_progress_bar):
         file_id = self.get_path_id(from_info)
-        download_request = RequestDownloadFile(
-            {
-                "drive": self.drive,
-                "file_id": file_id,
-                "to_file": to_file,
-                "progress_name": name,
-                "no_progress_bar": no_progress_bar,
-            }
-        )
-        self.execute_request(download_request)
+        gdrive_retry(
+            lambda: self.request_download_file(
+                file_id, to_file, name, no_progress_bar
+            )
+        )()
 
     def list_cache_paths(self):
         file_id = self.get_path_id(self.path_info)
