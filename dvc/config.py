@@ -13,8 +13,7 @@ from voluptuous import All, Any, Lower, Range, Coerce, Match
 
 from dvc.exceptions import DvcException
 from dvc.exceptions import NotDvcRepoError
-from dvc.utils.compat import open
-from dvc.utils.compat import str
+from dvc.utils.compat import open, str, pathlib
 
 logger = logging.getLogger(__name__)
 
@@ -285,8 +284,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import user_config_dir
 
-        return user_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
+        return pathlib.Path(
+            user_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
         )
 
     @staticmethod
@@ -298,8 +297,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import site_config_dir
 
-        return site_config_dir(
-            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
+        return pathlib.Path(
+            site_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
         )
 
     @staticmethod

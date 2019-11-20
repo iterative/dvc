@@ -1,6 +1,6 @@
 import pytest
 
-from dvc.analytics import Analytics
+from dvc import analytics
 
 
 @pytest.mark.parametrize(
@@ -21,4 +21,4 @@ def test_is_enabled(dvc_repo, config, result, monkeypatch):
     # reset DVC_TEST env var, which affects `is_enabled()`
     monkeypatch.delenv("DVC_TEST")
 
-    assert result == Analytics.is_enabled()
+    assert result == analytics.is_enabled()

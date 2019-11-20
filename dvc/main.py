@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 
-from dvc.analytics import Analytics
+from dvc import analytics
 from dvc.cli import parse_args
 from dvc.config import ConfigError
 from dvc.exceptions import DvcParserError
@@ -81,6 +81,7 @@ def main(argv=None):
     if ret != 0:
         logger.info(FOOTER)
 
-    Analytics().send_cmd(cmd, args, ret)
+    if analytics.is_enabled():
+        analytics.collect_and_send_report(args, ret)
 
     return ret
