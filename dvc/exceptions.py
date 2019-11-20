@@ -59,10 +59,12 @@ class OutputNotFoundError(DvcException):
         output (unicode): path to the file/directory.
     """
 
-    def __init__(self, output):
+    def __init__(self, output, repo=None):
+        self.output = output
+        self.repo = repo
         super(OutputNotFoundError, self).__init__(
             "unable to find DVC-file with output '{path}'".format(
-                path=relpath(output)
+                path=relpath(self.output)
             )
         )
 
@@ -337,4 +339,13 @@ class RemoteNotSpecifiedInExternalRepoError(DvcException):
                 url
             ),
             cause=cause,
+        )
+
+
+class NoOutputInExternalRepoError(DvcException):
+    def __init__(self, path, external_repo_path, external_repo_url):
+        super(NoOutputInExternalRepoError, self).__init__(
+            "Output '{}' not found in target repository '{}'".format(
+                relpath(path, external_repo_path), external_repo_url
+            )
         )
