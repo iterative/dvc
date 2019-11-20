@@ -26,11 +26,7 @@ class RemoteS3(RemoteBASE):
     def __init__(self, repo, config):
         super(RemoteS3, self).__init__(repo, config)
 
-        storagepath = "s3://{}".format(
-            config.get(Config.SECTION_AWS_STORAGEPATH, "").lstrip("/")
-        )
-
-        url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        url = config.get(Config.SECTION_REMOTE_URL, "s3://")
         self.path_info = self.path_cls(url)
 
         self.region = config.get(Config.SECTION_AWS_REGION)

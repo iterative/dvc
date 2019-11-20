@@ -60,9 +60,7 @@ class RemoteLOCAL(RemoteBASE):
             # cache files are set to be read-only for everyone
             self._file_mode = stat.S_IREAD | stat.S_IRGRP | stat.S_IROTH
 
-        # A clunky way to detect cache dir
-        storagepath = config.get(Config.SECTION_LOCAL_STORAGEPATH, None)
-        cache_dir = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        cache_dir = config.get(Config.SECTION_REMOTE_URL)
 
         if cache_dir is not None and not os.path.isabs(cache_dir):
             cwd = config[Config.PRIVATE_CWD]
