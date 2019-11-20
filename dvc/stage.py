@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 from dvc.utils.compat import pathlib, str
-import copy
 import logging
 import os
 import re
