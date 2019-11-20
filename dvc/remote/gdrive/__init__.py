@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 import posixpath
 import logging
+import uuid
 
 from funcy import cached_property, retry, compose, decorator
 from funcy.py3 import cat
@@ -46,6 +47,10 @@ gdrive_retry = compose(
 )
 
 
+def get_tmp_filepath():
+    return posixpath.join(".dvc", "tmp", str(uuid.uuid4()))
+
+
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = CloudURLInfo
@@ -74,18 +79,22 @@ class RemoteGDrive(RemoteBASE):
                 "secret in DVC's config. Learn more at "
                 "https://man.dvc.org/remote/add."
             )
-        self.gdrive_user_credentials_path = self.config.get(
-            Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
-            self.DEFAULT_USER_CREDENTIALS_FILE,
+        self.gdrive_user_credentials_path = (
+            get_tmp_filepath()
+            if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
+            else self.config.get(
+                Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
+                self.DEFAULT_USER_CREDENTIALS_FILE,
+            )
         )
 
         self.root_id = self.get_path_id(self.path_info, create=True)
         self.cached_dirs, self.cached_ids = self.cache_root_dirs()
 
-    def request_list_file(self, query):
-        return self.drive.ListFile({"q": query, "maxResults": 1000}).GetList()
+    def gdrive_list_file(self, query):
+        return self.drive.ListFile({"q": query, "maxResults": 1}).GetList()
 
-    def request_create_folder(self, title, parent_id):
+    def gdrive_create_folder(self, title, parent_id):
         item = self.drive.CreateFile(
             {
                 "title": title,
@@ -96,7 +105,7 @@ class RemoteGDrive(RemoteBASE):
         item.Upload()
         return item
 
-    def request_upload_file(
+    def gdrive_upload_file(
         self, args, no_progress_bar=True, from_file="", progress_name=""
     ):
         item = self.drive.CreateFile(
@@ -113,7 +122,7 @@ class RemoteGDrive(RemoteBASE):
                 item.content = opened_file
             item.Upload()
 
-    def request_download_file(
+    def gdrive_download_file(
         self, file_id, to_file, progress_name, no_progress_bar
     ):
         from dvc.progress import Tqdm
@@ -125,7 +134,7 @@ class RemoteGDrive(RemoteBASE):
         if not no_progress_bar:
             tqdm.close()
 
-    def list_drive_item(self, query):
+    def gdrive_list_item(self, query):
         file_list = self.drive.ListFile({"q": query, "maxResults": 1000})
 
         # Isolate and decorate fetching of remote drive items in pages
@@ -137,7 +146,7 @@ class RemoteGDrive(RemoteBASE):
     def cache_root_dirs(self):
         cached_dirs = {}
         cached_ids = {}
-        for dir1 in self.list_drive_item(
+        for dir1 in self.gdrive_list_item(
             "'{}' in parents and trashed=false".format(self.root_id)
         ):
             cached_dirs.setdefault(dir1["title"], []).append(dir1["id"])
@@ -189,7 +198,7 @@ class RemoteGDrive(RemoteBASE):
 
     def create_drive_item(self, parent_id, title):
         return gdrive_retry(
-            lambda: self.request_create_folder(title, parent_id)
+            lambda: self.gdrive_create_folder(title, parent_id)
         )()
 
     def get_drive_item(self, name, parents_ids):
@@ -201,7 +210,7 @@ class RemoteGDrive(RemoteBASE):
 
         query += " and trashed=false and title='{}'".format(name)
 
-        item_list = gdrive_retry(lambda: self.request_list_file(query))()
+        item_list = gdrive_retry(lambda: self.gdrive_list_file(query))()
         return next(iter(item_list), None)
 
     def resolve_remote_file(self, parents_ids, path_parts, create):
@@ -260,7 +269,7 @@ class RemoteGDrive(RemoteBASE):
             parent_id = to_info.bucket
 
         gdrive_retry(
-            lambda: self.request_upload_file(
+            lambda: self.gdrive_upload_file(
                 {"title": to_info.name, "parent_id": parent_id},
                 no_progress_bar,
                 from_file,
@@ -271,7 +280,7 @@ class RemoteGDrive(RemoteBASE):
     def _download(self, from_info, to_file, name, no_progress_bar):
         file_id = self.get_path_id(from_info)
         gdrive_retry(
-            lambda: self.request_download_file(
+            lambda: self.gdrive_download_file(
                 file_id, to_file, name, no_progress_bar
             )
         )()
@@ -290,7 +299,7 @@ class RemoteGDrive(RemoteBASE):
             yield drive_file["title"]
 
     def list_path(self, parent_id):
-        for file1 in self.list_drive_item(
+        for file1 in self.gdrive_list_item(
             "'{}' in parents and trashed=false".format(parent_id)
         ):
             for path in self.list_file_path(file1):
@@ -305,7 +314,7 @@ class RemoteGDrive(RemoteBASE):
         )
 
         query += " and trashed=false"
-        for file1 in self.list_drive_item(query):
+        for file1 in self.gdrive_list_item(query):
             parent_id = file1["parents"][0]["id"]
             path = posixpath.join(self.cached_ids[parent_id], file1["title"])
             try:
