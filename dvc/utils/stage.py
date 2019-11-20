@@ -1,5 +1,11 @@
+import yaml
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
+
+try:
+    from yaml import CSafeLoader as SafeLoader
+except ImportError:
+    from yaml import SafeLoader
 
 from dvc.exceptions import StageFileCorruptedError
 from dvc.utils.compat import open
@@ -7,13 +13,28 @@ from dvc.utils.compat import open
 
 def load_stage_file(path):
     with open(path, "r", encoding="utf-8") as fd:
-        return load_stage_fd(fd, path)
+        return parse_stage(fd.read(), path)
 
 
-def load_stage_fd(fd, path):
+def parse_stage(text, path):
+    try:
+        return yaml.load(text, Loader=SafeLoader) or {}
+    except yaml.error.YAMLError as exc:
+        raise StageFileCorruptedError(path, cause=exc)
+
+
+def parse_stage_for_update(text, path):
+    """Parses text into Python structure.
+
+    Unlike `parse_stage()` this returns ordereddicts, values have special
+    attributes to store comments and line breaks. This allows us to preserve
+    all of those upon dump.
+
+    This one is, however, several times slower than simple `parse_stage()`.
+    """
     try:
         yaml = YAML()
-        return yaml.load(fd) or {}
+        return yaml.load(text) or {}
     except YAMLError as exc:
         raise StageFileCorruptedError(path, cause=exc)
 

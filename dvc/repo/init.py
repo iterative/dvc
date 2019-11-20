@@ -11,7 +11,7 @@ from dvc.scm import NoSCM
 from dvc.scm import SCM
 from dvc.utils import boxify
 from dvc.utils import relpath
-from dvc.utils import remove
+from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
 

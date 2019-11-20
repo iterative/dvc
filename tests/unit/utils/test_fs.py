@@ -16,6 +16,7 @@ from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.fs import get_inode
 from dvc.utils.fs import get_mtime_and_size
 from dvc.utils.fs import move
+from dvc.utils.fs import remove
 from tests.basic_env import TestDir
 from tests.utils import spy
 
@@ -152,3 +153,14 @@ def test_move(repo_dir):
     move(src_info, dest_info)
     assert not os.path.isfile(src_info.fspath)
     assert len(os.listdir(dest_info.fspath)) == 1
+
+
+def test_remove(repo_dir):
+    path = repo_dir.FOO
+    path_info = PathInfo(repo_dir.BAR)
+
+    remove(path)
+    assert not os.path.isfile(path)
+
+    remove(path_info)
+    assert not os.path.isfile(path_info.fspath)

@@ -435,7 +435,7 @@ class Repo(object):
 
         matched = list(filter(func, outs))
         if not matched:
-            raise OutputNotFoundError(path)
+            raise OutputNotFoundError(path, self)
 
         return matched
 

@@ -85,8 +85,6 @@ def _makedirs(name, mode=0o777, exist_ok=False):
             if e.errno != errno.EEXIST:
                 raise
         cdir = os.curdir
-        if isinstance(tail, bytes):
-            cdir = bytes(os.curdir, "ASCII")
         if tail == cdir:
             return
     try:
@@ -143,6 +141,15 @@ if is_py2:
         def __exit__(self, *args):
             self.close()
 
+    def convert_to_unicode(data):
+        if isinstance(data, builtin_str):
+            return str(data)
+        if isinstance(data, dict):
+            return dict(map(convert_to_unicode, data.items()))
+        if isinstance(data, (list, tuple)):
+            return type(data)(map(convert_to_unicode, data))
+        return data
+
 
 elif is_py3:
     import pathlib  # noqa: F401
@@ -169,6 +176,9 @@ elif is_py3:
     cast_bytes_py2 = no_code
     range = range  # noqa: F821
     FileNotFoundError = FileNotFoundError
+
+    def convert_to_unicode(data):
+        return data
 
 
 # Backport os.fspath() from Python 3.6
