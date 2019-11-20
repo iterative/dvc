@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-import schema
+from voluptuous import Any, Required
 
 from dvc.output.base import OutputBase
 from dvc.output.gs import OutputGS
@@ -41,19 +41,19 @@ OUTS_MAP = {
 # so when a few types of outputs share the same name, we only need
 # specify it once.
 CHECKSUM_SCHEMA = {
-    schema.Optional(RemoteLOCAL.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(RemoteS3.PARAM_CHECKSUM): schema.Or(str, None),
-    schema.Optional(RemoteHDFS.PARAM_CHECKSUM): schema.Or(str, None),
+    RemoteLOCAL.PARAM_CHECKSUM: Any(str, None),
+    RemoteS3.PARAM_CHECKSUM: Any(str, None),
+    RemoteHDFS.PARAM_CHECKSUM: Any(str, None),
 }
 
-TAGS_SCHEMA = {schema.Optional(str): CHECKSUM_SCHEMA}
+TAGS_SCHEMA = {str: CHECKSUM_SCHEMA}
 
 SCHEMA = CHECKSUM_SCHEMA.copy()
-SCHEMA[OutputBase.PARAM_PATH] = str
-SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)] = bool
-SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)] = OutputBase.METRIC_SCHEMA
-SCHEMA[schema.Optional(OutputBase.PARAM_TAGS)] = TAGS_SCHEMA
-SCHEMA[schema.Optional(OutputBase.PARAM_PERSIST)] = bool
+SCHEMA[Required(OutputBase.PARAM_PATH)] = str
+SCHEMA[OutputBase.PARAM_CACHE] = bool
+SCHEMA[OutputBase.PARAM_METRIC] = OutputBase.METRIC_SCHEMA
+SCHEMA[OutputBase.PARAM_TAGS] = TAGS_SCHEMA
+SCHEMA[OutputBase.PARAM_PERSIST] = bool
 
 
 def _get(stage, p, info, cache, metric, persist=False, tags=None):

@@ -3,8 +3,7 @@ from __future__ import unicode_literals
 import logging
 from copy import copy
 
-from schema import Optional
-from schema import Or
+from voluptuous import Any
 
 import dvc.prompt as prompt
 from dvc.cache import NamedCache
@@ -55,12 +54,12 @@ class OutputBase(object):
     PARAM_METRIC_XPATH = "xpath"
     PARAM_PERSIST = "persist"
 
-    METRIC_SCHEMA = Or(
+    METRIC_SCHEMA = Any(
         None,
         bool,
         {
-            Optional(PARAM_METRIC_TYPE): Or(str, None),
-            Optional(PARAM_METRIC_XPATH): Or(str, None),
+            PARAM_METRIC_TYPE: Any(str, None),
+            PARAM_METRIC_XPATH: Any(str, None),
         },
     )
 

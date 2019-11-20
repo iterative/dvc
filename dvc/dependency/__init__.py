@@ -1,9 +1,6 @@
 from __future__ import unicode_literals
 
-import schema
-
 import dvc.output as output
-from .repo import DependencyREPO
 from dvc.dependency.gs import DependencyGS
 from dvc.dependency.hdfs import DependencyHDFS
 from dvc.dependency.http import DependencyHTTP
@@ -14,6 +11,7 @@ from dvc.dependency.ssh import DependencySSH
 from dvc.output.base import OutputBase
 from dvc.remote import Remote
 from dvc.scheme import Schemes
+from .repo import DependencyREPO
 
 
 DEPS = [
@@ -42,9 +40,9 @@ DEP_MAP = {
 # cached, see -o and -O flags for `dvc run`) and 'metric' (whether or not
 # output is a metric file and how to parse it, see `-M` flag for `dvc run`).
 SCHEMA = output.SCHEMA.copy()
-del SCHEMA[schema.Optional(OutputBase.PARAM_CACHE)]
-del SCHEMA[schema.Optional(OutputBase.PARAM_METRIC)]
-SCHEMA[schema.Optional(DependencyREPO.PARAM_REPO)] = DependencyREPO.REPO_SCHEMA
+del SCHEMA[OutputBase.PARAM_CACHE]
+del SCHEMA[OutputBase.PARAM_METRIC]
+SCHEMA[DependencyREPO.PARAM_REPO] = DependencyREPO.REPO_SCHEMA
 
 
 def _get(stage, p, info):
