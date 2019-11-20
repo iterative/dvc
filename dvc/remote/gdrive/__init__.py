@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import os
 import posixpath
 import logging
-import uuid
 
 from funcy import cached_property, retry, compose, decorator
 from funcy.py3 import cat
@@ -14,6 +13,7 @@ from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
 from dvc.config import Config
 from dvc.exceptions import DvcException
+from dvc.utils import tmp_fname
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +47,6 @@ gdrive_retry = compose(
 )
 
 
-def get_tmp_filepath():
-    return posixpath.join(".dvc", "tmp", str(uuid.uuid4()))
-
-
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = CloudURLInfo
@@ -80,7 +76,7 @@ class RemoteGDrive(RemoteBASE):
                 "https://man.dvc.org/remote/add."
             )
         self.gdrive_user_credentials_path = (
-            get_tmp_filepath()
+            tmp_fname(".dvc/tmp/")
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
             else self.config.get(
                 Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
