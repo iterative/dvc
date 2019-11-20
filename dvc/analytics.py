@@ -16,14 +16,14 @@ logger = logging.getLogger(__name__)
 
 @attr.s
 class SystemInfo:
-    linux_distro                 = attr.ib(default=None)
-    linux_distro_like            = attr.ib(default=None)
-    linux_distro_version         = attr.ib(default=None)
-    mac_version                  = attr.ib(default=None)
-    os                           = attr.ib(default=None)
-    windows_version_build        = attr.ib(default=None)
-    windows_version_major        = attr.ib(default=None)
-    windows_version_minor        = attr.ib(default=None)
+    linux_distro = attr.ib(default=None)
+    linux_distro_like = attr.ib(default=None)
+    linux_distro_version = attr.ib(default=None)
+    mac_version = attr.ib(default=None)
+    os = attr.ib(default=None)
+    windows_version_build = attr.ib(default=None)
+    windows_version_major = attr.ib(default=None)
+    windows_version_minor = attr.ib(default=None)
     windows_version_service_pack = attr.ib(default=None)
 
     def collect(self):
@@ -107,13 +107,13 @@ class UserID:
 @json_serializer
 @attr.s
 class Report:
-    cmd_class       = attr.ib(default=None)
+    cmd_class = attr.ib(default=None)
     cmd_return_code = attr.ib(default=None)
-    dvc_version     = attr.ib(default=None)
-    is_binary       = attr.ib(default=None)
-    scm_class       = attr.ib(default=None)
-    user_id         = attr.ib(default=None)
-    system_info     = attr.ib(default=None)
+    dvc_version = attr.ib(default=None)
+    is_binary = attr.ib(default=None)
+    scm_class = attr.ib(default=None)
+    user_id = attr.ib(default=None)
+    system_info = attr.ib(default=None)
 
     def collect(self):
         from dvc import __version__
@@ -170,8 +170,9 @@ class Analytics(object):
         enabled = to_bool(core.get(Config.SECTION_CORE_ANALYTICS, "true"))
 
         logger.debug(
-            "Analytics is {status}."
-            .format(status="enabled" if enabled else "disabled")
+            "Analytics is {status}.".format(
+                status="enabled" if enabled else "disabled"
+            )
         )
 
         return enabled

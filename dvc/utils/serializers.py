@@ -6,7 +6,7 @@ import cattr
 class JSONMixin(abc.ABC):
     @classmethod
     def from_file(cls, path):
-        with open(path, 'r') as fobj:
+        with open(path, "r") as fobj:
             data = json.load(fobj)
 
         return cattr.structure(data, cls)
@@ -18,6 +18,7 @@ class JSONMixin(abc.ABC):
     @property
     def asdict(self):
         return cattr.unstructure(self)
+
 
 def json_serializer(cls):
     cls.from_file = classmethod(JSONMixin.from_file.__func__)
