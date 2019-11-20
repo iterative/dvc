@@ -134,3 +134,14 @@ def remove(path):
     except OSError as exc:
         if exc.errno != errno.ENOENT:
             raise
+
+
+def path_isin(child, parent):
+    """Check if given `child` path is inside `parent`."""
+
+    def normalize_path(path):
+        return os.path.normpath(fspath_py35(path))
+
+    parent = os.path.join(normalize_path(parent), "")
+    child = normalize_path(child)
+    return child != parent and child.startswith(parent)

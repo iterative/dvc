@@ -1,8 +1,10 @@
-from mock import patch
+import os
 
+from mock import patch
 from dvc.output import OutputLOCAL
 from dvc.remote.local import RemoteLOCAL
 from dvc.stage import Stage
+from dvc.utils import relpath
 from tests.basic_env import TestDvc
 
 
@@ -19,6 +21,34 @@ class TestOutputLOCAL(TestDvc):
         with patch.object(o.remote, "exists", return_value=False):
             with self.assertRaises(o.DoesNotExistError):
                 o.save()
+
+
+def test_str_workdir_outside_repo(erepo):
+    stage = Stage(erepo.dvc)
+    output = OutputLOCAL(stage, "path", cache=False)
+
+    assert relpath("path", erepo.dvc.root_dir) == str(output)
+
+
+def test_str_workdir_inside_repo(dvc_repo):
+    stage = Stage(dvc_repo)
+    output = OutputLOCAL(stage, "path", cache=False)
+
+    assert "path" == str(output)
+
+    stage = Stage(dvc_repo, wdir="some_folder")
+    output = OutputLOCAL(stage, "path", cache=False)
+
+    assert os.path.join("some_folder", "path") == str(output)
+
+
+def test_str_on_absolute_path(dvc_repo):
+    stage = Stage(dvc_repo)
+
+    path = os.path.abspath(os.path.join("path", "to", "file"))
+    output = OutputLOCAL(stage, path, cache=False)
+
+    assert path == str(output)
 
 
 class TestGetFilesNumber(TestDvc):
