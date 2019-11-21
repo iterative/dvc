@@ -41,7 +41,7 @@ class RemoteHTTP(RemoteBASE):
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
         with Tqdm(
-            total=None if no_progress_bar else self._content_length(from_info),
+            total=None if no_progress_bar else self._content_length(response),
             leave=False,
             bytes=True,
             desc=from_info.url if name is None else name,
