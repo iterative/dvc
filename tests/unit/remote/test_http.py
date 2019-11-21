@@ -1,8 +1,3 @@
-try:
-    from http.server import BaseHTTPRequestHandler
-except ImportError:
-    from BaseHTTPServer import BaseHTTPRequestHandler
-
 import pytest
 
 from dvc.config import ConfigError
@@ -24,12 +19,7 @@ def test_no_traverse_compatibility(dvc_repo):
 
 
 def test_download_fails_on_error_code(dvc_repo):
-    class ErrorStatusRequestHandler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(404, message="Not found")
-            self.end_headers()
-
-    with StaticFileServer(ErrorStatusRequestHandler) as httpd:
+    with StaticFileServer() as httpd:
         url = "http://localhost:{}/".format(httpd.server_port)
         config = {"url": url}
 

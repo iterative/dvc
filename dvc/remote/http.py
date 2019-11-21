@@ -50,7 +50,6 @@ class RemoteHTTP(RemoteBASE):
             with open(to_file, "wb") as fd:
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
                     fd.write(chunk)
-                    fd.flush()
                     pbar.update(len(chunk))
 
     def exists(self, path_info):

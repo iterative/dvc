@@ -352,6 +352,4 @@ class NoOutputInExternalRepoError(DvcException):
 
 class HTTPError(DvcException):
     def __init__(self, code, reason):
-        super(HTTPError, self).__init__(
-            "HTTP error: '{} {}'".format(code, reason)
-        )
+        super(HTTPError, self).__init__("'{} {}'".format(code, reason))
