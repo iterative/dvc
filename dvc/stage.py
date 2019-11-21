@@ -392,7 +392,6 @@ class Stage(object):
             raise StagePathNotDirectoryError(path)
 
         proj_dir = os.path.realpath(repo.root_dir)
-
         if real_path != proj_dir and not path_isin(real_path, proj_dir):
             raise StagePathOutsideError(path)
 
