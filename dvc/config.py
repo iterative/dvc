@@ -161,9 +161,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_CORE_CHECKSUM_JOBS: All(Coerce(int), Range(1)),
     }
 
-    # backward compatibility
-    SECTION_AWS = "aws"
-    SECTION_AWS_STORAGEPATH = "storagepath"
+    # aws specific options
     SECTION_AWS_CREDENTIALPATH = "credentialpath"
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
     SECTION_AWS_LIST_OBJECTS = "listobjects"
@@ -172,34 +170,14 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_USE_SSL = "use_ssl"
     SECTION_AWS_SSE = "sse"
     SECTION_AWS_ACL = "acl"
-    SECTION_AWS_SCHEMA = {
-        Required(SECTION_AWS_STORAGEPATH): str,
-        SECTION_AWS_REGION: str,
-        SECTION_AWS_PROFILE: str,
-        SECTION_AWS_CREDENTIALPATH: str,
-        SECTION_AWS_ENDPOINT_URL: str,
-        Optional(SECTION_AWS_LIST_OBJECTS, default=False): Bool,
-        Optional(SECTION_AWS_USE_SSL, default=True): Bool,
-        SECTION_AWS_SSE: str,
-        SECTION_AWS_ACL: str,
-    }
 
-    # backward compatibility
-    SECTION_GCP = "gcp"
-    SECTION_GCP_STORAGEPATH = SECTION_AWS_STORAGEPATH
+    # gcp specific options
     SECTION_GCP_CREDENTIALPATH = SECTION_AWS_CREDENTIALPATH
     SECTION_GCP_PROJECTNAME = "projectname"
-    SECTION_GCP_SCHEMA = {
-        Required(SECTION_GCP_STORAGEPATH): str,
-        SECTION_GCP_PROJECTNAME: str,
-    }
 
-    # backward compatibility
-    SECTION_LOCAL = "local"
-    SECTION_LOCAL_STORAGEPATH = SECTION_AWS_STORAGEPATH
-    SECTION_LOCAL_SCHEMA = {Required(SECTION_LOCAL_STORAGEPATH): str}
-
+    # azure specific option
     SECTION_AZURE_CONNECTION_STRING = "connection_string"
+
     # Alibabacloud oss options
     SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
     SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"

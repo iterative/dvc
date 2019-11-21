@@ -85,8 +85,7 @@ class RemoteGS(RemoteBASE):
     def __init__(self, repo, config):
         super(RemoteGS, self).__init__(repo, config)
 
-        storagepath = "gs://" + config.get(Config.SECTION_GCP_STORAGEPATH, "/")
-        url = config.get(Config.SECTION_REMOTE_URL, storagepath)
+        url = config.get(Config.SECTION_REMOTE_URL, "gs:///")
         self.path_info = self.path_cls(url)
 
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
