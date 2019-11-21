@@ -21,11 +21,11 @@ class Tqdm(tqdm):
 
     BAR_FMT_DEFAULT = (
         "{percentage:3.0f}%|{bar:10}|"
-        "{desc:{ncols_desc}.{ncols_desc}}{n}/{total}"
+        "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}/{total_fmt}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
     )
     BAR_FMT_NOTOTAL = (
-        "{desc:{ncols_desc}.{ncols_desc}}{n}"
+        "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}"
         " [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
     )
 
