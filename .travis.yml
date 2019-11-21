@@ -132,7 +132,7 @@ jobs:
     deploy:
     - provider: snap
       snap: dvc_*.snap
-      channel: latest/${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+      channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
       skip_cleanup: true
 
 before_install:
