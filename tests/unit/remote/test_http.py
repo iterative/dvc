@@ -26,4 +26,4 @@ def test_download_fails_on_error_code(dvc_repo):
         remote = RemoteHTTP(dvc_repo, config)
 
         with pytest.raises(HTTPError):
-            remote._download(URLInfo(url) / "file.txt", "file.txt")
+            remote._download(URLInfo(url) / "missing.txt", "missing.txt")
