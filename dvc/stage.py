@@ -18,6 +18,7 @@ from dvc.exceptions import DvcException
 from dvc.utils import dict_md5
 from dvc.utils import fix_env
 from dvc.utils import relpath
+from dvc.utils.fs import path_isin
 from dvc.utils.collections import apply_diff
 from dvc.utils.fs import contains_symlink_up_to
 from dvc.utils.stage import dump_stage_file
@@ -390,8 +391,8 @@ class Stage(object):
         if not os.path.isdir(real_path):
             raise StagePathNotDirectoryError(path)
 
-        proj_dir = os.path.realpath(repo.root_dir) + os.path.sep
-        if not (real_path + os.path.sep).startswith(proj_dir):
+        proj_dir = os.path.realpath(repo.root_dir)
+        if real_path != proj_dir and not path_isin(real_path, proj_dir):
             raise StagePathOutsideError(path)
 
     @property

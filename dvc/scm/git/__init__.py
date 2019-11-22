@@ -17,6 +17,7 @@ from dvc.scm.git.tree import GitTree
 from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
+from dvc.utils.fs import path_isin
 from dvc.utils.compat import cast_bytes_py2
 from dvc.utils.compat import open
 from dvc.utils.compat import str
@@ -134,7 +135,7 @@ class Git(Base):
 
         gitignore = os.path.join(ignore_file_dir, self.GITIGNORE)
 
-        if not gitignore.startswith(os.path.realpath(self.root_dir)):
+        if not path_isin(gitignore, os.path.realpath(self.root_dir)):
             raise FileNotInRepoError(path)
 
         return entry, gitignore

@@ -20,6 +20,7 @@ from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils import relpath
+from dvc.utils.fs import path_isin
 from dvc.utils.compat import FileNotFoundError
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import open as _open
@@ -166,7 +167,7 @@ class Repo(object):
             + updater.lock.files
         )
 
-        if self.cache.local.cache_dir.startswith(self.root_dir + os.sep):
+        if path_isin(self.cache.local.cache_dir, self.root_dir):
             flist += [self.cache.local.cache_dir]
 
         self.scm.ignore_list(flist)
@@ -193,7 +194,7 @@ class Repo(object):
             ret = []
             for node in nodes:
                 stage = attrs[node]
-                if stage.path.startswith(target + os.sep):
+                if path_isin(stage.path, target):
                     ret.append(stage)
             return ret
 
