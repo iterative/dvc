@@ -170,12 +170,7 @@ class OutputBase(object):
         return self.remote.exists(self.path_info)
 
     def changed_checksum(self):
-        return (
-            self.checksum
-            != self.remote.save_info(self.path_info)[
-                self.remote.PARAM_CHECKSUM
-            ]
-        )
+        return self.checksum != self.remote.get_checksum(self.path_info)
 
     def changed_cache(self):
         if not self.use_cache or not self.checksum:
