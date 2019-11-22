@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 import shortuuid
 
@@ -29,32 +30,41 @@ def get(url, path, out=None, rev=None):
     # reflink and/or hardlink. Not using tempfile.TemporaryDirectory
     # because it will create a symlink to tmpfs, which defeats the purpose
     # and won't work with reflink/hardlink.
-    dpath = os.path.dirname(os.path.abspath(out))
+    abspath = os.path.abspath(out)
+    dpath = os.path.dirname(abspath)
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            # Note: we need to replace state, because in case of getting DVC
-            # dependency on CIFS or NFS filesystems, sqlite-based state
-            # will be unable to obtain lock
-            repo.state = StateNoop()
+            tmp_repo_path = os.path.join(repo.root_dir, path)
+            if os.path.exists(tmp_repo_path):
+                if os.path.isdir(tmp_repo_path):
+                    shutil.copytree(tmp_repo_path, abspath)
+                else:
+                    shutil.copy2(tmp_repo_path, abspath)
+            else:
+                # Note: we need to replace state, because in case of getting
+                # DVC dependency on CIFS or NFS filesystems, sqlite-based state
+                # will be unable to obtain lock
+                repo.state = StateNoop()
 
-            # Try any links possible to avoid data duplication.
-            #
-            # Not using symlink, because we need to remove cache after we are
-            # done, and to make that work we would have to copy data over
-            # anyway before removing the cache, so we might just copy it
-            # right away.
-            #
-            # Also, we can't use theoretical "move" link type here, because
-            # the same cache file might be used a few times in a directory.
-            repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
+                # Try any links possible to avoid data duplication.
+                #
+                # Not using symlink, because we need to remove cache after we
+                # are done, and to make that work we would have to copy data
+                # over anyway before removing the cache, so we might just copy
+                # it right away.
+                #
+                # Also, we can't use theoretical "move" link type here, because
+                # the same cache file might be used a few times in a directory.
+                repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            o = repo.find_out_by_relpath(path)
-            with repo.state:
-                repo.cloud.pull(o.get_used_cache())
-            o.path_info = PathInfo(os.path.abspath(out))
-            with o.repo.state:
-                o.checkout()
+                o = repo.find_out_by_relpath(path)
+
+                with repo.state:
+                    repo.cloud.pull(o.get_used_cache())
+                o.path_info = PathInfo(os.path.abspath(out))
+                with o.repo.state:
+                    o.checkout()
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)

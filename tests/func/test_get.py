@@ -38,7 +38,29 @@ def test_get_repo_dir(erepo):
     trees_equal(src, dst)
 
 
-def test_cache_type_is_properly_overridden(erepo):
+def test_get_regular_file(repo_dir, erepo):
+    src = erepo.CODE
+    dst = erepo.CODE
+
+    Repo.get(erepo.root_dir, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(repo_dir.CODE, dst, shallow=False)
+
+
+def test_get_regular_dir(repo_dir, erepo):
+    src = erepo.CODE_DIR
+    dst = erepo.CODE_DIR
+
+    Repo.get(erepo.root_dir, src, dst)
+
+    assert os.path.exists(dst)
+    assert os.path.isdir(dst)
+    trees_equal(src, dst)
+
+
+def test_cache_type_is_properly_overridden(repo_dir, erepo):
     erepo.dvc.config.set(
         Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
     )

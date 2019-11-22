@@ -41,7 +41,8 @@ class TestDirFixture(object):
     # in tests, we replace foo with bar, so we need to make sure that when we
     # modify a file in our tests, its content length changes.
     BAR_CONTENTS = BAR + "r"
-    CODE = "code.py"
+    CODE_DIR = "code"
+    CODE = "code/code.py"
     CODE_CONTENTS = (
         "import sys\nimport shutil\n"
         "shutil.copyfile(sys.argv[1], sys.argv[2])"
@@ -90,6 +91,7 @@ class TestDirFixture(object):
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
+        os.mkdir(self.CODE_DIR)
         self.create(self.CODE, self.CODE_CONTENTS)
         os.mkdir(self.DATA_DIR)
         os.mkdir(self.DATA_SUB_DIR)
