@@ -1,24 +1,20 @@
 from __future__ import unicode_literals
 
+from dvc.utils.compat import FileNotFoundError, urlparse
 import io
 import logging
 import os
 import posixpath
 import re
-from contextlib import closing
-from contextlib import contextmanager
-from subprocess import PIPE
-from subprocess import Popen
+from collections import deque
+from contextlib import closing, contextmanager
+import subprocess
 
-from .base import RemoteBASE
-from .base import RemoteCmdError
+from .base import RemoteBASE, RemoteCmdError
 from .pool import get_connection
 from dvc.config import Config
 from dvc.scheme import Schemes
-from dvc.utils import fix_env
-from dvc.utils import tmp_fname
-from dvc.utils.compat import FileNotFoundError
-from dvc.utils.compat import urlparse
+from dvc.utils import fix_env, tmp_fname
 
 logger = logging.getLogger(__name__)
 
@@ -68,15 +64,15 @@ class RemoteHDFS(RemoteBASE):
         close_fds = os.name != "nt"
 
         executable = os.getenv("SHELL") if os.name != "nt" else None
-        p = Popen(
+        p = subprocess.Popen(
             cmd,
             shell=True,
             close_fds=close_fds,
             executable=executable,
             env=fix_env(os.environ),
-            stdin=PIPE,
-            stdout=PIPE,
-            stderr=PIPE,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
         out, err = p.communicate()
         if p.returncode != 0:
@@ -156,10 +152,9 @@ class RemoteHDFS(RemoteBASE):
 
     def list_cache_paths(self):
         if not self.exists(self.path_info):
-            return []
+            return
 
-        files = []
-        dirs = [self.path_info.path]
+        dirs = deque([self.path_info.path])
 
         with self.hdfs(self.path_info) as hdfs:
             while dirs:
@@ -167,6 +162,4 @@ class RemoteHDFS(RemoteBASE):
                     if entry["kind"] == "directory":
                         dirs.append(urlparse(entry["name"]).path)
                     elif entry["kind"] == "file":
-                        files.append(urlparse(entry["name"]).path)
-
-        return files
+                        yield urlparse(entry["name"]).path
