@@ -14,19 +14,20 @@ parts:
     build-packages:
     - git
     - libc-dev
-    - libkrb5-dev
+    - libkrb5-dev  # gssapi build
     stage-packages:
     - git
-    - libc-dev
     override-pull: |
         snapcraftctl pull
         echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
+        # install all optional extras
         sed -ri 's/(=install_requires)/\1+all_remotes+ssh_gssapi+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
 apps:
   dvc:
     command: bin/dvc
     environment:
       GIT_PYTHON_GIT_EXECUTABLE: dvc.git
+      CI: snap  # suppress update checks
   git:
     command: /usr/bin/git
