@@ -115,9 +115,10 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
             [
                 (
                     self._root_dir,
-                    ["data_dir"],
+                    ["lib", "data_dir"],
                     ["code.py", "bar", "тест", "foo"],
                 ),
+                (join(self._root_dir, "lib"), [], ["file.txt"]),
                 (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
@@ -151,9 +152,10 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
             [
                 (
                     self._root_dir,
-                    ["data_dir"],
+                    ["lib", "data_dir"],
                     ["bar", "тест", "code.py", "foo"],
                 ),
+                (join(self._root_dir, "lib"), [], ["file.txt"]),
                 (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
@@ -181,13 +183,14 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         self.assertWalkEqual(
             tree.walk("."),
             [
-                (self._root_dir, ["data_dir"], ["code.py"]),
+                (self._root_dir, ["data_dir", "lib"], ["code.py"]),
                 (join(self._root_dir, "data_dir"), ["data_sub_dir"], []),
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
                     [],
                     ["data_sub"],
                 ),
+                (join(self._root_dir, "lib"), [], ["file.txt"]),
             ],
         )
         self.assertWalkEqual(

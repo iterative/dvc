@@ -41,14 +41,19 @@ class TestDirFixture(object):
     # in tests, we replace foo with bar, so we need to make sure that when we
     # modify a file in our tests, its content length changes.
     BAR_CONTENTS = BAR + "r"
-    CODE_DIR = "code"
-    CODE = "code/code.py"
+    CODE = "code.py"
     CODE_CONTENTS = (
         "import sys\nimport shutil\n"
         "shutil.copyfile(sys.argv[1], sys.argv[2])"
     )
     UNICODE = "тест"
     UNICODE_CONTENTS = "проверка"
+    REGULAR_DIR = "lib"
+    REGULAR_FILE = os.path.join(REGULAR_DIR, "file.txt")
+    REGULAR_FILE_CONTENTS = """
+        A file used to test retrieval of regular files tracked by git that
+        are not stored in a dvc remote backend.
+    """
 
     def __init__(self):
         root_dir = self.mkdtemp()
@@ -91,13 +96,14 @@ class TestDirFixture(object):
         self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
-        os.mkdir(self.CODE_DIR)
         self.create(self.CODE, self.CODE_CONTENTS)
         os.mkdir(self.DATA_DIR)
         os.mkdir(self.DATA_SUB_DIR)
         self.create(self.DATA, self.DATA_CONTENTS)
         self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
         self.create(self.UNICODE, self.UNICODE_CONTENTS)
+        os.mkdir(self.REGULAR_DIR)
+        self.create(self.REGULAR_FILE, self.REGULAR_FILE_CONTENTS)
 
     def tearDown(self):
         self._popd()
@@ -139,6 +145,7 @@ class TestGitFixture(TestDirFixture):
                     raise
 
         self.git.index.add([self.CODE])
+        self.git.index.add([self.REGULAR_DIR])
         self.git.index.commit("add code")
 
     def tearDown(self):

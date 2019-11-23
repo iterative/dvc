@@ -738,9 +738,9 @@ class TestCmdReproChdirCwdBackwardCompatible(TestDvc):
         os.mkdir(dname)
         foo = os.path.join(dname, self.FOO)
         bar = os.path.join(dname, self.BAR)
-        code_dir = os.path.join(dname, self.CODE_DIR)
+        code = os.path.join(dname, self.CODE)
         shutil.copyfile(self.FOO, foo)
-        shutil.copytree(self.CODE_DIR, code_dir)
+        shutil.copyfile(self.CODE, code)
 
         ret = main(
             [
@@ -776,9 +776,9 @@ class TestCmdReproChdir(TestDvc):
         os.mkdir(dname)
         foo = os.path.join(dname, self.FOO)
         bar = os.path.join(dname, self.BAR)
-        code_dir = os.path.join(dname, self.CODE_DIR)
+        code = os.path.join(dname, self.CODE)
         shutil.copyfile(self.FOO, foo)
-        shutil.copytree(self.CODE_DIR, code_dir)
+        shutil.copyfile(self.CODE, code)
 
         ret = main(
             [

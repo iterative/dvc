@@ -39,19 +39,19 @@ def test_get_repo_dir(erepo):
 
 
 def test_get_regular_file(repo_dir, erepo):
-    src = erepo.CODE
-    dst = erepo.CODE
+    src = erepo.REGULAR_FILE
+    dst = erepo.REGULAR_FILE + "_imported"
 
     Repo.get(erepo.root_dir, src, dst)
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
-    assert filecmp.cmp(repo_dir.CODE, dst, shallow=False)
+    assert filecmp.cmp(src, dst, shallow=False)
 
 
 def test_get_regular_dir(repo_dir, erepo):
-    src = erepo.CODE_DIR
-    dst = erepo.CODE_DIR
+    src = erepo.REGULAR_DIR
+    dst = erepo.REGULAR_DIR + "_imported"
 
     Repo.get(erepo.root_dir, src, dst)
 
