@@ -118,13 +118,13 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
                     ["lib", "data_dir"],
                     ["code.py", "bar", "тест", "foo"],
                 ),
-                (join(self._root_dir, "lib"), [], ["file.txt"]),
                 (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
                     [],
                     ["data_sub"],
                 ),
+                (join(self._root_dir, "lib"), [], ["file.txt"]),
             ],
         )
 
@@ -155,13 +155,13 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
                     ["lib", "data_dir"],
                     ["bar", "тест", "code.py", "foo"],
                 ),
-                (join(self._root_dir, "lib"), [], ["file.txt"]),
                 (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
                 (
                     join(self._root_dir, "data_dir", "data_sub_dir"),
                     [],
                     ["data_sub"],
                 ),
+                (join(self._root_dir, "lib"), [], ["file.txt"]),
             ],
         )
         self.assertWalkEqual(

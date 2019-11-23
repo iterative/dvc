@@ -296,6 +296,11 @@ def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
     for root, dirs, files in os.walk(
         top, topdown=topdown, onerror=onerror, followlinks=followlinks
     ):
+        # Dirs are returned in arbitrary order on different platforms. Force a
+        # specific order so that we can make deterministic assumptions on the
+        # directory order.
+        # https://stackoverflow.com/a/54773660/2966951
+        dirs.sort()
 
         if dvcignore:
             dirs[:], files[:] = dvcignore(root, dirs, files)
