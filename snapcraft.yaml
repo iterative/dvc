@@ -14,6 +14,7 @@ parts:
     build-packages:
     - git
     - libc-dev
+    - libkrb5-dev
     stage-packages:
     - git
     - libc-dev
@@ -21,6 +22,7 @@ parts:
         snapcraftctl pull
         echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
+        sed -ri 's/(=install_requires)/\1+all_remotes+ssh_gssapi+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
 apps:
   dvc:
     command: bin/dvc
