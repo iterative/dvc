@@ -5,7 +5,7 @@ import posixpath
 import logging
 import threading
 
-from funcy import cached_property, retry, compose, decorator, wrap_with
+from funcy import retry, compose, decorator, wrap_with
 from funcy.py3 import cat
 
 from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
@@ -108,7 +108,11 @@ class RemoteGDrive(RemoteBASE):
         from dvc.progress import Tqdm
 
         gdrive_file = self.drive.CreateFile({"id": file_id})
-        with Tqdm(desc=progress_name, total=int(gdrive_file["fileSize"]), disable=no_progress_bar):
+        with Tqdm(
+            desc=progress_name,
+            total=int(gdrive_file["fileSize"]),
+            disable=no_progress_bar,
+        ):
             gdrive_file.GetContentFile(to_file)
 
     def gdrive_list_item(self, query):
@@ -132,20 +136,20 @@ class RemoteGDrive(RemoteBASE):
 
     @property
     def cached_dirs(self):
-        if not hasattr(self, '_cached_dirs'):
+        if not hasattr(self, "_cached_dirs"):
             self.drive
         return self._cached_dirs
 
     @property
     def cached_ids(self):
-        if not hasattr(self, '_cached_ids'):
+        if not hasattr(self, "_cached_ids"):
             self.drive
         return self._cached_ids
 
     @property
     @wrap_with(threading.RLock())
     def drive(self):
-        if not hasattr(self, '_gdrive'):
+        if not hasattr(self, "_gdrive"):
             from pydrive.auth import GoogleAuth
             from pydrive.drive import GoogleDrive
 
@@ -214,7 +218,9 @@ class RemoteGDrive(RemoteBASE):
         query += " and trashed=false and title='{}'".format(name)
 
         # Limit found remote items count to 1 in response
-        item_list = self.drive.ListFile({"q": query, "maxResults": 1}).GetList()
+        item_list = self.drive.ListFile(
+            {"q": query, "maxResults": 1}
+        ).GetList()
         return next(iter(item_list), None)
 
     def resolve_remote_item_from_path(self, parents_ids, path_parts, create):
@@ -240,7 +246,9 @@ class RemoteGDrive(RemoteBASE):
 
     def get_remote_id_from_cache(self, path_info):
         remote_ids = []
-        path_parts, parents_ids = self.subtract_root_path(path_info.path.split("/"))
+        path_parts, parents_ids = self.subtract_root_path(
+            path_info.path.split("/")
+        )
         if (
             hasattr(self, "_cached_dirs")
             and path_info != self.path_info
@@ -254,12 +262,16 @@ class RemoteGDrive(RemoteBASE):
         return remote_ids, parents_ids, path_parts
 
     def get_remote_id(self, path_info, create=False):
-        remote_ids, parents_ids, path_parts = self.get_remote_id_from_cache(path_info)
+        remote_ids, parents_ids, path_parts = self.get_remote_id_from_cache(
+            path_info
+        )
 
         if not path_parts and remote_ids:
             return remote_ids[0]
 
-        file1 = self.resolve_remote_item_from_path(parents_ids, path_parts, create)
+        file1 = self.resolve_remote_item_from_path(
+            parents_ids, path_parts, create
+        )
         return file1["id"] if file1 else ""
 
     def exists(self, path_info):
