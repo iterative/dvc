@@ -15,6 +15,6 @@ params = " ".join(sys.argv[1:])
 
 cmd = (
     "py.test -v -n=4 --timeout=600 --timeout_method=thread --log-level=debug"
-    " --cov=dvc {params} --durations=0".format(params=params)
+    " --cov=dvc {params} --durations=0 -p no:clarity".format(params=params)
 )
 check_call(cmd, shell=True)
