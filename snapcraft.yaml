@@ -23,9 +23,13 @@ parts:
         snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
         # install all optional extras
         sed -ri 's/(=install_requires)/\1+all_remotes+ssh_gssapi+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
+    override-build: |
+        snapcraftctl build
+        cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
 apps:
   dvc:
     command: bin/dvc
+    completer: completion.sh
     environment:
       GIT_PYTHON_GIT_EXECUTABLE: dvc.git
       CI: snap  # suppress update checks
