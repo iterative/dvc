@@ -130,7 +130,8 @@ class RemoteGDrive(RemoteBASE):
         for dir1 in self.gdrive_list_item(
             "'{}' in parents and trashed=false".format(self.root_id)
         ):
-            cached_dirs.setdefault(dir1["title"], []).append(dir1["id"])
+            remote_path = posixpath.join(self.path_info.path, dir1["title"])
+            cached_dirs.setdefault(remote_path, []).append(dir1["id"])
             cached_ids[dir1["id"]] = dir1["title"]
         return cached_dirs, cached_ids
 
@@ -223,8 +224,15 @@ class RemoteGDrive(RemoteBASE):
         ).GetList()
         return next(iter(item_list), None)
 
-    def resolve_remote_item_from_path(self, parents_ids, path_parts, create):
+    def resolve_remote_item_from_path(self, path_parts, create):
+        parents_ids = ["root"]
+        current_path = ""
         for path_part in path_parts:
+            current_path = posixpath.join(current_path, path_part)
+            remote_ids = self.get_remote_id_from_cache(current_path)
+            if remote_ids:
+                parents_ids = remote_ids
+                continue
             item = self.get_remote_item(path_part, parents_ids)
             if not item and create:
                 item = self.create_remote_dir(parents_ids[0], path_part)
@@ -233,44 +241,19 @@ class RemoteGDrive(RemoteBASE):
             parents_ids = [item["id"]]
         return item
 
-    def subtract_root_path(self, path_parts):
-        if not hasattr(self, "root_id"):
-            return path_parts, [self.path_info.bucket]
-
-        for part in self.path_info.path.split("/"):
-            if path_parts and path_parts[0] == part:
-                path_parts.pop(0)
-            else:
-                break
-        return path_parts, [self.root_id]
-
-    def get_remote_id_from_cache(self, path_info):
-        remote_ids = []
-        path_parts, parents_ids = self.subtract_root_path(
-            path_info.path.split("/")
-        )
-        if (
-            hasattr(self, "_cached_dirs")
-            and path_info != self.path_info
-            and path_parts
-            and (path_parts[0] in self.cached_dirs)
-        ):
-            parents_ids = self.cached_dirs[path_parts[0]]
-            remote_ids = self.cached_dirs[path_parts[0]]
-            path_parts.pop(0)
-
-        return remote_ids, parents_ids, path_parts
+    def get_remote_id_from_cache(self, remote_path):
+        if hasattr(self, "_cached_dirs"):
+            return self.cached_dirs.get(remote_path, [])
+        return []
 
     def get_remote_id(self, path_info, create=False):
-        remote_ids, parents_ids, path_parts = self.get_remote_id_from_cache(
-            path_info
-        )
+        remote_ids = self.get_remote_id_from_cache(path_info.path)
 
-        if not path_parts and remote_ids:
+        if remote_ids:
             return remote_ids[0]
 
         file1 = self.resolve_remote_item_from_path(
-            parents_ids, path_parts, create
+            path_info.path.split("/"), create
         )
         return file1["id"] if file1 else ""
 
