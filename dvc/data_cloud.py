@@ -1,4 +1,4 @@
-"""Manages dvc remotes that user can use with push/pull/status comamnds."""
+"""Manages dvc remotes that user can use with push/pull/status commands."""
 from __future__ import unicode_literals
 
 import logging
