@@ -33,6 +33,9 @@ class Tqdm(tqdm):
         "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}"
         " [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
     )
+    BYTES_DEFAULTS = dict(
+        unit="B", unit_scale=True, unit_divisor=1024, miniters=1
+    )
 
     def __init__(
         self,
@@ -60,10 +63,7 @@ class Tqdm(tqdm):
         kwargs = kwargs.copy()
         kwargs.setdefault("unit_scale", True)
         if bytes:
-            bytes_defaults = dict(
-                unit="B", unit_scale=True, unit_divisor=1024, miniters=1
-            )
-            kwargs = merge(bytes_defaults, kwargs)
+            kwargs = merge(self.BYTES_DEFAULTS, kwargs)
         if file is None:
             file = sys.stderr
         self.desc_persist = desc
@@ -114,6 +114,10 @@ class Tqdm(tqdm):
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)
+        # remove ETA (either zero or unknown)
+        self.bar_format = self.bar_format.replace("<??:??", "").replace(
+            "<{remaining}", ""
+        )
         super().close()
 
     @property
