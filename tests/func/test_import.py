@@ -148,7 +148,7 @@ def test_pull_non_workspace(git, dvc_repo, erepo):
     dvc_repo.scm.commit("imported branch")
     dvc_repo.scm.tag("ref-to-branch")
 
-    # Ovewrite via import
+    # Overwrite via import
     dvc_repo.imp(erepo.root_dir, src, dst, rev="master")
 
     os.remove(stage.outs[0].cache_path)

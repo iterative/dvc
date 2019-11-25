@@ -48,7 +48,7 @@ class TestInstall(object):
         dvc_repo.scm.commit("add")
 
         os.unlink(repo_dir.FOO)
-        dvc_repo.scm.checkout("new_branc", create_new=True)
+        dvc_repo.scm.checkout("new_branch", create_new=True)
 
         assert os.path.isfile(repo_dir.FOO)
 

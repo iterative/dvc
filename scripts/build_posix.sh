@@ -88,7 +88,7 @@ install_dependencies()
 
 	gem install --no-document fpm
 
-	print_info "Uprgading pip..."
+	print_info "Upgrading pip..."
 	pip install --upgrade pip
 
 	print_info "Installing requirements..."

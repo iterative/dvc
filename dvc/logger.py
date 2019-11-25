@@ -49,7 +49,7 @@ class ColorFormatter(logging.Formatter):
     __ https://pypi.python.org/pypi/colorama
 
     For records containing `exc_info`, it will use a custom `_walk_exc` to
-    retrieve the whole tracebak.
+    retrieve the whole traceback.
     """
 
     color_code = {
@@ -154,7 +154,7 @@ class LoggerHandler(logging.StreamHandler):
         raise LoggingException(record)
 
     def emit(self, record):
-        """Write to Tqdm's stream so as to not break progressbars"""
+        """Write to Tqdm's stream so as to not break progress-bars"""
         try:
             msg = self.format(record)
             Tqdm.write(

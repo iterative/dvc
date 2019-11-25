@@ -137,7 +137,7 @@ def _reproduce_stages(
 
     The derived evaluation of D would be: [A, B, C, D]
 
-    In case that `downstream` option is specifed, the desired effect
+    In case that `downstream` option is specified, the desired effect
     is to derive the evaluation starting from the given stage up to the
     ancestors. However, the `networkx.ancestors` returns a set, without
     any guarantee of any order, so we are going to reverse the graph and

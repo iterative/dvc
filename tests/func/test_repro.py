@@ -537,7 +537,7 @@ class TestReproLockedCallback(TestDvc):
         file1 = "file1"
         file1_stage = file1 + ".dvc"
         # NOTE: purposefully not specifying dependencies
-        # to create a callbacs stage.
+        # to create a callback stage.
         stage = self.dvc.run(
             fname=file1_stage,
             outs=[file1],

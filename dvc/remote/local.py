@@ -183,7 +183,7 @@ class RemoteLOCAL(RemoteBASE):
         # will get something like: `too many links error`
         #
         # This is because all those empty files will have the same checksum
-        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therfore, they will be
+        # (i.e. 68b329da9893e34099c7d8ad5cb9c940), therefore, they will be
         # linked to the same file in the cache.
         #
         # From https://en.wikipedia.org/wiki/Hard_link

@@ -33,7 +33,7 @@ version = dvc_version.__version__  # noqa: F821
 # by your package during runtime, you need to **pin** the build version.
 #
 # This custom class will replace the version.py module with a **static**
-# `__version__` that your package can read at runtime, assuring consistancy.
+# `__version__` that your package can read at runtime, assuring consistency.
 #
 # References:
 #   - https://docs.python.org/3.7/distutils/extending.html

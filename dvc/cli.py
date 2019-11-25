@@ -105,7 +105,7 @@ def get_parent_parser():
     """Create instances of a parser containing common arguments shared among
     all the commands.
 
-    When overwritting `-q` or `-v`, you need to instantiate a new object
+    When overwriting `-q` or `-v`, you need to instantiate a new object
     in order to prevent some weird behavior.
     """
     parent_parser = argparse.ArgumentParser(add_help=False)

@@ -23,7 +23,7 @@ def brancher(  # noqa: E302
         str: the display name for the currently selected tree, it could be:
             - a git revision identifier
             - empty string it there is no branches to iterate over
-            - "Working Tree" if there are uncommited changes in the SCM repo
+            - "Working Tree" if there are uncommitted changes in the SCM repo
     """
     if not any([branches, all_branches, tags, all_tags, all_commits]):
         yield ""
