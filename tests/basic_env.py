@@ -48,12 +48,6 @@ class TestDirFixture(object):
     )
     UNICODE = "тест"
     UNICODE_CONTENTS = "проверка"
-    REGULAR_DIR = "lib"
-    REGULAR_FILE = os.path.join(REGULAR_DIR, "file.txt")
-    REGULAR_FILE_CONTENTS = """
-        A file used to test retrieval of regular files tracked by git that
-        are not stored in a dvc remote backend.
-    """
 
     def __init__(self):
         root_dir = self.mkdtemp()
@@ -102,8 +96,6 @@ class TestDirFixture(object):
         self.create(self.DATA, self.DATA_CONTENTS)
         self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
         self.create(self.UNICODE, self.UNICODE_CONTENTS)
-        os.mkdir(self.REGULAR_DIR)
-        self.create(self.REGULAR_FILE, self.REGULAR_FILE_CONTENTS)
 
     def tearDown(self):
         self._popd()
@@ -145,7 +137,6 @@ class TestGitFixture(TestDirFixture):
                     raise
 
         self.git.index.add([self.CODE])
-        self.git.index.add([self.REGULAR_DIR])
         self.git.index.commit("add code")
 
     def tearDown(self):

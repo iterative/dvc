@@ -38,9 +38,10 @@ def test_get_repo_dir(erepo):
     trees_equal(src, dst)
 
 
-def test_get_regular_file(repo_dir, erepo):
-    src = erepo.REGULAR_FILE
-    dst = erepo.REGULAR_FILE + "_imported"
+def test_get_regular_file(erepo):
+    src = os.path.join(erepo.root_dir, "file")
+    dst = src + "_imported"
+    erepo.create(src, "hello")
 
     Repo.get(erepo.root_dir, src, dst)
 
@@ -50,9 +51,11 @@ def test_get_regular_file(repo_dir, erepo):
 
 
 def test_get_regular_dir(repo_dir, erepo):
-    src = erepo.REGULAR_DIR
-    dst = erepo.REGULAR_DIR + "_imported"
+    src = os.path.join(erepo.root_dir, "directory")
+    dst = src + "_imported"
 
+    os.mkdir(src)
+    erepo.create(os.path.join(src, "file"), "hello")
     Repo.get(erepo.root_dir, src, dst)
 
     assert os.path.exists(dst)
