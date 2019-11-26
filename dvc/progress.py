@@ -20,7 +20,7 @@ class Tqdm(tqdm):
     """
 
     BAR_FMT_DEFAULT = (
-        "{percentage:3.0f}%|{bar:10}|"
+        "{percentage:3.0f}%|{bar}|"
         "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}/{total_fmt}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
     )
@@ -84,6 +84,11 @@ class Tqdm(tqdm):
         if bar_format is None:
             if self.__len__():
                 self.bar_format = self.BAR_FMT_DEFAULT
+                # nested bars should have fixed bar widths to align nicely
+                if self.pos:
+                    self.bar_format = self.bar_format.replace(
+                        "{bar}", "{bar:10}"
+                    )
             else:
                 self.bar_format = self.BAR_FMT_NOTOTAL
         else:
