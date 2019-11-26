@@ -1,4 +1,5 @@
 import pytest
+import mock
 
 from dvc import analytics
 
@@ -22,3 +23,13 @@ def test_is_enabled(dvc_repo, config, result, monkeypatch):
     monkeypatch.delenv("DVC_TEST")
 
     assert result == analytics.is_enabled()
+
+
+def test_find_or_create_user_id(tmp_path):
+    with mock.patch(
+        "dvc.config.Config.get_global_config_dir", return_value=tmp_path
+    ):
+        created = analytics.find_or_create_user_id()
+        found = analytics.find_or_create_user_id()
+
+    assert  created == found

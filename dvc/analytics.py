@@ -119,7 +119,7 @@ def find_or_create_user_id():
     try:
         with Lock(lockfile):
             try:
-                user_id = json.load(fname.read_text())["user_id"]
+                user_id = json.loads(fname.read_text())["user_id"]
             except (FileNotFoundError, json.JSONDecodeError, AttributeError):
                 user_id = str(uuid.uuid4())
                 makedirs(fname.parent, exist_ok=True)
