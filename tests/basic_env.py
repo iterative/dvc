@@ -21,7 +21,7 @@ from dvc.utils.fs import remove
 logger = logging.getLogger("dvc")
 
 
-class TestDirFixtureBase(object):
+class EmptyDirFixture(object):
     def __init__(self):
         root_dir = self.mkdtemp()
         self._root_dir = os.path.realpath(root_dir)
@@ -69,7 +69,7 @@ class TestDirFixtureBase(object):
                 raise
 
 
-class TestDirFixture(TestDirFixtureBase):
+class TestDirFixture(EmptyDirFixture):
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
     DATA = os.path.join(DATA_DIR, "data")
