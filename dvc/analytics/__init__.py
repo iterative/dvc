@@ -1,11 +1,15 @@
 import json
 import logging
+import platform
 import requests
 import subprocess
+import sys
 import tempfile
 
+import distro
+
 from dvc import __version__
-from dvc.analytics import user_id, system_info
+from dvc.analytics import user_id
 from dvc.config import Config, to_bool
 from dvc.exceptions import NotDvcRepoError
 from dvc.repo import Repo
@@ -23,7 +27,7 @@ def collect_and_send_report(arguments=None, exit_code=None):
         "dvc_version": __version__,
         "is_binary": is_binary(),
         "scm_class": scm_in_use(),
-        "system_info": system_info.collect(),
+        "system_info": system_info(),
         "user_id": user_id.find_or_create(),
     }
 
@@ -62,3 +66,31 @@ def scm_in_use():
         return type(scm).__name__
     except NotDvcRepoError:
         pass
+
+
+def system_info():
+    system = platform.system()
+
+    if system == "Windows":
+        version = sys.getwindowsversion()
+
+        return {
+            "os": "windows",
+            "windows_version_build": version.build,
+            "windows_version_major": version.major,
+            "windows_version_minor": version.minor,
+            "windows_version_service_pack": version.service_pack,
+        }
+
+    if system == "Darwin":
+        return {"os": "mac", "mac_version": platform.mac_ver()[0]}
+
+    if system == "Linux":
+        return {
+            "os": "linux",
+            "linux_distro": distro.id(),
+            "linux_distro_like": distro.like(),
+            "linux_distro_version": distro.version(),
+        }
+
+    return {"os": system.lower()}
