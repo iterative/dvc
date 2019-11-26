@@ -37,15 +37,6 @@ def collect_and_send_report(arguments=None, exit_code=None):
         subprocess.Popen(["python", "-m", "dvc.analytics", fobj.name])
 
 
-def send(path):
-    url = "https://analytics.dvc.org"
-
-    with open(path) as fobj:
-        report = json.load(fobj)
-
-    requests.post(url, json=report, timeout=5)
-
-
 def is_enabled():
     if env2bool("DVC_TEST"):
         return False
@@ -59,6 +50,15 @@ def is_enabled():
     logger.debug("Analytics is {}enabled.".format("" if enabled else "dis"))
 
     return enabled
+
+
+def send(path):
+    url = "https://analytics.dvc.org"
+
+    with open(path) as fobj:
+        report = json.load(fobj)
+
+    requests.post(url, json=report, timeout=5)
 
 
 def scm_in_use():
