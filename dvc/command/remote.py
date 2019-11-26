@@ -50,7 +50,7 @@ class CmdRemoteDefault(CmdRemoteConfig):
     def run(self):
         if self.args.name is None and not self.args.unset:
             name = self.remote_config.get_default(level=self.args.level)
-            logger.info("{}".format(name))
+            print(name)
         else:
             self.remote_config.set_default(
                 self.args.name, unset=self.args.unset, level=self.args.level
