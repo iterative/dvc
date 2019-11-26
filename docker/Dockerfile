@@ -1,8 +1,5 @@
 FROM python:3.7
 
-# Use UTF-8 as the default locale
-ENV LANG=C.UTF-8
-
 # Better movement with [Ctrl + →] and [Ctrl + ←]
 ENV INPUTRC=/etc/inputrc
 
