@@ -39,7 +39,7 @@ def _spawn_windows(cmd, env):
 
 def _spawn_posix(cmd, env):
     # NOTE: using os._exit instead of sys.exit, because dvc built
-    # with PyInstaller has trouble with SystemExit exeption and throws
+    # with PyInstaller has trouble with SystemExit exception and throws
     # errors such as "[26338] Failed to execute script __main__"
     try:
         pid = os.fork()

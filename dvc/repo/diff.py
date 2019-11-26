@@ -220,7 +220,7 @@ def _diff_royal(self, target, diff_dct):
 
 @locked
 def diff(self, a_ref, target=None, b_ref=None):
-    """Gerenates diff message string output
+    """Generates diff message string output
 
     Args:
         target(str) - file/directory to check diff of

@@ -361,7 +361,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         self._execute(cmd, (self._to_sqlite(inode),))
         results = self._fetchall()
         if results:
-            # uniquness constrain on inode
+            # uniqueness constrain on inode
             assert len(results) == 1
             return results[0]
         return None

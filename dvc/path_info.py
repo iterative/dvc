@@ -43,7 +43,7 @@ class PathInfo(pathlib.PurePath):
     def as_posix(self):
         f = self._flavour
         # Unlike original implementation [1] that uses `str()` we actually need
-        # to use `fspath`, because we've overriden `__str__` method to return
+        # to use `fspath`, because we've overridden `__str__` method to return
         # relative paths, which will break original `as_posix`.
         #
         # [1] https://github.com/python/cpython/blob/v3.7.0/Lib/pathlib.py#L692

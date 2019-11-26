@@ -104,7 +104,7 @@ class Base(object):
         return False
 
     def is_dirty(self):
-        """Return whether the SCM contains uncommited changes."""
+        """Return whether the SCM contains uncommitted changes."""
         return False
 
     def active_branch(self):  # pylint: disable=no-self-use

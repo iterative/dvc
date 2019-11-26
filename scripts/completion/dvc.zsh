@@ -42,7 +42,7 @@ _dvc_commands() {
     "unlock:Unlock DVC-file."
     "unprotect:Unprotect data file/directory."
     "update:Update data artifacts imported from other DVC repositories."
-    "version:Show DVC version and system/environment informaion."
+    "version:Show DVC version and system/environment information."
   )
 
   _describe 'dvc commands' _commands

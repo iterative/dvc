@@ -59,7 +59,7 @@ class TestAdd(TestDvc):
         self.assertTrue(os.path.isfile(stage.path))
 
 
-class TestAddUnupportedFile(TestDvc):
+class TestAddUnSupportedFile(TestDvc):
     def test(self):
         with self.assertRaises(DvcException):
             self.dvc.add("unsupported://unsupported")

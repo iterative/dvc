@@ -93,7 +93,7 @@ class CmdVersion(CmdBaseNoRepo):
         for parent in itertools.chain([path], path.parents):
             if parent in partition:
                 return partition[parent]
-        return ("unkown", "none")
+        return ("unknown", "none")
 
     @staticmethod
     def get_linktype_support_info(repo):
