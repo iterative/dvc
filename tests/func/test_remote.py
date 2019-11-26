@@ -145,6 +145,13 @@ class TestRemoteDefault(TestDvc):
         self.assertEqual(default, None)
 
 
+def test_show_default(dvc_repo, capsys):
+    assert main(["remote", "default", "foo"]) == 0
+    assert main(["remote", "default"]) == 0
+    out, _ = capsys.readouterr()
+    assert out == "foo\n"
+
+
 class TestRemoteShouldHandleUppercaseRemoteName(TestDvc):
     upper_case_remote_name = "UPPERCASEREMOTE"
 

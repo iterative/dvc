@@ -151,3 +151,8 @@ class RemoteConfig(object):
         self.config.set(
             Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, name, level=level
         )
+
+    def get_default(self, level=None):
+        return self.config.get(
+            Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, level=level
+        )

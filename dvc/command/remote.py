@@ -48,9 +48,13 @@ class CmdRemoteModify(CmdRemoteConfig):
 
 class CmdRemoteDefault(CmdRemoteConfig):
     def run(self):
-        self.remote_config.set_default(
-            self.args.name, unset=self.args.unset, level=self.args.level
-        )
+        if self.args.name is None and not self.args.unset:
+            name = self.remote_config.get_default(level=self.args.level)
+            print(name)
+        else:
+            self.remote_config.set_default(
+                self.args.name, unset=self.args.unset, level=self.args.level
+            )
         return 0
 
 
