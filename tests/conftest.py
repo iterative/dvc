@@ -7,7 +7,7 @@ import pytest
 from git import Repo
 from git.exc import GitCommandNotFound
 
-from .basic_env import TestDirFixture
+from .basic_env import TestDirFixture, TestDirFixtureBase
 from .basic_env import TestDvcGitFixture
 from .basic_env import TestGitFixture
 from dvc.remote.config import RemoteConfig
@@ -190,3 +190,11 @@ def git_erepo():
     repo.setUp()
     yield repo
     repo.tearDown()
+
+
+@pytest.fixture
+def empty_dir():
+    directory = TestDirFixtureBase()
+    directory.setUp()
+    yield directory
+    directory.tearDown()
