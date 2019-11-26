@@ -5,16 +5,17 @@ import requests
 import subprocess
 import sys
 import tempfile
+import uuid
 
 import distro
 
 from dvc import __version__
-from dvc.analytics import user_id
 from dvc.config import Config, to_bool
 from dvc.exceptions import NotDvcRepoError
+from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
-from dvc.utils import env2bool, is_binary
+from dvc.utils import env2bool, is_binary, makedirs
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def collect_and_send_report(arguments=None, exit_code=None):
         "is_binary": is_binary(),
         "scm_class": scm_in_use(),
         "system_info": system_info(),
-        "user_id": user_id.find_or_create(),
+        "user_id": find_or_create_user_id(),
     }
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
@@ -94,3 +95,32 @@ def system_info():
         }
 
     return {"os": system.lower()}
+
+
+def find_or_create_user_id():
+    """
+    The user's ID is stored on a file under the global config directory.
+
+    The file should contain a JSON with a "user_id" key:
+
+        {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
+
+    IDs are generated randomly with UUID.
+    """
+    config_dir = Config.get_global_config_dir()
+    fname = config_dir / "user_id"
+    lockfile = fname.with_suffix(".lock")
+
+    try:
+        with Lock(lockfile):
+            try:
+                user_id = json.load(fname.read_text())["user_id"]
+            except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+                user_id = str(uuid.uuid4())
+                makedirs(fname.parent, exist_ok=True)
+                fname.write_text(json.dumps({"user_id": user_id}))
+
+            return user_id
+
+    except LockError:
+        logger.debug("Failed to acquire {lock}".format(lockfile))
