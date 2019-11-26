@@ -28,7 +28,7 @@ class CmdDaemonAnalytics(CmdDaemonBase):
         from dvc import analytics
 
         analytics.send(self.args.target)
-        os.path.remove(self.args.target)
+        os.remove(self.args.target)
 
         return 0
 
