@@ -47,6 +47,7 @@ class Tqdm(tqdm):
         bar_format=None,
         bytes=False,  # pylint: disable=W0622
         file=None,
+        total=None,
         **kwargs
     ):
         """
@@ -61,9 +62,10 @@ class Tqdm(tqdm):
         kwargs  : anything accepted by `tqdm.tqdm()`
         """
         kwargs = kwargs.copy()
-        kwargs.setdefault("unit_scale", True)
         if bytes:
             kwargs = merge(self.BYTES_DEFAULTS, kwargs)
+        else:
+            kwargs.setdefault("unit_scale", total > 999 if total else True)
         if file is None:
             file = sys.stderr
         self.desc_persist = desc
@@ -84,6 +86,7 @@ class Tqdm(tqdm):
             desc=desc,
             bar_format="!",
             lock_args=(False,),
+            total=total,
             **kwargs
         )
         if bar_format is None:
