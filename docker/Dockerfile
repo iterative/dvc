@@ -53,5 +53,3 @@ RUN echo "autoload -U compinit && compinit" >> $HOME/.zshrc \
       && echo "zstyle ':completion:*' verbose yes" >> $HOME/.zshrc
 
 CMD ["zsh"]
-
-# vim: ft=dockerfile
