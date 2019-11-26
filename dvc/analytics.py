@@ -2,7 +2,6 @@ import json
 import logging
 import platform
 import requests
-import subprocess
 import sys
 import tempfile
 import uuid
@@ -11,17 +10,23 @@ import distro
 
 from dvc import __version__
 from dvc.config import Config, to_bool
+from dvc.daemon import daemon
 from dvc.exceptions import NotDvcRepoError
 from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
 
-
 logger = logging.getLogger(__name__)
 
 
 def collect_and_send_report(arguments=None, exit_code=None):
+    """
+    Query the system to fill a report and send it on a detached process.
+
+    A temporary file is used as a mean of communication between the
+    current and detached process.
+    """
     report = {
         "cmd_class": arguments.func.__name__,
         "cmd_return_code": exit_code,
@@ -34,7 +39,7 @@ def collect_and_send_report(arguments=None, exit_code=None):
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
-        subprocess.Popen(["python", "-m", "dvc.analytics", fobj.name])
+        daemon(["analytics", fobj.name])
 
 
 def is_enabled():
