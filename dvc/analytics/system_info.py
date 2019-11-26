@@ -27,3 +27,5 @@ def collect():
             "linux_distro_like": distro.like(),
             "linux_distro_version": distro.version(),
         }
+
+    return {"os": system.lower()}
