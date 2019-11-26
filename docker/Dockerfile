@@ -16,7 +16,7 @@ RUN apt-get update -y && apt-get install -y \
       less \
       git
 
-# Install DVC with your specified files
+# Install DVC, supporting all remotes
 RUN pip install "dvc[all]"
 
 # Enable autocompletion scripts for DVC
