@@ -20,7 +20,7 @@ from dvc.utils import env2bool, is_binary, makedirs
 logger = logging.getLogger(__name__)
 
 
-def collect_and_send_report(arguments=None, exit_code=None):
+def collect_and_send_report(arguments=None, return_code=None):
     """
     Query the system to fill a report and send it on a detached process.
 
@@ -29,7 +29,7 @@ def collect_and_send_report(arguments=None, exit_code=None):
     """
     report = {
         "cmd_class": arguments.func.__name__,
-        "cmd_return_code": exit_code,
+        "cmd_return_code": return_code,
         "dvc_version": __version__,
         "is_binary": is_binary(),
         "scm_class": scm_in_use(),
