@@ -26,7 +26,7 @@ class Tqdm(tqdm):
     )
     # nested bars should have fixed bar widths to align nicely
     BAR_FMT_DEFAULT_NESTED = (
-        "{percentage:3.0f}% {desc:{ncols_desc}.{ncols_desc}}|{bar:10}|"
+        "{percentage:3.0f}%|{bar:10}|{desc:{ncols_desc}.{ncols_desc}}"
         "{n_fmt}/{total_fmt}"
         " [{elapsed}<{remaining}, {rate_fmt:>11}{postfix}]"
     )
