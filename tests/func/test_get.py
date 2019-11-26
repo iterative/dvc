@@ -8,6 +8,7 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
+from dvc.remote import RemoteConfig
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -87,3 +88,33 @@ def test_get_to_dir(dname, erepo):
 
     assert os.path.isdir(dname)
     assert filecmp.cmp(erepo.FOO, dst, shallow=False)
+
+
+@pytest.fixture
+def erepo_no_dvc_master(git_erepo):
+    dvc_branch = "dvc_test"
+    git_erepo.git.git.checkout("master", b=dvc_branch)
+    git_erepo.dvc_branch = dvc_branch
+
+    dvc_repo = Repo.init(git_erepo._root_dir)
+    stage, = dvc_repo.add([git_erepo.FOO])
+    dvc_repo.scm.add([".dvc", stage.relpath])
+
+    rconfig = RemoteConfig(dvc_repo.config)
+    rconfig.add("upstream", dvc_repo.cache.local.cache_dir, default=True)
+    dvc_repo.scm.add([dvc_repo.config.config_file])
+
+    dvc_repo.scm.commit("dvc branch initial")
+
+    git_erepo.git.git.checkout("master")
+    os.chdir(git_erepo._saved_dir)
+    yield git_erepo
+
+
+def test_get_from_non_dvc_master(empty_dir, erepo_no_dvc_master):
+    Repo.get(
+        erepo_no_dvc_master._root_dir,
+        "foo",
+        out="foo",
+        rev=erepo_no_dvc_master.dvc_branch,
+    )
