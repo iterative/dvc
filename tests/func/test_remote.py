@@ -145,7 +145,7 @@ class TestRemoteDefault(TestDvc):
         self.assertEqual(default, None)
 
 
-def test_show_default(caplog):
+def test_show_default(dvc_repo, caplog):
     assert main(["remote", "default", "foo"]) == 0
     assert main(["remote", "default"]) == 0
     assert "foo" == caplog.record_tuples[0][2]
