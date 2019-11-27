@@ -117,15 +117,10 @@ class Tqdm(tqdm):
     def close(self):
         if self.desc_persist is not None:
             self.set_description_str(self.desc_persist, refresh=False)
-        for fmt in [
-            "<??:??",  # unknown ETA
-            "<{remaining}",  # 00:00 ETA
-        ]:
-            self.bar_format = self.bar_format.replace(fmt, "")
-        for fmt in [
-            "|{bar:10}|",  # completed progressbar
-        ]:
-            self.bar_format = self.bar_format.replace(fmt, " ")
+        # unknown/zero ETA
+        self.bar_format = self.bar_format.replace("<{remaining}", "")
+        # remove completed bar
+        self.bar_format = self.bar_format.replace("|{bar:10}|", " ")
         super().close()
 
     @property
