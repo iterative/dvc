@@ -137,12 +137,14 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix):
-        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
+    def _list_paths(self, bucket, prefix, max_items=None):
+        for blob in self.gs.bucket(bucket).list_blobs(
+            prefix=prefix, max_results=max_items
+        ):
             yield blob.name
 
     def list_cache_paths(self):
-        return self._list_paths(self.path_info.bucket, self.path_info.path)
+        return self.walk_files(self.path_info.bucket, self.path_info.path)
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info.bucket, path_info.path):
@@ -150,12 +152,17 @@ class RemoteGS(RemoteBASE):
 
     def isdir(self, path_info):
         dir_path = path_info / ""
-        file = next(self._list_paths(path_info.bucket, dir_path.path), "")
-        return file.startswith(dir_path.path)
+        return bool(
+            list(
+                self._list_paths(path_info.bucket, dir_path.path, max_items=1)
+            )
+        )
 
     def exists(self, path_info):
         dir_path = path_info / ""
-        file = next(self._list_paths(path_info.bucket, path_info.path), "")
+        file = next(
+            self._list_paths(path_info.bucket, path_info.path, max_items=1), ""
+        )
         return path_info.path == file or file.startswith(dir_path.path)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
