@@ -50,7 +50,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             repo.check_modified_graph(stages)
 
-            for stage in stages:
+            for stage in Tqdm(stages, desc="Processing", unit="file"):
                 stage.save()
 
                 if not no_commit:
@@ -88,7 +88,10 @@ def _create_stages(repo, targets, fname, pbar=None):
     stages = []
 
     for out in Tqdm(
-        targets, desc="Creating stages", disable=len(targets) < LARGE_DIR_SIZE
+        targets,
+        desc="Creating stages",
+        disable=len(targets) < LARGE_DIR_SIZE,
+        unit="file",
     ):
         stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
