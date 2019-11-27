@@ -5,6 +5,7 @@ import requests
 import sys
 import tempfile
 import uuid
+import errno
 
 import distro
 
@@ -120,7 +121,9 @@ def find_or_create_user_id():
         with Lock(lockfile):
             try:
                 user_id = json.loads(fname.read_text())["user_id"]
-            except (FileNotFoundError, json.JSONDecodeError, AttributeError):
+            except (IOError, json.JSONDecodeError, AttributeError) as exc:
+                if exc.errno != errno.ENOENT:
+                    raise
                 user_id = str(uuid.uuid4())
                 makedirs(fname.parent, exist_ok=True)
                 fname.write_text(json.dumps({"user_id": user_id}))
