@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 import json
+import tempfile
 
 from dvc import analytics
 from dvc.cli import parse_args
