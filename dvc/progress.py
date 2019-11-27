@@ -31,7 +31,7 @@ class Tqdm(tqdm):
     )
     BAR_FMT_NOTOTAL = (
         "{desc:{ncols_desc}.{ncols_desc}}{n_fmt}"
-        " [{elapsed}<??:??, {rate_fmt:>11}{postfix}]"
+        " [{elapsed}, {rate_fmt:>11}{postfix}]"
     )
     BYTES_DEFAULTS = dict(
         unit="B", unit_scale=True, unit_divisor=1024, miniters=1
