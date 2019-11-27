@@ -72,9 +72,9 @@ def _find_all_targets(repo, target, recursive):
             fname
             for fname in Tqdm(
                 repo.tree.walk_files(target),
-                desc="Finding files",
+                desc="Recursing " + target,
                 bar_format=Tqdm.BAR_FMT_NOTOTAL,
-                leave=False,
+                unit="file",
             )
             if not repo.is_dvc_internal(fname)
             if not Stage.is_stage_file(fname)
@@ -87,7 +87,9 @@ def _find_all_targets(repo, target, recursive):
 def _create_stages(repo, targets, fname, pbar=None):
     stages = []
 
-    for out in targets:
+    for out in Tqdm(
+        targets, desc="Creating stages", disable=len(targets) < LARGE_DIR_SIZE
+    ):
         stage = Stage.create(repo, outs=[out], add=True, fname=fname)
 
         if not stage:
