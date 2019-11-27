@@ -5,7 +5,15 @@ import mock
 from dvc import analytics
 
 
-def test_collect():
+@pytest.fixture
+def tmp_global_config(tmp_path):
+    with mock.patch(
+        "dvc.config.Config.get_global_config_dir", return_value=tmp_path
+    ):
+        yield
+
+
+def test_collect(tmp_global_config):
     report = analytics.collect(return_code=0)
 
     assert report["cmd_return_code"] == 0
@@ -49,11 +57,8 @@ def test_is_enabled(dvc_repo, config, result, monkeypatch):
     assert result == analytics.is_enabled()
 
 
-def test_find_or_create_user_id(tmp_path):
-    with mock.patch(
-        "dvc.config.Config.get_global_config_dir", return_value=tmp_path
-    ):
-        created = analytics.find_or_create_user_id()
-        found = analytics.find_or_create_user_id()
+def test_find_or_create_user_id(tmp_global_config):
+    created = analytics.find_or_create_user_id()
+    found = analytics.find_or_create_user_id()
 
     assert created == found
