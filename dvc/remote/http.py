@@ -41,7 +41,7 @@ class RemoteHTTP(RemoteBASE):
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
         with Tqdm(
-            total=None if no_progress_bar else self._content_length(from_info),
+            total=None if no_progress_bar else self._content_length(response),
             leave=False,
             bytes=True,
             desc=from_info.url if name is None else name,
@@ -55,13 +55,8 @@ class RemoteHTTP(RemoteBASE):
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
 
-    def _content_length(self, url_or_request):
-        headers = getattr(
-            url_or_request,
-            "headers",
-            self._request("HEAD", url_or_request).headers,
-        )
-        res = headers.get("Content-Length")
+    def _content_length(self, response):
+        res = response.headers.get("Content-Length")
         return int(res) if res else None
 
     def get_file_checksum(self, path_info):
