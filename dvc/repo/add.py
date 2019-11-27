@@ -50,8 +50,12 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             repo.check_modified_graph(stages)
 
-            for stage in Tqdm(stages, desc="Processing", unit="file"):
-                stage.save()
+            for stage in Tqdm(
+                stages,
+                desc="Processing",
+                unit="file",
+                disable=len(stages) == 1,
+            ):
 
                 if not no_commit:
                     stage.commit()
