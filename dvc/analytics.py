@@ -18,18 +18,16 @@ from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
 
+
 logger = logging.getLogger(__name__)
 
 
-def collect_and_send_report(arguments=None, return_code=None):
+def collect_and_send_report(args=None, return_code=None):
     """
     Query the system to fill a report and send it on a detached process.
-
-    A temporary file is used as a mean of communication between the
-    current and detached process.
     """
     report = {
-        "cmd_class": arguments.func.__name__,
+        "cmd_class": args.func.__name__ if hasattr(args, "func") else None,
         "cmd_return_code": return_code,
         "dvc_version": __version__,
         "is_binary": is_binary(),
@@ -38,6 +36,8 @@ def collect_and_send_report(arguments=None, return_code=None):
         "user_id": find_or_create_user_id(),
     }
 
+    # A temporary file is used as a mean of communication between the
+    # current and detached process.
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
         daemon(["analytics", fobj.name])
