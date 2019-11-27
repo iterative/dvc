@@ -24,13 +24,9 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
     stages_list = []
     num_targets = len(targets)
-    with Tqdm(
-        total=num_targets,
-        desc="Add",
-        unit="file",
-        leave=True,
-        disable=True if num_targets < 2 else None,
-    ) as pbar:
+    with Tqdm(total=num_targets, desc="Add", unit="file", leave=True) as pbar:
+        if num_targets == 1:
+            pbar.bar_format = "Adding..."
         for target in targets:
             sub_targets = _find_all_targets(repo, target, recursive)
             pbar.total += len(sub_targets) - 1
@@ -62,8 +58,8 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             stages_list += stages
 
-        if pbar.disable:
-            pbar.write("100% Add")
+        if num_targets == 1:
+            pbar.bar_format = pbar.BAR_FMT_DEFAULT
 
     return stages_list
 
