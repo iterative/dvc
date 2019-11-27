@@ -70,7 +70,12 @@ def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
             fname
-            for fname in repo.tree.walk_files(target)
+            for fname in Tqdm(
+                repo.tree.walk_files(target),
+                desc="Finding files",
+                bar_format=Tqdm.BAR_FMT_NOTOTAL,
+                leave=False,
+            )
             if not repo.is_dvc_internal(fname)
             if not Stage.is_stage_file(fname)
             if not repo.scm.belongs_to_scm(fname)
