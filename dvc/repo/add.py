@@ -60,7 +60,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
             stages_list += stages
 
-        if num_targets == 1:
+        if num_targets == 1:  # restore bar format for stats
             pbar.bar_format = pbar.BAR_FMT_DEFAULT
 
     return stages_list
