@@ -26,7 +26,9 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
     num_targets = len(targets)
     with Tqdm(total=num_targets, desc="Add", unit="file", leave=True) as pbar:
         if num_targets == 1:
+            # clear unneeded top-level progress bar for single target
             pbar.bar_format = "Adding..."
+            pbar.refresh()
         for target in targets:
             sub_targets = _find_all_targets(repo, target, recursive)
             pbar.total += len(sub_targets) - 1
