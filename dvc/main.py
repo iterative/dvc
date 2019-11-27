@@ -2,10 +2,12 @@
 from __future__ import unicode_literals
 
 import logging
+import json
 
 from dvc import analytics
 from dvc.cli import parse_args
 from dvc.config import ConfigError
+from dvc.daemon import daemon
 from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
@@ -82,6 +84,12 @@ def main(argv=None):
         logger.info(FOOTER)
 
     if analytics.is_enabled():
-        analytics.collect_and_send_report(args, ret)
+        report = analytics.collect(args, ret)
+
+        # Use a temporary file to pass the report between the current and
+        # detached process.
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
+            json.dump(report, fobj)
+            daemon(["analytics", fobj.name])
 
     return ret

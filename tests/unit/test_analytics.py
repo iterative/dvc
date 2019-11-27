@@ -1,7 +1,31 @@
+import json
 import pytest
 import mock
 
 from dvc import analytics
+
+
+def test_collect():
+    report = analytics.collect(return_code=0)
+
+    assert report["cmd_class"] == None
+    assert report["cmd_return_code"] == 0
+    assert report["scm_class"] in ["Git", None]
+    assert type(report["is_binary"]) is bool
+    assert type(report["system_info"]) is dict
+    assert type(report["dvc_version"]) is str
+    assert type(report["user_id"]) is str
+
+
+@mock.patch("requests.post")
+def test_send(mock_post, tmp_path):
+    url = "https://analytics.dvc.org"
+    report = {"name": "dummy report"}
+    fname = tmp_path / "report"
+
+    fname.write_text(json.dumps(report))
+    analytics.send(fname)
+    mock_post.assert_called_with(url, json=report, timeout=5)
 
 
 @pytest.mark.parametrize(
