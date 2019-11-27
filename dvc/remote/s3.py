@@ -53,6 +53,8 @@ class RemoteS3(RemoteBASE):
         if self.acl:
             self.extra_args["ACL"] = self.acl
 
+        self._append_aws_grants_to_extra_args(config)
+
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
@@ -302,3 +304,56 @@ class RemoteS3(RemoteBASE):
                 continue
 
             yield path_info.replace(path=fname)
+
+    def _append_aws_grants_to_extra_args(self, config):
+        # Keys for extra_args can be one of the following list:
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
+        """
+          ALLOWED_UPLOAD_ARGS = [
+            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
+            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
+            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
+            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
+            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
+            'SSEKMSKeyId', 'WebsiteRedirectLocation'
+          ]
+        """
+        overwriting_acl_grantees = False
+
+        self.grant_full_control = config.get(
+            Config.SECTION_AWS_GRANT_FULL_CONTROL, ""
+        )
+        if self.grant_full_control:
+            self.extra_args["GrantFullControl"] = self.grant_full_control
+            overwriting_acl_grantees = True
+
+        self.grant_read = config.get(Config.SECTION_AWS_GRANT_READ, "")
+        if self.grant_read:
+            self.extra_args["GrantRead"] = self.grant_read
+            overwriting_acl_grantees = True
+
+        self.grant_read_acp = config.get(Config.SECTION_AWS_GRANT_READ_ACP, "")
+        if self.grant_read_acp:
+            self.extra_args["GrantReadACP"] = self.grant_read_acp
+            overwriting_acl_grantees = True
+
+        self.grant_write_acp = config.get(
+            Config.SECTION_AWS_GRANT_WRITE_ACP, ""
+        )
+        if self.grant_write_acp:
+            self.extra_args["GrantWriteACP"] = self.grant_write_acp
+            overwriting_acl_grantees = True
+
+        if overwriting_acl_grantees:
+            overwriting_fields = [
+                Config.SECTION_AWS_GRANT_FULL_CONTROL,
+                Config.SECTION_AWS_GRANT_READ,
+                Config.SECTION_AWS_GRANT_READ_ACP,
+                Config.SECTION_AWS_GRANT_WRITE_ACP,
+            ]
+            warning_message = [
+                f"Using one of the [{', '.join(overwriting_fields)}] will",
+                "overwrite default ACL Grantees list. Default ACL Grantees",
+                "list include Owner with FULL_CONTROL permissions.",
+            ]
+            logger.warning(" ".join(warning_message))
