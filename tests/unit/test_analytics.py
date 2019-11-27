@@ -32,4 +32,4 @@ def test_find_or_create_user_id(tmp_path):
         created = analytics.find_or_create_user_id()
         found = analytics.find_or_create_user_id()
 
-    assert  created == found
+    assert created == found
