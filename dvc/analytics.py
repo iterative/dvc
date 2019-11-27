@@ -1,10 +1,10 @@
+import errno
 import json
 import logging
 import platform
 import requests
 import sys
 import uuid
-import errno
 
 import distro
 

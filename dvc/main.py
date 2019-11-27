@@ -1,8 +1,8 @@
 """Main entry point for dvc CLI."""
 from __future__ import unicode_literals
 
-import logging
 import json
+import logging
 import tempfile
 
 from dvc import analytics
