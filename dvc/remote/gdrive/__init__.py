@@ -54,7 +54,6 @@ gdrive_retry = compose(
 class RemoteGDrive(RemoteBASE):
     scheme = Schemes.GDRIVE
     path_cls = CloudURLInfo
-    REGEX = r"^gdrive://.*$"
     REQUIRES = {"pydrive": "pydrive"}
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
     DEFAULT_USER_CREDENTIALS_FILE = ".dvc/tmp/gdrive-user-credentials.json"
@@ -67,13 +66,13 @@ class RemoteGDrive(RemoteBASE):
         self.init_drive()
 
     def init_drive(self):
-        self.gdrive_client_id = self.config.get(
+        self.client_id = self.config.get(
             Config.SECTION_GDRIVE_CLIENT_ID, None
         )
-        self.gdrive_client_secret = self.config.get(
+        self.client_secret = self.config.get(
             Config.SECTION_GDRIVE_CLIENT_SECRET, None
         )
-        if not self.gdrive_client_id or not self.gdrive_client_secret:
+        if not self.client_id or not self.client_secret:
             raise DvcException(
                 "Please specify Google Drive's client id and "
                 "secret in DVC's config. Learn more at "
@@ -88,6 +87,7 @@ class RemoteGDrive(RemoteBASE):
             )
         )
 
+    @gdrive_retry
     def gdrive_upload_file(
         self, args, no_progress_bar=True, from_file="", progress_name=""
     ):
@@ -101,10 +101,13 @@ class RemoteGDrive(RemoteBASE):
         with open(from_file, "rb") as opened_file:
             if not no_progress_bar:
                 opened_file = TrackFileReadProgress(progress_name, opened_file)
+            # PyDrive doesn't like content property setting for empty files
+            # https://github.com/gsuitedevs/PyDrive/issues/121
             if os.stat(from_file).st_size:
                 item.content = opened_file
             item.Upload()
 
+    @gdrive_retry
     def gdrive_download_file(
         self, file_id, to_file, progress_name, no_progress_bar
     ):
@@ -167,8 +170,8 @@ class RemoteGDrive(RemoteBASE):
 
             GoogleAuth.DEFAULT_SETTINGS["client_config_backend"] = "settings"
             GoogleAuth.DEFAULT_SETTINGS["client_config"] = {
-                "client_id": self.gdrive_client_id,
-                "client_secret": self.gdrive_client_secret,
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
                 "revoke_uri": "https://oauth2.googleapis.com/revoke",
@@ -270,22 +273,18 @@ class RemoteGDrive(RemoteBASE):
         else:
             parent_id = to_info.bucket
 
-        gdrive_retry(
-            lambda: self.gdrive_upload_file(
+        self.gdrive_upload_file(
                 {"title": to_info.name, "parent_id": parent_id},
                 no_progress_bar,
                 from_file,
                 name,
             )
-        )()
 
     def _download(self, from_info, to_file, name, no_progress_bar):
         file_id = self.get_remote_id(from_info)
-        gdrive_retry(
-            lambda: self.gdrive_download_file(
+        self.gdrive_download_file(
                 file_id, to_file, name, no_progress_bar
             )
-        )()
 
     def list_cache_paths(self):
         file_id = self.get_remote_id(self.path_info)
