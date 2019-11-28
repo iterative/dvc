@@ -3,8 +3,9 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import threading
 
-from funcy import cached_property
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -56,6 +57,7 @@ class RemoteS3(RemoteBASE):
         if shared_creds:
             os.environ.setdefault("AWS_SHARED_CREDENTIALS_FILE", shared_creds)
 
+    @wrap_prop(threading.Lock())
     @cached_property
     def s3(self):
         import boto3

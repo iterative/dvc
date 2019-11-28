@@ -3,6 +3,9 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import threading
+
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.path_info import CloudURLInfo
@@ -61,30 +64,29 @@ class RemoteOSS(RemoteBASE):
             or "defaultSecret"
         )
 
-        self._bucket = None
-
-    @property
+    @wrap_prop(threading.Lock())
+    @cached_property
     def oss_service(self):
         import oss2
 
-        if self._bucket is None:
-            logger.debug("URL {}".format(self.path_info))
-            logger.debug("key id {}".format(self.key_id))
-            logger.debug("key secret {}".format(self.key_secret))
-            auth = oss2.Auth(self.key_id, self.key_secret)
-            self._bucket = oss2.Bucket(
-                auth, self.endpoint, self.path_info.bucket
+        logger.debug("URL {}".format(self.path_info))
+        logger.debug("key id {}".format(self.key_id))
+        logger.debug("key secret {}".format(self.key_secret))
+
+        auth = oss2.Auth(self.key_id, self.key_secret)
+        bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)
+
+        # Ensure bucket exists
+        try:
+            bucket.get_bucket_info()
+        except oss2.exceptions.NoSuchBucket:
+            bucket.create_bucket(
+                oss2.BUCKET_ACL_PUBLIC_READ,
+                oss2.models.BucketCreateConfig(
+                    oss2.BUCKET_STORAGE_CLASS_STANDARD
+                ),
             )
-            try:  # verify that bucket exists
-                self._bucket.get_bucket_info()
-            except oss2.exceptions.NoSuchBucket:
-                self._bucket.create_bucket(
-                    oss2.BUCKET_ACL_PUBLIC_READ,
-                    oss2.models.BucketCreateConfig(
-                        oss2.BUCKET_STORAGE_CLASS_STANDARD
-                    ),
-                )
-        return self._bucket
+        return bucket
 
     def remove(self, path_info):
         if path_info.scheme != self.scheme:
