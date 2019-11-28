@@ -143,7 +143,8 @@ class RemoteGS(RemoteBASE):
             yield blob.name
 
     def list_cache_paths(self):
-        return self.walk_files(self.path_info)
+        for cache in self.walk_files(self.path_info):
+            yield cache.path
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info.bucket, path_info.path):
