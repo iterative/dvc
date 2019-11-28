@@ -23,7 +23,16 @@ if is_py2:
     fs_encoding = "utf-8"
 
 
-class PathInfo(pathlib.PurePath):
+class _BasePath(object):
+    def overlaps(self, other):
+        if isinstance(other, basestring):
+            other = self.__class__(other)
+        elif self.__class__ != other.__class__:
+            return False
+        return self == other or self.isin(other) or other.isin(self)
+
+
+class PathInfo(pathlib.PurePath, _BasePath):
     # Use __slots__ in PathInfo objects following PurePath implementation.
     # This makes objects smaller and speeds up attribute access.
     # We don't add any fields so it's empty.
@@ -138,7 +147,7 @@ class _URLPathParents(object):
         return "<{}.parents>".format(self.src)
 
 
-class URLInfo(object):
+class URLInfo(_BasePath):
     DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "hdfs": 0}
 
     def __init__(self, url):

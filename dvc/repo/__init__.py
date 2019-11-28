@@ -76,6 +76,7 @@ class Repo(object):
         from dvc.repo.metrics import Metrics
         from dvc.scm.tree import WorkingTree
         from dvc.repo.tag import Tag
+        from dvc.utils import makedirs
 
         root_dir = self.find_root(root_dir)
 
@@ -88,6 +89,9 @@ class Repo(object):
 
         self.tree = WorkingTree(self.root_dir)
 
+        self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
+        makedirs(self.tmp_dir, exist_ok=True)
+
         hardlink_lock = self.config.config["core"].get("hardlink_lock", False)
         self.lock = make_lock(
             os.path.join(self.dvc_dir, "lock"),
@@ -95,6 +99,7 @@ class Repo(object):
             hardlink_lock=hardlink_lock,
             friendly=True,
         )
+
         # NOTE: storing state and link_state in the repository itself to avoid
         # any possible state corruption in 'shared cache dir' scenario.
         self.state = State(self, self.config.config)
@@ -165,9 +170,8 @@ class Repo(object):
 
         flist = (
             [self.config.config_local_file, updater.updater_file]
+            + [self.lock.lockfile, updater.lock.lockfile, self.tmp_dir]
             + self.state.files
-            + self.lock.files
-            + updater.lock.files
         )
 
         if path_isin(self.cache.local.cache_dir, self.root_dir):
@@ -352,11 +356,7 @@ class Repo(object):
                     continue
 
                 for out in outs:
-                    if (
-                        out == dep.path_info
-                        or dep.path_info.isin(out)
-                        or out.isin(dep.path_info)
-                    ):
+                    if out.overlaps(dep.path_info):
                         dep_stage = outs[out].stage
                         dep_node = relpath(dep_stage.path, self.root_dir)
                         G.add_node(dep_node, stage=dep_stage)
