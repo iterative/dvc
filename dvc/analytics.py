@@ -45,7 +45,7 @@ def is_enabled():
         .get(Config.SECTION_CORE_ANALYTICS, "true")
     )
 
-    logger.debug("Analytics is {}enabled.".format("" if enabled else "dis"))
+    logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
 
     return enabled
 
