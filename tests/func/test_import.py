@@ -15,7 +15,7 @@ from dvc.utils import makedirs
 from tests.utils import trees_equal
 
 
-def test_import(repo_dir, git, dvc_repo, erepo):
+def test_import(git, dvc_repo, erepo):
     src = erepo.FOO
     dst = erepo.FOO + "_imported"
 
@@ -23,11 +23,11 @@ def test_import(repo_dir, git, dvc_repo, erepo):
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
     assert git.git.check_ignore(dst)
 
 
-def test_import_dir(repo_dir, git, dvc_repo, erepo):
+def test_import_dir(git, dvc_repo, erepo):
     src = erepo.DATA_DIR
     dst = erepo.DATA_DIR + "_imported"
 
@@ -39,7 +39,7 @@ def test_import_dir(repo_dir, git, dvc_repo, erepo):
     assert git.git.check_ignore(dst)
 
 
-def test_import_rev(repo_dir, git, dvc_repo, erepo):
+def test_import_rev(git, dvc_repo, erepo):
     src = "version"
     dst = src
 
@@ -70,7 +70,7 @@ def test_pull_imported_stage(dvc_repo, erepo):
     assert os.path.isfile(dst_cache)
 
 
-def test_cache_type_is_properly_overridden(repo_dir, git, dvc_repo, erepo):
+def test_cache_type_is_properly_overridden(git, dvc_repo, erepo):
     erepo.dvc.config.set(
         Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
     )
@@ -85,7 +85,7 @@ def test_cache_type_is_properly_overridden(repo_dir, git, dvc_repo, erepo):
     assert not System.is_symlink(dst)
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
     assert git.git.check_ignore(dst)
 
 
@@ -125,7 +125,7 @@ def test_download_error_pulling_imported_stage(dvc_repo, erepo):
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_import_to_dir(dname, repo_dir, dvc_repo, erepo):
+def test_import_to_dir(dname, dvc_repo, erepo):
     src = erepo.FOO
 
     makedirs(dname, exist_ok=True)
@@ -136,7 +136,7 @@ def test_import_to_dir(dname, repo_dir, dvc_repo, erepo):
 
     assert stage.outs[0].fspath == os.path.abspath(dst)
     assert os.path.isdir(dname)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
 
 
 def test_pull_non_workspace(git, dvc_repo, erepo):

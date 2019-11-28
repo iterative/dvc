@@ -14,7 +14,7 @@ from dvc.utils import makedirs
 from tests.utils import trees_equal
 
 
-def test_get_repo_file(repo_dir, erepo):
+def test_get_repo_file(erepo):
     src = erepo.FOO
     dst = erepo.FOO + "_imported"
 
@@ -22,10 +22,10 @@ def test_get_repo_file(repo_dir, erepo):
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
 
 
-def test_get_repo_dir(repo_dir, erepo):
+def test_get_repo_dir(erepo):
     src = erepo.DATA_DIR
     dst = erepo.DATA_DIR + "_imported"
 
@@ -36,7 +36,7 @@ def test_get_repo_dir(repo_dir, erepo):
     trees_equal(src, dst)
 
 
-def test_cache_type_is_properly_overridden(repo_dir, erepo):
+def test_cache_type_is_properly_overridden(erepo):
     erepo.dvc.config.set(
         Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
     )
@@ -53,7 +53,7 @@ def test_cache_type_is_properly_overridden(repo_dir, erepo):
     assert os.path.isfile(dst)
 
 
-def test_get_repo_rev(repo_dir, erepo):
+def test_get_repo_rev(erepo):
     src = "version"
     dst = src
 
@@ -70,13 +70,13 @@ def test_get_from_non_dvc_repo(git_erepo):
         Repo.get(git_erepo.root_dir, "some_file.zip")
 
 
-def test_get_a_dvc_file(repo_dir, erepo):
+def test_get_a_dvc_file(erepo):
     with pytest.raises(GetDVCFileError):
         Repo.get(erepo.root_dir, "some_file.dvc")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_get_to_dir(dname, repo_dir, erepo):
+def test_get_to_dir(dname, erepo):
     src = erepo.FOO
 
     makedirs(dname, exist_ok=True)
@@ -86,4 +86,4 @@ def test_get_to_dir(dname, repo_dir, erepo):
     dst = os.path.join(dname, os.path.basename(src))
 
     assert os.path.isdir(dname)
-    assert filecmp.cmp(repo_dir.FOO, dst, shallow=False)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)

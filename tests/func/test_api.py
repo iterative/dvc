@@ -84,13 +84,13 @@ def test_get_url(repo_dir, dvc_repo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(repo_dir, dvc_repo, erepo, remote_url):
+def test_get_url_external(dvc_repo, erepo, remote_url):
     _set_remote_url_and_commit(erepo.dvc, remote_url)
 
     # Using file url to force clone to tmp repo
     repo_url = "file://" + erepo.dvc.root_dir
     expected_url = URLInfo(remote_url) / "ac/bd18db4cc2f85cedef654fccc4a4d8"
-    assert api.get_url(repo_dir.FOO, repo=repo_url) == expected_url
+    assert api.get_url(erepo.FOO, repo=repo_url) == expected_url
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
@@ -107,7 +107,7 @@ def test_open(repo_dir, dvc_repo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open_external(repo_dir, dvc_repo, erepo, remote_url):
+def test_open_external(dvc_repo, erepo, remote_url):
     erepo.dvc.scm.checkout("branch")
     _set_remote_url_and_commit(erepo.dvc, remote_url)
     erepo.dvc.scm.checkout("master")
