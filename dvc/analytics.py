@@ -1,4 +1,3 @@
-import errno
 import json
 import logging
 import platform
@@ -15,6 +14,7 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
+from dvc.utils.compat import str, FileNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def is_enabled():
 def send(path):
     url = "https://analytics.dvc.org"
 
-    with open(path) as fobj:
+    with open(str(path)) as fobj:
         report = json.load(fobj)
 
     requests.post(url, json=report, timeout=5)
@@ -113,12 +113,10 @@ def find_or_create_user_id():
         with Lock(lockfile):
             try:
                 user_id = json.loads(fname.read_text())["user_id"]
-            except (IOError, json.JSONDecodeError, AttributeError) as exc:
-                if exc.errno != errno.ENOENT:
-                    raise
+            except (FileNotFoundError, ValueError, AttributeError):
                 user_id = str(uuid.uuid4())
                 makedirs(fname.parent, exist_ok=True)
-                fname.write_text(json.dumps({"user_id": user_id}))
+                fname.write_text(str(json.dumps({"user_id": user_id})))
 
             return user_id
 

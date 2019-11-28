@@ -342,13 +342,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         return ret
 
     def _load_configs(self):
-        system_config_file = os.path.join(
-            self.get_system_config_dir(), self.CONFIG
-        )
-
-        global_config_file = os.path.join(
-            self.get_global_config_dir(), self.CONFIG
-        )
+        system_config_file = str(self.get_system_config_dir() / self.CONFIG)
+        global_config_file = str(self.get_global_config_dir() / self.CONFIG)
 
         self._system_config = configobj.ConfigObj(system_config_file)
         self._global_config = configobj.ConfigObj(global_config_file)

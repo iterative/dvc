@@ -3,6 +3,7 @@ import pytest
 import mock
 
 from dvc import analytics
+from dvc.utils.compat import builtin_str, str
 
 
 @pytest.fixture
@@ -21,7 +22,7 @@ def test_collect(tmp_global_config):
     assert not report["cmd_class"]
     assert type(report["is_binary"]) is bool
     assert type(report["system_info"]) is dict
-    assert type(report["dvc_version"]) is str
+    assert type(report["dvc_version"]) is builtin_str
     assert type(report["user_id"]) is str
 
 
@@ -31,7 +32,7 @@ def test_send(mock_post, tmp_path):
     report = {"name": "dummy report"}
     fname = tmp_path / "report"
 
-    fname.write_text(json.dumps(report))
+    fname.write_text(str(json.dumps(report)))
     analytics.send(fname)
     mock_post.assert_called_with(url, json=report, timeout=5)
 
