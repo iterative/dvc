@@ -312,7 +312,7 @@ class RemoteBASE(object):
             return checksum
 
         if self.isdir(path_info):
-            checksum = self.get_dir_checksum(path_info)
+            checksum = self.get_dir_checksum(path_info / "")
         else:
             checksum = self.get_file_checksum(path_info)
 
