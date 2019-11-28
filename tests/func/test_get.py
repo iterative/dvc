@@ -39,24 +39,28 @@ def test_get_repo_dir(erepo):
 
 
 def test_get_regular_file(erepo):
-    src = os.path.join(erepo.root_dir, "file")
-    dst = src + "_imported"
-    erepo.create(src, "hello")
+    src = os.path.join(erepo.root_dir, "some_file")
+    dst = os.path.join(os.getcwd(), "_imported")
 
-    Repo.get(erepo.root_dir, src, dst)
+    erepo.create(src, "hello")
+    erepo.dvc.scm.add([src])
+    erepo.dvc.scm.commit("add a regular file")
+    Repo.get(erepo.root_dir, os.path.basename(src), os.path.basename(dst))
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
     assert filecmp.cmp(src, dst, shallow=False)
 
 
-def test_get_regular_dir(repo_dir, erepo):
-    src = os.path.join(erepo.root_dir, "directory")
-    dst = src + "_imported"
+def test_get_regular_dir(erepo):
+    src = os.path.join(erepo.root_dir, "some_directory")
+    src_file = os.path.join(src, "file.txt")
+    dst = os.path.join(os.getcwd(), "_imported")
 
-    os.mkdir(src)
-    erepo.create(os.path.join(src, "file"), "hello")
-    Repo.get(erepo.root_dir, src, dst)
+    erepo.create(src_file, "hello")
+    erepo.dvc.scm.add([src_file])
+    erepo.dvc.scm.commit("add a regular dir")
+    Repo.get(erepo.root_dir, os.path.basename(src), os.path.basename(dst))
 
     assert os.path.exists(dst)
     assert os.path.isdir(dst)
