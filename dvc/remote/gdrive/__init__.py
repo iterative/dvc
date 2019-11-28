@@ -26,9 +26,12 @@ class GDriveRetriableError(DvcException):
 
 @decorator
 def _wrap_pydrive_retriable(call):
+    from apiclient import errors
+    from pydrive.files import ApiRequestError
+
     try:
         result = call()
-    except Exception as exception:
+    except (ApiRequestError, errors.HttpError) as exception:
         retry_codes = ["403", "500", "502", "503", "504"]
         if any(
             "HttpError {}".format(code) in str(exception)
