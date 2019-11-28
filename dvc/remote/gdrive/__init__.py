@@ -66,9 +66,7 @@ class RemoteGDrive(RemoteBASE):
         self.init_drive()
 
     def init_drive(self):
-        self.client_id = self.config.get(
-            Config.SECTION_GDRIVE_CLIENT_ID, None
-        )
+        self.client_id = self.config.get(Config.SECTION_GDRIVE_CLIENT_ID, None)
         self.client_secret = self.config.get(
             Config.SECTION_GDRIVE_CLIENT_SECRET, None
         )
@@ -274,17 +272,15 @@ class RemoteGDrive(RemoteBASE):
             parent_id = to_info.bucket
 
         self.gdrive_upload_file(
-                {"title": to_info.name, "parent_id": parent_id},
-                no_progress_bar,
-                from_file,
-                name,
-            )
+            {"title": to_info.name, "parent_id": parent_id},
+            no_progress_bar,
+            from_file,
+            name,
+        )
 
     def _download(self, from_info, to_file, name, no_progress_bar):
         file_id = self.get_remote_id(from_info)
-        self.gdrive_download_file(
-                file_id, to_file, name, no_progress_bar
-            )
+        self.gdrive_download_file(file_id, to_file, name, no_progress_bar)
 
     def list_cache_paths(self):
         file_id = self.get_remote_id(self.path_info)
