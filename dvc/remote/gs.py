@@ -5,7 +5,6 @@ from datetime import timedelta
 from functools import wraps
 import io
 import os.path
-import posixpath
 
 from funcy import cached_property
 
@@ -148,7 +147,7 @@ class RemoteGS(RemoteBASE):
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info.bucket, path_info.path):
-            yield path_info / posixpath.relpath(fname, path_info.path)
+            yield path_info.replace(fname)
 
     def isdir(self, path_info):
         dir_path = path_info / ""
@@ -160,10 +159,10 @@ class RemoteGS(RemoteBASE):
 
     def exists(self, path_info):
         dir_path = path_info / ""
-        file = next(
+        fname = next(
             self._list_paths(path_info.bucket, path_info.path, max_items=1), ""
         )
-        return path_info.path == file or file.startswith(dir_path.path)
+        return path_info.path == fname or fname.startswith(dir_path.path)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
