@@ -54,7 +54,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                 stages,
                 desc="Processing",
                 unit="file",
-                disable=len(stages) == 1,
+                disable=True if len(stages) == 1 else None,
             ):
 
                 if not no_commit:
@@ -94,7 +94,7 @@ def _create_stages(repo, targets, fname, pbar=None):
     for out in Tqdm(
         targets,
         desc="Creating stages",
-        disable=len(targets) < LARGE_DIR_SIZE,
+        disable=True if len(targets) < LARGE_DIR_SIZE else None,
         unit="file",
     ):
         stage = Stage.create(repo, outs=[out], add=True, fname=fname)
