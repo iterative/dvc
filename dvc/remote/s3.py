@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import resource
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -335,3 +336,20 @@ class RemoteS3(RemoteBASE):
                     )
 
                 self.extra_args[extra_args_key] = config.get(grant_option)
+
+    def _adjust_jobs(self, jobs=None):
+        jobs = super(RemoteS3, self)._adjust_jobs(jobs)
+
+        descriptor_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+        estimated_descriptors_num = jobs * 20
+        if estimated_descriptors_num <= descriptor_limit - 10:
+            return jobs
+
+        jobs = (descriptor_limit - 10) // 20
+        logger.warning(
+            "Parallelization reduced to '{}' jobs. Increase open "
+            "file descriptors limit to more than '{}' to prevent "
+            "the "
+            "reduction.".format(jobs, estimated_descriptors_num + 10)
+        )
+        return jobs

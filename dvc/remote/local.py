@@ -339,7 +339,7 @@ class RemoteLOCAL(RemoteBASE):
             status = STATUS_NEW
 
         if jobs is None:
-            jobs = remote.JOBS
+            jobs = remote.jobs
 
         status_info = self.status(
             named_cache,
