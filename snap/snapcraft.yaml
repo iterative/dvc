@@ -30,6 +30,6 @@ apps:
     command: bin/dvc
     completer: completion.sh
     environment:
-      GIT_PYTHON_GIT_EXECUTABLE: dvc.git
+      GIT_PYTHON_GIT_EXECUTABLE: $SNAP/usr/bin/git
   git:
-    command: /usr/bin/git
+    command: usr/bin/git
