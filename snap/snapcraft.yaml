@@ -3,9 +3,18 @@ summary: Data Version Control
 description: Git for Data & Models https://dvc.org
 adopt-info: dvc
 grade: stable
-confinement: classic  # for same reasons as snap `git-ubuntu`
+confinement: strict
 base: core18
 license: Apache-2.0
+plugs:
+  config-dvc:
+    interface: system-files
+    read:
+    - /etc/hosts
+    - /etc/host.conf
+    - /etc/resolv.conf
+    write:
+    - /etc/dvc.conf
 parts:
   dvc:
     plugin: python
@@ -31,7 +40,18 @@ apps:
     completer: completion.sh
     environment:
       GIT_PYTHON_GIT_EXECUTABLE: $SNAP/usr/bin/git
+    plugs:
+    - config-dvc
+    - home
+    - mount-observe
+    - network-control
+    - removable-media
   git:
     command: usr/bin/git
     environment:
       GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
+    plugs:
+    - home
+    - mount-observe
+    - network-control
+    - removable-media
