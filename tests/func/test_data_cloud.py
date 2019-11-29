@@ -18,6 +18,7 @@ from dvc.config import Config
 from dvc.data_cloud import DataCloud
 from dvc.main import main
 from dvc.remote import RemoteAZURE
+from dvc.remote import RemoteGDrive
 from dvc.remote import RemoteGS
 from dvc.remote import RemoteHDFS
 from dvc.remote import RemoteHTTP
@@ -58,6 +59,11 @@ TEST_GCP_CREDS_FILE = os.path.abspath(
 # Ensure that absolute path is used
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = TEST_GCP_CREDS_FILE
 
+TEST_GDRIVE_CLIENT_ID = (
+    "719861249063-v4an78j9grdtuuuqg3lnm0sugna6v3lh.apps.googleusercontent.com"
+)
+TEST_GDRIVE_CLIENT_SECRET = "2fy_HyzSwkxkGzEken7hThXb"
+
 
 def _should_test_aws():
     do_test = env2bool("DVC_TEST_AWS", undefined=None)
@@ -65,6 +71,13 @@ def _should_test_aws():
         return do_test
 
     if os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY"):
+        return True
+
+    return False
+
+
+def _should_test_gdrive():
+    if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
         return True
 
     return False
@@ -200,6 +213,10 @@ def get_aws_storagepath():
 
 def get_aws_url():
     return "s3://" + get_aws_storagepath()
+
+
+def get_gdrive_url():
+    return "gdrive://root/" + str(uuid.uuid4())
 
 
 def get_gcp_storagepath():
@@ -373,6 +390,35 @@ class TestRemoteS3(TestDataCloudBase):
 
     def _get_cloud_class(self):
         return RemoteS3
+
+
+class TestRemoteGDrive(TestDataCloudBase):
+    def _should_test(self):
+        return _should_test_gdrive()
+
+    def _setup_cloud(self):
+        self._ensure_should_run()
+
+        repo = self._get_url()
+
+        config = copy.deepcopy(TEST_CONFIG)
+        config[TEST_SECTION][Config.SECTION_REMOTE_URL] = repo
+        config[TEST_SECTION][
+            Config.SECTION_GDRIVE_CLIENT_ID
+        ] = TEST_GDRIVE_CLIENT_ID
+        config[TEST_SECTION][
+            Config.SECTION_GDRIVE_CLIENT_SECRET
+        ] = TEST_GDRIVE_CLIENT_SECRET
+        self.dvc.config.config = config
+        self.cloud = DataCloud(self.dvc)
+
+        self.assertIsInstance(self.cloud.get_remote(), self._get_cloud_class())
+
+    def _get_url(self):
+        return get_gdrive_url()
+
+    def _get_cloud_class(self):
+        return RemoteGDrive
 
 
 class TestRemoteGS(TestDataCloudBase):
@@ -617,6 +663,36 @@ class TestRemoteS3CLI(TestDataCloudCLIBase):
         url = get_aws_url()
 
         self.main(["remote", "add", TEST_REMOTE, url])
+
+        self._test_cloud(TEST_REMOTE)
+
+
+class TestRemoteGDriveCLI(TestDataCloudCLIBase):
+    def _should_test(self):
+        return _should_test_gdrive()
+
+    def _test(self):
+        url = get_gdrive_url()
+
+        self.main(["remote", "add", TEST_REMOTE, url])
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                Config.SECTION_GDRIVE_CLIENT_ID,
+                TEST_GDRIVE_CLIENT_ID,
+            ]
+        )
+        self.main(
+            [
+                "remote",
+                "modify",
+                TEST_REMOTE,
+                Config.SECTION_GDRIVE_CLIENT_SECRET,
+                TEST_GDRIVE_CLIENT_SECRET,
+            ]
+        )
 
         self._test_cloud(TEST_REMOTE)
 

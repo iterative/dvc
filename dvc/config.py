@@ -110,6 +110,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     CONFIG = "config"
     CONFIG_LOCAL = "config.local"
 
+    CREDENTIALPATH = "credentialpath"
+
     LEVEL_LOCAL = 0
     LEVEL_REPO = 1
     LEVEL_GLOBAL = 2
@@ -162,7 +164,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     }
 
     # aws specific options
-    SECTION_AWS_CREDENTIALPATH = "credentialpath"
+    SECTION_AWS_CREDENTIALPATH = CREDENTIALPATH
     SECTION_AWS_ENDPOINT_URL = "endpointurl"
     SECTION_AWS_LIST_OBJECTS = "listobjects"
     SECTION_AWS_REGION = "region"
@@ -172,7 +174,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_ACL = "acl"
 
     # gcp specific options
-    SECTION_GCP_CREDENTIALPATH = SECTION_AWS_CREDENTIALPATH
+    SECTION_GCP_CREDENTIALPATH = CREDENTIALPATH
     SECTION_GCP_PROJECTNAME = "projectname"
 
     # azure specific option
@@ -182,6 +184,11 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_OSS_ACCESS_KEY_ID = "oss_key_id"
     SECTION_OSS_ACCESS_KEY_SECRET = "oss_key_secret"
     SECTION_OSS_ENDPOINT = "oss_endpoint"
+
+    # GDrive options
+    SECTION_GDRIVE_CLIENT_ID = "gdrive_client_id"
+    SECTION_GDRIVE_CLIENT_SECRET = "gdrive_client_secret"
+    SECTION_GDRIVE_USER_CREDENTIALS_FILE = "gdrive_user_credentials_file"
 
     SECTION_REMOTE_REGEX = r'^\s*remote\s*"(?P<name>.*)"\s*$'
     SECTION_REMOTE_FMT = 'remote "{}"'
@@ -218,6 +225,9 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         SECTION_OSS_ACCESS_KEY_ID: str,
         SECTION_OSS_ACCESS_KEY_SECRET: str,
         SECTION_OSS_ENDPOINT: str,
+        SECTION_GDRIVE_CLIENT_ID: str,
+        SECTION_GDRIVE_CLIENT_SECRET: str,
+        SECTION_GDRIVE_USER_CREDENTIALS_FILE: str,
         PRIVATE_CWD: str,
         Optional(SECTION_REMOTE_NO_TRAVERSE, default=True): Bool,
     }
