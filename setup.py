@@ -161,6 +161,7 @@ setup(
         ":python_version=='2.7'": [
             "futures",
             "pathlib2",
+            "contextlib2",
             "zc.lockfile>=1.2.1",
         ],
         ":python_version>='3.0'": ["flufl.lock>=3.2"],
