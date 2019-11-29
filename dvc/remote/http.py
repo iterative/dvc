@@ -1,8 +1,9 @@
 from __future__ import unicode_literals
 
 import logging
+import threading
 
-from funcy import cached_property
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.config import ConfigError
@@ -81,6 +82,7 @@ class RemoteHTTP(RemoteBASE):
 
         return etag
 
+    @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):
         import requests

@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 import logging
 import os
 import re
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
+import threading
 
-from funcy import cached_property
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.path_info import CloudURLInfo
@@ -64,6 +64,7 @@ class RemoteAZURE(RemoteBASE):
             else self.path_cls.from_parts(scheme=self.scheme, netloc=bucket)
         )
 
+    @wrap_prop(threading.Lock())
     @cached_property
     def blob_service(self):
         from azure.storage.blob import BlockBlobService
