@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import os
 import shutil
 
@@ -106,7 +108,7 @@ def test_open_scm_controlled(dvc_repo, repo_dir):
         assert fd.read() == stage_content
 
 
-# TODO: simplify, we shouldn't need run. This also duplicates the previous one.
+# TODO: simplify, we shouldn't need run.
 def test_open_not_cached(dvc):
     metric_file = "metric.txt"
     metric_content = "0.6"

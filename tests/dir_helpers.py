@@ -1,9 +1,12 @@
+from __future__ import unicode_literals
+
 import os
 import pytest
 
-from funcy import lmap, retry
+from funcy.py3 import lmap, retry
 
-from dvc.utils.compat import pathlib, fspath, makedirs, basestring
+from dvc.utils import makedirs
+from dvc.utils.compat import basestring, is_py2, pathlib, fspath, fspath_py35
 
 
 __all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
@@ -29,6 +32,10 @@ class TmpDir(pathlib.Path):
         self._init()
         return self
 
+    # Not needed in Python 3.6+
+    def __fspath__(self):
+        return str(self)
+
     def _require(self, name):
         if not hasattr(self, name):
             raise TypeError(
@@ -37,25 +44,24 @@ class TmpDir(pathlib.Path):
             )
 
     def gen(self, struct, text=""):
-        if isinstance(struct, str):
+        if isinstance(struct, basestring):
             struct = {struct: text}
 
-        return self._gen(struct)
+        self._gen(struct)
+        return struct.keys()
 
     def _gen(self, struct, prefix=None):
-        paths = []
-
         for name, contents in struct.items():
             path = (prefix or self) / name
 
             if isinstance(contents, dict):
-                paths.extend(self._gen(contents, prefix=path))
+                self._gen(contents, prefix=path)
             else:
                 makedirs(path.parent, exist_ok=True)
-                path.write_text(contents)
-                paths.append(path.relative_to(self))
-
-        return paths
+                if is_py2 and isinstance(contents, str):
+                    path.write_bytes(contents)
+                else:
+                    path.write_text(contents)
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
@@ -106,7 +112,7 @@ class PosixTmpDir(TmpDir, pathlib.PurePosixPath):
 @pytest.fixture
 def tmp_dir(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
-    return TmpDir(tmp_path)
+    return TmpDir(fspath_py35(tmp_path))
 
 
 @pytest.fixture
@@ -183,7 +189,7 @@ def run_copy(tmp_dir, dvc, request):
             cmd="python copy.py {} {}".format(src, dst),
             outs=[dst],
             deps=[src, "copy.py"],
-            **run_kwargs,
+            **run_kwargs
         )
 
     return run_copy
@@ -194,25 +200,25 @@ def erepo_dir(tmp_path_factory, monkeypatch):
     from dvc.repo import Repo
     from dvc.remote.config import RemoteConfig
 
-    path = TmpDir(tmp_path_factory.mktemp("erepo"))
-    path.gen(REPO_TEMPLATE)
+    path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
 
     # Chdir for git and dvc to work locally
-    monkeypatch.chdir(path)
+    monkeypatch.chdir(fspath_py35(path))
 
     _git_init()
     path.dvc = Repo.init()
     path.scm = path.dvc.scm
-
-    path.dvc_add(["foo", "bar", "dir"], commit="init repo")
+    path.dvc_gen(REPO_TEMPLATE, commit="init repo")
 
     rconfig = RemoteConfig(path.dvc.config)
     rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
     path.scm_add([path.dvc.config.config_file], commit="add remote")
 
-    path.dvc_gen("version", "master", commit="master")
+    path.dvc_gen("version", "master")
+    path.scm_add([".gitignore", "version.dvc"], commit="master")
 
     path.scm.checkout("branch", create_new=True)
+    (path / "version").unlink()  # For mac ???
     path.dvc_gen("version", "branch")
     path.scm_add([".gitignore", "version.dvc"], commit="branch")
 

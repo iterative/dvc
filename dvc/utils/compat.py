@@ -75,8 +75,6 @@ def _makedirs(name, mode=0o777, exist_ok=False):
     """Source: https://github.com/python/cpython/blob/
         3ce3dea60646d8a5a1c952469a2eb65f937875b3/Lib/os.py#L196-L226
     """
-    name = fspath_py35(name)
-
     head, tail = os.path.split(name)
     if not tail:
         head, tail = os.path.split(head)
