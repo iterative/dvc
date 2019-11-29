@@ -31,6 +31,5 @@ apps:
     completer: completion.sh
     environment:
       GIT_PYTHON_GIT_EXECUTABLE: dvc.git
-      SNAP: 1  # suppress update checks
   git:
     command: /usr/bin/git
