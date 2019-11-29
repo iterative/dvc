@@ -10,11 +10,13 @@ plugs:
   config-dvc:
     interface: system-files
     read:
+    - /etc/dvc/dvc.conf
     - /etc/hosts
     - /etc/host.conf
     - /etc/resolv.conf
     write:
-    - /etc/dvc.conf
+    - /etc/dvc
+    - /etc/dvc/dvc.conf
 parts:
   dvc:
     plugin: python
