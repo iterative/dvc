@@ -83,6 +83,7 @@ def remote_gs():
     put_object("data/subdir/1", "1")
     put_object("data/subdir/2", "2")
     put_object("data/subdir/3", "3")
+    put_object("data/subdir/4/", "")
 
     yield remote
 

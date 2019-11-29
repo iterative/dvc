@@ -148,7 +148,15 @@ class RemoteGS(RemoteBASE):
 
     def walk_files(self, path_info):
         for fname in self._list_paths(path_info.bucket, path_info.path):
+            # skip nested empty directories
+            if fname.endswith("/"):
+                continue
             yield path_info.replace(fname)
+
+    def makedirs(self, path_info):
+        self.gs.bucket(path_info.bucket).blob(
+            (path_info / "").path
+        ).upload_from_string("")
 
     def isdir(self, path_info):
         dir_path = path_info / ""
