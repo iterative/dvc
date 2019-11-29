@@ -9,9 +9,7 @@ from git import Repo
 from dvc.exceptions import CollectCacheError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
-from dvc.utils.compat import pathlib
-from tests.basic_env import TestDir
-from tests.basic_env import TestDvcGit
+from tests.basic_env import TestDir, TestDvcGit
 
 
 class TestGC(TestDvcGit):
@@ -179,51 +177,32 @@ class TestGCMultipleDvcRepos(TestDvcGit):
         self._check_cache(2)
 
 
-def test_all_commits(git, dvc_repo):
-    def add_and_commit():
-        stages = dvc_repo.add(str(testfile))
-        dvc_repo.scm.add([s.relpath for s in stages])
-        dvc_repo.scm.commit("message")
+def test_all_commits(tmp_dir, scm, dvc):
+    tmp_dir.dvc_gen("testfile", "uncommitted")
+    tmp_dir.dvc_gen("testfile", "committed", commit="committed")
+    tmp_dir.dvc_gen("testfile", "modified", commit="modified")
+    tmp_dir.dvc_gen("testfile", "workspace")
 
-    cache_dir = os.path.join(dvc_repo.root_dir, ".dvc", "cache")
-    testfile = pathlib.Path("testfile")
-
-    testfile.write_text("uncommitted")
-    dvc_repo.add(str(testfile))
-
-    testfile.write_text("committed")
-    add_and_commit()
-
-    testfile.write_text("modified")
-    add_and_commit()
-
-    testfile.write_text("workspace")
-    dvc_repo.add(str(testfile))
-
-    n = _count_files(cache_dir)
-
-    dvc_repo.gc(all_commits=True)
+    n = _count_files(dvc.cache.local.cache_dir)
+    dvc.gc(all_commits=True)
 
     # Only one uncommitted file should go away
-    assert _count_files(cache_dir) == n - 1
+    assert _count_files(dvc.cache.local.cache_dir) == n - 1
 
 
-def _count_files(path):
-    return sum(len(files) for _, _, files in os.walk(path))
-
-
-def test_gc_no_dir_cache(repo_dir, dvc_repo):
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.add(repo_dir.BAR)
-    dir_stage, = dvc_repo.add(repo_dir.DATA_DIR)
+def test_gc_no_dir_cache(tmp_dir, dvc, repo_template):
+    dvc.add(["foo", "bar"])
+    dir_stage, = dvc.add("dir")
 
     os.unlink(dir_stage.outs[0].cache_path)
 
     with pytest.raises(CollectCacheError):
-        dvc_repo.gc()
+        dvc.gc()
 
-    assert _count_files(dvc_repo.cache.local.cache_dir) == 4
+    assert _count_files(dvc.cache.local.cache_dir) == 4
+    dvc.gc(force=True)
+    assert _count_files(dvc.cache.local.cache_dir) == 2
 
-    dvc_repo.gc(force=True)
 
-    assert _count_files(dvc_repo.cache.local.cache_dir) == 2
+def _count_files(path):
+    return sum(len(files) for _, _, files in os.walk(path))
