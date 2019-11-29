@@ -9,5 +9,6 @@ class Schemes:
     HTTP = "http"
     HTTPS = "https"
     GS = "gs"
+    GDRIVE = "gdrive"
     LOCAL = "local"
     OSS = "oss"
