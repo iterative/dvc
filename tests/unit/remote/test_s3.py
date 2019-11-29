@@ -103,8 +103,8 @@ def test_copy_preserve_etag_across_buckets(remote):
     assert from_etag == to_etag
 
 
-def makedirs(remote):
-    empty_dir = remote.path_info / "empty_dir"
+def test_makedirs(remote):
+    empty_dir = remote.path_info / "empty_dir" / ""
     remote.remove(empty_dir)
     assert not remote.exists(empty_dir)
     remote.makedirs(empty_dir)

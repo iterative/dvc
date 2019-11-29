@@ -213,11 +213,11 @@ class RemoteS3(RemoteBASE):
         return path_info.path == fname or fname.startswith(dir_path.path)
 
     def makedirs(self, path_info):
-        # We need to support creating empty directories, on S3, that means
+        # We need to support creating empty directories, which means
         # creating an object with an empty body and a trailing slash `/`.
         #
         # We are not creating directory objects for every parent prefix,
-        # it doesn't make sense.
+        # as it is not required.
         dir_path = path_info / ""
         self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
 
