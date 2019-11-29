@@ -33,3 +33,5 @@ apps:
       GIT_PYTHON_GIT_EXECUTABLE: $SNAP/usr/bin/git
   git:
     command: usr/bin/git
+    environment:
+      GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
