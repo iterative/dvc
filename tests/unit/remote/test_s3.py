@@ -79,9 +79,11 @@ def test_walk_files(remote):
         remote.path_info / "data/subdir/1",
         remote.path_info / "data/subdir/2",
         remote.path_info / "data/subdir/3",
+        remote.path_info / "empty_file",
+        remote.path_info / "foo",
     ]
 
-    assert list(remote.walk_files(remote.path_info / "data")) == files
+    assert list(remote.walk_files(remote.path_info)) == files
 
 
 def test_copy_preserve_etag_across_buckets(remote):
@@ -99,3 +101,11 @@ def test_copy_preserve_etag_across_buckets(remote):
     to_etag = RemoteS3.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
+
+
+def makedirs(remote):
+    empty_dir = remote.path_info / "empty_dir"
+    remote.remove(empty_dir)
+    assert not remote.exists(empty_dir)
+    remote.makedirs(empty_dir)
+    assert remote.exists(empty_dir)

@@ -212,6 +212,15 @@ class RemoteS3(RemoteBASE):
         fname = next(self._list_paths(path_info, max_items=1), "")
         return path_info.path == fname or fname.startswith(dir_path.path)
 
+    def makedirs(self, path_info):
+        # We need to support creating empty directories, on S3, that means
+        # creating an object with an empty body and a trailing slash `/`.
+        #
+        # We are not creating directory objects for every parent prefix,
+        # it doesn't make sense.
+        dir_path = path_info / ""
+        self.s3.put_object(Bucket=path_info.bucket, Key=dir_path.path, Body="")
+
     def isdir(self, path_info):
         # S3 doesn't have a concept for directories.
         #
@@ -271,4 +280,7 @@ class RemoteS3(RemoteBASE):
 
     def walk_files(self, path_info, max_items=None):
         for fname in self._list_paths(path_info, max_items):
+            if fname.endswith("/"):
+                continue
+
             yield path_info.replace(path=fname)
