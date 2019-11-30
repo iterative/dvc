@@ -110,7 +110,6 @@ jobs:
         - dist/dvc*.tar.gz
       skip_cleanup: true
   - name: Snapcraft snap
-    stage: check  # TODO: remove before merge
     addons:
      snaps:
      - name: snapcraft
