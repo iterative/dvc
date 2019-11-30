@@ -235,26 +235,20 @@ class S3Mocked:
     get_url = staticmethod(get_aws_url)
 
     @classmethod
+    @contextmanager
     def remote(cls):
-        @contextmanager
-        def inner():
-            with mock_s3():
-                remote = RemoteS3(None, {"url": cls.get_url()})
-                yield remote
-
-        return inner()
+        with mock_s3():
+            remote = RemoteS3(None, {"url": cls.get_url()})
+            yield remote
 
     @classmethod
+    @contextmanager
     def put_objects(cls, remote, objects):
-        @contextmanager
-        def inner():
-            s3 = cls.get_client(remote)
-            s3.create_bucket(Bucket="dvc-test")
-            for key, body in objects.items():
-                cls.put_object(remote, key, body)
-            yield
-
-        return inner()
+        s3 = cls.get_client(remote)
+        s3.create_bucket(Bucket="dvc-test")
+        for key, body in objects.items():
+            cls.put_object(remote, key, body)
+        yield
 
     @staticmethod
     def get_client(remote):
@@ -275,24 +269,18 @@ class GCP:
     get_url = staticmethod(get_gcp_url)
 
     @classmethod
+    @contextmanager
     def remote(cls):
-        @contextmanager
-        def inner():
-            remote = RemoteGS(None, {"url": cls.get_url()})
-            yield remote
-
-        return inner()
+        remote = RemoteGS(None, {"url": cls.get_url()})
+        yield remote
 
     @classmethod
+    @contextmanager
     def put_objects(cls, remote, objects):
-        @contextmanager
-        def inner():
-            for key, body in objects.items():
-                cls.put_object(remote, key, body)
-            yield
-            cls.remove(remote, objects.keys())
-
-        return inner()
+        for key, body in objects.items():
+            cls.put_object(remote, key, body)
+        yield
+        cls.remove(remote, objects.keys())
 
     @classmethod
     def put_object(cls, remote, key, body):

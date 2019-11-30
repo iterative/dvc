@@ -173,6 +173,8 @@ class RemoteGS(RemoteBASE):
             if path_info.path == fname:
                 return True
 
+        return False
+
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
         _upload_to_bucket(
