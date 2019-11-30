@@ -3,7 +3,7 @@ summary: Data Version Control
 description: Git for Data & Models https://dvc.org
 adopt-info: dvc
 grade: stable
-confinement: classic
+confinement: devmode
 base: core18
 license: Apache-2.0
 plugs:
