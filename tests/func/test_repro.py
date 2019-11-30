@@ -36,13 +36,15 @@ from dvc.utils.compat import urljoin
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
-from tests.func.test_data_cloud import _should_test_aws
-from tests.func.test_data_cloud import _should_test_gcp
-from tests.func.test_data_cloud import _should_test_hdfs
-from tests.func.test_data_cloud import _should_test_ssh
-from tests.func.test_data_cloud import get_ssh_url
-from tests.func.test_data_cloud import TEST_AWS_REPO_BUCKET
-from tests.func.test_data_cloud import TEST_GCP_REPO_BUCKET
+from tests.remotes import (
+    _should_test_aws,
+    _should_test_gcp,
+    _should_test_hdfs,
+    _should_test_ssh,
+    get_ssh_url,
+    TEST_AWS_REPO_BUCKET,
+    TEST_GCP_REPO_BUCKET,
+)
 from tests.utils.httpd import StaticFileServer, ContentMD5Handler
 
 

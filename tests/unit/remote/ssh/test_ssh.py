@@ -9,7 +9,7 @@ from mock import patch
 
 from dvc.remote.ssh import RemoteSSH
 from dvc.system import System
-from tests.func.test_data_cloud import get_ssh_url_mocked
+from tests.remotes import get_ssh_url_mocked
 
 
 class TestRemoteSSH(TestCase):
