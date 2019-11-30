@@ -136,18 +136,17 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix, max_items=None):
-        for blob in self.gs.bucket(bucket).list_blobs(
-            prefix=prefix, max_results=max_items
+    def _list_paths(self, path_info, max_items=None):
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path, max_results=max_items
         ):
             yield blob.name
 
     def list_cache_paths(self):
-        for cache in self.walk_files(self.path_info):
-            yield cache.path
+        return self._list_paths(self.path_info)
 
     def walk_files(self, path_info):
-        for fname in self._list_paths(path_info.bucket, path_info.path):
+        for fname in self._list_paths(path_info):
             # skip nested empty directories
             if fname.endswith("/"):
                 continue
@@ -160,17 +159,11 @@ class RemoteGS(RemoteBASE):
 
     def isdir(self, path_info):
         dir_path = path_info / ""
-        return bool(
-            list(
-                self._list_paths(path_info.bucket, dir_path.path, max_items=1)
-            )
-        )
+        return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def exists(self, path_info):
         dir_path = path_info / ""
-        fname = next(
-            self._list_paths(path_info.bucket, path_info.path, max_items=1), ""
-        )
+        fname = next(self._list_paths(path_info, max_items=1), "")
         return path_info.path == fname or fname.startswith(dir_path.path)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
