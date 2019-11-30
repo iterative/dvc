@@ -10,13 +10,12 @@ plugs:
   config-dvc:
     interface: system-files
     read:
-    - /etc/dvc/dvc.conf
-    - /etc/hosts
     - /etc/host.conf
     - /etc/resolv.conf
-    write:
-    - /etc/dvc
-    - /etc/dvc/dvc.conf
+    - /etc/hosts
+layout:
+  /etc/dvc:
+     bind: $SNAP_DATA/etc/dvc
 parts:
   dvc:
     plugin: python
@@ -42,6 +41,7 @@ apps:
     completer: completion.sh
     environment:
       GIT_PYTHON_GIT_EXECUTABLE: $SNAP/usr/bin/git
+      XDG_CONFIG_DIRS: /etc
     plugs:
     - config-dvc
     - home
