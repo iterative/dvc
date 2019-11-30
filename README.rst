@@ -153,11 +153,17 @@ Currently, it supports only python version 2.7, 3.6 and 3.7.
 Snap (Snapcraft)
 ----------------
 
+Download the latest ``dvc_*.snap`` from the
+GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+
 .. code-block:: bash
 
-   snap install dvc
+   snap install dvc_*.snap --dangerous --classic
 
 This corresponds to the latest tagged release.
+
+<div><!--
+
 Add ``--edge`` for the latest ``master`` version.
 Additionally, grant required permissions:
 
@@ -167,6 +173,8 @@ Additionally, grant required permissions:
    snap connect dvc:mount-observe
    snap connect dvc:network-control
    snap connect dvc:removable-media
+
+--></div>
 
 Package
 -------

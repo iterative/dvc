@@ -90,25 +90,6 @@ jobs:
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
-  # deploy jobs
-  - name: "Pypi pkgs"
-    if: tag is present
-    stage: deploy
-    language: python
-    python: 3.7
-    script: ./scripts/build_package.sh
-    deploy:
-    - provider: pypi
-      user:
-        secure: "IOzNfgPoG3ICg3+s4AuZCCnawgd/KqMzeiAB9R0B9Xb6ProPQJp9O3GBZrtg5OJMHdWQQtwULeOh/LWk4sFdXMcX1iNEgm5Tb7DwO7TDtltW14jUgN9AqfY2twj4UIsW/ON8w0P8v36ZoQq1kO6Pfgjijdm3w+9h6rpps8rJ6jXYpVZVO+SSzzijWddanMkEz4GgctZ2r7U5MWlmm1UogF60kEZIZCQykz0yJnhTpP9nMFDKw6Maki/mcfVwTQ/v3RqjzttHei/aaEMGQXYr3TOX8NPYJXerBpjShDZqcgcCfqPzhi7uCwVYaPvRsMMYH5jgtMz/SO3J6ToeGKT0f1F1ihRyCdusg325TMK7Vv8yHJzL4ngeUbb/oqxWtxhLY7f77Lkx6hBwe6ROpTqiQHIfZad5qyIHihKcDcIHo4FwLHVzxR4y+Ds2js5dXwBkUBaEAx0Dmc6ZdgXqxd815GDwv+VVpzXJhtO6qXmKE36F/Oe6eCNG3dk5MdOK4C2DrM9M8MXllqeQtX6JrM2stWlBalAc9Jn4b0xxAoghX3x3G3hNsLc9Uist1VinY2+IcPozusqj66c+Vbi5YngWSbICOjlIcq2GaOlBi3xioGts396442ztf1eLjMVuvykCI3b4Yz/vJYZOZjUvG/6nLfaFQTJLSXkTvI4do3foeY4="
-      password:
-        secure: "ts/3FSPL+w4euXryip9wCJWUqUwuJ2CqHi0nEpYVM10KL0cp9aMkQXN/7C8ih+j/JZ25kaO+tis1nx0JERVnKrg/1F/fJhxHTpakCP4OSIlhKRXDt7yUUHcKKt5QdM2XCKhApptP6RTpWL1vlc36CMrhdvTcMYp7hlDOiWjdhhim24FGQzabL42Ko59ttyyCROqgcnjHqj+WlhJl7iYO+lv2PLOtslpkIYY5EMjgBLuGyOvxTqZsAXtworsASdB2CrsTE6iMRcrM1afgkyBlUqDezoiv9TwfZrZ85oRoAxPB7su4QWK7lEP0wGQV/SDz/RL7c+cNfRaauxUKVcC8I2LfaEpudv8vi205+v/08wzPbS4xSOnf89irUJnyGxUy+bYLoXPPVPMyzcQRAUnrQl+ENCmN62HU+/2pkIyiUJvt0wYYP0vp+3pIbXbYQGmAIMq7nZJd7K3rikfnQIGKI03xZsFe3PEdjzhDI9Ej/tRUbJx4pgg084QuYYca6MSYn/zJ5pqIG4A7ngCSxoxoWZT0duo8PrUWQeT17L73Q86HeEv3OzZhWfEF2fNDN3Qbsu4CllSZnbE7DXgAuysTwTYHS/na6lp7wejOqdRUXrHbidVla9Mwxyc9JdWNWzUDxALvNxAdNbV6l85mO8izy8wjQF6M1O7idqTfjQeR4pc="
-      skip_existing: true
-      file_glob: true
-      file:
-        - dist/dvc*.whl
-        - dist/dvc*.tar.gz
-      skip_cleanup: true
   - name: Snapcraft snap
     addons:
      snaps:
@@ -128,10 +109,32 @@ jobs:
     - sudo snapcraft --use-lxd
     after_failure:
     - sudo journalctl -u snapd
+    #uncomment after classic approval
+    #<>
+    #stage: deploy
+    #deploy:
+    #- provider: snap
+    #  snap: dvc_*.snap
+    #  channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+    #  skip_cleanup: true
+  # deploy jobs
+  - name: "Pypi pkgs"
+    if: tag is present
+    stage: deploy
+    language: python
+    python: 3.7
+    script: ./scripts/build_package.sh
     deploy:
-    - provider: snap
-      snap: dvc_*.snap
-      channel: ${SOURCE_TAG:+stable}${SOURCE_TAG:-edge}
+    - provider: pypi
+      user:
+        secure: "IOzNfgPoG3ICg3+s4AuZCCnawgd/KqMzeiAB9R0B9Xb6ProPQJp9O3GBZrtg5OJMHdWQQtwULeOh/LWk4sFdXMcX1iNEgm5Tb7DwO7TDtltW14jUgN9AqfY2twj4UIsW/ON8w0P8v36ZoQq1kO6Pfgjijdm3w+9h6rpps8rJ6jXYpVZVO+SSzzijWddanMkEz4GgctZ2r7U5MWlmm1UogF60kEZIZCQykz0yJnhTpP9nMFDKw6Maki/mcfVwTQ/v3RqjzttHei/aaEMGQXYr3TOX8NPYJXerBpjShDZqcgcCfqPzhi7uCwVYaPvRsMMYH5jgtMz/SO3J6ToeGKT0f1F1ihRyCdusg325TMK7Vv8yHJzL4ngeUbb/oqxWtxhLY7f77Lkx6hBwe6ROpTqiQHIfZad5qyIHihKcDcIHo4FwLHVzxR4y+Ds2js5dXwBkUBaEAx0Dmc6ZdgXqxd815GDwv+VVpzXJhtO6qXmKE36F/Oe6eCNG3dk5MdOK4C2DrM9M8MXllqeQtX6JrM2stWlBalAc9Jn4b0xxAoghX3x3G3hNsLc9Uist1VinY2+IcPozusqj66c+Vbi5YngWSbICOjlIcq2GaOlBi3xioGts396442ztf1eLjMVuvykCI3b4Yz/vJYZOZjUvG/6nLfaFQTJLSXkTvI4do3foeY4="
+      password:
+        secure: "ts/3FSPL+w4euXryip9wCJWUqUwuJ2CqHi0nEpYVM10KL0cp9aMkQXN/7C8ih+j/JZ25kaO+tis1nx0JERVnKrg/1F/fJhxHTpakCP4OSIlhKRXDt7yUUHcKKt5QdM2XCKhApptP6RTpWL1vlc36CMrhdvTcMYp7hlDOiWjdhhim24FGQzabL42Ko59ttyyCROqgcnjHqj+WlhJl7iYO+lv2PLOtslpkIYY5EMjgBLuGyOvxTqZsAXtworsASdB2CrsTE6iMRcrM1afgkyBlUqDezoiv9TwfZrZ85oRoAxPB7su4QWK7lEP0wGQV/SDz/RL7c+cNfRaauxUKVcC8I2LfaEpudv8vi205+v/08wzPbS4xSOnf89irUJnyGxUy+bYLoXPPVPMyzcQRAUnrQl+ENCmN62HU+/2pkIyiUJvt0wYYP0vp+3pIbXbYQGmAIMq7nZJd7K3rikfnQIGKI03xZsFe3PEdjzhDI9Ej/tRUbJx4pgg084QuYYca6MSYn/zJ5pqIG4A7ngCSxoxoWZT0duo8PrUWQeT17L73Q86HeEv3OzZhWfEF2fNDN3Qbsu4CllSZnbE7DXgAuysTwTYHS/na6lp7wejOqdRUXrHbidVla9Mwxyc9JdWNWzUDxALvNxAdNbV6l85mO8izy8wjQF6M1O7idqTfjQeR4pc="
+      skip_existing: true
+      file_glob: true
+      file:
+        - dist/dvc*.whl
+        - dist/dvc*.tar.gz
       skip_cleanup: true
 
 before_install:
@@ -153,6 +156,7 @@ deploy:
       - dvc*.deb
       - dvc*.pkg
       - dvc*.exe
+      - dvc*.snap
     skip_cleanup: true
     on:
       tags: true
