@@ -15,7 +15,13 @@ plugs:
     - /etc/hosts
 layout:
   /etc/dvc:
-     bind: $SNAP_DATA/etc/dvc
+    bind: $SNAP_DATA/etc/dvc
+  /usr/share/git-core:
+    bind: $SNAP/usr/share/git-core
+  /usr/share/gitweb:
+    bind: $SNAP/usr/share/gitweb
+  /usr/lib/git-core:
+    bind: $SNAP/usr/lib/git-core
 parts:
   dvc:
     plugin: python
