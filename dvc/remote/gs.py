@@ -148,7 +148,7 @@ class RemoteGS(RemoteBASE):
         return self._list_paths(self.path_info)
 
     def walk_files(self, path_info):
-        for fname in self._list_paths(path_info):
+        for fname in self._list_paths(path_info / ""):
             # skip nested empty directories
             if fname.endswith("/"):
                 continue
@@ -165,8 +165,13 @@ class RemoteGS(RemoteBASE):
 
     def exists(self, path_info):
         dir_path = path_info / ""
-        fname = next(self._list_paths(path_info, max_items=1), "")
-        return path_info.path == fname or fname.startswith(dir_path.path)
+
+        if self.isdir(dir_path):
+            return True
+
+        for fname in self._list_paths(path_info):
+            if path_info.path == fname:
+                return True
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
