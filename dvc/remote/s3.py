@@ -209,8 +209,15 @@ class RemoteS3(RemoteBASE):
 
     def exists(self, path_info):
         dir_path = path_info / ""
-        fname = next(self._list_paths(path_info, max_items=1), "")
-        return path_info.path == fname or fname.startswith(dir_path.path)
+
+        if self.isdir(dir_path):
+            return True
+
+        for fname in self._list_paths(path_info):
+            if path_info.path == fname:
+                return True
+
+        return False
 
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
@@ -279,7 +286,7 @@ class RemoteS3(RemoteBASE):
         )
 
     def walk_files(self, path_info, max_items=None):
-        for fname in self._list_paths(path_info, max_items):
+        for fname in self._list_paths(path_info / "", max_items):
             if fname.endswith("/"):
                 continue
 
