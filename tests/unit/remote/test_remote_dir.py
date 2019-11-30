@@ -92,7 +92,17 @@ def test_copy_preserve_etag_across_buckets(remote):
 
     remote.copy(from_info, to_info)
 
-    from_etag = RemoteS3.get_etag(s3, "bucket", "foo")
+    from_etag = RemoteS3.get_etag(s3, from_info.bucket, from_info.path)
     to_etag = RemoteS3.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
+
+
+@pytest.mark.parametrize("remote", remotes, indirect=True)
+def test_makedirs(remote):
+    empty_dir = remote.path_info / "empty_dir" / ""
+    remote.remove(empty_dir)
+    assert not remote.exists(empty_dir)
+    remote.makedirs(empty_dir)
+    assert remote.exists(empty_dir)
+    assert remote.isdir(empty_dir)

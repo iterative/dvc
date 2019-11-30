@@ -1,7 +1,8 @@
 from collections import deque
 from contextlib import contextmanager
+import threading
 
-from funcy import memoize
+from funcy import memoize, wrap_with
 
 
 @contextmanager
@@ -17,6 +18,7 @@ def get_connection(conn_func, *args, **kwargs):
         pool.release(conn)
 
 
+@wrap_with(threading.Lock())
 @memoize
 def get_pool(conn_func, *args, **kwargs):
     return Pool(conn_func, *args, **kwargs)

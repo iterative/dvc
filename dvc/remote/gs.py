@@ -5,8 +5,9 @@ from datetime import timedelta
 from functools import wraps
 import io
 import os.path
+import threading
 
-from funcy import cached_property
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.exceptions import DvcException
@@ -91,6 +92,7 @@ class RemoteGS(RemoteBASE):
         self.projectname = config.get(Config.SECTION_GCP_PROJECTNAME, None)
         self.credentialpath = config.get(Config.SECTION_GCP_CREDENTIALPATH)
 
+    @wrap_prop(threading.Lock())
     @cached_property
     def gs(self):
         from google.cloud.storage import Client

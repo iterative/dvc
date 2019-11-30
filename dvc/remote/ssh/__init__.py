@@ -8,8 +8,9 @@ import logging
 import os
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
+
+from funcy import memoize, wrap_with
 
 import dvc.prompt as prompt
 from dvc.config import Config
@@ -24,8 +25,15 @@ from dvc.utils.compat import urlparse
 logger = logging.getLogger(__name__)
 
 
-saved_passwords = {}
-saved_passwords_lock = threading.Lock()
+@wrap_with(threading.Lock())
+@memoize
+def ask_password(host, user, port):
+    return prompt.password(
+        "Enter a private key passphrase or a password for "
+        "host '{host}' port '{port}' user '{user}'".format(
+            host=host, port=port, user=user
+        )
+    )
 
 
 class RemoteSSH(RemoteBASE):
@@ -120,21 +128,11 @@ class RemoteSSH(RemoteBASE):
     def ensure_credentials(self, path_info=None):
         if path_info is None:
             path_info = self.path_info
-        host, user, port = path_info.host, path_info.user, path_info.port
+
         # NOTE: we use the same password regardless of the server :(
         if self.ask_password and self.password is None:
-            with saved_passwords_lock:
-                server_key = (host, user, port)
-                password = saved_passwords.get(server_key)
-
-                if password is None:
-                    saved_passwords[server_key] = password = prompt.password(
-                        "Enter a private key passphrase or a password for "
-                        "host '{host}' port '{port}' user '{user}'".format(
-                            host=host, port=port, user=user
-                        )
-                    )
-                self.password = password
+            host, user, port = path_info.host, path_info.user, path_info.port
+            self.password = ask_password(host, user, port)
 
     def ssh(self, path_info):
         self.ensure_credentials(path_info)
@@ -264,7 +262,9 @@ class RemoteSSH(RemoteBASE):
 
     def list_cache_paths(self):
         with self.ssh(self.path_info) as ssh:
-            return list(ssh.walk_files(self.path_info.path))
+            # If we simply return an iterator then with above closes instantly
+            for path in ssh.walk_files(self.path_info.path):
+                yield path
 
     def walk_files(self, path_info):
         with self.ssh(path_info) as ssh:

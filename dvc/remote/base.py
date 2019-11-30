@@ -293,6 +293,8 @@ class RemoteBASE(object):
         return checksum.endswith(cls.CHECKSUM_DIR_SUFFIX)
 
     def get_checksum(self, path_info):
+        assert path_info.scheme == self.scheme
+
         if not self.exists(path_info):
             return None
 
@@ -322,7 +324,6 @@ class RemoteBASE(object):
         return checksum
 
     def save_info(self, path_info):
-        assert path_info.scheme == self.scheme
         return {self.PARAM_CHECKSUM: self.get_checksum(path_info)}
 
     def changed(self, path_info, checksum_info):
@@ -363,7 +364,7 @@ class RemoteBASE(object):
             )
             return True
 
-        actual = self.save_info(path_info)[self.PARAM_CHECKSUM]
+        actual = self.get_checksum(path_info)
         if checksum != actual:
             logger.debug(
                 "checksum '{}'(actual '{}') for '{}' has changed.".format(

@@ -83,17 +83,7 @@ class RemoteLOCAL(RemoteBASE):
 
     def list_cache_paths(self):
         assert self.path_info is not None
-
-        clist = []
-        for entry in os.listdir(fspath_py35(self.path_info)):
-            subdir = self.path_info / entry
-            if not os.path.isdir(fspath_py35(subdir)):
-                continue
-            clist.extend(
-                subdir / cache for cache in os.listdir(fspath_py35(subdir))
-            )
-
-        return clist
+        return walk_files(self.path_info, None)
 
     def get(self, md5):
         if not md5:

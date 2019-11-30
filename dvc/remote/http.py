@@ -1,12 +1,13 @@
 from __future__ import unicode_literals
 
 import logging
+import threading
 
-from funcy import cached_property
+from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
 from dvc.config import ConfigError
-from dvc.exceptions import DvcException
+from dvc.exceptions import DvcException, HTTPError
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
@@ -36,30 +37,26 @@ class RemoteHTTP(RemoteBASE):
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        request = self._request("GET", from_info.url, stream=True)
+        response = self._request("GET", from_info.url, stream=True)
+        if response.status_code != 200:
+            raise HTTPError(response.status_code, response.reason)
         with Tqdm(
-            total=None if no_progress_bar else self._content_length(from_info),
+            total=None if no_progress_bar else self._content_length(response),
             leave=False,
             bytes=True,
             desc=from_info.url if name is None else name,
             disable=no_progress_bar,
         ) as pbar:
             with open(to_file, "wb") as fd:
-                for chunk in request.iter_content(chunk_size=self.CHUNK_SIZE):
+                for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):
                     fd.write(chunk)
-                    fd.flush()
                     pbar.update(len(chunk))
 
     def exists(self, path_info):
         return bool(self._request("HEAD", path_info.url))
 
-    def _content_length(self, url_or_request):
-        headers = getattr(
-            url_or_request,
-            "headers",
-            self._request("HEAD", url_or_request).headers,
-        )
-        res = headers.get("Content-Length")
+    def _content_length(self, response):
+        res = response.headers.get("Content-Length")
         return int(res) if res else None
 
     def get_file_checksum(self, path_info):
@@ -81,6 +78,7 @@ class RemoteHTTP(RemoteBASE):
 
         return etag
 
+    @wrap_prop(threading.Lock())
     @cached_property
     def _session(self):
         import requests
