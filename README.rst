@@ -160,22 +160,6 @@ GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
    snap install dvc_*.snap --dangerous --classic
 
-This corresponds to the latest tagged release.
-
-<div><!--
-
-Add ``--edge`` for the latest ``master`` version.
-Additionally, grant required permissions:
-
-.. code-block:: bash
-
-   snap connect dvc:config-dvc
-   snap connect dvc:mount-observe
-   snap connect dvc:network-control
-   snap connect dvc:removable-media
-
---></div>
-
 Package
 -------
 
