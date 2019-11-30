@@ -3,7 +3,7 @@ import pytest
 
 from dvc.remote.s3 import RemoteS3
 
-from tests.func.remotes import GCP, S3Mocked
+from tests.remotes import GCP, S3Mocked
 
 remotes = [GCP, S3Mocked]
 

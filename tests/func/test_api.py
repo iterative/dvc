@@ -8,7 +8,7 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
-from tests.func.remotes import remote_params, all_remote_params
+from tests.remotes import remote_params, all_remote_params
 
 
 @pytest.fixture
