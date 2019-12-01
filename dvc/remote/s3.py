@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 
+from botocore.exceptions import ClientError
 from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
@@ -207,10 +208,26 @@ class RemoteS3(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info)
 
+    def isfile(self, path_info):
+        if path_info.path.endswith("/"):
+            return False
+
+        try:
+            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "404":
+                raise
+            return False
+
+        return True
+
     def exists(self, path_info):
-        dir_path = path_info / ""
-        fname = next(self._list_paths(path_info, max_items=1), "")
-        return path_info.path == fname or fname.startswith(dir_path.path)
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
+
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return self.isfile(path_info) or self.isdir(path_info)
 
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
@@ -279,7 +296,7 @@ class RemoteS3(RemoteBASE):
         )
 
     def walk_files(self, path_info, max_items=None):
-        for fname in self._list_paths(path_info, max_items):
+        for fname in self._list_paths(path_info / "", max_items):
             if fname.endswith("/"):
                 continue
 

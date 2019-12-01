@@ -8,11 +8,13 @@ from tests.remotes import GCP, S3Mocked
 remotes = [GCP, S3Mocked]
 
 FILE_WITH_CONTENTS = {
+    "data1.txt": "",
     "empty_dir/": "",
     "empty_file": "",
     "foo": "foo",
     "data/alice": "alice",
     "data/alpha": "alpha",
+    "data/subdir-file.txt": "subdir",
     "data/subdir/1": "1",
     "data/subdir/2": "2",
     "data/subdir/3": "3",
@@ -60,6 +62,7 @@ def test_exists(remote):
         (True, "data/subdir/1"),
         (False, "data/al"),
         (False, "foo/"),
+        (True, "data1.txt"),
     ]
 
     for expected, path in test_cases:
@@ -71,6 +74,7 @@ def test_walk_files(remote):
     files = [
         remote.path_info / "data/alice",
         remote.path_info / "data/alpha",
+        remote.path_info / "data/subdir-file.txt",
         remote.path_info / "data/subdir/1",
         remote.path_info / "data/subdir/2",
         remote.path_info / "data/subdir/3",
@@ -108,7 +112,7 @@ def test_makedirs(remote):
     assert remote.isdir(empty_dir)
 
 
-@pytest.mark.parametrize("remote", [GCP], indirect=True)
+@pytest.mark.parametrize("remote", [GCP, S3Mocked], indirect=True)
 def test_isfile(remote):
     test_cases = [
         (False, "empty_dir/"),
