@@ -164,16 +164,13 @@ class RemoteGS(RemoteBASE):
         return bool(list(self._list_paths(dir_path, max_items=1)))
 
     def exists(self, path_info):
-        dir_path = path_info / ""
-
-        if self.isdir(dir_path):
+        blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
+        if blob.exists():
             return True
 
-        for fname in self._list_paths(path_info):
-            if path_info.path == fname:
-                return True
-
-        return False
+        # if the blob does not exist, it could be a part of a directory path
+        # eg: if `data/file.txt` exists, check for `data` should return True
+        return self.isdir(path_info / "")
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
