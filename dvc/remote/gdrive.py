@@ -8,7 +8,7 @@ import threading
 from funcy import retry, compose, decorator, wrap_with
 from funcy.py3 import cat
 
-from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
+from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
@@ -17,6 +17,7 @@ from dvc.exceptions import DvcException
 from dvc.utils import tmp_fname
 
 logger = logging.getLogger(__name__)
+FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 
 class GDriveRetriableError(DvcException):
@@ -96,21 +97,25 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     def upload_file(self, item, no_progress_bar, from_file, progress_name):
-        with open(from_file, "rb") as opened_file:
-            if not no_progress_bar:
-                opened_file = TrackFileReadProgress(progress_name, opened_file)
-            # PyDrive doesn't like content property setting for empty files
-            # https://github.com/gsuitedevs/PyDrive/issues/121
-            if os.stat(from_file).st_size:
-                item.content = opened_file
-            item.Upload()
+        with open(from_file, "rb") as fobj:
+            total = os.fstat(fobj.fileno()).st_size
+            with Tqdm.wrapattr(
+                fobj,
+                "read",
+                desc=progress_name,
+                total=total,
+                disable=no_progress_bar,
+            ) as opened_file:
+                # PyDrive doesn't like content property setting for empty files
+                # https://github.com/gsuitedevs/PyDrive/issues/121
+                if total:
+                    item.content = opened_file
+                item.Upload()
 
     @gdrive_retry
     def gdrive_download_file(
         self, file_id, to_file, progress_name, no_progress_bar
     ):
-        from dvc.progress import Tqdm
-
         gdrive_file = self.drive.CreateFile({"id": file_id})
         with Tqdm(
             desc=progress_name,
