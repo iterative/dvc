@@ -106,3 +106,25 @@ def test_makedirs(remote):
     remote.makedirs(empty_dir)
     assert remote.exists(empty_dir)
     assert remote.isdir(empty_dir)
+
+
+@pytest.mark.parametrize("remote", [GCP], indirect=True)
+def test_isfile(remote):
+    test_cases = [
+        (False, "empty_dir/"),
+        (True, "empty_file"),
+        (True, "foo"),
+        (True, "data/alice"),
+        (True, "data/alpha"),
+        (True, "data/subdir/1"),
+        (True, "data/subdir/2"),
+        (True, "data/subdir/3"),
+        (False, "data/subdir/empty_dir/"),
+        (True, "data/subdir/empty_file"),
+        (False, "something-that-does-not-exist"),
+        (False, "data/subdir/empty-file/"),
+        (False, "empty_dir"),
+    ]
+
+    for expected, path in test_cases:
+        assert remote.isfile(remote.path_info / path) == expected
