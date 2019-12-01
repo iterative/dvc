@@ -23,7 +23,7 @@ def run_dvc(*argv):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url(repo_dir, dvc_repo, remote_url):
+def test_get_url(remote_url, repo_dir, dvc_repo):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     dvc_repo.add(repo_dir.FOO)
 
@@ -32,7 +32,7 @@ def test_get_url(repo_dir, dvc_repo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
-def test_get_url_external(dvc_repo, erepo, remote_url):
+def test_get_url_external(remote_url, dvc_repo, erepo):
     _set_remote_url_and_commit(erepo.dvc, remote_url)
 
     # Using file url to force clone to tmp repo
@@ -42,7 +42,7 @@ def test_get_url_external(dvc_repo, erepo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open(repo_dir, dvc_repo, remote_url):
+def test_open(remote_url, repo_dir, dvc_repo):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
     dvc_repo.add(repo_dir.FOO)
     run_dvc("push")
@@ -55,7 +55,7 @@ def test_open(repo_dir, dvc_repo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_open_external(dvc_repo, erepo, remote_url):
+def test_open_external(remote_url, dvc_repo, erepo):
     erepo.dvc.scm.checkout("branch")
     _set_remote_url_and_commit(erepo.dvc, remote_url)
     erepo.dvc.scm.checkout("master")
@@ -75,7 +75,7 @@ def test_open_external(dvc_repo, erepo, remote_url):
 
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
-def test_missing(repo_dir, dvc_repo, remote_url):
+def test_missing(remote_url, repo_dir, dvc_repo):
     run_dvc("add", repo_dir.FOO)
     run_dvc("remote", "add", "-d", "upstream", remote_url)
 
