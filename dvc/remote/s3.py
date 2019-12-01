@@ -207,17 +207,24 @@ class RemoteS3(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info)
 
+    def isfile(self, path_info):
+        if path_info.path.endswith("/"):
+            return False
+
+        try:
+            self.get_head_object(self.s3, path_info.bucket, path_info.path)
+        except DvcException:
+            return False
+
+        return True
+
     def exists(self, path_info):
-        dir_path = path_info / ""
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
 
-        if self.isdir(dir_path):
-            return True
-
-        for fname in self._list_paths(path_info):
-            if path_info.path == fname:
-                return True
-
-        return False
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return True if self.isfile(path_info) else self.isdir(path_info)
 
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
