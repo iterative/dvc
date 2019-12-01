@@ -93,24 +93,22 @@ class RemoteGDrive(RemoteBASE):
         item = self.drive.CreateFile(
             {"title": args["title"], "parents": [{"id": args["parent_id"]}]}
         )
-        self.upload_file(item, no_progress_bar, from_file, progress_name)
-        return item
 
-    def upload_file(self, item, no_progress_bar, from_file, progress_name):
         with open(from_file, "rb") as fobj:
-            total = os.fstat(fobj.fileno()).st_size
+            total = os.path.getsize(from_file)
             with Tqdm.wrapattr(
                 fobj,
                 "read",
                 desc=progress_name,
                 total=total,
                 disable=no_progress_bar,
-            ) as opened_file:
+            ) as wrapped:
                 # PyDrive doesn't like content property setting for empty files
                 # https://github.com/gsuitedevs/PyDrive/issues/121
                 if total:
-                    item.content = opened_file
+                    item.content = wrapped
                 item.Upload()
+        return item
 
     @gdrive_retry
     def gdrive_download_file(
