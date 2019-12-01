@@ -92,9 +92,9 @@ def test_makedirs_permissions(tmpdir):
 
 def test_is_exec_found_returns_true_when_program_exists():
     result = utils.is_exec_found("python")
-    assert result == True
+    assert result is True
 
 
 def test_is_exec_found_returns_false_when_program_is_missing():
     result = utils.is_exec_found("some-missing-program")
-    assert result == False
+    assert result is False
