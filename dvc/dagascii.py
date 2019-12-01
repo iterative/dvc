@@ -37,20 +37,19 @@ Also, you can override default pager via {} env. var.
 
 
 def find_pager():
-    if sys.stdout.isatty():
-        if is_exec_found(DEFAULT_PAGER):
-            pager_cmd = os.getenv(DVC_PAGER, DEFAULT_PAGER_FORMATTED)
+    if not sys.stdout.isatty():
+        return pydoc.plainpager
 
-            def less_pager(text):
-                return pydoc.tempfilepager(pydoc.plain(text), pager_cmd)
+    if is_exec_found(DEFAULT_PAGER):
+        pager_cmd = os.getenv(DVC_PAGER, DEFAULT_PAGER_FORMATTED)
 
-            pager = less_pager
-        else:
-            logger.info(boxify(DVC_PAGER_INFO, border_color="yellow"))
-            pager = pydoc.plainpager
-    else:
-        pager = pydoc.plainpager
-    return pager
+        def less_pager(text):
+            return pydoc.tempfilepager(pydoc.plain(text), pager_cmd)
+
+        return less_pager
+
+    logger.info(boxify(DVC_PAGER_INFO, border_color="yellow"))
+    return pydoc.plainpager
 
 
 class VertexViewer(object):
