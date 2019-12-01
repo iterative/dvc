@@ -13,10 +13,12 @@ def remote():
         ├── data
         │  ├── alice
         │  ├── alpha
+        │  ├── subdir-file.txt
         │  └── subdir
         │     ├── 1
         │     ├── 2
         │     └── 3
+        ├── data1.txt
         ├── empty_dir
         ├── empty_file
         └── foo
@@ -26,6 +28,7 @@ def remote():
         s3 = remote.s3
 
         s3.create_bucket(Bucket="bucket")
+        s3.put_object(Bucket="bucket", Key="data1.txt", Body=b"")
         s3.put_object(Bucket="bucket", Key="empty_dir/")
         s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
         s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
@@ -34,6 +37,9 @@ def remote():
         s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
         s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
         s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
+        s3.put_object(
+            Bucket="bucket", Key="data/subdir-file.txt", Body=b"subdir"
+        )
 
         yield remote
 
@@ -66,6 +72,7 @@ def test_exists(remote):
         (True, "data/subdir/1"),
         (False, "data/al"),
         (False, "foo/"),
+        (True, "data1.txt"),
     ]
 
     for expected, path in test_cases:
@@ -76,9 +83,11 @@ def test_walk_files(remote):
     files = [
         remote.path_info / "data/alice",
         remote.path_info / "data/alpha",
+        remote.path_info / "data/subdir-file.txt",
         remote.path_info / "data/subdir/1",
         remote.path_info / "data/subdir/2",
         remote.path_info / "data/subdir/3",
+        remote.path_info / "data1.txt",
         remote.path_info / "empty_file",
         remote.path_info / "foo",
     ]
@@ -109,3 +118,23 @@ def test_makedirs(remote):
     assert not remote.exists(empty_dir)
     remote.makedirs(empty_dir)
     assert remote.exists(empty_dir)
+
+
+def test_isfile(remote):
+    test_cases = [
+        (False, "empty_dir/"),
+        (True, "empty_file"),
+        (True, "foo"),
+        (True, "data/alice"),
+        (True, "data/alpha"),
+        (True, "data/subdir/1"),
+        (True, "data/subdir/2"),
+        (True, "data/subdir/3"),
+        (False, "data/subdir/empty_dir/"),
+        (False, "data/subdir/1/"),
+        (False, "something-that-does-not-exist"),
+        (False, "empty_dir"),
+    ]
+
+    for expected, path in test_cases:
+        assert remote.isfile(remote.path_info / path) == expected
