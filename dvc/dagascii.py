@@ -15,6 +15,7 @@ from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer
 from grandalf.routing import route_with_lines
 
+from dvc.env import DVC_PAGER
 from dvc.utils import boxify, is_exec_found
 
 
@@ -25,21 +26,20 @@ DEFAULT_PAGER = "less"
 DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
     DEFAULT_PAGER
 )
-DVC_PAGER_VAR_NAME = "DVC_PAGER"
 DVC_PAGER_INFO = """\
 Less command line tool is missing.
 Install & add less tool to your PATH env. var. to automatically send output \
 to pager.
 Also, you can override default pager via {} env. var.
 """.format(
-    DVC_PAGER_VAR_NAME
+    DVC_PAGER
 )
 
 
-def find_pager(pager_cmd, pager_cmd_with_format, pager_env_name):
+def find_pager():
     if sys.stdout.isatty():
-        if is_exec_found(pager_cmd):
-            pager_cmd = os.getenv(pager_env_name, pager_cmd_with_format)
+        if is_exec_found(DEFAULT_PAGER):
+            pager_cmd = os.getenv(DVC_PAGER, DEFAULT_PAGER_FORMATTED)
 
             def less_pager(text):
                 return pydoc.tempfilepager(pydoc.plain(text), pager_cmd)
@@ -100,9 +100,7 @@ class AsciiCanvas(object):
 
     def draw(self):
         """Draws ASCII canvas on the screen."""
-        pager = find_pager(
-            DEFAULT_PAGER, DEFAULT_PAGER_FORMATTED, DVC_PAGER_VAR_NAME
-        )
+        pager = find_pager()
         lines = map("".join, self.canvas)
         joined_lines = os.linesep.join(lines)
         pager(joined_lines)
