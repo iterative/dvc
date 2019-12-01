@@ -219,41 +219,6 @@ class System(object):
         return inode
 
     @staticmethod
-    def _wait_for_input_windows(timeout):
-        import sys
-        import ctypes
-        import msvcrt
-        from ctypes.wintypes import DWORD, HANDLE
-
-        # https://docs.microsoft.com/en-us/windows/desktop/api/synchapi/nf-synchapi-waitforsingleobject
-        from win32event import WAIT_OBJECT_0, WAIT_TIMEOUT
-
-        func = ctypes.windll.kernel32.WaitForSingleObject
-        func.argtypes = [HANDLE, DWORD]
-        func.restype = DWORD
-
-        rc = func(msvcrt.get_osfhandle(sys.stdin.fileno()), timeout * 1000)
-        if rc not in [WAIT_OBJECT_0, WAIT_TIMEOUT]:
-            raise RuntimeError(rc)
-
-    @staticmethod
-    def _wait_for_input_posix(timeout):
-        import sys
-        import select
-
-        try:
-            select.select([sys.stdin], [], [], timeout)
-        except select.error:
-            pass
-
-    @staticmethod
-    def wait_for_input(timeout):
-        if System.is_unix():
-            return System._wait_for_input_posix(timeout)
-        else:
-            return System._wait_for_input_windows(timeout)
-
-    @staticmethod
     def is_symlink(path):
         path = fspath(path)
 
