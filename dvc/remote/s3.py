@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 
+from botocore.exceptions import ClientError
 from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
@@ -212,8 +213,8 @@ class RemoteS3(RemoteBASE):
             return False
 
         try:
-            self.get_head_object(self.s3, path_info.bucket, path_info.path)
-        except DvcException:
+            self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
+        except ClientError:
             return False
 
         return True
@@ -224,7 +225,7 @@ class RemoteS3(RemoteBASE):
 
         eg: if `data/file.txt` exists, check for `data` should return True
         """
-        return True if self.isfile(path_info) else self.isdir(path_info)
+        return self.isfile(path_info) or self.isdir(path_info)
 
     def makedirs(self, path_info):
         # We need to support creating empty directories, which means
