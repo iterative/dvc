@@ -8,7 +8,11 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
-from tests.remotes import remote_params, all_remote_params
+from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
+
+
+remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
+all_remote_params = [Local] + remote_params
 
 
 @pytest.fixture

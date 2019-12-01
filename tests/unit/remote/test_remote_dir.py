@@ -26,8 +26,8 @@ def remote(request):
     if not request.param.should_test():
         raise pytest.skip()
     with request.param.remote() as remote:
-        with request.param.put_objects(remote, FILE_WITH_CONTENTS):
-            yield remote
+        request.param.put_objects(remote, FILE_WITH_CONTENTS)
+        yield remote
 
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)

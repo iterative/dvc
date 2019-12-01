@@ -242,26 +242,15 @@ class S3Mocked:
             yield remote
 
     @classmethod
-    @contextmanager
     def put_objects(cls, remote, objects):
-        s3 = cls.get_client(remote)
-        s3.create_bucket(Bucket="dvc-test")
-        for key, body in objects.items():
-            cls.put_object(remote, key, body)
-        yield
-
-    @staticmethod
-    def get_client(remote):
-        return remote.s3
-
-    @classmethod
-    def put_object(cls, remote, key, body):
-        s3 = cls.get_client(remote)
+        s3 = remote.s3
         bucket = remote.path_info.bucket
-
-        s3.put_object(
-            Bucket=bucket, Key=remote.path_info.path + "/" + key, Body=body
-        )
+        s3.create_bucket(Bucket=bucket)
+        for key, body in objects.items():
+            s3.put_object(
+                Bucket=bucket, Key=(remote.path_info / key).path, Body=body
+            )
+        yield
 
 
 class GCP:
@@ -275,30 +264,12 @@ class GCP:
         yield remote
 
     @classmethod
-    @contextmanager
     def put_objects(cls, remote, objects):
+        client = remote.gs
+        bucket = client.get_bucket(remote.path_info.bucket)
         for key, body in objects.items():
-            cls.put_object(remote, key, body)
+            bucket.blob((remote.path_info / key).path).upload_from_string(body)
         yield
-        cls.remove(remote, objects.keys())
-
-    @classmethod
-    def put_object(cls, remote, key, body):
-        client = cls.get_client(remote)
-        bucket = remote.path_info.bucket
-
-        bucket = client.get_bucket(bucket)
-        blob = bucket.blob(remote.path_info.path + "/" + key)
-        blob.upload_from_string(body)
-
-    @staticmethod
-    def get_client(remote):
-        return remote.gs
-
-    @staticmethod
-    def remove(remote, files):
-        for fname in files:
-            remote.remove(remote.path_info / fname)
 
 
 class Azure:
@@ -319,7 +290,3 @@ class SSH:
 class HDFS:
     should_test = staticmethod(_should_test_hdfs)
     get_url = staticmethod(get_hdfs_url)
-
-
-remote_params = [S3, GCP, Azure, OSS, SSH, HDFS]
-all_remote_params = [Local] + remote_params

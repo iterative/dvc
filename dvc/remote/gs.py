@@ -176,7 +176,7 @@ class RemoteGS(RemoteBASE):
 
         eg: if `data/file.txt` exists, check for `data` should return True
         """
-        return True if self.isfile(path_info) else self.isdir(path_info / "")
+        return self.isfile(path_info) or self.isdir(path_info / "")
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
