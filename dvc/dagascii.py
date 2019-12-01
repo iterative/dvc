@@ -7,7 +7,6 @@ import math
 import os
 import pydoc
 import sys
-from distutils.spawn import find_executable
 
 from grandalf.graphs import Edge
 from grandalf.graphs import Graph
@@ -16,7 +15,7 @@ from grandalf.layouts import SugiyamaLayout
 from grandalf.routing import EdgeViewer
 from grandalf.routing import route_with_lines
 
-from dvc.utils import boxify
+from dvc.utils import boxify, is_exec_found
 
 
 logger = logging.getLogger(__name__)
@@ -39,8 +38,7 @@ Also, you can override default pager via {} env. var.
 
 def find_pager(pager_cmd, pager_cmd_with_format, pager_env_name):
     if sys.stdout.isatty():
-        less_found = find_executable(pager_cmd) is not None
-        if less_found:
+        if is_exec_found(pager_cmd):
             pager_cmd = os.getenv(pager_env_name, pager_cmd_with_format)
 
             def less_pager(text):

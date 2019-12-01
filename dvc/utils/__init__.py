@@ -420,3 +420,8 @@ def resolve_output(inp, out):
     if os.path.isdir(out):
         return os.path.join(out, name)
     return out
+
+
+def is_exec_found(exec_name):
+    cmd = '({}) 2>/dev/null'.format(exec_name)
+    return hasattr(os, 'system') and os.system(cmd) == 0
