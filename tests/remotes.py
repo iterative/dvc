@@ -241,8 +241,8 @@ class S3Mocked:
             remote = RemoteS3(None, {"url": cls.get_url()})
             yield remote
 
-    @classmethod
-    def put_objects(cls, remote, objects):
+    @staticmethod
+    def put_objects(remote, objects):
         s3 = remote.s3
         bucket = remote.path_info.bucket
         s3.create_bucket(Bucket=bucket)
@@ -250,7 +250,6 @@ class S3Mocked:
             s3.put_object(
                 Bucket=bucket, Key=(remote.path_info / key).path, Body=body
             )
-        yield
 
 
 class GCP:
@@ -263,13 +262,12 @@ class GCP:
         remote = RemoteGS(None, {"url": cls.get_url()})
         yield remote
 
-    @classmethod
-    def put_objects(cls, remote, objects):
+    @staticmethod
+    def put_objects(remote, objects):
         client = remote.gs
         bucket = client.get_bucket(remote.path_info.bucket)
         for key, body in objects.items():
             bucket.blob((remote.path_info / key).path).upload_from_string(body)
-        yield
 
 
 class Azure:
