@@ -5,7 +5,7 @@ import moto.s3.models as s3model
 from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
-from tests.func.test_data_cloud import get_aws_url
+from tests.remotes import get_aws_url
 
 
 # from https://github.com/spulec/moto/blob/v1.3.5/tests/test_s3/test_s3.py#L40

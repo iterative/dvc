@@ -1,49 +1,38 @@
 # -*- coding: utf-8 -*-
 import pytest
-from moto import mock_s3
 
 from dvc.remote.s3 import RemoteS3
 
+from tests.remotes import GCP, S3Mocked
+
+remotes = [GCP, S3Mocked]
+
+FILE_WITH_CONTENTS = {
+    "data1.txt": "",
+    "empty_dir/": "",
+    "empty_file": "",
+    "foo": "foo",
+    "data/alice": "alice",
+    "data/alpha": "alpha",
+    "data/subdir-file.txt": "subdir",
+    "data/subdir/1": "1",
+    "data/subdir/2": "2",
+    "data/subdir/3": "3",
+    "data/subdir/empty_dir/": "",
+    "data/subdir/empty_file": "",
+}
+
 
 @pytest.fixture
-def remote():
-    """Returns a RemoteS3 connected to a bucket with the following structure:
-
-        bucket
-        ├── data
-        │  ├── alice
-        │  ├── alpha
-        │  ├── subdir-file.txt
-        │  └── subdir
-        │     ├── 1
-        │     ├── 2
-        │     └── 3
-        ├── data1.txt
-        ├── empty_dir
-        ├── empty_file
-        └── foo
-    """
-    with mock_s3():
-        remote = RemoteS3(None, {"url": "s3://bucket", "region": "us-east-1"})
-        s3 = remote.s3
-
-        s3.create_bucket(Bucket="bucket")
-        s3.put_object(Bucket="bucket", Key="data1.txt", Body=b"")
-        s3.put_object(Bucket="bucket", Key="empty_dir/")
-        s3.put_object(Bucket="bucket", Key="empty_file", Body=b"")
-        s3.put_object(Bucket="bucket", Key="foo", Body=b"foo")
-        s3.put_object(Bucket="bucket", Key="data/alice", Body=b"alice")
-        s3.put_object(Bucket="bucket", Key="data/alpha", Body=b"alpha")
-        s3.put_object(Bucket="bucket", Key="data/subdir/1", Body=b"1")
-        s3.put_object(Bucket="bucket", Key="data/subdir/2", Body=b"2")
-        s3.put_object(Bucket="bucket", Key="data/subdir/3", Body=b"3")
-        s3.put_object(
-            Bucket="bucket", Key="data/subdir-file.txt", Body=b"subdir"
-        )
-
+def remote(request):
+    if not request.param.should_test():
+        raise pytest.skip()
+    with request.param.remote() as remote:
+        request.param.put_objects(remote, FILE_WITH_CONTENTS)
         yield remote
 
 
+@pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_isdir(remote):
     test_cases = [
         (True, "data"),
@@ -60,6 +49,7 @@ def test_isdir(remote):
         assert remote.isdir(remote.path_info / path) == expected
 
 
+@pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_exists(remote):
     test_cases = [
         (True, "data"),
@@ -79,6 +69,7 @@ def test_exists(remote):
         assert remote.exists(remote.path_info / path) == expected
 
 
+@pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_walk_files(remote):
     files = [
         remote.path_info / "data/alice",
@@ -87,14 +78,13 @@ def test_walk_files(remote):
         remote.path_info / "data/subdir/1",
         remote.path_info / "data/subdir/2",
         remote.path_info / "data/subdir/3",
-        remote.path_info / "data1.txt",
-        remote.path_info / "empty_file",
-        remote.path_info / "foo",
+        remote.path_info / "data/subdir/empty_file",
     ]
 
-    assert list(remote.walk_files(remote.path_info)) == files
+    assert list(remote.walk_files(remote.path_info / "data")) == files
 
 
+@pytest.mark.parametrize("remote", [S3Mocked], indirect=True)
 def test_copy_preserve_etag_across_buckets(remote):
     s3 = remote.s3
     s3.create_bucket(Bucket="another")
@@ -106,20 +96,23 @@ def test_copy_preserve_etag_across_buckets(remote):
 
     remote.copy(from_info, to_info)
 
-    from_etag = RemoteS3.get_etag(s3, "bucket", "foo")
+    from_etag = RemoteS3.get_etag(s3, from_info.bucket, from_info.path)
     to_etag = RemoteS3.get_etag(s3, "another", "foo")
 
     assert from_etag == to_etag
 
 
+@pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_makedirs(remote):
     empty_dir = remote.path_info / "empty_dir" / ""
     remote.remove(empty_dir)
     assert not remote.exists(empty_dir)
     remote.makedirs(empty_dir)
     assert remote.exists(empty_dir)
+    assert remote.isdir(empty_dir)
 
 
+@pytest.mark.parametrize("remote", [GCP, S3Mocked], indirect=True)
 def test_isfile(remote):
     test_cases = [
         (False, "empty_dir/"),
@@ -131,8 +124,9 @@ def test_isfile(remote):
         (True, "data/subdir/2"),
         (True, "data/subdir/3"),
         (False, "data/subdir/empty_dir/"),
-        (False, "data/subdir/1/"),
+        (True, "data/subdir/empty_file"),
         (False, "something-that-does-not-exist"),
+        (False, "data/subdir/empty-file/"),
         (False, "empty_dir"),
     ]
 

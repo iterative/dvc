@@ -4,14 +4,13 @@ import shutil
 import configobj
 from mock import patch
 
-from .test_data_cloud import get_local_url
 from dvc.config import Config
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL
 from dvc.remote.base import RemoteBASE
 from tests.basic_env import TestDvc
-from tests.func.test_data_cloud import get_local_storagepath
+from tests.remotes import get_local_url, get_local_storagepath
 
 
 class TestRemote(TestDvc):

@@ -138,16 +138,45 @@ class RemoteGS(RemoteBASE):
 
         blob.delete()
 
-    def _list_paths(self, bucket, prefix):
-        for blob in self.gs.bucket(bucket).list_blobs(prefix=prefix):
+    def _list_paths(self, path_info, max_items=None):
+        for blob in self.gs.bucket(path_info.bucket).list_blobs(
+            prefix=path_info.path, max_results=max_items
+        ):
             yield blob.name
 
     def list_cache_paths(self):
-        return self._list_paths(self.path_info.bucket, self.path_info.path)
+        return self._list_paths(self.path_info)
+
+    def walk_files(self, path_info):
+        for fname in self._list_paths(path_info / ""):
+            # skip nested empty directories
+            if fname.endswith("/"):
+                continue
+            yield path_info.replace(fname)
+
+    def makedirs(self, path_info):
+        self.gs.bucket(path_info.bucket).blob(
+            (path_info / "").path
+        ).upload_from_string("")
+
+    def isdir(self, path_info):
+        dir_path = path_info / ""
+        return bool(list(self._list_paths(dir_path, max_items=1)))
+
+    def isfile(self, path_info):
+        if path_info.path.endswith("/"):
+            return False
+
+        blob = self.gs.bucket(path_info.bucket).blob(path_info.path)
+        return blob.exists()
 
     def exists(self, path_info):
-        paths = set(self._list_paths(path_info.bucket, path_info.path))
-        return any(path_info.path == path for path in paths)
+        """Check if the blob exists. If it does not exist,
+        it could be a part of a directory path.
+
+        eg: if `data/file.txt` exists, check for `data` should return True
+        """
+        return self.isfile(path_info) or self.isdir(path_info)
 
     def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(to_info.bucket)
