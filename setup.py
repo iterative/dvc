@@ -77,7 +77,7 @@ install_requires = [
     "funcy>=1.14",
     "pathspec>=0.6.0",
     "shortuuid>=0.5.0",
-    "tqdm>=4.38.0,<5",
+    "tqdm>=4.40.0,<5",
     "packaging>=19.0",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
