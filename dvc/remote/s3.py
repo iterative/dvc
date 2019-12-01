@@ -214,7 +214,9 @@ class RemoteS3(RemoteBASE):
 
         try:
             self.s3.head_object(Bucket=path_info.bucket, Key=path_info.path)
-        except ClientError:
+        except ClientError as exc:
+            if exc.response["Error"]["Code"] != "404":
+                raise
             return False
 
         return True
