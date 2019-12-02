@@ -10,6 +10,8 @@ from functools import partial
 from multiprocessing import cpu_count
 from operator import itemgetter
 
+from shortuuid import uuid
+
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import ConfirmRemoveError
@@ -425,10 +427,16 @@ class RemoteBASE(object):
         cache_info = self.checksum_to_path_info(checksum)
         if self.changed_cache(checksum):
             self.move(path_info, cache_info)
+            self.link(cache_info, path_info)
+        elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+            # Default relink procedure involves unneeded copy
+            if self.protected:
+                self.protect(path_info)
+            else:
+                self.unprotect(path_info)
         else:
             self.remove(path_info)
-
-        self.link(cache_info, path_info)
+            self.link(cache_info, path_info)
 
         if save_link:
             self.state.save_link(path_info)
@@ -438,6 +446,28 @@ class RemoteBASE(object):
         # next executed command, which causes md5 recalculation
         self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
+
+    def _cache_is_copy(self, path_info):
+        """Checks whether cache uses copies."""
+        if self.cache_type_confirmed:
+            return self.cache_types[0] == "copy"
+
+        if set(self.cache_types) <= {"copy"}:
+            return True
+
+        workspace_file = path_info.with_name("." + uuid())
+        test_cache_file = self.path_info / ".cache_type_test_file"
+        if not self.exists(test_cache_file):
+            with self.open(test_cache_file, "wb") as fobj:
+                fobj.write(bytes(1))
+        try:
+            self.link(test_cache_file, workspace_file)
+        finally:
+            self.remove(workspace_file)
+            self.remove(test_cache_file)
+
+        self.cache_type_confirmed = True
+        return self.cache_types[0] == "copy"
 
     def _save_dir(self, path_info, checksum):
         cache_info = self.checksum_to_path_info(checksum)
@@ -467,6 +497,10 @@ class RemoteBASE(object):
         """
         return False
 
+    def iscopy(self, path_info):
+        """Check if this file is an independent copy."""
+        return False  # We can't be sure by default
+
     def walk_files(self, path_info):
         """Return a generator with `PathInfo`s to all the files"""
         raise NotImplementedError
@@ -483,10 +517,6 @@ class RemoteBASE(object):
             )
 
         checksum = checksum_info[self.PARAM_CHECKSUM]
-        if not self.changed_cache(checksum):
-            self._checkout(path_info, checksum)
-            return
-
         self._save(path_info, checksum)
 
     def _save(self, path_info, checksum):
@@ -760,6 +790,7 @@ class RemoteBASE(object):
     def _checkout_file(
         self, path_info, checksum, force, progress_callback=None
     ):
+        """The file is changed we need to checkout a new copy"""
         cache_info = self.checksum_to_path_info(checksum)
         if self.exists(path_info):
             msg = "data '{}' exists. Removing before checkout."

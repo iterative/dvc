@@ -128,6 +128,11 @@ class RemoteLOCAL(RemoteBASE):
     def isdir(path_info):
         return os.path.isdir(fspath_py35(path_info))
 
+    def iscopy(self, path_info):
+        return not (
+            System.is_symlink(path_info) or System.is_hardlink(path_info)
+        )
+
     @staticmethod
     def getsize(path_info):
         return os.path.getsize(fspath_py35(path_info))
@@ -504,21 +509,3 @@ class RemoteLOCAL(RemoteBASE):
             if self.is_dir_checksum(c):
                 unpacked.add(c + self.UNPACKED_DIR_SUFFIX)
         return unpacked
-
-    def _get_cache_type(self, path_info):
-        if self.cache_type_confirmed:
-            return self.cache_types[0]
-
-        workspace_file = path_info.with_name("." + uuid())
-        test_cache_file = self.path_info / ".cache_type_test_file"
-        if not self.exists(test_cache_file):
-            with open(fspath_py35(test_cache_file), "wb") as fobj:
-                fobj.write(bytes(1))
-        try:
-            self.link(test_cache_file, workspace_file)
-        finally:
-            self.remove(workspace_file)
-            self.remove(test_cache_file)
-
-        self.cache_type_confirmed = True
-        return self.cache_types[0]
