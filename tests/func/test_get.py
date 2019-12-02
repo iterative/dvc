@@ -40,32 +40,33 @@ def test_get_repo_dir(erepo):
 
 
 def test_get_regular_file(erepo):
-    src = os.path.join(erepo.root_dir, "some_file")
-    dst = os.path.join(os.getcwd(), "_imported")
+    src = "some_file"
+    dst = "some_file_imported"
 
-    erepo.create(src, "hello")
-    erepo.dvc.scm.add([src])
+    src_path = os.path.join(erepo.root_dir, src)
+    erepo.create(src_path, "hello")
+    erepo.dvc.scm.add([src_path])
     erepo.dvc.scm.commit("add a regular file")
-    Repo.get(erepo.root_dir, os.path.basename(src), os.path.basename(dst))
+    Repo.get(erepo.root_dir, src, dst)
 
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
-    assert filecmp.cmp(src, dst, shallow=False)
+    assert filecmp.cmp(src_path, dst, shallow=False)
 
 
 def test_get_regular_dir(erepo):
-    src = os.path.join(erepo.root_dir, "some_directory")
-    src_file = os.path.join(src, "file.txt")
-    dst = os.path.join(os.getcwd(), "_imported")
+    src = "some_directory"
+    dst = "some_directory_imported"
 
-    erepo.create(src_file, "hello")
-    erepo.dvc.scm.add([src_file])
+    src_file_path = os.path.join(erepo.root_dir, src, "file.txt")
+    erepo.create(src_file_path, "hello")
+    erepo.dvc.scm.add([src_file_path])
     erepo.dvc.scm.commit("add a regular dir")
-    Repo.get(erepo.root_dir, os.path.basename(src), os.path.basename(dst))
+    Repo.get(erepo.root_dir, src, dst)
 
     assert os.path.exists(dst)
     assert os.path.isdir(dst)
-    trees_equal(src, dst)
+    trees_equal(os.path.join(erepo.root_dir, src), dst)
 
 
 def test_cache_type_is_properly_overridden(repo_dir, erepo):
