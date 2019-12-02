@@ -850,6 +850,7 @@ class RemoteBASE(object):
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
         failed = None
+        skip = False
         if not checksum:
             logger.warning(
                 "No checksum info found for '{}'. "
@@ -858,13 +859,18 @@ class RemoteBASE(object):
             self.safe_remove(path_info, force=force)
             failed = path_info
 
+        elif not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            logger.debug(msg.format(str(path_info)))
+            skip = True
+
         elif self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        if failed:
+        if failed or skip:
             if progress_callback:
                 progress_callback(
                     str(path_info), self.get_files_number(checksum)
