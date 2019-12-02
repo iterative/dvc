@@ -423,5 +423,5 @@ def resolve_output(inp, out):
 
 
 def is_exec_found(exec_name):
-    cmd = "({}) 2>/dev/null".format(exec_name)
-    return hasattr(os, "system") and os.system(cmd) == 0
+    cmd = "({}) 2>{}".format(exec_name, os.devnull)
+    return os.system(cmd) == 0

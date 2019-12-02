@@ -91,7 +91,7 @@ def test_makedirs_permissions(tmpdir):
 
 
 def test_is_exec_found_returns_true_when_program_exists():
-    result = utils.is_exec_found("python")
+    result = utils.is_exec_found("echo")
     assert result is True
 
 
