@@ -52,11 +52,10 @@ def is_enabled():
 
 def send(path):
     url = "https://analytics.dvc.org"
+    headers = {"content-type": "application/json"}
 
     with open(str(path)) as fobj:
-        report = json.load(fobj)
-
-    requests.post(url, json=report, timeout=5)
+        requests.post(url, data=fobj, headers=headers, timeout=5)
 
 
 def scm_in_use():

@@ -34,7 +34,8 @@ def test_send(mock_post, tmp_path):
 
     fname.write_text(str(json.dumps(report)))
     analytics.send(fname)
-    mock_post.assert_called_with(url, json=report, timeout=5)
+    assert mock_post.called
+    assert mock_post.call_args.args[0] == url
 
 
 @pytest.mark.parametrize(
