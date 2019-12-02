@@ -69,7 +69,7 @@ def test_get_regular_dir(erepo):
     trees_equal(os.path.join(erepo.root_dir, src), dst)
 
 
-def test_cache_type_is_properly_overridden(repo_dir, erepo):
+def test_cache_type_is_properly_overridden(erepo):
     erepo.dvc.config.set(
         Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
     )
