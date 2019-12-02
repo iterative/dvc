@@ -1,0 +1,65 @@
+name: dvc
+summary: Data Version Control
+description: Git for Data & Models https://dvc.org
+adopt-info: dvc
+grade: stable
+confinement: classic  # for same reasons as snap `git-ubuntu`
+base: core18
+license: Apache-2.0
+plugs:
+  config-dvc:
+    interface: system-files
+    read:
+    - /etc/host.conf
+    - /etc/resolv.conf
+    - /etc/hosts
+layout:
+  /etc/dvc:
+    bind: $SNAP_DATA/etc/dvc
+  /usr/share/git-core:
+    bind: $SNAP/usr/share/git-core
+  /usr/share/gitweb:
+    bind: $SNAP/usr/share/gitweb
+  /usr/lib/git-core:
+    bind: $SNAP/usr/lib/git-core
+parts:
+  dvc:
+    plugin: python
+    python-packages: [wheel]
+    source: .
+    build-packages:
+    - git
+    - libc-dev
+    stage-packages:
+    - git
+    override-pull: |
+        snapcraftctl pull
+        echo 'PKG = "snap"' > $SNAPCRAFT_PART_SRC/dvc/utils/build.py
+        snapcraftctl set-version `cd $SNAPCRAFT_PART_SRC && git describe --tags`
+        # install all optional extras
+        sed -ri 's/(=install_requires)/\1+all_remotes+hdfs/' $SNAPCRAFT_PART_SRC/setup.py
+    override-build: |
+        snapcraftctl build
+        cp $SNAPCRAFT_PART_BUILD/scripts/completion/dvc.bash $SNAPCRAFT_PART_INSTALL/completion.sh
+apps:
+  dvc:
+    command: bin/dvc
+    completer: completion.sh
+    environment:
+      GIT_PYTHON_GIT_EXECUTABLE: $SNAP/usr/bin/git
+      XDG_CONFIG_DIRS: /etc
+    plugs:
+    - config-dvc
+    - home
+    - mount-observe
+    - network-control
+    - removable-media
+  git:
+    command: usr/bin/git
+    environment:
+      GIT_DISCOVERY_ACROSS_FILESYSTEM: 1
+    plugs:
+    - home
+    - mount-observe
+    - network-control
+    - removable-media

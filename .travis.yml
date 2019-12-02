@@ -2,7 +2,6 @@ cache:
   directories:
     - $HOME/.cache/pip
     - $HOME/.pyenv
-sudo: true
 dist: xenial
 env:
   global:
@@ -15,18 +14,20 @@ stages:
   - test
   - build
   - name: deploy
-    if: tag is present
+    if: (branch = master OR tag is present) AND repo = iterative/dvc
 # Travis doesn't support testing python on Mac yet, so we need
 # to workaround it by installing it directly with brew.
 #
 # Note that we specify language as ruby-2.4.3 to help us satisfy
 # fpm dependencies, as travis runs el capitan with an old ruby
 # version, that causes fpm to crash.
+#
+# Each job will use the previous job's `stage` tag if not specified.
 jobs:
   include:
   # patch formatting checks
   - name: "Check patch formatting"
-    stage: "check"
+    stage: check
     os: linux
     language: python
     python: 3.7
@@ -41,35 +42,28 @@ jobs:
     env:
     - PY2=1
   - name: "3.7 on Windows"
-    stage: test
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
   - name: "2.7 on Linux"
-    stage: test
     language: python
     python: 2.7
     env:
     - PY2=1
   - name: "3.5 on Linux"
-    stage: test
     language: python
     python: 3.5
   - name: "3.6 on Linux"
-    stage: test
     language: python
     python: 3.6
   - name: "3.7 on Linux"
-    stage: test
     language: python
     python: 3.7
   - name: "2.7 on Mac"
-    stage: test
     os: osx
     osx_image: xcode9.4
     env:
     - PY2=1
   - name: "3.6 on Mac"
-    stage: test
     os: osx
     osx_image: xcode9.4
   # build jobs
@@ -82,25 +76,42 @@ jobs:
     install:
     script: ./scripts/build_posix.sh
   - name: "Windows pkg"
-    stage: build
     os: windows
     language: shell
     install:
     script: ./scripts/build_windows.cmd
   - name: "Linux pkgs"
-    stage: build
     language: python
     python: 3.7
     before_install:
     install:
     script: ./scripts/build_posix.sh
   - name: "Pypi pkgs"
-    stage: build
     language: python
     python: 3.7
     script: ./scripts/build_package.sh
+  - name: Snapcraft snap
+    addons:
+     snaps:
+     - name: snapcraft
+       channel: stable
+       confinement: classic
+     - name: lxd
+       channel: stable
+    env:
+    - SNAPCRAFT_IMAGE_INFO: '{"build_url": "$TRAVIS_BUILD_URL"}'
+    before_install:
+    - sudo /snap/bin/lxd.migrate -yes
+    - sudo /snap/bin/lxd waitready
+    - sudo /snap/bin/lxd init --auto
+    install:
+    script:
+    - sudo snapcraft --use-lxd
+    after_failure:
+    - sudo journalctl -u snapd
   # deploy jobs
   - name: "Pypi pkgs"
+    if: tag is present
     stage: deploy
     language: python
     python: 3.7
@@ -117,9 +128,6 @@ jobs:
         - dist/dvc*.whl
         - dist/dvc*.tar.gz
       skip_cleanup: true
-      on:
-        tags: true
-        repo: iterative/dvc
 
 before_install:
   - bash ./scripts/ci/before_install.sh
@@ -140,6 +148,7 @@ deploy:
       - dvc*.deb
       - dvc*.pkg
       - dvc*.exe
+      - dvc*.snap
     skip_cleanup: true
     on:
       tags: true
