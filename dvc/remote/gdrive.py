@@ -115,10 +115,11 @@ class RemoteGDrive(RemoteBASE):
         self, file_id, to_file, progress_name, no_progress_bar
     ):
         gdrive_file = self.drive.CreateFile({"id": file_id})
+        bar_format = "Donwloading {desc}... " + Tqdm.format_sizeof(
+            int(gdrive_file["fileSize"]), "B", 1024
+        )
         with Tqdm(
-            desc=progress_name,
-            total=int(gdrive_file["fileSize"]),
-            disable=no_progress_bar,
+            bar_format=bar_format, desc=progress_name, disable=no_progress_bar
         ):
             gdrive_file.GetContentFile(to_file)
 
