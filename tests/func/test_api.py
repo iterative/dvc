@@ -62,9 +62,9 @@ def test_open(remote_url, tmp_dir, dvc):
 
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open_external(remote_url, erepo_dir):
-    erepo_dir.dvc.scm.checkout("branch")
+    erepo_dir.scm.checkout("branch")
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
-    erepo_dir.dvc.scm.checkout("master")
+    erepo_dir.scm.checkout("master")
     _set_remote_url_and_commit(erepo_dir.dvc, remote_url)
 
     erepo_dir.dvc.push(all_branches=True)

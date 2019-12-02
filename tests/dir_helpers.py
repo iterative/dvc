@@ -90,7 +90,7 @@ class TmpDir(pathlib.Path):
         if commit:
             self.scm.commit(commit)
 
-    # Introspection mehtods
+    # Introspection methods
     def list(self):
         return [p.name for p in self.iterdir()]
 
