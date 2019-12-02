@@ -62,8 +62,10 @@ def _external_repo(url=None, rev=None, cache_dir=None):
 
     # Adjust new clone/copy to fit rev and cache_dir
 
-    # Checkout first in case of non dvc master
-    checkout_revision(new_path, rev)
+    # Checkout needs to be done first because current branch might not be dvc
+    # DVC repository
+    if rev is not None:
+        _git_checkout(new_path, rev)
 
     repo = Repo(new_path)
     try:
@@ -78,12 +80,11 @@ def _external_repo(url=None, rev=None, cache_dir=None):
     return new_path
 
 
-def checkout_revision(repo_path, revision):
-    if revision is not None:
-        from dvc.scm import Git
+def _git_checkout(repo_path, revision):
+    from dvc.scm import Git
 
-        git = Git(repo_path)
-        git.checkout(revision)
+    git = Git(repo_path)
+    git.checkout(revision)
 
 
 def clean_repos():
