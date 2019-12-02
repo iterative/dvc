@@ -7,13 +7,13 @@ import pytest
 from git import Repo
 from git.exc import GitCommandNotFound
 
-from .basic_env import TestDirFixture, EmptyDirFixture
+from .basic_env import TestDirFixture
 from .basic_env import TestDvcGitFixture
 from .basic_env import TestGitFixture
 from dvc.remote.config import RemoteConfig
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
-from dvc.utils.compat import cast_bytes_py2
+from dvc.utils.compat import cast_bytes_py2, fspath
 
 # Prevent updater and analytics from running their processes
 os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")
@@ -193,8 +193,6 @@ def git_erepo():
 
 
 @pytest.fixture
-def empty_dir():
-    directory = EmptyDirFixture()
-    directory.setUp()
-    yield directory
-    directory.tearDown()
+def empty_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    return fspath(tmp_path)

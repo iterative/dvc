@@ -21,55 +21,7 @@ from dvc.utils.fs import remove
 logger = logging.getLogger("dvc")
 
 
-class EmptyDirFixture(object):
-    def __init__(self):
-        root_dir = self.mkdtemp()
-        self._root_dir = os.path.realpath(root_dir)
-
-    @property
-    def root_dir(self):
-        return self._root_dir
-
-    def _pushd(self, d):
-        if not hasattr(self, "_saved_dir"):
-            self._saved_dir = os.path.realpath(os.curdir)
-        os.chdir(d)
-
-    def _popd(self):
-        os.chdir(self._saved_dir)
-        self._saved_dir = None
-
-    @staticmethod
-    def mkdtemp(base_directory=None):
-        prefix = "dvc-test.{}.".format(os.getpid())
-        suffix = ".{}".format(shortuuid.uuid())
-        return tempfile.mkdtemp(
-            prefix=prefix, suffix=suffix, dir=base_directory
-        )
-
-    def setUp(self):
-        self._pushd(self._root_dir)
-
-    def tearDown(self):
-        self._popd()
-        try:
-            remove(self._root_dir)
-        except OSError as exc:
-            # We ignore this under Windows with a warning because it happened
-            # to be really hard to trace all not properly closed files.
-            #
-            # Best guess so far is that gitpython is the culprit:
-            # it opens files and uses __del__ to close them, which can happen
-            # late in current pythons. TestGitFixture and TestDvcFixture try
-            # to close that and it works on most of the tests, but not all.
-            # Repos and thus git repos are created all over the dvc ;)
-            if os.name == "nt" and exc.winerror == 32:
-                warnings.warn("Failed to remove test dir: " + str(exc))
-            else:
-                raise
-
-
-class TestDirFixture(EmptyDirFixture):
+class TestDirFixture(object):
     DATA_DIR = "data_dir"
     DATA_SUB_DIR = os.path.join(DATA_DIR, "data_sub_dir")
     DATA = os.path.join(DATA_DIR, "data")
@@ -97,6 +49,23 @@ class TestDirFixture(EmptyDirFixture):
     UNICODE = "тест"
     UNICODE_CONTENTS = "проверка"
 
+    def __init__(self):
+        root_dir = self.mkdtemp()
+        self._root_dir = os.path.realpath(root_dir)
+
+    @property
+    def root_dir(self):
+        return self._root_dir
+
+    def _pushd(self, d):
+        if not hasattr(self, "_saved_dir"):
+            self._saved_dir = os.path.realpath(os.curdir)
+        os.chdir(d)
+
+    def _popd(self):
+        os.chdir(self._saved_dir)
+        self._saved_dir = None
+
     def create(self, name, contents):
         dname = os.path.dirname(name)
         if len(dname) > 0 and not os.path.isdir(dname):
@@ -109,8 +78,16 @@ class TestDirFixture(EmptyDirFixture):
                 else contents.decode("utf-8")
             )
 
+    @staticmethod
+    def mkdtemp(base_directory=None):
+        prefix = "dvc-test.{}.".format(os.getpid())
+        suffix = ".{}".format(shortuuid.uuid())
+        return tempfile.mkdtemp(
+            prefix=prefix, suffix=suffix, dir=base_directory
+        )
+
     def setUp(self):
-        super(TestDirFixture, self).setUp()
+        self._pushd(self._root_dir)
         self.create(self.FOO, self.FOO_CONTENTS)
         self.create(self.BAR, self.BAR_CONTENTS)
         self.create(self.CODE, self.CODE_CONTENTS)
@@ -119,6 +96,24 @@ class TestDirFixture(EmptyDirFixture):
         self.create(self.DATA, self.DATA_CONTENTS)
         self.create(self.DATA_SUB, self.DATA_SUB_CONTENTS)
         self.create(self.UNICODE, self.UNICODE_CONTENTS)
+
+    def tearDown(self):
+        self._popd()
+        try:
+            remove(self._root_dir)
+        except OSError as exc:
+            # We ignore this under Windows with a warning because it happened
+            # to be really hard to trace all not properly closed files.
+            #
+            # Best guess so far is that gitpython is the culprit:
+            # it opens files and uses __del__ to close them, which can happen
+            # late in current pythons. TestGitFixture and TestDvcFixture try
+            # to close that and it works on most of the tests, but not all.
+            # Repos and thus git repos are created all over the dvc ;)
+            if os.name == "nt" and exc.winerror == 32:
+                warnings.warn("Failed to remove test dir: " + str(exc))
+            else:
+                raise
 
 
 class TestGitFixture(TestDirFixture):

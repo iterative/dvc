@@ -92,7 +92,7 @@ def test_get_to_dir(dname, erepo):
 
 
 def test_get_from_non_dvc_master(empty_dir, git_erepo, caplog):
-    storage = empty_dir.mkdtemp()
+    storage = git_erepo.mkdtemp()
 
     dvc_branch = "dvc_test"
     git_erepo.git.git.checkout("master", b=dvc_branch)
@@ -111,12 +111,17 @@ def test_get_from_non_dvc_master(empty_dir, git_erepo, caplog):
 
     git_erepo.git.git.checkout("master")
 
-    os.chdir(empty_dir._root_dir)
+    os.chdir(empty_dir)
 
     caplog.clear()
     imported_file = "foo_imported"
     with caplog.at_level(logging.INFO, logger="dvc"):
-        Repo.get(git_erepo._root_dir, "foo", out=imported_file, rev=dvc_branch)
+        Repo.get(
+            git_erepo._root_dir,
+            git_erepo.FOO,
+            out=imported_file,
+            rev=dvc_branch,
+        )
 
     assert caplog.text == ""
     assert filecmp.cmp(

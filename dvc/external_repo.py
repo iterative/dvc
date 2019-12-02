@@ -62,7 +62,7 @@ def _external_repo(url=None, rev=None, cache_dir=None):
 
     # Adjust new clone/copy to fit rev and cache_dir
 
-    # Checkout needs to be done first because current branch might not be dvc
+    # Checkout needs to be done first because current branch might not be
     # DVC repository
     if rev is not None:
         _git_checkout(new_path, rev)
