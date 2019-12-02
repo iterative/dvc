@@ -9,6 +9,7 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import NoAbsolutePathError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -104,6 +105,13 @@ def test_get_from_non_dvc_repo(git_erepo):
 def test_get_a_dvc_file(erepo):
     with pytest.raises(GetDVCFileError):
         Repo.get(erepo.root_dir, "some_file.dvc")
+
+
+# Prevent `Repo.get()` from copying any file on the filesystem
+# https://github.com/iterative/dvc/pull/2837#discussion_r352123053
+def test_fails_with_absolute_paths(erepo):
+    with pytest.raises(NoAbsolutePathError):
+        Repo.get(erepo.root_dir, "/root/")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])

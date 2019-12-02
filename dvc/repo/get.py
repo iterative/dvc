@@ -8,6 +8,7 @@ from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import NoAbsolutePathError
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 @staticmethod
 def get(url, path, out=None, rev=None):
+    if os.path.isabs(path):
+        raise NoAbsolutePathError(path)
+
     out = resolve_output(path, out)
 
     if Stage.is_valid_filename(out):

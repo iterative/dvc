@@ -268,6 +268,15 @@ class FileMissingError(DvcException):
         )
 
 
+class NoAbsolutePathError(DvcException):
+    def __init__(self, path, cause=None):
+        super(NoAbsolutePathError, self).__init__(
+            "The path '{}' is an absolute path. ".format(path)
+            + "Provide a relative path.",
+            cause=cause,
+        )
+
+
 class DvcIgnoreInCollectedDirError(DvcException):
     def __init__(self, ignore_dirname):
         super(DvcIgnoreInCollectedDirError, self).__init__(
