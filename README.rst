@@ -158,7 +158,7 @@ GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 .. code-block:: bash
 
-   snap install --devmode dvc_*.snap
+   snap install dvc_*.snap --dangerous --classic
 
 Package
 -------
