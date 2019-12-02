@@ -394,22 +394,19 @@ class RemoteLOCAL(RemoteBASE):
             logger.warning(msg)
 
     @staticmethod
-    def _unprotect_file(path, allow_copy=True):
+    def _unprotect_file(path):
         if System.is_symlink(path) or System.is_hardlink(path):
-            if allow_copy:
-                logger.debug("Unprotecting '{}'".format(path))
-                tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
+            logger.debug("Unprotecting '{}'".format(path))
+            tmp = os.path.join(os.path.dirname(path), "." + str(uuid()))
 
-                # The operations order is important here - if some application
-                # would access the file during the process of copyfile then it
-                # would get only the part of file. So, at first, the file
-                # should be copied with the temporary name, and then
-                # original file should be replaced by new.
-                copyfile(
-                    path, tmp, name="Unprotecting '{}'".format(relpath(path))
-                )
-                remove(path)
-                os.rename(tmp, path)
+            # The operations order is important here - if some application
+            # would access the file during the process of copyfile then it
+            # would get only the part of file. So, at first, the file should be
+            # copied with the temporary name, and then original file should be
+            # replaced by new.
+            copyfile(path, tmp, name="Unprotecting '{}'".format(relpath(path)))
+            remove(path)
+            os.rename(tmp, path)
 
         else:
             logger.debug(
@@ -419,11 +416,11 @@ class RemoteLOCAL(RemoteBASE):
 
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
-    def _unprotect_dir(self, path, allow_copy=True):
+    def _unprotect_dir(self, path):
         for fname in walk_files(path, self.repo.dvcignore):
-            self._unprotect_file(fname, allow_copy)
+            RemoteLOCAL._unprotect_file(fname)
 
-    def unprotect(self, path_info, allow_copy=True):
+    def unprotect(self, path_info):
         path = path_info.fspath
         if not os.path.exists(path):
             raise DvcException(
@@ -431,9 +428,9 @@ class RemoteLOCAL(RemoteBASE):
             )
 
         if os.path.isdir(path):
-            self._unprotect_dir(path, allow_copy)
+            self._unprotect_dir(path)
         else:
-            self._unprotect_file(path, allow_copy)
+            RemoteLOCAL._unprotect_file(path)
 
     @staticmethod
     def protect(path_info):
@@ -525,18 +522,3 @@ class RemoteLOCAL(RemoteBASE):
 
         self.cache_type_confirmed = True
         return self.cache_types[0]
-
-    def _link_matches(self, path_info):
-        is_hardlink = System.is_hardlink(path_info)
-        is_symlink = System.is_symlink(path_info)
-        is_copy_or_reflink = not is_hardlink and not is_symlink
-
-        cache_type = self._get_cache_type(path_info)
-
-        if cache_type == "symlink":
-            return is_symlink
-
-        if cache_type == "hardlink":
-            return is_hardlink
-
-        return is_copy_or_reflink
