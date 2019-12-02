@@ -8,6 +8,9 @@ from dvc.utils.compat import builtin_str, str
 
 @pytest.fixture
 def tmp_global_config(tmp_path):
+    """
+    Fixture to prevent modifying the actual global config
+    """
     with mock.patch(
         "dvc.config.Config.get_global_config_dir", return_value=tmp_path
     ):
