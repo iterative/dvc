@@ -160,6 +160,11 @@ GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
    snap install dvc_*.snap --dangerous --classic
 
+Once ``dvc`` is released on the snap store
+(`pending request <https://forum.snapcraft.io/t/classic-confinement-request-for-dvc/14124>`_)
+there will be no need to download ``dvc_*.snap`` or use ``--dangerous``
+(``snap install dvc --classic`` would suffice).
+
 Package
 -------
 
