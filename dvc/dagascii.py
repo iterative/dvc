@@ -16,7 +16,7 @@ from grandalf.routing import EdgeViewer
 from grandalf.routing import route_with_lines
 
 from dvc.env import DVC_PAGER
-from dvc.utils import boxify, is_exec_found
+from dvc.utils import is_exec_found
 
 
 logger = logging.getLogger(__name__)
@@ -25,14 +25,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_PAGER = "less"
 DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
     DEFAULT_PAGER
-)
-DVC_PAGER_INFO = """\
-Less command line tool is missing.
-Install & add less tool to your PATH env. var. to automatically send output \
-to pager.
-Also, you can override default pager via {} env. var.
-""".format(
-    DVC_PAGER
 )
 
 
@@ -48,7 +40,10 @@ def find_pager():
 
         return less_pager
 
-    logger.info(boxify(DVC_PAGER_INFO, border_color="yellow"))
+    logger.warning(
+        "Unable to find `less` in the PATH. Check out "
+        "man.dvc.org/doc/command-reference/pipeline/show for more info."
+    )
     return pydoc.plainpager
 
 
