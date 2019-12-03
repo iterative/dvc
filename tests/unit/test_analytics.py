@@ -2,8 +2,10 @@ import json
 import pytest
 import mock
 
+from voluptuous import Schema, Any
+
 from dvc import analytics
-from dvc.utils.compat import str
+from dvc.utils.compat import str, builtin_str
 
 
 @pytest.fixture
@@ -18,8 +20,20 @@ def tmp_global_config(tmp_path):
 
 
 def test_collect(tmp_global_config):
+    schema = Schema(
+        {
+            "cmd_class": Any(str, None),
+            "cmd_return_code": Any(int, None),
+            "dvc_version": Any(builtin_str, str),
+            "is_binary": bool,
+            "scm_class": Any("Git", None),
+            "user_id": Any(builtin_str, str),
+            "system_info": dict,
+        }
+    )
+
     report = analytics.collect(return_code=0)
-    assert analytics.report_schema(report)
+    assert schema(report)
 
 
 @mock.patch("requests.post")
