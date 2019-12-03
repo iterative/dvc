@@ -83,7 +83,8 @@ def main(argv=None):
         logger.info(FOOTER)
 
     if analytics.is_enabled():
-        # Include the command class and return code on the analytics report
+        # Collect and send analytics report in a separate process,
+        # including the command class and return code on the report
         cmd_class = args.func.__name__ if hasattr(args, "func") else None
         daemon(["analytics", cmd_class, ret])
 
