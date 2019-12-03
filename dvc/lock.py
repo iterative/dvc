@@ -10,7 +10,7 @@ from funcy.py3 import lkeep
 
 from dvc.exceptions import DvcException
 from dvc.utils import makedirs
-from dvc.utils.compat import is_py3, str, fspath
+from dvc.utils.compat import is_py3, fspath
 
 
 DEFAULT_TIMEOUT = 5

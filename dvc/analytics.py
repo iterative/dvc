@@ -15,7 +15,7 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError, fspath_py35
+from dvc.utils.compat import builtin_str, str, FileNotFoundError, fspath_py35
 
 
 logger = logging.getLogger(__name__)
@@ -24,10 +24,10 @@ report_schema = Schema(
     {
         "cmd_class": Any(str, None),
         "cmd_return_code": Any(int, None),
-        "dvc_version": str,
+        "dvc_version": Any(builtin_str, str),
         "is_binary": bool,
         "scm_class": Any("Git", None),
-        "user_id": str,
+        "user_id": Any(builtin_str, str),
         "system_info": dict,
     }
 )

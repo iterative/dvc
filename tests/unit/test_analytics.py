@@ -3,7 +3,7 @@ import pytest
 import mock
 
 from dvc import analytics
-from dvc.utils.compat import builtin_str, str
+from dvc.utils.compat import str
 
 
 @pytest.fixture
