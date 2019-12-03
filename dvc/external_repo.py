@@ -84,7 +84,10 @@ def _git_checkout(repo_path, revision):
     from dvc.scm import Git
 
     git = Git(repo_path)
-    git.checkout(revision)
+    try:
+        git.checkout(revision)
+    finally:
+        git.close()
 
 
 def clean_repos():
