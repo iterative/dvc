@@ -19,14 +19,7 @@ def tmp_global_config(tmp_path):
 
 def test_collect(tmp_global_config):
     report = analytics.collect(return_code=0)
-
-    assert report["cmd_return_code"] == 0
-    assert report["scm_class"] in ["Git", None]
-    assert not report["cmd_class"]
-    assert type(report["is_binary"]) is bool
-    assert type(report["system_info"]) is dict
-    assert type(report["dvc_version"]) is builtin_str
-    assert type(report["user_id"]) is str
+    assert analytics.report_schema(report)
 
 
 @mock.patch("requests.post")

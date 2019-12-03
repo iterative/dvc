@@ -6,6 +6,7 @@ import sys
 import uuid
 
 import distro
+from voluptuous import Schema, Any
 
 from dvc import __version__
 from dvc.config import Config, to_bool
@@ -18,6 +19,18 @@ from dvc.utils.compat import str, FileNotFoundError, fspath_py35
 
 
 logger = logging.getLogger(__name__)
+
+report_schema = Schema(
+    {
+        "cmd_class": Any(str, None),
+        "cmd_return_code": Any(int, None),
+        "dvc_version": str,
+        "is_binary": bool,
+        "scm_class": Any("Git", None),
+        "user_id": str,
+        "system_info": dict,
+    }
+)
 
 
 def collect(args=None, return_code=None):
