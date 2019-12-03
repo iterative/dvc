@@ -9,7 +9,7 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import NoAbsolutePathError
+from dvc.exceptions import FileOutsideRepoError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -108,10 +108,28 @@ def test_get_a_dvc_file(erepo):
         Repo.get(erepo.root_dir, "some_file.dvc")
 
 
-# Prevent `Repo.get()` from copying any file on the filesystem
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-def test_fails_with_absolute_paths(erepo):
-    with pytest.raises(NoAbsolutePathError):
+def test_get_full_dvc_path(erepo):
+    external_data_dir = erepo.mkdtemp()
+    external_data = os.path.join(external_data_dir, "ext_data")
+    with open(external_data, "w+") as fobj:
+        fobj.write("ext_data")
+
+    cur_dir = os.getcwd()
+    os.chdir(erepo.root_dir)
+    erepo.dvc.add(external_data)
+    erepo.dvc.scm.add(["ext_data.dvc"])
+    erepo.dvc.scm.commit("add external data")
+    os.chdir(cur_dir)
+
+    Repo.get(erepo.root_dir, external_data, "ext_data_imported")
+    assert os.path.isfile("ext_data_imported")
+    assert filecmp.cmp(external_data, "ext_data_imported", shallow=False)
+
+
+# https://github.com/iterative/dvc/pull/2837#discussion_r352123053
+def test_fails_with_non_git_files(erepo):
+    with pytest.raises(FileOutsideRepoError):
         Repo.get(erepo.root_dir, "/root/")
 
 

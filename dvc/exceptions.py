@@ -268,12 +268,10 @@ class FileMissingError(DvcException):
         )
 
 
-class NoAbsolutePathError(DvcException):
+class FileOutsideRepoError(DvcException):
     def __init__(self, path, cause=None):
-        super(NoAbsolutePathError, self).__init__(
-            "The path '{}' is an absolute path. ".format(path)
-            + "Provide a relative path.",
-            cause=cause,
+        super(FileOutsideRepoError, self).__init__(
+            "The path '{}' is outside the target repository.".format(path)
         )
 
 
