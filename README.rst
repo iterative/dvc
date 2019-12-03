@@ -39,20 +39,21 @@
 **Data Version Control** or **DVC** is an **open-source** tool for data science and machine
 learning projects. Key features:
 
-#. simple **command line** Git-like experience. Does not require installing and maintaining
-   any databases. Does not depend on any proprietary online services;
+#. Simple **command line** Git-like experience. Does not require installing and maintaining
+   any databases. Does not depend on any proprietary online services.
 
-#. it manages and versions **datasets** and **machine learning models**. Data is saved in
-   S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS or even local HDD RAID;
+#. Management and versioning of **datasets** and **machine learning models**. Data is saved in
+   S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS, or even local HDD RAID.
 
-#. it makes projects **reproducible** and **shareable**, it helps answering question how
-   the model was build;
+#. Makes projects **reproducible** and **shareable**; helping to answer questions about how
+   a model was built.
 
-#. it helps manage experiments with Git tags or branches and **metrics** tracking;
+#. Helps manage experiments with Git tags/branches and **metrics** tracking.
 
-**DVC** aims to replace tools like Excel and Google Docs that are being commonly used as a knowledge repo and
-a ledger for the team, ad-hoc scripts to track and move deploy different model versions, ad-hoc
-data file suffixes and prefixes.
+**DVC** aims to replace spreadsheet and document sharing tools (such as Excel or Google Docs)
+which are being used frequently as both knowledge repositories and team ledgers.
+DVC also replaces both ad-hoc scripts to track, move, and deploy different model versions;
+as well as ad-hoc data file suffixes and prefixes.
 
 .. contents:: **Contents**
   :backlinks: none
@@ -60,34 +61,33 @@ data file suffixes and prefixes.
 How DVC works
 =============
 
-We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ to better understand what DVC
-is and how does it fit your scenarios.
+We encourage you to read our `Get Started <https://dvc.org/doc/get-started>`_ guide to better understand what DVC
+is and how it can fit your scenarios.
 
-The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-lfs to be precise) + ``makefiles``
+The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS to be precise) & Makefiles
 made right and tailored specifically for ML and Data Science scenarios.
 
-#. ``Git/Git-lfs`` part - DVC helps you storing and sharing data artifacts, models. It connects them with your
-   Git repository.
-#. ``Makefiles`` part - DVC describes how one data or model artifact was build from another data.
+#. ``Git/Git-LFS`` part - DVC helps store and share data artifacts and models, connecting them with a Git repository.
+#. ``Makefile``\ s part - DVC describes how one data or model artifact was built from other data and code.
 
-DVC usually runs along with Git. Git is used as usual to store and version code and DVC meta-files. DVC helps
-to store data and model files seamlessly out of Git while preserving almost the same user experience as if they
-were stored in Git itself. To store and share data files cache DVC supports remotes - any cloud (S3, Azure,
+DVC usually runs along with Git. Git is used as usual to store and version code (including DVC meta-files). DVC helps
+to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they
+were stored in Git itself. To store and share the data cache, DVC supports multiple remotes - any cloud (S3, Azure,
 Google Cloud, etc) or any on-premise network storage (via SSH, for example).
 
 .. image:: https://dvc.org/static/img/flow.gif
    :target: https://dvc.org/static/img/flow.gif
    :alt: how_dvc_works
 
-DVC pipelines (aka computational graph) feature connects code and data together. In a very explicit way you can
-specify, run, and save information that a certain command with certain dependencies needs to be run to produce
-a model. See the quick start section below or check `Get Started <https://dvc.org/doc/get-started>`_ tutorial to
-learn more.
+The DVC pipelines (computational graph) feature connects code and data together. It is possible to explicitly
+specify all steps required to produce a model: input dependencies including data, commands to run,
+and output information to be saved. See the quick start section below or
+the `Get Started <https://dvc.org/doc/get-started>`_ tutorial to learn more.
 
 Quick start
 ===========
 
-Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full version. Common workflow commands include:
+Please read `Get Started <https://dvc.org/doc/get-started>`_ guide for a full version. Common workflow commands include:
 
 +-----------------------------------+-------------------------------------------------------------------+
 | Step                              | Command                                                           |
@@ -112,8 +112,8 @@ Please read `Get Started <https://dvc.org/doc/get-started>`_ for the full versio
 Installation
 ============
 
-Read this `instruction <https://dvc.org/doc/get-started/install>`_ to get more details. There are four
-options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package:
+There are four options to install DVC: ``pip``, Homebrew, Conda (Anaconda) or an OS-specific package.
+Full instructions are `available here <https://dvc.org/doc/get-started/install>`_.
 
 pip (PyPI)
 ----------
@@ -124,8 +124,8 @@ pip (PyPI)
 
 Depending on the remote storage type you plan to use to keep and share your data, you might need to specify
 one of the optional dependencies: ``s3``, ``gs``, ``azure``, ``oss``, ``ssh``. Or ``all`` to include them all.
-The command should look like this: ``pip install dvc[s3]`` - it installs the ``boto3`` library along with
-DVC to support the AWS S3 storage.
+The command should look like this: ``pip install dvc[s3]`` (in this case AWS S3 dependencies such as ``boto3``
+will be installed automatically).
 
 To install the development version, run:
 
@@ -148,7 +148,7 @@ Conda (Anaconda)
 
    conda install -c conda-forge dvc
 
-Currently, it supports only python version 2.7, 3.6 and 3.7.
+Currently, this includes support for Python versions 2.7, 3.6 and 3.7.
 
 Snap (Snapcraft)
 ----------------
@@ -168,8 +168,8 @@ there will be no need to download ``dvc_*.snap`` or use ``--dangerous``
 Package
 -------
 
-Self-contained packages for Windows, Linux, Mac are available. The latest version of the packages can be found at
-GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
+Self-contained packages for Linux, Windows, and Mac are available. The latest version of the packages
+can be found on the GitHub `releases page <https://github.com/iterative/dvc/releases>`_.
 
 Ubuntu / Debian (deb)
 ^^^^^^^^^^^^^^^^^^^^^
@@ -187,23 +187,23 @@ Fedora / CentOS (rpm)
    sudo yum update
    sudo yum install dvc
 
-Related technologies
-====================
+Comparison to related technologies
+==================================
 
-#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (that you
-   don't want to see in your Git repository) in a local key-value store and uses file hardlinks/symlinks instead of the
-   copying actual files.
+#. `Git-annex <https://git-annex.branchable.com/>`_ - DVC uses the idea of storing the content of large files (which should
+   not be in a Git repository) in a local key-value store, and uses file hardlinks/symlinks instead of
+   copying/duplicating files.
 
 #. `Git-LFS <https://git-lfs.github.com/>`_ - DVC is compatible with any remote storage (S3, Google Cloud, Azure, SSH,
-   etc). DVC utilizes reflinks or hardlinks to avoid copy operation on checkouts which makes much more efficient for
-   large data files.
+   etc). DVC also uses reflinks or hardlinks to avoid copy operations on checkouts; thus handling large data files
+   much more efficiently.
 
-#. *Makefile* (and its analogues). DVC tracks dependencies (DAG).
+#. *Makefile* (and analogues including ad-hoc scripts) - DVC tracks dependencies (in a directed acyclic graph).
 
-#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_. DVC is a workflow
+#. `Workflow Management Systems <https://en.wikipedia.org/wiki/Workflow_management_system>`_ - DVC is a workflow
    management system designed specifically to manage machine learning experiments. DVC is built on top of Git.
 
-#. `DAGsHub <https://dagshub.com/>`_ Is a Github equivalent for DVC - pushing your Git+DVC based repo to DAGsHub will give you a high level dashboard of your project, including DVC pipeline and metrics visualizations, as well as links to DVC managed files if they are in cloud storage.
+#. `DAGsHub <https://dagshub.com/>`_ - This is a Github equivalent for DVC. Pushing Git+DVC based repositories to DAGsHub will produce in a high level project dashboard; including DVC pipelines and metrics visualizations, as well as links to any DVC-managed files present in cloud storage.
 
 Contributing
 ============
@@ -252,5 +252,5 @@ Copyright
 
 This project is distributed under the Apache license version 2.0 (see the LICENSE file in the project root).
 
-By submitting a pull request for this project, you agree to license your contribution under the Apache license version
+By submitting a pull request to this project, you agree to license your contribution under the Apache license version
 2.0 to this project.
