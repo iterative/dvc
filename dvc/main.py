@@ -1,9 +1,7 @@
 """Main entry point for dvc CLI."""
 from __future__ import unicode_literals
 
-import json
 import logging
-import tempfile
 
 from dvc import analytics
 from dvc.cli import parse_args
@@ -85,12 +83,8 @@ def main(argv=None):
         logger.info(FOOTER)
 
     if analytics.is_enabled():
-        report = analytics.collect(args, ret)
-
-        # Use a temporary file to pass the report between the current and
-        # detached process.
-        with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
-            json.dump(report, fobj)
-            daemon(["analytics", fobj.name])
+        # Include the command class and return code on the analytics report
+        cmd_class = args.func.__name__ if hasattr(args, "func") else None
+        daemon(["analytics", cmd_class, ret])
 
     return ret

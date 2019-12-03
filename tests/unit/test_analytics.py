@@ -1,4 +1,3 @@
-import json
 import pytest
 import mock
 
@@ -40,12 +39,9 @@ def test_collect(tmp_global_config):
 def test_send(mock_post, tmp_path):
     url = "https://analytics.dvc.org"
     report = {"name": "dummy report"}
-    fname = tmp_path / "report"
 
-    fname.write_text(str(json.dumps(report)))
-    analytics.send(fname)
-    assert mock_post.called
-    assert mock_post.call_args.args[0] == url
+    analytics.send(report)
+    mock_post.assert_called_with(url, json=report, timeout=5)
 
 
 @pytest.mark.parametrize(

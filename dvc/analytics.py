@@ -14,18 +14,18 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError, fspath_py35
+from dvc.utils.compat import str, FileNotFoundError
 
 
 logger = logging.getLogger(__name__)
 
 
-def collect(args=None, return_code=None):
+def collect(cmd_class=None, return_code=None):
     """
     Query the system to fill a report.
     """
     return {
-        "cmd_class": args.func.__name__ if hasattr(args, "func") else None,
+        "cmd_class": cmd_class,
         "cmd_return_code": return_code,
         "dvc_version": __version__,
         "is_binary": is_binary(),
@@ -50,12 +50,9 @@ def is_enabled():
     return enabled
 
 
-def send(path):
+def send(report):
     url = "https://analytics.dvc.org"
-    headers = {"content-type": "application/json"}
-
-    with open(fspath_py35(path)) as fobj:
-        requests.post(url, data=fobj, headers=headers, timeout=5)
+    requests.post(url, json=report, timeout=5)
 
 
 def scm_in_use():
