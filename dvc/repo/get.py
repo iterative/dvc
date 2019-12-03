@@ -20,7 +20,7 @@ from dvc.utils.fs import remove
 logger = logging.getLogger(__name__)
 
 
-def copy_git_file(repo, src, dst):
+def _copy_git_file(repo, src, dst):
     # Assert that the file does indeed exist in git before attempting to
     # copy it.
     if src not in repo.scm.repo.head.commit.tree:
@@ -74,7 +74,7 @@ def get(url, path, out=None, rev=None):
                 o.checkout()
 
     except NoOutputInExternalRepoError:
-        copy_git_file(repo, path, out)
+        _copy_git_file(repo, path, out)
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
     except OutputNotFoundError:
