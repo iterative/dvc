@@ -21,13 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 def _copy_git_file(repo, src, dst):
-    # Assert that the file does indeed exist in git before attempting to
-    # copy it.
-    if src not in repo.scm.repo.head.commit.tree:
-        raise FileOutsideRepoError(src)
-
     src_full_path = os.path.join(repo.root_dir, src)
     dst_full_path = os.path.abspath(dst)
+
+    if repo.root_dir not in src_full_path:
+        raise FileOutsideRepoError(src)
+
     if os.path.isdir(src_full_path):
         shutil.copytree(src_full_path, dst_full_path)
     else:
