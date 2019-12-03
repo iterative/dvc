@@ -8,7 +8,7 @@ import threading
 from funcy import retry, compose, decorator, wrap_with
 from funcy.py3 import cat
 
-from dvc.remote.gdrive.utils import TrackFileReadProgress, FOLDER_MIME_TYPE
+from dvc.progress import Tqdm
 from dvc.scheme import Schemes
 from dvc.path_info import CloudURLInfo
 from dvc.remote.base import RemoteBASE
@@ -17,6 +17,7 @@ from dvc.exceptions import DvcException
 from dvc.utils import tmp_fname
 
 logger = logging.getLogger(__name__)
+FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 
 class GDriveRetriableError(DvcException):
@@ -92,30 +93,34 @@ class RemoteGDrive(RemoteBASE):
         item = self.drive.CreateFile(
             {"title": args["title"], "parents": [{"id": args["parent_id"]}]}
         )
-        self.upload_file(item, no_progress_bar, from_file, progress_name)
-        return item
 
-    def upload_file(self, item, no_progress_bar, from_file, progress_name):
-        with open(from_file, "rb") as opened_file:
-            if not no_progress_bar:
-                opened_file = TrackFileReadProgress(progress_name, opened_file)
-            # PyDrive doesn't like content property setting for empty files
-            # https://github.com/gsuitedevs/PyDrive/issues/121
-            if os.stat(from_file).st_size:
-                item.content = opened_file
-            item.Upload()
+        with open(from_file, "rb") as fobj:
+            total = os.path.getsize(from_file)
+            with Tqdm.wrapattr(
+                fobj,
+                "read",
+                desc=progress_name,
+                total=total,
+                disable=no_progress_bar,
+            ) as wrapped:
+                # PyDrive doesn't like content property setting for empty files
+                # https://github.com/gsuitedevs/PyDrive/issues/121
+                if total:
+                    item.content = wrapped
+                item.Upload()
+        return item
 
     @gdrive_retry
     def gdrive_download_file(
         self, file_id, to_file, progress_name, no_progress_bar
     ):
-        from dvc.progress import Tqdm
-
         gdrive_file = self.drive.CreateFile({"id": file_id})
+        bar_format = (
+            "Donwloading {desc:{ncols_desc}.{ncols_desc}}... "
+            + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
+        )
         with Tqdm(
-            desc=progress_name,
-            total=int(gdrive_file["fileSize"]),
-            disable=no_progress_bar,
+            bar_format=bar_format, desc=progress_name, disable=no_progress_bar
         ):
             gdrive_file.GetContentFile(to_file)
 

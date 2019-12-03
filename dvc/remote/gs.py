@@ -58,23 +58,15 @@ def _upload_to_bucket(
     no_progress_bar=True,
 ):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
-    with Tqdm(
-        desc=name or to_info.path,
-        total=os.path.getsize(from_file),
-        bytes=True,
-        disable=no_progress_bar,
-    ) as pbar:
-        with io.open(from_file, mode="rb") as fobj:
-            raw_read = fobj.read
-
-            def read(size=chunk_size):
-                res = raw_read(size)
-                if res:
-                    pbar.update(len(res))
-                return res
-
-            fobj.read = read
-            blob.upload_from_file(fobj)
+    with io.open(from_file, mode="rb") as fobj:
+        with Tqdm.wrapattr(
+            fobj,
+            "read",
+            desc=name or to_info.path,
+            total=os.path.getsize(from_file),
+            disable=no_progress_bar,
+        ) as wrapped:
+            blob.upload_from_file(wrapped)
 
 
 class RemoteGS(RemoteBASE):
@@ -191,21 +183,15 @@ class RemoteGS(RemoteBASE):
     def _download(self, from_info, to_file, name=None, no_progress_bar=True):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
-        with Tqdm(
-            desc=name or from_info.path,
-            total=blob.size,
-            bytes=True,
-            disable=no_progress_bar,
-        ) as pbar:
-            with io.open(to_file, mode="wb") as fobj:
-                raw_write = fobj.write
-
-                def write(byte_string):
-                    raw_write(byte_string)
-                    pbar.update(len(byte_string))
-
-                fobj.write = write
-                blob.download_to_file(fobj)
+        with io.open(to_file, mode="wb") as fobj:
+            with Tqdm.wrapattr(
+                fobj,
+                "write",
+                desc=name or from_info.path,
+                total=blob.size,
+                disable=no_progress_bar,
+            ) as wrapped:
+                blob.download_to_file(wrapped)
 
     def _generate_download_url(self, path_info, expires=3600):
         expiration = timedelta(seconds=int(expires))
