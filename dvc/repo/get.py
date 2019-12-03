@@ -1,6 +1,5 @@
 import logging
 import os
-import shutil
 from dvc.utils.compat import FileNotFoundError
 
 import shortuuid
@@ -10,12 +9,14 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
     UrlNotDvcRepoError,
+    PathMissingError,
 )
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
+from dvc.utils.fs import fs_copy
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +27,6 @@ class GetDVCFileError(DvcException):
             "the given path is a DVC-file, you must specify a data file "
             "or a directory"
         )
-
-
-class PathMissingError(DvcException):
-    def __init__(self, path, repo):
-        msg = (
-            "The path '{}' does not exist in the target repository '{}'"
-            " neighther as an output nor a git-handled file."
-        )
-        super(PathMissingError, self).__init__(msg.format(path, repo))
 
 
 @staticmethod
@@ -76,7 +68,7 @@ def get(url, path, out=None, rev=None):
                 if os.path.isabs(path):
                     raise FileNotFoundError
 
-                _copy(os.path.join(repo.root_dir, path), out)
+                fs_copy(os.path.join(repo.root_dir, path), out)
 
     except (OutputNotFoundError, FileNotFoundError):
         raise PathMissingError(path, url)
@@ -94,10 +86,3 @@ def _get_cached(repo, output, out):
         # This might happen when pull haven't really pulled all the files
         if failed:
             raise FileNotFoundError
-
-
-def _copy(src, dst):
-    if os.path.isdir(src):
-        shutil.copytree(src, dst)
-    else:
-        shutil.copy2(src, dst)

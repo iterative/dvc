@@ -344,3 +344,12 @@ class NoOutputInExternalRepoError(DvcException):
 class HTTPError(DvcException):
     def __init__(self, code, reason):
         super(HTTPError, self).__init__("'{} {}'".format(code, reason))
+
+
+class PathMissingError(DvcException):
+    def __init__(self, path, repo):
+        msg = (
+            "The path '{}' does not exist in the target repository '{}'"
+            " neighther as an output nor a git-handled file."
+        )
+        super(PathMissingError, self).__init__(msg.format(path, repo))
