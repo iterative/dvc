@@ -14,7 +14,7 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError
+from dvc.utils.compat import str, FileNotFoundError, fspath_py35
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ def send(path):
     url = "https://analytics.dvc.org"
     headers = {"content-type": "application/json"}
 
-    with open(str(path)) as fobj:
+    with open(fspath_py35(path)) as fobj:
         requests.post(url, data=fobj, headers=headers, timeout=5)
 
 

@@ -13,7 +13,7 @@ from voluptuous import All, Any, Lower, Range, Coerce, Match
 
 from dvc.exceptions import DvcException
 from dvc.exceptions import NotDvcRepoError
-from dvc.utils.compat import open, str, pathlib
+from dvc.utils.compat import open, str, pathlib, fspath
 
 logger = logging.getLogger(__name__)
 
@@ -342,8 +342,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         return ret
 
     def _load_configs(self):
-        system_config_file = str(self.get_system_config_dir() / self.CONFIG)
-        global_config_file = str(self.get_global_config_dir() / self.CONFIG)
+        system_config_file = fspath(self.get_system_config_dir() / self.CONFIG)
+        global_config_file = fspath(self.get_global_config_dir() / self.CONFIG)
 
         self._system_config = configobj.ConfigObj(system_config_file)
         self._global_config = configobj.ConfigObj(global_config_file)
