@@ -68,7 +68,7 @@ The easiest (but not perfect!) *analogy* to describe it: DVC is Git (or Git-LFS 
 made right and tailored specifically for ML and Data Science scenarios.
 
 #. ``Git/Git-LFS`` part - DVC helps store and share data artifacts and models, connecting them with a Git repository.
-#. ``Makefile`` part - DVC describes how one data or model artifact was built from other data and code.
+#. ``Makefile``\ s part - DVC describes how one data or model artifact was built from other data and code.
 
 DVC usually runs along with Git. Git is used as usual to store and version code (including DVC meta-files). DVC helps
 to store data and model files seamlessly out of Git, while preserving almost the same user experience as if they
