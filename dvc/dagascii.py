@@ -31,13 +31,22 @@ def find_pager():
     if not sys.stdout.isatty():
         return pydoc.plainpager
 
-    if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
-        pager_cmd = os.getenv(DVC_PAGER, DEFAULT_PAGER_FORMATTED)
+    env_pager = os.getenv(DVC_PAGER)
+    if env_pager:
 
-        def less_pager(text):
-            return pydoc.tempfilepager(pydoc.plain(text), pager_cmd)
+        def user_pager(text):
+            return pydoc.tempfilepager(pydoc.plain(text), env_pager)
 
-        return less_pager
+        return user_pager
+    else:
+        if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
+
+            def less_pager(text):
+                return pydoc.tempfilepager(
+                    pydoc.plain(text), DEFAULT_PAGER_FORMATTED
+                )
+
+            return less_pager
 
     logger.warning(
         "Unable to find `less` in the PATH. Check out "
