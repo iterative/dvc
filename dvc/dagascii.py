@@ -16,7 +16,6 @@ from grandalf.routing import EdgeViewer
 from grandalf.routing import route_with_lines
 
 from dvc.env import DVC_PAGER
-from dvc.utils import is_exec_found
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ def find_pager():
     if not sys.stdout.isatty():
         return pydoc.plainpager
 
-    if is_exec_found(DEFAULT_PAGER):
+    if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
         pager_cmd = os.getenv(DVC_PAGER, DEFAULT_PAGER_FORMATTED)
 
         def less_pager(text):
