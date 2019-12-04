@@ -3,13 +3,14 @@ from __future__ import unicode_literals
 import filecmp
 import logging
 import os
+import tempfile
 
 import pytest
 
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import PathOutsideRepoError
+from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -127,9 +128,24 @@ def test_get_full_dvc_path(erepo):
     assert filecmp.cmp(external_data, "ext_data_imported", shallow=False)
 
 
+def test_non_cached_output(request, erepo):
+    os.chdir(erepo.root_dir)
+    erepo.dvc.run(
+        outs_no_cache=["non_cached_file"], cmd="echo hello > non_cached_file"
+    )
+    erepo.dvc.scm.add(["non_cached_file", "non_cached_file.dvc"])
+    erepo.dvc.scm.commit("add non-cached output")
+    new_dir = tempfile.mkdtemp(prefix=request.node.name + "_")
+    os.chdir(new_dir)
+    Repo.get(erepo.root_dir, "non_cached_file")
+    assert os.path.isfile("non_cached_file")
+    src = os.path.join(erepo.root_dir, "non_cached_file")
+    assert filecmp.cmp(src, "non_cached_file", shallow=False)
+
+
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
 def test_fails_with_non_git_files(erepo):
-    with pytest.raises(PathOutsideRepoError):
+    with pytest.raises(NoOutputInExternalRepoError):
         Repo.get(erepo.root_dir, "/root/")
 
 

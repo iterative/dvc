@@ -268,13 +268,6 @@ class FileMissingError(DvcException):
         )
 
 
-class PathOutsideRepoError(DvcException):
-    def __init__(self, path):
-        super(PathOutsideRepoError, self).__init__(
-            "The path '{}' is outside the target repository.".format(path)
-        )
-
-
 class DvcIgnoreInCollectedDirError(DvcException):
     def __init__(self, ignore_dirname):
         super(DvcIgnoreInCollectedDirError, self).__init__(
