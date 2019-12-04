@@ -61,11 +61,14 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         REPO_CACHE[url, None, None] = clean_clone_path
 
     # Adjust new clone/copy to fit rev and cache_dir
+
+    # Checkout needs to be done first because current branch might not be
+    # DVC repository
+    if rev is not None:
+        _git_checkout(new_path, rev)
+
     repo = Repo(new_path)
     try:
-        if rev is not None:
-            repo.scm.checkout(rev)
-
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)
             cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
@@ -75,6 +78,16 @@ def _external_repo(url=None, rev=None, cache_dir=None):
 
     REPO_CACHE[key] = new_path
     return new_path
+
+
+def _git_checkout(repo_path, revision):
+    from dvc.scm import Git
+
+    git = Git(repo_path)
+    try:
+        git.checkout(revision)
+    finally:
+        git.close()
 
 
 def clean_repos():

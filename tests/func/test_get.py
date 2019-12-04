@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import filecmp
+import logging
 import os
 
 import pytest
@@ -11,6 +12,7 @@ from dvc.exceptions import UrlNotDvcRepoError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
+from dvc.utils.compat import fspath
 from tests.utils import trees_equal
 
 
@@ -87,3 +89,19 @@ def test_get_to_dir(dname, erepo):
 
     assert os.path.isdir(dname)
     assert filecmp.cmp(erepo.FOO, dst, shallow=False)
+
+
+def test_get_from_non_dvc_master(erepo, tmp_path, monkeypatch, caplog):
+    monkeypatch.chdir(fspath(tmp_path))
+    erepo.dvc.scm.repo.index.remove([".dvc"], r=True)
+    erepo.dvc.scm.commit("remove .dvc")
+
+    caplog.clear()
+    imported_file = "foo_imported"
+    with caplog.at_level(logging.INFO, logger="dvc"):
+        Repo.get(erepo._root_dir, erepo.FOO, out=imported_file, rev="branch")
+
+    assert caplog.text == ""
+    assert filecmp.cmp(
+        os.path.join(erepo._root_dir, erepo.FOO), imported_file, shallow=False
+    )
