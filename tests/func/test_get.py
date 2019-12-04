@@ -9,7 +9,7 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import FileOutsideRepoError
+from dvc.exceptions import PathOutsideRepoError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -129,7 +129,7 @@ def test_get_full_dvc_path(erepo):
 
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
 def test_fails_with_non_git_files(erepo):
-    with pytest.raises(FileOutsideRepoError):
+    with pytest.raises(PathOutsideRepoError):
         Repo.get(erepo.root_dir, "/root/")
 
 
