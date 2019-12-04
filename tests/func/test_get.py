@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 import filecmp
 import logging
 import os
-import tempfile
 
 import pytest
 
@@ -128,18 +127,18 @@ def test_get_full_dvc_path(erepo):
     assert filecmp.cmp(external_data, "ext_data_imported", shallow=False)
 
 
-def test_non_cached_output(request, erepo):
+def test_non_cached_output(tmp_path, erepo):
     os.chdir(erepo.root_dir)
     erepo.dvc.run(
         outs_no_cache=["non_cached_file"], cmd="echo hello > non_cached_file"
     )
     erepo.dvc.scm.add(["non_cached_file", "non_cached_file.dvc"])
     erepo.dvc.scm.commit("add non-cached output")
-    new_dir = tempfile.mkdtemp(prefix=request.node.name + "_")
-    os.chdir(new_dir)
+    os.chdir(tmp_path)
     Repo.get(erepo.root_dir, "non_cached_file")
-    assert os.path.isfile("non_cached_file")
+
     src = os.path.join(erepo.root_dir, "non_cached_file")
+    assert os.path.isfile("non_cached_file")
     assert filecmp.cmp(src, "non_cached_file", shallow=False)
 
 

@@ -14,7 +14,6 @@ from dvc.stage import Stage
 from dvc.state import StateNoop
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
-from dvc.utils.fs import path_isin
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +45,7 @@ def get(url, path, out=None, rev=None):
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
             full_path = os.path.join(repo.root_dir, path)
-            path_in_repo = path_isin(full_path, repo.root_dir)
-            if os.path.exists(full_path) and path_in_repo:
+            if os.path.exists(full_path) and not os.path.isabs(path):
                 _copy_git_file(repo, path, out)
                 return
 
