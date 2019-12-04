@@ -49,29 +49,30 @@ def get(url, path, out=None, rev=None):
             path_in_repo = path_isin(full_path, repo.root_dir)
             if os.path.exists(full_path) and path_in_repo:
                 _copy_git_file(repo, path, out)
-            else:
-                # Note: we need to replace state, because in case of getting
-                # DVC dependency on CIFS or NFS filesystems, sqlite-based state
-                # will be unable to obtain lock
-                repo.state = StateNoop()
+                return
 
-                # Try any links possible to avoid data duplication.
-                #
-                # Not using symlink, because we need to remove cache after we
-                # are done, and to make that work we would have to copy data
-                # over anyway before removing the cache, so we might just copy
-                # it right away.
-                #
-                # Also, we can't use theoretical "move" link type here, because
-                # the same cache file might be used a few times in a directory.
-                repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
+            # Note: we need to replace state, because in case of getting DVC
+            # dependency on CIFS or NFS filesystems, sqlite-based state
+            # will be unable to obtain lock
+            repo.state = StateNoop()
 
-                o = repo.find_out_by_relpath(path)
-                with repo.state:
-                    repo.cloud.pull(o.get_used_cache())
-                o.path_info = PathInfo(os.path.abspath(out))
-                with o.repo.state:
-                    o.checkout()
+            # Try any links possible to avoid data duplication.
+            #
+            # Not using symlink, because we need to remove cache after we are
+            # done, and to make that work we would have to copy data over
+            # anyway before removing the cache, so we might just copy it
+            # right away.
+            #
+            # Also, we can't use theoretical "move" link type here, because
+            # the same cache file might be used a few times in a directory.
+            repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
+
+            o = repo.find_out_by_relpath(path)
+            with repo.state:
+                repo.cloud.pull(o.get_used_cache())
+            o.path_info = PathInfo(os.path.abspath(out))
+            with o.repo.state:
+                o.checkout()
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
