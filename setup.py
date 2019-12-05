@@ -52,6 +52,7 @@ class build_py(_build_py):
 
 
 install_requires = [
+    "python-dateutil<2.8.1,>=2.1",  # Compatibility with botocore
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
     "future>=0.16.0",
@@ -72,7 +73,7 @@ install_requires = [
     "treelib>=1.5.5",
     "inflect>=2.1.0",
     "humanize>=0.5.1",
-    "PyYAML>=5.1.2",
+    "PyYAML==5.1.2",  # Compatibility with awscli requiring (< 5.2)
     "ruamel.yaml>=0.16.1",
     "funcy>=1.14",
     "pathspec>=0.6.0",
@@ -95,7 +96,7 @@ gs = ["google-cloud-storage==1.19.0"]
 # https://github.com/gsuitedevs/PyDrive/pull/180 into pydrive's master,
 # usage of google-api-python-client can be removed from DVC.
 gdrive = ["pydrive==1.3.1", "google-api-python-client>=1.2"]
-s3 = ["boto3==1.9.115"]
+s3 = ["boto3>=1.9.201"]
 azure = ["azure-storage-blob==2.1.0"]
 oss = ["oss2==2.6.1"]
 ssh = ["paramiko>=2.5.0"]
@@ -125,7 +126,7 @@ tests_requirements = [
     "flaky>=3.5.3",
     "mock>=3.0.0",
     "xmltodict>=0.11.0",
-    "awscli==1.16.266",
+    "awscli>=1.16.297",
     "google-compute-engine==2.8.13",
     "Pygments",  # required by collective.checkdocs,
     "collective.checkdocs",
