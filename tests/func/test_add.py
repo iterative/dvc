@@ -168,17 +168,20 @@ class TestAddModifiedDir(TestDvc):
         self.assertTrue(stages[0] is not None)
 
 
-def test_add_file_in_dir(repo_dir, dvc_repo):
-    stage, = dvc_repo.add(repo_dir.DATA_SUB)
+def test_add_file_in_dir(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"subdir": {"subdata": "subdata content"}}})
+    subdir_path = os.path.join("dir", "subdir", "subdata")
+
+    stage, = dvc.add(subdir_path)
 
     assert stage is not None
     assert len(stage.deps) == 0
     assert len(stage.outs) == 1
-    assert stage.relpath == repo_dir.DATA_SUB + ".dvc"
+    assert stage.relpath == subdir_path + ".dvc"
 
     # Current dir should not be taken into account
     assert stage.wdir == os.path.dirname(stage.path)
-    assert stage.outs[0].def_path == "data_sub"
+    assert stage.outs[0].def_path == "subdata"
 
 
 class TestAddExternalLocalFile(TestDvc):
@@ -529,37 +532,36 @@ def test_windows_should_add_when_cache_on_different_drive(
     assert ret == 0
 
 
-def test_readding_dir_should_not_unprotect_all(dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = ["symlink"]
-    dvc_repo.cache.local.protected = True
+def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
+    tmp_dir.gen("dir/data", "data")
 
-    dvc_repo.add(repo_dir.DATA_DIR)
-    new_file = os.path.join(repo_dir.DATA_DIR, "new_file")
+    dvc.cache.local.cache_types = ["symlink"]
+    dvc.cache.local.protected = True
 
-    repo_dir.create(new_file, "new_content")
+    dvc.add("dir")
+    tmp_dir.gen("dir/new_file", "new_file_content")
 
     unprotect_spy = spy(RemoteLOCAL.unprotect)
-    with patch.object(RemoteLOCAL, "unprotect", unprotect_spy):
-        dvc_repo.add(repo_dir.DATA_DIR)
+    mocker.patch.object(RemoteLOCAL, "unprotect", unprotect_spy)
+    dvc.add("dir")
 
     assert not unprotect_spy.mock.called
-    assert System.is_symlink(new_file)
+    assert System.is_symlink(os.path.join("dir", "new_file"))
 
 
-def test_should_not_checkout_when_adding_cached_copy(repo_dir, dvc_repo):
-    dvc_repo.cache.local.cache_types = ["copy"]
+def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
+    dvc.cache.local.cache_types = ["copy"]
 
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.add(repo_dir.BAR)
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
-    shutil.copy(repo_dir.BAR, repo_dir.FOO)
+    shutil.copy("bar", "foo")
 
-    copy_spy = spy(dvc_repo.cache.local.copy)
+    copy_spy = spy(dvc.cache.local.copy)
+    mocker.patch.object(dvc.cache.local, "copy", copy_spy)
 
-    with patch.object(dvc_repo.cache.local, "copy", copy_spy):
-        dvc_repo.add(repo_dir.FOO)
+    dvc.add("foo")
 
-        assert copy_spy.mock.call_count == 0
+    assert copy_spy.mock.call_count == 0
 
 
 @pytest.mark.parametrize(
