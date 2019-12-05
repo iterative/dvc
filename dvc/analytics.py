@@ -15,6 +15,7 @@ from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
 from dvc.utils.compat import str, FileNotFoundError
+from dvc.utils.compat import str, FileNotFoundError, convert_to_unicode
 
 
 logger = logging.getLogger(__name__)
@@ -112,7 +113,8 @@ def find_or_create_user_id():
             except (FileNotFoundError, ValueError, AttributeError):
                 user_id = str(uuid.uuid4())
                 makedirs(fname.parent, exist_ok=True)
-                fname.write_text(str(json.dumps({"user_id": user_id})))
+                data = convert_to_unicode(json.dumps({"user_id": user_id}))
+                fname.write_text(data)
 
             return user_id
 
