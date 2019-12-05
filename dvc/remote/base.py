@@ -548,11 +548,11 @@ class RemoteBASE(object):
             raise NotImplementedError
 
         if self.isdir(from_info):
-            self._download_dir(
+            return self._download_dir(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
         else:
-            self._download_file(
+            return self._download_file(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
 
@@ -566,23 +566,20 @@ class RemoteBASE(object):
 
         with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
             file_from_info = list(self.walk_files(from_info))
+            download_files = partial(
+                self._download_file,
+                name=name,
+                no_progress_bar=True,
+                file_mode=file_mode,
+                dir_mode=dir_mode,
+            )
             with Tqdm(
                 file_from_info,
                 total=len(file_from_info),
                 desc="Downloading directory",
             ) as file_from_info:
                 return sum(
-                    executor.map(
-                        partial(
-                            self._download_file,
-                            name=name,
-                            no_progress_bar=True,
-                            file_mode=file_mode,
-                            dir_mode=dir_mode,
-                        ),
-                        file_from_info,
-                        file_to_infos,
-                    )
+                    executor.map(download_files, file_from_info, file_to_infos)
                 )
 
     def _download_file(
