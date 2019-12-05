@@ -8,6 +8,7 @@ from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import FileMissingError
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
@@ -18,14 +19,28 @@ from dvc.utils.fs import remove
 logger = logging.getLogger(__name__)
 
 
+def _is_git_file(repo, path):
+    if not os.path.isabs(path):
+        try:
+            output = repo.find_out_by_relpath(path)
+            if not output.use_cache:
+                return True
+        except OutputNotFoundError:
+            return True
+    return False
+
+
 def _copy_git_file(repo, src, dst):
     src_full_path = os.path.join(repo.root_dir, src)
     dst_full_path = os.path.abspath(dst)
 
-    if os.path.isdir(src_full_path):
-        shutil.copytree(src_full_path, dst_full_path)
-    else:
-        shutil.copy2(src_full_path, dst_full_path)
+    try:
+        if os.path.isdir(src_full_path):
+            shutil.copytree(src_full_path, dst_full_path)
+        else:
+            shutil.copy2(src_full_path, dst_full_path)
+    except FileNotFoundError:
+        raise FileMissingError(src)
 
 
 @staticmethod
@@ -44,8 +59,7 @@ def get(url, path, out=None, rev=None):
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            full_path = os.path.join(repo.root_dir, path)
-            if os.path.exists(full_path) and not os.path.isabs(path):
+            if _is_git_file(repo, path):
                 _copy_git_file(repo, path, out)
                 return
 

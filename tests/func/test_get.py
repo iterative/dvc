@@ -10,6 +10,7 @@ from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
 from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.exceptions import FileMissingError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -143,9 +144,18 @@ def test_non_cached_output(tmp_path, erepo):
 
 
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-def test_fails_with_non_git_files(erepo):
+def test_fails_with_files_outside_repo(erepo):
     with pytest.raises(NoOutputInExternalRepoError):
         Repo.get(erepo.root_dir, "/root/")
+
+
+def test_fails_with_non_existing_files(erepo):
+    fname = "file_does_not_exist"
+    with pytest.raises(
+        FileMissingError,
+        match="Can't find '{}' neither locally nor on remote".format(fname),
+    ):
+        Repo.get(erepo.root_dir, fname)
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
