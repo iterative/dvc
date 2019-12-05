@@ -589,28 +589,6 @@ def test_should_relink_on_repeated_add(
     assert link_test_func(repo_dir.FOO)
 
 
-@pytest.mark.parametrize(
-    "link, link_func",
-    [("hardlink", System.hardlink), ("symlink", System.symlink)],
-)
-def test_should_relink_single_file_in_dir(link, link_func, dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = [link]
-
-    dvc_repo.add(repo_dir.DATA_DIR)
-
-    # NOTE status triggers unpacked dir creation for hardlink case
-    dvc_repo.status()
-
-    dvc_repo.unprotect(repo_dir.DATA_SUB)
-
-    link_spy = spy(link_func)
-
-    with patch.object(dvc_repo.cache.local, link, link_spy):
-        dvc_repo.add(repo_dir.DATA_DIR)
-
-        assert link_spy.mock.call_count == 1
-
-
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_protect_on_repeated_add(link, dvc_repo, repo_dir):
     dvc_repo.cache.local.cache_types = [link]

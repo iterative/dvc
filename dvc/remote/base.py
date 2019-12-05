@@ -10,6 +10,8 @@ from functools import partial
 from multiprocessing import cpu_count
 from operator import itemgetter
 
+from shortuuid import uuid
+
 import dvc.prompt as prompt
 from dvc.config import Config
 from dvc.exceptions import ConfirmRemoveError
@@ -425,10 +427,16 @@ class RemoteBASE(object):
         cache_info = self.checksum_to_path_info(checksum)
         if self.changed_cache(checksum):
             self.move(path_info, cache_info)
+            self.link(cache_info, path_info)
+        elif self.iscopy(path_info) and self._cache_is_copy(path_info):
+            # Default relink procedure involves unneeded copy
+            if self.protected:
+                self.protect(path_info)
+            else:
+                self.unprotect(path_info)
         else:
             self.remove(path_info)
-
-        self.link(cache_info, path_info)
+            self.link(cache_info, path_info)
 
         if save_link:
             self.state.save_link(path_info)
@@ -438,6 +446,28 @@ class RemoteBASE(object):
         # next executed command, which causes md5 recalculation
         self.state.save(path_info, checksum)
         self.state.save(cache_info, checksum)
+
+    def _cache_is_copy(self, path_info):
+        """Checks whether cache uses copies."""
+        if self.cache_type_confirmed:
+            return self.cache_types[0] == "copy"
+
+        if set(self.cache_types) <= {"copy"}:
+            return True
+
+        workspace_file = path_info.with_name("." + uuid())
+        test_cache_file = self.path_info / ".cache_type_test_file"
+        if not self.exists(test_cache_file):
+            with self.open(test_cache_file, "wb") as fobj:
+                fobj.write(bytes(1))
+        try:
+            self.link(test_cache_file, workspace_file)
+        finally:
+            self.remove(workspace_file)
+            self.remove(test_cache_file)
+
+        self.cache_type_confirmed = True
+        return self.cache_types[0] == "copy"
 
     def _save_dir(self, path_info, checksum):
         cache_info = self.checksum_to_path_info(checksum)
@@ -467,6 +497,10 @@ class RemoteBASE(object):
         """
         return False
 
+    def iscopy(self, path_info):
+        """Check if this file is an independent copy."""
+        return False  # We can't be sure by default
+
     def walk_files(self, path_info):
         """Return a generator with `PathInfo`s to all the files"""
         raise NotImplementedError
@@ -483,10 +517,6 @@ class RemoteBASE(object):
             )
 
         checksum = checksum_info[self.PARAM_CHECKSUM]
-        if not self.changed_cache(checksum):
-            self._checkout(path_info, checksum)
-            return
-
         self._save(path_info, checksum)
 
     def _save(self, path_info, checksum):
@@ -758,44 +788,20 @@ class RemoteBASE(object):
         self.remove(path_info)
 
     def _checkout_file(
-        self,
-        path_info,
-        checksum,
-        force,
-        progress_callback=None,
-        save_link=True,
+        self, path_info, checksum, force, progress_callback=None
     ):
-        # NOTE: In case if path_info is already cached and path_info's
-        # link type matches cache link type, we would like to avoid
-        # relinking.
-        if self.changed(
-            path_info, {self.PARAM_CHECKSUM: checksum}
-        ) or not self._link_matches(path_info):
+        """The file is changed we need to checkout a new copy"""
+        cache_info = self.checksum_to_path_info(checksum)
+        if self.exists(path_info):
+            msg = "data '{}' exists. Removing before checkout."
+            logger.warning(msg.format(str(path_info)))
             self.safe_remove(path_info, force=force)
 
-            cache_info = self.checksum_to_path_info(checksum)
-            self.link(cache_info, path_info)
-
-            if save_link:
-                self.state.save_link(path_info)
-
-            self.state.save(path_info, checksum)
-        else:
-            # NOTE: performing (un)protection costs us +/- the same as checking
-            # if path_info is protected. Instead of implementing logic,
-            # just (un)protect according to self.protected.
-            if self.protected:
-                self.protect(path_info)
-            else:
-                # NOTE dont allow copy, because we checked before that link
-                # type matches cache, and we don't want data duplication
-                self.unprotect(path_info, allow_copy=False)
-
+        self.link(cache_info, path_info)
+        self.state.save_link(path_info)
+        self.state.save(path_info, checksum)
         if progress_callback:
             progress_callback(str(path_info))
-
-    def _link_matches(self, path_info):
-        return True
 
     def makedirs(self, path_info):
         """Optional: Implement only if the remote needs to create
@@ -818,14 +824,17 @@ class RemoteBASE(object):
         for entry in dir_info:
             relative_path = entry[self.PARAM_RELPATH]
             entry_checksum = entry[self.PARAM_CHECKSUM]
+            entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
-            self._checkout_file(
-                entry_info,
-                entry_checksum,
-                force,
-                progress_callback,
-                save_link=False,
-            )
+
+            entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
+            if self.changed(entry_info, entry_checksum_info):
+                if self.exists(entry_info):
+                    self.safe_remove(entry_info, force=force)
+                self.link(entry_cache_info, entry_info)
+                self.state.save(entry_info, entry_checksum)
+            if progress_callback:
+                progress_callback(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -850,6 +859,7 @@ class RemoteBASE(object):
 
         checksum = checksum_info.get(self.PARAM_CHECKSUM)
         failed = None
+        skip = False
         if not checksum:
             logger.warning(
                 "No checksum info found for '{}'. "
@@ -858,13 +868,18 @@ class RemoteBASE(object):
             self.safe_remove(path_info, force=force)
             failed = path_info
 
+        elif not self.changed(path_info, checksum_info):
+            msg = "Data '{}' didn't change."
+            logger.debug(msg.format(str(path_info)))
+            skip = True
+
         elif self.changed_cache(checksum):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        if failed:
+        if failed or skip:
             if progress_callback:
                 progress_callback(
                     str(path_info), self.get_files_number(checksum)
@@ -898,7 +913,7 @@ class RemoteBASE(object):
         return 1
 
     @staticmethod
-    def unprotect(path_info, allow_copy=True):
+    def unprotect(path_info):
         pass
 
     def _get_unpacked_dir_names(self, checksums):

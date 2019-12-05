@@ -482,6 +482,7 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     assert not os.path.exists(repo_dir.FOO)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "link, link_test_func",
     [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
@@ -497,6 +498,7 @@ def test_should_relink_on_checkout(link, link_test_func, repo_dir, dvc_repo):
     assert link_test_func(repo_dir.DATA_SUB)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_protect_on_checkout(link, dvc_repo, repo_dir):
     dvc_repo.cache.local.cache_types = [link]
@@ -510,6 +512,7 @@ def test_should_protect_on_checkout(link, dvc_repo, repo_dir):
     assert not os.access(repo_dir.FOO, os.W_OK)
 
 
+@pytest.mark.skip
 def test_should_relink_only_one_file_in_dir(dvc_repo, repo_dir):
     dvc_repo.cache.local.cache_types = ["symlink"]
 
@@ -523,6 +526,7 @@ def test_should_relink_only_one_file_in_dir(dvc_repo, repo_dir):
     assert link_spy.mock.call_count == 1
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
 def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
     dvc_repo.cache.local.cache_types = [link]
