@@ -553,11 +553,17 @@ class RemoteBASE(object):
             # need to create dir here
             # also pass the individual file name (file and to)
             for file_info in self.walk_files(from_info):
-                self.single_file_download(file_info, to_info, name, no_progress_bar, file_mode)
+                self.single_file_download(
+                    file_info, to_info, name, no_progress_bar, file_mode
+                )
         else:
-            self.single_file_download(from_info, to_info, name, no_progress_bar, file_mode)
+            self.single_file_download(
+                from_info, to_info, name, no_progress_bar, file_mode
+            )
 
-    def single_file_download(self, from_info, to_info, name, no_progress_bar, file_mode):
+    def single_file_download(
+        self, from_info, to_info, name, no_progress_bar, file_mode
+    ):
         logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
         name = name or to_info.name
 
@@ -575,7 +581,6 @@ class RemoteBASE(object):
         move(tmp_file, to_info, mode=file_mode)
 
         return 0
-
 
     def open(self, path_info, mode="r", encoding=None):
         if hasattr(self, "_generate_download_url"):
