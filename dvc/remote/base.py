@@ -550,7 +550,6 @@ class RemoteBASE(object):
 
 
         if self.isdir(from_info):
-            makedirs(to_info, exist_ok=True, mode=dir_mode)
             file_to_infos = (
                 to_info / file_to_info.relative_to(from_info)
                 for file_to_info in self.walk_files(from_info)
