@@ -25,11 +25,12 @@ class CmdDaemonUpdater(CmdDaemonBase):
 
 class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
-        """Collect and send analytics"""
         from dvc import analytics
 
-        report = analytics.collect(self.args.cmd_class, self.args.ret)
+        report = self.args.target
+
         analytics.send(report)
+        os.remove(report)
 
         return 0
 
@@ -58,17 +59,12 @@ def add_parser(subparsers, parent_parser):
     )
     daemon_updater_parser.set_defaults(func=CmdDaemonUpdater)
 
-    DAEMON_ANALYTICS_HELP = "Collect and send dvc usage analytics."
+    DAEMON_ANALYTICS_HELP = "Send dvc usage analytics."
     daemon_analytics_parser = daemon_subparsers.add_parser(
         "analytics",
         parents=[parent_parser],
         description=DAEMON_ANALYTICS_HELP,
         help=DAEMON_ANALYTICS_HELP,
     )
-    daemon_analytics_parser.add_argument(
-        "cmd_class", help="Class called through main"
-    )
-    daemon_analytics_parser.add_argument(
-        "ret", help="Return code from running such class"
-    )
+    daemon_analytics_parser.add_argument("target", help="Analytics file.")
     daemon_analytics_parser.set_defaults(func=CmdDaemonAnalytics)

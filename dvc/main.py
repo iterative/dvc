@@ -6,7 +6,6 @@ import logging
 from dvc import analytics
 from dvc.cli import parse_args
 from dvc.config import ConfigError
-from dvc.daemon import daemon
 from dvc.exceptions import DvcParserError
 from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
@@ -83,9 +82,6 @@ def main(argv=None):
         logger.info(FOOTER)
 
     if analytics.is_enabled():
-        # Collect and send analytics report in a separate process,
-        # including the command class and return code on the report
-        cmd_class = args.func.__name__ if hasattr(args, "func") else None
-        daemon(["analytics", cmd_class, ret])
+        analytics.collect_and_send_report(args, ret)
 
     return ret

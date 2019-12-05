@@ -20,30 +20,32 @@ def tmp_global_config(tmp_path):
         yield
 
 
-def test_collect(tmp_global_config):
+def test_runtime_info(tmp_global_config):
     schema = Schema(
         {
-            "cmd_class": Any(str, None),
-            "cmd_return_code": Any(int, None),
             "dvc_version": Any(builtin_str, str),
             "is_binary": bool,
-            "scm_class": Any("Git", None),
+            "scm_class": Any("Git", "NoSCM"),
             "user_id": Any(builtin_str, str),
             "system_info": dict,
         }
     )
 
-    report = analytics.collect(return_code=0)
-    assert schema(report)
+    assert schema(analytics.runtime_info())
 
 
 @mock.patch("requests.post")
 def test_send(mock_post, tmp_path):
     url = "https://analytics.dvc.org"
     report = {"name": "dummy report"}
+    fname = tmp_path / "report"
 
-    analytics.send(report)
-    mock_post.assert_called_with(url, json=report, timeout=5)
+    with open(fname, "w") as fobj:
+        json.dump(report, fobj)
+
+    analytics.send(fname)
+    assert mock_post.called
+    assert mock_post.call_args.args[0] == url
 
 
 @pytest.mark.parametrize(

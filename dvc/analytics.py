@@ -3,31 +3,57 @@ import logging
 import platform
 import requests
 import sys
+import tempfile
 import uuid
 
 import distro
 
 from dvc import __version__
 from dvc.config import Config, to_bool
+from dvc.daemon import daemon
 from dvc.exceptions import NotDvcRepoError
 from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError
 from dvc.utils.compat import str, FileNotFoundError, convert_to_unicode
 
 
 logger = logging.getLogger(__name__)
 
 
-def collect(cmd_class=None, return_code=None):
+def collect_and_send_report(args=None, return_code=None):
     """
-    Query the system to fill a report.
+    Collect information from the runtime/environment and the command
+    being executed into a report and send it over the network.
+
+    To prevent analytics from blocking the execution of the main thread,
+    sending the report is done in a separate process.
+
+    The inter-process communication happens through a file containing the
+    report as a JSON, where the _collector_ generates it and the _sender_
+    removes it after sending it.
+    """
+    report = runtime_info()
+
+    # Include command execution information on the report
+    report.update(
+        {
+            "cmd_class": args.func.__name__ if hasattr(args, "func") else None,
+            "cmd_return_code": return_code,
+        }
+    )
+
+    with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
+        json.dump(report, fobj)
+        daemon(["analytics", fobj.name])
+
+
+def runtime_info():
+    """
+    Gather information from the environment where DVC runs to fill a report.
     """
     return {
-        "cmd_class": cmd_class,
-        "cmd_return_code": return_code,
         "dvc_version": __version__,
         "is_binary": is_binary(),
         "scm_class": scm_in_use(),
@@ -53,7 +79,10 @@ def is_enabled():
 
 def send(report):
     url = "https://analytics.dvc.org"
-    requests.post(url, json=report, timeout=5)
+    headers = {"content-type": "application/json"}
+
+    with open(report, "rb") as fobj:
+        requests.post(url, data=fobj, headers=headers, timeout=5)
 
 
 def scm_in_use():
