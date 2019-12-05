@@ -31,7 +31,6 @@ from dvc.utils.compat import urlparse
 from dvc.utils.fs import move
 from dvc.utils.http import open_url
 
-
 logger = logging.getLogger(__name__)
 
 STATUS_OK = 1
@@ -548,39 +547,45 @@ class RemoteBASE(object):
         if to_info.scheme != "local":
             raise NotImplementedError
 
-
         if self.isdir(from_info):
-            file_to_infos = (
-                to_info / file_to_info.relative_to(from_info)
-                for file_to_info in self.walk_files(from_info)
+            self._download_dir(
+                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
-
-            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
-                file_from_info = list(self.walk_files(from_info))
-                with Tqdm(
-                    file_from_info,
-                    total=len(file_from_info),
-                    desc="Downloading directory",
-                ) as file_from_info:
-                    return sum(
-                        executor.map(
-                            partial(
-                                self.single_file_download,
-                                name=name,
-                                no_progress_bar=True,
-                                file_mode=file_mode,
-                                dir_mode=dir_mode,
-                            ),
-                            file_from_info,
-                            file_to_infos,
-                        )
-                    )
         else:
-            self.single_file_download(
+            self._download_file(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
 
-    def single_file_download(
+    def _download_dir(
+        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+    ):
+        file_to_infos = (
+            to_info / file_to_info.relative_to(from_info)
+            for file_to_info in self.walk_files(from_info)
+        )
+
+        with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            file_from_info = list(self.walk_files(from_info))
+            with Tqdm(
+                file_from_info,
+                total=len(file_from_info),
+                desc="Downloading directory",
+            ) as file_from_info:
+                return sum(
+                    executor.map(
+                        partial(
+                            self._download_file,
+                            name=name,
+                            no_progress_bar=True,
+                            file_mode=file_mode,
+                            dir_mode=dir_mode,
+                        ),
+                        file_from_info,
+                        file_to_infos,
+                    )
+                )
+
+    def _download_file(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
     ):
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
@@ -595,7 +600,7 @@ class RemoteBASE(object):
                 from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
             )
         except Exception:
-            msg = "failed to doooooownload '{}' to '{}'"
+            msg = "failed to download '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
             return 1  # 1 fail
 
