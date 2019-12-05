@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 import logging
 import os
-import resource
 import threading
 
 from funcy import cached_property, wrap_prop
@@ -352,7 +351,14 @@ class RemoteS3(RemoteBASE):
         jobs_declared = bool(jobs)
         jobs = jobs or self.JOBS
 
-        descriptor_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
+        if os.name == "nt":
+            import win32file
+
+            descriptor_limit = win32file._getmaxstdio()
+        else:
+            import resource
+
+            descriptor_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
         threads_per_job = self.transfer_config.max_request_concurrency
         fds_per_thread = 2  # file and socket
         safety_margin = 10

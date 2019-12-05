@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pytest
 from mock import patch
@@ -65,7 +66,10 @@ def test_adjust_default_jobs_number(
 ):
     remote = RemoteS3(None, {})
 
-    mocker.patch("resource.getrlimit", return_value=(256, 1024))
+    if os.name == "nt":
+        mocker.patch("win32file._getmaxstdio", return_value=256)
+    else:
+        mocker.patch("resource.getrlimit", return_value=(256, 1024))
     mocker.patch.object(remote, "JOBS", default_jobs_number)
 
     with empty_caplog(caplog):
@@ -75,7 +79,10 @@ def test_adjust_default_jobs_number(
 def test_warn_on_too_many_jobs(mocker, caplog):
     remote = RemoteS3(None, {})
 
-    mocker.patch("resource.getrlimit", return_value=(256, 1024))
+    if os.name == "nt":
+        mocker.patch("win32file._getmaxstdio", return_value=256)
+    else:
+        mocker.patch("resource.getrlimit", return_value=(256, 1024))
 
     with caplog.at_level(logging.INFO, "dvc"):
         assert remote.adjust_jobs(64) == 64
