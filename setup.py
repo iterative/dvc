@@ -52,7 +52,7 @@ class build_py(_build_py):
 
 
 install_requires = [
-    "python-dateutil<2.8.1,>=2.1",  # Compatibility with botocore
+    "python-dateutil<2.8.1,>=2.1",  # Consolidates azure-blob-storage and boto3
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
     "future>=0.16.0",
@@ -73,7 +73,7 @@ install_requires = [
     "treelib>=1.5.5",
     "inflect>=2.1.0",
     "humanize>=0.5.1",
-    "PyYAML==5.1.2",  # Compatibility with awscli requiring (< 5.2)
+    "PyYAML>=5.1.2,<5.2",  # Compatibility with awscli
     "ruamel.yaml>=0.16.1",
     "funcy>=1.14",
     "pathspec>=0.6.0",
