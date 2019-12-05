@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pytest
+import os
 
 from dvc.remote.s3 import RemoteS3
 
@@ -132,3 +133,12 @@ def test_isfile(remote):
 
     for expected, path in test_cases:
         assert remote.isfile(remote.path_info / path) == expected
+
+
+@pytest.mark.parametrize("remote", remotes, indirect=True)
+def test_download_dir(remote, tmpdir):
+    path = os.fspath(tmpdir / "data")
+    to_info = os.PathInfo(path)
+    remote.download(remote.path_info / "data", to_info)
+    assert os.path.isdir(path)
+    # check the list of files
