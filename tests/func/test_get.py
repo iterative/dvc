@@ -10,7 +10,7 @@ from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
 from dvc.exceptions import NoOutputInExternalRepoError
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import PathOutsideRepoError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -152,10 +152,10 @@ def test_fails_with_files_outside_repo(erepo):
 
 def test_fails_with_non_existing_files(erepo):
     fname = "file_does_not_exist"
-    with pytest.raises(
-        FileMissingError,
-        match="Can't find '{}' neither locally nor on remote".format(fname),
-    ):
+    err = "The path '{}' does not exist in the target repository '{}'".format(
+        fname, erepo.root_dir
+    )
+    with pytest.raises(PathOutsideRepoError, match=err):
         Repo.get(erepo.root_dir, fname)
 
 

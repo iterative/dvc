@@ -8,7 +8,7 @@ from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import FileMissingError
+from dvc.exceptions import PathOutsideRepoError
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
@@ -20,18 +20,7 @@ from dvc.utils.compat import FileNotFoundError
 logger = logging.getLogger(__name__)
 
 
-def _is_git_file(repo, path):
-    if not os.path.isabs(path):
-        try:
-            output = repo.find_out_by_relpath(path)
-            if not output.use_cache:
-                return True
-        except OutputNotFoundError:
-            return True
-    return False
-
-
-def _copy_git_file(repo, src, dst):
+def _copy_git_file(repo, src, dst, repo_url):
     src_full_path = os.path.join(repo.root_dir, src)
     dst_full_path = os.path.abspath(dst)
 
@@ -41,7 +30,7 @@ def _copy_git_file(repo, src, dst):
         else:
             shutil.copy2(src_full_path, dst_full_path)
     except FileNotFoundError:
-        raise FileMissingError(src)
+        raise PathOutsideRepoError(src, repo_url)
 
 
 @staticmethod
@@ -60,10 +49,6 @@ def get(url, path, out=None, rev=None):
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            if _is_git_file(repo, path):
-                _copy_git_file(repo, path, out)
-                return
-
             # Note: we need to replace state, because in case of getting DVC
             # dependency on CIFS or NFS filesystems, sqlite-based state
             # will be unable to obtain lock
@@ -80,12 +65,28 @@ def get(url, path, out=None, rev=None):
             # the same cache file might be used a few times in a directory.
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            o = repo.find_out_by_relpath(path)
+            output = None
+            output_error = None
+
+            try:
+                output = repo.find_out_by_relpath(path)
+            except OutputNotFoundError as ex:
+                output_error = ex
+
+            is_git_file = output_error and not os.path.isabs(path)
+            is_not_cached = output and not output.use_cache
+
+            if is_git_file or is_not_cached:
+                return _copy_git_file(repo, path, out, url)
+
+            if output_error:
+                raise output_error
+
             with repo.state:
-                repo.cloud.pull(o.get_used_cache())
-            o.path_info = PathInfo(os.path.abspath(out))
-            with o.repo.state:
-                o.checkout()
+                repo.cloud.pull(output.get_used_cache())
+            output.path_info = PathInfo(os.path.abspath(out))
+            with output.repo.state:
+                output.checkout()
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
