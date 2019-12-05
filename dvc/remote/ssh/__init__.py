@@ -40,6 +40,7 @@ class RemoteSSH(RemoteBASE):
     scheme = Schemes.SSH
     REQUIRES = {"paramiko": "paramiko"}
 
+    JOBS = 4
     PARAM_CHECKSUM = "md5"
     DEFAULT_PORT = 22
     TIMEOUT = 1800
@@ -49,10 +50,6 @@ class RemoteSSH(RemoteBASE):
     CHECKSUM_JOBS = 4
 
     DEFAULT_CACHE_TYPES = ["copy"]
-
-    @property
-    def jobs(self):
-        return 4
 
     def __init__(self, repo, config):
         super(RemoteSSH, self).__init__(repo, config)
@@ -328,10 +325,9 @@ class RemoteSSH(RemoteBASE):
             def exists_with_progress(chunks):
                 return self.batch_exists(chunks, callback=pbar.update_desc)
 
-            jobs = self._adjust_jobs(jobs)
-            with ThreadPoolExecutor(max_workers=jobs) as executor:
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = [self.checksum_to_path_info(x) for x in checksums]
-                chunks = to_chunks(path_infos, num_chunks=jobs)
+                chunks = to_chunks(path_infos, num_chunks=self.JOBS)
                 results = executor.map(exists_with_progress, chunks)
                 in_remote = itertools.chain.from_iterable(results)
                 ret = list(itertools.compress(checksums, in_remote))

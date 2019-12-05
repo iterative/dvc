@@ -77,6 +77,7 @@ class RemoteBASE(object):
     scheme = "base"
     path_cls = URLInfo
     REQUIRES = {}
+    JOBS = 4 * cpu_count()
 
     PARAM_RELPATH = "relpath"
     CHECKSUM_DIR_SUFFIX = ".dir"
@@ -85,9 +86,8 @@ class RemoteBASE(object):
 
     state = StateNoop()
 
-    @cached_property
-    def jobs(self):
-        return cpu_count() * 4
+    def adjust_jobs(self, jobs=None):
+        return jobs or self.JOBS
 
     def __init__(self, repo, config):
         self.repo = repo
@@ -751,11 +751,6 @@ class RemoteBASE(object):
             return self._changed_dir_cache(checksum)
         return self.changed_cache_file(checksum)
 
-    def _adjust_jobs(self, jobs=None):
-        if not jobs:
-            jobs = self.jobs
-        return jobs
-
     def cache_exists(self, checksums, jobs=None, name=None):
         """Check if the given checksums are stored in the remote.
 
@@ -794,9 +789,7 @@ class RemoteBASE(object):
                 pbar.update_desc(str(path_info))
                 return ret
 
-            with ThreadPoolExecutor(
-                max_workers=self._adjust_jobs(jobs)
-            ) as executor:
+            with ThreadPoolExecutor(max_workers=jobs or self.JOBS) as executor:
                 path_infos = map(self.checksum_to_path_info, checksums)
                 in_remote = executor.map(exists_with_progress, path_infos)
                 ret = list(itertools.compress(checksums, in_remote))
