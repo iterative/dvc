@@ -1,5 +1,7 @@
 import pytest
 import mock
+import platform
+import json
 
 from voluptuous import Schema, Any
 
@@ -63,6 +65,36 @@ def test_is_enabled(dvc_repo, config, result, monkeypatch):
     monkeypatch.delenv("DVC_TEST")
 
     assert result == analytics.is_enabled()
+
+
+def test_system_info():
+    schema = Schema({"os": Any("windows", "mac", "linux")})
+
+    system = platform.system()
+
+    if system == "Windows":
+        schema = schema.extend(
+            {
+                "windows_version_build": int,
+                "windows_version_major": int,
+                "windows_version_minor": int,
+                "windows_version_service_pack": str,
+            }
+        )
+
+    if system == "Darwin":
+        schema = schema.extend({"mac_version": str})
+
+    if system == "Linux":
+        schema = schema.extend(
+            {
+                "linux_distro": str,
+                "linux_distro_like": Any(str, None),
+                "linux_distro_version": Any(str, None),
+            }
+        )
+
+    assert schema(analytics.system_info())
 
 
 def test_find_or_create_user_id(tmp_global_config):
