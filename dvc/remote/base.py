@@ -30,7 +30,7 @@ from dvc.utils.compat import str
 from dvc.utils.compat import urlparse
 from dvc.utils.fs import move
 from dvc.utils.http import open_url
-from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -550,35 +550,33 @@ class RemoteBASE(object):
 
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
 
-        print(from_info)
-
         if self.isdir(from_info):
             makedirs(to_info, exist_ok=True, mode=dir_mode)
-            # TEMP limits to test
-            limit = 5
-            current = 0
-            # / TEMP limits to test
-            for file_from_info in self.walk_files(from_info):
-                # TEMP limits to test
-                current += 1
-                if current == limit:
-                    exit()
-                # / TEMP limits to test
+            file_to_infos = (
+                to_info / file_to_info.relative_to(from_info)
+                for file_to_info in self.walk_files(from_info)
+            )
 
-                file_to_info = Path(
-                    str(to_info)
-                    + "/"
-                    + str(file_from_info)[len(str(from_info)) + 1 :]
-                )
-
-                self.single_file_download(
+            with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+                file_from_info = list(self.walk_files(from_info))
+                with Tqdm(
                     file_from_info,
-                    file_to_info,
-                    name,
-                    no_progress_bar,
-                    file_mode,
-                    dir_mode,
-                )
+                    total=len(file_from_info),
+                    desc="Downloading directory",
+                ) as file_from_info:
+                    return sum(
+                        executor.map(
+                            partial(
+                                self.single_file_download,
+                                name=name,
+                                no_progress_bar=True,
+                                file_mode=file_mode,
+                                dir_mode=dir_mode,
+                            ),
+                            file_from_info,
+                            file_to_infos,
+                        )
+                    )
         else:
             self.single_file_download(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
@@ -587,12 +585,7 @@ class RemoteBASE(object):
     def single_file_download(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
     ):
-        # Make sure full path exist
-        # print(to_info)
-        for parent in reversed(to_info.parents):
-            if not parent.exists():
-                # print('making dir: {}'.format(parent))
-                makedirs(parent, exist_ok=True, mode=dir_mode)
+        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
 
         logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
         name = name or to_info.name
