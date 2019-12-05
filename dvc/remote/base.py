@@ -548,7 +548,6 @@ class RemoteBASE(object):
         if to_info.scheme != "local":
             raise NotImplementedError
 
-
         if self.isdir(from_info):
             file_to_infos = (
                 to_info / file_to_info.relative_to(from_info)
