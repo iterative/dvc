@@ -548,7 +548,6 @@ class RemoteBASE(object):
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
 
         if self.isdir(from_info):
             makedirs(to_info, exist_ok=True, mode=dir_mode)
