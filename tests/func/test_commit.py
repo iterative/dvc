@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import pytest
 
 from dvc.stage import StageCommitError
@@ -41,29 +43,22 @@ def test_commit_force(dvc_repo, repo_dir):
     assert dvc_repo.status([stage.path]) == {}
 
 
-def test_commit_with_deps(dvc_repo, repo_dir):
-    stages = dvc_repo.add(repo_dir.FOO, no_commit=True)
-    assert len(stages) == 1
-    foo_stage = stages[0]
+def test_commit_with_deps(tmp_dir, dvc, run_copy):
+    tmp_dir.gen("foo", "foo")
+    foo_stage, = dvc.add("foo", no_commit=True)
     assert foo_stage is not None
     assert len(foo_stage.outs) == 1
 
-    fname = "file"
-    stage = dvc_repo.run(
-        cmd="python {} {} {}".format(repo_dir.CODE, repo_dir.FOO, fname),
-        outs=[fname],
-        deps=[repo_dir.FOO, repo_dir.CODE],
-        no_commit=True,
-    )
+    stage = run_copy("foo", "file", no_commit=True)
     assert stage is not None
     assert len(stage.outs) == 1
 
-    with dvc_repo.state:
+    with dvc.state:
         assert foo_stage.outs[0].changed_cache()
         assert stage.outs[0].changed_cache()
 
-    dvc_repo.commit(stage.path, with_deps=True)
-    with dvc_repo.state:
+    dvc.commit(stage.path, with_deps=True)
+    with dvc.state:
         assert not foo_stage.outs[0].changed_cache()
         assert not stage.outs[0].changed_cache()
 

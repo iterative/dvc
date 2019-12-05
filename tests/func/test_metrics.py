@@ -10,7 +10,6 @@ from dvc.exceptions import NoMetricsError
 from dvc.main import main
 from dvc.repo import Repo as DvcRepo
 from dvc.repo.metrics.show import NO_METRICS_FILE_AT_REFERENCE_WARNING
-from dvc.stage import Stage
 from dvc.utils import relpath
 from tests.basic_env import TestDvcGit
 
@@ -791,80 +790,49 @@ class TestMetricsType(TestDvcGit):
                 self.assertSequenceEqual(ret[branch][file_name], branch)
 
 
-class TestShouldDisplayMetricsEvenIfMetricIsMissing(object):
-    BRANCH_MISSING_METRIC = "missing_metric_branch"
-    METRIC_FILE = "metric"
-    METRIC_FILE_STAGE = METRIC_FILE + Stage.STAGE_FILE_SUFFIX
+def test_display_missing_metrics(tmp_dir, scm, dvc, caplog):
+    scm.branch("branch")
 
-    def _write_metric(self):
-        with open(self.METRIC_FILE, "w+") as fd:
-            fd.write("0.5")
-            fd.flush()
+    # Create a metric in master
+    tmp_dir.gen("metric", "0.5")
+    assert 0 == main(["run", "-m", "metric"])
+    tmp_dir.scm_add("metric.dvc", commit="master commit")
 
-    def _commit_metric(self, dvc, branch):
-        dvc.scm.add([self.METRIC_FILE_STAGE])
-        dvc.scm.commit("{} commit".format(branch))
+    # Create a metric in branch
+    scm.checkout("branch")
+    tmp_dir.gen("metric", "0.5")
+    assert 0 == main(["run", "-M", "metric"])
+    tmp_dir.scm_add("metric.dvc", commit="branch commit")
 
-    def setUp(self, dvc):
-        dvc.scm.branch(self.BRANCH_MISSING_METRIC)
-
-        self._write_metric()
-
-        ret = main(["run", "-m", self.METRIC_FILE])
-        assert 0 == ret
-
-        self._commit_metric(dvc, "master")
-
-    def test(self, git, dvc_repo, caplog):
-        self.setUp(dvc_repo)
-
-        dvc_repo.scm.checkout(self.BRANCH_MISSING_METRIC)
-
-        self._write_metric()
-        ret = main(["run", "-M", self.METRIC_FILE])
-        assert 0 == ret
-
-        self._commit_metric(dvc_repo, self.BRANCH_MISSING_METRIC)
-        os.remove(self.METRIC_FILE)
-
-        ret = main(["metrics", "show", "-a"])
-
-        assert (
-            NO_METRICS_FILE_AT_REFERENCE_WARNING.format(
-                self.METRIC_FILE, self.BRANCH_MISSING_METRIC
-            )
-            in caplog.text
-        )
-        assert 0 == ret
+    os.remove("metric")
+    assert 0 == main(["metrics", "show", "-a"])
+    assert (
+        NO_METRICS_FILE_AT_REFERENCE_WARNING.format("metric", "branch")
+        in caplog.text
+    )
 
 
-def test_show_xpath_should_override_stage_xpath(dvc_repo):
-    metric_file = "metric"
-    metric = {"m1": 0.1, "m2": 0.2}
-    with open(metric_file, "w") as fobj:
-        json.dump(metric, fobj)
+def test_show_xpath_should_override_stage_xpath(tmp_dir, dvc):
+    tmp_dir.gen("metric", json.dumps({"m1": 0.1, "m2": 0.2}))
 
-    dvc_repo.run(cmd="", overwrite=True, metrics=[metric_file])
-    dvc_repo.metrics.modify(metric_file, typ="json", xpath="m2")
+    dvc.run(cmd="", overwrite=True, metrics=["metric"])
+    dvc.metrics.modify("metric", typ="json", xpath="m2")
 
-    result = dvc_repo.metrics.show(xpath="m1")
-    assert result == {"": {metric_file: [0.1]}}
+    assert dvc.metrics.show(xpath="m1") == {"": {"metric": [0.1]}}
 
 
-def test_show_multiple_outputs(dvc_repo, caplog):
-    with open("1.json", "w") as fobj:
-        json.dump({"AUC": 1}, fobj)
+def test_show_multiple_outputs(tmp_dir, dvc, caplog):
+    tmp_dir.gen(
+        {
+            "1.json": json.dumps({"AUC": 1}),
+            "2.json": json.dumps({"AUC": 2}),
+            "metrics/3.json": json.dumps({"AUC": 3}),
+        }
+    )
 
-    with open("2.json", "w") as fobj:
-        json.dump({"AUC": 2}, fobj)
-
-    os.mkdir("metrics")
-    with open("metrics/3.json", "w") as fobj:
-        json.dump({"AUC": 3}, fobj)
-
-    dvc_repo.run(cmd="", overwrite=True, metrics=["1.json"])
-    dvc_repo.run(cmd="", overwrite=True, metrics=["2.json"])
-    dvc_repo.run(cmd="", overwrite=True, metrics=["metrics/3.json"])
+    dvc.run(cmd="", overwrite=True, metrics=["1.json"])
+    dvc.run(cmd="", overwrite=True, metrics=["2.json"])
+    dvc.run(cmd="", overwrite=True, metrics=["metrics/3.json"])
 
     with caplog.at_level(logging.INFO, logger="dvc"):
         assert 0 == main(["metrics", "show", "1.json", "2.json"])

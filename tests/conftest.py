@@ -7,13 +7,13 @@ import pytest
 from git import Repo
 from git.exc import GitCommandNotFound
 
-from .basic_env import TestDirFixture
-from .basic_env import TestDvcGitFixture
-from .basic_env import TestGitFixture
 from dvc.remote.config import RemoteConfig
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.compat import cast_bytes_py2
+from .basic_env import TestDirFixture, TestDvcGitFixture, TestGitFixture
+from .dir_helpers import *  # noqa
+
 
 # Prevent updater and analytics from running their processes
 os.environ[cast_bytes_py2("DVC_TEST")] = cast_bytes_py2("true")

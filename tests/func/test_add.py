@@ -59,7 +59,7 @@ class TestAdd(TestDvc):
         self.assertTrue(os.path.isfile(stage.path))
 
 
-class TestAddUnSupportedFile(TestDvc):
+class TestAddUnsupportedFile(TestDvc):
     def test(self):
         with self.assertRaises(DvcException):
             self.dvc.add("unsupported://unsupported")
@@ -132,15 +132,11 @@ class TestAddDirectoryWithForwardSlash(TestDvc):
         self.assertEqual(os.path.abspath("directory.dvc"), stage.path)
 
 
-def test_add_tracked_file(git, dvc_repo, repo_dir):
-    fname = "tracked_file"
-    repo_dir.create(fname, "tracked file contents")
-
-    dvc_repo.scm.add([fname])
-    dvc_repo.scm.commit("add {}".format(fname))
+def test_add_tracked_file(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen("tracked_file", "...", commit="add tracked file")
 
     with pytest.raises(OutputAlreadyTrackedError):
-        dvc_repo.add(fname)
+        dvc.add("tracked_file")
 
 
 class TestAddDirWithExistingCache(TestDvc):
@@ -474,23 +470,18 @@ class TestAddFilename(TestDvc):
         self.assertFalse(os.path.exists("foo.dvc"))
 
 
-def test_should_cleanup_after_failed_add(git, dvc_repo, repo_dir):
-    stages = dvc_repo.add(repo_dir.FOO)
-    assert len(stages) == 1
-
-    foo_stage_file = repo_dir.FOO + Stage.STAGE_FILE_SUFFIX
-
-    # corrupt stage file
-    repo_dir.create(foo_stage_file, "this will break yaml structure")
+def test_should_cleanup_after_failed_add(tmp_dir, scm, dvc, repo_template):
+    # Add and corrupt a stage file
+    dvc.add("foo")
+    tmp_dir.gen("foo.dvc", "- broken\nyaml")
 
     with pytest.raises(StageFileCorruptedError):
-        dvc_repo.add(repo_dir.BAR)
+        dvc.add("bar")
 
-    bar_stage_file = repo_dir.BAR + Stage.STAGE_FILE_SUFFIX
-    assert not os.path.exists(bar_stage_file)
+    assert not os.path.exists("bar.dvc")
 
     gitignore_content = get_gitignore_content()
-    assert "/" + repo_dir.BAR not in gitignore_content
+    assert "/bar" not in gitignore_content
 
 
 class TestShouldNotTrackGitInternalFiles(TestDvc):
@@ -634,7 +625,7 @@ def test_should_protect_on_repeated_add(link, dvc_repo, repo_dir):
     assert not os.access(repo_dir.FOO, os.W_OK)
 
 
-def test_escape_gitignore_entries(git, dvc_repo, repo_dir):
+def test_escape_gitignore_entries(tmp_dir, scm, dvc):
     fname = "file!with*weird#naming_[1].t?t"
     ignored_fname = r"/file\!with\*weird\#naming_\[1\].t\?t"
 
@@ -644,8 +635,5 @@ def test_escape_gitignore_entries(git, dvc_repo, repo_dir):
         fname = "file!with_weird#naming_[1].txt"
         ignored_fname = r"/file\!with_weird\#naming_\[1\].txt"
 
-    os.rename(repo_dir.FOO, fname)
-
-    dvc_repo.add(fname)
-
+    tmp_dir.dvc_gen(fname, "...")
     assert ignored_fname in get_gitignore_content()
