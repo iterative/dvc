@@ -31,57 +31,47 @@ from tests.utils import get_gitignore_content
 from tests.utils import spy
 
 
-class TestAdd(TestDvc):
-    def test(self):
-        md5 = file_md5(self.FOO)[0]
+def test_add(tmp_dir, dvc):
+    stage, = tmp_dir.dvc_gen({"foo": "foo"})
+    md5, _ = file_md5("foo")
 
-        stages = self.dvc.add(self.FOO)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
+    assert stage is not None
 
-        self.assertIsInstance(stage, Stage)
-        self.assertTrue(os.path.isfile(stage.path))
-        self.assertEqual(len(stage.outs), 1)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(stage.cmd, None)
-        self.assertEqual(stage.outs[0].info["md5"], md5)
-        self.assertEqual(stage.md5, "ee343f2482f53efffc109be83cc976ac")
-
-    def test_unicode(self):
-        fname = "\xe1"
-
-        with open(fname, "w") as fobj:
-            fobj.write("something")
-
-        stage = self.dvc.add(fname)[0]
-
-        self.assertTrue(os.path.isfile(stage.path))
+    assert isinstance(stage, Stage)
+    assert os.path.isfile(stage.path)
+    assert len(stage.outs) == 1
+    assert len(stage.deps) == 0
+    assert stage.cmd is None
+    assert stage.outs[0].info["md5"] == md5
+    assert stage.md5 == "ee343f2482f53efffc109be83cc976ac"
 
 
-class TestAddUnsupportedFile(TestDvc):
-    def test(self):
-        with self.assertRaises(DvcException):
-            self.dvc.add("unsupported://unsupported")
+def test_add_unicode(tmp_dir, dvc):
+    with open("\xe1", "wb") as fd:
+        fd.write("something".encode("utf-8"))
+
+    stage, = dvc.add("\xe1")
+
+    assert os.path.isfile(stage.path)
 
 
-class TestAddDirectory(TestDvc):
-    def test(self):
-        dname = "directory"
-        os.mkdir(dname)
-        self.create(os.path.join(dname, "file"), "file")
-        stages = self.dvc.add(dname)
-        self.assertEqual(len(stages), 1)
-        stage = stages[0]
-        self.assertTrue(stage is not None)
-        self.assertEqual(len(stage.deps), 0)
-        self.assertEqual(len(stage.outs), 1)
+def test_add_unsupported_file(dvc):
+    with pytest.raises(DvcException):
+        dvc.add("unsupported://unsupported")
 
-        md5 = stage.outs[0].info["md5"]
 
-        dir_info = self.dvc.cache.local.load_dir_cache(md5)
-        for info in dir_info:
-            self.assertTrue("\\" not in info["relpath"])
+def test_add_directory(tmp_dir, dvc):
+    stage, = tmp_dir.dvc_gen({"dir": {"file": "file"}})
+
+    assert stage is not None
+    assert len(stage.deps) == 0
+    assert len(stage.outs) == 1
+
+    md5 = stage.outs[0].info["md5"]
+
+    dir_info = dvc.cache.local.load_dir_cache(md5)
+    for info in dir_info:
+        assert "\\" not in info["relpath"]
 
 
 class TestAddDirectoryRecursive(TestDvc):
