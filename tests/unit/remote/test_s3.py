@@ -1,7 +1,8 @@
-import pytest
+import logging
 
-from dvc.config import ConfigError
-from dvc.remote.s3 import RemoteS3
+import pytest
+from mock import patch
+from dvc.remote import RemoteS3
 from tests.utils import empty_caplog
 
 bucket_name = "bucket-name"
@@ -59,21 +60,22 @@ def test_grants_mutually_exclusive_acl_error(grants):
 @pytest.mark.parametrize(
     "default_jobs_number,expected_result", [(10, 10), (13, 12)]
 )
-@patch("resource.getrlimit", return_value=(256, 1024))
 def test_adjust_default_jobs_number(
-    _, caplog, default_jobs_number, expected_result
+    mocker, caplog, default_jobs_number, expected_result
 ):
     remote = RemoteS3(None, {})
 
-    with empty_caplog(caplog), patch.object(
-        remote, "JOBS", default_jobs_number
-    ):
+    mocker.patch("resource.getrlimit", return_value=(256, 1024))
+    mocker.patch.object(remote, "JOBS", default_jobs_number)
+
+    with empty_caplog(caplog):
         assert remote.adjust_jobs() == expected_result
 
 
-@patch("resource.getrlimit", return_value=(256, 1024))
-def test_warn_on_too_many_jobs(_, caplog):
+def test_warn_on_too_many_jobs(mocker, caplog):
     remote = RemoteS3(None, {})
+
+    mocker.patch("resource.getrlimit", return_value=(256, 1024))
 
     with caplog.at_level(logging.INFO, "dvc"):
         assert remote.adjust_jobs(64) == 64
