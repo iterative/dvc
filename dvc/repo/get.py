@@ -15,6 +15,7 @@ from dvc.stage import Stage
 from dvc.state import StateNoop
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
+from dvc.utils.compat import FileNotFoundError
 
 logger = logging.getLogger(__name__)
 

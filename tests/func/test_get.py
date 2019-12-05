@@ -15,6 +15,7 @@ from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
 from dvc.utils.compat import fspath
+from dvc.utils import fspath_py35
 from tests.utils import trees_equal
 
 
@@ -135,7 +136,7 @@ def test_non_cached_output(tmp_path, erepo):
     )
     erepo.dvc.scm.add(["non_cached_file", "non_cached_file.dvc"])
     erepo.dvc.scm.commit("add non-cached output")
-    os.chdir(tmp_path)
+    os.chdir(fspath_py35(tmp_path))
     Repo.get(erepo.root_dir, "non_cached_file")
 
     src = os.path.join(erepo.root_dir, "non_cached_file")
