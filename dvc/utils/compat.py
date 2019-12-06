@@ -207,12 +207,6 @@ except ImportError:
         except AttributeError:
             if hasattr(path_type, "__fspath__"):
                 raise
-
-            # Support for pathlib.Path in Python 3.5, since it doesn't
-            # implement `__fspath__`
-            if isinstance(path, pathlib.Path):
-                return str(path)
-
             else:
                 raise TypeError(
                     "expected str, bytes or os.PathLike object, "

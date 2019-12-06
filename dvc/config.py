@@ -13,7 +13,7 @@ from voluptuous import All, Any, Lower, Range, Coerce, Match
 
 from dvc.exceptions import DvcException
 from dvc.exceptions import NotDvcRepoError
-from dvc.utils.compat import open, str, pathlib, fspath
+from dvc.utils.compat import open, str
 
 logger = logging.getLogger(__name__)
 
@@ -284,8 +284,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import user_config_dir
 
-        return pathlib.Path(
-            user_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
+        return user_config_dir(
+            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
         )
 
     @staticmethod
@@ -297,8 +297,8 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         """
         from appdirs import site_config_dir
 
-        return pathlib.Path(
-            site_config_dir(appname=Config.APPNAME, appauthor=Config.APPAUTHOR)
+        return site_config_dir(
+            appname=Config.APPNAME, appauthor=Config.APPAUTHOR
         )
 
     @staticmethod
@@ -342,8 +342,13 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         return ret
 
     def _load_configs(self):
-        system_config_file = fspath(self.get_system_config_dir() / self.CONFIG)
-        global_config_file = fspath(self.get_global_config_dir() / self.CONFIG)
+        system_config_file = os.path.join(
+            self.get_system_config_dir(), self.CONFIG
+        )
+
+        global_config_file = os.path.join(
+            self.get_global_config_dir(), self.CONFIG
+        )
 
         self._system_config = configobj.ConfigObj(system_config_file)
         self._global_config = configobj.ConfigObj(global_config_file)

@@ -10,7 +10,7 @@ from funcy.py3 import lkeep
 
 from dvc.exceptions import DvcException
 from dvc.utils import makedirs
-from dvc.utils.compat import is_py3, fspath
+from dvc.utils.compat import is_py3
 
 
 DEFAULT_TIMEOUT = 5
@@ -58,7 +58,7 @@ if is_py3:
             # [1] https://github.com/iterative/dvc/issues/2582
             self._hostname = socket.gethostname()
 
-            self._lockfile = fspath(lockfile)
+            self._lockfile = lockfile
             self._lifetime = timedelta(days=365)  # Lock for good by default
             self._separator = flufl.lock.SEP
             self._set_claimfile()
@@ -111,7 +111,7 @@ else:
         """
 
         def __init__(self, lockfile, tmp_dir=None):
-            self.lockfile = fspath(lockfile)
+            self.lockfile = lockfile
             self._lock = None
 
         @property

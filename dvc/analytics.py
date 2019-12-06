@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import platform
 import requests
 import sys
@@ -16,7 +17,7 @@ from dvc.lock import Lock, LockError
 from dvc.repo import Repo
 from dvc.scm import SCM
 from dvc.utils import env2bool, is_binary, makedirs
-from dvc.utils.compat import str, FileNotFoundError, convert_to_unicode
+from dvc.utils.compat import str, FileNotFoundError
 
 
 logger = logging.getLogger(__name__)
@@ -132,18 +133,24 @@ def find_or_create_user_id():
     IDs are generated randomly with UUID.
     """
     config_dir = Config.get_global_config_dir()
-    fname = config_dir / "user_id"
-    lockfile = fname.with_suffix(".lock")
+    fname = os.path.join(config_dir, "user_id")
+    lockfile = os.path.join(config_dir, "user_id.lock")
+
+    # Since the `fname` and `lockfile` are under the global config,
+    # we need to make sure such directory exist already
+    makedirs(config_dir, exist_ok=True)
 
     try:
         with Lock(lockfile):
             try:
-                user_id = json.loads(fname.read_text())["user_id"]
+                with open(fname, "r") as fobj:
+                    user_id = json.load(fobj)["user_id"]
+
             except (FileNotFoundError, ValueError, AttributeError):
                 user_id = str(uuid.uuid4())
-                makedirs(fname.parent, exist_ok=True)
-                data = convert_to_unicode(json.dumps({"user_id": user_id}))
-                fname.write_text(data)
+
+                with open(fname, "w") as fobj:
+                    json.dump({"user_id": user_id}, fobj)
 
             return user_id
 
