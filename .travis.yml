@@ -30,7 +30,7 @@ jobs:
     stage: check
     os: linux
     language: python
-    python: 3.7
+    python: 3.8
     before_install:
     install:
     script: ./scripts/ci/check_patch.sh
@@ -41,7 +41,7 @@ jobs:
     language: shell       # 'language: python' is an error on Travis CI Windows
     env:
     - PY2=1
-  - name: "3.7 on Windows"
+  - name: "3.8 on Windows"
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
   - name: "2.7 on Linux"
@@ -55,9 +55,9 @@ jobs:
   - name: "3.6 on Linux"
     language: python
     python: 3.6
-  - name: "3.7 on Linux"
+  - name: "3.8 on Linux"
     language: python
-    python: 3.7
+    python: 3.8
   - name: "2.7 on Mac"
     os: osx
     osx_image: xcode9.4
@@ -82,13 +82,13 @@ jobs:
     script: ./scripts/build_windows.cmd
   - name: "Linux pkgs"
     language: python
-    python: 3.7
+    python: 3.8
     before_install:
     install:
     script: ./scripts/build_posix.sh
   - name: "Pypi pkgs"
     language: python
-    python: 3.7
+    python: 3.8
     script: ./scripts/build_package.sh
   - name: Snapcraft snap
     addons:
@@ -114,7 +114,7 @@ jobs:
     if: tag is present
     stage: deploy
     language: python
-    python: 3.7
+    python: 3.8
     script: ./scripts/build_package.sh
     deploy:
     - provider: pypi
