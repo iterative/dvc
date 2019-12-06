@@ -44,12 +44,17 @@ def add_parser(subparsers, parent_parser):
         "url",
         help="Supported urls:\n"
         "/path/to/file\n"
+        "/path/to/directory\n"
         "C:\\\\path\\to\\file\n"
+        "C:\\\\path\\to\\directory\n"
         "https://example.com/path/to/file\n"
         "s3://bucket/path/to/file\n"
+        "s3://bucket/path/to/directory\n"
         "gs://bucket/path/to/file\n"
+        "gs://bucket/path/to/directory\n"
         "hdfs://example.com/path/to/file\n"
         "ssh://example.com:/path/to/file\n"
+        "ssh://example.com:/path/to/directory\n"
         "remote://myremote/path/to/file (see `dvc remote`)",
     )
     import_parser.add_argument(
