@@ -10,7 +10,7 @@ def test_less_pager_returned_when_less_found():
         m.return_value = 0
         pager = dagascii.find_pager()
 
-    assert pager.__name__ == "less_pager"
+    assert pager.cmd == dagascii.DEFAULT_PAGER_FORMATTED
 
 
 def test_plainpager_returned_when_less_missing():
@@ -25,4 +25,4 @@ def test_tempfilepager_returned_when_var_defined():
     os.environ[DVC_PAGER] = dagascii.DEFAULT_PAGER
     pager = dagascii.find_pager()
 
-    assert pager.__name__ == "user_pager"
+    assert pager.cmd == dagascii.DEFAULT_PAGER

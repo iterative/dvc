@@ -28,25 +28,22 @@ DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
 
 
 def find_pager():
+    def make_pager(cmd):
+        def pager(text):
+            return pydoc.tempfilepager(pydoc.plain(text), cmd)
+
+        pager.cmd = cmd
+        return pager
+
     if not sys.stdout.isatty():
         return pydoc.plainpager
 
     env_pager = os.getenv(DVC_PAGER)
     if env_pager:
+        return make_pager(env_pager)
 
-        def user_pager(text):
-            return pydoc.tempfilepager(pydoc.plain(text), env_pager)
-
-        return user_pager
-    else:
-        if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
-
-            def less_pager(text):
-                return pydoc.tempfilepager(
-                    pydoc.plain(text), DEFAULT_PAGER_FORMATTED
-                )
-
-            return less_pager
+    if os.system("({}) 2>{}".format(DEFAULT_PAGER, os.devnull)) == 0:
+        return make_pager(DEFAULT_PAGER_FORMATTED)
 
     logger.warning(
         "Unable to find `less` in the PATH. Check out "
