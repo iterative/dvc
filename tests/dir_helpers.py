@@ -88,7 +88,7 @@ class TmpDir(pathlib.Path):
             )
 
     def gen(self, struct, text=""):
-        if isinstance(struct, basestring):
+        if isinstance(struct, (basestring, pathlib.PurePath)):
             struct = {struct: text}
 
         self._gen(struct)
