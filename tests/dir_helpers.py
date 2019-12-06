@@ -55,7 +55,10 @@ class TmpDir(pathlib.Path):
             path = (prefix or self) / name
 
             if isinstance(contents, dict):
-                self._gen(contents, prefix=path)
+                if not contents:
+                    makedirs(path, exist_ok=True)
+                else:
+                    self._gen(contents, prefix=path)
             else:
                 makedirs(path.parent, exist_ok=True)
                 if is_py2 and isinstance(contents, str):
