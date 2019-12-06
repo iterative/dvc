@@ -151,12 +151,8 @@ def test_fails_with_files_outside_repo(erepo):
 
 
 def test_fails_with_non_existing_files(erepo):
-    fname = "file_does_not_exist"
-    err = "The path '{}' does not exist in the target repository '{}'".format(
-        fname, erepo.root_dir
-    )
-    with pytest.raises(PathOutsideRepoError, match=err):
-        Repo.get(erepo.root_dir, fname)
+    with pytest.raises(PathOutsideRepoError):
+        Repo.get(erepo.root_dir, "file_does_not_exist")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])

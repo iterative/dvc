@@ -78,7 +78,8 @@ def get(url, path, out=None, rev=None):
             is_not_cached = output and not output.use_cache
 
             if is_git_file or is_not_cached:
-                return _copy_git_file(repo, path, out, url)
+                _copy_git_file(repo, path, out, url)
+                return
 
             if output_error:
                 raise OutputNotFoundError(path)
