@@ -25,7 +25,7 @@ def test_runtime_info(tmp_global_config):
         {
             "dvc_version": Any(builtin_str, str),
             "is_binary": bool,
-            "scm_class": Any("Git", "NoSCM"),
+            "scm_class": Any("Git", None),
             "user_id": Any(builtin_str, str),
             "system_info": dict,
         }
