@@ -590,8 +590,7 @@ class RemoteBASE(object):
     ):
         from_infos = list(self.walk_files(from_info))
         to_infos = (
-            to_info / info.relative_to(from_info)
-            for info in from_infos
+            to_info / info.relative_to(from_info) for info in from_infos
         )
 
         with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
@@ -602,9 +601,7 @@ class RemoteBASE(object):
                 file_mode=file_mode,
                 dir_mode=dir_mode,
             )
-            futures = executor.map(
-                download_files, from_infos, to_infos
-            )
+            futures = executor.map(download_files, from_infos, to_infos)
             with Tqdm(
                 futures,
                 total=len(from_infos),
