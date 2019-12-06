@@ -4,15 +4,16 @@ from dvc import dagascii
 from dvc.env import DVC_PAGER
 
 
-def test_less_pager_returned_when_less_found(mocker):
+def test_find_pager_uses_default_pager_when_found(mocker):
+    m_make_pager = mocker.patch.object(dagascii, "make_pager")
     mocker.patch.object(os, "system", return_value=0)
 
-    pager = dagascii.find_pager()
+    dagascii.find_pager()
 
-    assert pager.cmd == dagascii.DEFAULT_PAGER_FORMATTED
+    m_make_pager.assert_called_once_with(dagascii.DEFAULT_PAGER_FORMATTED)
 
 
-def test_plainpager_returned_when_less_missing(mocker):
+def test_find_pager_returns_plain_pager_when_default_missing(mocker):
     mocker.patch.object(os, "system", return_value=1)
 
     pager = dagascii.find_pager()
@@ -20,9 +21,12 @@ def test_plainpager_returned_when_less_missing(mocker):
     assert pager.__name__ == "plainpager"
 
 
-def test_tempfilepager_returned_when_var_defined(monkeypatch):
+def test_find_pager_uses_custom_pager_when_env_var_is_defined(
+    mocker, monkeypatch
+):
+    m_make_pager = mocker.patch.object(dagascii, "make_pager")
     monkeypatch.setenv(DVC_PAGER, dagascii.DEFAULT_PAGER)
 
-    pager = dagascii.find_pager()
+    dagascii.find_pager()
 
-    assert pager.cmd == dagascii.DEFAULT_PAGER
+    m_make_pager.assert_called_once_with(dagascii.DEFAULT_PAGER)

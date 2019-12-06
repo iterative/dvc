@@ -27,14 +27,14 @@ DEFAULT_PAGER_FORMATTED = "{} --chop-long-lines --clear-screen".format(
 )
 
 
+def make_pager(cmd):
+    def pager(text):
+        return pydoc.tempfilepager(pydoc.plain(text), cmd)
+
+    return pager
+
+
 def find_pager():
-    def make_pager(cmd):
-        def pager(text):
-            return pydoc.tempfilepager(pydoc.plain(text), cmd)
-
-        pager.cmd = cmd
-        return pager
-
     if not sys.stdout.isatty():
         return pydoc.plainpager
 
