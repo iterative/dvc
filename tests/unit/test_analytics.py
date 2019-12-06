@@ -34,7 +34,7 @@ def test_runtime_info(tmp_global_config):
         }
     )
 
-    assert schema(analytics.runtime_info())
+    assert schema(analytics._runtime_info())
 
 
 @mock.patch("requests.post")
@@ -99,11 +99,11 @@ def test_system_info():
             }
         )
 
-    assert schema(analytics.system_info())
+    assert schema(analytics._system_info())
 
 
 def test_find_or_create_user_id(tmp_global_config):
-    created = analytics.find_or_create_user_id()
-    found = analytics.find_or_create_user_id()
+    created = analytics._find_or_create_user_id()
+    found = analytics._find_or_create_user_id()
 
     assert created == found

@@ -35,7 +35,7 @@ def collect_and_send_report(args=None, return_code=None):
     report as a JSON, where the _collector_ generates it and the _sender_
     removes it after sending it.
     """
-    report = runtime_info()
+    report = _runtime_info()
 
     # Include command execution information on the report
     report.update(
@@ -48,19 +48,6 @@ def collect_and_send_report(args=None, return_code=None):
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
         daemon(["analytics", fobj.name])
-
-
-def runtime_info():
-    """
-    Gather information from the environment where DVC runs to fill a report.
-    """
-    return {
-        "dvc_version": __version__,
-        "is_binary": is_binary(),
-        "scm_class": scm_in_use(),
-        "system_info": system_info(),
-        "user_id": find_or_create_user_id(),
-    }
 
 
 def is_enabled():
@@ -95,7 +82,7 @@ def send(report):
     os.remove(report)
 
 
-def scm_in_use():
+def _scm_in_use():
     try:
         scm = SCM(root_dir=Repo.find_root())
         return type(scm).__name__
@@ -103,7 +90,20 @@ def scm_in_use():
         pass
 
 
-def system_info():
+def _runtime_info():
+    """
+    Gather information from the environment where DVC runs to fill a report.
+    """
+    return {
+        "dvc_version": __version__,
+        "is_binary": is_binary(),
+        "scm_class": _scm_in_use(),
+        "system_info": _system_info(),
+        "user_id": _find_or_create_user_id(),
+    }
+
+
+def _system_info():
     system = platform.system()
 
     if system == "Windows":
@@ -131,7 +131,7 @@ def system_info():
     return {"os": system.lower()}
 
 
-def find_or_create_user_id():
+def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
 
