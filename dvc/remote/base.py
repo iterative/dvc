@@ -551,10 +551,9 @@ class RemoteBASE(object):
             return self._download_dir(
                 from_info, to_info, name, no_progress_bar, file_mode, dir_mode
             )
-        else:
-            return self._download_file(
-                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-            )
+        return self._download_file(
+            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        )
 
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
@@ -581,6 +580,7 @@ class RemoteBASE(object):
                 total=len(file_from_info),
                 desc="Downloading directory",
                 unit="Files",
+                disable=no_progress_bar,
             ) as futures:
                 return sum(futures)
 
