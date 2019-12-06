@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import pytest
-
+import os
 from dvc.remote.s3 import RemoteS3
-
+from dvc.utils import walk_files
+from dvc.path_info import PathInfo
 from tests.remotes import GCP, S3Mocked
 
 remotes = [GCP, S3Mocked]
@@ -132,3 +133,24 @@ def test_isfile(remote):
 
     for expected, path in test_cases:
         assert remote.isfile(remote.path_info / path) == expected
+
+
+@pytest.mark.parametrize("remote", remotes, indirect=True)
+def test_download_dir(remote, tmpdir):
+    path = str(tmpdir / "data")
+    to_info = PathInfo(path)
+    remote.download(remote.path_info / "data", to_info)
+    assert os.path.isdir(path)
+    data_dir = tmpdir / "data"
+    assert len(list(walk_files(path, None))) == 7
+    assert (data_dir / "alice").read_text(encoding="utf-8") == "alice"
+    assert (data_dir / "alpha").read_text(encoding="utf-8") == "alpha"
+    assert (data_dir / "subdir-file.txt").read_text(
+        encoding="utf-8"
+    ) == "subdir"
+    assert (data_dir / "subdir" / "1").read_text(encoding="utf-8") == "1"
+    assert (data_dir / "subdir" / "2").read_text(encoding="utf-8") == "2"
+    assert (data_dir / "subdir" / "3").read_text(encoding="utf-8") == "3"
+    assert (data_dir / "subdir" / "empty_file").read_text(
+        encoding="utf-8"
+    ) == ""

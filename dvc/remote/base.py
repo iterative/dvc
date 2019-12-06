@@ -577,11 +577,51 @@ class RemoteBASE(object):
         if to_info.scheme != "local":
             raise NotImplementedError
 
-        logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
+        if self.isdir(from_info):
+            return self._download_dir(
+                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+            )
+        return self._download_file(
+            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+        )
 
+    def _download_dir(
+        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+    ):
+        file_to_infos = (
+            to_info / file_to_info.relative_to(from_info)
+            for file_to_info in self.walk_files(from_info)
+        )
+
+        with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
+            file_from_info = list(self.walk_files(from_info))
+            download_files = partial(
+                self._download_file,
+                name=name,
+                no_progress_bar=True,
+                file_mode=file_mode,
+                dir_mode=dir_mode,
+            )
+            futures = executor.map(
+                download_files, file_from_info, file_to_infos
+            )
+            with Tqdm(
+                futures,
+                total=len(file_from_info),
+                desc="Downloading directory",
+                unit="Files",
+                disable=no_progress_bar,
+            ) as futures:
+                return sum(futures)
+
+    def _download_file(
+        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+    ):
+        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
+
+        logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
         name = name or to_info.name
 
-        makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
         tmp_file = tmp_fname(to_info)
 
         try:
