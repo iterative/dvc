@@ -9,6 +9,9 @@ from dvc import analytics
 from dvc.utils.compat import str, builtin_str
 
 
+string = Any(str, builtin_str)
+
+
 @pytest.fixture
 def tmp_global_config(tmp_path):
     """
@@ -23,10 +26,10 @@ def tmp_global_config(tmp_path):
 def test_runtime_info(tmp_global_config):
     schema = Schema(
         {
-            "dvc_version": Any(builtin_str, str),
+            "dvc_version": string,
             "is_binary": bool,
             "scm_class": Any("Git", None),
-            "user_id": Any(builtin_str, str),
+            "user_id": string,
             "system_info": dict,
         }
     )
@@ -38,7 +41,7 @@ def test_runtime_info(tmp_global_config):
 def test_send(mock_post, tmp_path):
     url = "https://analytics.dvc.org"
     report = {"name": "dummy report"}
-    fname = tmp_path / "report"
+    fname = str(tmp_path / "report")
 
     with open(fname, "w") as fobj:
         json.dump(report, fobj)
@@ -80,19 +83,19 @@ def test_system_info():
                 "windows_version_build": int,
                 "windows_version_major": int,
                 "windows_version_minor": int,
-                "windows_version_service_pack": str,
+                "windows_version_service_pack": string,
             }
         )
 
     if system == "Darwin":
-        schema = schema.extend({"mac_version": str})
+        schema = schema.extend({"mac_version": string})
 
     if system == "Linux":
         schema = schema.extend(
             {
-                "linux_distro": str,
-                "linux_distro_like": Any(str, None),
-                "linux_distro_version": Any(str, None),
+                "linux_distro": string,
+                "linux_distro_like": string,
+                "linux_distro_version": string,
             }
         )
 
