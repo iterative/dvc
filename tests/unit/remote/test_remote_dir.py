@@ -3,6 +3,7 @@ import pytest
 import os
 from dvc.remote.s3 import RemoteS3
 from dvc.utils import walk_files
+from dvc.path_info import PathInfo
 from tests.remotes import GCP, S3Mocked
 
 remotes = [GCP, S3Mocked]
@@ -136,8 +137,8 @@ def test_isfile(remote):
 
 @pytest.mark.parametrize("remote", remotes, indirect=True)
 def test_download_dir(remote, tmpdir):
-    path = os.fspath(tmpdir / "data")
-    to_info = os.PathInfo(path)
+    path = str(tmpdir / "data")
+    to_info = PathInfo(path)
     remote.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
