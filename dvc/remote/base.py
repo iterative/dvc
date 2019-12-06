@@ -573,14 +573,16 @@ class RemoteBASE(object):
                 file_mode=file_mode,
                 dir_mode=dir_mode,
             )
+            futures = executor.map(
+                download_files, file_from_info, file_to_infos
+            )
             with Tqdm(
-                file_from_info,
+                futures,
                 total=len(file_from_info),
                 desc="Downloading directory",
-            ) as file_from_info:
-                return sum(
-                    executor.map(download_files, file_from_info, file_to_infos)
-                )
+                unit="Files",
+            ) as futures:
+                return sum(futures)
 
     def _download_file(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
