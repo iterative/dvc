@@ -588,13 +588,12 @@ class RemoteBASE(object):
     def _download_dir(
         self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
     ):
-        file_to_infos = (
-            to_info / file_to_info.relative_to(from_info)
-            for file_to_info in self.walk_files(from_info)
+        from_infos = list(self.walk_files(from_info))
+        to_infos = (
+            to_info / info.relative_to(from_info) for info in from_infos
         )
 
         with ThreadPoolExecutor(max_workers=self.JOBS) as executor:
-            file_from_info = list(self.walk_files(from_info))
             download_files = partial(
                 self._download_file,
                 name=name,
@@ -602,12 +601,10 @@ class RemoteBASE(object):
                 file_mode=file_mode,
                 dir_mode=dir_mode,
             )
-            futures = executor.map(
-                download_files, file_from_info, file_to_infos
-            )
+            futures = executor.map(download_files, from_infos, to_infos)
             with Tqdm(
                 futures,
-                total=len(file_from_info),
+                total=len(from_infos),
                 desc="Downloading directory",
                 unit="Files",
                 disable=no_progress_bar,
