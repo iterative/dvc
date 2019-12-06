@@ -1,7 +1,5 @@
 from __future__ import unicode_literals
 
-import os
-
 from dvc.command.base import CmdBaseNoRepo
 from dvc.command.base import fix_subparsers
 
@@ -12,6 +10,7 @@ class CmdDaemonBase(CmdBaseNoRepo):
 
 class CmdDaemonUpdater(CmdDaemonBase):
     def run(self):
+        import os
         from dvc.repo import Repo
         from dvc.updater import Updater
 
@@ -27,10 +26,7 @@ class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
         from dvc import analytics
 
-        report = self.args.target
-
-        analytics.send(report)
-        os.remove(report)
+        analytics.send(self.args.target)
 
         return 0
 

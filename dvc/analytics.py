@@ -81,11 +81,20 @@ def is_enabled():
 
 
 def send(report):
+    """
+    Side effect: Removes the report after sending it.
+
+    The report is generated and stored in a temporary file, see:
+    `collect_and_send_report`. Sending happens on another process,
+    thus, the need of removing such file afterwards.
+    """
     url = "https://analytics.dvc.org"
     headers = {"content-type": "application/json"}
 
     with open(report, "rb") as fobj:
         requests.post(url, data=fobj, headers=headers, timeout=5)
+
+    os.remove(report)
 
 
 def scm_in_use():

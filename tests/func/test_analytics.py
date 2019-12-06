@@ -5,13 +5,11 @@ from dvc.utils.compat import fspath
 
 
 @mock.patch("dvc.analytics.send")
-@mock.patch("os.remove")
-def test_daemon_analytics(mock_remove, mock_send, tmp_path):
+def test_daemon_analytics(mock_send, tmp_path):
     report = fspath(tmp_path)
     assert 0 == main(["daemon", "analytics", report])
 
     mock_send.assert_called_with(report)
-    mock_remove.assert_called_with(report)
 
 
 @mock.patch("dvc.daemon._spawn")
