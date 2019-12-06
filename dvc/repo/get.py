@@ -24,11 +24,12 @@ def _copy_git_file(repo, src, dst, repo_url):
     src_full_path = os.path.join(repo.root_dir, src)
     dst_full_path = os.path.abspath(dst)
 
+    if os.path.isdir(src_full_path):
+        shutil.copytree(src_full_path, dst_full_path)
+        return
+
     try:
-        if os.path.isdir(src_full_path):
-            shutil.copytree(src_full_path, dst_full_path)
-        else:
-            shutil.copy2(src_full_path, dst_full_path)
+        shutil.copy2(src_full_path, dst_full_path)
     except FileNotFoundError:
         raise PathOutsideRepoError(src, repo_url)
 
@@ -80,7 +81,7 @@ def get(url, path, out=None, rev=None):
                 return _copy_git_file(repo, path, out, url)
 
             if output_error:
-                raise output_error
+                raise OutputNotFoundError(path)
 
             with repo.state:
                 repo.cloud.pull(output.get_used_cache())
@@ -90,7 +91,5 @@ def get(url, path, out=None, rev=None):
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
-    except OutputNotFoundError:
-        raise OutputNotFoundError(path)
     finally:
         remove(tmp_dir)

@@ -9,7 +9,7 @@ import pytest
 from dvc.config import Config
 from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import NoOutputInExternalRepoError
+from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathOutsideRepoError
 from dvc.repo import Repo
 from dvc.system import System
@@ -146,7 +146,7 @@ def test_non_cached_output(tmp_path, erepo):
 
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
 def test_fails_with_files_outside_repo(erepo):
-    with pytest.raises(NoOutputInExternalRepoError):
+    with pytest.raises(OutputNotFoundError):
         Repo.get(erepo.root_dir, "/root/")
 
 
