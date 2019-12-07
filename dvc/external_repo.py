@@ -5,10 +5,12 @@ import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
 
+from dvc.remote import RemoteConfig
 from funcy import retry
 
-from dvc.config import NoRemoteError
+
 from dvc.exceptions import NoRemoteInExternalRepoError
+from dvc.config import NoRemoteError, ConfigError
 from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.utils.fs import remove
@@ -68,13 +70,26 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         _git_checkout(new_path, rev)
 
     repo = Repo(new_path)
+    # Adjust original repo for pointing remote towards its' cache
+    original_repo = Repo(url)
+    rconfig = RemoteConfig(original_repo.config)
     try:
+        if not _is_local(url) and not _remote_config_exists(rconfig):
+            # check if the URL is local and no default remote
+            # add default remote pointing to the original repo's cache location
+            rconfig.add("upstream",
+                        original_repo.cache.local.cache_dir,
+                        default=True)
+            original_repo.scm.add([original_repo.config.config_file])
+            original_repo.scm.commit("add remote")
+
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)
             cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
     finally:
         # Need to close/reopen repo to force config reread
         repo.close()
+        original_repo.close()
 
     REPO_CACHE[key] = new_path
     return new_path
@@ -113,3 +128,36 @@ def _clone_repo(url, path):
 
     git = Git.clone(url, path)
     git.close()
+
+
+def _remote_config_exists(rconfig):
+    """
+    Checks if default remote config is present.
+    Args:
+        rconfig: a remote config
+
+    Returns:
+        True if the remote config exists, else False
+    """
+    try:
+        default = rconfig.get_default()
+    except ConfigError:
+        default = None
+    return True if default else False
+
+
+def _is_local(url):
+    """
+    Checks if the URL is local or not.
+    Args:
+        url: url
+
+    Returns:
+        True, if the URL is local else False
+    """
+    remote_urls = {"azure://", "gs://", "http://", "https://",
+                   "oss://", "s3://", "hdfs://"}
+    for remote_url in remote_urls:
+        if url.startswith(remote_url):
+            return False
+    return True

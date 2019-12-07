@@ -1,5 +1,6 @@
 import os
 
+from dvc.repo import Repo
 from mock import patch
 
 from dvc.external_repo import external_repo
@@ -26,3 +27,11 @@ def test_external_repo(erepo):
             assert path_isin(repo.cache.local.cache_dir, repo.root_dir)
 
         assert mock.call_count == 1
+
+
+def test_external_repo_import_without_remote(erepo, dvc_repo):
+    src = erepo.CODE
+    dst = dvc_repo.root_dir
+
+    Repo.get(erepo.root_dir, src, dst)
+    assert os.path.exists(dst + "/" + erepo.CODE)
