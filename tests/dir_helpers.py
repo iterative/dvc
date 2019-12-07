@@ -64,7 +64,7 @@ class TmpDir(pathlib.Path):
                 if is_py2 and isinstance(contents, str):
                     path.write_bytes(contents)
                 else:
-                    path.write_text(contents)
+                    path.write_text(contents, encoding="utf-8")
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
