@@ -11,27 +11,24 @@ from dvc.utils import walk_files
 from dvc.utils.compat import fspath
 from dvc.utils.fs import get_mtime_and_size
 
+from tests.utils import to_posixpath
 
-def test_ignore_in_child_dir(tmp_dir, dvc):
+
+def test_ignore(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
 
-    assert set(walk_files("dir", dvc.dvcignore)) == {"dir/other"}
-
-
-def test_ignore_in_parent_dir(tmp_dir, dvc, monkeypatch):
-    tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
-    tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
+    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
 
     monkeypatch.chdir("dir")
-    assert set(walk_files(".", dvc.dvcignore)) == {"./other"}
+    assert _files_set(".", dvc.dvcignore) == {"./other"}
 
 
 def test_ignore_unicode(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"тест": "проверка", "other": "text"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/тест")
 
-    assert set(walk_files("dir", dvc.dvcignore)) == {"dir/other"}
+    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
 
 
 def test_rename_ignored_file(tmp_dir, dvc):
@@ -109,7 +106,11 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     tmp_dir.scm_gen(DvcIgnore.DVCIGNORE_FILE, "foo", commit="add ignore")
 
     scm.checkout("master")
-    assert set(walk_files(".", dvc.dvcignore)) == {"./foo", "./bar"}
+    assert _files_set(".", dvc.dvcignore) == {"./foo", "./bar"}
 
     dvc.tree = scm.get_tree("branch")
-    assert set(walk_files(".", dvc.dvcignore)) == {"./bar"}
+    assert _files_set(".", dvc.dvcignore) == {"./bar"}
+
+
+def _files_set(root, dvcignore):
+    return {to_posixpath(f) for f in walk_files(root, dvcignore)}
