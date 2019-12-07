@@ -6,7 +6,7 @@ import pytest
 from funcy.py3 import lmap, retry
 
 from dvc.utils import makedirs
-from dvc.utils.compat import basestring, is_py2, pathlib, fspath, fspath_py35
+from dvc.utils.compat import basestring, pathlib, fspath, fspath_py35, bytes
 
 
 __all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
@@ -61,7 +61,7 @@ class TmpDir(pathlib.Path):
                     self._gen(contents, prefix=path)
             else:
                 makedirs(path.parent, exist_ok=True)
-                if is_py2 and isinstance(contents, str):
+                if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:
                     path.write_text(contents, encoding="utf-8")

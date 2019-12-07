@@ -25,7 +25,12 @@ def test_ignore(tmp_dir, dvc, monkeypatch):
 
 
 def test_ignore_unicode(tmp_dir, dvc):
-    tmp_dir.gen({"dir": {"тест": "проверка", "other": "text"}})
+    tmp_dir.gen({"dir": {"other": "text"}})
+    # Path() doesn't handle unicode paths in Windows/Python 2
+    # I don't know to debug it further, waiting till Python 2 EOL
+    with open("dir/тест", "wb") as fd:
+        fd.write("проверка".encode("utf-8"))
+
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/тест")
 
     assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
