@@ -73,9 +73,9 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         if not _is_local(url) and not _remote_config_exists(rconfig):
             # check if the URL is local and no default remote
             # add default remote pointing to the original repo's cache location
-            rconfig.add("upstream",
-                        original_repo.cache.local.cache_dir,
-                        default=True)
+            rconfig.add(
+                "upstream", original_repo.cache.local.cache_dir, default=True
+            )
             original_repo.scm.add([original_repo.config.config_file])
             original_repo.scm.commit("add remote")
 
@@ -141,8 +141,15 @@ def _is_local(url):
     Returns:
         True, if the URL is local else False
     """
-    remote_urls = {"azure://", "gs://", "http://", "https://",
-                   "oss://", "s3://", "hdfs://"}
+    remote_urls = {
+        "azure://",
+        "gs://",
+        "http://",
+        "https://",
+        "oss://",
+        "s3://",
+        "hdfs://",
+    }
     for remote_url in remote_urls:
         if url.startswith(remote_url):
             return False
