@@ -71,18 +71,17 @@ def _external_repo(url=None, rev=None, cache_dir=None):
     try:
         # check if the URL is local and no default remote
         # add default remote pointing to the original repo's cache location
-        if not os.path.isdir(url):
-            # Adjust original repo for pointing remote towards its' cache
-            original_repo = Repo(url)
-            rconfig = RemoteConfig(original_repo.config)
+        if os.path.isdir(url):
+            rconfig = RemoteConfig(repo.config)
             if not _remote_config_exists(rconfig):
                 rconfig.add(
                     "upstream",
-                    original_repo.cache.local.cache_dir,
+                    repo.cache.local.cache_dir,
                     default=True,
+                    level=Config.LEVEL_LOCAL,
                 )
-                original_repo.scm.add([original_repo.config.config_file])
-                original_repo.scm.commit("add remote")
+                repo.scm.add([repo.config.config_file])
+                repo.scm.commit("add remote")
 
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)
