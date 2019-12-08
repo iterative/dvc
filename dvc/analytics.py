@@ -146,7 +146,7 @@ def _find_or_create_user_id():
     lockfile = os.path.join(config_dir, "user_id.lock")
 
     # Since the `fname` and `lockfile` are under the global config,
-    # we need to make sure such directory exist already
+    # we need to make sure such directory exist already.
     makedirs(config_dir, exist_ok=True)
 
     try:
