@@ -36,7 +36,7 @@ def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_config):
     with pytest.raises(KeyError):
         report["cmd_return_code"]
 
-    args = parse_args(['add', 'foo'])
+    args = parse_args(["add", "foo"])
     return_code = 0
 
     analytics.collect_and_send_report(args, return_code)
