@@ -2,8 +2,6 @@ from __future__ import unicode_literals
 
 import logging
 
-import colorama
-
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +22,13 @@ def fix_subparsers(subparsers):
 
 
 def append_doc_link(help_message, path):
+    from dvc.utils import format_link
+
     if not path:
         return help_message
     doc_base = "https://man.dvc.org/"
-    return "{message}\nDocumentation: <{blue}{base}{path}{nc}>".format(
-        message=help_message,
-        base=doc_base,
-        path=path,
-        blue=colorama.Fore.CYAN,
-        nc=colorama.Fore.RESET,
+    return "{message}\nDocumentation: {link}".format(
+        message=help_message, link=format_link(doc_base + path)
     )
 
 
@@ -44,7 +40,8 @@ class CmdBase(object):
         self.repo = Repo()
         self.config = self.repo.config
         self.args = args
-        updater = Updater(self.repo.dvc_dir)
+        hardlink_lock = self.config.config["core"].get("hardlink_lock", False)
+        updater = Updater(self.repo.dvc_dir, hardlink_lock=hardlink_lock)
         updater.check()
 
     @property
