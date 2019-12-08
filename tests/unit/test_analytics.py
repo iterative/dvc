@@ -56,7 +56,8 @@ def test_runtime_info(tmp_global_config):
             "scm_class": Any("Git", None),
             "user_id": string,
             "system_info": dict,
-        }
+        },
+        required=True,
     )
 
     assert schema(analytics._runtime_info())
@@ -98,7 +99,7 @@ def test_is_enabled(dvc_repo, config, result, monkeypatch, tmp_global_config):
 
 
 def test_system_info():
-    schema = Schema({"os": Any("windows", "mac", "linux")})
+    schema = Schema({"os": Any("windows", "mac", "linux")}, required=True)
 
     system = platform.system()
 
