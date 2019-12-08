@@ -10,7 +10,6 @@ from git.exc import GitCommandNotFound
 from .basic_env import TestDirFixture
 from .basic_env import TestDvcGitFixture
 from .basic_env import TestGitFixture
-from dvc.remote.config import RemoteConfig
 from dvc.remote.ssh.connection import SSHConnection
 from dvc.repo import Repo as DvcRepo
 from dvc.utils.compat import cast_bytes_py2
@@ -147,11 +146,6 @@ def erepo(repo_dir):
         stage_data_dir = repo.dvc.add(repo.DATA_DIR)[0]
         repo.dvc.scm.add([stage_foo.path, stage_bar.path, stage_data_dir.path])
         repo.dvc.scm.commit("init repo")
-
-        rconfig = RemoteConfig(repo.dvc.config)
-        rconfig.add("upstream", repo.dvc.cache.local.cache_dir, default=True)
-        repo.dvc.scm.add([repo.dvc.config.config_file])
-        repo.dvc.scm.commit("add remote")
 
         repo.create("version", "master")
         repo.dvc.add("version")
