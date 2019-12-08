@@ -127,7 +127,8 @@ def _system_info():
             "linux_distro_version": distro.version(),
         }
 
-    return {"os": system.lower()}
+    # We don't collect data for any other system.
+    raise NotImplementedError
 
 
 def _find_or_create_user_id():
