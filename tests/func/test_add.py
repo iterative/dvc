@@ -574,35 +574,34 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
     ],
 )
 def test_should_relink_on_repeated_add(
-    link, new_link, link_test_func, repo_dir, dvc_repo
+    link, new_link, link_test_func, tmp_dir, dvc
 ):
-    dvc_repo.config.set("cache", "type", link)
+    dvc.config.set("cache", "type", link)
 
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.add(repo_dir.BAR)
+    tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
-    os.remove(repo_dir.FOO)
-    getattr(dvc_repo.cache.local, link)(repo_dir.BAR, repo_dir.FOO)
+    os.remove("foo")
+    getattr(dvc.cache.local, link)("bar", "foo")
 
-    dvc_repo.cache.local.cache_types = [new_link]
+    dvc.cache.local.cache_types = [new_link]
 
-    dvc_repo.add(repo_dir.FOO)
+    dvc.add("foo")
 
-    assert link_test_func(repo_dir.FOO)
+    assert link_test_func("foo")
 
 
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
-def test_should_protect_on_repeated_add(link, dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = [link]
-    dvc_repo.cache.local.protected = True
+def test_should_protect_on_repeated_add(link, tmp_dir, dvc):
+    dvc.cache.local.cache_types = [link]
+    dvc.cache.local.protected = True
 
-    dvc_repo.add(repo_dir.FOO)
+    tmp_dir.dvc_gen({"foo": "foo"})
 
-    dvc_repo.unprotect(repo_dir.FOO)
+    dvc.unprotect("foo")
 
-    dvc_repo.add(repo_dir.FOO)
+    dvc.add("foo")
 
-    assert not os.access(repo_dir.FOO, os.W_OK)
+    assert not os.access("foo", os.W_OK)
 
 
 def test_escape_gitignore_entries(tmp_dir, scm, dvc):
