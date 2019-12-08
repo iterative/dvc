@@ -68,6 +68,7 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         _git_checkout(new_path, rev)
 
     repo = Repo(new_path)
+    original_repo = None
     try:
         # check if the URL is local and no default remote
         # add default remote pointing to the original repo's cache location
@@ -89,6 +90,8 @@ def _external_repo(url=None, rev=None, cache_dir=None):
     finally:
         # Need to close/reopen repo to force config reread
         repo.close()
+        if original_repo:
+            original_repo.close()
 
     REPO_CACHE[key] = new_path
     return new_path
