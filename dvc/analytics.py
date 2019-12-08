@@ -155,7 +155,7 @@ def _find_or_create_user_id():
                 with open(fname, "r") as fobj:
                     user_id = json.load(fobj)["user_id"]
 
-            except (FileNotFoundError, ValueError, AttributeError):
+            except (FileNotFoundError, ValueError, KeyError):
                 user_id = str(uuid.uuid4())
 
                 with open(fname, "w") as fobj:
