@@ -6,6 +6,7 @@ import json
 from voluptuous import Schema, Any
 
 from dvc import analytics
+from dvc.cli import parse_args
 from dvc.utils.compat import str, builtin_str
 
 
@@ -21,6 +22,30 @@ def tmp_global_config(tmp_path):
         "dvc.config.Config.get_global_config_dir", return_value=str(tmp_path)
     ):
         yield
+
+
+@mock.patch("dvc.daemon._spawn")
+@mock.patch("json.dump")
+def test_collect_and_send_report(mock_json, mock_daemon, tmp_global_config):
+    analytics.collect_and_send_report()
+    report = mock_json.call_args[0][0]
+
+    with pytest.raises(KeyError):
+        report["cmd_class"]
+
+    with pytest.raises(KeyError):
+        report["cmd_return_code"]
+
+    args = parse_args(['add', 'foo'])
+    return_code = 0
+
+    analytics.collect_and_send_report(args, return_code)
+    report = mock_json.call_args[0][0]
+
+    assert report["cmd_class"] == "CmdAdd"
+    assert report["cmd_return_code"] == return_code
+
+    assert mock_daemon.call_count == 2
 
 
 def test_runtime_info(tmp_global_config):

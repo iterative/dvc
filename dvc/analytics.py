@@ -37,13 +37,12 @@ def collect_and_send_report(args=None, return_code=None):
     """
     report = _runtime_info()
 
-    # Include command execution information on the report
-    report.update(
-        {
-            "cmd_class": args.func.__name__ if hasattr(args, "func") else None,
-            "cmd_return_code": return_code,
-        }
-    )
+    # Include command execution information on the report only when available.
+    if args and hasattr(args, "func"):
+        report.update({"cmd_class": args.func.__name__})
+
+    if return_code is not None:
+        report.update({"cmd_return_code": return_code})
 
     with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
         json.dump(report, fobj)
