@@ -4,10 +4,9 @@ import os
 import tempfile
 from contextlib import contextmanager
 from distutils.dir_util import copy_tree
-
-from dvc.remote import RemoteConfig
 from funcy import retry
 
+from dvc.remote import RemoteConfig
 from dvc.config import NoRemoteError, ConfigError
 from dvc.exceptions import RemoteNotSpecifiedInExternalRepoError
 from dvc.exceptions import NoOutputInExternalRepoError
@@ -133,4 +132,4 @@ def _remote_config_exists(rconfig):
         default = rconfig.get_default()
     except ConfigError:
         default = None
-    return True if default else False
+    return bool(default)
