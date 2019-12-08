@@ -1,8 +1,8 @@
 import os
 
-from dvc.repo import Repo
 from mock import patch
 
+from dvc.repo import Repo
 from dvc.external_repo import external_repo
 from dvc.scm.git import Git
 from dvc.utils.fs import path_isin
