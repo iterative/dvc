@@ -1,4 +1,5 @@
 from __future__ import unicode_literals
+from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse
 
 import itertools
 import json
@@ -14,22 +15,17 @@ from shortuuid import uuid
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.exceptions import ConfirmRemoveError
-from dvc.exceptions import DvcException
-from dvc.exceptions import DvcIgnoreInCollectedDirError
+from dvc.exceptions import (
+    DvcException,
+    ConfirmRemoveError,
+    DvcIgnoreInCollectedDirError,
+)
 from dvc.ignore import DvcIgnore
-from dvc.path_info import PathInfo
-from dvc.path_info import URLInfo
+from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
-from dvc.utils import makedirs
-from dvc.utils import relpath
-from dvc.utils import tmp_fname
-from dvc.utils.compat import basestring
-from dvc.utils.compat import FileNotFoundError
-from dvc.utils.compat import str
-from dvc.utils.compat import urlparse
+from dvc.utils import makedirs, relpath, tmp_fname
 from dvc.utils.fs import move
 from dvc.utils.http import open_url
 
