@@ -87,7 +87,6 @@ def test_dvcignore_in_out_dir(tmp_dir, dvc):
         dvc.add("dir")
 
 
-# @efiop why do we need to parametrize this?
 @pytest.mark.parametrize("dname", ["dir", "dir/subdir"])
 def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     tmp_dir.gen({"dir": {"subdir": {}}})
