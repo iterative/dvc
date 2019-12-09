@@ -195,19 +195,21 @@ class TestMoveFileInsideDirectory(TestDvc):
         self.assertTrue(os.path.exists(dvc_fullpath))
 
 
-def test_move_should_save_stage_info(dvc_repo, repo_dir):
-    dvc_repo.add(repo_dir.DATA_DIR)
+def test_move_should_save_stage_info(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"old_name": {"file1": "file1"}})
 
-    dvc_repo.move(repo_dir.DATA_DIR, "new_name")
+    dvc.move("old_name", "new_name")
 
-    assert dvc_repo.status() == {}
+    assert dvc.status() == {}
 
 
-def test_should_move_to_dir_on_non_default_stage_file(dvc_repo, repo_dir):
+def test_should_move_to_dir_on_non_default_stage_file(tmp_dir, dvc):
     stage_file_name = "stage.dvc"
+    tmp_dir.gen({"file": "file_content"})
 
-    dvc_repo.add(repo_dir.FOO, fname=stage_file_name)
+    dvc.add("file", fname=stage_file_name)
+    os.mkdir("directory")
 
-    dvc_repo.move(repo_dir.FOO, repo_dir.DATA_DIR)
+    dvc.move("file", "directory")
 
-    assert os.path.exists(os.path.join(repo_dir.DATA_DIR, repo_dir.FOO))
+    assert os.path.exists(os.path.join("directory", "file"))
