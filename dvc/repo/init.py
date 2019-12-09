@@ -3,7 +3,7 @@ import os
 
 import colorama
 
-from dvc.analytics import Analytics
+from dvc import analytics
 from dvc.config import Config
 from dvc.exceptions import InitError
 from dvc.repo import Repo
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _welcome_message():
-    if Analytics.is_enabled():
+    if analytics.is_enabled():
         logger.info(
             boxify(
                 "DVC has enabled anonymous aggregate usage analytics.\n"

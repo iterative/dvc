@@ -24,10 +24,9 @@ class CmdDaemonUpdater(CmdDaemonBase):
 
 class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
-        from dvc.analytics import Analytics
+        from dvc import analytics
 
-        analytics = Analytics.load(self.args.target)
-        analytics.send()
+        analytics.send(self.args.target)
 
         return 0
 

@@ -1,256 +1,167 @@
-"""Collect and send usage analytics"""
-from __future__ import unicode_literals
-
-import errno
 import json
 import logging
 import os
+import platform
+import requests
+import sys
+import tempfile
+import uuid
+
+import distro
 
 from dvc import __version__
-from dvc.utils import env2bool
-from dvc.utils.compat import str
+from dvc.config import Config, to_bool
+from dvc.daemon import daemon
+from dvc.exceptions import NotDvcRepoError
+from dvc.lock import Lock, LockError
+from dvc.repo import Repo
+from dvc.scm import SCM
+from dvc.utils import env2bool, is_binary, makedirs
+from dvc.utils.compat import str, FileNotFoundError
 
 
 logger = logging.getLogger(__name__)
 
 
-class Analytics(object):
-    """Class for collecting and sending usage analytics.
-
-    Args:
-        info (dict): optional existing analytics report.
+def collect_and_send_report(args=None, return_code=None):
     """
+    Collect information from the runtime/environment and the command
+    being executed into a report and send it over the network.
 
-    URL = "https://analytics.dvc.org"
-    TIMEOUT_POST = 5
+    To prevent analytics from blocking the execution of the main thread,
+    sending the report is done in a separate process.
 
-    USER_ID_FILE = "user_id"
+    The inter-process communication happens through a file containing the
+    report as a JSON, where the _collector_ generates it and the _sender_
+    removes it after sending it.
+    """
+    report = _runtime_info()
 
-    PARAM_DVC_VERSION = "dvc_version"
-    PARAM_USER_ID = "user_id"
-    PARAM_SYSTEM_INFO = "system_info"
+    # Include command execution information on the report only when available.
+    if args and hasattr(args, "func"):
+        report.update({"cmd_class": args.func.__name__})
 
-    PARAM_OS = "os"
+    if return_code is not None:
+        report.update({"cmd_return_code": return_code})
 
-    PARAM_WINDOWS_VERSION_MAJOR = "windows_version_major"
-    PARAM_WINDOWS_VERSION_MINOR = "windows_version_minor"
-    PARAM_WINDOWS_VERSION_BUILD = "windows_version_build"
-    PARAM_WINDOWS_VERSION_SERVICE_PACK = "windows_version_service_pack"
+    with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
+        json.dump(report, fobj)
+        daemon(["analytics", fobj.name])
 
-    PARAM_MAC_VERSION = "mac_version"
 
-    PARAM_LINUX_DISTRO = "linux_distro"
-    PARAM_LINUX_DISTRO_VERSION = "linux_distro_version"
-    PARAM_LINUX_DISTRO_LIKE = "linux_distro_like"
+def is_enabled():
+    if env2bool("DVC_TEST"):
+        return False
 
-    PARAM_SCM_CLASS = "scm_class"
-    PARAM_IS_BINARY = "is_binary"
-    PARAM_CMD_CLASS = "cmd_class"
-    PARAM_CMD_RETURN_CODE = "cmd_return_code"
+    enabled = to_bool(
+        Config(validate=False)
+        .config.get(Config.SECTION_CORE, {})
+        .get(Config.SECTION_CORE_ANALYTICS, "true")
+    )
 
-    def __init__(self, info=None):
-        from dvc.config import Config
-        from dvc.lock import Lock
+    logger.debug("Analytics is {}abled.".format("en" if enabled else "dis"))
 
-        if info is None:
-            info = {}
+    return enabled
 
-        self.info = info
 
-        cdir = Config.get_global_config_dir()
-        try:
-            os.makedirs(cdir)
-        except OSError as exc:
-            if exc.errno != errno.EEXIST:
-                raise
+def send(report):
+    """
+    Side effect: Removes the report after sending it.
 
-        self.user_id_file = os.path.join(cdir, self.USER_ID_FILE)
-        self.user_id_file_lock = Lock(self.user_id_file + ".lock")
+    The report is generated and stored in a temporary file, see:
+    `collect_and_send_report`. Sending happens on another process,
+    thus, the need of removing such file afterwards.
+    """
+    url = "https://analytics.dvc.org"
+    headers = {"content-type": "application/json"}
 
-    @staticmethod
-    def load(path):
-        """Loads analytics report from json file specified by path.
+    with open(report, "rb") as fobj:
+        requests.post(url, data=fobj, headers=headers, timeout=5)
 
-        Args:
-            path (str): path to json file with analytics report.
-        """
-        with open(path, "r") as fobj:
-            analytics = Analytics(info=json.load(fobj))
-        os.unlink(path)
-        return analytics
+    os.remove(report)
 
-    def _write_user_id(self):
-        import uuid
 
-        with open(self.user_id_file, "w+") as fobj:
-            user_id = str(uuid.uuid4())
-            info = {self.PARAM_USER_ID: user_id}
-            json.dump(info, fobj)
+def _scm_in_use():
+    try:
+        scm = SCM(root_dir=Repo.find_root())
+        return type(scm).__name__
+    except NotDvcRepoError:
+        pass
+
+
+def _runtime_info():
+    """
+    Gather information from the environment where DVC runs to fill a report.
+    """
+    return {
+        "dvc_version": __version__,
+        "is_binary": is_binary(),
+        "scm_class": _scm_in_use(),
+        "system_info": _system_info(),
+        "user_id": _find_or_create_user_id(),
+    }
+
+
+def _system_info():
+    system = platform.system()
+
+    if system == "Windows":
+        version = sys.getwindowsversion()
+
+        return {
+            "os": "windows",
+            "windows_version_build": version.build,
+            "windows_version_major": version.major,
+            "windows_version_minor": version.minor,
+            "windows_version_service_pack": version.service_pack,
+        }
+
+    if system == "Darwin":
+        return {"os": "mac", "mac_version": platform.mac_ver()[0]}
+
+    if system == "Linux":
+        return {
+            "os": "linux",
+            "linux_distro": distro.id(),
+            "linux_distro_like": distro.like(),
+            "linux_distro_version": distro.version(),
+        }
+
+    # We don't collect data for any other system.
+    raise NotImplementedError
+
+
+def _find_or_create_user_id():
+    """
+    The user's ID is stored on a file under the global config directory.
+
+    The file should contain a JSON with a "user_id" key:
+
+        {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
+
+    IDs are generated randomly with UUID.
+    """
+    config_dir = Config.get_global_config_dir()
+    fname = os.path.join(config_dir, "user_id")
+    lockfile = os.path.join(config_dir, "user_id.lock")
+
+    # Since the `fname` and `lockfile` are under the global config,
+    # we need to make sure such directory exist already.
+    makedirs(config_dir, exist_ok=True)
+
+    try:
+        with Lock(lockfile):
+            try:
+                with open(fname, "r") as fobj:
+                    user_id = json.load(fobj)["user_id"]
+
+            except (FileNotFoundError, ValueError, KeyError):
+                user_id = str(uuid.uuid4())
+
+                with open(fname, "w") as fobj:
+                    json.dump({"user_id": user_id}, fobj)
+
             return user_id
 
-    def _read_user_id(self):
-        if not os.path.exists(self.user_id_file):
-            return None
-
-        with open(self.user_id_file, "r") as fobj:
-            try:
-                info = json.load(fobj)
-            except ValueError as exc:
-                logger.debug("Failed to load user_id: {}".format(exc))
-                return None
-
-            return info[self.PARAM_USER_ID]
-
-    def _get_user_id(self):
-        from dvc.lock import LockError
-
-        try:
-            with self.user_id_file_lock:
-                user_id = self._read_user_id()
-                if user_id is None:
-                    user_id = self._write_user_id()
-                return user_id
-        except LockError:
-            msg = "Failed to acquire '{}'"
-            logger.debug(msg.format(self.user_id_file_lock.lockfile))
-
-    def _collect_windows(self):
-        import sys
-
-        version = sys.getwindowsversion()  # pylint: disable=no-member
-        info = {}
-        info[self.PARAM_OS] = "windows"
-        info[self.PARAM_WINDOWS_VERSION_MAJOR] = version.major
-        info[self.PARAM_WINDOWS_VERSION_MINOR] = version.minor
-        info[self.PARAM_WINDOWS_VERSION_BUILD] = version.build
-        info[self.PARAM_WINDOWS_VERSION_SERVICE_PACK] = version.service_pack
-        return info
-
-    def _collect_darwin(self):
-        import platform
-
-        info = {}
-        info[self.PARAM_OS] = "mac"
-        info[self.PARAM_MAC_VERSION] = platform.mac_ver()[0]
-        return info
-
-    def _collect_linux(self):
-        import distro
-
-        info = {}
-        info[self.PARAM_OS] = "linux"
-        info[self.PARAM_LINUX_DISTRO] = distro.id()
-        info[self.PARAM_LINUX_DISTRO_VERSION] = distro.version()
-        info[self.PARAM_LINUX_DISTRO_LIKE] = distro.like()
-        return info
-
-    def _collect_system_info(self):
-        import platform
-
-        system = platform.system()
-
-        if system == "Windows":
-            return self._collect_windows()
-
-        if system == "Darwin":
-            return self._collect_darwin()
-
-        if system == "Linux":
-            return self._collect_linux()
-
-        raise NotImplementedError
-
-    def collect(self):
-        """Collect analytics report."""
-        from dvc.scm import SCM
-        from dvc.utils import is_binary
-        from dvc.repo import Repo
-        from dvc.exceptions import NotDvcRepoError
-
-        self.info[self.PARAM_DVC_VERSION] = __version__
-        self.info[self.PARAM_IS_BINARY] = is_binary()
-        self.info[self.PARAM_USER_ID] = self._get_user_id()
-
-        self.info[self.PARAM_SYSTEM_INFO] = self._collect_system_info()
-
-        try:
-            scm = SCM(root_dir=Repo.find_root())
-            self.info[self.PARAM_SCM_CLASS] = type(scm).__name__
-        except NotDvcRepoError:
-            pass
-
-    def collect_cmd(self, args, ret):
-        """Collect analytics info from a CLI command."""
-        from dvc.command.daemon import CmdDaemonAnalytics
-
-        assert isinstance(ret, int) or ret is None
-
-        if ret is not None:
-            self.info[self.PARAM_CMD_RETURN_CODE] = ret
-
-        if args is not None and hasattr(args, "func"):
-            assert args.func != CmdDaemonAnalytics
-            self.info[self.PARAM_CMD_CLASS] = args.func.__name__
-
-    def dump(self):
-        """Save analytics report to a temporary file.
-
-        Returns:
-            str: path to the temporary file that contains the analytics report.
-        """
-        import tempfile
-
-        with tempfile.NamedTemporaryFile(delete=False, mode="w") as fobj:
-            json.dump(self.info, fobj)
-            return fobj.name
-
-    @staticmethod
-    def is_enabled(cmd=None):
-        from dvc.config import Config, to_bool
-        from dvc.command.daemon import CmdDaemonBase
-
-        if env2bool("DVC_TEST"):
-            return False
-
-        if isinstance(cmd, CmdDaemonBase):
-            return False
-
-        core = Config(validate=False).config.get(Config.SECTION_CORE, {})
-        enabled = to_bool(core.get(Config.SECTION_CORE_ANALYTICS, "true"))
-        logger.debug(
-            "Analytics is {}.".format("enabled" if enabled else "disabled")
-        )
-        return enabled
-
-    @staticmethod
-    def send_cmd(cmd, args, ret):
-        """Collect and send analytics for CLI command.
-
-        Args:
-            args (list): parsed args for the CLI command.
-            ret (int): return value of the CLI command.
-        """
-        from dvc.daemon import daemon
-
-        if not Analytics.is_enabled(cmd):
-            return
-
-        analytics = Analytics()
-        analytics.collect_cmd(args, ret)
-        daemon(["analytics", analytics.dump()])
-
-    def send(self):
-        """Collect and send analytics."""
-        import requests
-
-        if not self.is_enabled():
-            return
-
-        self.collect()
-
-        logger.debug("Sending analytics: {}".format(self.info))
-
-        try:
-            requests.post(self.URL, json=self.info, timeout=self.TIMEOUT_POST)
-        except requests.exceptions.RequestException as exc:
-            logger.debug("Failed to send analytics: {}".format(str(exc)))
+    except LockError:
+        logger.debug("Failed to acquire {lockfile}".format(lockfile=lockfile))
