@@ -1,3 +1,47 @@
+"""
+The goal of this module is making dvc functional tests setup a breeze. This
+includes a temporary dir, initializing git and dvc repos and bootstrapping some
+file structure.
+
+The cornerstone of these fixtures is `tmp_dir`, which creates a temporary dir
+and changes path to it, it might be combined with `scm` and `dvc` to initialize
+empty git and dvc repos. `tmp_dir` returns a Path instance, which should save
+you from using `open()`, `os` and `os.path` utils many times:
+
+    (tmp_dir / "some_file").write_text("some text")
+    # ...
+    assert "some text" == (tmp_dir / "some_file").read_text()
+    assert (tmp_dir / "some_file").exists()
+
+Additionally it provides `.gen()`, `.scm_gen()` and `.dvc_gen()` methods to
+bootstrap a required file structure in a single call:
+
+    # Generate a dir with files
+    tmp_dir.gen({"dir": {"file": "file text", "second_file": "..."}})
+
+    # Generate a single file, dirs will be created along the way
+    tmp_dir.gen("dir/file", "file text")
+
+    # Generate + git add
+    tmp_dir.scm_gen({"file1": "...", ...})
+
+    # Generate + git add + git commit
+    tmp_dir.scm_gen({"file1": "...", ...}, commit="add files")
+
+    # Generate + dvc add
+    tmp_dir.dvc_gen({"file1": "...", ...})
+
+    # Generate + dvc add + git commit -am "..."
+    # This commits stages to git not the generated files.
+    tmp_dir.dvc_gen({"file1": "...", ...}, commit="add files")
+
+Making it easier to bootstrap things has a supergoal of incentivizing a move
+from global repo template to creating everything inplace, which:
+
+    - makes all path references local to test, enhancing readability
+    - allows using telling filenames, e.g. "git_tracked_file" instead of "foo"
+    - does not create unnecessary files
+"""
 from __future__ import unicode_literals
 
 import os
@@ -44,7 +88,7 @@ class TmpDir(pathlib.Path):
             )
 
     def gen(self, struct, text=""):
-        if isinstance(struct, basestring):
+        if isinstance(struct, (basestring, pathlib.PurePath)):
             struct = {struct: text}
 
         self._gen(struct)
