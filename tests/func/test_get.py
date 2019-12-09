@@ -7,10 +7,8 @@ import os
 import pytest
 
 from dvc.config import Config
-from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import OutputNotFoundError
-from dvc.exceptions import PathOutsideRepoError
+from dvc.repo.get import GetDVCFileError, PathMissingError
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils import makedirs
@@ -145,14 +143,14 @@ def test_non_cached_output(tmp_path, erepo):
 
 
 # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
-def test_fails_with_files_outside_repo(erepo):
-    with pytest.raises(OutputNotFoundError):
+def test_absolute_file_outside_repo(erepo):
+    with pytest.raises(PathMissingError):
         Repo.get(erepo.root_dir, "/root/")
 
 
-def test_fails_with_non_existing_files(erepo):
-    with pytest.raises(PathOutsideRepoError):
-        Repo.get(erepo.root_dir, "file_does_not_exist")
+def test_unknown_path(erepo):
+    with pytest.raises(PathMissingError):
+        Repo.get(erepo.root_dir, "a_non_existing_file")
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])

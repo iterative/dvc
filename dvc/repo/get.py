@@ -1,37 +1,40 @@
 import logging
 import os
 import shutil
+from dvc.utils.compat import FileNotFoundError
 
 import shortuuid
 
-from dvc.exceptions import GetDVCFileError
-from dvc.exceptions import NotDvcRepoError
-from dvc.exceptions import OutputNotFoundError
-from dvc.exceptions import UrlNotDvcRepoError
-from dvc.exceptions import PathOutsideRepoError
+from dvc.exceptions import (
+    DvcException,
+    NotDvcRepoError,
+    OutputNotFoundError,
+    UrlNotDvcRepoError,
+)
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
-from dvc.state import StateNoop
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
-from dvc.utils.compat import FileNotFoundError
 
 logger = logging.getLogger(__name__)
 
 
-def _copy_git_file(repo, src, dst, repo_url):
-    src_full_path = os.path.join(repo.root_dir, src)
-    dst_full_path = os.path.abspath(dst)
+class GetDVCFileError(DvcException):
+    def __init__(self):
+        super(GetDVCFileError, self).__init__(
+            "the given path is a DVC-file, you must specify a data file "
+            "or a directory"
+        )
 
-    if os.path.isdir(src_full_path):
-        shutil.copytree(src_full_path, dst_full_path)
-        return
 
-    try:
-        shutil.copy2(src_full_path, dst_full_path)
-    except FileNotFoundError:
-        raise PathOutsideRepoError(src, repo_url)
+class PathMissingError(DvcException):
+    def __init__(self, path, repo):
+        msg = (
+            "The path '{}' does not exist in the target repository '{}'"
+            " neighther as an output nor a git-handled file."
+        )
+        super(PathMissingError, self).__init__(msg.format(path, repo))
 
 
 @staticmethod
@@ -50,11 +53,6 @@ def get(url, path, out=None, rev=None):
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            # Note: we need to replace state, because in case of getting DVC
-            # dependency on CIFS or NFS filesystems, sqlite-based state
-            # will be unable to obtain lock
-            repo.state = StateNoop()
-
             # Try any links possible to avoid data duplication.
             #
             # Not using symlink, because we need to remove cache after we are
@@ -66,31 +64,40 @@ def get(url, path, out=None, rev=None):
             # the same cache file might be used a few times in a directory.
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            output = None
-            output_error = None
-
             try:
                 output = repo.find_out_by_relpath(path)
-            except OutputNotFoundError as ex:
-                output_error = ex
+            except OutputNotFoundError:
+                output = None
 
-            is_git_file = output_error and not os.path.isabs(path)
-            is_not_cached = output and not output.use_cache
+            if output and output.use_cache:
+                _get_cached(repo, output, out)
+            else:
+                # Either an uncached out with absolute path or a user error
+                if os.path.isabs(path):
+                    raise FileNotFoundError
 
-            if is_git_file or is_not_cached:
-                _copy_git_file(repo, path, out, url)
-                return
+                _copy(os.path.join(repo.root_dir, path), out)
 
-            if output_error:
-                raise OutputNotFoundError(path)
-
-            with repo.state:
-                repo.cloud.pull(output.get_used_cache())
-            output.path_info = PathInfo(os.path.abspath(out))
-            with output.repo.state:
-                output.checkout()
-
+    except (OutputNotFoundError, FileNotFoundError):
+        raise PathMissingError(path, url)
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
     finally:
         remove(tmp_dir)
+
+
+def _get_cached(repo, output, out):
+    with repo.state:
+        repo.cloud.pull(output.get_used_cache())
+        output.path_info = PathInfo(os.path.abspath(out))
+        failed = output.checkout()
+        # This might happen when pull haven't really pulled all the files
+        if failed:
+            raise FileNotFoundError
+
+
+def _copy(src, dst):
+    if os.path.isdir(src):
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)
