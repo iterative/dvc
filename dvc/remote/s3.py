@@ -5,7 +5,6 @@ import logging
 import os
 import threading
 
-from botocore.exceptions import ClientError
 from funcy import cached_property, wrap_prop
 
 from dvc.config import Config
@@ -209,6 +208,8 @@ class RemoteS3(RemoteBASE):
         return self._list_paths(self.path_info)
 
     def isfile(self, path_info):
+        from botocore.exceptions import ClientError
+
         if path_info.path.endswith("/"):
             return False
 
