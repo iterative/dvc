@@ -40,7 +40,7 @@ from global repo template to creating everything inplace, which:
 
     - makes all path references local to test, enhancing readability
     - allows using telling filenames, e.g. "git_tracked_file" instead of "foo"
-    - does not create whatever is not needed
+    - does not create unnecessary files
 """
 from __future__ import unicode_literals
 
