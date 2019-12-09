@@ -8,7 +8,7 @@ from funcy import retry
 
 from dvc.exceptions import NoRemoteInExternalRepoError
 from dvc.remote import RemoteConfig
-from dvc.config import NoRemoteError, ConfigError
+from dvc.config import NoRemoteError
 from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.utils.fs import remove
@@ -73,7 +73,7 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         # add default remote pointing to the original repo's cache location
         if os.path.isdir(url):
             rconfig = RemoteConfig(repo.config)
-            if not _remote_config_exists(rconfig):
+            if not rconfig.remote_config_exists():
                 original_repo = Repo(url)
                 rconfig.add(
                     "upstream",
@@ -127,19 +127,3 @@ def _clone_repo(url, path):
 
     git = Git.clone(url, path)
     git.close()
-
-
-def _remote_config_exists(rconfig):
-    """
-    Checks if default remote config is present.
-    Args:
-        rconfig: a remote config
-
-    Returns:
-        True if the remote config exists, else False
-    """
-    try:
-        default = rconfig.get_default()
-    except ConfigError:
-        default = None
-    return bool(default)
