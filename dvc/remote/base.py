@@ -45,13 +45,6 @@ STATUS_MAP = {
 }
 
 
-class DataCloudError(DvcException):
-    """ Data Cloud exception """
-
-    def __init__(self, msg):
-        super(DataCloudError, self).__init__("Data sync error: {}".format(msg))
-
-
 class RemoteCmdError(DvcException):
     def __init__(self, remote, cmd, ret, err):
         super(RemoteCmdError, self).__init__(
