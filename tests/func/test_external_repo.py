@@ -1,3 +1,4 @@
+import filecmp
 import os
 
 from mock import patch
@@ -30,8 +31,10 @@ def test_external_repo(erepo):
 
 
 def test_external_repo_import_without_remote(erepo, dvc_repo):
-    src = erepo.CODE
-    dst = dvc_repo.root_dir
+    src = erepo.FOO
+    dst = os.path.join(dvc_repo.root_dir, "foo")
 
     Repo.get(erepo.root_dir, src, dst)
-    assert os.path.exists(dst + "/" + erepo.CODE)
+    assert os.path.exists(dst)
+    assert os.path.isfile(dst)
+    assert filecmp.cmp(erepo.FOO, dst, shallow=False)

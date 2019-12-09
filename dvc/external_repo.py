@@ -74,12 +74,14 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         if os.path.isdir(url):
             rconfig = RemoteConfig(repo.config)
             if not _remote_config_exists(rconfig):
+                original_repo = Repo(url)
                 rconfig.add(
                     "upstream",
-                    repo.cache.local.cache_dir,
+                    original_repo.cache.local.cache_dir,
                     default=True,
                     level=Config.LEVEL_LOCAL,
                 )
+                original_repo.close()
 
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)
