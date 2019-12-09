@@ -1,0 +1,10 @@
+version: "3"
+services:
+
+  dvc:
+    build: .
+    image: dvc/dvc:latest
+    container_name: dvc
+    command: /root/build.sh
+    volumes:
+      - "./packages:/mnt/packages:rw"
