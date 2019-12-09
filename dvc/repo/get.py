@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 
 import shortuuid
 
@@ -7,14 +8,30 @@ from dvc.exceptions import GetDVCFileError
 from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import PathOutsideRepoError
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
 from dvc.state import StateNoop
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
+from dvc.utils.compat import FileNotFoundError
 
 logger = logging.getLogger(__name__)
+
+
+def _copy_git_file(repo, src, dst, repo_url):
+    src_full_path = os.path.join(repo.root_dir, src)
+    dst_full_path = os.path.abspath(dst)
+
+    if os.path.isdir(src_full_path):
+        shutil.copytree(src_full_path, dst_full_path)
+        return
+
+    try:
+        shutil.copy2(src_full_path, dst_full_path)
+    except FileNotFoundError:
+        raise PathOutsideRepoError(src, repo_url)
 
 
 @staticmethod
@@ -49,16 +66,31 @@ def get(url, path, out=None, rev=None):
             # the same cache file might be used a few times in a directory.
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            o = repo.find_out_by_relpath(path)
+            output = None
+            output_error = None
+
+            try:
+                output = repo.find_out_by_relpath(path)
+            except OutputNotFoundError as ex:
+                output_error = ex
+
+            is_git_file = output_error and not os.path.isabs(path)
+            is_not_cached = output and not output.use_cache
+
+            if is_git_file or is_not_cached:
+                _copy_git_file(repo, path, out, url)
+                return
+
+            if output_error:
+                raise OutputNotFoundError(path)
+
             with repo.state:
-                repo.cloud.pull(o.get_used_cache())
-            o.path_info = PathInfo(os.path.abspath(out))
-            with o.repo.state:
-                o.checkout()
+                repo.cloud.pull(output.get_used_cache())
+            output.path_info = PathInfo(os.path.abspath(out))
+            with output.repo.state:
+                output.checkout()
 
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
-    except OutputNotFoundError:
-        raise OutputNotFoundError(path)
     finally:
         remove(tmp_dir)
