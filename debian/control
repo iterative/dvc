@@ -1,0 +1,33 @@
+Source: dvc
+Maintainer: Dmitry Petrov <dmitry@dataversioncontrol.com>
+Section: python
+Priority: optional
+Build-Depends: dh-python, python3-setuptools, python3-all, debhelper (>= 9)
+Standards-Version: 4.0.0
+Homepage: http://dvc.org
+Vcs-Git: https://github.com/iterative/dvc.git
+Vcs-browser: https://github.com/iterative/dvc
+
+Package: dvc
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-flufl.lock (>=3.2)
+Recommends: python3-arrow (=0.14.0),
+            python3-paramiko (>=2.5.0),
+            python3-gssapi (>= 2.5.0),
+            python3-boto3 (>=1.9.86),
+            python3-pydrive (=1.3.1),
+            python3-azure-storage-blob (=12.1.0),
+            python3-oss2 (=2.6.1),
+            python3-google-cloud-storage (=1.19.0)
+Description: Git for data scientists - manage your code and data together
+ Data Version Control or DVC is an open-source tool for data science and machine learning projects.
+ .
+ Key features:
+ .
+ 1. Simple command line Git-like experience. Does not require installing and maintaining any databases. Does not depend on any proprietary online services.
+ .
+ 2. Management and versioning of datasets and machine learning models. Data is saved in S3, Google cloud, Azure, Alibaba cloud, SSH server, HDFS, or even local HDD RAID.
+ .
+ 3. Makes projects reproducible and shareable; helping to answer questions about how a model was built.
+ .
+ 4. Helps manage experiments with Git tags/branches and metrics tracking.
