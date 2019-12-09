@@ -1,6 +1,6 @@
 """
 The goal of this module is making dvc functional tests setup a breeze. This
-includes a temporary dir, initializing git and dvc repos and bootstraping some
+includes a temporary dir, initializing git and dvc repos and bootstrapping some
 file structure.
 
 The cornerstone of these fixtures is `tmp_dir`, which creates a temporary dir
