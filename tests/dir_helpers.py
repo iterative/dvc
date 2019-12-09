@@ -13,7 +13,7 @@ you from using `open()`, `os` and `os.path` utils many times:
     assert "some text" == (tmp_dir / "some_file").read_text()
     assert (tmp_dir / "some_file").exists()
 
-Additionally it provides `.gen()`, `.scm_gen()` and `.dvc_gen()` methoda to
+Additionally it provides `.gen()`, `.scm_gen()` and `.dvc_gen()` methods to
 bootstrap a required file structure in a single call:
 
     # Generate a dir with files
