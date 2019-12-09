@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: DVC
+Upstream-Contact: Dmitry Petrov <dmitry@dataversioncontrol.com>
+Source: https://github.com/iterative/dvc
+
+Files: *
+Copyright: Dmitry Petrov <dmitry@dataversioncontrol.com>
+License: Apache 2.0
+ On Debian systems, the full text of the Apache 2.0
+ License can be found in the file
+ `/usr/share/common-licenses/Apache-2.0`.
