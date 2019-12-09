@@ -25,7 +25,12 @@ def get_all_files_numbers(stages):
 
 
 def _checkout(
-    self, targets=None, with_deps=False, force=False, recursive=False
+    self,
+    targets=None,
+    with_deps=False,
+    force=False,
+    relink=False,
+    recursive=False,
 ):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
@@ -55,7 +60,11 @@ def _checkout(
     ) as pbar:
         for stage in stages:
             failed.extend(
-                stage.checkout(force=force, progress_callback=pbar.update_desc)
+                stage.checkout(
+                    force=force,
+                    progress_callback=pbar.update_desc,
+                    relink=relink,
+                )
             )
     if failed:
         raise CheckoutError(failed)

@@ -26,7 +26,6 @@ from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.basic_env import TestDvcGit
 from tests.func.test_repro import TestRepro
-from tests.utils import spy
 
 logger = logging.getLogger("dvc")
 
@@ -482,58 +481,29 @@ def test_checkout_no_checksum(repo_dir, dvc_repo):
     assert not os.path.exists(repo_dir.FOO)
 
 
-@pytest.mark.skip
 @pytest.mark.parametrize(
     "link, link_test_func",
     [("hardlink", System.is_hardlink), ("symlink", System.is_symlink)],
 )
-def test_should_relink_on_checkout(link, link_test_func, repo_dir, dvc_repo):
-    dvc_repo.cache.local.cache_types = [link]
+def test_checkout_relink(tmp_dir, dvc, link, link_test_func):
+    dvc.cache.local.cache_types = [link]
 
-    dvc_repo.add(repo_dir.DATA_DIR)
-    dvc_repo.unprotect(repo_dir.DATA_SUB)
+    tmp_dir.dvc_gen({"dir": {"data": "text"}})
+    dvc.unprotect("dir/data")
+    assert not link_test_func("dir/data")
 
-    dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
+    dvc.checkout(["dir.dvc"], relink=True)
+    assert link_test_func("dir/data")
 
-    assert link_test_func(repo_dir.DATA_SUB)
 
-
-@pytest.mark.skip
 @pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
-def test_should_protect_on_checkout(link, dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = [link]
-    dvc_repo.cache.local.protected = True
+def test_checkout_relink_protected(tmp_dir, dvc, link):
+    dvc.cache.local.cache_types = [link]
+    dvc.cache.local.protected = True
 
-    dvc_repo.add(repo_dir.FOO)
-    dvc_repo.unprotect(repo_dir.FOO)
+    tmp_dir.dvc_gen("foo", "foo")
+    dvc.unprotect("foo")
+    assert os.access("foo", os.W_OK)
 
-    dvc_repo.checkout([repo_dir.FOO + Stage.STAGE_FILE_SUFFIX])
-
-    assert not os.access(repo_dir.FOO, os.W_OK)
-
-
-@pytest.mark.skip
-def test_should_relink_only_one_file_in_dir(dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = ["symlink"]
-
-    dvc_repo.add(repo_dir.DATA_DIR)
-    dvc_repo.unprotect(repo_dir.DATA_SUB)
-
-    link_spy = spy(System.symlink)
-    with patch.object(dvc_repo.cache.local, "symlink", link_spy):
-        dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
-
-    assert link_spy.mock.call_count == 1
-
-
-@pytest.mark.skip
-@pytest.mark.parametrize("link", ["hardlink", "symlink", "copy"])
-def test_should_not_relink_on_unchanged_dependency(link, dvc_repo, repo_dir):
-    dvc_repo.cache.local.cache_types = [link]
-
-    dvc_repo.add(repo_dir.DATA_DIR)
-
-    with patch.object(dvc_repo.cache.local, "link") as mock_link:
-        dvc_repo.checkout([repo_dir.DATA_DIR + Stage.STAGE_FILE_SUFFIX])
-
-    assert not mock_link.called
+    dvc.checkout(["foo.dvc"], relink=True)
+    assert not os.access("foo", os.W_OK)

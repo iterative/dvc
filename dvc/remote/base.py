@@ -836,7 +836,7 @@ class RemoteBASE(object):
         pass
 
     def _checkout_dir(
-        self, path_info, checksum, force, progress_callback=None
+        self, path_info, checksum, force, progress_callback=None, relink=False
     ):
         # Create dir separately so that dir is created
         # even if there are no files in it
@@ -854,9 +854,8 @@ class RemoteBASE(object):
             entry_info = path_info / relative_path
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
-            if self.changed(entry_info, entry_checksum_info):
-                if self.exists(entry_info):
-                    self.safe_remove(entry_info, force=force)
+            if relink or self.changed(entry_info, entry_checksum_info):
+                self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
             if progress_callback:
@@ -878,7 +877,12 @@ class RemoteBASE(object):
             self.safe_remove(path, force)
 
     def checkout(
-        self, path_info, checksum_info, force=False, progress_callback=None
+        self,
+        path_info,
+        checksum_info,
+        force=False,
+        progress_callback=None,
+        relink=False,
     ):
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
@@ -894,7 +898,7 @@ class RemoteBASE(object):
             self.safe_remove(path_info, force=force)
             failed = path_info
 
-        elif not self.changed(path_info, checksum_info):
+        elif not relink and not self.changed(path_info, checksum_info):
             msg = "Data '{}' didn't change."
             logger.debug(msg.format(str(path_info)))
             skip = True
@@ -915,18 +919,23 @@ class RemoteBASE(object):
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
-        self._checkout(path_info, checksum, force, progress_callback)
+        self._checkout(path_info, checksum, force, progress_callback, relink)
         return None
 
     def _checkout(
-        self, path_info, checksum, force=False, progress_callback=None
+        self,
+        path_info,
+        checksum,
+        force=False,
+        progress_callback=None,
+        relink=False,
     ):
         if not self.is_dir_checksum(checksum):
             return self._checkout_file(
                 path_info, checksum, force, progress_callback=progress_callback
             )
         return self._checkout_dir(
-            path_info, checksum, force, progress_callback=progress_callback
+            path_info, checksum, force, progress_callback, relink
         )
 
     def get_files_number(self, checksum):
