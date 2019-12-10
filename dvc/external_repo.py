@@ -73,7 +73,7 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         # add default remote pointing to the original repo's cache location
         if os.path.isdir(url):
             rconfig = RemoteConfig(repo.config)
-            if not rconfig.remote_remote_set():
+            if not rconfig.default_remote_set():
                 original_repo = Repo(url)
                 try:
                     rconfig.add(
