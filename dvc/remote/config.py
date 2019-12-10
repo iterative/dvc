@@ -163,7 +163,7 @@ class RemoteConfig(object):
             rconfig: a remote config
 
         Returns:
-            True if the remote config is set, else False
+            True if the default remote config is set, else False
         """
         try:
             self.get_default()
