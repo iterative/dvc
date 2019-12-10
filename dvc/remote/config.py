@@ -105,7 +105,6 @@ class RemoteConfig(object):
             level=level,
         )
         if default:
-            logger.info("Setting '{}' as a default remote.".format(name))
             self.config.set(
                 Config.SECTION_CORE,
                 Config.SECTION_CORE_REMOTE,
@@ -157,7 +156,7 @@ class RemoteConfig(object):
             Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, level=level
         )
 
-    def remote_config_exists(self):
+    def remote_remote_set(self):
         """
         Checks if default remote config is present.
         Args:
@@ -167,7 +166,7 @@ class RemoteConfig(object):
             True if the remote config exists, else False
         """
         try:
-            default = self.get_default()
+            self.get_default()
+            return True
         except ConfigError:
-            default = None
-        return bool(default)
+            return False

@@ -1,9 +1,7 @@
-import filecmp
 import os
 
 from mock import patch
 
-from dvc.repo import Repo
 from dvc.external_repo import external_repo
 from dvc.scm.git import Git
 from dvc.utils.fs import path_isin
@@ -28,13 +26,3 @@ def test_external_repo(erepo):
             assert path_isin(repo.cache.local.cache_dir, repo.root_dir)
 
         assert mock.call_count == 1
-
-
-def test_external_repo_import_without_remote(erepo, dvc_repo):
-    src = erepo.FOO
-    dst = os.path.join(dvc_repo.root_dir, "foo")
-
-    Repo.get(erepo.root_dir, src, dst)
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(erepo.FOO, dst, shallow=False)

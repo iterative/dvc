@@ -73,15 +73,17 @@ def _external_repo(url=None, rev=None, cache_dir=None):
         # add default remote pointing to the original repo's cache location
         if os.path.isdir(url):
             rconfig = RemoteConfig(repo.config)
-            if not rconfig.remote_config_exists():
+            if not rconfig.remote_remote_set():
                 original_repo = Repo(url)
-                rconfig.add(
-                    "upstream",
-                    original_repo.cache.local.cache_dir,
-                    default=True,
-                    level=Config.LEVEL_LOCAL,
-                )
-                original_repo.close()
+                try:
+                    rconfig.add(
+                        "aut-generated-upstream",
+                        original_repo.cache.local.cache_dir,
+                        default=True,
+                        level=Config.LEVEL_LOCAL,
+                    )
+                finally:
+                    original_repo.close()
 
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)

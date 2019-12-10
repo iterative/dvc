@@ -101,6 +101,7 @@ def test_get_from_non_dvc_master(erepo, tmp_path, monkeypatch, caplog):
     with caplog.at_level(logging.INFO, logger="dvc"):
         Repo.get(erepo._root_dir, erepo.FOO, out=imported_file, rev="branch")
 
+    assert caplog.text == ""
     assert filecmp.cmp(
         os.path.join(erepo._root_dir, erepo.FOO), imported_file, shallow=False
     )
