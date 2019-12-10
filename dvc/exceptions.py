@@ -268,12 +268,6 @@ class FileMissingError(DvcException):
         )
 
 
-class PathOutsideRepoError(DvcException):
-    def __init__(self, path, repo):
-        msg = "The path '{}' does not exist in the target repository '{}'."
-        super(PathOutsideRepoError, self).__init__(msg.format(path, repo))
-
-
 class DvcIgnoreInCollectedDirError(DvcException):
     def __init__(self, ignore_dirname):
         super(DvcIgnoreInCollectedDirError, self).__init__(
@@ -286,14 +280,6 @@ class UrlNotDvcRepoError(DvcException):
     def __init__(self, url):
         super(UrlNotDvcRepoError, self).__init__(
             "URL '{}' is not a dvc repository.".format(url)
-        )
-
-
-class GetDVCFileError(DvcException):
-    def __init__(self):
-        super(GetDVCFileError, self).__init__(
-            "the given path is a DVC-file, you must specify a data file "
-            "or a directory"
         )
 
 
