@@ -352,7 +352,9 @@ class RemoteS3(RemoteBASE):
                 Config.SECTION_AWS_GRANT_WRITE_ACP,
             ]
             warning_message = [
-                f"Using one of the [{', '.join(overwriting_fields)}] will",
+                "Using one of the [{0}] will".format(
+                    ", ".join(overwriting_fields)
+                ),
                 "overwrite default ACL Grantees list. Default ACL Grantees",
                 "list include Owner with FULL_CONTROL permissions.",
             ]
