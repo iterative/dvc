@@ -167,8 +167,18 @@ class CmdPipelineList(CmdBase):
 
         pipelines = self.repo.pipelines
         for p in pipelines:
+
+            # Get the stage with the lowest in-degree
+            p_edge = next(filter(lambda x: x[1] == 0, p.in_degree), None)
+            if not p_edge:
+                logger.error("Error finding an edge on the pipeline graph")
+            p_edge_name = p_edge[0]
             stages = networkx.get_node_attributes(p, "stage")
-            for stage in stages:
+
+            # Get the stage and get stages in order
+            nodes = networkx.dfs_postorder_nodes(p, p_edge_name)
+
+            for stage in nodes:
                 logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
