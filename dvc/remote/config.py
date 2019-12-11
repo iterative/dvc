@@ -105,7 +105,6 @@ class RemoteConfig(object):
             level=level,
         )
         if default:
-            logger.info("Setting '{}' as a default remote.".format(name))
             self.config.set(
                 Config.SECTION_CORE,
                 Config.SECTION_CORE_REMOTE,

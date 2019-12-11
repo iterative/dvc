@@ -7,8 +7,9 @@ from distutils.dir_util import copy_tree
 
 from funcy import retry
 
-from dvc.config import NoRemoteError
+from dvc.config import NoRemoteError, ConfigError
 from dvc.exceptions import NoRemoteInExternalRepoError
+from dvc.remote import RemoteConfig
 from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.utils.fs import remove
@@ -69,6 +70,22 @@ def _external_repo(url=None, rev=None, cache_dir=None):
 
     repo = Repo(new_path)
     try:
+        # check if the URL is local and no default remote is present
+        # add default remote pointing to the original repo's cache location
+        if os.path.isdir(url):
+            rconfig = RemoteConfig(repo.config)
+            if not _default_remote_set(rconfig):
+                original_repo = Repo(url)
+                try:
+                    rconfig.add(
+                        "auto-generated-upstream",
+                        original_repo.cache.local.cache_dir,
+                        default=True,
+                        level=Config.LEVEL_LOCAL,
+                    )
+                finally:
+                    original_repo.close()
+
         if cache_dir is not None:
             cache_config = CacheConfig(repo.config)
             cache_config.set_dir(cache_dir, level=Config.LEVEL_LOCAL)
@@ -113,3 +130,19 @@ def _clone_repo(url, path):
 
     git = Git.clone(url, path)
     git.close()
+
+
+def _default_remote_set(rconfig):
+    """
+    Checks if default remote config is present.
+    Args:
+        rconfig: a remote config
+
+    Returns:
+        True if the default remote config is set, else False
+    """
+    try:
+        rconfig.get_default()
+        return True
+    except ConfigError:
+        return False
