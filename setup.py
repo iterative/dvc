@@ -104,7 +104,7 @@ ssh = ["paramiko>=2.5.0"]
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
-hdfs = ["pyarrow==0.14.0"]
+hdfs = ["pyarrow==0.15.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive
 
 if os.name != "nt" or sys.version_info[0] != 2:
