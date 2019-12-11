@@ -229,7 +229,7 @@ def run_copy(tmp_dir, dvc, request):
     # Do we need this?
     if "scm" in request.fixturenames:
         request.getfixturevalue("scm")
-        tmp_dir.git_add("copy.py", commit="add copy.py")
+        tmp_dir.scm_add("copy.py", commit="add copy.py")
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
