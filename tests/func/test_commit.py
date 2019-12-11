@@ -7,40 +7,37 @@ from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 
 
-def test_commit_recursive(dvc_repo, repo_dir):
-    stages = dvc_repo.add(repo_dir.DATA_DIR, recursive=True, no_commit=True)
+def test_commit_recursive(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"file": "text1", "subdir": {"file2": "text2"}}})
+    stages = dvc.add("dir", recursive=True, no_commit=True)
+
     assert len(stages) == 2
+    assert dvc.status() != {}
 
-    assert dvc_repo.status() != {}
-
-    dvc_repo.commit(repo_dir.DATA_DIR, recursive=True)
-
-    assert dvc_repo.status() == {}
+    dvc.commit("dir", recursive=True)
+    assert dvc.status() == {}
 
 
-def test_commit_force(dvc_repo, repo_dir):
-    stages = dvc_repo.add(repo_dir.FOO, no_commit=True)
-    assert len(stages) == 1
-    stage = stages[0]
+def test_commit_force(tmp_dir, dvc):
+    tmp_dir.gen({"dir": {"file": "text1", "file2": "text2"}})
+    stage, = dvc.add("dir", no_commit=True)
 
-    with dvc_repo.state:
+    with dvc.state:
         assert stage.outs[0].changed_cache()
 
-    with open(repo_dir.FOO, "a") as fobj:
-        fobj.write(repo_dir.FOO_CONTENTS)
+    tmp_dir.gen("dir/file", "file content modified")
 
-    with dvc_repo.state:
+    with dvc.state:
         assert stage.outs[0].changed_cache()
 
     with pytest.raises(StageCommitError):
-        dvc_repo.commit(stage.path)
+        dvc.commit(stage.path)
 
-    with dvc_repo.state:
+    with dvc.state:
         assert stage.outs[0].changed_cache()
 
-    dvc_repo.commit(stage.path, force=True)
-
-    assert dvc_repo.status([stage.path]) == {}
+    dvc.commit(stage.path, force=True)
+    assert dvc.status([stage.path]) == {}
 
 
 def test_commit_with_deps(tmp_dir, dvc, run_copy):
@@ -63,16 +60,15 @@ def test_commit_with_deps(tmp_dir, dvc, run_copy):
         assert not stage.outs[0].changed_cache()
 
 
-def test_commit_changed_md5(dvc_repo, repo_dir):
-    stages = dvc_repo.add(repo_dir.FOO, no_commit=True)
-    assert len(stages) == 1
-    stage = stages[0]
+def test_commit_changed_md5(tmp_dir, dvc):
+    tmp_dir.gen({"file": "file content"})
+    stage, = dvc.add("file", no_commit=True)
 
     stage_file_content = load_stage_file(stage.path)
     stage_file_content["md5"] = "1111111111"
     dump_stage_file(stage.path, stage_file_content)
 
     with pytest.raises(StageCommitError):
-        dvc_repo.commit(stage.path)
+        dvc.commit(stage.path)
 
-    dvc_repo.commit(stage.path, force=True)
+    dvc.commit(stage.path, force=True)
