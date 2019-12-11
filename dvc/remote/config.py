@@ -155,18 +155,3 @@ class RemoteConfig(object):
         return self.config.get(
             Config.SECTION_CORE, Config.SECTION_CORE_REMOTE, level=level
         )
-
-    def default_remote_set(self):
-        """
-        Checks if default remote config is present.
-        Args:
-            rconfig: a remote config
-
-        Returns:
-            True if the default remote config is set, else False
-        """
-        try:
-            self.get_default()
-            return True
-        except ConfigError:
-            return False
