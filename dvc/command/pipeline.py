@@ -169,9 +169,6 @@ class CmdPipelineList(CmdBase):
         for p in pipelines:
             # Get the stage with the lowest in-degree
             initial_stages = list(filter(lambda x: x[1] == 0, p.in_degree))
-            assert (
-                len(initial_stages) == 1
-            ), "Error finding an edge on the pipeline graph"
 
             # Get the stages in order to be displayed
             stages = list(
