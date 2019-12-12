@@ -167,15 +167,11 @@ class CmdPipelineList(CmdBase):
 
         pipelines = self.repo.pipelines
         for p in pipelines:
-            # Get the stage with the lowest in-degree
-            initial_stages = list(filter(lambda x: x[1] == 0, p.in_degree))
 
             # Get the stages in order to be displayed
-            stages = list(
-                networkx.dfs_postorder_nodes(p, initial_stages[0][0])
-            )
+            stages = list(networkx.topological_sort(p))
 
-            for stage in stages:
+            for stage in reversed(stages):
                 logger.info(stage)
             if len(stages) != 0:
                 logger.info("=" * 80)
