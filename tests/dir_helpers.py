@@ -229,7 +229,7 @@ def run_copy(tmp_dir, dvc, request):
     # Do we need this?
     if "scm" in request.fixturenames:
         request.getfixturevalue("scm")
-        tmp_dir.git_add("copy.py", commit="add copy.py")
+        tmp_dir.scm_add("copy.py", commit="add copy.py")
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
@@ -250,27 +250,27 @@ def erepo_dir(tmp_path_factory, monkeypatch):
     path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
 
     # Chdir for git and dvc to work locally
-    monkeypatch.chdir(fspath_py35(path))
+    with monkeypatch.context() as m:
+        m.chdir(fspath_py35(path))
 
-    _git_init()
-    path.dvc = Repo.init()
-    path.scm = path.dvc.scm
-    path.dvc_gen(REPO_TEMPLATE, commit="init repo")
+        _git_init()
+        path.dvc = Repo.init()
+        path.scm = path.dvc.scm
+        path.dvc_gen(REPO_TEMPLATE, commit="init repo")
 
-    rconfig = RemoteConfig(path.dvc.config)
-    rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
-    path.scm_add([path.dvc.config.config_file], commit="add remote")
+        rconfig = RemoteConfig(path.dvc.config)
+        rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
+        path.scm_add([path.dvc.config.config_file], commit="add remote")
 
-    path.dvc_gen("version", "master")
-    path.scm_add([".gitignore", "version.dvc"], commit="master")
+        path.dvc_gen("version", "master")
+        path.scm_add([".gitignore", "version.dvc"], commit="master")
 
-    path.scm.checkout("branch", create_new=True)
-    (path / "version").unlink()  # For mac ???
-    path.dvc_gen("version", "branch")
-    path.scm_add([".gitignore", "version.dvc"], commit="branch")
+        path.scm.checkout("branch", create_new=True)
+        (path / "version").unlink()  # For mac ???
+        path.dvc_gen("version", "branch")
+        path.scm_add([".gitignore", "version.dvc"], commit="branch")
 
-    path.scm.checkout("master")
-    path.dvc.close()
-    monkeypatch.undo()  # Undo chdir
+        path.scm.checkout("master")
+        path.dvc.close()
 
     return path
