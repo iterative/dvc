@@ -1,13 +1,6 @@
-import os
-
-from tests.basic_env import TestDvc
+from dvc.utils.compat import fspath
 
 
-class TestIsDvcInternal(TestDvc):
-    def test_return_false_on_non_dvc_file(self):
-        path = os.path.join("path", "to-non-.dvc", "file")
-        self.assertFalse(self.dvc.is_dvc_internal(path))
-
-    def test_return_true_on_dvc_internal_file(self):
-        path = os.path.join("path", "to", ".dvc", "file")
-        self.assertTrue(path)
+def test_is_dvc_internal(tmp_dir, dvc):
+    assert dvc.is_dvc_internal(fspath(tmp_dir / ".dvc" / "file"))
+    assert not dvc.is_dvc_internal("file")
