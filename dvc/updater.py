@@ -9,8 +9,7 @@ import colorama
 from packaging import version
 
 from dvc import __version__
-from dvc.lock import Lock
-from dvc.lock import LockError
+from dvc.lock import make_lock, LockError
 from dvc.utils import boxify
 from dvc.utils import env2bool
 from dvc.utils.pkg import PKG
@@ -24,11 +23,14 @@ class Updater(object):  # pragma: no cover
     TIMEOUT = 24 * 60 * 60  # every day
     TIMEOUT_GET = 10
 
-    def __init__(self, dvc_dir):
+    def __init__(self, dvc_dir, friendly=False, hardlink_lock=False):
         self.dvc_dir = dvc_dir
         self.updater_file = os.path.join(dvc_dir, self.UPDATER_FILE)
-        self.lock = Lock(
-            self.updater_file + ".lock", tmp_dir=os.path.join(dvc_dir, "tmp")
+        self.lock = make_lock(
+            self.updater_file + ".lock",
+            tmp_dir=os.path.join(dvc_dir, "tmp"),
+            friendly=friendly,
+            hardlink_lock=hardlink_lock,
         )
         self.current = version.parse(__version__).base_version
 

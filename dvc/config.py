@@ -125,6 +125,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_CORE_INTERACTIVE = "interactive"
     SECTION_CORE_ANALYTICS = "analytics"
     SECTION_CORE_CHECKSUM_JOBS = "checksum_jobs"
+    SECTION_CORE_HARDLINK_LOCK = "hardlink_lock"
 
     SECTION_CACHE = "cache"
     SECTION_CACHE_DIR = "dir"
@@ -160,6 +161,7 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_CORE_INTERACTIVE, default=False): Bool,
         Optional(SECTION_CORE_ANALYTICS, default=True): Bool,
         SECTION_CORE_CHECKSUM_JOBS: All(Coerce(int), Range(1)),
+        Optional(SECTION_CORE_HARDLINK_LOCK, default=False): Bool,
     }
 
     # aws specific options
