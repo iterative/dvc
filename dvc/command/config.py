@@ -32,10 +32,9 @@ class CmdConfig(CmdBaseNoRepo):
         is_write = self.args.unset or self.args.value is not None
         if is_write and self.args.name == "cache.type":
             logger.warning(
-                "You have changed cache.type, this doesn't update link types "
-                "of any previously checked out files automatically. "
-                "That can be done with:\n"
-                "             dvc checkout --relink"
+                "You have changed the 'cache.type' option. This doesn't update"
+                " any existing workspace file links, but it can be done with:"
+                "\n             dvc checkout --relink"
             )
 
         return 0

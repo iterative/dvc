@@ -39,7 +39,7 @@ def add_parser(subparsers, parent_parser):
         "--relink",
         action="store_true",
         default=False,
-        help="Relink all files to cache, including unchanged.",
+        help="Recreate links or copies from cache to workspace.",
     )
     checkout_parser.add_argument(
         "-d",
