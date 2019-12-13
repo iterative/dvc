@@ -173,6 +173,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
     SECTION_AWS_USE_SSL = "use_ssl"
     SECTION_AWS_SSE = "sse"
     SECTION_AWS_ACL = "acl"
+    SECTION_AWS_GRANT_READ = "grant_read"
+    SECTION_AWS_GRANT_READ_ACP = "grant_read_acp"
+    SECTION_AWS_GRANT_WRITE_ACP = "grant_write_acp"
+    SECTION_AWS_GRANT_FULL_CONTROL = "grant_full_control"
 
     # gcp specific options
     SECTION_GCP_CREDENTIALPATH = CREDENTIALPATH
@@ -212,6 +216,10 @@ class Config(object):  # pylint: disable=too-many-instance-attributes
         Optional(SECTION_AWS_USE_SSL, default=True): Bool,
         SECTION_AWS_SSE: str,
         SECTION_AWS_ACL: str,
+        SECTION_AWS_GRANT_READ: str,
+        SECTION_AWS_GRANT_READ_ACP: str,
+        SECTION_AWS_GRANT_WRITE_ACP: str,
+        SECTION_AWS_GRANT_FULL_CONTROL: str,
         SECTION_GCP_PROJECTNAME: str,
         SECTION_CACHE_TYPE: supported_cache_type,
         Optional(SECTION_CACHE_PROTECTED, default=False): Bool,
