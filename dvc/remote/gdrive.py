@@ -57,7 +57,7 @@ class RemoteGDrive(RemoteBASE):
     path_cls = CloudURLInfo
     REQUIRES = {"pydrive": "pydrive"}
     GDRIVE_USER_CREDENTIALS_DATA = "GDRIVE_USER_CREDENTIALS_DATA"
-    DEFAULT_USER_CREDENTIALS_FILE = ".dvc/tmp/gdrive-user-credentials.json"
+    DEFAULT_USER_CREDENTIALS_FILE = "gdrive-user-credentials.json"
 
     def __init__(self, repo, config):
         super(RemoteGDrive, self).__init__(repo, config)
@@ -82,7 +82,9 @@ class RemoteGDrive(RemoteBASE):
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
             else self.config.get(
                 Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
-                self.DEFAULT_USER_CREDENTIALS_FILE,
+                os.path.join(
+                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
+                ),
             )
         )
 
