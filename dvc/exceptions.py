@@ -47,7 +47,8 @@ class OutputDuplicationError(DvcException):
         )
         msg = (
             "file/directory '{}' is specified as an output in more than one "
-            "stage: {}"
+            "stage: {}\n"
+            "This is not allowed. Consider using a different output name."
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
 
