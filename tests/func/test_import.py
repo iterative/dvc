@@ -29,38 +29,32 @@ def test_import(git, dvc_repo, erepo):
     assert git.git.check_ignore(dst)
 
 
-def test_import_git_file(git, dvc_repo, erepo):
+def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
     src = "some_file"
     dst = "some_file_imported"
 
-    src_path = os.path.join(erepo.root_dir, src)
-    erepo.create(src_path, "hello")
-    erepo.dvc.scm.add([src_path])
-    erepo.dvc.scm.commit("add a regular file")
+    erepo_dir.scm_gen({src: "hello"}, commit="add a regular file")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(src_path, dst, shallow=False)
-    assert git.git.check_ignore(dst)
+    assert (tmp_dir / dst).exists()
+    assert os.path.isfile(tmp_dir / dst)
+    assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
+    assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
 
 
-def test_import_git_dir(git, dvc_repo, erepo):
+def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
     src = "some_directory"
     dst = "some_directory_imported"
 
-    src_file_path = os.path.join(erepo.root_dir, src, "file.txt")
-    erepo.create(src_file_path, "hello")
-    erepo.dvc.scm.add([src_file_path])
-    erepo.dvc.scm.commit("add a regular dir")
+    erepo_dir.scm_gen({src: {"file.txt": "hello"}}, commit="add a dir")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
-    assert os.path.exists(dst)
-    assert os.path.isdir(dst)
-    trees_equal(os.path.join(erepo.root_dir, src), dst)
-    assert git.git.check_ignore(dst)
+    assert (tmp_dir / dst).exists()
+    assert os.path.isdir(tmp_dir / dst)
+    trees_equal(erepo_dir / src, tmp_dir / dst)
+    assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
 
 
 def test_import_dir(git, dvc_repo, erepo):
@@ -75,26 +69,25 @@ def test_import_dir(git, dvc_repo, erepo):
     assert git.git.check_ignore(dst)
 
 
-def test_import_non_cached(git, dvc_repo, erepo):
+def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     src = "non_cached_output"
     dst = src + "_imported"
 
-    erepo.dvc.run(
+    erepo_dir.dvc.run(
         cmd="echo hello > {}".format(src),
         outs_no_cache=[src],
-        cwd=erepo.root_dir,
+        cwd=str(erepo_dir),
     )
 
-    src_path = os.path.join(erepo.root_dir, src)
-    erepo.dvc.scm.add([src_path])
-    erepo.dvc.scm.commit("add a non-cached output")
+    erepo_dir.scm.add([str(erepo_dir / src)])
+    erepo_dir.scm.commit("add a non-cached output")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(src_path, dst, shallow=False)
-    assert git.git.check_ignore(dst)
+    assert (tmp_dir / dst).exists()
+    assert os.path.isfile(tmp_dir / dst)
+    assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
+    assert tmp_dir.scm.repo.git.check_ignore(dst)
 
 
 def test_import_rev(git, dvc_repo, erepo):
@@ -214,9 +207,9 @@ def test_pull_non_workspace(git, dvc_repo, erepo):
     assert os.path.exists(stage.outs[0].cache_path)
 
 
-def test_import_non_existing(dvc_repo, erepo):
+def test_import_non_existing(erepo_dir, tmp_dir, dvc):
     with pytest.raises(PathMissingError):
-        dvc_repo.imp(erepo.root_dir, "invalid_output")
+        tmp_dir.dvc.imp(str(erepo_dir), "invalid_output")
     # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
     with pytest.raises(NoOutputInExternalRepoError):
-        dvc_repo.imp(erepo.root_dir, "/root/", "root")
+        tmp_dir.dvc.imp(str(erepo_dir), "/root/", "root")
