@@ -82,8 +82,9 @@ class RemoteGDrive(RemoteBASE):
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
             else self.config.get(
                 Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
-                os.path.join(self.repo.tmp_dir,
-                             self.DEFAULT_USER_CREDENTIALS_FILE),
+                os.path.join(
+                    self.repo.tmp_dir, self.DEFAULT_USER_CREDENTIALS_FILE
+                ),
             )
         )
 
