@@ -164,9 +164,14 @@ class RemoteLOCAL(RemoteBASE):
 
         move(from_info, to_info, mode=mode)
 
-    @staticmethod
-    def copy(from_info, to_info):
-        System.copy(from_info, to_info)
+    def copy(self, from_info, to_info):
+        tmp_info = to_info.parent / tmp_fname(to_info.name)
+        try:
+            System.copy(from_info, tmp_info)
+            os.rename(fspath_py35(tmp_info), fspath_py35(to_info))
+        except Exception:
+            self.remove(tmp_info)
+            raise
 
     @staticmethod
     def symlink(from_info, to_info):

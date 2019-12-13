@@ -178,7 +178,7 @@ class RemoteSSH(RemoteBASE):
             raise NotImplementedError
 
         with self.ssh(from_info) as ssh:
-            ssh.copy(from_info.path, to_info.path)
+            ssh.atomic_copy(from_info.path, to_info.path)
 
     def symlink(self, from_info, to_info):
         if not from_info.scheme == to_info.scheme == self.scheme:

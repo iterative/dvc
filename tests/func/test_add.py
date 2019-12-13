@@ -566,12 +566,14 @@ def test_should_not_checkout_when_adding_cached_copy(tmp_dir, dvc, mocker):
 def test_should_relink_on_repeated_add(
     link, new_link, link_test_func, tmp_dir, dvc
 ):
+    from dvc.path_info import PathInfo
+
     dvc.config.set("cache", "type", link)
 
     tmp_dir.dvc_gen({"foo": "foo", "bar": "bar"})
 
     os.remove("foo")
-    getattr(dvc.cache.local, link)("bar", "foo")
+    getattr(dvc.cache.local, link)(PathInfo("bar"), PathInfo("foo"))
 
     dvc.cache.local.cache_types = [new_link]
 

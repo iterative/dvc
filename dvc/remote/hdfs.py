@@ -100,8 +100,14 @@ class RemoteHDFS(RemoteBASE):
             # NOTE: this is how `hadoop fs -cp` works too: it copies through
             # your local machine.
             with hdfs.open(from_info.path, "rb") as from_fobj:
-                with hdfs.open(to_info.path, "wb") as to_fobj:
-                    to_fobj.upload(from_fobj)
+                tmp_info = to_info.parent / tmp_fname(to_info.name)
+                try:
+                    with hdfs.open(tmp_info.path, "wb") as tmp_fobj:
+                        tmp_fobj.upload(from_fobj)
+                    hdfs.rename(tmp_info.path, to_info.path)
+                except Exception:
+                    self.remove(tmp_info)
+                    raise
 
     def remove(self, path_info):
         if path_info.scheme != "hdfs":
