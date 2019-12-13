@@ -47,7 +47,8 @@ class OutputDuplicationError(DvcException):
         )
         msg = (
             "file/directory '{}' is specified as an output in more than one "
-            "stage: {}"
+            "stage: {}\n"
+            "This is not allowed. Consider using a different output name."
         ).format(output, "\n    ".join(stages))
         super(OutputDuplicationError, self).__init__(msg)
 
@@ -280,14 +281,6 @@ class UrlNotDvcRepoError(DvcException):
     def __init__(self, url):
         super(UrlNotDvcRepoError, self).__init__(
             "URL '{}' is not a dvc repository.".format(url)
-        )
-
-
-class GetDVCFileError(DvcException):
-    def __init__(self):
-        super(GetDVCFileError, self).__init__(
-            "the given path is a DVC-file, you must specify a data file "
-            "or a directory"
         )
 
 

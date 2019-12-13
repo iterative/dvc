@@ -5,10 +5,9 @@ import logging
 import os
 import threading
 
-from botocore.exceptions import ClientError
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
+from dvc.config import Config, ConfigError
 from dvc.exceptions import DvcException
 from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
@@ -53,6 +52,8 @@ class RemoteS3(RemoteBASE):
         self.acl = config.get(Config.SECTION_AWS_ACL, "")
         if self.acl:
             self.extra_args["ACL"] = self.acl
+
+        self._append_aws_grants_to_extra_args(config)
 
         shared_creds = config.get(Config.SECTION_AWS_CREDENTIALPATH)
         if shared_creds:
@@ -209,6 +210,8 @@ class RemoteS3(RemoteBASE):
         return self._list_paths(self.path_info)
 
     def isfile(self, path_info):
+        from botocore.exceptions import ClientError
+
         if path_info.path.endswith("/"):
             return False
 
@@ -301,3 +304,34 @@ class RemoteS3(RemoteBASE):
                 continue
 
             yield path_info.replace(path=fname)
+
+    def _append_aws_grants_to_extra_args(self, config):
+        # Keys for extra_args can be one of the following list:
+        # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/customizations/s3.html#boto3.s3.transfer.S3Transfer.ALLOWED_UPLOAD_ARGS
+        """
+          ALLOWED_UPLOAD_ARGS = [
+            'ACL', 'CacheControl', 'ContentDisposition', 'ContentEncoding',
+            'ContentLanguage', 'ContentType', 'Expires', 'GrantFullControl',
+            'GrantRead', 'GrantReadACP', 'GrantWriteACP', 'Metadata',
+            'RequestPayer', 'ServerSideEncryption', 'StorageClass',
+            'SSECustomerAlgorithm', 'SSECustomerKey', 'SSECustomerKeyMD5',
+            'SSEKMSKeyId', 'WebsiteRedirectLocation'
+          ]
+        """
+
+        grants = {
+            Config.SECTION_AWS_GRANT_FULL_CONTROL: "GrantFullControl",
+            Config.SECTION_AWS_GRANT_READ: "GrantRead",
+            Config.SECTION_AWS_GRANT_READ_ACP: "GrantReadACP",
+            Config.SECTION_AWS_GRANT_WRITE_ACP: "GrantWriteACP",
+        }
+
+        for grant_option, extra_args_key in grants.items():
+            if config.get(grant_option, ""):
+                if self.acl:
+                    raise ConfigError(
+                        "`acl` and `grant_*` AWS S3 config options "
+                        "are mutually exclusive"
+                    )
+
+                self.extra_args[extra_args_key] = config.get(grant_option)

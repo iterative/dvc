@@ -1,20 +1,40 @@
 import logging
 import os
+import shutil
+from dvc.utils.compat import FileNotFoundError
 
 import shortuuid
 
-from dvc.exceptions import GetDVCFileError
-from dvc.exceptions import NotDvcRepoError
-from dvc.exceptions import OutputNotFoundError
-from dvc.exceptions import UrlNotDvcRepoError
+from dvc.exceptions import (
+    DvcException,
+    NotDvcRepoError,
+    OutputNotFoundError,
+    UrlNotDvcRepoError,
+)
 from dvc.external_repo import external_repo
 from dvc.path_info import PathInfo
 from dvc.stage import Stage
-from dvc.state import StateNoop
 from dvc.utils import resolve_output
 from dvc.utils.fs import remove
 
 logger = logging.getLogger(__name__)
+
+
+class GetDVCFileError(DvcException):
+    def __init__(self):
+        super(GetDVCFileError, self).__init__(
+            "the given path is a DVC-file, you must specify a data file "
+            "or a directory"
+        )
+
+
+class PathMissingError(DvcException):
+    def __init__(self, path, repo):
+        msg = (
+            "The path '{}' does not exist in the target repository '{}'"
+            " neighther as an output nor a git-handled file."
+        )
+        super(PathMissingError, self).__init__(msg.format(path, repo))
 
 
 @staticmethod
@@ -33,11 +53,6 @@ def get(url, path, out=None, rev=None):
     tmp_dir = os.path.join(dpath, "." + str(shortuuid.uuid()))
     try:
         with external_repo(cache_dir=tmp_dir, url=url, rev=rev) as repo:
-            # Note: we need to replace state, because in case of getting DVC
-            # dependency on CIFS or NFS filesystems, sqlite-based state
-            # will be unable to obtain lock
-            repo.state = StateNoop()
-
             # Try any links possible to avoid data duplication.
             #
             # Not using symlink, because we need to remove cache after we are
@@ -49,16 +64,40 @@ def get(url, path, out=None, rev=None):
             # the same cache file might be used a few times in a directory.
             repo.cache.local.cache_types = ["reflink", "hardlink", "copy"]
 
-            o = repo.find_out_by_relpath(path)
-            with repo.state:
-                repo.cloud.pull(o.get_used_cache())
-            o.path_info = PathInfo(os.path.abspath(out))
-            with o.repo.state:
-                o.checkout()
+            try:
+                output = repo.find_out_by_relpath(path)
+            except OutputNotFoundError:
+                output = None
 
+            if output and output.use_cache:
+                _get_cached(repo, output, out)
+            else:
+                # Either an uncached out with absolute path or a user error
+                if os.path.isabs(path):
+                    raise FileNotFoundError
+
+                _copy(os.path.join(repo.root_dir, path), out)
+
+    except (OutputNotFoundError, FileNotFoundError):
+        raise PathMissingError(path, url)
     except NotDvcRepoError:
         raise UrlNotDvcRepoError(url)
-    except OutputNotFoundError:
-        raise OutputNotFoundError(path)
     finally:
         remove(tmp_dir)
+
+
+def _get_cached(repo, output, out):
+    with repo.state:
+        repo.cloud.pull(output.get_used_cache())
+        output.path_info = PathInfo(os.path.abspath(out))
+        failed = output.checkout()
+        # This might happen when pull haven't really pulled all the files
+        if failed:
+            raise FileNotFoundError
+
+
+def _copy(src, dst):
+    if os.path.isdir(src):
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)

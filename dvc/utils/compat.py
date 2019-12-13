@@ -123,6 +123,7 @@ if is_py2:
     makedirs = _makedirs
     range = xrange  # noqa: F821
     FileNotFoundError = IOError
+    JSONDecodeError = ValueError
 
     import StringIO
     import io
@@ -164,6 +165,7 @@ elif is_py3:
     import configparser as ConfigParser  # noqa: F401
     from collections.abc import Mapping  # noqa: F401
     from contextlib import ExitStack  # noqa: F401
+    from json.decoder import JSONDecodeError  # noqa: F401
 
     builtin_str = str  # noqa: F821
     str = str  # noqa: F821

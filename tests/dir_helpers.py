@@ -1,3 +1,47 @@
+"""
+The goal of this module is making dvc functional tests setup a breeze. This
+includes a temporary dir, initializing git and dvc repos and bootstrapping some
+file structure.
+
+The cornerstone of these fixtures is `tmp_dir`, which creates a temporary dir
+and changes path to it, it might be combined with `scm` and `dvc` to initialize
+empty git and dvc repos. `tmp_dir` returns a Path instance, which should save
+you from using `open()`, `os` and `os.path` utils many times:
+
+    (tmp_dir / "some_file").write_text("some text")
+    # ...
+    assert "some text" == (tmp_dir / "some_file").read_text()
+    assert (tmp_dir / "some_file").exists()
+
+Additionally it provides `.gen()`, `.scm_gen()` and `.dvc_gen()` methods to
+bootstrap a required file structure in a single call:
+
+    # Generate a dir with files
+    tmp_dir.gen({"dir": {"file": "file text", "second_file": "..."}})
+
+    # Generate a single file, dirs will be created along the way
+    tmp_dir.gen("dir/file", "file text")
+
+    # Generate + git add
+    tmp_dir.scm_gen({"file1": "...", ...})
+
+    # Generate + git add + git commit
+    tmp_dir.scm_gen({"file1": "...", ...}, commit="add files")
+
+    # Generate + dvc add
+    tmp_dir.dvc_gen({"file1": "...", ...})
+
+    # Generate + dvc add + git commit -am "..."
+    # This commits stages to git not the generated files.
+    tmp_dir.dvc_gen({"file1": "...", ...}, commit="add files")
+
+Making it easier to bootstrap things has a supergoal of incentivizing a move
+from global repo template to creating everything inplace, which:
+
+    - makes all path references local to test, enhancing readability
+    - allows using telling filenames, e.g. "git_tracked_file" instead of "foo"
+    - does not create unnecessary files
+"""
 from __future__ import unicode_literals
 
 import os
@@ -6,7 +50,7 @@ import pytest
 from funcy.py3 import lmap, retry
 
 from dvc.utils import makedirs
-from dvc.utils.compat import basestring, is_py2, pathlib, fspath, fspath_py35
+from dvc.utils.compat import basestring, pathlib, fspath, fspath_py35, bytes
 
 
 __all__ = ["tmp_dir", "scm", "dvc", "repo_template", "run_copy", "erepo_dir"]
@@ -44,7 +88,7 @@ class TmpDir(pathlib.Path):
             )
 
     def gen(self, struct, text=""):
-        if isinstance(struct, basestring):
+        if isinstance(struct, (basestring, pathlib.PurePath)):
             struct = {struct: text}
 
         self._gen(struct)
@@ -55,13 +99,16 @@ class TmpDir(pathlib.Path):
             path = (prefix or self) / name
 
             if isinstance(contents, dict):
-                self._gen(contents, prefix=path)
+                if not contents:
+                    makedirs(path, exist_ok=True)
+                else:
+                    self._gen(contents, prefix=path)
             else:
                 makedirs(path.parent, exist_ok=True)
-                if is_py2 and isinstance(contents, str):
+                if isinstance(contents, bytes):
                     path.write_bytes(contents)
                 else:
-                    path.write_text(contents)
+                    path.write_text(contents, encoding="utf-8")
 
     def dvc_gen(self, struct, text="", commit=None):
         paths = self.gen(struct, text)
@@ -182,7 +229,7 @@ def run_copy(tmp_dir, dvc, request):
     # Do we need this?
     if "scm" in request.fixturenames:
         request.getfixturevalue("scm")
-        tmp_dir.git_add("copy.py", commit="add copy.py")
+        tmp_dir.scm_add("copy.py", commit="add copy.py")
 
     def run_copy(src, dst, **run_kwargs):
         return dvc.run(
@@ -203,27 +250,27 @@ def erepo_dir(tmp_path_factory, monkeypatch):
     path = TmpDir(fspath_py35(tmp_path_factory.mktemp("erepo")))
 
     # Chdir for git and dvc to work locally
-    monkeypatch.chdir(fspath_py35(path))
+    with monkeypatch.context() as m:
+        m.chdir(fspath_py35(path))
 
-    _git_init()
-    path.dvc = Repo.init()
-    path.scm = path.dvc.scm
-    path.dvc_gen(REPO_TEMPLATE, commit="init repo")
+        _git_init()
+        path.dvc = Repo.init()
+        path.scm = path.dvc.scm
+        path.dvc_gen(REPO_TEMPLATE, commit="init repo")
 
-    rconfig = RemoteConfig(path.dvc.config)
-    rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
-    path.scm_add([path.dvc.config.config_file], commit="add remote")
+        rconfig = RemoteConfig(path.dvc.config)
+        rconfig.add("upstream", path.dvc.cache.local.cache_dir, default=True)
+        path.scm_add([path.dvc.config.config_file], commit="add remote")
 
-    path.dvc_gen("version", "master")
-    path.scm_add([".gitignore", "version.dvc"], commit="master")
+        path.dvc_gen("version", "master")
+        path.scm_add([".gitignore", "version.dvc"], commit="master")
 
-    path.scm.checkout("branch", create_new=True)
-    (path / "version").unlink()  # For mac ???
-    path.dvc_gen("version", "branch")
-    path.scm_add([".gitignore", "version.dvc"], commit="branch")
+        path.scm.checkout("branch", create_new=True)
+        (path / "version").unlink()  # For mac ???
+        path.dvc_gen("version", "branch")
+        path.scm_add([".gitignore", "version.dvc"], commit="branch")
 
-    path.scm.checkout("master")
-    path.dvc.close()
-    monkeypatch.undo()  # Undo chdir
+        path.scm.checkout("master")
+        path.dvc.close()
 
     return path

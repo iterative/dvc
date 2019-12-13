@@ -474,11 +474,14 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         )
 
 
-def test_checkout_no_checksum(repo_dir, dvc_repo):
-    stage = dvc_repo.run(outs=[repo_dir.FOO], no_exec=True, cmd="somecmd")
+def test_checkout_no_checksum(tmp_dir, dvc):
+    tmp_dir.gen("file", "file content")
+    stage = dvc.run(outs=["file"], no_exec=True, cmd="somecmd")
+
     with pytest.raises(CheckoutError):
-        dvc_repo.checkout([stage.path], force=True)
-    assert not os.path.exists(repo_dir.FOO)
+        dvc.checkout([stage.path], force=True)
+
+    assert not os.path.exists("file")
 
 
 @pytest.mark.parametrize(

@@ -79,6 +79,7 @@ install_requires = [
     "shortuuid>=0.5.0",
     "tqdm>=4.40.0,<5",
     "packaging>=19.0",
+    "zc.lockfile>=1.2.1",
     "win-unicode-console>=0.5; sys_platform == 'win32'",
     "pywin32>=225; sys_platform == 'win32'",
 ]
@@ -104,7 +105,7 @@ ssh = ["paramiko>=2.5.0"]
 # requirements, including kerberos itself. Once all the wheels are available,
 # we can start shipping it by default.
 ssh_gssapi = ["paramiko[gssapi]>=2.5.0"]
-hdfs = ["pyarrow==0.14.0"]
+hdfs = ["pyarrow==0.15.1"]
 all_remotes = gs + s3 + azure + ssh + oss + gdrive
 
 if os.name != "nt" or sys.version_info[0] != 2:
@@ -163,12 +164,7 @@ setup(
         "ssh_gssapi": ssh_gssapi,
         "hdfs": hdfs,
         # NOTE: https://github.com/inveniosoftware/troubleshooting/issues/1
-        ":python_version=='2.7'": [
-            "futures",
-            "pathlib2",
-            "contextlib2",
-            "zc.lockfile>=1.2.1",
-        ],
+        ":python_version=='2.7'": ["futures", "pathlib2", "contextlib2"],
         ":python_version>='3.0'": ["flufl.lock>=3.2"],
         "tests": tests_requirements,
     },

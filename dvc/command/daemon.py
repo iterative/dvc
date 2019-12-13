@@ -12,11 +12,16 @@ class CmdDaemonUpdater(CmdDaemonBase):
     def run(self):
         import os
         from dvc.repo import Repo
+        from dvc.config import Config
         from dvc.updater import Updater
 
         root_dir = Repo.find_root()
         dvc_dir = os.path.join(root_dir, Repo.DVC_DIR)
-        updater = Updater(dvc_dir)
+        config = Config(dvc_dir, validate=False)
+        hardlink_lock = config.config.get("core", {}).get(
+            "hardlink_lock", False
+        )
+        updater = Updater(dvc_dir, hardlink_lock=hardlink_lock)
         updater.fetch(detach=False)
 
         return 0
@@ -24,10 +29,9 @@ class CmdDaemonUpdater(CmdDaemonBase):
 
 class CmdDaemonAnalytics(CmdDaemonBase):
     def run(self):
-        from dvc.analytics import Analytics
+        from dvc import analytics
 
-        analytics = Analytics.load(self.args.target)
-        analytics.send()
+        analytics.send(self.args.target)
 
         return 0
 

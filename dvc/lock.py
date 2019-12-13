@@ -6,12 +6,12 @@ import os
 import time
 from datetime import timedelta
 
-from funcy.py3 import lkeep
+import zc.lockfile
 
 from dvc.exceptions import DvcException
-from dvc.utils import makedirs
-from dvc.utils.compat import is_py3
-
+from dvc.utils import format_link
+from dvc.utils.compat import is_py3, is_py2
+from dvc.progress import Tqdm
 
 DEFAULT_TIMEOUT = 5
 
@@ -26,10 +26,60 @@ class LockError(DvcException):
     """Thrown when unable to acquire the lock for dvc repo."""
 
 
+class Lock(object):
+    """Class for dvc repo lock.
+
+    Uses zc.lockfile as backend.
+    """
+
+    def __init__(self, lockfile, friendly=False, **kwargs):
+        self._friendly = friendly
+        self.lockfile = lockfile
+        self._lock = None
+
+    @property
+    def files(self):
+        return [self.lockfile]
+
+    def _do_lock(self):
+        try:
+            with Tqdm(
+                bar_format="{desc}",
+                disable=not self._friendly,
+                desc=(
+                    "If DVC froze, see `hardlink_lock` in {}".format(
+                        format_link("man.dvc.org/config#core")
+                    )
+                ),
+            ):
+                self._lock = zc.lockfile.LockFile(self.lockfile)
+        except zc.lockfile.LockError:
+            raise LockError(FAILED_TO_LOCK_MESSAGE)
+
+    def lock(self):
+        try:
+            self._do_lock()
+            return
+        except LockError:
+            time.sleep(DEFAULT_TIMEOUT)
+
+        self._do_lock()
+
+    def unlock(self):
+        self._lock.close()
+        self._lock = None
+
+    def __enter__(self):
+        self.lock()
+
+    def __exit__(self, typ, value, tbck):
+        self.unlock()
+
+
 if is_py3:
     import flufl.lock
 
-    class Lock(flufl.lock.Lock):
+    class HardlinkLock(flufl.lock.Lock):
         """Class for dvc repo lock.
 
         Args:
@@ -38,12 +88,10 @@ if is_py3:
             tmp_dir (str): a directory to store claim files.
         """
 
-        def __init__(self, lockfile, tmp_dir=None):
+        def __init__(self, lockfile, tmp_dir=None, **kwargs):
             import socket
 
             self._tmp_dir = tmp_dir
-            if self._tmp_dir is not None:
-                makedirs(self._tmp_dir, exist_ok=True)
 
             # NOTE: this is basically Lock.__init__ copy-paste, except that
             # instead of using `socket.getfqdn()` we use `socket.gethostname()`
@@ -68,10 +116,6 @@ if is_py3:
         @property
         def lockfile(self):
             return self._lockfile
-
-        @property
-        def files(self):
-            return lkeep([self._lockfile, self._tmp_dir])
 
         def lock(self):
             try:
@@ -101,44 +145,14 @@ if is_py3:
                 pass
 
 
-else:
-    import zc.lockfile
+def make_lock(lockfile, tmp_dir=None, friendly=False, hardlink_lock=False):
+    if hardlink_lock and is_py2:
+        raise DvcException(
+            "Hardlink locks are not supported on Python <3.5. "
+            "See `hardlink_lock` in {}".format(
+                format_link("man.dvc.org/config#core")
+            )
+        )
 
-    class Lock(object):
-        """Class for dvc repo lock.
-
-        Uses zc.lockfile as backend.
-        """
-
-        def __init__(self, lockfile, tmp_dir=None):
-            self.lockfile = lockfile
-            self._lock = None
-
-        @property
-        def files(self):
-            return [self.lockfile]
-
-        def _do_lock(self):
-            try:
-                self._lock = zc.lockfile.LockFile(self.lockfile)
-            except zc.lockfile.LockError:
-                raise LockError(FAILED_TO_LOCK_MESSAGE)
-
-        def lock(self):
-            try:
-                self._do_lock()
-                return
-            except LockError:
-                time.sleep(DEFAULT_TIMEOUT)
-
-            self._do_lock()
-
-        def unlock(self):
-            self._lock.close()
-            self._lock = None
-
-        def __enter__(self):
-            self.lock()
-
-        def __exit__(self, typ, value, tbck):
-            self.unlock()
+    cls = HardlinkLock if hardlink_lock else Lock
+    return cls(lockfile, tmp_dir=tmp_dir, friendly=friendly)

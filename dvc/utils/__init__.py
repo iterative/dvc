@@ -420,3 +420,11 @@ def resolve_output(inp, out):
     if os.path.isdir(out):
         return os.path.join(out, name)
     return out
+
+
+def format_link(link):
+    import colorama
+
+    return "<{blue}{link}{nc}>".format(
+        blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
+    )
