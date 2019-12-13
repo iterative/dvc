@@ -39,8 +39,8 @@ def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
 
     assert (tmp_dir / dst).exists()
     assert os.path.isfile(str(tmp_dir / dst))
-    assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
-    assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
+    assert filecmp.cmp(str(erepo_dir / src), str(tmp_dir / dst), shallow=False)
+    assert tmp_dir.scm.repo.git.check_ignore(str(tmp_dir / dst))
 
 
 def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
@@ -53,8 +53,8 @@ def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
 
     assert (tmp_dir / dst).exists()
     assert os.path.isdir(str(tmp_dir / dst))
-    trees_equal(erepo_dir / src, tmp_dir / dst)
-    assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
+    trees_equal(str(erepo_dir / src), str(tmp_dir / dst))
+    assert tmp_dir.scm.repo.git.check_ignore(str(tmp_dir / dst))
 
 
 def test_import_dir(git, dvc_repo, erepo):
@@ -86,7 +86,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
 
     assert (tmp_dir / dst).exists()
     assert os.path.isfile(str(tmp_dir / dst))
-    assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
+    assert filecmp.cmp(str(erepo_dir / src), str(tmp_dir / dst), shallow=False)
     assert tmp_dir.scm.repo.git.check_ignore(dst)
 
 
