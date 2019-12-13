@@ -12,6 +12,7 @@ class CmdCheckout(CmdBase):
             targets=self.args.targets,
             with_deps=self.args.with_deps,
             force=self.args.force,
+            relink=self.args.relink,
             recursive=self.args.recursive,
         )
         return 0
@@ -33,6 +34,12 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Do not prompt when removing working directory files.",
+    )
+    checkout_parser.add_argument(
+        "--relink",
+        action="store_true",
+        default=False,
+        help="Recreate links or copies from cache to workspace.",
     )
     checkout_parser.add_argument(
         "-d",

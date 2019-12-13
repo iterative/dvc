@@ -282,7 +282,9 @@ class OutputBase(object):
     def download(self, to):
         self.remote.download(self.path_info, to.path_info)
 
-    def checkout(self, force=False, progress_callback=None, tag=None):
+    def checkout(
+        self, force=False, progress_callback=None, tag=None, relink=False
+    ):
         if not self.use_cache:
             if progress_callback:
                 progress_callback(str(self.path_info), self.get_files_number())
@@ -298,6 +300,7 @@ class OutputBase(object):
             info,
             force=force,
             progress_callback=progress_callback,
+            relink=relink,
         )
 
     def remove(self, ignore_remove=False):
