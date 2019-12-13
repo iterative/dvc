@@ -195,10 +195,10 @@ class SSHConnection:
         try:
             self.sftp.rename(src, dst)
         except OSError:
-            self._atomic_copy(src, dst)
+            self.atomic_copy(src, dst)
             self.remove(src)
 
-    def _atomic_copy(self, src, dst):
+    def atomic_copy(self, src, dst):
         tmp = tmp_fname(dst)
 
         try:
