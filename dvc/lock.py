@@ -7,10 +7,9 @@ import time
 from datetime import timedelta
 
 import zc.lockfile
-from funcy.py3 import lkeep
 
 from dvc.exceptions import DvcException
-from dvc.utils import makedirs, format_link
+from dvc.utils import format_link
 from dvc.utils.compat import is_py3, is_py2
 from dvc.progress import Tqdm
 
@@ -93,8 +92,6 @@ if is_py3:
             import socket
 
             self._tmp_dir = tmp_dir
-            if self._tmp_dir is not None:
-                makedirs(self._tmp_dir, exist_ok=True)
 
             # NOTE: this is basically Lock.__init__ copy-paste, except that
             # instead of using `socket.getfqdn()` we use `socket.gethostname()`
@@ -119,10 +116,6 @@ if is_py3:
         @property
         def lockfile(self):
             return self._lockfile
-
-        @property
-        def files(self):
-            return lkeep([self._lockfile, self._tmp_dir])
 
         def lock(self):
             try:

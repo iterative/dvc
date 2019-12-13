@@ -7,7 +7,10 @@ import re
 import signal
 import subprocess
 import threading
+
+from functools import wraps
 from itertools import chain
+from funcy import decorator
 
 from voluptuous import Any, Schema, MultipleInvalid
 
@@ -127,6 +130,52 @@ class MissingDataSource(DvcException):
 
         msg = "missing data {}: {}".format(source, ", ".join(missing_files))
         super(MissingDataSource, self).__init__(msg)
+
+
+@decorator
+def rwlocked(call, read=None, write=None):
+    import sys
+    from dvc.rwlock import rwlock
+    from dvc.dependency.repo import DependencyREPO
+
+    if read is None:
+        read = []
+
+    if write is None:
+        write = []
+
+    stage = call._args[0]
+
+    def _chain(names):
+        return [
+            item.path_info
+            for attr in names
+            for item in getattr(stage, attr)
+            # There is no need to lock DependencyREPO deps, as there is no
+            # corresponding OutputREPO, so we can't even write it.
+            if not isinstance(item, DependencyREPO)
+        ]
+
+    cmd = " ".join(sys.argv)
+
+    with rwlock(stage.repo.tmp_dir, cmd, _chain(read), _chain(write)):
+        return call()
+
+
+def unlocked_repo(f):
+    @wraps(f)
+    def wrapper(stage, *args, **kwargs):
+        stage.repo.state.dump()
+        stage.repo.lock.unlock()
+        stage.repo._reset()
+        try:
+            ret = f(stage, *args, **kwargs)
+        finally:
+            stage.repo.lock.lock()
+            stage.repo.state.load()
+        return ret
+
+    return wrapper
 
 
 class Stage(object):
@@ -286,6 +335,7 @@ class Stage(object):
             return True
         return False
 
+    @rwlocked(read=["deps", "outs"])
     def changed(self):
         # Short-circuit order: stage md5 is fast, deps are expected to change
         ret = (
@@ -299,6 +349,7 @@ class Stage(object):
 
         return ret
 
+    @rwlocked(write=["outs"])
     def remove_outs(self, ignore_remove=False, force=False):
         """Used mainly for `dvc remove --outs` and :func:`Stage.reproduce`."""
         for out in self.outs:
@@ -316,6 +367,7 @@ class Stage(object):
         for out in self.outs:
             out.unprotect()
 
+    @rwlocked(write=["outs"])
     def remove(self, force=False, remove_outs=True):
         if remove_outs:
             self.remove_outs(ignore_remove=True, force=force)
@@ -323,6 +375,7 @@ class Stage(object):
             self.unprotect_outs()
         os.unlink(self.path)
 
+    @rwlocked(read=["deps"], write=["outs"])
     def reproduce(self, interactive=False, **kwargs):
 
         if not kwargs.get("force", False) and not self.changed():
@@ -755,6 +808,7 @@ class Stage(object):
                 )
             self.save()
 
+    @rwlocked(write=["outs"])
     def commit(self):
         for out in self.outs:
             out.commit()
@@ -801,6 +855,7 @@ class Stage(object):
             if occurrence > 1:
                 raise ArgumentDuplicationError(str(path))
 
+    @unlocked_repo
     def _run(self):
         self._check_missing_deps()
 
@@ -850,6 +905,7 @@ class Stage(object):
         if (p is None) or (p.returncode != 0):
             raise StageCmdFailedError(self)
 
+    @rwlocked(read=["deps"], write=["outs"])
     def run(self, dry=False, no_commit=False, force=False):
         if (self.cmd or self.is_import) and not self.locked and not dry:
             self.remove_outs(ignore_remove=False, force=False)
@@ -874,7 +930,6 @@ class Stage(object):
                     self.outs[0].checkout()
                 else:
                     self.deps[0].download(self.outs[0])
-
         elif self.is_data_source:
             msg = "Verifying data sources in '{}'".format(self.relpath)
             logger.info(msg)
@@ -904,6 +959,7 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
+    @rwlocked(write=["outs"])
     def checkout(self, force=False, progress_callback=None):
         failed_checkouts = []
         for out in self.outs:
@@ -923,6 +979,7 @@ class Stage(object):
 
         return ret
 
+    @rwlocked(read=["deps", "outs"])
     def status(self):
         ret = []
 
