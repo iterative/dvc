@@ -2,7 +2,6 @@ import logging
 import os
 
 import pytest
-from mock import patch
 from dvc.remote import RemoteS3
 from tests.utils import empty_caplog
 

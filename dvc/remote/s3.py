@@ -348,9 +348,6 @@ class RemoteS3(RemoteBASE):
         return TransferConfig()
 
     def adjust_jobs(self, jobs=None):
-        jobs_declared = bool(jobs)
-        jobs = jobs or self.JOBS
-
         if os.name == "nt":
             import win32file
 
@@ -363,6 +360,9 @@ class RemoteS3(RemoteBASE):
         fds_per_thread = 2  # file and socket
         safety_margin = 10
 
+        jobs_declared = bool(jobs)
+        jobs = jobs or self.JOBS
+
         estimated_descriptors_num = jobs * threads_per_job * fds_per_thread
         if estimated_descriptors_num <= descriptor_limit - safety_margin:
             return jobs
@@ -370,16 +370,6 @@ class RemoteS3(RemoteBASE):
         safe_jobs_number = (descriptor_limit - safety_margin) // (
             threads_per_job * fds_per_thread
         )
-        safe_descriptors_limit = estimated_descriptors_num + safety_margin
-        if jobs_declared:
-            logger.warning(
-                "Provided jobs number '{}' might result in 'Too many open "
-                "files error'. Consider decreasing jobs number to '{}' or "
-                "increasing "
-                "file descriptors limit to '{}'.".format(
-                    jobs, safe_jobs_number, safe_descriptors_limit
-                )
-            )
-        else:
+        if not jobs_declared:
             jobs = safe_jobs_number
         return jobs
