@@ -52,7 +52,7 @@ def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
     tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).exists()
-    assert os.path.isdir(tmp_dir / dst)
+    assert os.path.isdir(str(tmp_dir / dst))
     trees_equal(erepo_dir / src, tmp_dir / dst)
     assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
 
