@@ -7,7 +7,7 @@ import threading
 
 from funcy import cached_property, wrap_prop
 
-from dvc.config import Config
+from dvc.config import Config, ConfigError
 from dvc.exceptions import DvcException
 from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
@@ -318,44 +318,20 @@ class RemoteS3(RemoteBASE):
             'SSEKMSKeyId', 'WebsiteRedirectLocation'
           ]
         """
-        overwriting_acl_grantees = False
 
-        self.grant_full_control = config.get(
-            Config.SECTION_AWS_GRANT_FULL_CONTROL, ""
-        )
-        if self.grant_full_control:
-            self.extra_args["GrantFullControl"] = self.grant_full_control
-            overwriting_acl_grantees = True
+        grants = {
+            Config.SECTION_AWS_GRANT_FULL_CONTROL: "GrantFullControl",
+            Config.SECTION_AWS_GRANT_READ: "GrantRead",
+            Config.SECTION_AWS_GRANT_READ_ACP: "GrantReadACP",
+            Config.SECTION_AWS_GRANT_WRITE_ACP: "GrantWriteACP",
+        }
 
-        self.grant_read = config.get(Config.SECTION_AWS_GRANT_READ, "")
-        if self.grant_read:
-            self.extra_args["GrantRead"] = self.grant_read
-            overwriting_acl_grantees = True
+        for grant_option, extra_args_key in grants.items():
+            if config.get(grant_option, ""):
+                if self.acl:
+                    raise ConfigError(
+                        "`acl` and `grant_*` AWS S3 config options "
+                        "are mutually exclusive"
+                    )
 
-        self.grant_read_acp = config.get(Config.SECTION_AWS_GRANT_READ_ACP, "")
-        if self.grant_read_acp:
-            self.extra_args["GrantReadACP"] = self.grant_read_acp
-            overwriting_acl_grantees = True
-
-        self.grant_write_acp = config.get(
-            Config.SECTION_AWS_GRANT_WRITE_ACP, ""
-        )
-        if self.grant_write_acp:
-            self.extra_args["GrantWriteACP"] = self.grant_write_acp
-            overwriting_acl_grantees = True
-
-        if overwriting_acl_grantees:
-            overwriting_fields = [
-                Config.SECTION_AWS_GRANT_FULL_CONTROL,
-                Config.SECTION_AWS_GRANT_READ,
-                Config.SECTION_AWS_GRANT_READ_ACP,
-                Config.SECTION_AWS_GRANT_WRITE_ACP,
-            ]
-            warning_message = [
-                "Using one of the [{0}] will".format(
-                    ", ".join(overwriting_fields)
-                ),
-                "overwrite default ACL Grantees list. Default ACL Grantees",
-                "list include Owner with FULL_CONTROL permissions.",
-            ]
-            logger.warning(" ".join(warning_message))
+                self.extra_args[extra_args_key] = config.get(grant_option)
