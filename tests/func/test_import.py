@@ -38,7 +38,7 @@ def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
     tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).exists()
-    assert os.path.isfile(tmp_dir / dst)
+    assert os.path.isfile(str(tmp_dir / dst))
     assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
     assert tmp_dir.scm.repo.git.check_ignore(tmp_dir / dst)
 
@@ -85,7 +85,7 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     tmp_dir.dvc.imp(str(erepo_dir), src, dst)
 
     assert (tmp_dir / dst).exists()
-    assert os.path.isfile(tmp_dir / dst)
+    assert os.path.isfile(str(tmp_dir / dst))
     assert filecmp.cmp(erepo_dir / src, tmp_dir / dst, shallow=False)
     assert tmp_dir.scm.repo.git.check_ignore(dst)
 
