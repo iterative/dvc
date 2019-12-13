@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import copy
 import os
 from contextlib import contextmanager
+from dvc.utils.compat import FileNotFoundError
 
 from funcy import merge
 
