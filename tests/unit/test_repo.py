@@ -1,3 +1,4 @@
+from dvc.scm.git import GitTree
 from dvc.system import System
 from dvc.utils.compat import fspath
 
@@ -32,3 +33,30 @@ def test_destroy(tmp_dir, dvc):
     assert not System.is_symlink(fspath(tmp_dir / "dir"))
     assert not System.is_symlink(fspath(tmp_dir / "dir" / "file"))
     assert not System.is_symlink(fspath(tmp_dir / "dir" / "subdir" / "file"))
+
+
+def test_collect(tmp_dir, scm, dvc, run_copy):
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar")
+    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
+    scm.commit("Add foo and bar")
+
+    scm.checkout("new-branch", create_new=True)
+
+    run_copy("bar", "buzz")
+    scm.add([".gitignore", "buzz.dvc"])
+    scm.commit("Add buzz")
+
+    def collect_outs(*args, **kwargs):
+        return [
+            str(out.path_info)
+            for stage in dvc.collect(*args, **kwargs)
+            for out in stage.outs
+        ]
+
+    assert ["foo", "bar"] == collect_outs("bar.dvc", with_deps=True)
+
+    dvc.tree = GitTree(scm.repo, "new-branch")
+
+    assert ["foo", "bar", "buzz"] == collect_outs("buzz.dvc", with_deps=True)
+    assert ["buzz"] == collect_outs("buzz.dvc", with_deps=False)
