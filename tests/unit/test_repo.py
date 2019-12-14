@@ -1,3 +1,4 @@
+from dvc.repo import Repo
 from dvc.scm.git import GitTree
 from dvc.system import System
 from dvc.utils.compat import fspath
@@ -60,3 +61,16 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
     assert ["foo", "bar", "buzz"] == collect_outs("buzz.dvc", with_deps=True)
     assert ["buzz"] == collect_outs("buzz.dvc", with_deps=False)
+
+
+def test_stages(tmp_dir, dvc):
+    tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
+
+    def stages():
+        return [stage.relpath for stage in Repo(tmp_dir).stages]
+
+    assert stages() == ["file.dvc", "dir/file.dvc", "dir/subdir/file.dvc"]
+
+    tmp_dir.gen(".dvcignore", "dir")
+
+    assert stages() == ["file.dvc"]
