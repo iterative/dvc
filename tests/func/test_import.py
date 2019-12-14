@@ -43,6 +43,16 @@ def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(str(tmp_dir / dst))
 
 
+def test_status_imported_git_file(erepo_dir, tmp_dir, dvc, scm):
+    src = "some_file"
+    dst = "some_file_imported"
+
+    erepo_dir.scm_gen({src: "hello"}, commit="add a regular file")
+
+    tmp_dir.dvc.imp(str(erepo_dir), src, dst)
+    tmp_dir.dvc.status([dst + ".dvc"])
+
+
 def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
     src = "some_directory"
     dst = "some_directory_imported"
