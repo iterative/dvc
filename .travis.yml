@@ -74,6 +74,7 @@ jobs:
     python: 3.7
     script: ./scripts/build_package.sh
   - name: Snapcraft snap
+    stage: check  # TODO: change to 'deploy' before merge
     addons:
      snaps:
      - name: snapcraft
