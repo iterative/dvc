@@ -50,8 +50,13 @@ class DependencyREPO(DependencyLOCAL):
             yield repo
 
     def _git_status(self):
-        with self._make_repo() as old_repo:
-            with self._make_repo(rev_lock=None) as new_repo:
+        cache_dir = self.repo.cache.local.cache_dir
+        with self._make_repo(
+            cache_dir=os.path.join(cache_dir, "old")
+        ) as old_repo:
+            with self._make_repo(
+                cache_dir=os.path.join(cache_dir, "new"), rev_lock=None
+            ) as new_repo:
                 old_path = os.path.join(old_repo.root_dir, self.def_path)
                 new_path = os.path.join(new_repo.root_dir, self.def_path)
                 file_unchanged = filecmp.cmp(old_path, new_path, shallow=False)
