@@ -67,7 +67,7 @@ def test_stages(tmp_dir, dvc):
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
     def stages():
-        return [stage.relpath for stage in Repo(tmp_dir).stages]
+        return [str(stage.relpath) for stage in Repo(tmp_dir).stages]
 
     assert stages() == ["file.dvc", "dir/file.dvc", "dir/subdir/file.dvc"]
 
