@@ -15,7 +15,7 @@ def get_url(path, repo=None, rev=None, remote=None):
     """Returns an url of a resource specified by path in repo"""
     with _make_repo(repo, rev=rev) as _repo:
         abspath = os.path.join(_repo.root_dir, path)
-        out, = _repo.find_outs_by_path(abspath)
+        (out,) = _repo.find_outs_by_path(abspath)
         remote_obj = _repo.cloud.get_remote(remote)
         return str(remote_obj.checksum_to_path_info(out.checksum))
 

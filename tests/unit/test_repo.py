@@ -12,8 +12,8 @@ def test_is_dvc_internal(tmp_dir, dvc):
 def test_destroy(tmp_dir, dvc):
     dvc.config.set("cache", "type", "symlink")
 
-    tmp_dir.dvc_gen('file', 'text')
-    tmp_dir.dvc_gen({'dir': {'file': 'lorem', 'subdir/file': 'ipsum'}})
+    tmp_dir.dvc_gen("file", "text")
+    tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
 
     dvc.destroy()
 

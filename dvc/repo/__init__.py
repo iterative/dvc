@@ -263,7 +263,7 @@ class Repo(object):
 
             for stage in stages:
                 if stage.is_repo_import:
-                    dep, = stage.deps
+                    (dep,) = stage.deps
                     cache.external[dep.repo_pair].add(dep.def_path)
                     continue
 
@@ -445,7 +445,7 @@ class Repo(object):
 
     def find_out_by_relpath(self, relpath):
         path = os.path.join(self.root_dir, relpath)
-        out, = self.find_outs_by_path(path)
+        (out,) = self.find_outs_by_path(path)
         return out
 
     def is_dvc_internal(self, path):
@@ -457,7 +457,7 @@ class Repo(object):
         """Opens a specified resource as a file descriptor"""
         cause = None
         try:
-            out, = self.find_outs_by_path(path)
+            (out,) = self.find_outs_by_path(path)
         except OutputNotFoundError as e:
             out = None
             cause = e
