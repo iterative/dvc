@@ -89,7 +89,7 @@ jobs:
     - sudo /snap/bin/lxd init --auto
     install:
     script:
-    - sudo snapcraft --use-lxd
+    - ./scripts/build_snap.sh
     after_failure:
     - sudo journalctl -u snapd
 
