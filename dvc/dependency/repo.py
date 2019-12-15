@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import copy
 import os
-import filecmp
 from contextlib import contextmanager
 from dvc.utils.compat import FileNotFoundError
 
@@ -13,7 +12,6 @@ from dvc.external_repo import external_repo
 from dvc.utils.compat import str
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
-from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.utils.fs import fs_copy
 
 
@@ -49,31 +47,17 @@ class DependencyREPO(DependencyLOCAL):
         with external_repo(**merge(self.def_repo, overrides)) as repo:
             yield repo
 
-    def _git_status(self):
-        with self._make_repo() as old_repo:
-            with self._make_repo(rev_lock=None) as new_repo:
-                old_path = os.path.join(old_repo.root_dir, self.def_path)
-                new_path = os.path.join(new_repo.root_dir, self.def_path)
-                file_unchanged = filecmp.cmp(old_path, new_path, shallow=False)
-                if file_unchanged:
-                    return {}
-                else:
-                    return {str(self): "update available"}
-
     def status(self):
-        try:
-            with self._make_repo() as repo:
-                current = repo.find_out_by_relpath(self.def_path).info
+        with self._make_repo() as repo:
+            current = repo.find_out_by_relpath(self.def_path).info
 
-            with self._make_repo(rev_lock=None) as repo:
-                updated = repo.find_out_by_relpath(self.def_path).info
+        with self._make_repo(rev_lock=None) as repo:
+            updated = repo.find_out_by_relpath(self.def_path).info
 
-            if current != updated:
-                return {str(self): "update available"}
+        if current != updated:
+            return {str(self): "update available"}
 
-            return {}
-        except NoOutputInExternalRepoError:
-            return self._git_status()
+        return {}
 
     def save(self):
         pass
