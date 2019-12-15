@@ -112,7 +112,7 @@ def dict_md5(d, exclude=()):
     return bytes_md5(byts)
 
 
-def copyfile(src, dest, no_progress_bar=False, name=None):
+def copyfile(src, dest, name=None):
     """Copy file with progress bar"""
     from dvc.exceptions import DvcException
     from dvc.progress import Tqdm
@@ -130,9 +130,7 @@ def copyfile(src, dest, no_progress_bar=False, name=None):
     try:
         System.reflink(src, dest)
     except DvcException:
-        with Tqdm(
-            desc=name, disable=no_progress_bar, total=total, bytes=True
-        ) as pbar:
+        with Tqdm(desc=name, total=total, bytes=True) as pbar:
             with open(src, "rb") as fsrc, open(dest, "wb+") as fdest:
                 while True:
                     buf = fsrc.read(LOCAL_CHUNK_SIZE)

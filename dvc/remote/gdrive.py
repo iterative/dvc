@@ -89,9 +89,7 @@ class RemoteGDrive(RemoteBASE):
         )
 
     @gdrive_retry
-    def gdrive_upload_file(
-        self, args, no_progress_bar=True, from_file="", progress_name=""
-    ):
+    def gdrive_upload_file(self, args, from_file, name):
         item = self.drive.CreateFile(
             {"title": args["title"], "parents": [{"id": args["parent_id"]}]}
         )
@@ -99,11 +97,7 @@ class RemoteGDrive(RemoteBASE):
         with open(from_file, "rb") as fobj:
             total = os.path.getsize(from_file)
             with Tqdm.wrapattr(
-                fobj,
-                "read",
-                desc=progress_name,
-                total=total,
-                disable=no_progress_bar,
+                fobj, "read", desc=name, total=total
             ) as wrapped:
                 # PyDrive doesn't like content property setting for empty files
                 # https://github.com/gsuitedevs/PyDrive/issues/121
@@ -113,17 +107,13 @@ class RemoteGDrive(RemoteBASE):
         return item
 
     @gdrive_retry
-    def gdrive_download_file(
-        self, file_id, to_file, progress_name, no_progress_bar
-    ):
+    def gdrive_download_file(self, file_id, to_file, name):
         gdrive_file = self.drive.CreateFile({"id": file_id})
         bar_format = (
             "Donwloading {desc:{ncols_desc}.{ncols_desc}}... "
             + Tqdm.format_sizeof(int(gdrive_file["fileSize"]), "B", 1024)
         )
-        with Tqdm(
-            bar_format=bar_format, desc=progress_name, disable=no_progress_bar
-        ):
+        with Tqdm(bar_format=bar_format, desc=name):
             gdrive_file.GetContentFile(to_file)
 
     def gdrive_list_item(self, query):
@@ -271,7 +261,7 @@ class RemoteGDrive(RemoteBASE):
     def exists(self, path_info):
         return self.get_remote_id(path_info) != ""
 
-    def _upload(self, from_file, to_info, name, no_progress_bar):
+    def _upload(self, from_file, to_info, name=None):
         dirname = to_info.parent
         if dirname:
             parent_id = self.get_remote_id(dirname, True)
@@ -279,15 +269,12 @@ class RemoteGDrive(RemoteBASE):
             parent_id = to_info.bucket
 
         self.gdrive_upload_file(
-            {"title": to_info.name, "parent_id": parent_id},
-            no_progress_bar,
-            from_file,
-            name,
+            {"title": to_info.name, "parent_id": parent_id}, from_file, name
         )
 
-    def _download(self, from_info, to_file, name, no_progress_bar):
+    def _download(self, from_info, to_file, name=None):
         file_id = self.get_remote_id(from_info)
-        self.gdrive_download_file(file_id, to_file, name, no_progress_bar)
+        self.gdrive_download_file(file_id, to_file, name)
 
     def all(self):
         if not self.cached_ids:

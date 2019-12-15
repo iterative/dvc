@@ -960,15 +960,10 @@ class Stage(object):
             raise MissingDataSource(paths)
 
     @rwlocked(write=["outs"])
-    def checkout(self, force=False, progress_callback=None, relink=False):
+    def checkout(self, force=False, relink=False):
         failed_checkouts = []
         for out in self.outs:
-            failed = out.checkout(
-                force=force,
-                tag=self.tag,
-                progress_callback=progress_callback,
-                relink=relink,
-            )
+            failed = out.checkout(force=force, tag=self.tag, relink=relink)
             if failed:
                 failed_checkouts.append(failed)
         return failed_checkouts

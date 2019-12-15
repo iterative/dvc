@@ -219,23 +219,15 @@ class RemoteLOCAL(RemoteBASE):
             if not self.changed_cache_file(checksum)
         ]
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
+    def _upload(self, from_file, to_info, name=None, **_kwargs):
         makedirs(to_info.parent, exist_ok=True)
 
         tmp_file = tmp_fname(to_info)
-        copyfile(
-            from_file, tmp_file, name=name, no_progress_bar=no_progress_bar
-        )
+        copyfile(from_file, tmp_file, name=name)
         os.rename(tmp_file, fspath_py35(to_info))
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        copyfile(
-            from_info, to_file, no_progress_bar=no_progress_bar, name=name
-        )
+    def _download(self, from_info, to_file, name=None, **_kwargs):
+        copyfile(from_info, to_file, name=name)
 
     @staticmethod
     def open(path_info, mode="r", encoding=None):

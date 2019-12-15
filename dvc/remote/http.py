@@ -36,16 +36,16 @@ class RemoteHTTP(RemoteBASE):
                 "files. Use: `dvc remote modify <name> no_traverse true`"
             )
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+    def _download(self, from_info, to_file, name=None):
         response = self._request("GET", from_info.url, stream=True)
         if response.status_code != 200:
             raise HTTPError(response.status_code, response.reason)
+
         with Tqdm(
-            total=None if no_progress_bar else self._content_length(response),
+            total=self._content_length(response),
             leave=False,
             bytes=True,
             desc=from_info.url if name is None else name,
-            disable=no_progress_bar,
         ) as pbar:
             with open(to_file, "wb") as fd:
                 for chunk in response.iter_content(chunk_size=self.CHUNK_SIZE):

@@ -228,25 +228,17 @@ class RemoteSSH(RemoteBASE):
         with self.ssh(from_info) as ssh:
             ssh.move(from_info.path, to_info.path)
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
+    def _download(self, from_info, to_file, name=None):
         assert from_info.isin(self.path_info)
-        with self.ssh(self.path_info) as ssh:
-            ssh.download(
-                from_info.path,
-                to_file,
-                progress_title=name,
-                no_progress_bar=no_progress_bar,
-            )
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
-        assert to_info.isin(self.path_info)
         with self.ssh(self.path_info) as ssh:
-            ssh.upload(
-                from_file,
-                to_info.path,
-                progress_title=name,
-                no_progress_bar=no_progress_bar,
-            )
+            ssh.download(from_info.path, to_file, name=name)
+
+    def _upload(self, from_file, to_info, name=None):
+        assert to_info.isin(self.path_info)
+
+        with self.ssh(self.path_info) as ssh:
+            ssh.upload(from_file, to_info.path, name=name)
 
     @contextmanager
     def open(self, path_info, mode="r", encoding=None):

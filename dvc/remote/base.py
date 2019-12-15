@@ -22,7 +22,7 @@ from dvc.exceptions import (
 )
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
-from dvc.progress import Tqdm
+from dvc.progress import Tqdm, flags, noop
 from dvc.remote.slow_link_detection import slow_link_guard
 from dvc.state import StateNoop
 from dvc.utils import makedirs, relpath, tmp_fname
@@ -238,7 +238,8 @@ class RemoteBASE(object):
 
         from_info = PathInfo(tmp)
         to_info = self.cache.path_info / tmp_fname("")
-        self.cache.upload(from_info, to_info, no_progress_bar=True)
+        with flags(tqdm_disable=True):
+            self.cache.upload(from_info, to_info)
 
         checksum = self.get_file_checksum(to_info) + self.CHECKSUM_DIR_SUFFIX
         return checksum, to_info
@@ -516,7 +517,7 @@ class RemoteBASE(object):
             return
         self._save_file(path_info, checksum)
 
-    def upload(self, from_info, to_info, name=None, no_progress_bar=False):
+    def upload(self, from_info, to_info, name=None):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
 
@@ -531,12 +532,7 @@ class RemoteBASE(object):
         name = name or from_info.name
 
         try:
-            self._upload(
-                from_info.fspath,
-                to_info,
-                name=name,
-                no_progress_bar=no_progress_bar,
-            )
+            self._upload(from_info.fspath, to_info, name=name)
         except Exception:
             msg = "failed to upload '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
@@ -545,13 +541,7 @@ class RemoteBASE(object):
         return 0
 
     def download(
-        self,
-        from_info,
-        to_info,
-        name=None,
-        no_progress_bar=False,
-        file_mode=None,
-        dir_mode=None,
+        self, from_info, to_info, name=None, file_mode=None, dir_mode=None
     ):
         if not hasattr(self, "_download"):
             raise RemoteActionNotImplemented("download", self.scheme)
@@ -568,15 +558,13 @@ class RemoteBASE(object):
 
         if self.isdir(from_info):
             return self._download_dir(
-                from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+                from_info, to_info, name, file_mode, dir_mode
             )
         return self._download_file(
-            from_info, to_info, name, no_progress_bar, file_mode, dir_mode
+            from_info, to_info, name, file_mode, dir_mode
         )
 
-    def _download_dir(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-    ):
+    def _download_dir(self, from_info, to_info, name, file_mode, dir_mode):
         from_infos = list(self.walk_files(from_info))
         to_infos = (
             to_info / info.relative_to(from_info) for info in from_infos
@@ -586,7 +574,6 @@ class RemoteBASE(object):
             download_files = partial(
                 self._download_file,
                 name=name,
-                no_progress_bar=True,
                 file_mode=file_mode,
                 dir_mode=dir_mode,
             )
@@ -596,13 +583,10 @@ class RemoteBASE(object):
                 total=len(from_infos),
                 desc="Downloading directory",
                 unit="Files",
-                disable=no_progress_bar,
-            ) as futures:
+            ) as futures, flags(tqdm_disable=True):
                 return sum(futures)
 
-    def _download_file(
-        self, from_info, to_info, name, no_progress_bar, file_mode, dir_mode
-    ):
+    def _download_file(self, from_info, to_info, name, file_mode, dir_mode):
         makedirs(to_info.parent, exist_ok=True, mode=dir_mode)
 
         logger.debug("Downloading '{}' to '{}'".format(from_info, to_info))
@@ -611,9 +595,7 @@ class RemoteBASE(object):
         tmp_file = tmp_fname(to_info)
 
         try:
-            self._download(
-                from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
-            )
+            self._download(from_info, tmp_file, name=name)
         except Exception:
             msg = "failed to download '{}' to '{}'"
             logger.exception(msg.format(from_info, to_info))
@@ -813,9 +795,7 @@ class RemoteBASE(object):
 
         self.remove(path_info)
 
-    def _checkout_file(
-        self, path_info, checksum, force, progress_callback=None
-    ):
+    def _checkout_file(self, path_info, checksum, force):
         """The file is changed we need to checkout a new copy"""
         cache_info = self.checksum_to_path_info(checksum)
         if self.exists(path_info):
@@ -826,8 +806,7 @@ class RemoteBASE(object):
         self.link(cache_info, path_info)
         self.state.save_link(path_info)
         self.state.save(path_info, checksum)
-        if progress_callback:
-            progress_callback(str(path_info))
+        (flags.tqdm or noop).update_desc(str(path_info))
 
     def makedirs(self, path_info):
         """Optional: Implement only if the remote needs to create
@@ -835,9 +814,7 @@ class RemoteBASE(object):
         """
         pass
 
-    def _checkout_dir(
-        self, path_info, checksum, force, progress_callback=None, relink=False
-    ):
+    def _checkout_dir(self, path_info, checksum, force, relink=False):
         # Create dir separately so that dir is created
         # even if there are no files in it
         if not self.exists(path_info):
@@ -858,8 +835,8 @@ class RemoteBASE(object):
                 self.safe_remove(entry_info, force=force)
                 self.link(entry_cache_info, entry_info)
                 self.state.save(entry_info, entry_checksum)
-            if progress_callback:
-                progress_callback(str(entry_info))
+
+            (flags.tqdm or noop).update_desc(str(entry_info))
 
         self._remove_redundant_files(path_info, dir_info, force)
 
@@ -876,14 +853,7 @@ class RemoteBASE(object):
         for path in existing_files - needed_files:
             self.safe_remove(path, force)
 
-    def checkout(
-        self,
-        path_info,
-        checksum_info,
-        force=False,
-        progress_callback=None,
-        relink=False,
-    ):
+    def checkout(self, path_info, checksum_info, force=False, relink=False):
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
 
@@ -910,33 +880,20 @@ class RemoteBASE(object):
             failed = path_info
 
         if failed or skip:
-            if progress_callback:
-                progress_callback(
-                    str(path_info), self.get_files_number(checksum)
-                )
+            pbar = flags.tqdm or noop
+            pbar.update_desc(str(path_info), self.get_files_number(checksum))
             return failed
 
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
-        self._checkout(path_info, checksum, force, progress_callback, relink)
+        self._checkout(path_info, checksum, force, relink)
         return None
 
-    def _checkout(
-        self,
-        path_info,
-        checksum,
-        force=False,
-        progress_callback=None,
-        relink=False,
-    ):
+    def _checkout(self, path_info, checksum, force=False, relink=False):
         if not self.is_dir_checksum(checksum):
-            return self._checkout_file(
-                path_info, checksum, force, progress_callback=progress_callback
-            )
-        return self._checkout_dir(
-            path_info, checksum, force, progress_callback, relink
-        )
+            return self._checkout_file(path_info, checksum, force)
+        return self._checkout_dir(path_info, checksum, force, relink)
 
     def get_files_number(self, checksum):
         if not checksum:

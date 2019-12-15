@@ -110,10 +110,8 @@ class RemoteAZURE(RemoteBASE):
     def list_cache_paths(self):
         return self._list_paths(self.path_info.bucket, self.path_info.path)
 
-    def _upload(
-        self, from_file, to_info, name=None, no_progress_bar=False, **_kwargs
-    ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+    def _upload(self, from_file, to_info, name=None, **_kwargs):
+        with Tqdm(desc=name, bytes=True) as pbar:
             self.blob_service.create_blob_from_path(
                 to_info.bucket,
                 to_info.path,
@@ -121,10 +119,8 @@ class RemoteAZURE(RemoteBASE):
                 progress_callback=pbar.update_to,
             )
 
-    def _download(
-        self, from_info, to_file, name=None, no_progress_bar=False, **_kwargs
-    ):
-        with Tqdm(desc=name, disable=no_progress_bar, bytes=True) as pbar:
+    def _download(self, from_info, to_file, name=None, **_kwargs):
+        with Tqdm(desc=name, bytes=True) as pbar:
             self.blob_service.get_blob_to_path(
                 from_info.bucket,
                 from_info.path,

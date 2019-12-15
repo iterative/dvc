@@ -2,9 +2,11 @@ from __future__ import unicode_literals
 
 import logging
 
+from funcy.py3 import lcat
+
 from dvc.exceptions import CheckoutError
 from dvc.exceptions import CheckoutErrorSuggestGit
-from dvc.progress import Tqdm
+from dvc.progress import Tqdm, flags
 
 
 logger = logging.getLogger(__name__)
@@ -54,17 +56,12 @@ def _checkout(
     total = get_all_files_numbers(stages)
     if total == 0:
         logger.info("Nothing to do")
-    failed = []
-    with Tqdm(
-        total=total, unit="file", desc="Checkout", disable=total == 0
-    ) as pbar:
-        for stage in stages:
-            failed.extend(
-                stage.checkout(
-                    force=force,
-                    progress_callback=pbar.update_desc,
-                    relink=relink,
-                )
-            )
-    if failed:
-        raise CheckoutError(failed)
+
+    with Tqdm(total=total, unit="file", desc="Checkout") as pbar, flags(
+        tqdm=pbar
+    ):
+        failed = lcat(
+            stage.checkout(force=force, relink=relink) for stage in stages
+        )
+        if failed:
+            raise CheckoutError(failed)

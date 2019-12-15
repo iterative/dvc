@@ -6,6 +6,7 @@ from copy import copy
 from voluptuous import Any
 
 import dvc.prompt as prompt
+from dvc.progress import flags, noop
 from dvc.cache import NamedCache
 from dvc.exceptions import CollectCacheError
 from dvc.exceptions import DvcException
@@ -282,12 +283,10 @@ class OutputBase(object):
     def download(self, to):
         self.remote.download(self.path_info, to.path_info)
 
-    def checkout(
-        self, force=False, progress_callback=None, tag=None, relink=False
-    ):
+    def checkout(self, force=False, tag=None, relink=False):
         if not self.use_cache:
-            if progress_callback:
-                progress_callback(str(self.path_info), self.get_files_number())
+            pbar = flags.tqdm or noop
+            pbar.update_desc(str(self), self.get_files_number())
             return None
 
         if tag:
@@ -296,11 +295,7 @@ class OutputBase(object):
             info = self.info
 
         return self.cache.checkout(
-            self.path_info,
-            info,
-            force=force,
-            progress_callback=progress_callback,
-            relink=relink,
+            self.path_info, info, force=force, relink=relink
         )
 
     def remove(self, ignore_remove=False):

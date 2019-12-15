@@ -68,6 +68,9 @@ class Tqdm(tqdm):
         if file is None:
             file = sys.stderr
         self.desc_persist = desc
+        # disable by context flag
+        if flags.tqdm_disable:
+            disable = True
         # auto-disable based on `logger.level`
         if disable is None:
             disable = logger.getEffectiveLevel() > level
@@ -131,3 +134,40 @@ class Tqdm(tqdm):
             d["ncols_desc"] = 1
             d["prefix"] = ""
         return d
+
+
+# Adding this here for showcase only
+from contextlib import contextmanager  # noqa
+
+
+class ContextFlags:
+    def __init__(self):
+        self._stack = []
+
+    def __call__(self, **values):
+        return _flags(self._stack, values)
+
+    def __getattr__(self, name):
+        for d in reversed(self._stack):
+            if name in d:
+                return d[name]
+        else:
+            return None
+
+
+flags = ContextFlags()
+
+
+@contextmanager
+def _flags(stack, values):
+    stack.append(values)
+    yield
+    stack.pop()
+
+
+class Noop:
+    def __getattr__(self, name):
+        return lambda self, *a, **kw: None
+
+
+noop = Noop()

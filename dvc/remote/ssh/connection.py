@@ -177,12 +177,8 @@ class SSHConnection:
         else:
             self._remove_file(path)
 
-    def download(self, src, dest, no_progress_bar=False, progress_title=None):
-        with Tqdm(
-            desc=progress_title or os.path.basename(src),
-            disable=no_progress_bar,
-            bytes=True,
-        ) as pbar:
+    def download(self, src, dest, name=None):
+        with Tqdm(desc=name or os.path.basename(src), bytes=True) as pbar:
             self.sftp.get(src, dest, callback=pbar.update_to)
 
     def move(self, src, dst):
@@ -207,15 +203,11 @@ class SSHConnection:
         finally:
             self.remove(tmp)
 
-    def upload(self, src, dest, no_progress_bar=False, progress_title=None):
+    def upload(self, src, dest, name=None):
         self.makedirs(posixpath.dirname(dest))
         tmp_file = tmp_fname(dest)
-        if not progress_title:
-            progress_title = posixpath.basename(dest)
 
-        with Tqdm(
-            desc=progress_title, disable=no_progress_bar, bytes=True
-        ) as pbar:
+        with Tqdm(desc=name or posixpath.basename(dest), bytes=True) as pbar:
             self.sftp.put(src, tmp_file, callback=pbar.update_to)
 
         self.sftp.rename(tmp_file, dest)

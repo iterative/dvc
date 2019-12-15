@@ -49,14 +49,7 @@ def dynamic_chunk_size(func):
 
 
 @dynamic_chunk_size
-def _upload_to_bucket(
-    bucket,
-    from_file,
-    to_info,
-    chunk_size=None,
-    name=None,
-    no_progress_bar=True,
-):
+def _upload_to_bucket(bucket, from_file, to_info, name=None, chunk_size=None):
     blob = bucket.blob(to_info.path, chunk_size=chunk_size)
     with io.open(from_file, mode="rb") as fobj:
         with Tqdm.wrapattr(
@@ -64,7 +57,6 @@ def _upload_to_bucket(
             "read",
             desc=name or to_info.path,
             total=os.path.getsize(from_file),
-            disable=no_progress_bar,
         ) as wrapped:
             blob.upload_from_file(wrapped)
 
@@ -170,26 +162,16 @@ class RemoteGS(RemoteBASE):
         """
         return self.isfile(path_info) or self.isdir(path_info)
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=True):
+    def _upload(self, from_file, to_info, name=None):
         bucket = self.gs.bucket(to_info.bucket)
-        _upload_to_bucket(
-            bucket,
-            from_file,
-            to_info,
-            name=name,
-            no_progress_bar=no_progress_bar,
-        )
+        _upload_to_bucket(bucket, from_file, to_info, name=name)
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=True):
+    def _download(self, from_info, to_file, name=None):
         bucket = self.gs.bucket(from_info.bucket)
         blob = bucket.get_blob(from_info.path)
         with io.open(to_file, mode="wb") as fobj:
             with Tqdm.wrapattr(
-                fobj,
-                "write",
-                desc=name or from_info.path,
-                total=blob.size,
-                disable=no_progress_bar,
+                fobj, "write", desc=name or from_info.path, total=blob.size
             ) as wrapped:
                 blob.download_to_file(wrapped)
 

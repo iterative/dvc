@@ -11,7 +11,7 @@ from dvc.config import Config, ConfigError
 from dvc.exceptions import DvcException
 from dvc.exceptions import ETagMismatchError
 from dvc.path_info import CloudURLInfo
-from dvc.progress import Tqdm
+from dvc.progress import Tqdm, flags
 from dvc.remote.base import RemoteBASE
 from dvc.scheme import Schemes
 
@@ -265,11 +265,9 @@ class RemoteS3(RemoteBASE):
         dir_path = path_info / ""
         return bool(list(self._list_paths(dir_path, max_items=1)))
 
-    def _upload(self, from_file, to_info, name=None, no_progress_bar=False):
+    def _upload(self, from_file, to_info, name=None):
         total = os.path.getsize(from_file)
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
+        with Tqdm(total=total, bytes=True, desc=name) as pbar:
             self.s3.upload_file(
                 from_file,
                 to_info.bucket,
@@ -278,16 +276,14 @@ class RemoteS3(RemoteBASE):
                 ExtraArgs=self.extra_args,
             )
 
-    def _download(self, from_info, to_file, name=None, no_progress_bar=False):
-        if no_progress_bar:
+    def _download(self, from_info, to_file, name=None):
+        if flags.tqdm_disable:
             total = None
         else:
             total = self.s3.head_object(
                 Bucket=from_info.bucket, Key=from_info.path
             )["ContentLength"]
-        with Tqdm(
-            disable=no_progress_bar, total=total, bytes=True, desc=name
-        ) as pbar:
+        with Tqdm(total=total, bytes=True, desc=name) as pbar:
             self.s3.download_file(
                 from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
