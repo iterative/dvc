@@ -56,6 +56,7 @@ def _checkout(
     total = get_all_files_numbers(stages)
     if total == 0:
         logger.info("Nothing to do")
+        # We might need to create empty dirs though, so no return here
 
     with Tqdm(total=total, unit="file", desc="Checkout") as pbar, flags(
         tqdm=pbar
