@@ -15,7 +15,7 @@ def test_daemon_analytics(mock_send, tmp_path):
 @mock.patch("dvc.analytics.collect_and_send_report")
 @mock.patch("dvc.analytics.is_enabled", return_value=True)
 def test_main_analytics(mock_is_enabled, mock_report, tmp_dir, dvc):
-    tmp_dir.gen("foo")
+    tmp_dir.gen("foo", "text")
     assert 0 == main(["add", "foo"])
     assert mock_is_enabled.called
     assert mock_report.called
