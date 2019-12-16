@@ -25,40 +25,28 @@ def test_destroy(tmp_dir, dvc):
 
 
 def test_collect(tmp_dir, scm, dvc, run_copy):
-    tmp_dir.dvc_gen("foo", "foo")
-    run_copy("foo", "bar")
-    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
-    scm.commit("Add foo and bar")
-
-    scm.checkout("new-branch", create_new=True)
-
-    run_copy("bar", "buzz")
-    scm.add([".gitignore", "buzz.dvc"])
-    scm.commit("Add buzz")
-
     def collect_outs(*args, **kwargs):
-        return [
+        return set(
             str(out.path_info)
             for stage in dvc.collect(*args, **kwargs)
             for out in stage.outs
-        ]
+        )
 
-    assert ["foo", "bar"] == collect_outs("bar.dvc", with_deps=True)
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar")
+    assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
 
-    dvc.tree = GitTree(scm.repo, "new-branch")
-
-    assert ["foo", "bar", "buzz"] == collect_outs("buzz.dvc", with_deps=True)
-    assert ["buzz"] == collect_outs("buzz.dvc", with_deps=False)
+    run_copy("bar", "buzz")
+    assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
+    assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}
 
 
 def test_stages(tmp_dir, dvc):
-    tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
-
     def stages():
         return set(stage.relpath for stage in Repo(str(tmp_dir)).stages)
 
+    tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
     assert stages() == {"file.dvc", "dir/file.dvc", "dir/subdir/file.dvc"}
 
     tmp_dir.gen(".dvcignore", "dir")
-
     assert stages() == {"file.dvc"}
