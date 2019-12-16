@@ -102,41 +102,6 @@ def ssh(ssh_server):
 
 
 @pytest.fixture
-def temporary_windows_drive(repo_dir):
-    import string
-    import win32api
-    from ctypes import windll
-    from win32con import DDD_REMOVE_DEFINITION
-
-    drives = [
-        s[0].upper()
-        for s in win32api.GetLogicalDriveStrings().split("\000")
-        if len(s) > 0
-    ]
-
-    new_drive_name = [
-        letter for letter in string.ascii_uppercase if letter not in drives
-    ][0]
-    new_drive = "{}:".format(new_drive_name)
-
-    target_path = repo_dir.mkdtemp()
-
-    set_up_result = windll.kernel32.DefineDosDeviceW(0, new_drive, target_path)
-    if set_up_result == 0:
-        raise RuntimeError("Failed to mount windows drive!")
-
-    # NOTE: new_drive has form of `A:` and joining it with some relative
-    # path might result in non-existing path (A:path\\to)
-    yield os.path.join(new_drive, os.sep)
-
-    tear_down_result = windll.kernel32.DefineDosDeviceW(
-        DDD_REMOVE_DEFINITION, new_drive, target_path
-    )
-    if tear_down_result == 0:
-        raise RuntimeError("Could not unmount windows drive!")
-
-
-@pytest.fixture
 def erepo(repo_dir):
     repo = TestDvcGitFixture()
     repo.setUp()

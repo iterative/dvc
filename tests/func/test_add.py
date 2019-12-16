@@ -12,6 +12,7 @@ import pytest
 from mock import patch
 
 import dvc
+from dvc.cache import Cache
 from dvc.exceptions import DvcException
 from dvc.exceptions import RecursiveAddingWhileUsingFilename
 from dvc.exceptions import StageFileCorruptedError
@@ -24,7 +25,8 @@ from dvc.system import System
 from dvc.utils import file_md5
 from dvc.utils import LARGE_DIR_SIZE
 from dvc.utils import relpath
-from dvc.utils.compat import range
+from dvc.utils.compat import range, fspath
+from dvc.utils.fs import path_isin
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
 from tests.utils import get_gitignore_content
@@ -511,15 +513,56 @@ class TestAddUnprotected(TestDvc):
         self.assertTrue(System.is_hardlink(self.FOO))
 
 
+@pytest.fixture
+def temporary_windows_drive(tmp_path_factory):
+    import string
+    import win32api
+    from ctypes import windll
+    from win32con import DDD_REMOVE_DEFINITION
+
+    drives = [
+        s[0].upper()
+        for s in win32api.GetLogicalDriveStrings().split("\000")
+        if len(s) > 0
+    ]
+
+    new_drive_name = [
+        letter for letter in string.ascii_uppercase if letter not in drives
+    ][0]
+    new_drive = "{}:".format(new_drive_name)
+
+    target_path = tmp_path_factory.mktemp("tmp_windows_drive")
+
+    set_up_result = windll.kernel32.DefineDosDeviceW(
+        0, new_drive, fspath(target_path)
+    )
+    if set_up_result == 0:
+        raise RuntimeError("Failed to mount windows drive!")
+
+    # NOTE: new_drive has form of `A:` and joining it with some relative
+    # path might result in non-existing path (A:path\\to)
+    yield os.path.join(new_drive, os.sep)
+
+    tear_down_result = windll.kernel32.DefineDosDeviceW(
+        DDD_REMOVE_DEFINITION, new_drive, fspath(target_path)
+    )
+    if tear_down_result == 0:
+        raise RuntimeError("Could not unmount windows drive!")
+
+
 @pytest.mark.skipif(os.name != "nt", reason="Windows specific")
 def test_windows_should_add_when_cache_on_different_drive(
-    dvc_repo, repo_dir, temporary_windows_drive
+    tmp_dir, dvc, temporary_windows_drive
 ):
-    ret = main(["config", "cache.dir", temporary_windows_drive])
-    assert ret == 0
+    dvc.config.set("cache", "dir", temporary_windows_drive)
+    dvc.cache = Cache(dvc)
 
-    ret = main(["add", repo_dir.DATA])
-    assert ret == 0
+    stage, = tmp_dir.dvc_gen({"file": "file"})
+    cache_path = stage.outs[0].cache_path
+
+    assert path_isin(cache_path, temporary_windows_drive)
+    assert os.path.isfile(cache_path)
+    filecmp.cmp("file", cache_path)
 
 
 def test_readding_dir_should_not_unprotect_all(tmp_dir, dvc, mocker):
