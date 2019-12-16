@@ -276,7 +276,6 @@ class RemoteS3(RemoteBASE):
                 to_info.path,
                 Callback=pbar.update,
                 ExtraArgs=self.extra_args,
-                Config=self.transfer_config,
             )
 
     def _download(self, from_info, to_file, name=None, no_progress_bar=False):
@@ -290,11 +289,7 @@ class RemoteS3(RemoteBASE):
             disable=no_progress_bar, total=total, bytes=True, desc=name
         ) as pbar:
             self.s3.download_file(
-                from_info.bucket,
-                from_info.path,
-                to_file,
-                Callback=pbar.update,
-                Config=self.transfer_config,
+                from_info.bucket, from_info.path, to_file, Callback=pbar.update
             )
 
     def _generate_download_url(self, path_info, expires=3600):
@@ -340,36 +335,3 @@ class RemoteS3(RemoteBASE):
                     )
 
                 self.extra_args[extra_args_key] = config.get(grant_option)
-
-    @cached_property
-    def transfer_config(self):
-        from boto3.s3.transfer import TransferConfig
-
-        return TransferConfig()
-
-    def adjust_jobs(self, jobs=None):
-        if os.name == "nt":
-            import win32file
-
-            descriptor_limit = win32file._getmaxstdio()
-        else:
-            import resource
-
-            descriptor_limit = resource.getrlimit(resource.RLIMIT_NOFILE)[0]
-        threads_per_job = self.transfer_config.max_request_concurrency
-        fds_per_thread = 2  # file and socket
-        safety_margin = 10
-
-        jobs_declared = bool(jobs)
-        jobs = jobs or self.JOBS
-
-        estimated_descriptors_num = jobs * threads_per_job * fds_per_thread
-        if estimated_descriptors_num <= descriptor_limit - safety_margin:
-            return jobs
-
-        safe_jobs_number = (descriptor_limit - safety_margin) // (
-            threads_per_job * fds_per_thread
-        )
-        if not jobs_declared:
-            jobs = safe_jobs_number
-        return jobs

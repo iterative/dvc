@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+
+import errno
+
 from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse
 
 import itertools
@@ -19,7 +22,6 @@ from dvc.exceptions import (
     DvcException,
     ConfirmRemoveError,
     DvcIgnoreInCollectedDirError,
-    TooManyOpenFilesError,
 )
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
@@ -84,9 +86,6 @@ class RemoteBASE(object):
     DEFAULT_CACHE_TYPES = ["copy"]
 
     state = StateNoop()
-
-    def adjust_jobs(self, jobs=None):
-        return jobs or self.JOBS
 
     def __init__(self, repo, config):
         self.repo = repo
@@ -523,8 +522,8 @@ class RemoteBASE(object):
     def _handle_transfer_exception(
         self, from_info, to_info, exception, operation
     ):
-        if isinstance(exception, OSError) and exception.errno == 24:
-            raise TooManyOpenFilesError(exception)
+        if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
+            raise exception
 
         msg = "failed to {} '{}' to '{}'".format(operation, from_info, to_info)
         logger.exception(msg)

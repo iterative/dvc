@@ -1,6 +1,7 @@
 """Main entry point for dvc CLI."""
 from __future__ import unicode_literals
 
+import errno
 import logging
 
 from dvc import analytics
@@ -63,6 +64,10 @@ def main(argv=None):
             logger.exception(
                 "unicode is not supported in DVC for Python 2 "
                 "(end-of-life January 1, 2020), please upgrade to Python 3"
+            )
+        elif isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+            logger.exception(
+                "too many open files error, please increase you `ulimit`"
             )
         else:
             logger.exception("unexpected error")

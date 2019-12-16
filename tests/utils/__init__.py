@@ -45,14 +45,3 @@ def trees_equal(dir_path_1, dir_path_2):
 
 def to_posixpath(path):
     return path.replace("\\", "/")
-
-
-class empty_caplog(object):
-    def __init__(self, caplog):
-        self.caplog = caplog
-
-    def __enter__(self):
-        self.caplog.clear()
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        assert self.caplog.text == ""

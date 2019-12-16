@@ -1,10 +1,8 @@
-import os
-
 import pytest
 
 from dvc.config import ConfigError
-from dvc.remote import RemoteS3
-from tests.utils import empty_caplog
+from dvc.remote.s3 import RemoteS3
+
 
 bucket_name = "bucket-name"
 prefix = "some/prefix"
@@ -56,21 +54,3 @@ def test_grants_mutually_exclusive_acl_error(grants):
 
         with pytest.raises(ConfigError):
             RemoteS3(None, config)
-
-
-@pytest.mark.parametrize(
-    "default_jobs_number,expected_result", [(10, 10), (13, 12)]
-)
-def test_adjust_default_jobs_number(
-    mocker, caplog, default_jobs_number, expected_result
-):
-    remote = RemoteS3(None, {})
-
-    if os.name == "nt":
-        mocker.patch("win32file._getmaxstdio", return_value=256)
-    else:
-        mocker.patch("resource.getrlimit", return_value=(256, 1024))
-    mocker.patch.object(remote, "JOBS", default_jobs_number)
-
-    with empty_caplog(caplog):
-        assert remote.adjust_jobs() == expected_result

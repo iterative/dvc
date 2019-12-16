@@ -338,7 +338,8 @@ class RemoteLOCAL(RemoteBASE):
             func = remote.upload
             status = STATUS_NEW
 
-        jobs = remote.adjust_jobs(jobs)
+        if jobs is None:
+            jobs = remote.JOBS
 
         status_info = self.status(
             named_cache,

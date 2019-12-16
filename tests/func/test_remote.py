@@ -1,3 +1,4 @@
+import errno
 import os
 import shutil
 
@@ -6,7 +7,6 @@ import pytest
 from mock import patch
 
 from dvc.config import Config
-from dvc.exceptions import TooManyOpenFilesError
 from dvc.main import main
 from dvc.path_info import PathInfo
 from dvc.remote import RemoteLOCAL, RemoteConfig
@@ -265,11 +265,12 @@ def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
 
     tmp_dir.dvc_gen({"file": "file content"})
 
-    too_many_open_files_error = OSError()
-    mocker.patch.object(too_many_open_files_error, "errno", 24)
     mocker.patch.object(
-        RemoteLOCAL, "_upload", side_effect=too_many_open_files_error
+        RemoteLOCAL,
+        "_upload",
+        side_effect=OSError(errno.EMFILE, "Too many open files"),
     )
 
-    with pytest.raises(TooManyOpenFilesError):
+    with pytest.raises(OSError) as e:
         dvc.push()
+        assert e.errno == errno.EMFILE
