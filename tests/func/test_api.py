@@ -101,7 +101,7 @@ def _set_remote_url_and_commit(repo, remote_url):
 
 # FIXME: this test doesn't use scm ;D
 def test_open_scm_controlled(dvc_repo, repo_dir):
-    (stage,) = dvc_repo.add(repo_dir.FOO)
+    stage, = dvc_repo.add(repo_dir.FOO)
 
     stage_content = open(stage.path, "r").read()
     with api.open(stage.path) as fd:

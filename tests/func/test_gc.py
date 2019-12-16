@@ -192,7 +192,7 @@ def test_all_commits(tmp_dir, scm, dvc):
 
 def test_gc_no_dir_cache(tmp_dir, dvc, repo_template):
     dvc.add(["foo", "bar"])
-    (dir_stage,) = dvc.add("dir")
+    dir_stage, = dvc.add("dir")
 
     os.unlink(dir_stage.outs[0].cache_path)
 

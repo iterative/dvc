@@ -32,7 +32,7 @@ from tests.utils import spy
 
 
 def test_add(tmp_dir, dvc):
-    (stage,) = tmp_dir.dvc_gen({"foo": "foo"})
+    stage, = tmp_dir.dvc_gen({"foo": "foo"})
     md5, _ = file_md5("foo")
 
     assert stage is not None
@@ -50,7 +50,7 @@ def test_add_unicode(tmp_dir, dvc):
     with open("\xe1", "wb") as fd:
         fd.write("something".encode("utf-8"))
 
-    (stage,) = dvc.add("\xe1")
+    stage, = dvc.add("\xe1")
 
     assert os.path.isfile(stage.path)
 
@@ -61,7 +61,7 @@ def test_add_unsupported_file(dvc):
 
 
 def test_add_directory(tmp_dir, dvc):
-    (stage,) = tmp_dir.dvc_gen({"dir": {"file": "file"}})
+    stage, = tmp_dir.dvc_gen({"dir": {"file": "file"}})
 
     assert stage is not None
     assert len(stage.deps) == 0
@@ -162,7 +162,7 @@ def test_add_file_in_dir(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"subdir": {"subdata": "subdata content"}}})
     subdir_path = os.path.join("dir", "subdir", "subdata")
 
-    (stage,) = dvc.add(subdir_path)
+    stage, = dvc.add(subdir_path)
 
     assert stage is not None
     assert len(stage.deps) == 0
