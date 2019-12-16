@@ -346,10 +346,11 @@ class HTTPError(DvcException):
         super(HTTPError, self).__init__("'{} {}'".format(code, reason))
 
 
-class TooManyOpenFilesException(DvcException):
-    def __init__(self):
-        super(TooManyOpenFilesException, self).__init__(
+class TooManyOpenFilesError(DvcException):
+    def __init__(self, cause):
+        super(TooManyOpenFilesError, self).__init__(
             "Operation failed due to too many open file descriptors. reduce "
             "the number of jobs or increase open file descriptors limit to "
-            "prevent this."
+            "prevent this.",
+            cause=cause,
         )

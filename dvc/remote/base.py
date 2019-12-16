@@ -15,9 +15,12 @@ from shortuuid import uuid
 
 import dvc.prompt as prompt
 from dvc.config import Config
-from dvc.exceptions import ConfirmRemoveError, TooManyOpenFilesException
-from dvc.exceptions import DvcException
-from dvc.exceptions import DvcIgnoreInCollectedDirError
+from dvc.exceptions import (
+    DvcException,
+    ConfirmRemoveError,
+    DvcIgnoreInCollectedDirError,
+    TooManyOpenFilesError,
+)
 from dvc.ignore import DvcIgnore
 from dvc.path_info import PathInfo, URLInfo
 from dvc.progress import Tqdm
@@ -521,7 +524,7 @@ class RemoteBASE(object):
         self, from_info, to_info, exception, operation
     ):
         if isinstance(exception, OSError) and exception.errno == 24:
-            raise TooManyOpenFilesException()
+            raise TooManyOpenFilesError(exception)
 
         msg = "failed to {} '{}' to '{}'".format(operation, from_info, to_info)
         logger.exception(msg)

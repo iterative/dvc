@@ -1,7 +1,8 @@
-import logging
 import os
 
 import pytest
+
+from dvc.config import ConfigError
 from dvc.remote import RemoteS3
 from tests.utils import empty_caplog
 
@@ -73,23 +74,3 @@ def test_adjust_default_jobs_number(
 
     with empty_caplog(caplog):
         assert remote.adjust_jobs() == expected_result
-
-
-def test_warn_on_too_many_jobs(mocker, caplog):
-    remote = RemoteS3(None, {})
-
-    if os.name == "nt":
-        mocker.patch("win32file._getmaxstdio", return_value=256)
-    else:
-        mocker.patch("resource.getrlimit", return_value=(256, 1024))
-
-    with caplog.at_level(logging.INFO, "dvc"):
-        assert remote.adjust_jobs(64) == 64
-    assert len(caplog.messages) == 1
-    assert caplog.messages[0] == (
-        "Provided jobs number '64' might result "
-        "in 'Too many open files error'. "
-        "Consider decreasing jobs number to '12' "
-        "or increasing file descriptors limit to "
-        "'1290'."
-    )
