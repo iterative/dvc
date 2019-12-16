@@ -1,3 +1,5 @@
+import os
+
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils.compat import fspath
@@ -46,7 +48,13 @@ def test_stages(tmp_dir, dvc):
         return set(stage.relpath for stage in Repo(str(tmp_dir)).stages)
 
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
-    assert stages() == {"file.dvc", "dir/file.dvc", "dir/subdir/file.dvc"}
+
+    assert stages() == {
+        os.path.join("file.dvc"),
+        os.path.join("dir", "file.dvc"),
+        os.path.join("dir", "subdir", "file.dvc"),
+    }
 
     tmp_dir.gen(".dvcignore", "dir")
+
     assert stages() == {"file.dvc"}
