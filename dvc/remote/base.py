@@ -1,4 +1,7 @@
 from __future__ import unicode_literals
+
+import errno
+
 from dvc.utils.compat import basestring, FileNotFoundError, str, urlparse
 
 import itertools
@@ -516,6 +519,16 @@ class RemoteBASE(object):
             return
         self._save_file(path_info, checksum)
 
+    def _handle_transfer_exception(
+        self, from_info, to_info, exception, operation
+    ):
+        if isinstance(exception, OSError) and exception.errno == errno.EMFILE:
+            raise exception
+
+        msg = "failed to {} '{}' to '{}'".format(operation, from_info, to_info)
+        logger.exception(msg)
+        return 1
+
     def upload(self, from_info, to_info, name=None, no_progress_bar=False):
         if not hasattr(self, "_upload"):
             raise RemoteActionNotImplemented("upload", self.scheme)
@@ -537,10 +550,10 @@ class RemoteBASE(object):
                 name=name,
                 no_progress_bar=no_progress_bar,
             )
-        except Exception:
-            msg = "failed to upload '{}' to '{}'"
-            logger.exception(msg.format(from_info, to_info))
-            return 1  # 1 fail
+        except Exception as e:
+            return self._handle_transfer_exception(
+                from_info, to_info, e, "upload"
+            )
 
         return 0
 
@@ -614,10 +627,10 @@ class RemoteBASE(object):
             self._download(
                 from_info, tmp_file, name=name, no_progress_bar=no_progress_bar
             )
-        except Exception:
-            msg = "failed to download '{}' to '{}'"
-            logger.exception(msg.format(from_info, to_info))
-            return 1  # 1 fail
+        except Exception as e:
+            return self._handle_transfer_exception(
+                from_info, to_info, e, "download"
+            )
 
         move(tmp_file, to_info, mode=file_mode)
 

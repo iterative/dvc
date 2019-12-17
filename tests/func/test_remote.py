@@ -1,14 +1,17 @@
+import errno
 import os
 import shutil
 
 import configobj
+import pytest
 from mock import patch
 
 from dvc.config import Config
 from dvc.main import main
 from dvc.path_info import PathInfo
-from dvc.remote import RemoteLOCAL
+from dvc.remote import RemoteLOCAL, RemoteConfig
 from dvc.remote.base import RemoteBASE
+from dvc.utils.compat import fspath
 from tests.basic_env import TestDvc
 from tests.remotes import get_local_url, get_local_storagepath
 
@@ -253,3 +256,21 @@ def test_partial_push_n_pull(dvc_repo, repo_dir, caplog):
 def get_last_exc(caplog):
     _, exc, _ = caplog.records[-2].exc_info
     return exc
+
+
+def test_raise_on_too_many_open_files(tmp_dir, dvc, tmp_path_factory, mocker):
+    storage = tmp_path_factory.mktemp("test_remote_base")
+    remote_config = RemoteConfig(dvc.config)
+    remote_config.add("local_remote", fspath(storage), default=True)
+
+    tmp_dir.dvc_gen({"file": "file content"})
+
+    mocker.patch.object(
+        RemoteLOCAL,
+        "_upload",
+        side_effect=OSError(errno.EMFILE, "Too many open files"),
+    )
+
+    with pytest.raises(OSError) as e:
+        dvc.push()
+        assert e.errno == errno.EMFILE
