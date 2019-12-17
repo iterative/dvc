@@ -8,10 +8,13 @@ import pytest
 from mock import patch
 
 from dvc.config import Config
-from dvc.exceptions import DownloadError, NoOutputInExternalRepoError
+from dvc.exceptions import DownloadError
+from dvc.exceptions import PathMissingError
+from dvc.exceptions import NoOutputInExternalRepoError
 from dvc.stage import Stage
 from dvc.system import System
 from dvc.utils import makedirs
+from dvc.utils.compat import fspath
 from tests.utils import trees_equal
 
 
@@ -27,6 +30,34 @@ def test_import(git, dvc_repo, erepo):
     assert git.git.check_ignore(dst)
 
 
+def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
+    src = "some_file"
+    dst = "some_file_imported"
+
+    erepo_dir.scm_gen({src: "hello"}, commit="add a regular file")
+
+    tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
+
+    assert (tmp_dir / dst).is_file()
+    assert filecmp.cmp(
+        fspath(erepo_dir / src), fspath(tmp_dir / dst), shallow=False
+    )
+    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
+
+
+def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
+    src = "some_directory"
+    dst = "some_directory_imported"
+
+    erepo_dir.scm_gen({src: {"file.txt": "hello"}}, commit="add a dir")
+
+    tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
+
+    assert (tmp_dir / dst).is_dir()
+    trees_equal(fspath(erepo_dir / src), fspath(tmp_dir / dst))
+    assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
+
+
 def test_import_dir(git, dvc_repo, erepo):
     src = erepo.DATA_DIR
     dst = erepo.DATA_DIR + "_imported"
@@ -37,6 +68,28 @@ def test_import_dir(git, dvc_repo, erepo):
     assert os.path.isdir(dst)
     trees_equal(src, dst)
     assert git.git.check_ignore(dst)
+
+
+def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
+    src = "non_cached_output"
+    dst = src + "_imported"
+
+    erepo_dir.dvc.run(
+        cmd="echo hello > {}".format(src),
+        outs_no_cache=[src],
+        cwd=fspath(erepo_dir),
+    )
+
+    erepo_dir.scm.add([fspath(erepo_dir / src)])
+    erepo_dir.scm.commit("add a non-cached output")
+
+    tmp_dir.dvc.imp(fspath(erepo_dir), src, dst)
+
+    assert (tmp_dir / dst).is_file()
+    assert filecmp.cmp(
+        fspath(erepo_dir / src), fspath(tmp_dir / dst), shallow=False
+    )
+    assert tmp_dir.scm.repo.git.check_ignore(dst)
 
 
 def test_import_rev(git, dvc_repo, erepo):
@@ -156,6 +209,9 @@ def test_pull_non_workspace(git, dvc_repo, erepo):
     assert os.path.exists(stage.outs[0].cache_path)
 
 
-def test_import_non_existing(dvc_repo, erepo):
+def test_import_non_existing(erepo_dir, tmp_dir, dvc):
+    with pytest.raises(PathMissingError):
+        tmp_dir.dvc.imp(fspath(erepo_dir), "invalid_output")
+    # https://github.com/iterative/dvc/pull/2837#discussion_r352123053
     with pytest.raises(NoOutputInExternalRepoError):
-        dvc_repo.imp(erepo.root_dir, "invalid_output")
+        tmp_dir.dvc.imp(fspath(erepo_dir), "/root/", "root")

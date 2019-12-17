@@ -22,6 +22,13 @@ from dvc.utils.compat import str
 logger = logging.getLogger(__name__)
 
 
+def fs_copy(src, dst):
+    if os.path.isdir(src):
+        shutil.copytree(src, dst)
+    else:
+        shutil.copy2(src, dst)
+
+
 def get_inode(path):
     inode = System.inode(path)
     logger.debug("Path {} inode {}".format(path, inode))
