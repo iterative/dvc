@@ -1,5 +1,6 @@
 import os
 
+from dvc.scm.git.tree import GitTree
 from dvc.cache import Cache
 from dvc.repo import Repo
 from dvc.system import System
@@ -38,9 +39,19 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
     tmp_dir.dvc_gen("foo", "foo")
     run_copy("foo", "bar")
-    assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
+    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
+    scm.commit("Add foo and bar")
+
+    scm.checkout("new-branch", create_new=True)
 
     run_copy("bar", "buzz")
+    scm.add([".gitignore", "buzz.dvc"])
+    scm.commit("Add buzz")
+
+    assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
+
+    dvc.tree = GitTree(scm.repo, "new-branch")
+
     assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
     assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}
 
