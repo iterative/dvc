@@ -1,40 +1,61 @@
 import json
 import os
+import mock
+import pytest
 
 from dvc import __version__
 from dvc.updater import Updater
 
 
-class MockResponse(object):
-    def __init__(self, json_data, status_code):
-        self.json_data = json_data
-        self.status_code = status_code
-
-    def json(self):
-        return self.json_data
+@pytest.fixture
+def updater(dvc):
+    return Updater(dvc.dvc_dir)
 
 
-def mocked_requests_get(*args, **kwargs):
-    class MockResponse:
-        def __init__(self, json_data, status_code):
-            self.json_data = json_data
-            self.status_code = status_code
+@mock.patch("requests.get")
+def test_fetch(mock_get, updater):
+    mock_get.return_value.status_code = 200
+    mock_get.return_value.json.return_value = {"version": __version__}
 
-        def json(self):
-            return self.json_data
-
-    return MockResponse({"version": __version__}, 200)
-
-
-def test_fetch(dvc_repo, mocker):
-    updater = Updater(dvc_repo.dvc_dir)
     assert not os.path.exists(updater.updater_file)
 
-    mock_get = mocker.patch("requests.get", side_effect=mocked_requests_get)
     updater.fetch(detach=False)
-    mock_get.assert_called_once_with(Updater.URL, timeout=Updater.TIMEOUT_GET)
 
+    mock_get.assert_called_once_with(Updater.URL, timeout=Updater.TIMEOUT_GET)
     assert os.path.isfile(updater.updater_file)
+
     with open(updater.updater_file, "r") as fobj:
         info = json.load(fobj)
+
     assert info["version"] == __version__
+
+
+@pytest.mark.parametrize(
+    "latest, current, result",
+    [
+        ("0.20.8", "0.21.0", False),
+        ("0.20.8", "0.20.8", False),
+        ("0.20.8", "0.19.0", True),
+    ],
+)
+def test_is_outdated(latest, current, result, updater):
+    updater.latest = latest
+    updater.current = current
+
+    assert updater._is_outdated() == result
+
+
+@pytest.mark.skipif(
+    os.getenv("TRAVIS_EVENT_TYPE") != "cron",
+    reason="Only run on travis CRON to avoid generating too much logs",
+)
+@mock.patch("dvc.updater.Updater._check")
+def test_check(mock_check, updater, monkeypatch):
+    monkeypatch.delenv("CI", None)
+    monkeypatch.setenv("DVC_TEST", False)
+
+    updater.check()
+    updater.check()
+    updater.check()
+
+    assert mock_check.call_count == 3
