@@ -1,6 +1,6 @@
-from dvc.utils.compat import fspath
+import os
 
 
-def test_is_dvc_internal(tmp_dir, dvc):
-    assert dvc.is_dvc_internal(fspath(tmp_dir / ".dvc" / "file"))
-    assert not dvc.is_dvc_internal("file")
+def test_is_dvc_internal(dvc):
+    assert dvc.is_dvc_internal(os.path.join("path", "to", ".dvc", "file"))
+    assert not dvc.is_dvc_internal(os.path.join("path", "to-non-.dvc", "file"))
