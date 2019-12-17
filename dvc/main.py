@@ -67,7 +67,7 @@ def main(argv=None):
             )
         elif isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files error, please increase you `ulimit`"
+                "too many open files, please increase your `ulimit`"
             )
         else:
             logger.exception("unexpected error")
