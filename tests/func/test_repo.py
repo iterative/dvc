@@ -52,7 +52,7 @@ def test_stages(tmp_dir, dvc):
     tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
     assert stages() == {
-        os.path.join("file.dvc"),
+        "file.dvc",
         os.path.join("dir", "file.dvc"),
         os.path.join("dir", "subdir", "file.dvc"),
     }
