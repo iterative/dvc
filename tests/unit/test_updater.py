@@ -47,7 +47,7 @@ def test_is_outdated(latest, current, result, updater):
 
 @pytest.mark.skipif(
     os.getenv("TRAVIS_EVENT_TYPE") != "cron",
-    reason = "Only run on travis CRON to avoid generating too much logs"
+    reason="Only run on travis CRON to avoid generating too much logs",
 )
 @mock.patch("dvc.updater.Updater._check")
 def test_check(mock_check, updater, monkeypatch):
