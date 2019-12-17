@@ -1,5 +1,6 @@
 import os
 
+from dvc.cache import Cache
 from dvc.repo import Repo
 from dvc.system import System
 from dvc.utils.compat import fspath
@@ -7,6 +8,7 @@ from dvc.utils.compat import fspath
 
 def test_destroy(tmp_dir, dvc):
     dvc.config.set("cache", "type", "symlink")
+    dvc.cache = Cache(dvc)
 
     tmp_dir.dvc_gen("file", "text")
     tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
