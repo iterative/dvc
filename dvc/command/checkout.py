@@ -29,19 +29,6 @@ def add_parser(subparsers, parent_parser):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     checkout_parser.add_argument(
-        "-f",
-        "--force",
-        action="store_true",
-        default=False,
-        help="Do not prompt when removing working directory files.",
-    )
-    checkout_parser.add_argument(
-        "--relink",
-        action="store_true",
-        default=False,
-        help="Recreate links or copies from cache to workspace.",
-    )
-    checkout_parser.add_argument(
         "-d",
         "--with-deps",
         action="store_true",
@@ -54,6 +41,19 @@ def add_parser(subparsers, parent_parser):
         action="store_true",
         default=False,
         help="Checkout all subdirectories of the specified directory.",
+    )
+    checkout_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        default=False,
+        help="Do not prompt when removing working directory files.",
+    )
+    checkout_parser.add_argument(
+        "--relink",
+        action="store_true",
+        default=False,
+        help="Recreate links or copies from cache to workspace.",
     )
     checkout_parser.add_argument(
         "targets",
