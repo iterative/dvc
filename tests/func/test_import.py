@@ -7,6 +7,7 @@ import shutil
 import pytest
 from mock import patch
 
+from dvc.cache import Cache
 from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.exceptions import PathMissingError
@@ -18,16 +19,16 @@ from dvc.utils.compat import fspath
 from tests.utils import trees_equal
 
 
-def test_import(git, dvc_repo, erepo):
-    src = erepo.FOO
-    dst = erepo.FOO + "_imported"
+def test_import(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
-    assert git.git.check_ignore(dst)
+    assert os.path.isfile("foo_imported")
+    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+    assert scm.repo.git.check_ignore("foo_imported")
 
 
 def test_import_git_file(erepo_dir, tmp_dir, dvc, scm):
@@ -58,16 +59,16 @@ def test_import_git_dir(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(fspath(tmp_dir / dst))
 
 
-def test_import_dir(git, dvc_repo, erepo):
-    src = erepo.DATA_DIR
-    dst = erepo.DATA_DIR + "_imported"
+def test_import_dir(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
 
-    assert os.path.exists(dst)
-    assert os.path.isdir(dst)
-    trees_equal(src, dst)
-    assert git.git.check_ignore(dst)
+    assert os.path.isdir("dir_imported")
+    trees_equal(fspath(erepo_dir / "dir"), "dir_imported")
+    assert scm.repo.git.check_ignore("dir_imported")
 
 
 def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
@@ -92,120 +93,128 @@ def test_import_non_cached(erepo_dir, tmp_dir, dvc, scm):
     assert tmp_dir.scm.repo.git.check_ignore(dst)
 
 
-def test_import_rev(git, dvc_repo, erepo):
-    src = "version"
-    dst = src
+def test_import_rev(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.scm.checkout("new_branch", create_new=True)
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo on branch")
+        erepo_dir.scm.checkout("master")
 
-    dvc_repo.imp(erepo.root_dir, src, dst, rev="branch")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
 
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    with open(dst, "r+") as fobj:
-        assert fobj.read() == "branch"
-    assert git.git.check_ignore(dst)
+    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+    assert scm.repo.git.check_ignore("foo_imported")
 
 
-def test_pull_imported_stage(dvc_repo, erepo):
-    src = erepo.FOO
-    dst = erepo.FOO + "_imported"
+def test_pull_imported_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
-
-    dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
+    dst_stage = Stage.load(dvc, "foo_imported.dvc")
     dst_cache = dst_stage.outs[0].cache_path
 
-    os.remove(dst)
+    os.remove("foo_imported")
     os.remove(dst_cache)
+    dvc.pull(["foo_imported.dvc"])
 
-    dvc_repo.pull(["foo_imported.dvc"])
-
-    assert os.path.isfile(dst)
+    assert os.path.isfile("foo_imported")
     assert os.path.isfile(dst_cache)
 
 
-def test_cache_type_is_properly_overridden(git, dvc_repo, erepo):
-    erepo.dvc.config.set(
-        Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
-    )
-    erepo.dvc.scm.add([erepo.dvc.config.config_file])
-    erepo.dvc.scm.commit("set source repo cache type to symlinks")
+def test_cache_type_is_properly_overridden(
+    tmp_dir, scm, dvc, erepo_dir, monkeypatch
+):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc.config.set(
+            Config.SECTION_CACHE, Config.SECTION_CACHE_TYPE, "symlink"
+        )
+        erepo_dir.dvc.cache = Cache(erepo_dir.dvc)
+        erepo_dir.scm_add(
+            [erepo_dir.dvc.config.config_file],
+            "set source repo cache type to symlink",
+        )
+        erepo_dir.dvc_gen("foo", "foo content", "create foo")
+    assert System.is_symlink(erepo_dir / "foo")
 
-    src = erepo.FOO
-    dst = erepo.FOO + "_imported"
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
-
-    assert not System.is_symlink(dst)
-    assert os.path.exists(dst)
-    assert os.path.isfile(dst)
-    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
-    assert git.git.check_ignore(dst)
-
-
-def test_pull_imported_directory_stage(dvc_repo, erepo):
-    src = erepo.DATA_DIR
-    dst = erepo.DATA_DIR + "_imported"
-    stage_file = dst + ".dvc"
-
-    dvc_repo.imp(erepo.root_dir, src, dst)
-
-    shutil.rmtree(dst)
-    shutil.rmtree(dvc_repo.cache.local.cache_dir)
-
-    dvc_repo.pull([stage_file])
-
-    assert os.path.exists(dst)
-    assert os.path.isdir(dst)
-    trees_equal(src, dst)
+    assert not System.is_symlink("foo_imported")
+    assert (tmp_dir / "foo_imported").read_text() == "foo content"
+    assert scm.repo.git.check_ignore("foo_imported")
 
 
-def test_download_error_pulling_imported_stage(dvc_repo, erepo):
-    src = erepo.FOO
-    dst = erepo.FOO + "_imported"
+def test_pull_imported_directory_stage(tmp_dir, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen({"dir": {"foo": "foo content"}}, commit="create dir")
 
-    dvc_repo.imp(erepo.root_dir, src, dst)
+    dvc.imp(fspath(erepo_dir), "dir", "dir_imported")
 
-    dst_stage = Stage.load(dvc_repo, "foo_imported.dvc")
+    shutil.rmtree("dir_imported")
+    shutil.rmtree(dvc.cache.local.cache_dir)
+
+    dvc.pull(["dir_imported.dvc"])
+
+    assert os.path.isdir("dir_imported")
+    trees_equal(fspath(erepo_dir / "dir"), "dir_imported")
+
+
+def test_download_error_pulling_imported_stage(
+    tmp_dir, dvc, erepo_dir, monkeypatch
+):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported")
+
+    dst_stage = Stage.load(dvc, "foo_imported.dvc")
     dst_cache = dst_stage.outs[0].cache_path
 
-    os.remove(dst)
+    os.remove("foo_imported")
     os.remove(dst_cache)
 
     with patch(
         "dvc.remote.RemoteLOCAL._download", side_effect=Exception
     ), pytest.raises(DownloadError):
-        dvc_repo.pull(["foo_imported.dvc"])
+        dvc.pull(["foo_imported.dvc"])
 
 
 @pytest.mark.parametrize("dname", [".", "dir", "dir/subdir"])
-def test_import_to_dir(dname, dvc_repo, erepo):
-    src = erepo.FOO
-
+def test_import_to_dir(dname, tmp_dir, dvc, erepo_dir, monkeypatch):
     makedirs(dname, exist_ok=True)
 
-    stage = dvc_repo.imp(erepo.root_dir, src, dname)
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen("foo", "foo content", commit="create foo")
 
-    dst = os.path.join(dname, os.path.basename(src))
+    stage = dvc.imp(fspath(erepo_dir), "foo", dname)
+
+    dst = os.path.join(dname, "foo")
 
     assert stage.outs[0].fspath == os.path.abspath(dst)
     assert os.path.isdir(dname)
-    assert filecmp.cmp(erepo.FOO, dst, shallow=False)
+    assert (tmp_dir / dst).read_text() == "foo content"
 
 
-def test_pull_non_workspace(git, dvc_repo, erepo):
-    src = "version"
-    dst = src
+def test_pull_non_workspace(tmp_dir, scm, dvc, erepo_dir, monkeypatch):
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+        erepo_dir.dvc_gen("foo", "master content", commit="create foo")
+        erepo_dir.scm.checkout("new_branch", create_new=True)
+        erepo_dir.dvc_gen("foo", "branch content", commit="modify foo")
 
-    stage = dvc_repo.imp(erepo.root_dir, src, dst, rev="branch")
-    dvc_repo.scm.add([stage.relpath])
-    dvc_repo.scm.commit("imported branch")
-    dvc_repo.scm.tag("ref-to-branch")
+    stage = dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="new_branch")
+    tmp_dir.scm_add([stage.relpath], commit="imported branch")
+    dvc.scm.tag("ref-to-branch")
 
     # Overwrite via import
-    dvc_repo.imp(erepo.root_dir, src, dst, rev="master")
+    dvc.imp(fspath(erepo_dir), "foo", "foo_imported", rev="master")
 
     os.remove(stage.outs[0].cache_path)
-    dvc_repo.fetch(all_tags=True)
+    dvc.fetch(all_tags=True)
     assert os.path.exists(stage.outs[0].cache_path)
 
 
