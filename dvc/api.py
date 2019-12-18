@@ -1,10 +1,13 @@
 import os
+import importlib.util
 from contextlib import contextmanager
 
 try:
     from contextlib import _GeneratorContextManager as GCM
 except ImportError:
     from contextlib import GeneratorContextManager as GCM
+
+import ruamel.yaml
 
 from dvc.utils.compat import urlparse
 from dvc.repo import Repo
@@ -69,3 +72,37 @@ def _make_repo(repo_url, rev=None):
     else:
         with external_repo(url=repo_url, rev=rev) as repo:
             yield repo
+
+
+def summon(name, repo=None, rev=None):
+    # 1. Read artifacts.yaml
+    # 2. Pull dependencies
+    # 3. Get the call and parameters
+    # 4. Invoke the call with the given parameters
+    # 5. Return the result
+
+    with _make_repo(repo, rev=rev) as _repo:
+        artifacts_path = os.path.join(_repo.root_dir, "artifacts.yaml")
+
+        with _repo.open(artifacts_path, mode="r") as fd:
+            artifacts = ruamel.yaml.load(fd.read()).get("artifacts")
+
+        artifact = next(x for x in artifacts if x.get("name") == name)
+
+        spec = importlib.util.spec_from_file_location(
+            artifact.get("call"),
+            os.path.join(_repo.root_dir, artifact.get("file")),
+        )
+
+        module = importlib.util.module_from_spec(spec)
+
+        # ugly af, don't use exec / global, pls
+        call = 'global result; result = {method}({params})'.format(
+            method=artifact.get("call"),
+            params=", ".join(k + "=" + v for k, v in artifact.get("params").items())
+        )
+
+        spec.loader.exec_module(module)
+        exec(call)
+        global result
+        return result

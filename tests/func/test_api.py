@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 import os
 import shutil
 
+import ruamel.yaml
 import pytest
 
 from dvc import api
@@ -126,3 +127,25 @@ def test_open_not_cached(dvc):
     os.remove(metric_file)
     with pytest.raises(FileMissingError):
         api.read(metric_file)
+
+
+def test_summon(tmp_dir, erepo_dir, dvc):
+    artifacts_yaml = ruamel.yaml.dump({
+        "artifacts": [{
+            "name": "sum",
+            "description": "The sum of 1 + 2",
+            "call": "module.sum",
+            "file": "module.py",
+            "params": {"x": "1", "y": "2"},
+            "deps": ["foo"],
+        }]
+    })
+
+    erepo_dir.gen("module.py", "def sum(x, y): return x + y")
+    erepo_dir.gen("artifacts.yaml", artifacts_yaml)
+    erepo_dir.scm.add(["module.py", "artifacts.yaml"])
+    erepo_dir.scm.commit("Add module.py and artifacts.yaml")
+
+    repo_url = "file://{}".format(erepo_dir)
+
+    assert api.summon("sum", repo=repo_url) == 3
