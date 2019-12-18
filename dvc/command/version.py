@@ -76,14 +76,12 @@ class CmdVersion(CmdBaseNoRepo):
                 info += (
                     "Filesystem type (cache directory): {fs_cache}\n"
                 ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
-        else:
-            info += ("Cache: link not available (run inside DVC repo)\n")
-
+        
         if psutil:
             info += ("Filesystem type (workspace): {fs_root}").format(
                 fs_root=self.get_fs_type(os.path.abspath(root_directory))
             )
-            
+
         logger.info(info)
         return 0
 
