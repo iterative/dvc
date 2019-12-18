@@ -24,5 +24,5 @@ if [[ -n "$TRAVIS_TAG" ]]; then
 fi
 # ensure basic commands can run
 dvc version
-dvc get https://github.com/iterative/dvc scripts/innosetup/dvc.ico
+dvc get -v https://github.com/iterative/dvc scripts/innosetup/dvc.ico
 sudo snap remove dvc
