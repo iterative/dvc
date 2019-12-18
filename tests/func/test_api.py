@@ -130,16 +130,20 @@ def test_open_not_cached(dvc):
 
 
 def test_summon(tmp_dir, erepo_dir, dvc):
-    artifacts_yaml = ruamel.yaml.dump({
-        "artifacts": [{
-            "name": "sum",
-            "description": "The sum of 1 + 2",
-            "call": "module.sum",
-            "file": "module.py",
-            "params": {"x": "1", "y": "2"},
-            "deps": ["foo"],
-        }]
-    })
+    artifacts_yaml = ruamel.yaml.dump(
+        {
+            "artifacts": [
+                {
+                    "name": "sum",
+                    "description": "The sum of 1 + 2",
+                    "call": "module.sum",
+                    "file": "module.py",
+                    "params": {"x": "1", "y": "2"},
+                    "deps": ["foo"],
+                }
+            ]
+        }
+    )
 
     erepo_dir.gen("module.py", "def sum(x, y): return x + y")
     erepo_dir.gen("artifacts.yaml", artifacts_yaml)

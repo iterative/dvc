@@ -97,9 +97,11 @@ def summon(name, repo=None, rev=None):
         module = importlib.util.module_from_spec(spec)
 
         # ugly af, don't use exec / global, pls
-        call = 'global result; result = {method}({params})'.format(
+        call = "global result; result = {method}({params})".format(
             method=artifact.get("call"),
-            params=", ".join(k + "=" + v for k, v in artifact.get("params").items())
+            params=", ".join(
+                k + "=" + v for k, v in artifact.get("params").items()
+            ),
         )
 
         spec.loader.exec_module(module)
