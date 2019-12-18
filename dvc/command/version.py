@@ -44,11 +44,17 @@ class CmdVersion(CmdBaseNoRepo):
             binary=binary,
             package=PKG,
         )
-
+        
+        is_repo = False
+        
         try:
             repo = Repo()
             root_directory = repo.root_dir
+            is_repo = True
+        except NotDvcRepoError:
+            root_directory = os.getcwd()
 
+        if is_repo:
             # cache_dir might not exist yet (e.g. after `dvc init`), and we
             # can't auto-create it, as it might cause issues if the user
             # later decides to enable shared cache mode with
@@ -70,14 +76,14 @@ class CmdVersion(CmdBaseNoRepo):
                 info += (
                     "Filesystem type (cache directory): {fs_cache}\n"
                 ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
-        except NotDvcRepoError:
-            root_directory = os.getcwd()
+        else:
+            info += ("Cache: link not available (run inside DVC repo)\n")
 
         if psutil:
             info += ("Filesystem type (workspace): {fs_root}").format(
                 fs_root=self.get_fs_type(os.path.abspath(root_directory))
             )
-
+            
         logger.info(info)
         return 0
 
