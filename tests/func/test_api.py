@@ -130,22 +130,26 @@ def test_open_not_cached(dvc):
 
 
 def test_summon(tmp_dir, erepo_dir, dvc):
-    artifacts_yaml = ruamel.yaml.dump({
-        "artifacts": [{
-            "name": "sum",
-            "description": "The sum of 1 + 2",
-            "call": "module.sum",
-            "file": "module.py",
-            "params": {"x": "1", "y": "2"},
-            "deps": ["foo"],
-        }]
-    })
+    grimoire_yaml = ruamel.yaml.dump(
+        {
+            "spells": [
+                {
+                    "name": "three",
+                    "description": "The sum of 1 + 2",
+                    "file": "calculator.py",
+                    "method": "sum",
+                    "params": {"x": 1, "y": 2},
+                    "deps": ["foo"],
+                }
+            ]
+        }
+    )
 
-    erepo_dir.gen("module.py", "def sum(x, y): return x + y")
-    erepo_dir.gen("artifacts.yaml", artifacts_yaml)
-    erepo_dir.scm.add(["module.py", "artifacts.yaml"])
-    erepo_dir.scm.commit("Add module.py and artifacts.yaml")
+    erepo_dir.gen("calculator.py", "def sum(x, y): return x + y")
+    erepo_dir.gen("grimoire.yaml", grimoire_yaml)
+    erepo_dir.scm.add(["calculator.py", "grimoire.yaml"])
+    erepo_dir.scm.commit("Add calculator.py and grimoire.yaml")
 
     repo_url = "file://{}".format(erepo_dir)
 
-    assert api.summon("sum", repo=repo_url) == 3
+    assert api.summon("three", repo=repo_url) == 3

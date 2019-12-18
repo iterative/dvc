@@ -75,34 +75,25 @@ def _make_repo(repo_url, rev=None):
 
 
 def summon(name, repo=None, rev=None):
-    # 1. Read artifacts.yaml
-    # 2. Pull dependencies
+    # 1. Read grimoire.yaml
+    # 2. Pull dependencies (TODO)
     # 3. Get the call and parameters
     # 4. Invoke the call with the given parameters
     # 5. Return the result
 
     with _make_repo(repo, rev=rev) as _repo:
-        artifacts_path = os.path.join(_repo.root_dir, "artifacts.yaml")
+        grimoire_path = os.path.join(_repo.root_dir, "grimoire.yaml")
 
-        with _repo.open(artifacts_path, mode="r") as fd:
-            artifacts = ruamel.yaml.load(fd.read()).get("artifacts")
+        with open(grimoire_path, "r") as fobj:
+            spells = ruamel.yaml.load(fobj.read()).get("spells")
 
-        artifact = next(x for x in artifacts if x.get("name") == name)
-
-        spec = importlib.util.spec_from_file_location(
-            artifact.get("call"),
-            os.path.join(_repo.root_dir, artifact.get("file")),
-        )
-
+        spell = next(spell for spell in spells if spell.get("name") == name)
+        spell_path = os.path.join(_repo.root_dir, spell.get("file"))
+        spec = importlib.util.spec_from_file_location(name, spell_path)
         module = importlib.util.module_from_spec(spec)
 
-        # ugly af, don't use exec / global, pls
-        call = 'global result; result = {method}({params})'.format(
-            method=artifact.get("call"),
-            params=", ".join(k + "=" + v for k, v in artifact.get("params").items())
-        )
-
         spec.loader.exec_module(module)
-        exec(call)
-        global result
-        return result
+
+        method = getattr(module, spell.get("method"))
+
+        return method(**spell.get("params"))
