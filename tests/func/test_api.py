@@ -11,6 +11,7 @@ from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
+from dvc.utils.compat import fspath
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 
@@ -129,27 +130,36 @@ def test_open_not_cached(dvc):
         api.read(metric_file)
 
 
-def test_summon(tmp_dir, erepo_dir, dvc):
+def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     grimoire_yaml = ruamel.yaml.dump(
         {
             "spells": [
                 {
-                    "name": "three",
-                    "description": "The sum of 1 + 2",
+                    "name": "sum",
+                    "description": "Add <x> to <number>",
                     "file": "calculator.py",
-                    "method": "sum",
-                    "params": {"x": 1, "y": 2},
-                    "deps": ["foo"],
+                    "method": "add_to_num",
+                    "params": {"x": 1},
+                    "deps": ["number"],
                 }
             ]
         }
     )
 
-    erepo_dir.gen("calculator.py", "def sum(x, y): return x + y")
-    erepo_dir.gen("grimoire.yaml", grimoire_yaml)
-    erepo_dir.scm.add(["calculator.py", "grimoire.yaml"])
-    erepo_dir.scm.commit("Add calculator.py and grimoire.yaml")
+    # XXX: Chdir because `stage.create` defaults to `wdir = os.curdir`
+    with monkeypatch.context() as m:
+        m.chdir(fspath(erepo_dir))
+
+        erepo_dir.dvc_gen("number", "100")
+
+    erepo_dir.scm_gen("grimoire.yaml", grimoire_yaml)
+    erepo_dir.scm_gen(
+        "calculator.py",
+        "def add_to_num(x): return x + int(open('number').read())",
+    )
+    erepo_dir.scm.add(["number.dvc", "calculator.py", "grimoire.yaml"])
+    erepo_dir.scm.commit("Add files")
 
     repo_url = "file://{}".format(erepo_dir)
 
-    assert api.summon("three", repo=repo_url) == 3
+    assert api.summon("sum", repo=repo_url) == 101

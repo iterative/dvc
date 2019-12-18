@@ -76,7 +76,7 @@ def _make_repo(repo_url, rev=None):
 
 def summon(name, repo=None, rev=None):
     # 1. Read grimoire.yaml
-    # 2. Pull dependencies (TODO)
+    # 2. Pull dependencies
     # 3. Get the call and parameters
     # 4. Invoke the call with the given parameters
     # 5. Return the result
@@ -85,15 +85,30 @@ def summon(name, repo=None, rev=None):
         grimoire_path = os.path.join(_repo.root_dir, "grimoire.yaml")
 
         with open(grimoire_path, "r") as fobj:
-            spells = ruamel.yaml.load(fobj.read()).get("spells")
+            spells = ruamel.yaml.safe_load(fobj.read()).get("spells")
+            spell = next(x for x in spells if x.get("name") == name)
 
-        spell = next(spell for spell in spells if spell.get("name") == name)
+        outs = [
+            _repo.find_outs_by_path(os.path.join(_repo.root_dir, dep))[0]
+            for dep in spell.get("deps")
+        ]
+
+        with _repo.state:
+            for out in outs:
+                _repo.cloud.pull(out.get_used_cache())
+                out.checkout()
+
+        previous_dir = os.path.abspath(os.curdir)
+
+        os.chdir(_repo.root_dir)
+
         spell_path = os.path.join(_repo.root_dir, spell.get("file"))
         spec = importlib.util.spec_from_file_location(name, spell_path)
         module = importlib.util.module_from_spec(spec)
-
         spec.loader.exec_module(module)
-
         method = getattr(module, spell.get("method"))
+        result = method(**spell.get("params"))
 
-        return method(**spell.get("params"))
+        os.chdir(previous_dir)
+
+        return result
