@@ -44,9 +44,9 @@ class CmdVersion(CmdBaseNoRepo):
             binary=binary,
             package=PKG,
         )
-        
+
         is_repo = False
-        
+
         try:
             repo = Repo()
             root_directory = repo.root_dir
@@ -76,7 +76,7 @@ class CmdVersion(CmdBaseNoRepo):
                 info += (
                     "Filesystem type (cache directory): {fs_cache}\n"
                 ).format(fs_cache=self.get_fs_type(repo.cache.local.cache_dir))
-        
+
         if psutil:
             info += ("Filesystem type (workspace): {fs_root}").format(
                 fs_root=self.get_fs_type(os.path.abspath(root_directory))
