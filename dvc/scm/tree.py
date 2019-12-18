@@ -1,5 +1,6 @@
 import os
 
+from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import dvc_walk
 from dvc.utils.compat import open
 
@@ -75,3 +76,32 @@ class WorkingTree(BaseTree):
             os.path.abspath(top), dvcignore, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
+
+
+class IgnoreTree(BaseTree):
+    def __init__(self, tree):
+        self.tree = tree
+
+    @property
+    def dvcignore(self):
+        return DvcIgnoreFilter(self.tree.tree_root, self.tree)
+
+    @property
+    def tree_root(self):
+        return self.tree.tree_root
+
+    def open(self, path, mode="r", encoding="utf-8"):
+        return self.tree.open(path, mode, encoding)
+
+    def exists(self, path):
+        return self.tree.exists(path)
+
+    def isdir(self, path):
+        return self.tree.isdir(path)
+
+    def isfile(self, path):
+        return self.tree.isfile(path)
+
+    def walk(self, top, topdown=True, dvcignore=None):
+        for r, d, fs in self.tree.walk(top, topdown, self.dvcignore):
+            yield r, d, fs

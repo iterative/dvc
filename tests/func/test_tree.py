@@ -6,7 +6,7 @@ from os.path import join
 from dvc.ignore import DvcIgnoreFilter
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
-from dvc.scm.tree import WorkingTree
+from dvc.scm.tree import WorkingTree, IgnoreTree
 from tests.basic_env import TestDir
 from tests.basic_env import TestGit
 from tests.basic_env import TestGitSubmodule
@@ -82,14 +82,14 @@ class TestGitTree(TestGit, GitTreeTests):
     def setUp(self):
         super(TestGitTree, self).setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = GitTree(self.git, "master")
+        self.tree = IgnoreTree(GitTree(self.git, "master"))
 
 
 class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
     def setUp(self):
         super(TestGitSubmoduleTree, self).setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = GitTree(self.git, "master")
+        self.tree = IgnoreTree(GitTree(self.git, "master"))
         self._pushd(self._root_dir)
 
 
@@ -177,7 +177,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         scm = SCM(self._root_dir)
         scm.add([self.DATA_SUB_DIR])
         scm.commit("add data_dir/data_sub_dir/data_sub")
-        tree = GitTree(self.git, "master")
+        tree = IgnoreTree(GitTree(self.git, "master"))
         self.assertWalkEqual(
             tree.walk("."),
             [

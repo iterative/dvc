@@ -378,7 +378,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         assert os.path.exists(fspath_py35(path_info))
 
         actual_mtime, actual_size = get_mtime_and_size(
-            path_info, self.repo.dvcignore
+            path_info, self.repo.tree.dvcignore
         )
         actual_inode = get_inode(path_info)
 
@@ -411,7 +411,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
             return None
 
         actual_mtime, actual_size = get_mtime_and_size(
-            path, self.repo.dvcignore
+            path, self.repo.tree.dvcignore
         )
         actual_inode = get_inode(path)
 
@@ -439,7 +439,7 @@ class State(object):  # pylint: disable=too-many-instance-attributes
         if not os.path.exists(path):
             return
 
-        mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
+        mtime, _ = get_mtime_and_size(path, self.repo.tree.dvcignore)
         inode = get_inode(path)
         relative_path = relpath(path, self.root_dir)
 
@@ -469,7 +469,9 @@ class State(object):  # pylint: disable=too-many-instance-attributes
                 continue
 
             actual_inode = get_inode(path)
-            actual_mtime, _ = get_mtime_and_size(path, self.repo.dvcignore)
+            actual_mtime, _ = get_mtime_and_size(
+                path, self.repo.tree.dvcignore
+            )
 
             if inode == actual_inode and mtime == actual_mtime:
                 logger.debug("Removing '{}' as unused link.".format(path))

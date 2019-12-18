@@ -68,7 +68,7 @@ def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
             fname
-            for fname in walk_files(target, repo.dvcignore)
+            for fname in walk_files(target, repo.tree.dvcignore)
             if not repo.is_dvc_internal(fname)
             if not Stage.is_stage_file(fname)
             if not repo.scm.belongs_to_scm(fname)

@@ -20,10 +20,10 @@ def test_ignore(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
 
-    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
+    assert _files_set("dir", dvc.tree.dvcignore) == {"dir/other"}
 
     monkeypatch.chdir("dir")
-    assert _files_set(".", dvc.dvcignore) == {"./other"}
+    assert _files_set(".", dvc.tree.dvcignore) == {"./other"}
 
 
 def test_ignore_unicode(tmp_dir, dvc):
@@ -35,27 +35,27 @@ def test_ignore_unicode(tmp_dir, dvc):
 
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/тест")
 
-    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
+    assert _files_set("dir", dvc.tree.dvcignore) == {"dir/other"}
 
 
 def test_rename_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
 
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored*")
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     shutil.move("dir/ignored", "dir/ignored_new")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_rename_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     shutil.move("dir/foo", "dir/foo_new")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     assert new_mtime != mtime and new_size == size
 
@@ -64,20 +64,20 @@ def test_remove_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
 
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     os.remove("dir/ignored")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_remove_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     os.remove("dir/foo")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree.dvcignore)
 
     assert new_mtime != mtime and new_size != size
 
@@ -99,7 +99,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    assert dvc.dvcignore.ignores == {
+    assert dvc.tree.dvcignore.ignores == {
         DvcIgnoreDirs([".git", ".hg", ".dvc"]),
         DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir)),
     }
@@ -112,10 +112,13 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     tmp_dir.scm_gen(DvcIgnore.DVCIGNORE_FILE, "foo", commit="add ignore")
 
     scm.checkout("master")
-    assert _files_set(".", dvc.dvcignore) == {"./foo", "./bar"}
+    assert _files_set(".", dvc.tree.dvcignore) == {"./foo", "./bar"}
 
-    dvc.tree = scm.get_tree("branch")
-    assert _files_set(".", dvc.dvcignore) == {"./bar"}
+    tree = scm.get_tree("branch")
+    files_on_branch = {
+        f for r, ds, fs in tree.walk(tree.tree_root) for f in fs
+    }
+    assert "foo" not in files_on_branch
 
 
 def _files_set(root, dvcignore):

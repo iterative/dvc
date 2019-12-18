@@ -9,13 +9,13 @@ from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
 
 from funcy import cached_property
 
+from dvc.scm.tree import IgnoreTree
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
     NotDvcRepoError,
     OutputNotFoundError,
 )
-from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils import relpath
@@ -84,7 +84,7 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir)
 
-        self.tree = WorkingTree(self.root_dir)
+        self.tree = IgnoreTree(WorkingTree(self.root_dir))
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
@@ -392,7 +392,7 @@ class Repo(object):
         outs = []
 
         for root, dirs, files in self.tree.walk(
-            self.root_dir, dvcignore=self.dvcignore
+            self.root_dir, dvcignore=self.tree.dvcignore
         ):
             for fname in files:
                 path = os.path.join(root, fname)
@@ -486,10 +486,6 @@ class Repo(object):
                 self.cloud.pull(cache_info, remote=remote)
 
             return _open(cache_file, mode=mode, encoding=encoding)
-
-    @cached_property
-    def dvcignore(self):
-        return DvcIgnoreFilter(self.root_dir, self.tree)
 
     def close(self):
         self.scm.close()

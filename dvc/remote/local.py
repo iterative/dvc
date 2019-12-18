@@ -138,7 +138,7 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
-        for fname in walk_files(path_info, self.repo.dvcignore):
+        for fname in walk_files(path_info, self.repo.tree.dvcignore):
             yield PathInfo(fname)
 
     def get_file_checksum(self, path_info):
@@ -427,7 +427,7 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        for fname in walk_files(path, self.repo.dvcignore):
+        for fname in walk_files(path, self.repo.tree.dvcignore):
             RemoteLOCAL._unprotect_file(fname)
 
     def unprotect(self, path_info):
