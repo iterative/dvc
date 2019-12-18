@@ -74,7 +74,7 @@ def _make_repo(repo_url, rev=None):
             yield repo
 
 
-def summon(name, repo=None, rev=None):
+def summon(name, params=None, repo=None, rev=None):
     # 1. Read artifacts.yaml
     # 2. Pull dependencies
     # 3. Get the call and parameters
@@ -107,7 +107,12 @@ def summon(name, repo=None, rev=None):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         method = getattr(module, artifact.get("method"))
-        result = method(**artifact.get("params"))
+        _params = artifact.get("params")
+
+        if params:
+            _params.update(params)
+
+        result = method(**_params)
 
         os.chdir(previous_dir)
 

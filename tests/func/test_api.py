@@ -163,3 +163,4 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     repo_url = "file://{}".format(erepo_dir)
 
     assert api.summon("sum", repo=repo_url) == 101
+    assert api.summon("sum", repo=repo_url, params={"x": 2}) == 102
