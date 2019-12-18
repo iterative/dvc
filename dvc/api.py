@@ -75,22 +75,22 @@ def _make_repo(repo_url, rev=None):
 
 
 def summon(name, repo=None, rev=None):
-    # 1. Read grimoire.yaml
+    # 1. Read artifacts.yaml
     # 2. Pull dependencies
     # 3. Get the call and parameters
     # 4. Invoke the call with the given parameters
     # 5. Return the result
 
     with _make_repo(repo, rev=rev) as _repo:
-        grimoire_path = os.path.join(_repo.root_dir, "grimoire.yaml")
+        artifacts_path = os.path.join(_repo.root_dir, "artifacts.yaml")
 
-        with open(grimoire_path, "r") as fobj:
-            spells = ruamel.yaml.safe_load(fobj.read()).get("spells")
-            spell = next(x for x in spells if x.get("name") == name)
+        with open(artifacts_path, "r") as fobj:
+            artifacts = ruamel.yaml.safe_load(fobj.read()).get("artifacts")
+            artifact = next(x for x in artifacts if x.get("name") == name)
 
         outs = [
             _repo.find_outs_by_path(os.path.join(_repo.root_dir, dep))[0]
-            for dep in spell.get("deps")
+            for dep in artifact.get("deps")
         ]
 
         with _repo.state:
@@ -102,12 +102,12 @@ def summon(name, repo=None, rev=None):
 
         os.chdir(_repo.root_dir)
 
-        spell_path = os.path.join(_repo.root_dir, spell.get("file"))
-        spec = importlib.util.spec_from_file_location(name, spell_path)
+        artifact_path = os.path.join(_repo.root_dir, artifact.get("file"))
+        spec = importlib.util.spec_from_file_location(name, artifact_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        method = getattr(module, spell.get("method"))
-        result = method(**spell.get("params"))
+        method = getattr(module, artifact.get("method"))
+        result = method(**artifact.get("params"))
 
         os.chdir(previous_dir)
 
