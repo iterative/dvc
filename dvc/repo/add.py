@@ -79,6 +79,12 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
 
 
 def _find_all_targets(repo, target, recursive):
+    target = os.path.normpath(target)
+    if os.path.commonprefix(
+        [os.path.abspath(target), repo.root_dir]
+    ).startswith(repo.root_dir):
+        target = os.path.relpath(target, repo.root_dir)
+
     if os.path.isdir(target) and recursive:
         return [
             fname
