@@ -113,6 +113,10 @@ def summon(name, args=None, repo=None, rev=None):
 
 @contextmanager
 def _chdir_and_syspath(path):
+    # XXX: Some issues with this approach:
+    #   * Not thread safe
+    #   * Import will pollute sys.modules
+    #   * Weird errors if there is a name clash within sys.modules
     old_dir = os.path.abspath(os.curdir)
     os.chdir(path)
     sys.path.insert(0, path)
