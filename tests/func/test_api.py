@@ -131,9 +131,9 @@ def test_open_not_cached(dvc):
 
 
 def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
-    artifacts_yaml = ruamel.yaml.dump(
+    dvcsummon_yaml = ruamel.yaml.dump(
         {
-            "artifacts": [
+            "objects": [
                 {
                     "name": "sum",
                     "description": "Add <x> to <number>",
@@ -151,7 +151,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
         m.chdir(fspath(erepo_dir))
 
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
-        erepo_dir.scm_gen("artifacts.yaml", artifacts_yaml)
+        erepo_dir.scm_gen("dvcsummon.yaml", dvcsummon_yaml)
         erepo_dir.scm_gen(
             "calculator.py",
             "def add_to_num(x): return x + int(open('number').read())",

@@ -75,22 +75,20 @@ def _make_repo(repo_url, rev=None):
 
 
 def summon(name, params=None, repo=None, rev=None):
-    # 1. Read artifacts.yaml
+    # 1. Read dvcsummon.yaml
     # 2. Pull dependencies
     # 3. Get the call and parameters
     # 4. Invoke the call with the given parameters
     # 5. Return the result
 
     with _make_repo(repo, rev=rev) as _repo:
-        artifacts_path = os.path.join(_repo.root_dir, "artifacts.yaml")
+        dvcsummon_path = os.path.join(_repo.root_dir, "dvcsummon.yaml")
 
-        with open(artifacts_path, "r") as fobj:
-            artifacts = ruamel.yaml.safe_load(fobj.read()).get("artifacts")
-            artifact = next(x for x in artifacts if x.get("name") == name)
+        with open(dvcsummon_path, "r") as fobj:
+            objects = ruamel.yaml.safe_load(fobj.read()).get("objects")
+            obj = next(x for x in objects if x.get("name") == name)
 
-        outs = [
-            _repo.find_out_by_relpath(dep) for dep in artifact.get("deps", ())
-        ]
+        outs = [_repo.find_out_by_relpath(dep) for dep in obj.get("deps", ())]
 
         with _repo.state:
             for out in outs:
@@ -101,12 +99,12 @@ def summon(name, params=None, repo=None, rev=None):
 
         os.chdir(_repo.root_dir)
 
-        artifact_path = os.path.join(_repo.root_dir, artifact.get("file"))
+        artifact_path = os.path.join(_repo.root_dir, obj.get("file"))
         spec = importlib.util.spec_from_file_location(name, artifact_path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        method = getattr(module, artifact.get("method"))
-        _params = artifact.get("params")
+        method = getattr(module, obj.get("method"))
+        _params = obj.get("params")
 
         if params:
             _params.update(params)
