@@ -142,7 +142,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
                         "call": "calculator.add_to_num",
                         "args": {"x": 1},
                         "deps": ["number"],
-                    }
+                    },
                 }
             ]
         }
