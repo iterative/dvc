@@ -137,8 +137,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
                 {
                     "name": "sum",
                     "description": "Add <x> to <number>",
-                    "file": "calculator.py",
-                    "method": "add_to_num",
+                    "call": "calculator.add_to_num",
                     "params": {"x": 1},
                     "deps": ["number"],
                 }

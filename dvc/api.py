@@ -1,6 +1,8 @@
+import importlib
 import os
-import importlib.util
+import sys
 from contextlib import contextmanager
+
 
 try:
     from contextlib import _GeneratorContextManager as GCM
@@ -9,7 +11,7 @@ except ImportError:
 
 import ruamel.yaml
 
-from dvc.utils.compat import urlparse
+from dvc.utils.compat import urlparse, builtin_str
 from dvc.repo import Repo
 from dvc.external_repo import external_repo
 
@@ -95,22 +97,45 @@ def summon(name, params=None, repo=None, rev=None):
                 _repo.cloud.pull(out.get_used_cache())
                 out.checkout()
 
-        previous_dir = os.path.abspath(os.curdir)
+        with _chdir_and_syspath(_repo.root_dir):
+            call = _import_string(obj.get("call"))
+            _params = obj.get("params")
 
-        os.chdir(_repo.root_dir)
+            if params:
+                _params.update(params)
 
-        artifact_path = os.path.join(_repo.root_dir, obj.get("file"))
-        spec = importlib.util.spec_from_file_location(name, artifact_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        method = getattr(module, obj.get("method"))
-        _params = obj.get("params")
-
-        if params:
-            _params.update(params)
-
-        result = method(**_params)
-
-        os.chdir(previous_dir)
+            result = call(**_params)
 
         return result
+
+
+@contextmanager
+def _chdir_and_syspath(path):
+    old_dir = os.path.abspath(os.curdir)
+    os.chdir(path)
+    sys.path.insert(0, path)
+    yield
+    sys.path.pop(0)
+    os.chdir(old_dir)
+
+
+def _import_string(import_name, silent=False):
+    """Imports an object based on a string.
+    Useful to delay import to not load everything on startup.
+    Use dotted notaion in `import_name`, e.g. 'dvc.remote.gs.RemoteGS'.
+    If the `silent` is True the return value will be `None` if the import
+    fails.
+
+    :return: imported object
+    """
+    import_name = builtin_str(import_name)
+
+    try:
+        if "." in import_name:
+            module, obj = import_name.rsplit(".", 1)
+        else:
+            return importlib.import_module(import_name)
+        return getattr(importlib.import_module(module), obj)
+    except (ImportError, AttributeError):
+        if not silent:
+            raise
