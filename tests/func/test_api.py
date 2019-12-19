@@ -154,6 +154,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
         erepo_dir.scm_gen("dvcsummon.yaml", dvcsummon_yaml)
+        erepo_dir.scm_gen("non-canon.yaml", dvcsummon_yaml)
         erepo_dir.scm_gen(
             "calculator.py",
             "def add_to_num(x): return x + int(open('number').read())",
@@ -164,3 +165,4 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
     assert api.summon("sum", repo=repo_url) == 101
     assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
+    assert api.summon("sum", repo=repo_url, fname="non-canon.yaml") == 101

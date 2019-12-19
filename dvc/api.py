@@ -76,7 +76,7 @@ def _make_repo(repo_url, rev=None):
             yield repo
 
 
-def summon(name, args=None, repo=None, rev=None):
+def summon(name, fname=None, args=None, repo=None, rev=None):
     # 1. Read dvcsummon.yaml
     # 2. Pull dependencies
     # 3. Get the call and parameters
@@ -84,9 +84,10 @@ def summon(name, args=None, repo=None, rev=None):
     # 5. Return the result
 
     with _make_repo(repo, rev=rev) as _repo:
-        dvcsummon_path = os.path.join(_repo.root_dir, "dvcsummon.yaml")
+        fname = fname or "dvcsummon.yaml"
+        summon_path = os.path.join(_repo.root_dir, fname)
 
-        with open(dvcsummon_path, "r") as fobj:
+        with open(summon_path, "r") as fobj:
             objects = ruamel.yaml.safe_load(fobj.read()).get("objects")
             obj = next(x for x in objects if x.get("name") == name)
             _summon = obj.get("summon")
