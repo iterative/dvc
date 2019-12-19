@@ -89,7 +89,7 @@ def summon(name, params=None, repo=None, rev=None):
             artifact = next(x for x in artifacts if x.get("name") == name)
 
         outs = [
-            _repo.find_outs_by_path(os.path.join(_repo.root_dir, dep))[0]
+            _repo.find_out_by_relpath(dep)
             for dep in artifact.get("deps", ())
         ]
 
