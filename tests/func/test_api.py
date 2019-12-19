@@ -150,15 +150,13 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
 
-        erepo_dir.dvc_gen("number", "100")
-
-    erepo_dir.scm_gen("artifacts.yaml", artifacts_yaml)
-    erepo_dir.scm_gen(
-        "calculator.py",
-        "def add_to_num(x): return x + int(open('number').read())",
-    )
-    erepo_dir.scm.add(["number.dvc", "calculator.py", "artifacts.yaml"])
-    erepo_dir.scm.commit("Add files")
+        erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
+        erepo_dir.scm_gen("artifacts.yaml", artifacts_yaml)
+        erepo_dir.scm_gen(
+            "calculator.py",
+            "def add_to_num(x): return x + int(open('number').read())",
+        )
+        erepo_dir.scm.commit("Add files")
 
     repo_url = "file://{}".format(erepo_dir)
 
