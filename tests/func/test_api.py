@@ -137,9 +137,12 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
                 {
                     "name": "sum",
                     "description": "Add <x> to <number>",
-                    "call": "calculator.add_to_num",
-                    "params": {"x": 1},
-                    "deps": ["number"],
+                    "summon": {
+                        "type": "python",
+                        "call": "calculator.add_to_num",
+                        "args": {"x": 1},
+                        "deps": ["number"],
+                    }
                 }
             ]
         }
@@ -160,4 +163,4 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     repo_url = "file://{}".format(erepo_dir)
 
     assert api.summon("sum", repo=repo_url) == 101
-    assert api.summon("sum", repo=repo_url, params={"x": 2}) == 102
+    assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102

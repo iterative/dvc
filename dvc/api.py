@@ -76,7 +76,7 @@ def _make_repo(repo_url, rev=None):
             yield repo
 
 
-def summon(name, params=None, repo=None, rev=None):
+def summon(name, args=None, repo=None, rev=None):
     # 1. Read dvcsummon.yaml
     # 2. Pull dependencies
     # 3. Get the call and parameters
@@ -89,8 +89,11 @@ def summon(name, params=None, repo=None, rev=None):
         with open(dvcsummon_path, "r") as fobj:
             objects = ruamel.yaml.safe_load(fobj.read()).get("objects")
             obj = next(x for x in objects if x.get("name") == name)
+            _summon = obj.get("summon")
 
-        outs = [_repo.find_out_by_relpath(dep) for dep in obj.get("deps", ())]
+        outs = [
+            _repo.find_out_by_relpath(dep) for dep in _summon.get("deps", ())
+        ]
 
         with _repo.state:
             for out in outs:
@@ -98,13 +101,12 @@ def summon(name, params=None, repo=None, rev=None):
                 out.checkout()
 
         with _chdir_and_syspath(_repo.root_dir):
-            call = _import_string(obj.get("call"))
-            _params = obj.get("params")
+            call = _import_string(_summon.get("call"))
 
-            if params:
-                _params.update(params)
+            if args:
+                _summon.get("args").update(args)
 
-            result = call(**_params)
+            result = call(**_summon.get("args"))
 
         return result
 
