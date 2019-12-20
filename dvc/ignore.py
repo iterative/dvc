@@ -75,8 +75,6 @@ class DvcIgnoreFilter(object):
     def __init__(self, tree):
         self.tree = tree
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
-
-    def reload(self):
         self._update(self.tree.tree_root)
         for root, dirs, _ in self.tree.walk(
             self.tree.tree_root, dvcignore=self

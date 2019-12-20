@@ -14,9 +14,6 @@ class BaseTree(object):
     def tree_root(self):
         pass
 
-    def set_dvcignore(self, dvcignore):
-        self.dvcignore = dvcignore
-
     def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
 
@@ -85,13 +82,10 @@ class CleanTree(BaseTree):
     def __init__(self, tree):
         super(CleanTree, self).__init__()
         self.tree = tree
-        self._dvcignore = DvcIgnoreFilter(self.tree)
-        self.tree.set_dvcignore(self._dvcignore)
 
     @cached_property
     def dvcignore(self):
-        self._dvcignore.reload()
-        return self._dvcignore
+        return DvcIgnoreFilter(self.tree)
 
     @property
     def tree_root(self):
