@@ -9,7 +9,7 @@ from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
 
 from funcy import cached_property
 
-from dvc.scm.tree import IgnoreTree
+from dvc.scm.tree import CleanTree
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,
@@ -84,7 +84,7 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir)
 
-        self.tree = IgnoreTree(WorkingTree(self.root_dir))
+        self.tree = CleanTree(WorkingTree(self.root_dir))
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
@@ -391,9 +391,7 @@ class Repo(object):
         stages = []
         outs = []
 
-        for root, dirs, files in self.tree.walk(
-            self.root_dir, dvcignore=self.tree.dvcignore
-        ):
+        for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):

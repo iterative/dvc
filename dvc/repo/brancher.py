@@ -1,6 +1,6 @@
 from funcy import group_by
 
-from dvc.scm.tree import WorkingTree, IgnoreTree
+from dvc.scm.tree import WorkingTree, CleanTree
 
 
 def brancher(  # noqa: E302
@@ -34,7 +34,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.tree = IgnoreTree(WorkingTree(self.root_dir))
+    self.tree = CleanTree(WorkingTree(self.root_dir))
     yield "working tree"
 
     if all_commits:

@@ -3,7 +3,7 @@ import os
 from dvc.scm.git.tree import GitTree
 from dvc.cache import Cache
 from dvc.repo import Repo
-from dvc.scm.tree import IgnoreTree
+from dvc.scm.tree import CleanTree
 from dvc.system import System
 from dvc.utils.compat import fspath
 
@@ -51,7 +51,7 @@ def test_collect(tmp_dir, scm, dvc, run_copy):
 
     assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
 
-    dvc.tree = IgnoreTree(GitTree(scm.repo, "new-branch"))
+    dvc.tree = CleanTree(GitTree(scm.repo, "new-branch"))
 
     assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
     assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}

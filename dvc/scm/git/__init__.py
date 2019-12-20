@@ -14,7 +14,7 @@ from dvc.scm.base import FileNotInRepoError
 from dvc.scm.base import RevError
 from dvc.scm.base import SCMError
 from dvc.scm.git.tree import GitTree
-from dvc.scm.tree import IgnoreTree
+from dvc.scm.tree import CleanTree
 from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
@@ -308,9 +308,7 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        tree = GitTree(self.repo, rev)
-
-        return IgnoreTree(tree)
+        return CleanTree(GitTree(self.repo, rev))
 
     def _get_diff_trees(self, a_ref, b_ref):
         """Private method for getting the trees and commit hashes of 2 git

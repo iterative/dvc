@@ -118,7 +118,7 @@ class GitTree(BaseTree):
             tree = tree[i]
         return tree
 
-    def _walk(self, tree, topdown=True, dvcignore=None):
+    def _walk(self, tree, topdown=True):
         dirs, nondirs = [], []
         for i in _iter_tree(tree):
             if i.mode == GIT_MODE_DIR:
@@ -127,24 +127,16 @@ class GitTree(BaseTree):
                 nondirs.append(i.name)
 
         if topdown:
-            root = os.path.normpath(tree.abspath)
-            if dvcignore:
-                dirs[:], nondirs[:] = dvcignore(root, dirs, nondirs)
-            yield root, dirs, nondirs
+            yield os.path.normpath(tree.abspath), dirs, nondirs
 
         for i in dirs:
-            for root, dirs, nondirs in self._walk(tree[i], topdown=True):
-                if dvcignore:
-                    dirs[:], nondirs[:] = dvcignore(root, dirs, nondirs)
-                yield root, dirs, nondirs
+            for x in self._walk(tree[i], topdown=True):
+                yield x
 
         if not topdown:
-            root = os.path.normpath(tree.abspath)
-            if dvcignore:
-                dirs[:], nondirs[:] = dvcignore(root, dirs, nondirs)
-            yield root, dirs, nondirs
+            yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, dvcignore=None):
+    def walk(self, top, topdown=True, **kwargs):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -156,5 +148,5 @@ class GitTree(BaseTree):
         if tree is None:
             raise IOError(errno.ENOENT, "No such file")
 
-        for x in self._walk(tree, topdown, dvcignore):
+        for x in self._walk(tree, topdown):
             yield x

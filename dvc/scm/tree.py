@@ -1,5 +1,7 @@
 import os
 
+from funcy import cached_property
+
 from dvc.ignore import DvcIgnoreFilter
 from dvc.utils import dvc_walk
 from dvc.utils.compat import open
@@ -11,6 +13,9 @@ class BaseTree(object):
     @property
     def tree_root(self):
         pass
+
+    def set_dvcignore(self, dvcignore):
+        self.dvcignore = dvcignore
 
     def open(self, path, mode="r", encoding="utf-8"):
         """Open file and return a stream."""
@@ -24,7 +29,7 @@ class BaseTree(object):
     def isfile(self, path):
         """Test whether a path is a regular file"""
 
-    def walk(self, top, topdown=True, dvcignore=None):
+    def walk(self, top, topdown=True, **kwargs):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -59,15 +64,13 @@ class WorkingTree(BaseTree):
         """Test whether a path is a regular file"""
         return os.path.isfile(path)
 
-    def walk(self, top, topdown=True, dvcignore=None):
+    def walk(self, top, topdown=True, dvcignore=None, **kwargs):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
         - no support for symlinks
         - it could raise exceptions, there is no onerror argument
         """
-
-        assert dvcignore
 
         def onerror(e):
             raise e
@@ -78,13 +81,17 @@ class WorkingTree(BaseTree):
             yield os.path.normpath(root), dirs, files
 
 
-class IgnoreTree(BaseTree):
+class CleanTree(BaseTree):
     def __init__(self, tree):
+        super(CleanTree, self).__init__()
         self.tree = tree
+        self._dvcignore = DvcIgnoreFilter(self.tree)
+        self.tree.set_dvcignore(self._dvcignore)
 
-    @property
+    @cached_property
     def dvcignore(self):
-        return DvcIgnoreFilter(self.tree.tree_root, self.tree)
+        self._dvcignore.reload()
+        return self._dvcignore
 
     @property
     def tree_root(self):
@@ -102,6 +109,8 @@ class IgnoreTree(BaseTree):
     def isfile(self, path):
         return self.tree.isfile(path)
 
-    def walk(self, top, topdown=True, dvcignore=None):
-        for r, d, fs in self.tree.walk(top, topdown, self.dvcignore):
+    def walk(self, top, topdown=True, **kwargs):
+        for r, d, fs in self.tree.walk(top, topdown, dvcignore=self.dvcignore):
+            d[:], fs[:] = self.dvcignore(r, d, fs)
+
             yield r, d, fs
