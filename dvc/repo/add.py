@@ -37,7 +37,7 @@ def add(repo, targets, recursive=False, no_commit=False, fname=None):
                     "You are adding a large directory '{target}' recursively,"
                     " consider tracking it as a whole instead.\n"
                     "{purple}HINT:{nc} Remove the generated DVC-file and then"
-                    " run {cyan}dvc add {target}{nc}".format(
+                    " run `{cyan}dvc add {target}{nc}`".format(
                         purple=colorama.Fore.MAGENTA,
                         cyan=colorama.Fore.CYAN,
                         nc=colorama.Style.RESET_ALL,
