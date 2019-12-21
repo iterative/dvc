@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def _do_gc(typ, func, clist):
     removed = func(clist)
     if not removed:
-        logger.info("No unused {} cache to remove.".format(typ))
+        logger.info("No unused `{}` cache to remove.".format(typ))
 
 
 @locked

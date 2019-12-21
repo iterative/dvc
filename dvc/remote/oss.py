@@ -69,9 +69,9 @@ class RemoteOSS(RemoteBASE):
     def oss_service(self):
         import oss2
 
-        logger.debug("URL {}".format(self.path_info))
-        logger.debug("key id {}".format(self.key_id))
-        logger.debug("key secret {}".format(self.key_secret))
+        logger.debug("URL: {}".format(self.path_info))
+        logger.debug("key id: {}".format(self.key_id))
+        logger.debug("key secret: {}".format(self.key_secret))
 
         auth = oss2.Auth(self.key_id, self.key_secret)
         bucket = oss2.Bucket(auth, self.endpoint, self.path_info.bucket)

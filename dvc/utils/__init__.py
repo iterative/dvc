@@ -50,7 +50,9 @@ def file_md5(fname):
         no_progress_bar = True
         if size >= LARGE_FILE_SIZE:
             no_progress_bar = False
-            msg = "Computing md5 for a large file {}. This is only done once."
+            msg = (
+                "Computing md5 for a large file '{}'. This is only done once."
+            )
             logger.info(msg.format(relpath(fname)))
         name = relpath(fname)
 
