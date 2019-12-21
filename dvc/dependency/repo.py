@@ -114,6 +114,9 @@ class DependencyREPO(DependencyLOCAL):
                 self.def_path, self.def_repo[self.PARAM_URL]
             )
 
-    def update(self):
-        with self._make_repo(rev_lock=None) as repo:
+    def update(self, rev):
+        with self._make_repo(
+            rev=rev,
+            rev_lock=None,
+        ) as repo:
             self.def_repo[self.PARAM_REV_LOCK] = repo.scm.get_rev()

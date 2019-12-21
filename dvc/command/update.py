@@ -16,7 +16,10 @@ class CmdUpdate(CmdBase):
         ret = 0
         for target in self.args.targets:
             try:
-                self.repo.update(target)
+                self.repo.update(
+                    target,
+                    rev=self.args.rev,
+                )
             except DvcException:
                 logger.exception("failed to update '{}'.".format(target))
                 ret = 1
@@ -34,5 +37,8 @@ def add_parser(subparsers, parent_parser):
     )
     update_parser.add_argument(
         "targets", nargs="+", help="DVC-files to update."
+    )
+    update_parser.add_argument(
+        "--rev", nargs="?", help="DVC repository git revision."
     )
     update_parser.set_defaults(func=CmdUpdate)

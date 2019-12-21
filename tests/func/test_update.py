@@ -72,3 +72,4 @@ def test_update_import_url(repo_dir, dvc_repo):
     assert os.path.exists(dst)
     assert os.path.isfile(dst)
     assert filecmp.cmp(src, dst, shallow=False)
+
