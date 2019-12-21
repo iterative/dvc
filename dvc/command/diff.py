@@ -31,7 +31,7 @@ class CmdDiff(CmdBase):
     def _get_md5_string(sign, file_name, checksum):
         sample_msg = ""
         if file_name:
-            sample_msg = "'{}{}' with md5 {}\n"
+            sample_msg = "{}{} with md5 {}\n"
             sample_msg = sample_msg.format(sign, file_name, checksum)
         return sample_msg
 
