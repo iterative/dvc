@@ -81,7 +81,7 @@ def Choices(*choices):
         *choices: pass allowed values as arguments, or pass a list or
             tuple as a single argument
     """
-    return Any(*choices, msg="expected one of {}".format(",".join(choices)))
+    return Any(*choices, msg="expected one of {}".format(", ".join(choices)))
 
 
 class Config(object):  # pylint: disable=too-many-instance-attributes
