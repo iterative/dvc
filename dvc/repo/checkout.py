@@ -20,8 +20,10 @@ def _cleanup_unused_links(repo):
     repo.state.remove_unused_links(used)
 
 
-def get_all_files_numbers(stages):
-    return sum(stage.get_all_files_number() for stage in stages)
+def get_all_files_numbers(pairs):
+    return sum(
+        stage.get_all_files_number(filter_info) for stage, filter_info in pairs
+    )
 
 
 def _checkout(
@@ -34,36 +36,37 @@ def _checkout(
 ):
     from dvc.stage import StageFileDoesNotExistError, StageFileBadNameError
 
-    stages = set()
-
     if not targets:
         targets = [None]
         _cleanup_unused_links(self)
 
+    pairs = set()
     for target in targets:
         try:
-            new = self.collect(
-                target, with_deps=with_deps, recursive=recursive
+            pairs.update(
+                self.collect_granular(
+                    target, with_deps=with_deps, recursive=recursive
+                )
             )
-            stages.update(new)
         except (StageFileDoesNotExistError, StageFileBadNameError) as exc:
             if not target:
                 raise
             raise CheckoutErrorSuggestGit(target, exc)
 
-    total = get_all_files_numbers(stages)
+    total = get_all_files_numbers(pairs)
     if total == 0:
         logger.info("Nothing to do")
     failed = []
     with Tqdm(
         total=total, unit="file", desc="Checkout", disable=total == 0
     ) as pbar:
-        for stage in stages:
+        for stage, filter_info in pairs:
             failed.extend(
                 stage.checkout(
                     force=force,
                     progress_callback=pbar.update_desc,
                     relink=relink,
+                    filter_info=filter_info,
                 )
             )
     if failed:

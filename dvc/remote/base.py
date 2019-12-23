@@ -739,24 +739,36 @@ class RemoteBASE(object):
 
         return True
 
-    def _changed_dir_cache(self, checksum):
+    def _changed_dir_cache(self, checksum, path_info=None, filter_info=None):
         if self.changed_cache_file(checksum):
             return True
 
-        if not self._changed_unpacked_dir(checksum):
+        if not (path_info and filter_info) and not self._changed_unpacked_dir(
+            checksum
+        ):
             return False
 
         for entry in self.get_dir_cache(checksum):
             entry_checksum = entry[self.PARAM_CHECKSUM]
+
+            if path_info and filter_info:
+                entry_info = path_info / entry[self.PARAM_RELPATH]
+                if not entry_info.isin_or_eq(filter_info):
+                    continue
+
             if self.changed_cache_file(entry_checksum):
                 return True
 
-        self._update_unpacked_dir(checksum)
+        if not (path_info and filter_info):
+            self._update_unpacked_dir(checksum)
+
         return False
 
-    def changed_cache(self, checksum):
+    def changed_cache(self, checksum, path_info=None, filter_info=None):
         if self.is_dir_checksum(checksum):
-            return self._changed_dir_cache(checksum)
+            return self._changed_dir_cache(
+                checksum, path_info=path_info, filter_info=filter_info
+            )
         return self.changed_cache_file(checksum)
 
     def cache_exists(self, checksums, jobs=None, name=None):
@@ -849,7 +861,13 @@ class RemoteBASE(object):
         pass
 
     def _checkout_dir(
-        self, path_info, checksum, force, progress_callback=None, relink=False
+        self,
+        path_info,
+        checksum,
+        force,
+        progress_callback=None,
+        relink=False,
+        filter_info=None,
     ):
         # Create dir separately so that dir is created
         # even if there are no files in it
@@ -865,6 +883,9 @@ class RemoteBASE(object):
             entry_checksum = entry[self.PARAM_CHECKSUM]
             entry_cache_info = self.checksum_to_path_info(entry_checksum)
             entry_info = path_info / relative_path
+
+            if filter_info and not entry_info.isin_or_eq(filter_info):
+                continue
 
             entry_checksum_info = {self.PARAM_CHECKSUM: entry_checksum}
             if relink or self.changed(entry_info, entry_checksum_info):
@@ -896,6 +917,7 @@ class RemoteBASE(object):
         force=False,
         progress_callback=None,
         relink=False,
+        filter_info=None,
     ):
         if path_info.scheme not in ["local", self.scheme]:
             raise NotImplementedError
@@ -916,7 +938,9 @@ class RemoteBASE(object):
             logger.debug(msg.format(str(path_info)))
             skip = True
 
-        elif self.changed_cache(checksum):
+        elif self.changed_cache(
+            checksum, path_info=path_info, filter_info=filter_info
+        ):
             msg = "Cache '{}' not found. File '{}' won't be created."
             logger.warning(msg.format(checksum, str(path_info)))
             self.safe_remove(path_info, force=force)
@@ -925,15 +949,19 @@ class RemoteBASE(object):
         if failed or skip:
             if progress_callback:
                 progress_callback(
-                    str(path_info), self.get_files_number(checksum)
+                    str(path_info),
+                    self.get_files_number(
+                        self.path_info, checksum, filter_info
+                    ),
                 )
             return failed
 
         msg = "Checking out '{}' with cache '{}'."
         logger.debug(msg.format(str(path_info), checksum))
 
-        self._checkout(path_info, checksum, force, progress_callback, relink)
-        return None
+        self._checkout(
+            path_info, checksum, force, progress_callback, relink, filter_info
+        )
 
     def _checkout(
         self,
@@ -942,23 +970,32 @@ class RemoteBASE(object):
         force=False,
         progress_callback=None,
         relink=False,
+        filter_info=None,
     ):
         if not self.is_dir_checksum(checksum):
             return self._checkout_file(
                 path_info, checksum, force, progress_callback=progress_callback
             )
         return self._checkout_dir(
-            path_info, checksum, force, progress_callback, relink
+            path_info, checksum, force, progress_callback, relink, filter_info
         )
 
-    def get_files_number(self, checksum):
+    def get_files_number(self, path_info, checksum, filter_info):
+        from funcy.py3 import ilen
+
         if not checksum:
             return 0
 
-        if self.is_dir_checksum(checksum):
+        if not self.is_dir_checksum(checksum):
+            return 1
+
+        if not filter_info:
             return len(self.get_dir_cache(checksum))
 
-        return 1
+        return ilen(
+            filter_info.isin_or_eq(path_info / entry[self.PARAM_CHECKSUM])
+            for entry in self.get_dir_cache(checksum)
+        )
 
     @staticmethod
     def unprotect(path_info):
