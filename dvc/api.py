@@ -111,8 +111,8 @@ def summon(name, fname=None, args=None, repo=None, rev=None):
 
         with open(summon_path, "r") as fobj:
             objects = ruamel.yaml.safe_load(fobj.read())["objects"]
-            obj = next(x for x in objects if x.get("name") == name)
-            _summon = obj.get("summon")
+            obj = next(x for x in objects if x["name"] == name)
+            _summon = obj["summon"]
 
         outs = [
             _repo.find_out_by_relpath(dep) for dep in _summon.get("deps", ())
@@ -142,11 +142,14 @@ def _chdir_and_syspath(path):
     #   * Import will pollute sys.modules
     #   * Weird errors if there is a name clash within sys.modules
     old_dir = os.path.abspath(os.curdir)
-    os.chdir(path)
-    sys.path.insert(0, path)
-    yield
-    sys.path.pop(0)
-    os.chdir(old_dir)
+
+    try:
+        os.chdir(path)
+        sys.path.insert(0, path)
+        yield
+    finally:
+        sys.path.pop(0)
+        os.chdir(old_dir)
 
 
 def _import_string(import_name, silent=False):
