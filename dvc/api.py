@@ -2,6 +2,7 @@ import importlib
 import os
 import sys
 from contextlib import contextmanager
+from voluptuous import Schema
 
 
 try:
@@ -14,6 +15,26 @@ import ruamel.yaml
 from dvc.utils.compat import urlparse, builtin_str
 from dvc.repo import Repo
 from dvc.external_repo import external_repo
+
+
+summon_schema = Schema(
+    {
+        "objects": [
+            {
+                "name": str,
+                "description": str,
+                "paper": str,
+                "metrics": dict,
+                "summon": {
+                    "type": "python",
+                    "call": str,
+                    "args": dict,
+                    "deps": [str]
+                },
+            }
+        ],
+    }
+)
 
 
 def get_url(path, repo=None, rev=None, remote=None):
