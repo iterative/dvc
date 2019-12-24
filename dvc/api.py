@@ -110,7 +110,7 @@ def summon(name, fname=None, args=None, repo=None, rev=None):
         summon_path = os.path.join(_repo.root_dir, fname)
 
         with open(summon_path, "r") as fobj:
-            objects = ruamel.yaml.safe_load(fobj.read()).get("objects")
+            objects = ruamel.yaml.safe_load(fobj.read())["objects"]
             obj = next(x for x in objects if x.get("name") == name)
             _summon = obj.get("summon")
 
@@ -124,7 +124,7 @@ def summon(name, fname=None, args=None, repo=None, rev=None):
                 out.checkout()
 
         with _chdir_and_syspath(_repo.root_dir):
-            call = _import_string(_summon.get("call"))
+            call = _import_string(_summon["call"])
             _args = copy.deepcopy(_summon["args"])
 
             if args:
