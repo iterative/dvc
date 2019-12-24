@@ -7,10 +7,12 @@ import pytest
 from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
 from dvc.scm.tree import WorkingTree
-from dvc.utils import walk_files
+from dvc.utils import walk_files, relpath
 from dvc.utils.compat import fspath
 from dvc.utils.fs import get_mtime_and_size
+from dvc.remote import RemoteLOCAL
 
+from tests.dir_helpers import TmpDir
 from tests.utils import to_posixpath
 
 
@@ -118,3 +120,28 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
 
 def _files_set(root, dvcignore):
     return {to_posixpath(f) for f in walk_files(root, dvcignore)}
+
+
+def test_match_nested(tmp_dir, dvc):
+    tmp_dir.gen(
+        {
+            ".dvcignore": "*.backup\ntmp",
+            "foo": "foo",
+            "tmp": "...",
+            "dir": {"x.backup": "x backup", "tmp": "content"},
+        }
+    )
+
+    remote = RemoteLOCAL(dvc, {})
+    result = {fspath(f) for f in remote.walk_files(".")}
+    assert result == {".dvcignore", "foo"}
+
+
+def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
+    tmp_dir.gen(".dvcignore", "*.backup\ntmp")
+    ext_dir = TmpDir(tmp_path_factory.mktemp("external_dir"))
+    ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
+
+    remote = RemoteLOCAL(dvc, {})
+    result = {relpath(f, ext_dir) for f in remote.walk_files(ext_dir)}
+    assert result == {"y.backup", "tmp"}
