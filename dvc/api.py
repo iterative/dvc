@@ -1,6 +1,7 @@
 import importlib
 import os
 import sys
+import copy
 from contextlib import contextmanager
 from voluptuous import Schema
 
@@ -124,11 +125,12 @@ def summon(name, fname=None, args=None, repo=None, rev=None):
 
         with _chdir_and_syspath(_repo.root_dir):
             call = _import_string(_summon.get("call"))
+            _args = copy.deepcopy(_summon["args"])
 
             if args:
-                _summon.get("args").update(args)
+                _args.update(args)
 
-            result = call(**_summon.get("args"))
+            result = call(**_args)
 
         return result
 
