@@ -148,7 +148,6 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
         }
     )
 
-    # XXX: Chdir because `stage.create` defaults to `wdir = os.curdir`
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
 

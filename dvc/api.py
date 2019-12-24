@@ -78,6 +78,7 @@ def _make_repo(repo_url, rev=None):
 
 
 def summon(name, fname="dvcsummon.yaml", args=None, repo=None, rev=None):
+    # TODO: Write a meaningful docstring about `summon`
     with _make_repo(repo, rev=rev) as _repo:
 
         def pull_dependencies(deps):
