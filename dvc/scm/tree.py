@@ -73,7 +73,7 @@ class WorkingTree(BaseTree):
             raise e
 
         for root, dirs, files in dvc_walk(
-            os.path.abspath(top), dvcignore, topdown=topdown, onerror=onerror
+            top, dvcignore, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
 

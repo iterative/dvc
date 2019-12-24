@@ -129,13 +129,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         tree = CleanTree(WorkingTree(self._root_dir))
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir")),
-            [
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                )
-            ],
+            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
         )
 
 
@@ -145,28 +139,14 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         self.assertWalkEqual(
             tree.walk("."),
             [
-                (
-                    self._root_dir,
-                    ["data_dir"],
-                    ["bar", "тест", "code.py", "foo"],
-                ),
-                (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                ),
+                (".", ["data_dir"], ["bar", "тест", "code.py", "foo"]),
+                (join("data_dir"), ["data_sub_dir"], ["data"]),
+                (join("data_dir", "data_sub_dir"), [], ["data_sub"]),
             ],
         )
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir")),
-            [
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                )
-            ],
+            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
         )
 
     def test_branch(self):
