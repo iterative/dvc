@@ -10,11 +10,30 @@ except ImportError:
     from contextlib import GeneratorContextManager as GCM
 
 import ruamel.yaml
-from voluptuous import Schema, Invalid
+from voluptuous import Schema, Optional, Invalid, ALLOW_EXTRA
 
 from dvc.utils.compat import urlparse, builtin_str, FileNotFoundError
 from dvc.repo import Repo
 from dvc.external_repo import external_repo
+
+
+summon_schema = Schema(
+    {
+        "objects": [
+            {
+                "name": str,
+                "summon": {
+                    "type": "python",
+                    "call": str,
+                    Optional("args"): dict,
+                    Optional("deps"): [str],
+                },
+            }
+        ]
+    },
+    required=True,
+    extra=ALLOW_EXTRA
+)
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -109,34 +128,15 @@ def _get_object_from_summoners_file(name, path):
     Given a summonable object's name, search for it on the given file
     and bring it to life.
     """
-    schema = Schema(
-        [
-            {
-                "name": str,
-                "description": str,
-                "paper": str,
-                "metrics": dict,
-                "summon": {
-                    "type": "python",
-                    "call": str,
-                    "args": dict,  # XXX: Optional
-                    "deps": [str],  # XXX: Optional
-                },
-            }
-        ]
-    )
-
     with open(path, "r") as fobj:
         try:
-            objects = ruamel.yaml.safe_load(fobj.read())["objects"]
-            objects = schema(objects)
+            content = summon_schema(ruamel.yaml.safe_load(fobj.read()))
+            objects = content["objects"]
             return next(x for x in objects if x["name"] == name)
         except FileNotFoundError:
             pass  # XXX: No such YAML file with path: '<path>'
         except ruamel.yaml.ScannerError:
             pass  # XXX: Failed to parse YAML correctly
-        except KeyError:
-            pass  # XXX: YAML file doesn't include the "objects" keyword
         except Invalid:
             pass  # XXX: YAML file dosen't match with the schema
         except StopIteration:
