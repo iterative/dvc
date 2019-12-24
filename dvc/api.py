@@ -3,8 +3,6 @@ import os
 import sys
 import copy
 from contextlib import contextmanager
-from voluptuous import Schema
-
 
 try:
     from contextlib import _GeneratorContextManager as GCM
@@ -12,30 +10,11 @@ except ImportError:
     from contextlib import GeneratorContextManager as GCM
 
 import ruamel.yaml
+from voluptuous import Schema, Invalid
 
-from dvc.utils.compat import urlparse, builtin_str
+from dvc.utils.compat import urlparse, builtin_str, FileNotFoundError
 from dvc.repo import Repo
 from dvc.external_repo import external_repo
-
-
-summon_schema = Schema(
-    {
-        "objects": [
-            {
-                "name": str,
-                "description": str,
-                "paper": str,
-                "metrics": dict,
-                "summon": {
-                    "type": "python",
-                    "call": str,
-                    "args": dict,
-                    "deps": [str]
-                },
-            }
-        ],
-    }
-)
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -98,58 +77,86 @@ def _make_repo(repo_url, rev=None):
             yield repo
 
 
-def summon(name, fname=None, args=None, repo=None, rev=None):
-    # 1. Read dvcsummon.yaml
-    # 2. Pull dependencies
-    # 3. Get the call and parameters
-    # 4. Invoke the call with the given parameters
-    # 5. Return the result
-
+def summon(name, fname="dvcsummon.yaml", args=None, repo=None, rev=None):
     with _make_repo(repo, rev=rev) as _repo:
-        fname = fname or "dvcsummon.yaml"
-        summon_path = os.path.join(_repo.root_dir, fname)
 
-        with open(summon_path, "r") as fobj:
-            objects = ruamel.yaml.safe_load(fobj.read())["objects"]
-            obj = next(x for x in objects if x["name"] == name)
-            _summon = obj["summon"]
+        def pull_dependencies(deps):
+            if not deps:
+                return
 
-        outs = [
-            _repo.find_out_by_relpath(dep) for dep in _summon.get("deps", ())
+            outs = [_repo.find_out_by_relpath(dep) for dep in deps]
+
+            with _repo.state:
+                for out in outs:
+                    _repo.cloud.pull(out.get_used_cache())
+                    out.checkout()
+
+        path = os.path.join(_repo.root_dir, fname)
+        obj = _get_object_from_summoners_file(name, path)
+        info = obj["summon"]
+
+        pull_dependencies(info.get("deps"))
+
+        _args = copy.deepcopy(info.get("args", {}))
+        _args.update(args or {})
+
+        return _invoke_method(info["call"], _args, path=_repo.root_dir)
+
+
+def _get_object_from_summoners_file(name, path):
+    """
+    Given a summonable object's name, search for it on the given file
+    and bring it to life.
+    """
+    schema = Schema(
+        [
+            {
+                "name": str,
+                "description": str,
+                "paper": str,
+                "metrics": dict,
+                "summon": {
+                    "type": "python",
+                    "call": str,
+                    "args": dict,  # XXX: Optional
+                    "deps": [str],  # XXX: Optional
+                },
+            }
         ]
+    )
 
-        with _repo.state:
-            for out in outs:
-                _repo.cloud.pull(out.get_used_cache())
-                out.checkout()
+    with open(path, "r") as fobj:
+        try:
+            objects = ruamel.yaml.safe_load(fobj.read())["objects"]
+            objects = schema(objects)
+            return next(x for x in objects if x["name"] == name)
+        except FileNotFoundError:
+            pass  # XXX: No such YAML file with path: '<path>'
+        except ruamel.yaml.ScannerError:
+            pass  # XXX: Failed to parse YAML correctly
+        except KeyError:
+            pass  # XXX: YAML file doesn't include the "objects" keyword
+        except Invalid:
+            pass  # XXX: YAML file dosen't match with the schema
+        except StopIteration:
+            pass  # XXX: No such object with name: '<name>'
 
-        with _chdir_and_syspath(_repo.root_dir):
-            call = _import_string(_summon["call"])
-            _args = copy.deepcopy(_summon["args"])
 
-            if args:
-                _args.update(args)
-
-            result = call(**_args)
-
-        return result
-
-
-@contextmanager
-def _chdir_and_syspath(path):
+def _invoke_method(call, args, path):
     # XXX: Some issues with this approach:
     #   * Not thread safe
     #   * Import will pollute sys.modules
     #   * Weird errors if there is a name clash within sys.modules
-    old_dir = os.path.abspath(os.curdir)
+    cwd = os.path.abspath(os.curdir)
 
     try:
         os.chdir(path)
         sys.path.insert(0, path)
-        yield
+        method = _import_string(call)
+        return method(**args)
     finally:
-        sys.path.pop(0)
-        os.chdir(old_dir)
+        os.chdir(cwd)
+        sys.path.pop()
 
 
 def _import_string(import_name, silent=False):
