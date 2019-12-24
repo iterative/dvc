@@ -5,9 +5,8 @@ import pytest
 from mock import patch
 
 import dvc
-from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
-from dvc.scm.tree import WorkingTree
+from dvc.scm.tree import WorkingTree, CleanTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.compat import str
@@ -23,9 +22,9 @@ from tests.utils import spy
 
 class TestMtimeAndSize(TestDir):
     def test(self):
-        dvcignore = DvcIgnoreFilter(WorkingTree(self.root_dir))
-        file_time, file_size = get_mtime_and_size(self.DATA, dvcignore)
-        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, dvcignore)
+        tree = CleanTree(WorkingTree(self.root_dir))
+        file_time, file_size = get_mtime_and_size(self.DATA, tree)
+        dir_time, dir_size = get_mtime_and_size(self.DATA_DIR, tree)
 
         actual_file_size = os.path.getsize(self.DATA)
         actual_dir_size = os.path.getsize(self.DATA) + os.path.getsize(
@@ -127,9 +126,9 @@ def test_get_inode(repo_dir):
 def test_path_object_and_str_are_valid_types_get_mtime_and_size(
     path, repo_dir
 ):
-    dvcignore = DvcIgnoreFilter(WorkingTree(repo_dir.root_dir))
-    time, size = get_mtime_and_size(path, dvcignore)
-    object_time, object_size = get_mtime_and_size(PathInfo(path), dvcignore)
+    tree = CleanTree(WorkingTree(repo_dir.root_dir))
+    time, size = get_mtime_and_size(path, tree)
+    object_time, object_size = get_mtime_and_size(PathInfo(path), tree)
     assert time == object_time
     assert size == object_size
 

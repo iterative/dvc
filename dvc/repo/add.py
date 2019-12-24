@@ -12,7 +12,6 @@ from dvc.progress import Tqdm
 from dvc.repo.scm_context import scm_context
 from dvc.stage import Stage
 from dvc.utils import LARGE_DIR_SIZE
-from dvc.utils import walk_files
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +67,7 @@ def _find_all_targets(repo, target, recursive):
     if os.path.isdir(target) and recursive:
         return [
             fname
-            for fname in walk_files(target, repo.tree.dvcignore)
+            for fname in repo.tree.walk_files(target)
             if not repo.is_dvc_internal(fname)
             if not Stage.is_stage_file(fname)
             if not repo.scm.belongs_to_scm(fname)

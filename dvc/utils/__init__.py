@@ -305,8 +305,8 @@ def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
         yield root, dirs, files
 
 
-def walk_files(directory, dvcignore):
-    for root, _, files in dvc_walk(directory, dvcignore):
+def walk_files(directory):
+    for root, _, files in os.walk(fspath(directory)):
         for f in files:
             yield os.path.join(root, f)
 

@@ -142,7 +142,7 @@ def test_download_dir(remote, tmpdir):
     remote.download(remote.path_info / "data", to_info)
     assert os.path.isdir(path)
     data_dir = tmpdir / "data"
-    assert len(list(walk_files(path, None))) == 7
+    assert len(list(walk_files(path))) == 7
     assert (data_dir / "alice").read_text(encoding="utf-8") == "alice"
     assert (data_dir / "alpha").read_text(encoding="utf-8") == "alpha"
     assert (data_dir / "subdir-file.txt").read_text(
