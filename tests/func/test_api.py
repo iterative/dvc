@@ -137,7 +137,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
         "objects": [
             {
                 "name": "sum",
-                "meta": { "description": "Add <x> to <number>" },
+                "meta": {"description": "Add <x> to <number>"},
                 "summon": {
                     "type": "python",
                     "call": "calculator.add_to_num",
@@ -151,7 +151,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     different_objects = copy.deepcopy(objects)
     different_objects["objects"][0]["summon"]["args"]["x"] = 100
 
-    dup_objects= copy.deepcopy(objects)
+    dup_objects = copy.deepcopy(objects)
     dup_objects["objects"] *= 2
 
     dvcsummon_yaml = ruamel.yaml.dump(objects)
@@ -179,7 +179,9 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
     assert api.summon("sum", repo=repo_url) == 101
     assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
-    assert api.summon("sum", repo=repo_url, summon_file="different.yaml") == 200
+    assert (
+        api.summon("sum", repo=repo_url, summon_file="different.yaml") == 200
+    )
 
     try:
         api.summon("sum", repo=repo_url, summon_file="missing.yaml")
@@ -193,7 +195,9 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     with pytest.raises(SummonError, match=r"No object with name 'missing'"):
         api.summon("missing", repo=repo_url)
 
-    with pytest.raises(SummonError, match=r"More than one object with name 'sum'"):
+    with pytest.raises(
+        SummonError, match=r"More than one object with name 'sum'"
+    ):
         api.summon("sum", repo=repo_url, summon_file="dup.yaml")
 
     with pytest.raises(SummonError, match=r"extra keys not allowed"):

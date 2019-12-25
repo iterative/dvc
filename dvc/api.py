@@ -32,7 +32,7 @@ SUMMON_SCHEMA = Schema(
                 },
             }
         ]
-    },
+    }
 )
 
 
@@ -106,7 +106,7 @@ def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
         except SummonError as exc:
             raise SummonError(
                 str(exc) + " at '{}' in '{}'".format(summon_file, repo),
-                cause=exc.cause
+                cause=exc.cause,
             )
 
         _pull_dependencies(_repo, info.get("deps"))
@@ -132,7 +132,7 @@ def _get_object_from_summon_file(name, path):
         elif len(objects) >= 2:
             raise SummonError(
                 "More than one object with name '{}'".format(name)
-             )
+            )
 
         return objects[0]
 
