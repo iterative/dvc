@@ -33,7 +33,7 @@ summon_schema = Schema(
         ]
     },
     required=True,
-    extra=ALLOW_EXTRA
+    extra=ALLOW_EXTRA,
 )
 
 
@@ -134,7 +134,7 @@ def _get_object_from_summoners_file(name, path):
             content = summon_schema(ruamel.yaml.safe_load(fobj.read()))
             objects = content["objects"]
             return next(x for x in objects if x["name"] == name)
-    except FileMissingError as exc:
+    except FileMissingError:
         # XXX: Prints ugly absolute path.
         raise SummonError("No such YAML file with path: '{}'".format(path))
     except ruamel.yaml.YAMLError as exc:
