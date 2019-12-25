@@ -9,12 +9,13 @@ try:
 except ImportError:
     from contextlib import GeneratorContextManager as GCM
 
+from dvc.utils.compat import urlparse, builtin_str
+
 import ruamel.yaml
 from voluptuous import Schema, Required, Invalid
 
-from dvc.utils.compat import urlparse, builtin_str
 from dvc.repo import Repo
-from dvc.exceptions import SummonError, FileMissingError
+from dvc.exceptions import DvcException, FileMissingError
 from dvc.external_repo import external_repo
 
 
@@ -34,6 +35,10 @@ SUMMON_SCHEMA = Schema(
         ]
     }
 )
+
+
+class SummonError(DvcException):
+    pass
 
 
 def get_url(path, repo=None, rev=None, remote=None):
@@ -109,7 +114,7 @@ def summon(name, repo=None, rev=None, summon_file="dvcsummon.yaml", args=None):
                 cause=exc.cause,
             )
 
-        _pull_dependencies(_repo, info.get("deps"))
+        _pull_dependencies(_repo, info.get("deps", []))
 
         _args = copy.deepcopy(info.get("args", {}))
         _args.update(args or {})

@@ -353,7 +353,3 @@ class PathMissingError(DvcException):
             " neighther as an output nor a git-handled file."
         )
         super(PathMissingError, self).__init__(msg.format(path, repo))
-
-
-class SummonError(DvcException):
-    pass

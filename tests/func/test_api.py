@@ -8,12 +8,12 @@ import ruamel.yaml
 import pytest
 
 from dvc import api
+from dvc.api import SummonError
 from dvc.exceptions import FileMissingError
 from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import fspath
-from dvc.exceptions import SummonError
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 
@@ -148,27 +148,21 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
         ]
     }
 
-    different_objects = copy.deepcopy(objects)
-    different_objects["objects"][0]["summon"]["args"]["x"] = 100
+    other_objects = copy.deepcopy(objects)
+    other_objects["objects"][0]["summon"]["args"]["x"] = 100
 
     dup_objects = copy.deepcopy(objects)
     dup_objects["objects"] *= 2
-
-    dvcsummon_yaml = ruamel.yaml.dump(objects)
-    different_yaml = ruamel.yaml.dump(different_objects)
-    dup_yaml = ruamel.yaml.dump(dup_objects)
-    invalid_yaml = ruamel.yaml.dump({"name": "sum"})
-    not_yaml = "a: - this is not a valid YAML file"
 
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
 
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
-        erepo_dir.scm_gen("dvcsummon.yaml", dvcsummon_yaml)
-        erepo_dir.scm_gen("different.yaml", different_yaml)
-        erepo_dir.scm_gen("dup.yaml", dup_yaml)
-        erepo_dir.scm_gen("invalid.yaml", invalid_yaml)
-        erepo_dir.scm_gen("not_yaml.yaml", not_yaml)
+        erepo_dir.scm_gen("dvcsummon.yaml", ruamel.yaml.dump(objects))
+        erepo_dir.scm_gen("other.yaml", ruamel.yaml.dump(other_objects))
+        erepo_dir.scm_gen("dup.yaml", ruamel.yaml.dump(dup_objects))
+        erepo_dir.scm_gen("invalid.yaml", ruamel.yaml.dump({"name": "sum"}))
+        erepo_dir.scm_gen("not_yaml.yaml", "a: - this is not a YAML file")
         erepo_dir.scm_gen(
             "calculator.py",
             "def add_to_num(x): return x + int(open('number').read())",
@@ -179,9 +173,7 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
     assert api.summon("sum", repo=repo_url) == 101
     assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
-    assert (
-        api.summon("sum", repo=repo_url, summon_file="different.yaml") == 200
-    )
+    assert api.summon("sum", repo=repo_url, summon_file="other.yaml") == 200
 
     try:
         api.summon("sum", repo=repo_url, summon_file="missing.yaml")
