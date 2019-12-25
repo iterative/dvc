@@ -12,8 +12,9 @@ except ImportError:
 import ruamel.yaml
 from voluptuous import Schema, Optional, Invalid, ALLOW_EXTRA
 
-from dvc.utils.compat import urlparse, builtin_str, FileNotFoundError
+from dvc.utils.compat import urlparse, builtin_str
 from dvc.repo import Repo
+from dvc.exceptions import SummonError, FileMissingError
 from dvc.external_repo import external_repo
 
 
@@ -128,19 +129,21 @@ def _get_object_from_summoners_file(name, path):
     Given a summonable object's name, search for it on the given file
     and bring it to life.
     """
-    with open(path, "r") as fobj:
-        try:
+    try:
+        with open(path, "r") as fobj:
             content = summon_schema(ruamel.yaml.safe_load(fobj.read()))
             objects = content["objects"]
             return next(x for x in objects if x["name"] == name)
-        except FileNotFoundError:
-            pass  # XXX: No such YAML file with path: '<path>'
-        except ruamel.yaml.ScannerError:
-            pass  # XXX: Failed to parse YAML correctly
-        except Invalid:
-            pass  # XXX: YAML file dosen't match with the schema
-        except StopIteration:
-            pass  # XXX: No such object with name: '<name>'
+    except FileMissingError as exc:
+        # XXX: Prints ugly absolute path.
+        raise SummonError("No such YAML file with path: '{}'".format(path))
+    except ruamel.yaml.YAMLError as exc:
+        raise SummonError("Failed to parse YAML correctly", exc)
+    except Invalid as exc:
+        # XXX: Doesn't point out the error.
+        raise SummonError("YAML file dosen't match with the schema", exc)
+    except StopIteration:
+        raise SummonError("No such object with name '{}'".format(name))
 
 
 def _invoke_method(call, args, path):

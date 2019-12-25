@@ -13,6 +13,7 @@ from dvc.main import main
 from dvc.path_info import URLInfo
 from dvc.remote.config import RemoteConfig
 from dvc.utils.compat import fspath
+from dvc.exceptions import SummonError
 from tests.remotes import Azure, GCP, HDFS, Local, OSS, S3, SSH
 
 
@@ -151,14 +152,18 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
     different_objects["objects"][0]["summon"]["args"]["x"] = 100
 
     dvcsummon_yaml = ruamel.yaml.dump(objects)
-    non_canon_yaml = ruamel.yaml.dump(different_objects)
+    different_yaml = ruamel.yaml.dump(different_objects)
+    invalid_yaml = ruamel.yaml.dump({"name": "sum"})
+    not_yaml = "a: - this is not a valid YAML file"
 
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
 
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
         erepo_dir.scm_gen("dvcsummon.yaml", dvcsummon_yaml)
-        erepo_dir.scm_gen("non-canon.yaml", non_canon_yaml)
+        erepo_dir.scm_gen("different.yaml", different_yaml)
+        erepo_dir.scm_gen("invalid.yaml", invalid_yaml)
+        erepo_dir.scm_gen("not_yaml.yaml", not_yaml)
         erepo_dir.scm_gen(
             "calculator.py",
             "def add_to_num(x): return x + int(open('number').read())",
@@ -169,4 +174,16 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
     assert api.summon("sum", repo=repo_url) == 101
     assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
-    assert api.summon("sum", repo=repo_url, fname="non-canon.yaml") == 200
+    assert api.summon("sum", repo=repo_url, fname="different.yaml") == 200
+
+    with pytest.raises(SummonError):
+        api.summon("sum", repo=repo_url, fname="not-existent-file.yaml")
+
+    with pytest.raises(SummonError):
+        api.summon("non-existent", repo=repo_url)
+
+    with pytest.raises(SummonError):
+        api.summon("sum", repo=repo_url, fname="invalid.yaml")
+
+    with pytest.raises(SummonError):
+        api.summon("sum", repo=repo_url, fname="not_yaml.yaml")
