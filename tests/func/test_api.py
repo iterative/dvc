@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import os
 import shutil
+import copy
 
 import ruamel.yaml
 import pytest
@@ -131,29 +132,33 @@ def test_open_not_cached(dvc):
 
 
 def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
-    dvcsummon_yaml = ruamel.yaml.dump(
-        {
-            "objects": [
-                {
-                    "name": "sum",
-                    "description": "Add <x> to <number>",
-                    "summon": {
-                        "type": "python",
-                        "call": "calculator.add_to_num",
-                        "args": {"x": 1},
-                        "deps": ["number"],
-                    },
-                }
-            ]
-        }
-    )
+    objects = {
+        "objects": [
+            {
+                "name": "sum",
+                "description": "Add <x> to <number>",
+                "summon": {
+                    "type": "python",
+                    "call": "calculator.add_to_num",
+                    "args": {"x": 1},
+                    "deps": ["number"],
+                },
+            }
+        ]
+    }
+
+    different_objects = copy.deepcopy(objects)
+    different_objects["objects"][0]["summon"]["args"]["x"] = 100
+
+    dvcsummon_yaml = ruamel.yaml.dump(objects)
+    non_canon_yaml = ruamel.yaml.dump(different_objects)
 
     with monkeypatch.context() as m:
         m.chdir(fspath(erepo_dir))
 
         erepo_dir.dvc_gen("number", "100", commit="Add number.dvc")
         erepo_dir.scm_gen("dvcsummon.yaml", dvcsummon_yaml)
-        erepo_dir.scm_gen("non-canon.yaml", dvcsummon_yaml)
+        erepo_dir.scm_gen("non-canon.yaml", non_canon_yaml)
         erepo_dir.scm_gen(
             "calculator.py",
             "def add_to_num(x): return x + int(open('number').read())",
@@ -164,4 +169,4 @@ def test_summon(tmp_dir, erepo_dir, dvc, monkeypatch):
 
     assert api.summon("sum", repo=repo_url) == 101
     assert api.summon("sum", repo=repo_url, args={"x": 2}) == 102
-    assert api.summon("sum", repo=repo_url, fname="non-canon.yaml") == 101
+    assert api.summon("sum", repo=repo_url, fname="non-canon.yaml") == 200
