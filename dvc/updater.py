@@ -124,12 +124,13 @@ class Updater(object):  # pragma: no cover
 
     def _get_update_instructions(self):
         instructions = {
-            "pip": "Run {yellow}pip{reset} install dvc {blue}--upgrade{reset}",
-            "rpm": "Run {yellow}yum{reset} update dvc",
-            "brew": "Run {yellow}brew{reset} upgrade dvc",
+            "pip": "Run `{yellow}pip{reset} install dvc "
+            "{blue}--upgrade{reset}`",
+            "rpm": "Run `{yellow}yum{reset} update dvc`",
+            "brew": "Run `{yellow}brew{reset} upgrade dvc`",
             "deb": (
-                "Run {yellow}apt-get{reset} install"
-                " {blue}--only-upgrade{reset} dvc"
+                "Run `{yellow}apt-get{reset} install"
+                " {blue}--only-upgrade{reset} dvc`"
             ),
             "binary": (
                 "To upgrade follow these steps:\n"
@@ -137,12 +138,11 @@ class Updater(object):  # pragma: no cover
                 "2. Go to {blue}https://dvc.org{reset}\n"
                 "3. Download and install new binary"
             ),
-            "conda": "Run {yellow}conda{reset} update dvc",
-            "choco": "Run {yellow}choco{reset} upgrade dvc",
+            "conda": "Run `{yellow}conda{reset} update dvc`",
+            "choco": "Run `{yellow}choco{reset} upgrade dvc`",
             None: (
-                "Find the latest release at\n{blue}"
-                "https://github.com/iterative/dvc/releases/latest"
-                "{reset}"
+                "Find the latest release at\n"
+                "{blue}https://github.com/iterative/dvc/releases/latest{reset}"
             ),
         }
 

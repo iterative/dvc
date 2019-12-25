@@ -116,7 +116,7 @@ class MissingDep(DvcException):
         else:
             dep = "dependency"
 
-        msg = "missing {}: {}".format(dep, ", ".join(map(str, deps)))
+        msg = "missing '{}': {}".format(dep, ", ".join(map(str, deps)))
         super(MissingDep, self).__init__(msg)
 
 
@@ -128,7 +128,7 @@ class MissingDataSource(DvcException):
         if len(missing_files) > 1:
             source += "s"
 
-        msg = "missing data {}: {}".format(source, ", ".join(missing_files))
+        msg = "missing data '{}': {}".format(source, ", ".join(missing_files))
         super(MissingDataSource, self).__init__(msg)
 
 

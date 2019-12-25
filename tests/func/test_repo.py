@@ -1,71 +1,73 @@
-from dvc.ignore import DvcIgnore
-from dvc.main import main
+import os
+
+from dvc.scm.git.tree import GitTree
+from dvc.cache import Cache
 from dvc.repo import Repo
-from dvc.scm.git import GitTree
-from dvc.scm.tree import WorkingTree
-from dvc.stage import Stage
-from tests.basic_env import TestDvcGit
+from dvc.system import System
+from dvc.utils.compat import fspath
 
 
-class TestCollect(TestDvcGit):
-    def setUp(self):
-        super(TestCollect, self).setUp()
-        self.dvc.add(self.FOO)
-        self.dvc.run(
-            deps=[self.FOO],
-            outs=[self.BAR],
-            cmd="python code.py {} {}".format(self.FOO, self.BAR),
+def test_destroy(tmp_dir, dvc):
+    dvc.config.set("cache", "type", "symlink")
+    dvc.cache = Cache(dvc)
+
+    tmp_dir.dvc_gen("file", "text")
+    tmp_dir.dvc_gen({"dir": {"file": "lorem", "subdir/file": "ipsum"}})
+
+    dvc.destroy()
+
+    # Remove all the files related to DVC
+    for path in [".dvc", "file.dvc", "dir.dvc"]:
+        assert not (tmp_dir / path).exists()
+
+    # Leave the rest of the files
+    for path in ["file", "dir/file", "dir/subdir/file"]:
+        assert (tmp_dir / path).is_file()
+
+    # Make sure that data was unprotected after `destroy`
+    for path in ["file", "dir", "dir/file", "dir/subdir", "dir/subdir/file"]:
+        assert not System.is_symlink(fspath(tmp_dir / path))
+
+
+def test_collect(tmp_dir, scm, dvc, run_copy):
+    def collect_outs(*args, **kwargs):
+        return set(
+            str(out.path_info)
+            for stage in dvc.collect(*args, **kwargs)
+            for out in stage.outs
         )
-        self.dvc.scm.add([".gitignore", self.FOO + ".dvc", self.BAR + ".dvc"])
-        self.dvc.scm.commit("foo.dvc and bar.dvc")
-        self.dvc.scm.checkout("new_branch", True)
-        self.dvc.run(
-            deps=[self.BAR],
-            outs=["buzz"],
-            cmd="python code.py {} {}".format(self.BAR, "buzz"),
-        )
-        self.dvc.scm.add([".gitignore", "buzz.dvc"])
-        self.dvc.scm.commit("add buzz")
-        self.dvc.scm.checkout("master")
 
-    def _check(self, branch, target, with_deps, expected):
-        if branch:
-            self.dvc.tree = GitTree(self.dvc.scm.repo, branch)
-        else:
-            self.dvc.tree = WorkingTree()
-        result = self.dvc.collect(target + ".dvc", with_deps=with_deps)
-        self.assertEqual([[str(j) for j in i.outs] for i in result], expected)
-        return result
+    tmp_dir.dvc_gen("foo", "foo")
+    run_copy("foo", "bar")
+    scm.add([".gitignore", "foo.dvc", "bar.dvc"])
+    scm.commit("Add foo and bar")
 
-    def test(self):
-        self._check("", self.BAR, True, [[self.FOO], [self.BAR]])
-        self._check("master", self.BAR, True, [[self.FOO], [self.BAR]])
-        self._check(
-            "new_branch", "buzz", True, [[self.FOO], [self.BAR], ["buzz"]]
-        )
-        result = self._check("new_branch", "buzz", False, [["buzz"]])
-        self.assertEqual([str(i) for i in result[0].deps], ["bar"])
+    scm.checkout("new-branch", create_new=True)
+
+    run_copy("bar", "buzz")
+    scm.add([".gitignore", "buzz.dvc"])
+    scm.commit("Add buzz")
+
+    assert collect_outs("bar.dvc", with_deps=True) == {"foo", "bar"}
+
+    dvc.tree = GitTree(scm.repo, "new-branch")
+
+    assert collect_outs("buzz.dvc", with_deps=True) == {"foo", "bar", "buzz"}
+    assert collect_outs("buzz.dvc", with_deps=False) == {"buzz"}
 
 
-class TestIgnore(TestDvcGit):
-    def _stage_name(self, file):
-        return file + Stage.STAGE_FILE_SUFFIX
+def test_stages(tmp_dir, dvc):
+    def stages():
+        return set(stage.relpath for stage in Repo(fspath(tmp_dir)).stages)
 
-    def test_should_not_gather_stage_files_from_ignored_dir(self):
-        ret = main(["add", self.FOO, self.BAR, self.DATA, self.DATA_SUB])
-        self.assertEqual(0, ret)
+    tmp_dir.dvc_gen({"file": "a", "dir/file": "b", "dir/subdir/file": "c"})
 
-        stages = self.dvc.stages
-        self.assertEqual(4, len(stages))
+    assert stages() == {
+        "file.dvc",
+        os.path.join("dir", "file.dvc"),
+        os.path.join("dir", "subdir", "file.dvc"),
+    }
 
-        self.create(DvcIgnore.DVCIGNORE_FILE, self.DATA_DIR)
+    tmp_dir.gen(".dvcignore", "dir")
 
-        self.dvc = Repo(self.dvc.root_dir)
-        stages = self.dvc.stages
-        self.assertEqual(2, len(stages))
-
-        stagenames = [s.relpath for s in stages]
-        self.assertIn(self._stage_name(self.FOO), stagenames)
-        self.assertIn(self._stage_name(self.BAR), stagenames)
-        self.assertNotIn(self._stage_name(self.DATA), stagenames)
-        self.assertNotIn(self._stage_name(self.DATA_SUB), stagenames)
+    assert stages() == {"file.dvc"}

@@ -87,6 +87,9 @@ install_dependencies()
 	fi
 
 	gem install --no-document fpm
+	
+	# https://github.com/iterative/dvc/issues/2970
+	gem uninstall -i /Users/travis/.rvm/gems/ruby-2.4.3@global rubygems-bundler
 
 	print_info "Upgrading pip..."
 	pip install --upgrade pip

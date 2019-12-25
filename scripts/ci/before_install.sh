@@ -45,10 +45,10 @@ fi
 
 if [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
     if [[ -n "$PY2" ]]; then
-        choco install python2
+        $scriptdir/retry.sh choco install python2
         echo 'PATH="/c/Python27:/c/Python27/Scripts:$PATH"' >> env.sh
     else
-        choco install python --version 3.7.5
+        $scriptdir/retry.sh choco install python --version 3.7.5
         echo 'PATH="/c/Python37:/c/Python37/Scripts:$PATH"' >> env.sh
     fi
 elif [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
