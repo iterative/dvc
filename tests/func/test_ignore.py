@@ -8,7 +8,7 @@ from dvc.exceptions import DvcIgnoreInCollectedDirError
 from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
 from dvc.scm.tree import WorkingTree
 from dvc.utils import walk_files, relpath
-from dvc.utils.compat import fspath
+from dvc.utils.compat import fspath, fspath_py35
 from dvc.utils.fs import get_mtime_and_size
 from dvc.remote import RemoteLOCAL
 
@@ -139,7 +139,7 @@ def test_match_nested(tmp_dir, dvc):
 
 def test_ignore_external(tmp_dir, scm, dvc, tmp_path_factory):
     tmp_dir.gen(".dvcignore", "*.backup\ntmp")
-    ext_dir = TmpDir(tmp_path_factory.mktemp("external_dir"))
+    ext_dir = TmpDir(fspath_py35(tmp_path_factory.mktemp("external_dir")))
     ext_dir.gen({"y.backup": "y", "tmp": "ext tmp"})
 
     remote = RemoteLOCAL(dvc, {})
