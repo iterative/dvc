@@ -116,10 +116,11 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     assert _files_set(".", dvc.tree) == {"./foo", "./bar"}
 
     tree = CleanTree(scm.get_tree("branch"))
-    files_on_branch = {
-        f for r, ds, fs in tree.walk(tree.tree_root) for f in fs
+
+    assert _files_set(".", tree) == {
+        os.path.join(tree.tree_root, DvcIgnore.DVCIGNORE_FILE),
+        os.path.join(tree.tree_root, "bar"),
     }
-    assert "foo" not in files_on_branch
 
 
 def _files_set(root, tree):

@@ -13,6 +13,7 @@ from dvc.config import Config
 from dvc.exceptions import DownloadError
 from dvc.exceptions import DvcException
 from dvc.exceptions import UploadError
+from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
 from dvc.progress import Tqdm
 from dvc.remote.base import RemoteBASE
@@ -138,6 +139,8 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
+        assert isinstance(self.repo.tree, CleanTree)
+
         for fname in self.repo.tree.walk_files(path_info):
             yield PathInfo(fname)
 
@@ -427,6 +430,8 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
+        assert isinstance(self.repo.tree, CleanTree)
+
         for fname in self.repo.tree.walk_files(path):
             RemoteLOCAL._unprotect_file(fname)
 
