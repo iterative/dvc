@@ -1,6 +1,7 @@
 from funcy import group_by
 
-from dvc.scm.tree import WorkingTree, CleanTree
+from dvc.ignore import CleanTree
+from dvc.scm.tree import WorkingTree
 
 
 def brancher(  # noqa: E302

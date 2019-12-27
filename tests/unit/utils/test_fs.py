@@ -5,8 +5,9 @@ import pytest
 from mock import patch
 
 import dvc
+from dvc.ignore import CleanTree
 from dvc.path_info import PathInfo
-from dvc.scm.tree import WorkingTree, CleanTree
+from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import relpath
 from dvc.utils.compat import str

@@ -1,8 +1,5 @@
 import os
 
-from funcy import cached_property
-
-from dvc.ignore import DvcIgnoreFilter
 from dvc.utils.compat import open
 
 
@@ -75,39 +72,3 @@ class WorkingTree(BaseTree):
             top, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
-
-
-class CleanTree(BaseTree):
-    def __init__(self, tree):
-        self.tree = tree
-
-    @cached_property
-    def dvcignore(self):
-        return DvcIgnoreFilter(self.tree)
-
-    @property
-    def tree_root(self):
-        return self.tree.tree_root
-
-    def open(self, path, mode="r", encoding="utf-8"):
-        return self.tree.open(path, mode, encoding)
-
-    def exists(self, path):
-        return self.tree.exists(path)
-
-    def isdir(self, path):
-        return self.tree.isdir(path)
-
-    def isfile(self, path):
-        return self.tree.isfile(path)
-
-    def walk(self, top, topdown=True, **kwargs):
-        for r, d, fs in self.tree.walk(top, topdown):
-            d[:], fs[:] = self.dvcignore(r, d, fs)
-
-            yield r, d, fs
-
-    def walk_files(self, top):
-        for root, _, files in self.walk(top):
-            for file in files:
-                yield os.path.join(root, file)

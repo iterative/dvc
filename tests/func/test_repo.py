@@ -1,9 +1,9 @@
 import os
 
+from dvc.ignore import CleanTree
 from dvc.scm.git.tree import GitTree
 from dvc.cache import Cache
 from dvc.repo import Repo
-from dvc.scm.tree import CleanTree
 from dvc.system import System
 from dvc.utils.compat import fspath
 

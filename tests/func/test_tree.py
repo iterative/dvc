@@ -3,9 +3,10 @@ from __future__ import unicode_literals
 
 from os.path import join
 
+from dvc.ignore import CleanTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
-from dvc.scm.tree import WorkingTree, CleanTree
+from dvc.scm.tree import WorkingTree
 from tests.basic_env import TestDir
 from tests.basic_env import TestGit
 from tests.basic_env import TestGitSubmodule

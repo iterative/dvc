@@ -8,13 +8,13 @@ from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
+from dvc.ignore import CleanTree
 from dvc.scm.base import Base
 from dvc.scm.base import CloneError
 from dvc.scm.base import FileNotInRepoError
 from dvc.scm.base import RevError
 from dvc.scm.base import SCMError
 from dvc.scm.git.tree import GitTree
-from dvc.scm.tree import CleanTree
 from dvc.utils import fix_env
 from dvc.utils import is_binary
 from dvc.utils import relpath
