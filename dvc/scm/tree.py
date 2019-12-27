@@ -1,6 +1,6 @@
 import os
 
-from dvc.utils.compat import open
+from dvc.utils.compat import open, fspath
 
 
 class BaseTree(object):
@@ -64,6 +64,8 @@ class WorkingTree(BaseTree):
         - no support for symlinks
         - it could raise exceptions, there is no onerror argument
         """
+
+        top = fspath(top)
 
         def onerror(e):
             raise e

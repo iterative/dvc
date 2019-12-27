@@ -82,14 +82,14 @@ class TestGitTree(TestGit, GitTreeTests):
     def setUp(self):
         super(TestGitTree, self).setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = CleanTree(GitTree(self.git, "master"))
+        self.tree = GitTree(self.git, "master")
 
 
 class TestGitSubmoduleTree(TestGitSubmodule, GitTreeTests):
     def setUp(self):
         super(TestGitSubmoduleTree, self).setUp()
         self.scm = SCM(self._root_dir)
-        self.tree = CleanTree(GitTree(self.git, "master"))
+        self.tree = GitTree(self.git, "master")
         self._pushd(self._root_dir)
 
 
@@ -108,7 +108,7 @@ class AssertWalkEqualMixin(object):
 
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
-        tree = CleanTree(WorkingTree(self._root_dir))
+        tree = WorkingTree(self._root_dir)
         self.assertWalkEqual(
             tree.walk(self._root_dir),
             [
@@ -127,7 +127,7 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
         )
 
     def test_subdir(self):
-        tree = CleanTree(WorkingTree(self._root_dir))
+        tree = WorkingTree(self._root_dir)
         self.assertWalkEqual(
             tree.walk(join("data_dir", "data_sub_dir")),
             [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
@@ -154,7 +154,7 @@ class TestWalkInGit(AssertWalkEqualMixin, TestGit):
         scm = SCM(self._root_dir)
         scm.add([self.DATA_SUB_DIR])
         scm.commit("add data_dir/data_sub_dir/data_sub")
-        tree = CleanTree(GitTree(self.git, "master"))
+        tree = GitTree(self.git, "master")
         self.assertWalkEqual(
             tree.walk("."),
             [

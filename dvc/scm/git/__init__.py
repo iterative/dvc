@@ -8,7 +8,6 @@ from funcy import cached_property
 from pathspec.patterns import GitWildMatchPattern
 
 from dvc.exceptions import GitHookAlreadyExistsError
-from dvc.ignore import CleanTree
 from dvc.scm.base import Base
 from dvc.scm.base import CloneError
 from dvc.scm.base import FileNotInRepoError
@@ -308,7 +307,7 @@ class Git(Base):
         return basename == self.ignore_file or Git.GIT_DIR in path_parts
 
     def get_tree(self, rev):
-        return CleanTree(GitTree(self.repo, rev))
+        return GitTree(self.repo, rev)
 
     def _get_diff_trees(self, a_ref, b_ref):
         """Private method for getting the trees and commit hashes of 2 git
@@ -322,6 +321,7 @@ class Git(Base):
             tuple: tuple with elements: (trees, commits)
         """
         from gitdb.exc import BadObject, BadName
+        from dvc.ignore import CleanTree
 
         trees = {DIFF_A_TREE: None, DIFF_B_TREE: None}
         commits = []
@@ -334,8 +334,8 @@ class Git(Base):
             # /en/2.1.11/reference.html#git.objects.base.Object.__str__
             commits.append(a_commit)
             commits.append(b_commit)
-            trees[DIFF_A_TREE] = self.get_tree(commits[0])
-            trees[DIFF_B_TREE] = self.get_tree(commits[1])
+            trees[DIFF_A_TREE] = CleanTree(self.get_tree(commits[0]))
+            trees[DIFF_B_TREE] = CleanTree(self.get_tree(commits[1]))
         except (BadName, BadObject) as e:
             raise SCMError("git problem", cause=e)
         return trees, commits

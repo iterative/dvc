@@ -34,8 +34,6 @@ def get_inode(path):
     return inode
 
 
-# FIXME: There is no use case of get_mtime_and_size without tree, we should
-# move it to tree
 def get_mtime_and_size(path, tree):
     if os.path.isdir(fspath_py35(path)):
         size = 0

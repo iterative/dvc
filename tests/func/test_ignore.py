@@ -5,7 +5,8 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore
+from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns, CleanTree
+from dvc.scm.tree import WorkingTree
 from dvc.utils import relpath
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import fspath
@@ -89,6 +90,22 @@ def test_dvcignore_in_out_dir(tmp_dir, dvc):
         dvc.add("dir")
 
 
+@pytest.mark.parametrize("dname", ["dir", "dir/subdir"])
+def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
+    tmp_dir.gen({"dir": {"subdir": {}}})
+
+    top_ignore_file = (tmp_dir / dname).with_name(DvcIgnore.DVCIGNORE_FILE)
+    top_ignore_file.write_text(os.path.basename(dname))
+
+    ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
+    ignore_file.write_text("foo")
+
+    assert dvc.tree.dvcignore.ignores == {
+        DvcIgnoreDirs([".git", ".hg", ".dvc"]),
+        DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir)),
+    }
+
+
 def test_ignore_on_branch(tmp_dir, scm, dvc):
     tmp_dir.scm_gen({"foo": "foo", "bar": "bar"}, commit="add files")
 
@@ -98,7 +115,7 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     scm.checkout("master")
     assert _files_set(".", dvc.tree) == {"./foo", "./bar"}
 
-    tree = scm.get_tree("branch")
+    tree = CleanTree(scm.get_tree("branch"))
     files_on_branch = {
         f for r, ds, fs in tree.walk(tree.tree_root) for f in fs
     }
