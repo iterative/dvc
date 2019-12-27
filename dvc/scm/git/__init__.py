@@ -236,7 +236,7 @@ class Git(Base):
         return path in [i[0] for i in self.repo.index.entries]
 
     def is_dirty(self):
-        return self.repo.is_dirty()
+        return self.repo.is_dirty(untracked_files=True)
 
     def active_branch(self):
         return self.repo.active_branch.name

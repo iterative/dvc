@@ -30,15 +30,24 @@ def brancher(  # noqa: E302
         return
 
     saved_tree = self.tree
-    revs = []
+    revs = set()
 
     scm = self.scm
 
-    self.tree = WorkingTree(self.root_dir)
-    yield "working tree"
+    if scm.is_dirty():
+        self.tree = WorkingTree(self.root_dir)
+        yield "working tree"
+    else:
+        # If the working tree is clean then we add current branch or head.
+        # This will be deduped with whatever is collected later.
+        try:
+            revs.add(scm.active_branch())
+        except TypeError:
+            # A detached head
+            revs.add("HEAD")
 
     if all_commits:
-        revs = scm.list_all_commits()
+        revs.update(scm.list_all_commits())
     else:
         if all_branches:
             branches = scm.list_branches()
@@ -47,10 +56,10 @@ def brancher(  # noqa: E302
             tags = scm.list_tags()
 
         if branches is not None:
-            revs.extend(branches)
+            revs.update(branches)
 
         if tags is not None:
-            revs.extend(tags)
+            revs.update(tags)
 
     # NOTE: it might be a good idea to wrap this loop in try/finally block
     # to don't leave the tree on some unexpected branch after the
