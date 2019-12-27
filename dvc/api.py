@@ -178,7 +178,7 @@ def _invoke_method(call, args, path):
         return method(**args)
     finally:
         os.chdir(cwd)
-        sys.path.pop()
+        sys.path.pop(0)
 
 
 def _import_string(import_name):
