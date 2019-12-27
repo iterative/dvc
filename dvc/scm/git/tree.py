@@ -136,7 +136,7 @@ class GitTree(BaseTree):
         if not topdown:
             yield os.path.normpath(tree.abspath), dirs, nondirs
 
-    def walk(self, top, topdown=True, **kwargs):
+    def walk(self, top, topdown=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:

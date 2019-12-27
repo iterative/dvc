@@ -76,9 +76,7 @@ class DvcIgnoreFilter(object):
         self.tree = tree
         self.ignores = {DvcIgnoreDirs([".git", ".hg", ".dvc"])}
         self._update(self.tree.tree_root)
-        for root, dirs, _ in self.tree.walk(
-            self.tree.tree_root, dvcignore=self
-        ):
+        for root, dirs, _ in self.tree.walk(self.tree.tree_root):
             for d in dirs:
                 self._update(os.path.join(root, d))
 

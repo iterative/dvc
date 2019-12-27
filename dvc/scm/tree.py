@@ -3,7 +3,6 @@ import os
 from funcy import cached_property
 
 from dvc.ignore import DvcIgnoreFilter
-from dvc.utils import dvc_walk
 from dvc.utils.compat import open
 
 
@@ -26,7 +25,7 @@ class BaseTree(object):
     def isfile(self, path):
         """Test whether a path is a regular file"""
 
-    def walk(self, top, topdown=True, **kwargs):
+    def walk(self, top, topdown=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -61,7 +60,7 @@ class WorkingTree(BaseTree):
         """Test whether a path is a regular file"""
         return os.path.isfile(path)
 
-    def walk(self, top, topdown=True, dvcignore=None, **kwargs):
+    def walk(self, top, topdown=True):
         """Directory tree generator.
 
         See `os.walk` for the docs. Differences:
@@ -72,15 +71,14 @@ class WorkingTree(BaseTree):
         def onerror(e):
             raise e
 
-        for root, dirs, files in dvc_walk(
-            top, dvcignore, topdown=topdown, onerror=onerror
+        for root, dirs, files in os.walk(
+            top, topdown=topdown, onerror=onerror
         ):
             yield os.path.normpath(root), dirs, files
 
 
 class CleanTree(BaseTree):
     def __init__(self, tree):
-        super(CleanTree, self).__init__()
         self.tree = tree
 
     @cached_property
@@ -104,7 +102,7 @@ class CleanTree(BaseTree):
         return self.tree.isfile(path)
 
     def walk(self, top, topdown=True, **kwargs):
-        for r, d, fs in self.tree.walk(top, topdown, dvcignore=self.dvcignore):
+        for r, d, fs in self.tree.walk(top, topdown):
             d[:], fs[:] = self.dvcignore(r, d, fs)
 
             yield r, d, fs
