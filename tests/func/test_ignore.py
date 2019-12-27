@@ -5,8 +5,7 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
-from dvc.scm.tree import WorkingTree
+from dvc.ignore import DvcIgnore
 from dvc.utils import relpath
 from dvc.utils.compat import fspath_py35
 from dvc.utils.compat import fspath
@@ -88,26 +87,6 @@ def test_dvcignore_in_out_dir(tmp_dir, dvc):
 
     with pytest.raises(DvcIgnoreInCollectedDirError):
         dvc.add("dir")
-
-
-@pytest.mark.skip(
-    reason="unable to apply .dvcignore on collection stage "
-    "after removing dvc_walk"
-)
-@pytest.mark.parametrize("dname", ["dir", "dir/subdir"])
-def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
-    tmp_dir.gen({"dir": {"subdir": {}}})
-
-    top_ignore_file = (tmp_dir / dname).with_name(DvcIgnore.DVCIGNORE_FILE)
-    top_ignore_file.write_text(os.path.basename(dname))
-
-    ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
-    ignore_file.write_text("foo")
-
-    assert dvc.tree.dvcignore.ignores == {
-        DvcIgnoreDirs([".git", ".hg", ".dvc"]),
-        DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir)),
-    }
 
 
 def test_ignore_on_branch(tmp_dir, scm, dvc):
