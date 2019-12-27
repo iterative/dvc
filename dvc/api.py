@@ -169,7 +169,7 @@ def _invoke_method(call, args, path):
 
     # XXX: sys.path manipulation is "theoretically" not needed
     #      but tests are failing for an unknown reason.
-    cwd = os.path.abspath(os.curdir)
+    cwd = os.getcwd()
 
     try:
         os.chdir(path)
