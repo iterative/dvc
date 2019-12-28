@@ -241,6 +241,20 @@ class Stage(object):
             path=self.relpath if self.path else "No path"
         )
 
+    def __hash__(self):
+        return hash(self.path_in_repo)
+
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__
+            and self.repo is other.repo
+            and self.path_in_repo == other.path_in_repo
+        )
+
+    @property
+    def path_in_repo(self):
+        return relpath(self.path, self.repo.root_dir)
+
     @property
     def relpath(self):
         return relpath(self.path)

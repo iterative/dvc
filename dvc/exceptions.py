@@ -39,17 +39,13 @@ class OutputDuplicationError(DvcException):
     """
 
     def __init__(self, output, stages):
-        assert isinstance(output, str) or isinstance(output, builtin_str)
-        assert isinstance(stages, list)
-        assert all(
-            isinstance(stage, str) or isinstance(stage, builtin_str)
-            for stage in stages
-        )
+        assert isinstance(output, (str, builtin_str))
+        assert all(hasattr(stage, "relpath") for stage in stages)
         msg = (
             "file/directory '{}' is specified as an output in more than one "
             "stage: {}\n"
             "This is not allowed. Consider using a different output name."
-        ).format(output, "\n    ".join(stages))
+        ).format(output, "\n    ".join(s.relpath for s in stages))
         super(OutputDuplicationError, self).__init__(msg)
 
 
@@ -75,21 +71,17 @@ class StagePathAsOutputError(DvcException):
     an output of another stage.
 
     Args:
-        cwd (str): path to the directory.
-        fname (str): path to the DVC-file that has cwd specified as an
-            output.
+        stage (Stage): a stage that is in some other stages output
+        output (str): an output covering the stage above
     """
 
-    def __init__(self, wdir, fname):
-        assert isinstance(wdir, str) or isinstance(wdir, builtin_str)
-        assert isinstance(fname, str) or isinstance(fname, builtin_str)
-        msg = (
-            "current working directory '{cwd}' is specified as an output in "
-            "'{fname}'. Use another CWD to prevent any data removal.".format(
-                cwd=wdir, fname=fname
+    def __init__(self, stage, output):
+        assert isinstance(output, (str, builtin_str))
+        super(StagePathAsOutputError, self).__init__(
+            "'{stage}' is within an output '{output}' of another stage".format(
+                stage=stage.relpath, output=output
             )
         )
-        super(StagePathAsOutputError, self).__init__(msg)
 
 
 class CircularDependencyError(DvcException):
@@ -167,7 +159,7 @@ class DvcParserError(DvcException):
 class CyclicGraphError(DvcException):
     def __init__(self, stages):
         assert isinstance(stages, list)
-        stages = "\n".join("\t- {}".format(stage) for stage in stages)
+        stages = "\n".join("\t- {}".format(stage.relpath) for stage in stages)
         msg = (
             "you've introduced a cycle in your pipeline that involves "
             "the following stages:"

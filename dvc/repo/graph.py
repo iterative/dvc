@@ -28,9 +28,3 @@ def get_pipelines(G):
     import networkx as nx
 
     return [G.subgraph(c).copy() for c in nx.weakly_connected_components(G)]
-
-
-def get_stages(G):
-    import networkx
-
-    return list(networkx.get_node_attributes(G, "stage").values())

@@ -170,14 +170,13 @@ class TestReproWorkingDirectoryAsOutput(TestDvc):
 
         # NOTE: os.walk() walks in a sorted order and we need dir2 subdirs to
         # be processed before dir1 to load error.dvc first.
-        with patch.object(self.dvc, "collect_stages") as mock_stages:
-            mock_stages.return_value = [
-                nested_stage,
-                Stage.load(self.dvc, error_stage_path),
-            ]
+        self.dvc.stages = [
+            nested_stage,
+            Stage.load(self.dvc, error_stage_path),
+        ]
 
-            with self.assertRaises(StagePathAsOutputError):
-                self.dvc.reproduce(error_stage_path)
+        with self.assertRaises(StagePathAsOutputError):
+            self.dvc.reproduce(error_stage_path)
 
     def test_similar_paths(self):
         # File structure:

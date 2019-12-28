@@ -5,25 +5,22 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 from itertools import chain
+from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
 
 from funcy import cached_property
 
-from .graph import check_acyclic
-from .graph import get_pipeline
-from .graph import get_pipelines
-from .graph import get_stages
 from dvc.config import Config
-from dvc.exceptions import FileMissingError
-from dvc.exceptions import NotDvcRepoError
-from dvc.exceptions import OutputNotFoundError
+from dvc.exceptions import (
+    FileMissingError,
+    NotDvcRepoError,
+    OutputNotFoundError,
+)
 from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils import relpath
 from dvc.utils.fs import path_isin
-from dvc.utils.compat import FileNotFoundError
-from dvc.utils.compat import fspath_py35
-from dvc.utils.compat import open as _open
+from .graph import check_acyclic, get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)
@@ -190,32 +187,20 @@ class Repo(object):
         G = graph or self.graph
 
         if not target:
-            return get_stages(G)
+            return list(G)
 
         target = os.path.abspath(target)
 
         if recursive and os.path.isdir(target):
-            attrs = nx.get_node_attributes(G, "stage")
-            nodes = [node for node in nx.dfs_postorder_nodes(G)]
-
-            ret = []
-            for node in nodes:
-                stage = attrs[node]
-                if path_isin(stage.path, target):
-                    ret.append(stage)
-            return ret
+            stages = nx.dfs_postorder_nodes(G)
+            return [stage for stage in stages if path_isin(stage.path, target)]
 
         stage = Stage.load(self, target)
         if not with_deps:
             return [stage]
 
-        node = relpath(stage.path, self.root_dir)
-        pipeline = get_pipeline(get_pipelines(G), node)
-
-        return [
-            pipeline.node[n]["stage"]
-            for n in nx.dfs_postorder_nodes(pipeline, node)
-        ]
+        pipeline = get_pipeline(get_pipelines(G), stage)
+        return list(nx.dfs_postorder_nodes(pipeline, stage))
 
     def used_cache(
         self,
@@ -323,15 +308,15 @@ class Repo(object):
         )
 
         G = nx.DiGraph()
-        stages = stages or self.collect_stages()
+        stages = stages or self.stages
         stages = [stage for stage in stages if stage]
         outs = {}
 
         for stage in stages:
             for out in stage.outs:
                 if out.path_info in outs:
-                    stages = [stage.relpath, outs[out.path_info].stage.relpath]
-                    raise OutputDuplicationError(str(out), stages)
+                    dup_stages = [stage, outs[out.path_info].stage]
+                    raise OutputDuplicationError(str(out), dup_stages)
                 outs[out.path_info] = out
 
         for stage in stages:
@@ -344,23 +329,19 @@ class Repo(object):
             stage_path_info = PathInfo(stage.path)
             for p in chain([stage_path_info], stage_path_info.parents):
                 if p in outs:
-                    raise StagePathAsOutputError(stage.wdir, stage.relpath)
+                    raise StagePathAsOutputError(stage, str(outs[p]))
 
         for stage in stages:
-            node = relpath(stage.path, self.root_dir)
-
-            G.add_node(node, stage=stage)
+            G.add_node(stage)
 
             for dep in stage.deps:
                 if dep.path_info is None:
                     continue
 
-                for out in outs:
-                    if out.overlaps(dep.path_info):
-                        dep_stage = outs[out].stage
-                        dep_node = relpath(dep_stage.path, self.root_dir)
-                        G.add_node(dep_node, stage=dep_stage)
-                        G.add_edge(node, dep_node)
+                for out_path_info, out in outs.items():
+                    if out_path_info.overlaps(dep.path_info):
+                        G.add_node(out.stage)
+                        G.add_edge(stage, out.stage)
 
         check_acyclic(G)
 
@@ -385,7 +366,8 @@ class Repo(object):
 
         return list(filter(filter_dirs, dirs))
 
-    def collect_stages(self):
+    @cached_property
+    def stages(self):
         """
         Walks down the root directory looking for Dvcfiles,
         skipping the directories that are related with
@@ -416,10 +398,6 @@ class Repo(object):
             dirs[:] = self._filter_out_dirs(dirs, outs, root)
 
         return stages
-
-    @cached_property
-    def stages(self):
-        return get_stages(self.graph)
 
     def find_outs_by_path(self, path, outs=None, recursive=False):
         if not outs:
