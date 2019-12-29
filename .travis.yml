@@ -35,20 +35,9 @@ jobs:
     install:
     script: ./scripts/ci/check_patch.sh
   # test jobs
-  - name: "2.7 on Windows"
-    stage: test
-    os: windows           # Windows 10.0.17134 N/A Build 17134
-    language: shell       # 'language: python' is an error on Travis CI Windows
-    env:
-    - PY2=1
   - name: "3.7 on Windows"
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
-  - name: "2.7 on Linux"
-    language: python
-    python: 2.7
-    env:
-    - PY2=1
   - name: "3.5 on Linux"
     language: python
     python: 3.5
@@ -58,11 +47,6 @@ jobs:
   - name: "3.7 on Linux"
     language: python
     python: 3.7
-  - name: "2.7 on Mac"
-    os: osx
-    osx_image: xcode9.4
-    env:
-    - PY2=1
   - name: "3.6 on Mac"
     os: osx
     osx_image: xcode9.4
