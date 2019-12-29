@@ -36,6 +36,7 @@ jobs:
     script: ./scripts/ci/check_patch.sh
   # test jobs
   - name: "3.7 on Windows"
+    stage: test
     os: windows           # Windows 10.0.17134 N/A Build 17134
     language: shell       # 'language: python' is an error on Travis CI Windows
   - name: "3.5 on Linux"
