@@ -4,6 +4,7 @@ import os
 from errno import ENOENT
 
 import dvc.logger as logger
+from dvc.ignore import CleanTree
 from . import locked
 from dvc.scm.base import FileNotInCommitError
 from dvc.scm.git import DIFF_A_REF
@@ -137,9 +138,9 @@ def _is_dir(path, a_outs, b_outs):
 
 
 def _get_diff_outs(self, diff_dct):
-    self.tree = diff_dct[DIFF_A_TREE]
+    self.tree = CleanTree(diff_dct[DIFF_A_TREE])
     a_outs = {str(out): out for st in self.stages for out in st.outs}
-    self.tree = diff_dct[DIFF_B_TREE]
+    self.tree = CleanTree(diff_dct[DIFF_B_TREE])
     b_outs = {str(out): out for st in self.stages for out in st.outs}
     outs_paths = set(a_outs.keys())
     outs_paths.update(b_outs.keys())

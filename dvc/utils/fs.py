@@ -15,7 +15,6 @@ from dvc.utils import dict_md5
 from dvc.utils import fspath
 from dvc.utils import fspath_py35
 from dvc.utils import relpath
-from dvc.utils import walk_files
 from dvc.utils.compat import str
 
 
@@ -35,11 +34,15 @@ def get_inode(path):
     return inode
 
 
-def get_mtime_and_size(path, dvcignore):
+def get_mtime_and_size(path, tree):
+    from dvc.ignore import CleanTree
+
+    assert isinstance(tree, CleanTree)
+
     if os.path.isdir(fspath_py35(path)):
         size = 0
         files_mtimes = {}
-        for file_path in walk_files(path, dvcignore):
+        for file_path in tree.walk_files(path):
             try:
                 stat = os.stat(file_path)
             except OSError as exc:

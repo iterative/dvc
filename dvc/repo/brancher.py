@@ -1,5 +1,6 @@
 from funcy import group_by
 
+from dvc.ignore import CleanTree
 from dvc.scm.tree import WorkingTree
 
 
@@ -34,7 +35,7 @@ def brancher(  # noqa: E302
 
     scm = self.scm
 
-    self.tree = WorkingTree(self.root_dir)
+    self.tree = CleanTree(WorkingTree(self.root_dir))
     yield "working tree"
 
     if all_commits:
@@ -58,7 +59,7 @@ def brancher(  # noqa: E302
     # code which might expect the tree on which exception was raised to
     # stay in place. This behavior is a subject to change.
     for sha, names in group_by(scm.resolve_rev, revs).items():
-        self.tree = scm.get_tree(sha)
+        self.tree = CleanTree(scm.get_tree(sha))
         yield ", ".join(names)
 
     self.tree = saved_tree

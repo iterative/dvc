@@ -18,8 +18,7 @@ from dvc.stage import Stage
 from dvc.stage import StageFileBadNameError
 from dvc.stage import StageFileDoesNotExistError
 from dvc.system import System
-from dvc.utils import relpath
-from dvc.utils import walk_files
+from dvc.utils import relpath, walk_files
 from dvc.utils.compat import is_py2
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
@@ -137,7 +136,7 @@ class CheckoutBase(TestDvcGit):
         paths = [
             path
             for output in stage["outs"]
-            for path in walk_files(output["path"], self.dvc.dvcignore)
+            for path in self.dvc.tree.walk_files(output["path"])
         ]
 
         return [
@@ -520,6 +519,4 @@ def test_partial_checkout(tmp_dir, dvc, target):
     tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
     shutil.rmtree("dir")
     dvc.checkout([target])
-    assert list(walk_files("dir", None)) == [
-        os.path.join("dir", "subdir", "file")
-    ]
+    assert list(walk_files("dir")) == [os.path.join("dir", "subdir", "file")]

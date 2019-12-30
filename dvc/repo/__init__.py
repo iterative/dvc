@@ -5,6 +5,8 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 from itertools import chain
+
+from dvc.ignore import CleanTree
 from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
 
 from funcy import cached_property
@@ -15,7 +17,6 @@ from dvc.exceptions import (
     NotDvcRepoError,
     OutputNotFoundError,
 )
-from dvc.ignore import DvcIgnoreFilter
 from dvc.path_info import PathInfo
 from dvc.remote.base import RemoteActionNotImplemented
 from dvc.utils import relpath
@@ -84,7 +85,7 @@ class Repo(object):
 
         self.scm = SCM(self.root_dir)
 
-        self.tree = WorkingTree(self.root_dir)
+        self.tree = CleanTree(WorkingTree(self.root_dir))
 
         self.tmp_dir = os.path.join(self.dvc_dir, "tmp")
         makedirs(self.tmp_dir, exist_ok=True)
@@ -391,9 +392,7 @@ class Repo(object):
         stages = []
         outs = []
 
-        for root, dirs, files in self.tree.walk(
-            self.root_dir, dvcignore=self.dvcignore
-        ):
+        for root, dirs, files in self.tree.walk(self.root_dir):
             for fname in files:
                 path = os.path.join(root, fname)
                 if not Stage.is_valid_filename(path):
@@ -486,10 +485,6 @@ class Repo(object):
                 self.cloud.pull(cache_info, remote=remote)
 
             return _open(cache_file, mode=mode, encoding=encoding)
-
-    @cached_property
-    def dvcignore(self):
-        return DvcIgnoreFilter(self.root_dir, self.tree)
 
     def close(self):
         self.scm.close()

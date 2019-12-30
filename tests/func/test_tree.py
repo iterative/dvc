@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from os.path import join
 
-from dvc.ignore import DvcIgnoreFilter
+from dvc.ignore import CleanTree
 from dvc.scm import SCM
 from dvc.scm.git import GitTree
 from dvc.scm.tree import WorkingTree
@@ -109,9 +109,8 @@ class AssertWalkEqualMixin(object):
 class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
     def test(self):
         tree = WorkingTree(self._root_dir)
-        dvcignore = DvcIgnoreFilter(self.root_dir, tree)
         self.assertWalkEqual(
-            tree.walk(self._root_dir, dvcignore=dvcignore),
+            tree.walk(self._root_dir),
             [
                 (
                     self._root_dir,
@@ -129,48 +128,26 @@ class TestWalkInNoSCM(AssertWalkEqualMixin, TestDir):
 
     def test_subdir(self):
         tree = WorkingTree(self._root_dir)
-        dvcignore = DvcIgnoreFilter(self.root_dir, tree)
         self.assertWalkEqual(
-            tree.walk(join("data_dir", "data_sub_dir"), dvcignore=dvcignore),
-            [
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                )
-            ],
+            tree.walk(join("data_dir", "data_sub_dir")),
+            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
         )
 
 
 class TestWalkInGit(AssertWalkEqualMixin, TestGit):
     def test_nobranch(self):
-        tree = WorkingTree(self._root_dir)
-        dvcignore = DvcIgnoreFilter(self._root_dir, tree)
+        tree = CleanTree(WorkingTree(self._root_dir))
         self.assertWalkEqual(
-            tree.walk(".", dvcignore=dvcignore),
+            tree.walk("."),
             [
-                (
-                    self._root_dir,
-                    ["data_dir"],
-                    ["bar", "тест", "code.py", "foo"],
-                ),
-                (join(self._root_dir, "data_dir"), ["data_sub_dir"], ["data"]),
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                ),
+                (".", ["data_dir"], ["bar", "тест", "code.py", "foo"]),
+                (join("data_dir"), ["data_sub_dir"], ["data"]),
+                (join("data_dir", "data_sub_dir"), [], ["data_sub"]),
             ],
         )
         self.assertWalkEqual(
-            tree.walk(join("data_dir", "data_sub_dir"), dvcignore=dvcignore),
-            [
-                (
-                    join(self._root_dir, "data_dir", "data_sub_dir"),
-                    [],
-                    ["data_sub"],
-                )
-            ],
+            tree.walk(join("data_dir", "data_sub_dir")),
+            [(join("data_dir", "data_sub_dir"), [], ["data_sub"])],
         )
 
     def test_branch(self):

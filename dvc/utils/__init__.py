@@ -288,25 +288,8 @@ def to_yaml_string(data):
     return stream.getvalue()
 
 
-def dvc_walk(top, dvcignore, topdown=True, onerror=None, followlinks=False):
-    """
-    Proxy for `os.walk` directory tree generator.
-    Utilizes DvcIgnoreFilter functionality.
-    """
-    top = fspath_py35(top)
-
-    for root, dirs, files in os.walk(
-        top, topdown=topdown, onerror=onerror, followlinks=followlinks
-    ):
-
-        if dvcignore:
-            dirs[:], files[:] = dvcignore(root, dirs, files)
-
-        yield root, dirs, files
-
-
-def walk_files(directory, dvcignore):
-    for root, _, files in dvc_walk(directory, dvcignore):
+def walk_files(directory):
+    for root, _, files in os.walk(fspath(directory)):
         for f in files:
             yield os.path.join(root, f)
 

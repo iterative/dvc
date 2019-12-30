@@ -5,10 +5,11 @@ import shutil
 import pytest
 
 from dvc.exceptions import DvcIgnoreInCollectedDirError
-from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns
+from dvc.ignore import DvcIgnore, DvcIgnoreDirs, DvcIgnorePatterns, CleanTree
 from dvc.scm.tree import WorkingTree
-from dvc.utils import walk_files, relpath
-from dvc.utils.compat import fspath, fspath_py35
+from dvc.utils import relpath
+from dvc.utils.compat import fspath_py35
+from dvc.utils.compat import fspath
 from dvc.utils.fs import get_mtime_and_size
 from dvc.remote import RemoteLOCAL
 
@@ -20,10 +21,10 @@ def test_ignore(tmp_dir, dvc, monkeypatch):
     tmp_dir.gen({"dir": {"ignored": "text", "other": "text2"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
 
-    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
+    assert _files_set("dir", dvc.tree) == {"dir/other"}
 
     monkeypatch.chdir("dir")
-    assert _files_set(".", dvc.dvcignore) == {"./other"}
+    assert _files_set(".", dvc.tree) == {"./other"}
 
 
 def test_ignore_unicode(tmp_dir, dvc):
@@ -35,27 +36,27 @@ def test_ignore_unicode(tmp_dir, dvc):
 
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/тест")
 
-    assert _files_set("dir", dvc.dvcignore) == {"dir/other"}
+    assert _files_set("dir", dvc.tree) == {"dir/other"}
 
 
 def test_rename_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
 
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "ignored*")
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree)
 
     shutil.move("dir/ignored", "dir/ignored_new")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_rename_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree)
 
     shutil.move("dir/foo", "dir/foo_new")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree)
 
     assert new_mtime != mtime and new_size == size
 
@@ -64,20 +65,20 @@ def test_remove_ignored_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"ignored": "...", "other": "text"}})
     tmp_dir.gen(DvcIgnore.DVCIGNORE_FILE, "dir/ignored")
 
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree)
 
     os.remove("dir/ignored")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree)
 
     assert new_mtime == mtime and new_size == size
 
 
 def test_remove_file(tmp_dir, dvc):
     tmp_dir.gen({"dir": {"foo": "foo", "bar": "bar"}})
-    mtime, size = get_mtime_and_size("dir", dvc.dvcignore)
+    mtime, size = get_mtime_and_size("dir", dvc.tree)
 
     os.remove("dir/foo")
-    new_mtime, new_size = get_mtime_and_size("dir", dvc.dvcignore)
+    new_mtime, new_size = get_mtime_and_size("dir", dvc.tree)
 
     assert new_mtime != mtime and new_size != size
 
@@ -99,7 +100,7 @@ def test_ignore_collecting_dvcignores(tmp_dir, dvc, dname):
     ignore_file = tmp_dir / dname / DvcIgnore.DVCIGNORE_FILE
     ignore_file.write_text("foo")
 
-    assert dvc.dvcignore.ignores == {
+    assert dvc.tree.dvcignore.ignores == {
         DvcIgnoreDirs([".git", ".hg", ".dvc"]),
         DvcIgnorePatterns(fspath(top_ignore_file), WorkingTree(dvc.root_dir)),
     }
@@ -112,14 +113,18 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     tmp_dir.scm_gen(DvcIgnore.DVCIGNORE_FILE, "foo", commit="add ignore")
 
     scm.checkout("master")
-    assert _files_set(".", dvc.dvcignore) == {"./foo", "./bar"}
+    assert _files_set(".", dvc.tree) == {"./foo", "./bar"}
 
-    dvc.tree = scm.get_tree("branch")
-    assert _files_set(".", dvc.dvcignore) == {"./bar"}
+    tree = CleanTree(scm.get_tree("branch"))
+
+    assert _files_set(".", tree) == {
+        to_posixpath(os.path.join(tree.tree_root, DvcIgnore.DVCIGNORE_FILE)),
+        to_posixpath(os.path.join(tree.tree_root, "bar")),
+    }
 
 
-def _files_set(root, dvcignore):
-    return {to_posixpath(f) for f in walk_files(root, dvcignore)}
+def _files_set(root, tree):
+    return {to_posixpath(f) for f in tree.walk_files(root)}
 
 
 def test_match_nested(tmp_dir, dvc):
