@@ -100,14 +100,15 @@ def _set_remote_url_and_commit(repo, remote_url):
     repo.scm.commit("modify remote")
 
 
-# FIXME: this test doesn't use scm ;D
-def test_open_scm_controlled(dvc_repo, repo_dir):
-    stage, = dvc_repo.add(repo_dir.FOO)
+def test_open_scm_controlled(tmp_dir, scm, dvc):
+    tmp_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
-    stage_content = open(stage.path, "r").read()
-    with api.open(stage.path) as fd:
-        assert fd.read() == stage_content
+    with api.open("scm_controlled") as fd:
+        assert fd.read() == "file content"
 
+
+# def test_open_not_cached2(tmp_dir, scm, dvc):
+#     tmp_dir.dvc_gen({"file": "file content"})
 
 # TODO: simplify, we shouldn't need run.
 def test_open_not_cached(dvc):
