@@ -3,24 +3,15 @@ from __future__ import unicode_literals
 
 import os
 import posixpath
-import sys
 
 from funcy import cached_property
 
 from dvc.utils import relpath
 from dvc.utils.compat import basestring
 from dvc.utils.compat import builtin_str
-from dvc.utils.compat import is_py2
 from dvc.utils.compat import pathlib
 from dvc.utils.compat import str
 from dvc.utils.compat import urlparse
-
-
-# On Python 2.7/Windows sys.getfilesystemencoding() is set to mbcs,
-# which is lossy, thus we can't use that,
-# see https://github.com/mcmtroffaes/pathlib2/issues/56.
-if is_py2:
-    fs_encoding = "utf-8"
 
 
 class _BasePath(object):
@@ -90,34 +81,6 @@ class PathInfo(pathlib.PurePath, _BasePath):
         # Use cached casefolded parts to compare paths
         n = len(other._cparts)
         return len(self._cparts) > n and self._cparts[:n] == other._cparts
-
-    # pathlib2 uses bytes internally in Python 2, and we use unicode everywhere
-    # for paths in both pythons, thus we need this glue.
-    if is_py2:
-        __unicode__ = __str__
-
-        def __str__(self):
-            return self.__unicode__().encode(sys.getfilesystemencoding())
-
-        @classmethod
-        def _parse_args(cls, args):
-            args = [
-                a.encode(fs_encoding)
-                if isinstance(a, unicode)  # noqa: F821
-                else a
-                for a in args
-            ]
-            return super(PathInfo, cls)._parse_args(args)
-
-        @property
-        def name(self):
-            return super(PathInfo, self).name.decode(fs_encoding)
-
-        def __fspath__(self):  # noqa: F811
-            return pathlib.PurePath.__str__(self).decode(fs_encoding)
-
-        def with_name(self, name):
-            return pathlib.PurePath.with_name(self, name.encode(fs_encoding))
 
 
 class WindowsPathInfo(PathInfo, pathlib.PureWindowsPath):

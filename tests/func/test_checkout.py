@@ -19,7 +19,6 @@ from dvc.stage import StageFileBadNameError
 from dvc.stage import StageFileDoesNotExistError
 from dvc.system import System
 from dvc.utils import relpath, walk_files
-from dvc.utils.compat import is_py2
 from dvc.utils.stage import dump_stage_file
 from dvc.utils.stage import load_stage_file
 from tests.basic_env import TestDvc
@@ -435,16 +434,11 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         ret = main(["add", self.DATA_DIR])
         self.assertEqual(ret, 0)
 
-        if os.name == "nt" and is_py2:
-            from jaraco.windows.filesystem import readlink
-        else:
-            readlink = os.readlink
-
         self.assertTrue(System.is_symlink(self.FOO))
-        old_foo_link = readlink(self.FOO)
+        old_foo_link = os.readlink(self.FOO)
 
         self.assertTrue(System.is_symlink(self.DATA))
-        old_data_link = readlink(self.DATA)
+        old_data_link = os.readlink(self.DATA)
 
         old_cache_dir = self.dvc.cache.local.cache_dir
         new_cache_dir = old_cache_dir + "_new"
@@ -457,10 +451,10 @@ class TestCheckoutMovedCacheDirWithSymlinks(TestDvc):
         self.assertEqual(ret, 0)
 
         self.assertTrue(System.is_symlink(self.FOO))
-        new_foo_link = readlink(self.FOO)
+        new_foo_link = os.readlink(self.FOO)
 
         self.assertTrue(System.is_symlink(self.DATA))
-        new_data_link = readlink(self.DATA)
+        new_data_link = os.readlink(self.DATA)
 
         self.assertEqual(
             relpath(old_foo_link, old_cache_dir),

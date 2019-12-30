@@ -12,7 +12,6 @@ from dvc.exceptions import NotDvcRepoError
 from dvc.external_repo import clean_repos
 from dvc.logger import FOOTER
 from dvc.remote.pool import close_pools
-from dvc.utils.compat import is_py2
 
 
 # Workaround for CPython bug. See [1] and [2] for more info.
@@ -60,12 +59,7 @@ def main(argv=None):
     except DvcParserError:
         ret = 254
     except Exception as exc:  # pylint: disable=broad-except
-        if isinstance(exc, UnicodeError) and is_py2:
-            logger.exception(
-                "unicode is not supported in DVC for Python 2 "
-                "(end-of-life January 1, 2020), please upgrade to Python 3"
-            )
-        elif isinstance(exc, OSError) and exc.errno == errno.EMFILE:
+        if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
                 "too many open files, please increase your `ulimit`"
             )
