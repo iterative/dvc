@@ -12,12 +12,7 @@ else
 fi
 
 py_ver="$(python -c 'import sys; print(sys.version[0])')"
-if [[ -n "$PY2" ]]; then
-    if [[ "$py_ver" != "2" ]]; then
-        exit 1
-    fi
-else
-    if [[ "$py_ver" != "3" ]]; then
-        exit 1
-    fi
+
+if [[ "$py_ver" != 3 ]]; then
+  exit 1
 fi
