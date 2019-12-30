@@ -33,8 +33,9 @@ def get_inode(path):
 
 def get_mtime_and_size(path, tree):
     from dvc.ignore import CleanTree
+    from dvc.scm.tree import WorkingTree
 
-    assert isinstance(tree, CleanTree)
+    assert isinstance(tree, CleanTree) and isinstance(tree.tree, WorkingTree)
 
     if os.path.isdir(fspath_py35(path)):
         size = 0

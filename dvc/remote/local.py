@@ -429,7 +429,9 @@ class RemoteLOCAL(RemoteBASE):
         os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
 
     def _unprotect_dir(self, path):
-        assert isinstance(self.repo.tree, CleanTree)
+        assert isinstance(self.repo.tree, CleanTree) and isinstance(
+            self.repo.tree.tree, WorkingTree
+        )
 
         for fname in self.repo.tree.walk_files(path):
             RemoteLOCAL._unprotect_file(fname)
