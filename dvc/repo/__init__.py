@@ -5,11 +5,12 @@ import os
 from contextlib import contextmanager
 from functools import wraps
 from itertools import chain
+
+from dvc.ignore import CleanTree
 from dvc.utils.compat import FileNotFoundError, fspath_py35, open as _open
 
 from funcy import cached_property
 
-from dvc.scm.tree import CleanTree
 from dvc.config import Config
 from dvc.exceptions import (
     FileMissingError,

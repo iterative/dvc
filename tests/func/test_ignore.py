@@ -118,8 +118,8 @@ def test_ignore_on_branch(tmp_dir, scm, dvc):
     tree = CleanTree(scm.get_tree("branch"))
 
     assert _files_set(".", tree) == {
-        os.path.join(tree.tree_root, DvcIgnore.DVCIGNORE_FILE),
-        os.path.join(tree.tree_root, "bar"),
+        to_posixpath(os.path.join(tree.tree_root, DvcIgnore.DVCIGNORE_FILE)),
+        to_posixpath(os.path.join(tree.tree_root, "bar")),
     }
 
 

@@ -22,6 +22,7 @@ from dvc.remote.base import STATUS_MAP
 from dvc.remote.base import STATUS_MISSING
 from dvc.remote.base import STATUS_NEW
 from dvc.scheme import Schemes
+from dvc.scm.tree import WorkingTree
 from dvc.system import System
 from dvc.utils import copyfile
 from dvc.utils import file_md5
@@ -139,7 +140,9 @@ class RemoteLOCAL(RemoteBASE):
         return os.path.getsize(fspath_py35(path_info))
 
     def walk_files(self, path_info):
-        assert isinstance(self.repo.tree, CleanTree)
+        assert isinstance(self.repo.tree, CleanTree) and isinstance(
+            self.repo.tree.tree, WorkingTree
+        )
 
         for fname in self.repo.tree.walk_files(path_info):
             yield PathInfo(fname)
