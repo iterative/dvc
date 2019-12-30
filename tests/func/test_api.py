@@ -29,6 +29,7 @@ def run_dvc(*argv):
     assert main(argv) == 0
 
 
+# FIXME
 @pytest.mark.parametrize("remote_url", remote_params, indirect=True)
 def test_get_url(remote_url, tmp_dir, dvc, repo_template):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
@@ -48,6 +49,7 @@ def test_get_url_external(remote_url, erepo_dir):
     assert api.get_url("foo", repo=repo_url) == expected_url
 
 
+# FIXME
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_open(remote_url, tmp_dir, dvc):
     run_dvc("remote", "add", "-d", "upstream", remote_url)
@@ -81,6 +83,7 @@ def test_open_external(remote_url, erepo_dir):
     assert api.read("version", repo=repo_url, rev="branch") == "branch"
 
 
+# FIXME
 @pytest.mark.parametrize("remote_url", all_remote_params, indirect=True)
 def test_missing(remote_url, tmp_dir, dvc):
     tmp_dir.dvc_gen("foo", "foo")
@@ -100,6 +103,7 @@ def _set_remote_url_and_commit(repo, remote_url):
     repo.scm.commit("modify remote")
 
 
+# FIXME
 def test_open_scm_controlled(tmp_dir, scm, dvc):
     tmp_dir.scm_gen({"scm_controlled": "file content"}, commit="create file")
 
@@ -107,9 +111,7 @@ def test_open_scm_controlled(tmp_dir, scm, dvc):
         assert fd.read() == "file content"
 
 
-# def test_open_not_cached2(tmp_dir, scm, dvc):
-#     tmp_dir.dvc_gen({"file": "file content"})
-
+# FIXME WHAT TO DO ABOUT THAT ONE
 # TODO: simplify, we shouldn't need run.
 def test_open_not_cached(dvc):
     metric_file = "metric.txt"
