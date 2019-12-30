@@ -21,8 +21,18 @@ FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 
 
 class GDriveRetriableError(DvcException):
-    def __init__(self, msg):
-        super(GDriveRetriableError, self).__init__(msg)
+    def __init__(self, msg, cause=None):
+        super(GDriveRetriableError, self).__init__(msg, cause=cause)
+
+
+class GDriveAccessTokenRefreshError(DvcException):
+    def __init__(self, msg, cause=None):
+        super(GDriveAccessTokenRefreshError, self).__init__(msg, cause=cause)
+
+
+class GDriveMissedCredentialKeyError(DvcException):
+    def __init__(self, msg, cause=None):
+        super(GDriveMissedCredentialKeyError, self).__init__(msg, cause=cause)
 
 
 @decorator
@@ -38,7 +48,7 @@ def _wrap_pydrive_retriable(call):
             "HttpError {}".format(code) in str(exception)
             for code in retry_codes
         ):
-            raise GDriveRetriableError(msg="Google API request failed")
+            raise GDriveRetriableError("Google API request failed")
         raise
     return result
 
@@ -78,7 +88,7 @@ class RemoteGDrive(RemoteBASE):
                 "https://man.dvc.org/remote/add."
             )
         self.gdrive_user_credentials_path = (
-            tmp_fname(".dvc/tmp/")
+            tmp_fname(os.path.join(self.repo.tmp_dir, ""))
             if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA)
             else self.config.get(
                 Config.SECTION_GDRIVE_USER_CREDENTIALS_FILE,
@@ -161,6 +171,8 @@ class RemoteGDrive(RemoteBASE):
     @property
     @wrap_with(threading.RLock())
     def drive(self):
+        from pydrive.auth import RefreshError
+
         if not hasattr(self, "_gdrive"):
             from pydrive.auth import GoogleAuth
             from pydrive.drive import GoogleDrive
@@ -195,10 +207,27 @@ class RemoteGDrive(RemoteBASE):
 
             # Pass non existent settings path to force DEFAULT_SETTINGS loading
             gauth = GoogleAuth(settings_file="")
-            gauth.CommandLineAuth()
 
-            if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
-                os.remove(self.gdrive_user_credentials_path)
+            try:
+                gauth.CommandLineAuth()
+            except RefreshError as e:
+                raise GDriveAccessTokenRefreshError(
+                    "Google Drive's access token refreshment is failed", e
+                )
+            except KeyError as e:
+                raise GDriveMissedCredentialKeyError(
+                    "Google Drive's user credentials file '{}' "
+                    "misses value for key '{}'".format(
+                        self.gdrive_user_credentials_path, str(e)
+                    ),
+                    e,
+                )
+            # Handle pydrive.auth.AuthenticationError and others auth failures
+            except Exception as e:
+                raise DvcException("Google Drive authentication failed", e)
+            finally:
+                if os.getenv(RemoteGDrive.GDRIVE_USER_CREDENTIALS_DATA):
+                    os.remove(self.gdrive_user_credentials_path)
 
             self._gdrive = GoogleDrive(gauth)
 
