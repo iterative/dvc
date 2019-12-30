@@ -59,7 +59,9 @@ def main(argv=None):
     except Exception as exc:  # pylint: disable=broad-except
         if isinstance(exc, OSError) and exc.errno == errno.EMFILE:
             logger.exception(
-                "too many open files, please increase your `ulimit`",
+                "too many open files, please visit "
+                "https://error.dvc.org/many-files to see how to handle this "
+                "problem",
                 extra={"tb_only": True},
             )
         else:
