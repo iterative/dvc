@@ -29,7 +29,10 @@ class _BasePath(object):
             other = self.__class__(other)
         elif self.__class__ != other.__class__:
             return False
-        return self == other or self.isin(other) or other.isin(self)
+        return self.isin_or_eq(other) or other.isin(self)
+
+    def isin_or_eq(self, other):
+        return self == other or self.isin(other)
 
 
 class PathInfo(pathlib.PurePath, _BasePath):

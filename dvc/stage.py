@@ -959,15 +959,28 @@ class Stage(object):
         if paths:
             raise MissingDataSource(paths)
 
+    def _filter_outs(self, path_info):
+        def _func(o):
+            return path_info.isin_or_eq(o.path_info)
+
+        return filter(_func, self.outs) if path_info else self.outs
+
     @rwlocked(write=["outs"])
-    def checkout(self, force=False, progress_callback=None, relink=False):
+    def checkout(
+        self,
+        force=False,
+        progress_callback=None,
+        relink=False,
+        filter_info=None,
+    ):
         failed_checkouts = []
-        for out in self.outs:
+        for out in self._filter_outs(filter_info):
             failed = out.checkout(
                 force=force,
                 tag=self.tag,
                 progress_callback=progress_callback,
                 relink=relink,
+                filter_info=filter_info,
             )
             if failed:
                 failed_checkouts.append(failed)
@@ -1016,5 +1029,17 @@ class Stage(object):
             )
         )
 
-    def get_all_files_number(self):
-        return sum(out.get_files_number() for out in self.outs)
+    def get_all_files_number(self, filter_info=None):
+        return sum(
+            out.get_files_number(filter_info)
+            for out in self._filter_outs(filter_info)
+        )
+
+    def get_used_cache(self, *args, **kwargs):
+        from .cache import NamedCache
+
+        cache = NamedCache()
+        for out in self._filter_outs(kwargs.get("filter_info")):
+            cache.update(out.get_used_cache(*args, **kwargs))
+
+        return cache

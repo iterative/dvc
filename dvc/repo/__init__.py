@@ -217,6 +217,18 @@ class Repo(object):
             for n in nx.dfs_postorder_nodes(pipeline, node)
         ]
 
+    def collect_granular(self, target, *args, **kwargs):
+        if not target:
+            return [(stage, None) for stage in self.stages]
+
+        try:
+            out, = self.find_outs_by_path(target, strict=False)
+            filter_info = PathInfo(os.path.abspath(target))
+            return [(out.stage, filter_info)]
+        except OutputNotFoundError:
+            stages = self.collect(target, *args, **kwargs)
+            return [(stage, None) for stage in stages]
+
     def used_cache(
         self,
         targets=None,
@@ -242,6 +254,7 @@ class Repo(object):
             A dictionary with Schemes (representing output's location) as keys,
             and a list with the outputs' `dumpd` as values.
         """
+        from funcy.py2 import icat
         from dvc.cache import NamedCache
 
         cache = NamedCache()
@@ -251,28 +264,24 @@ class Repo(object):
             all_tags=all_tags,
             all_commits=all_commits,
         ):
-            if targets:
-                stages = []
-                for target in targets:
-                    collected = self.collect(
-                        target, recursive=recursive, with_deps=with_deps
-                    )
-                    stages.extend(collected)
-            else:
-                stages = self.stages
+            targets = targets or [None]
 
-            for stage in stages:
-                if stage.is_repo_import:
-                    dep, = stage.deps
-                    cache.external[dep.repo_pair].add(dep.def_path)
-                    continue
+            pairs = icat(
+                self.collect_granular(
+                    target, recursive=recursive, with_deps=with_deps
+                )
+                for target in targets
+            )
 
-                for out in stage.outs:
-                    used_cache = out.get_used_cache(
-                        remote=remote, force=force, jobs=jobs
-                    )
-                    suffix = "({})".format(branch) if branch else ""
-                    cache.update(used_cache, suffix=suffix)
+            suffix = "({})".format(branch) if branch else ""
+            for stage, filter_info in pairs:
+                used_cache = stage.get_used_cache(
+                    remote=remote,
+                    force=force,
+                    jobs=jobs,
+                    filter_info=filter_info,
+                )
+                cache.update(used_cache, suffix=suffix)
 
         return cache
 
@@ -421,18 +430,20 @@ class Repo(object):
     def stages(self):
         return get_stages(self.graph)
 
-    def find_outs_by_path(self, path, outs=None, recursive=False):
+    def find_outs_by_path(self, path, outs=None, recursive=False, strict=True):
         if not outs:
             outs = [out for stage in self.stages for out in stage.outs]
 
         abs_path = os.path.abspath(path)
+        path_info = PathInfo(abs_path)
         is_dir = self.tree.isdir(abs_path)
+        match = path_info.__eq__ if strict else path_info.isin_or_eq
 
         def func(out):
-            if out.scheme == "local" and out.fspath == abs_path:
+            if out.scheme == "local" and match(out.path_info):
                 return True
 
-            if is_dir and recursive and out.path_info.isin(abs_path):
+            if is_dir and recursive and out.path_info.isin(path_info):
                 return True
 
             return False

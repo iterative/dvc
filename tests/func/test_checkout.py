@@ -510,3 +510,16 @@ def test_checkout_relink_protected(tmp_dir, dvc, link):
 
     dvc.checkout(["foo.dvc"], relink=True)
     assert not os.access("foo", os.W_OK)
+
+
+@pytest.mark.parametrize(
+    "target",
+    [os.path.join("dir", "subdir"), os.path.join("dir", "subdir", "file")],
+)
+def test_partial_checkout(tmp_dir, dvc, target):
+    tmp_dir.dvc_gen({"dir": {"subdir": {"file": "file"}, "other": "other"}})
+    shutil.rmtree("dir")
+    dvc.checkout([target])
+    assert list(walk_files("dir", None)) == [
+        os.path.join("dir", "subdir", "file")
+    ]

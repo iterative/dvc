@@ -283,11 +283,18 @@ class OutputBase(object):
         self.remote.download(self.path_info, to.path_info)
 
     def checkout(
-        self, force=False, progress_callback=None, tag=None, relink=False
+        self,
+        force=False,
+        progress_callback=None,
+        tag=None,
+        relink=False,
+        filter_info=None,
     ):
         if not self.use_cache:
             if progress_callback:
-                progress_callback(str(self.path_info), self.get_files_number())
+                progress_callback(
+                    str(self.path_info), self.get_files_number(filter_info)
+                )
             return None
 
         if tag:
@@ -301,6 +308,7 @@ class OutputBase(object):
             force=force,
             progress_callback=progress_callback,
             relink=relink,
+            filter_info=filter_info,
         )
 
     def remove(self, ignore_remove=False):
@@ -324,17 +332,21 @@ class OutputBase(object):
         if self.scheme == "local" and self.use_scm_ignore:
             self.repo.scm.ignore(self.fspath)
 
-    def get_files_number(self):
+    def get_files_number(self, filter_info=None):
         if not self.use_cache:
             return 0
 
-        return self.cache.get_files_number(self.checksum)
+        return self.cache.get_files_number(
+            self.path_info, self.checksum, filter_info
+        )
 
     def unprotect(self):
         if self.exists:
             self.remote.unprotect(self.path_info)
 
-    def _collect_used_dir_cache(self, remote=None, force=False, jobs=None):
+    def _collect_used_dir_cache(
+        self, remote=None, force=False, jobs=None, filter_info=None
+    ):
         """Get a list of `info`s related to the given directory.
 
         - Pull the directory entry from the remote cache if it was changed.
@@ -383,8 +395,9 @@ class OutputBase(object):
 
         for entry in self.dir_cache:
             checksum = entry[self.remote.PARAM_CHECKSUM]
-            path_info = self.path_info / entry[self.remote.PARAM_RELPATH]
-            cache.add(self.scheme, checksum, str(path_info))
+            info = self.path_info / entry[self.remote.PARAM_RELPATH]
+            if not filter_info or info.isin_or_eq(filter_info):
+                cache.add(self.scheme, checksum, str(info))
 
         return cache
 
@@ -399,6 +412,12 @@ class OutputBase(object):
 
         if not self.use_cache:
             return NamedCache()
+
+        if self.stage.is_repo_import:
+            cache = NamedCache()
+            dep, = self.stage.deps
+            cache.external[dep.repo_pair].add(dep.def_path)
+            return cache
 
         if not self.info:
             logger.warning(
