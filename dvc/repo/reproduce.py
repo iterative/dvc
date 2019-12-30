@@ -2,20 +2,16 @@ from __future__ import unicode_literals
 
 import logging
 
-from . import locked
-from .graph import get_pipeline
-from .graph import get_pipelines
 from dvc.exceptions import ReproductionError
 from dvc.repo.scm_context import scm_context
-from dvc.utils import relpath
+from . import locked
+from .graph import get_pipeline, get_pipelines
 
 
 logger = logging.getLogger(__name__)
 
 
-def _reproduce_stage(stages, node, **kwargs):
-    stage = stages[node]
-
+def _reproduce_stage(stage, **kwargs):
     if stage.locked:
         logger.warning(
             "DVC-file '{path}' is locked. Its dependencies are"
@@ -36,16 +32,14 @@ def _get_active_graph(G):
     import networkx as nx
 
     active = G.copy()
-    stages = nx.get_node_attributes(G, "stage")
-    for node in G:
-        stage = stages[node]
+    for stage in G:
         if not stage.locked:
             continue
-        for n in nx.dfs_postorder_nodes(G, node):
-            if n == node:
+        for st in nx.dfs_postorder_nodes(G, stage):
+            if st == stage:
                 continue
-            if n in active:
-                active.remove_node(n)
+            if st in active:
+                active.remove_node(st)
     return active
 
 
@@ -59,7 +53,6 @@ def reproduce(
     all_pipelines=False,
     **kwargs
 ):
-    import networkx as nx
     from dvc.stage import Stage
 
     if not target and not all_pipelines:
@@ -81,39 +74,27 @@ def reproduce(
             pipelines = active_pipelines
         else:
             stage = Stage.load(self, target)
-            node = relpath(stage.path, self.root_dir)
-            pipelines = [get_pipeline(active_pipelines, node)]
+            pipelines = [get_pipeline(active_pipelines, stage)]
 
         targets = []
-        for G in pipelines:
-            attrs = nx.get_node_attributes(G, "stage")
-            for node in G:
-                if G.in_degree(node) == 0:
-                    targets.append(attrs[node])
+        for pipeline in pipelines:
+            for stage in pipeline:
+                if pipeline.in_degree(stage) == 0:
+                    targets.append(stage)
     else:
         targets = self.collect(target, recursive=recursive, graph=active_graph)
 
     ret = []
     for target in targets:
-        stages = _reproduce(self, active_graph, target, **kwargs)
+        stages = _reproduce_stages(active_graph, target, **kwargs)
         ret.extend(stages)
 
     return ret
 
 
-def _reproduce(self, G, stage, **kwargs):
-    import networkx as nx
-
-    stages = nx.get_node_attributes(G, "stage")
-    node = relpath(stage.path, self.root_dir)
-
-    return _reproduce_stages(G, stages, node, **kwargs)
-
-
 def _reproduce_stages(
     G,
-    stages,
-    node,
+    stage,
     downstream=False,
     ignore_build_cache=False,
     single_item=False,
@@ -153,11 +134,10 @@ def _reproduce_stages(
 
     The derived evaluation of _downstream_ B would be: [B, D, E]
     """
-
     import networkx as nx
 
     if single_item:
-        pipeline = [node]
+        pipeline = [stage]
     elif downstream:
         # NOTE (py3 only):
         # Python's `deepcopy` defaults to pickle/unpickle the object.
@@ -166,14 +146,14 @@ def _reproduce_stages(
         # We need to create a copy of the graph itself, and then reverse it,
         # instead of using graph.reverse() directly because it calls
         # `deepcopy` underneath -- unless copy=False is specified.
-        pipeline = nx.dfs_preorder_nodes(G.copy().reverse(copy=False), node)
+        pipeline = nx.dfs_preorder_nodes(G.copy().reverse(copy=False), stage)
     else:
-        pipeline = nx.dfs_postorder_nodes(G, node)
+        pipeline = nx.dfs_postorder_nodes(G, stage)
 
     result = []
-    for n in pipeline:
+    for st in pipeline:
         try:
-            ret = _reproduce_stage(stages, n, **kwargs)
+            ret = _reproduce_stage(st, **kwargs)
 
             if len(ret) != 0 and ignore_build_cache:
                 # NOTE: we are walking our pipeline from the top to the
@@ -183,7 +163,7 @@ def _reproduce_stages(
                 # dependencies didn't change.
                 kwargs["force"] = True
 
-            result += ret
+            result.extend(ret)
         except Exception as ex:
-            raise ReproductionError(stages[n].relpath, ex)
+            raise ReproductionError(st.relpath, ex)
     return result

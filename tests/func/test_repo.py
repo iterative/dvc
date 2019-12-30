@@ -32,7 +32,7 @@ def test_destroy(tmp_dir, dvc):
 def test_collect(tmp_dir, scm, dvc, run_copy):
     def collect_outs(*args, **kwargs):
         return set(
-            str(out.path_info)
+            str(out)
             for stage in dvc.collect(*args, **kwargs)
             for out in stage.outs
         )
