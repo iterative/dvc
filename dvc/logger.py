@@ -1,5 +1,4 @@
 """Manages logging configuration for dvc repo."""
-from __future__ import unicode_literals
 
 import logging.config
 import logging.handlers

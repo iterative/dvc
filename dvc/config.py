@@ -1,5 +1,4 @@
 """DVC config objects."""
-from __future__ import unicode_literals
 
 import copy
 import errno

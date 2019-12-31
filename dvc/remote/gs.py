@@ -1,4 +1,3 @@
-from __future__ import unicode_literals, division
 
 import logging
 from datetime import timedelta

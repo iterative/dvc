@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 import dvc.output as output
 from dvc.dependency.gs import DependencyGS

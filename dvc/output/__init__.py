@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 from voluptuous import Any, Required
 

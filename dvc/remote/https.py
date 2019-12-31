@@ -1,4 +1,3 @@
-from __future__ import unicode_literals
 
 from .http import RemoteHTTP
 from dvc.scheme import Schemes
