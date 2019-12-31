@@ -403,8 +403,6 @@ def resolve_output(inp, out):
 
 
 def format_link(link):
-    import colorama
-
     return "<{blue}{link}{nc}>".format(
         blue=colorama.Fore.CYAN, link=link, nc=colorama.Fore.RESET
     )
