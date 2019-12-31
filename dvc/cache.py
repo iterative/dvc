@@ -1,6 +1,4 @@
 """Manages cache of a dvc repo."""
-from __future__ import unicode_literals
-
 import os
 from collections import defaultdict
 

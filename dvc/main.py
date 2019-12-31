@@ -1,5 +1,4 @@
 """Main entry point for dvc CLI."""
-from __future__ import unicode_literals
 
 import errno
 import logging

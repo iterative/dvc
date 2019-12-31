@@ -1,5 +1,4 @@
 """Handle import compatibility between Python 2 and Python 3"""
-from __future__ import absolute_import
 
 import errno
 import os

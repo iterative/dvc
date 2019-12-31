@@ -42,7 +42,6 @@ from global repo template to creating everything inplace, which:
     - allows using telling filenames, e.g. "git_tracked_file" instead of "foo"
     - does not create unnecessary files
 """
-from __future__ import unicode_literals
 
 import os
 import pytest

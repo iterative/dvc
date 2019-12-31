@@ -1,5 +1,4 @@
 """Manages progress bars for dvc repo."""
-from __future__ import print_function
 
 import logging
 import sys

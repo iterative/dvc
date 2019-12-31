@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import argparse
 import logging
 from dvc.utils.compat import str

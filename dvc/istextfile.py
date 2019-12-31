@@ -1,5 +1,4 @@
 """Use heuristics to guess if it is a text file or a binary file."""
-from __future__ import unicode_literals
 
 from dvc.utils.compat import is_py3
 from dvc.utils.compat import open

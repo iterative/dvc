@@ -55,7 +55,6 @@ install_requires = [
     "python-dateutil<2.8.1,>=2.1",  # Consolidates azure-blob-storage and boto3
     "ply>=3.9",  # See https://github.com/pyinstaller/pyinstaller/issues/1945
     "configparser>=3.5.0",
-    "future>=0.16.0",
     "colorama>=0.3.9",
     "configobj>=5.0.6",
     "gitpython>=2.1.8",
