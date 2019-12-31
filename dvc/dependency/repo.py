@@ -6,7 +6,9 @@ from dvc.utils.compat import FileNotFoundError
 from funcy import merge
 
 from .local import DependencyLOCAL
+from dvc.external_repo import cached_clone
 from dvc.external_repo import external_repo
+from dvc.exceptions import NotDvcRepoError
 from dvc.exceptions import OutputNotFoundError
 from dvc.exceptions import PathMissingError
 from dvc.utils.fs import fs_copy
@@ -75,27 +77,35 @@ class DependencyREPO(DependencyLOCAL):
         return out
 
     @staticmethod
-    def _is_git_file(repo, path):
-        if not os.path.isabs(path):
-            try:
-                output = repo.find_out_by_relpath(path)
-                if not output.use_cache:
-                    return True
-            except OutputNotFoundError:
-                return True
-        return False
+    def _is_git_file(repo_dir, path):
+        from dvc.repo import Repo
+
+        if os.path.isabs(path):
+            return False
+
+        try:
+            repo = Repo(repo_dir)
+        except NotDvcRepoError:
+            return True
+
+        try:
+            output = repo.find_out_by_relpath(path)
+            return not output.use_cache
+        except OutputNotFoundError:
+            return True
+        finally:
+            repo.close()
 
     def _copy_if_git_file(self, to_path):
         src_path = self.def_path
-        with self._make_repo(
-            cache_dir=self.repo.cache.local.cache_dir
-        ) as repo:
-            if not self._is_git_file(repo, src_path):
-                return False
+        repo_dir = cached_clone(**self.def_repo)
 
-            src_full_path = os.path.join(repo.root_dir, src_path)
-            dst_full_path = os.path.abspath(to_path)
-            fs_copy(src_full_path, dst_full_path)
+        if not self._is_git_file(repo_dir, src_path):
+            return False
+
+        src_full_path = os.path.join(repo_dir, src_path)
+        dst_full_path = os.path.abspath(to_path)
+        fs_copy(src_full_path, dst_full_path)
         return True
 
     def download(self, to):
